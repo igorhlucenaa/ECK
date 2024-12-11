@@ -1,15 +1,16 @@
 import { Routes } from '@angular/router';
 import { BlankComponent } from './layouts/blank/blank.component';
 import { FullComponent } from './layouts/full/full.component';
+import { AuthGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
-    component: BlankComponent, // Usar layout em branco para login
+    component: BlankComponent,
     children: [
       {
         path: '',
-        redirectTo: 'authentication/login', // Redireciona para login
+        redirectTo: 'authentication/login',
         pathMatch: 'full',
       },
       {
@@ -26,9 +27,36 @@ export const routes: Routes = [
     component: FullComponent,
     children: [
       {
-        path: 'starter',
+        path: 'dashboard',
         loadChildren: () =>
-          import('./pages/pages.routes').then((m) => m.PagesRoutes),
+          import('./pages/dashboard/dashboard.routes').then(
+            (m) => m.DashboardRoutes
+          ),
+        canActivate: [AuthGuard],
+        data: { role: 'admin_master' },
+      },
+      {
+        path: 'clients',
+        loadChildren: () =>
+          import('./pages/clients/clients.routes').then((m) => m.ClientsRoutes),
+        canActivate: [AuthGuard],
+        data: { role: 'admin_master' },
+      },
+      {
+        path: 'projects',
+        loadChildren: () =>
+          import('./pages/project/project.routes').then(
+            (m) => m.ProjectsRoutes
+          ),
+        canActivate: [AuthGuard],
+        data: { role: 'project_manager' },
+      },
+      {
+        path: 'reports',
+        loadChildren: () =>
+          import('./pages/reports/reports.routes').then((m) => m.ReportsRoutes),
+        canActivate: [AuthGuard],
+        data: { role: 'viewer' },
       },
       {
         path: 'dashboards',
@@ -36,57 +64,13 @@ export const routes: Routes = [
           import('./pages/dashboards/dashboards.routes').then(
             (m) => m.DashboardsRoutes
           ),
-      },
-      {
-        path: 'ui-components',
-        loadChildren: () =>
-          import('./pages/ui-components/ui-components.routes').then(
-            (m) => m.UiComponentsRoutes
-          ),
-      },
-      {
-        path: 'forms',
-        loadChildren: () =>
-          import('./pages/forms/forms.routes').then((m) => m.FormsRoutes),
-      },
-      {
-        path: 'charts',
-        loadChildren: () =>
-          import('./pages/charts/charts.routes').then((m) => m.ChartsRoutes),
-      },
-      {
-        path: 'apps',
-        loadChildren: () =>
-          import('./pages/apps/apps.routes').then((m) => m.AppsRoutes),
-      },
-      {
-        path: 'widgets',
-        loadChildren: () =>
-          import('./pages/widgets/widgets.routes').then((m) => m.WidgetsRoutes),
-      },
-      {
-        path: 'tables',
-        loadChildren: () =>
-          import('./pages/tables/tables.routes').then((m) => m.TablesRoutes),
-      },
-      {
-        path: 'datatable',
-        loadChildren: () =>
-          import('./pages/datatable/datatable.routes').then(
-            (m) => m.DatatablesRoutes
-          ),
-      },
-      {
-        path: 'theme-pages',
-        loadChildren: () =>
-          import('./pages/theme-pages/theme-pages.routes').then(
-            (m) => m.ThemePagesRoutes
-          ),
+        canActivate: [AuthGuard],
+        data: { role: 'admin_account' },
       },
     ],
   },
   {
     path: '**',
-    redirectTo: 'authentication/error', // Redireciona erros para uma página apropriada
+    redirectTo: 'authentication/error',
   },
 ];
