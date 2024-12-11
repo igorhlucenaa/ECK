@@ -27,6 +27,17 @@ export const routes: Routes = [
     component: FullComponent,
     children: [
       {
+        path: '',
+        redirectTo: 'starter', // Redireciona para starter como página inicial após autenticação
+        pathMatch: 'full',
+      },
+      {
+        path: 'starter',
+        loadChildren: () =>
+          import('./pages/pages.routes').then((m) => m.PagesRoutes),
+        canActivate: [AuthGuard],
+      },
+      {
         path: 'dashboard',
         loadChildren: () =>
           import('./pages/dashboard/dashboard.routes').then(

@@ -18,16 +18,14 @@ export class AuthGuard implements CanActivate {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<boolean> | Promise<boolean> | boolean {
-    const requiredRole = route.data['role']; // Obtém o role necessário da rota
+    const requiredRole = route.data['role']; // Role necessário, se houver
 
-    // Verifica o role do usuário no AuthService
     return this.authService.getCurrentUserRole().then((userRole) => {
-      if (userRole === requiredRole) {
-        return true; // Permite acesso à rota
-      } else {
-        this.router.navigate(['/authentication/login']); // Redireciona para login se não tiver permissão
-        return false;
+      if (!requiredRole || userRole === requiredRole) {
+        return true; // Permite o acesso
       }
+      this.router.navigate(['/authentication/login']); // Redireciona para login se não permitido
+      return false;
     });
   }
 }

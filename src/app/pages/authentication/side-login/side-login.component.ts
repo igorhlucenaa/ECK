@@ -33,11 +33,11 @@ export class AppSideLoginComponent {
   ) {}
 
   form = new FormGroup({
-    uname: new FormControl('', [Validators.required, Validators.email]), // Modificado para email
+    uname: new FormControl('', [Validators.required, Validators.email]), // Campo de email
     password: new FormControl('', [
       Validators.required,
       Validators.minLength(6),
-    ]),
+    ]), // Campo de senha
   });
 
   get f() {
@@ -45,16 +45,26 @@ export class AppSideLoginComponent {
   }
 
   async submit() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.errorMessage = 'Preencha os campos corretamente.';
+      return;
+    }
+
     this.isLoading = true;
+    this.errorMessage = ''; // Limpa mensagens anteriores
 
     const { uname, password } = this.form.value;
 
     try {
-      await this.authService.login(uname!, password!);
-      this.router.navigate(['/starter']); // Redireciona após sucesso
+      // Login com o AuthService
+      console.log(uname)
+      await this.authService.login(uname!, password!).then(res=>console.log(res))
+      this.router.navigate(['/starter']); // Redireciona para a página inicial após login
+      console.log('entrou no try')
     } catch (error: any) {
-      this.errorMessage = error.message || 'Login falhou. Tente novamente.';
+      // Captura erros do serviço de autenticação
+      this.errorMessage =
+        error.message || 'Erro ao realizar login. Tente novamente.';
     } finally {
       this.isLoading = false;
     }

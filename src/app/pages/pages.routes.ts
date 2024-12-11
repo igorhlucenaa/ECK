@@ -3,7 +3,7 @@ import { StarterComponent } from './starter/starter.component';
 
 export const PagesRoutes: Routes = [
   {
-    path: '',
+    path: '', // Caminho vazio, pois já está configurado como 'starter' em app.routes.ts
     component: StarterComponent,
     data: {
       title: 'Starter Page',
