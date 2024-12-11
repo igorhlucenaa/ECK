@@ -1,0 +1,262 @@
+<mat-toolbar class="topbar">
+  <app-branding></app-branding>
+
+  <!-- --------------------------------------------------------------- -->
+  <!-- Desktop Menu -->
+  @if(showToggle) {
+  <button mat-icon-button (click)="toggleCollapsed.emit()" class="d-flex align-items-center justify-content-center">
+    <i class="iconify icon-20" data-icon="solar:list-bold"></i>
+  </button>
+  }
+
+  <!-- Mobile Menu -->
+  @if(!showToggle) {
+  <button mat-icon-button (click)="toggleMobileNav.emit()" class="d-flex align-items-center justify-content-center">
+    <i class="iconify icon-20" data-icon="solar:list-bold"></i>
+  </button>
+  }
+
+  <!-- --------------------------------------------------------------- -->
+
+  <!-- --------------------------------------------------------------- -->
+  <!--  Search -->
+  <!-- --------------------------------------------------------------- -->
+  <button mat-icon-button (click)="openDialog()" class="d-flex align-items-center justify-content-center">
+    <i class="iconify icon-20" data-icon="solar:magnifer-linear"></i>
+  </button>
+
+  <!-- Mobile Menu -->
+  <button mat-mini-fab color="inherit" (click)="toggleMobileFilterNav.emit()"
+    class="d-flex d-lg-none justify-content-center">
+    <i class="iconify icon-20 d-flex" data-icon="solar:widget-3-line-duotone"></i>
+  </button>
+
+  <div class="d-none d-lg-flex">
+    <!-- --------------------------------------------------------------- -->
+    <!--  Links -->
+    <!-- --------------------------------------------------------------- -->
+    <button mat-icon-button [matMenuTriggerFor]="appsmenu" aria-label="Notifications"
+      class="d-flex align-items-center justify-content-center">
+      <i class="iconify icon-20 d-flex" data-icon="solar:widget-3-line-duotone"></i>
+    </button>
+
+    <mat-menu #appsmenu="matMenu" class="apps-dd cardWithShadow">
+      <div class="row">
+        <div class="col-sm-8">
+          <div class="p-l-16 p-t-16">
+            <div class="b-b-1">
+              <div class="row">
+                @for(appdd of apps; track appdd.title) {
+                <div class="col-6 text-hover-primary">
+                  <a [routerLink]="[appdd.link]" class="d-flex align-items-center text-decoration-none m-b-20">
+                    <span class="text-{{ appdd.color }} bg-light-{{
+                      appdd.color
+                    }} rounded-circle icon-40 d-flex align-items-center justify-content-center">
+                      <span class="iconify icon-20" [attr.data-icon]="appdd.icon"></span>
+                    </span>
+
+                    <div class="m-l-16">
+                      <h5 class="f-s-14 f-w-500 m-0 textprimary mat-subtitle-1 hover-text lh-sm">
+                        {{ appdd.title }}
+                      </h5>
+                      <span class="mat-body-1 f-s-12">{{ appdd.subtitle }}</span>
+                    </div>
+                  </a>
+                </div>
+                }
+              </div>
+            </div>
+            <div class="row align-items-center p-y-16">
+              <div class="col-8">
+                <a [routerLink]="['/theme-pages/faq']"
+                  class="f-w-500 f-s-14 mat-subtitle-1 primary-hover-text text-decoration-none d-flex align-items-center">
+                  <i-tabler name="help" class="f-s-20 m-r-8 icon-18 d-flex"></i-tabler>
+                  Frequently Asked Questions
+                </a>
+              </div>
+              <div class="col-4">
+                <div class="d-flex justify-content-end p-r-24">
+                  <button mat-flat-button color="primary">
+                    Check
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-4 m-l--24">
+          <div class="position-relative p-16 b-l-1 h-100">
+            <h4 class="f-s-18 f-w-500 mat-subtitle-1 m-b-16">Quick Links</h4>
+            @for(quicklink of quicklinks; track quicklink.title) {
+            <div class="text-hover-primary m-b-10">
+              <a [routerLink]="[quicklink.link]"
+                class="primary-hover-text text-decoration-none mat-subtitle-1 f-s-14 f-w-500 d-block">{{
+                quicklink.title }}</a>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+    </mat-menu>
+  </div>
+
+  <span class="flex-1-auto"></span>
+
+  <!-- --------------------------------------------------------------- -->
+  <!-- langugage Dropdown -->
+  <!-- --------------------------------------------------------------- -->
+  <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">
+    <img [src]="selectedLanguage.icon" class="rounded icon-20" />
+  </button>
+  <mat-menu #flags="matMenu" class="cardWithShadow" xPosition="before">
+    @for(lang of languages; track lang) {
+    <button mat-menu-item (click)="changeLanguage(lang)">
+      <div class="d-flex align-items-center">
+        <img [src]="lang.icon" class="rounded m-r-8 icon-20" />
+        <span class="mat-subtitle-1 f-s-14">{{ lang.language }}</span>
+      </div>
+    </button>
+    }
+  </mat-menu>
+
+  <button mat-icon-button aria-label="lightdark" class="d-flex justify-content-center" (click)="setDark()">
+    <i-tabler class="d-flex icon-22 stroke-width-1" [name]="options.theme === 'dark' ? 'sun' : 'moon'"></i-tabler>
+  </button>
+
+  <!-- --------------------------------------------------------------- -->
+  <!-- Notification Dropdown -->
+  <!-- --------------------------------------------------------------- -->
+  <button class="position-relative d-flex align-items-center justify-content-center" mat-icon-button
+    [matMenuTriggerFor]="notificationmenu" aria-label="Notifications">
+    <i class="iconify icon-20 d-flex" data-icon="solar:bell-bing-line-duotone"></i>
+    <div class="notify">
+      <span class="heartbit"></span> <span class="point"></span>
+    </div>
+  </button>
+  <mat-menu #notificationmenu="matMenu" class="topbar-dd cardWithShadow dd-notifications">
+    <div class="p-x-24 p-y-16 bg-primary">
+      <h6 class="f-s-16 mat-subtitle-1 m-b-2 text-white f-s-18">Notifications</h6>
+      <p class="m-0 text-white f-s-12">You have 4 Notifications</p>
+    </div>
+
+    @for(notification of notifications; track notification.title) {
+    <button mat-menu-item class="p-16">
+      <div class="d-flex align-items-center">
+        <span class="flex-shrink-0 text-{{ notification.color }} bg-light-{{
+            notification.color
+          }} rounded-circle icon-40 d-flex align-items-center justify-content-center">
+          <span class="iconify icon-20" [attr.data-icon]="notification.icon"></span>
+        </span>
+        <div class="m-l-16 w-100">
+          <div class="d-flex align-items-center justify-content-between w-100">
+            <h5 class="f-s-14 m-0 mat-subtitle-1 lh-sm">
+              {{ notification.title }}
+            </h5>
+            <span class="d-block f-s-12 m-l-auto lh-sm">
+              {{ notification.time }}</span>
+          </div>
+          <span class="d-block text-truncate f-s-12 w-75 lh-sm">{{
+            notification.subtitle
+            }}</span>
+        </div>
+      </div>
+    </button>
+    }
+
+    <div class="p-y-12 p-x-32">
+      <button mat-flat-button color="primary" class="w-100 rounded-pill">
+        <div class="d-flex align-items-center gap-8">
+          Check all Notifications
+          <i class="iconify icon-16 d-flex" data-icon="solar:alt-arrow-right-outline"></i>
+        </div>
+      </button>
+    </div>
+  </mat-menu>
+
+  <!-- --------------------------------------------------------------- -->
+  <!-- Messages Dropdown -->
+  <!-- --------------------------------------------------------------- -->
+  <button mat-icon-button [matMenuTriggerFor]="inboxmenu" aria-label="Inbox"
+    class="position-relative d-flex align-items-center justify-content-center">
+    <i class="iconify icon-20 d-flex" data-icon="solar:inbox-line-line-duotone"></i>
+    <div class="notify">
+      <span class="heartbit"></span> <span class="point"></span>
+    </div>
+  </button>
+  <mat-menu #inboxmenu="matMenu" class="topbar-dd cardWithShadow dd-notifications">
+    <div class="p-x-24 p-y-16 bg-accent">
+      <h6 class="f-s-16 mat-subtitle-1 m-b-2 text-white f-s-18">Messages</h6>
+      <p class="m-0 text-white f-s-12">You have 5 new messages</p>
+    </div>
+
+    @for(inbox of inbox; track inbox.title) {
+    <button mat-menu-item class="p-16">
+      <div class="d-flex align-items-center">
+        <span
+          class="position-relative flex-shrink-0 rounded-circle icon-40 d-flex align-items-center justify-content-center">
+          <img class="rounded-circle" [src]="inbox.imagePath" width="40" height="40" alt="users" />
+          <div matBadge="" matBadgeOverlap="false"
+            class="{{ inbox.bgcolor }} demo-section inbox-badge icon-8 border-white rounded-circle"></div>
+        </span>
+        <div class="m-l-16 w-100">
+          <div class="d-flex align-items-center justify-content-between w-100">
+            <h5 class="f-s-14 m-0 mat-subtitle-1 lh-sm">
+              {{ inbox.title }}
+            </h5>
+            <span class="d-block mat-body-1 f-s-12 m-l-auto">
+              {{ inbox.time }}</span>
+          </div>
+          <span class="d-block text-truncate f-s-12 mat-body-1 w-75">{{
+            inbox.subtitle
+            }}</span>
+        </div>
+      </div>
+    </button>
+    }
+
+    <div class="p-y-12 p-x-32">
+      <button mat-flat-button color="accent" class="w-100 rounded-pill">
+        <div class="d-flex align-items-center gap-8">
+          Check all Messages
+          <i class="iconify icon-16 d-flex" data-icon="solar:alt-arrow-right-outline"></i>
+        </div>
+      </button>
+    </div>
+  </mat-menu>
+
+  <!-- --------------------------------------------------------------- -->
+  <!-- profile Dropdown -->
+  <!-- --------------------------------------------------------------- -->
+  <button mat-icon-button extended [matMenuTriggerFor]="profilemenu" aria-label="Notifications"
+    class="position-relative d-flex align-items-center justify-content-center profile-btn-dd">
+    <img src="/assets/images/profile/user-1.jpg" class="rounded-circle icon-30 object-cover profile-dd d-flex align-items-center justify-content-center" width="30" height="30" />
+  </button>
+  <mat-menu #profilemenu="matMenu" class="topbar-dd cardWithShadow dd-notifications">
+    <div class="p-x-16 p-y-20 b-b-1">
+      <div class="d-flex align-items-center">
+        <img src="/assets/images/profile/user-1.jpg" class="rounded-circle" width="50" height="50" />
+        <div class="m-l-16">
+          <h6 class="f-s-14 f-w-600 m-0 mat-subtitle-1 d-flex align-items-center">
+            Markarn Doe
+            <span class="f-s-14 d-block text-success m-l-4">Pro</span>
+          </h6>
+          <span>markrarn&#64;wrappixel.com</span>
+        </div>
+      </div>
+    </div>
+    <div class="p-16">
+      @for(profile of profiledd; track profile.title) {
+      <a class="p-8 text-decoration-none d-block text-hover-primary" [routerLink]="[profile.link]">
+        <div class="d-flex align-items-center">
+          <h5 class="f-s-14 f-w-500 m-0 textprimary mat-subtitle-1 hover-text">
+            {{ profile.title }}
+          </h5>
+          @if(profile.new) {
+          <span class="bg-light-error text-error rounded p-x-8 p-y-2 f-w-500 f-s-12 m-l-8">5</span>
+          }
+        </div>
+      </a>
+      }
+    </div>
+  </mat-menu>
+</mat-toolbar>

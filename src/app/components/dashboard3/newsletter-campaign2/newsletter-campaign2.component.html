@@ -1,0 +1,21 @@
+<mat-card class="cardWithShadow">
+  <mat-card-header>
+    <mat-card-title>Newsletter Campaign</mat-card-title>
+    <mat-card-subtitle>Overview of Newsletter Campaign</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content class="p-y-24">
+    <apx-chart
+      [series]="newschartOptions.series"
+      [chart]="newschartOptions.chart"
+      [xaxis]="newschartOptions.xaxis"
+      [stroke]="newschartOptions.stroke"
+      [tooltip]="newschartOptions.tooltip"
+      [dataLabels]="newschartOptions.dataLabels"
+      [legend]="newschartOptions.legend"
+      [colors]="newschartOptions.colors"
+      [markers]="newschartOptions.markers"
+      [fill]="newschartOptions.fill"
+      [grid]="newschartOptions.grid"
+    ></apx-chart>
+  </mat-card-content>
+</mat-card>

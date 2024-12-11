@@ -1,0 +1,30 @@
+<mat-card class="cardWithShadow bg-success">
+  <mat-card-content class="p-24">
+    <div class="d-flex align-items-center">
+      <span>
+        <mat-icon class="text-white f-s-24">donut_large</mat-icon>
+      </span>
+      <div class="m-l-16">
+        <mat-card-title class="text-white m-0">Download Count</mat-card-title>
+        <span class="text-white f-s-14 f-w-400 m-t-0">March 2023</span>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center">
+      <span class="text-white m-0 f-s-18 f-w-400 d-block m-t-20">35487</span>
+      <div class="m-l-auto" style="height: 84px; width: 215px">
+        <div class="d-flex flex-column">
+          <apx-chart
+            [series]="downloadOptions.series"
+            [chart]="downloadOptions.chart"
+            [dataLabels]="downloadOptions.dataLabels"
+            [plotOptions]="downloadOptions.plotOptions"
+            [tooltip]="downloadOptions.tooltip"
+            [colors]="downloadOptions.colors"
+          >
+          </apx-chart>
+        </div>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

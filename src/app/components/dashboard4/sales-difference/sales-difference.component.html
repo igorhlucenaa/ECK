@@ -1,0 +1,27 @@
+<mat-card class="cardWithShadow">
+  <mat-card-content class="p-34">
+    <mat-card-title class="m-b-10">Sales Difference</mat-card-title>
+
+    <div class="d-flex align-items-center">
+      <div>
+        <h3 class="mat-subtitle-1 f-s-30 f-w-400 m-t-16">$4,316</h3>
+        <h6 class="m-t-8 f-s-12 m-b-0 f-w-400">10% Increased</h6>
+        <span class="m-t-4 d-block f-w-500">(150-165 Sales)</span>
+      </div>
+      <div class="m-l-auto">
+        <apx-chart
+          [series]="differenceChart.series"
+          [chart]="differenceChart.chart"
+          [plotOptions]="differenceChart.plotOptions"
+          [tooltip]="differenceChart.tooltip"
+          [colors]="differenceChart.colors"
+          [labels]="differenceChart.labels"
+          [stroke]="differenceChart.stroke"
+          [legend]="differenceChart.legend"
+          [dataLabels]="differenceChart.dataLabels"
+        >
+        </apx-chart>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

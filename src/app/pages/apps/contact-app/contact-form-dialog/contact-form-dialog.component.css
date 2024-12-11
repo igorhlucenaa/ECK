@@ -1,0 +1,26 @@
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  max-width: 400px;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px;
+  border-top: 1px solid #ddd;
+}
+
+.dialog-actions button[color="primary"] {
+  margin-left: 8px;
+}
+
+.dialog-actions button {
+  padding: 8px 16px;
+}

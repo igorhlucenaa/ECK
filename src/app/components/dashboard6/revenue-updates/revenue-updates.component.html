@@ -1,0 +1,53 @@
+<mat-card class="cardWithShadow">
+  <mat-card-header class="d-flex">
+    <mat-card-title>Revenue Updates</mat-card-title>
+    <div class="m-l-auto">
+      <mat-form-field class="theme-select" appearance="outline">
+        <mat-select value="mar">
+          @for(month of months; track month.value) {
+          <mat-option [value]="month.value">
+            {{ month.viewValue }}
+          </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card-header>
+  <mat-card-content class="p-b-24">
+    <div class="d-flex flex-column">
+      <apx-chart
+        [series]="revenueOptions.series"
+        [chart]="revenueOptions.chart"
+        [plotOptions]="revenueOptions.plotOptions"
+        [colors]="revenueOptions.colors"
+        [fill]="revenueOptions.fill"
+        [stroke]="revenueOptions.stroke"
+        [dataLabels]="revenueOptions.dataLabels"
+        [tooltip]="revenueOptions.tooltip"
+        [markers]="revenueOptions.markers"
+        [xaxis]="revenueOptions.xaxis"
+        [grid]="revenueOptions.grid"
+        [legend]="revenueOptions.legend"
+        [stroke]="revenueOptions.stroke"
+      >
+      </apx-chart>
+    </div>
+
+    <div class="d-flex align-items-center justify-content-center gap-30 p-t-12">
+      <div class="d-flex gap-12">
+        <i-tabler
+          name="circle-filled"
+          class="text-primary icon-12 d-flex"
+        ></i-tabler>
+        <span class="mat-subtitle-2 text-primary f-s-14 f-w-500">Earnings</span>
+      </div>
+      <div class="d-flex gap-12">
+        <i-tabler
+          name="circle-filled"
+          class="text-accent icon-12 d-flex"
+        ></i-tabler>
+        <span class="mat-subtitle-2 text-accent f-s-14 f-w-500">Expense</span>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,39 @@
+<mat-card class="cardWithShadow">
+  <mat-card-content class="p-24">
+    <mat-card-title class="m-b-32">Recent Transactions</mat-card-title>
+
+    @for(stat of stats; track stat.color) {
+    <div class="d-flex align-items-center m-b-24">
+      <div class="d-flex align-items-center">
+        <span
+          class="bg-light-{{
+            stat.color
+          }} rounded text-white icon-40 d-flex align-items-center justify-content-center"
+        >
+          <i-tabler
+            name="{{ stat.icon }}"
+            class="icon-20 text-{{ stat.color }}"
+          ></i-tabler>
+        </span>
+        <div class="m-l-16">
+          <h6 class="mat-subtitle-1 f-s-16 f-w-500 lh-sm">{{ stat.title }}</h6>
+          <span class="f-s-12">{{ stat.subtitle }}</span>
+        </div>
+      </div>
+      <div class="m-l-auto">
+        @if(stat.percent < 50) {
+        <span class="f-s-12 f-w-500 text-error">-{{ stat.percent }}%</span>
+        } @else {
+        <span class="f-s-12 f-w-500 text-success">+{{ stat.percent }}%</span>
+        }
+      </div>
+    </div>
+    }
+
+    <mat-divider class="m-y-20"></mat-divider>
+    <div class="d-flex align-items-center justify-content-between">
+      <button mat-flat-button color="accent">Add</button>
+      <span class="f-s-12">36 Recent Transactions</span>
+    </div>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,39 @@
+.invoice-tab-main {
+  display: flex;
+  justify-content: space-between;
+}
+
+
+.invoice-tab {
+  cursor: pointer;
+  padding: 16px;
+  margin-bottom: 8px;
+  transition: backgroundColor 0.3s;
+  display: flex;
+  align-items: center;
+
+}
+
+.invoice-tab:hover {
+  background: #f0f0f0;
+}
+
+.active-tab {
+  background: #e0e0e0;
+}
+
+.flex {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+}
+
+
+
+.info h5 {
+  margin: 0;
+}
+
+.active-tab {
+  background: #e0e0e0;
+}

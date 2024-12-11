@@ -1,0 +1,150 @@
+<div class="w-100 position-relative">
+  @if( selectedContact()) {
+  <div class="d-flex align-items-center justify-content-between p-x-24 p-y-16">
+    <h5 class="mat-subtitle-1 f-w-600 f-s-18">Contact Details</h5>
+    <div class="d-flex align-items-center">
+      <button class="contact-apps-icon icon-40 p-8" [matTooltip]="contact()?.starred ? 'Unstar' : 'Star'" mat-icon-button (click)="toggleStarred(contact(), $event)">
+        @if(contact()?.starred){
+        <i-tabler name="star" class="fill-warning"></i-tabler>
+        } @else {
+        <i-tabler name="star"></i-tabler>
+        }
+      </button>
+      <button class="contact-apps-icon icon-40 p-8" [matTooltip]="isEditing() ? 'Save' : 'Edit'" mat-icon-button 
+        (click)="isEditing() ? saveContact() : editContact()">
+        <i-tabler [name]="isEditing() ? 'device-floppy' : 'pencil'" class="icon-18"></i-tabler>
+      </button>
+
+      <button class="contact-apps-icon icon-40 p-8" mat-icon-button (click)="deleteContact(contact())" matTooltip="Delete">
+        <i-tabler name="trash" class="icon-18"></i-tabler>
+      </button>
+    </div>
+  </div>
+  }
+
+  <mat-divider></mat-divider>
+
+  @if(selectedContact()) {
+  <ng-scrollbar class="position-relative" style="height: calc(100vh - 380px)">
+    @if(!isEditing() && contact()) {
+    <div class="p-24">
+      <div class="d-flex align-items-center gap-16">
+        <img [src]="contact().image" class="rounded-circle" alt="userimg" width="72px" height="72px" />
+        <div>
+          <h5 class="mat-subtitle-1 f-w-600 lh-sm f-s-16">
+            {{ contact().firstname }}
+          </h5>
+          <h6 class="mat-subtitle-1 f-w-400 lh-sm f-s-12">
+            {{ contact().department }}
+          </h6>
+          <h6 class="mat-subtitle-1 f-w-400 lh-sm f-s-12">
+            {{ contact().company }}
+          </h6>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-lg-6 m-t-32">
+          <h6 class="mat-subtitle-1 f-w-400 lh-sm f-s-12">Phone Number</h6>
+          <h5 class="mat-subtitle-1 f-w-600 lh-sm f-s-14">
+            {{ contact().phone }}
+          </h5>
+        </div>
+        <div class="col-lg-6 m-t-32">
+          <h6 class="mat-subtitle-1 f-w-400 lh-sm f-s-12">Email address</h6>
+          <h5 class="mat-subtitle-1 f-w-600 lh-sm f-s-14">
+            {{ contact().email }}
+          </h5>
+        </div>
+        <div class="col-12 m-t-32">
+          <h6 class="mat-subtitle-1 f-w-400 lh-sm f-s-12">Address</h6>
+          <h5 class="mat-subtitle-1 f-w-600 lh-sm f-s-14">
+            {{ contact().address }}
+          </h5>
+        </div>
+        <div class="col-lg-6 m-t-32">
+          <h6 class="mat-subtitle-1 f-w-400 lh-sm f-s-12">Department</h6>
+          <h5 class="mat-subtitle-1 f-w-600 lh-sm f-s-14">
+            {{ contact().department }}
+          </h5>
+        </div>
+        <div class="col-lg-6 m-t-32">
+          <h6 class="mat-subtitle-1 f-w-400 lh-sm f-s-12">Company</h6>
+          <h5 class="mat-subtitle-1 f-w-600 lh-sm f-s-14">
+            {{ contact().company }}
+          </h5>
+        </div>
+        <div class="col-12 m-t-32">
+          <h6 class="mat-subtitle-1 f-w-400 lh-sm f-s-12">Notes</h6>
+          <h5 class="mat-subtitle-1 f-w-400 f-s-14">{{ contact().notes }}</h5>
+        </div>
+      </div>
+    </div>
+    <mat-divider></mat-divider>
+    <div class="p-24 d-flex align-items-center gap-8">
+      <button mat-flat-button color="primary" (click)="editContact()">
+        Edit
+      </button>
+      <button mat-flat-button color="warn" (click)="deleteContact(contact())">
+        Delete
+      </button>
+    </div>
+
+    } @else {
+    <div class="p-24">
+      <div class="m-t-10">
+        <div>
+          <form (ngSubmit)="saveContact()">
+            <h5 class="m-0">First Name</h5>
+            <mat-form-field appearance="outline" class="w-100">
+              <input matInput [(ngModel)]="formData().firstname" name="firstname" required />
+            </mat-form-field>
+            <h5 class="m-0">Last Name</h5>
+            <mat-form-field appearance="outline" class="w-100">
+              <input matInput [(ngModel)]="formData().lastname" name="lastname" required />
+            </mat-form-field>
+            <h5 class="m-0">Company</h5>
+            <mat-form-field appearance="outline" class="w-100">
+              <input matInput [(ngModel)]="formData().company" name="company" required />
+            </mat-form-field>
+            <h5 class="m-0">Phone</h5>
+            <mat-form-field appearance="outline" class="w-100">
+              <input matInput [(ngModel)]="formData().phone" name="phone" required />
+            </mat-form-field>
+            <h5 class="m-0">Email</h5>
+            <mat-form-field appearance="outline" class="w-100">
+              <input matInput [(ngModel)]="formData().email" name="email" required />
+            </mat-form-field>
+            <h5 class="m-0">Address</h5>
+            <mat-form-field appearance="outline" class="w-100">
+              <input matInput [(ngModel)]="formData().address" name="address" />
+            </mat-form-field>
+            <h5 class="m-0">Notes</h5>
+            <mat-form-field appearance="outline" class="w-100">
+              <textarea matInput [(ngModel)]="formData().notes" name="notes"></textarea>
+            </mat-form-field>
+            <h5 class="m-0">Department</h5>
+            <mat-form-field appearance="outline" class="w-100">
+              <mat-select [(ngModel)]="formData().department" name="department" required>
+                @for ( department of departments; track department) {
+                <mat-option [value]="department.name">
+                  {{ department.name }}
+                </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <div class="m-t-8 d-flex align-items-center gap-8">
+              <button type="submit" mat-flat-button color="primary">
+                Save Contact
+              </button>
+              <button mat-stroked-button color="warn" (click)="cancelEdit()">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    }
+  </ng-scrollbar>
+  }
+</div>

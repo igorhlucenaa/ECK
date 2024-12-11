@@ -1,0 +1,54 @@
+<h2 mat-dialog-title class="m-b-8">Add New Contact</h2>
+<mat-dialog-content class="mat-typography" style="max-width: 600px">
+  <form #userForm="ngForm">
+    <div class="file-input-container m-b-16">
+      @if(local_data.contactimg){
+      <img [src]="local_data.contactimg" alt="Selected Image" class="m-r-16" height="100" width="100" />
+      }
+      <input type="file" (change)="onFileSelected($event)" accept="image/*" />
+    </div>
+    <mat-form-field appearance="outline" class="w-100">
+      <input type="text" matInput required id="contactname" name="name" [(ngModel)]="local_data.Contactname"
+        placeholder="Name here" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Contact Post</mat-label>
+      <mat-select [(value)]="local_data.ContactPost" name="post" required>
+        <mat-option value="Web Designer">Web Designer</mat-option>
+        <mat-option value="Theme Designer">Theme Designer</mat-option>
+        <mat-option value="Front End Developer">Front End Developer</mat-option>
+        <mat-option value="Hacker">Hacker</mat-option>
+        <mat-option value="Back End Developer">Back End Developer</mat-option>
+        <mat-option value="Graphics Designer">Graphics Designer</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100">
+      <input type="text" matInput required id="contactadd" name="address" [(ngModel)]="local_data.Contactadd"
+        placeholder="Address here" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100">
+      <input type="text" matInput required id="contactno" name="contact" (input)="validateNumber($event)"
+        [(ngModel)]="local_data.Contactno" pattern="[0-9]*" maxlength="15" placeholder="contact Number here" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100">
+      <input type="text" matInput required id="contactinsta" (input)="validateNumber($event)" name="insta"
+        [(ngModel)]="local_data.Contactinstagram" placeholder="Instagram Follower here" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100">
+      <input type="text" matInput required id="contactlinked" (input)="validateNumber($event)" name="linkedin"
+        [(ngModel)]="local_data.Contactlinkedin" placeholder="Linkedin Follower here" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-100">
+      <input type="text" matInput required id="contactfacebook" (input)="validateNumber($event)" name="facebook"
+        [(ngModel)]="local_data.Contactfacebook" placeholder="Facebook Follower here" />
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+<mat-divider></mat-divider>
+<mat-dialog-actions class="p-24">
+  <button mat-flat-button [mat-dialog-close]="true" [disabled]="!userForm.form.valid" color="primary"
+    (click)="doAction();">
+    Add Contact
+  </button>
+  <button mat-stroked-button color="warn" mat-dialog-close>Cancel</button>
+</mat-dialog-actions>

@@ -1,0 +1,102 @@
+<mat-card class="cardWithShadow">
+  <mat-card-header>
+    <mat-card-title>Project Sales</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="table-responsive m-t-24">
+      <table mat-table [dataSource]="dataSource2" class="w-100 remove-th-table">
+        <!-- Position Column -->
+        <ng-container matColumnDef="assigned">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            class="f-w-500 mat-subtitle-1 f-s-14 p-l-0"
+          ></th>
+          <td mat-cell *matCellDef="let element" class="p-l-0">
+            <div class="d-flex align-items-center">
+              <img
+                [src]="element.imagePath"
+                alt="users"
+                width="70"
+                height="70"
+                class="rounded"
+              />
+              <div class="m-l-16">
+                <h6 class="mat-subtitle-1 f-s-14 f-w-500 lh-sm">
+                  {{ element.uname }}
+                </h6>
+                <div class="f-s-12">
+                  {{ element.post }}
+                </div>
+              </div>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Weight Column -->
+        <ng-container matColumnDef="percent">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            class="f-w-500 mat-subtitle-1 f-s-14"
+          ></th>
+          <td mat-cell *matCellDef="let element">
+            <ng-template [ngIf]="element.percent >= 45">
+              <span class="f-s-12 f-w-500">Good</span>
+              <mat-progress-bar
+                mode="determinate"
+                value="{{ element.percent }}"
+              ></mat-progress-bar>
+              <span class="f-s-12">{{ element.percent }}% sold</span>
+            </ng-template>
+            <ng-template [ngIf]="element.percent < 45">
+              <span class="f-s-12 f-w-500">Bad</span>
+              <mat-progress-bar
+                mode="determinate"
+                color="accent"
+                value="{{ element.percent }}"
+              ></mat-progress-bar>
+              <span class="f-s-12">{{ element.percent }}% sold</span>
+            </ng-template>
+          </td>
+        </ng-container>
+
+        <!-- Name Column -->
+        <ng-container matColumnDef="name">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            class="f-w-500 mat-subtitle-1 f-s-14"
+          ></th>
+          <td mat-cell *matCellDef="let element" class="mat-body-1">
+            <span class="f-s-12 d-block">Earnings</span>
+            <span class="f-s-14 f-w-500">${{ element.productName }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Symbol Column -->
+        <ng-container matColumnDef="action">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            class="f-w-500 mat-subtitle-1 f-s-14"
+          ></th>
+          <td mat-cell *matCellDef="let element">
+            <button
+              mat-icon-button
+              class="d-flex align-items-center justify-content-center"
+            >
+              <i-tabler
+                name="trash"
+                class="icon-18 d-flex align-items-center"
+              ></i-tabler>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns2"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns2"></tr>
+      </table>
+    </div>
+  </mat-card-content>
+</mat-card>

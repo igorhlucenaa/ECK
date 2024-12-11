@@ -1,0 +1,24 @@
+<mat-card class="cardWithShadow">
+    <mat-card-header>
+      <mat-card-title>Sales Overview</mat-card-title>
+      <mat-card-subtitle>Ample Admin Vs Pixel Admin</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content class="p-b-24">
+      <apx-chart
+        [series]="salesoverChart.series"
+        [dataLabels]="salesoverChart.dataLabels"
+        [chart]="salesoverChart.chart"
+        [legend]="salesoverChart.legend"
+        [xaxis]="salesoverChart.xaxis"
+        [yaxis]="salesoverChart.yaxis"
+        [grid]="salesoverChart.grid"
+        [stroke]="salesoverChart.stroke"
+        [fill]="salesoverChart.fill"
+        [tooltip]="salesoverChart.tooltip"
+        [plotOptions]="salesoverChart.plotOptions"
+      ></apx-chart>
+  
+    
+    </mat-card-content>
+  </mat-card>
+  

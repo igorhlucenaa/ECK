@@ -1,0 +1,149 @@
+<mat-card class="cardWithShadow overflow-hidden">
+  <!-- ------------------------------------------------------ -->
+  <!-- Desktop App -->
+  <!-- ------------------------------------------------------ -->
+
+  <mat-card-header class="bg-primary text-white p-10 d-block d-lg-none">
+    <mat-card-title class="m-b-0">
+      <div class="d-flex align-items-center">
+        <button (click)="mailnav.toggle()" mat-icon-button>
+          <mat-icon>short_text</mat-icon>
+        </button>
+      </div>
+    </mat-card-title>
+  </mat-card-header>
+
+  <mat-sidenav-container class="email-box">
+    <!-- ------------------------------------------------------ -->
+    <!-- Sidebar contact -->
+    <!-- ------------------------------------------------------ -->
+    <mat-sidenav #mailnav [mode]="isOver() ? 'over' : 'side'" [opened]="!isOver()" class="mail-sidebar">
+      <div class="p-16">
+        <button mat-flat-button (click)="openAddContactDialog()" color="primary" class="w-100 btn-block">
+          Add New Contacts
+        </button>
+      </div>
+      <ng-scrollbar style="height: calc(100vh - 380px)" class="position-relative">
+        <div class="p-16">
+          @for(fil of contactService.filters();track fil.id) {
+          <div class="d-flex align-items-center inbox-list rounded p-16 cursor-pointer" [ngClass]="{
+              'bg-light-primary': fil.id === contactService.selectedFilter()?.id
+            }" (click)="applyFilter(fil)">
+            <i-tabler name="{{ fil.icon }}" class="m-r-12 icon-18"></i-tabler>
+
+            <span class="f-w-400 f-s-14">{{ fil.name }}</span>
+          </div>
+          }
+        </div>
+        <h5 class="m-0 p-t-16 p-x-32 mat-subtitle-1 f-s-14 f-w-600 b-t-1">
+          Categories
+        </h5>
+        <div class="p-16">
+          @for(lab of contactService.labels();track lab.id){
+          <div class="d-flex align-items-center inbox-list p-16 rounded cursor-pointer" [ngClass]="{
+              'bg-light-primary': lab.id === contactService.selectedCategory()?.id
+            }" (click)="applyCategory(lab)">
+            <i-tabler name="{{ lab.icon }}" [style.color]="lab.color" class="m-r-12 icon-18"></i-tabler>
+            <span class="f-w-400 f-s-14">{{ lab.name }}</span>
+          </div>
+          }
+        </div>
+      </ng-scrollbar>
+    </mat-sidenav>
+    <!-- ------------------------------------------------------ -->
+    <!-- contact Listing and Details-->
+    <!-- ------------------------------------------------------ -->
+    <div class="p-x-15 w-100 h-100 bg-white">
+      <div class="row h-100">
+        <!-- ------------------------------------------------------ -->
+        <!-- Listing -->
+        <!-- ------------------------------------------------------ -->
+        <div class="col-md-4 b-r-1 p-0">
+          <div class="p-20 d-flex align-items-center">
+            <!-- ------------------------------------------------------ -->
+            <!-- Toggle mobile -->
+            <!-- ------------------------------------------------------ -->
+
+            <mat-form-field appearance="outline" class="w-100 hide-hint">
+              <input matInput placeholder="Search Contacts" [(ngModel)]="searchTerm"
+                (ngModelChange)="searchTerm.set($event)" />
+              <mat-icon matSuffix>
+                <i-tabler name="search" class="icon-20"></i-tabler>
+              </mat-icon>
+            </mat-form-field>
+          </div>
+          <ng-scrollbar style="height: calc(100vh - 380px)" class="position-relative">
+            @if(filteredContacts().length){
+            <div class="position-relative">
+              @for(contact of filteredContacts(); track contact.id ){
+              <div>
+                <div (click)="selectContact(contact)"
+                  class="mail-list p-y-12 p-x-16 m-b-4 cursor-pointer d-flex align-items-center gap-16" [ngClass]="{
+                    'bg-light-primary':
+                      contact.id === contactService.getSelectedContact()?.id
+                  }">
+                  <img [src]="contact.image" alt="Contact Image" width="40px" height="40px" class="rounded-circle" />
+                  <div class="d-flex align-items-center justify-content-between w-100">
+                    <div class="contact-info">
+                      <h6 class="f-w-600 f-s-14 lh-sm mat-subtitle-1">
+                        {{ contact.firstname }} {{ contact.lastname }}
+                      </h6>
+                      <p class="f-s-12 m-b-0 m-t-0">{{ contact.department }}</p>
+                    </div>
+                    <div class="d-flex justify-content-center gap-8">
+                      <!-- star icon -->
+                      <span class="d-flex align-items-center gap-8" (click)="toggleStarred(contact, $event)">
+                        @if(contact.starred){
+                        <i-tabler name="star" class="icon-16 fill-warning"></i-tabler>
+                        }@else{
+                        <i-tabler name="star" class="icon-16"></i-tabler>
+                        }
+                      </span>
+
+                      <!-- Delete Icon -->
+                      <i-tabler name="trash" class="icon-16" (click)="deleteContact(contact)"
+                        style="cursor: pointer"></i-tabler>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              }
+            </div>
+            } @else {
+            <p>No contacts found.</p>
+            }
+          </ng-scrollbar>
+        </div>
+
+        <!-- ------------------------------------------------------ -->
+        <!-- Details of contacts -->
+        <!-- ------------------------------------------------------ -->
+        <div [ngClass]="{
+            'col-md-8 detail-part contact-detail-part p-0': true,
+            activeContact: isActiveContact
+          }">
+          @if(selectedContact() == null) {
+          <div class="h-100 welcome-app">
+            <div class="d-flex align-items-center justify-content-center h-100 w-100">
+              <div>
+                <h3 class="mat-subtitle-1 f-w-600">Please Select a contact</h3>
+                <img src="/assets/images/breadcrumb/emailSv.png" width="250px" />
+              </div>
+            </div>
+          </div>
+          } @else{
+          <div class="w-100">
+            <div class="p-x-24 p-y-16 d-md-none">
+              <button mat-stroked-button color="primary" (click)="goBack()" class="mb-2">
+                Back
+              </button>
+            </div>
+
+            <app-detail></app-detail>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+  </mat-sidenav-container>
+</mat-card>

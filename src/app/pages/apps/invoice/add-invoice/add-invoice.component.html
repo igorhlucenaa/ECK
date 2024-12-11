@@ -1,0 +1,156 @@
+<mat-card class="cardWithShadow">
+  <mat-card-content class="p-24">
+    <form #invoiceForm="ngForm">
+      <div class="row justify-content-between m-b-24">
+        <div class="col-sm-4 d-flex align-items-center">
+          <h4 class="mat-subtitle-2 f-s-18 f-w-500">
+            #
+            <span name="id" [(ngModel)]="invoice().id" ngDefaultControl>
+              {{ invoice().id }}</span>
+          </h4>
+        </div>
+        <div class="col-sm-4 text-right">
+          <a routerLink="/apps/invoice" mat-stroked-button color="warn" class="m-r-10">
+            Cancel
+          </a>
+          <button mat-raised-button color="primary" (click)="saveDetail($event)" [disabled]="addForm.invalid">
+            Save Invoice
+          </button>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <div class="row p-y-24 justify-content-between">
+        <div class="col-sm-4">
+          <span class="f-w-500 f-s-15 mat-body-1 d-block m-b-8">
+            Order Status:
+          </span>
+
+          <h6 name="date" class="m-t-5 m-b-0 f-w-500 f-s-14 mat-body-2" ngDefaultControl>
+            {{ invoice().status }}
+          </h6>
+        </div>
+        <div class="col-sm-6 d-flex align-items-center justify-content-end">
+          <div class="text-right">
+            <span class="f-w-500 f-s-15 mat-body-1 d-block m-b-8">
+              Order Date
+            </span>
+            <h6 name="date" class="m-t-5 m-b-0 f-w-500 f-s-14 mat-body-2" [(ngModel)]="invoice().orderDate"
+              ngDefaultControl>
+              {{ invoice().orderDate | date : "dd-MM-yyyy" }}
+            </h6>
+          </div>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <div class="row m-y-24 p-t-24">
+        <div class="col-sm-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Bill From</mat-label>
+            <input matInput placeholder="Bill From" name="from" [(ngModel)]="invoice().billFrom" />
+          </mat-form-field>
+        </div>
+        <div class="col-sm-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Bill To</mat-label>
+            <input matInput placeholder="Bill To" name="to" [(ngModel)]="invoice().billTo" />
+          </mat-form-field>
+        </div>
+        <div class="col-sm-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Enter From Address</mat-label>
+            <input matInput placeholder="Enter From Address" name="fromAddress"
+              [(ngModel)]="invoice().billFromAddress" />
+          </mat-form-field>
+        </div>
+        <div class="col-sm-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Bill From</mat-label>
+            <input matInput placeholder="Enter To Address" name="toAddress" [(ngModel)]="invoice().billToAddress" />
+          </mat-form-field>
+        </div>
+      </div>
+    </form>
+
+    <div [formGroup]="addForm" class="add-invoice-list">
+      <div class="table-responsive">
+        <table class="table table-hover b-1 no-wrap w-100 rounded text-left">
+          <thead>
+            <tr>
+              <th class="p-16">#</th>
+              <th class="p-16">Item Name</th>
+              <th class="p-16">Unit Price</th>
+              <th class="p-16">Units</th>
+              <th class="p-16">Unit Total Price</th>
+              <th class="p-16"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(row of addForm.get('rows')['controls']; track row; let index =
+            $index) {
+            <tr>
+              <td class="p-16">
+                {{ index + 1 }}
+              </td>
+
+              <td class="p-16">
+                <mat-form-field appearance="outline" class="w-100 hide-hint">
+                  <input type="text" matInput class="form-control" [formControl]="row.get('itemName')"
+                    (input)="itemsChanged()" />
+                </mat-form-field>
+              </td>
+
+              <td class="p-16">
+                <mat-form-field appearance="outline" class="w-100 hide-hint">
+                  <input type="number" matInput class="form-control" min="1" [formControl]="row.get('unitPrice')"
+                    (input)="itemsChanged()" />
+                </mat-form-field>
+              </td>
+
+              <td class="p-16">
+                <mat-form-field appearance="outline" class="w-100 hide-hint">
+                  <input type="number" matInput class="form-control" min="1" [formControl]="row.get('units')"
+                    (input)="itemsChanged()" />
+                </mat-form-field>
+              </td>
+
+              <td class="p-16">
+                <mat-form-field appearance="outline" class="w-100 hide-hint">
+                  <input [disabled]="true" matInput matInput class="form-control" [formControl]="row.get('itemTotal')"
+                    [value]="
+                      row.get('unitPrice').value * row.get('units').value
+                    " />
+                </mat-form-field>
+              </td>
+              <td>
+                @if(addForm.get('rows')) {
+                <button (click)="onAddRow()" [disabled]="addForm.invalid" color="primary" class="d-flex justify-content-center icon-38 p-8" mat-icon-button>
+                  <i-tabler name="circle-plus" class="icon-18 d-flex"></i-tabler>
+                </button>
+                }
+              </td>
+              <td>
+                @if(index > 0) {
+                <button color="warn" mat-icon-button (click)="onRemoveRow(index)" class="d-flex justify-content-center icon-38 p-8">
+                  <i-tabler name="trash" class="icon-18 d-flex"></i-tabler>
+                </button>
+                }
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="text-right m-t-30">
+        <h5 class="m-b-5 f-w-500 f-s-16">Sub total: {{ subTotal() }}</h5>
+        <h5 class="f-w-500 f-s-16">Total Vat: {{ vat() }}%</h5>
+        <mat-divider></mat-divider>
+        <h3 class="m-b-0 p-t-20 f-s-18 f-w-500">Grand Total: {{ grandTotal() }}</h3>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

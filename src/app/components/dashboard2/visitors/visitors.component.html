@@ -1,0 +1,41 @@
+<mat-card class="cardWithShadow">
+    <mat-card-content class="p-24 m-b-24">
+      <mat-card-title>Visitors</mat-card-title>
+      <mat-card-subtitle>Different Devices Used to Visit</mat-card-subtitle>
+      <div id="visitor-chart" class="p-t-30 d-flex flex-column">
+        <apx-chart
+          [series]="visitorChart.series"
+          [chart]="visitorChart.chart"
+          [labels]="visitorChart.labels"
+          [responsive]="visitorChart.responsive"
+          [tooltip]="visitorChart.tooltip"
+          [legend]="visitorChart.legend"
+          [colors]="visitorChart.colors"
+          [dataLabels]="visitorChart.dataLabels"
+          [plotOptions]="visitorChart.plotOptions"
+          [stroke]="visitorChart.stroke"
+          [responsive]="visitorChart.responsive"
+        >
+        </apx-chart>
+      </div>
+    </mat-card-content>
+    <mat-card-content class="p-24 p-t-16">
+      <div class="d-flex align-items-center justify-content-center gap-30">
+          <div class="d-flex gap-12">
+          <i-tabler name="circle-filled" class="text-accent icon-12 d-flex"></i-tabler>
+          <span class="mat-subtitle-2">Tablet</span>
+        </div>
+        <div class="d-flex gap-12">
+          <i-tabler name="circle-filled" class="text-primary icon-12 d-flex"></i-tabler>
+          <span class="mat-subtitle-2">Mobile</span>
+        </div>
+        <div class="d-flex gap-12">
+          <i-tabler name="circle-filled" class="text-gray-100 icon-12 d-flex"></i-tabler>
+          <span class="mat-subtitle-2">Desktop</span>
+        </div>
+  
+     
+      </div>
+    </mat-card-content>
+  </mat-card>
+  

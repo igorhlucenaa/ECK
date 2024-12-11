@@ -1,0 +1,25 @@
+<mat-card class="cardWithShadow">
+  <mat-card-content class="p-34">
+    <mat-card-title>Total Revenue</mat-card-title>
+    <mat-card-subtitle class="m-b-10">Checkout Earnings </mat-card-subtitle>
+
+    <div>
+      <apx-chart
+        [series]="totalrevenueChart.series"
+        [chart]="totalrevenueChart.chart"
+        [plotOptions]="totalrevenueChart.plotOptions"
+        [xaxis]="totalrevenueChart.xaxis"
+        [yaxis]="totalrevenueChart.yaxis"
+        [grid]="totalrevenueChart.grid"
+        [fill]="totalrevenueChart.fill"
+        [tooltip]="totalrevenueChart.tooltip"
+        [colors]="totalrevenueChart.colors"
+        [dataLabels]="totalrevenueChart.dataLabels"
+        [markers]="totalrevenueChart.markers"
+        [legend]="totalrevenueChart.legend"
+        [stroke]="totalrevenueChart.stroke"
+      >
+      </apx-chart>
+    </div>
+  </mat-card-content>
+</mat-card>

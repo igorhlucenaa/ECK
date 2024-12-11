@@ -1,0 +1,70 @@
+<mat-card class="cardWithShadow">
+  <mat-card-content class="p-24">
+    <div class="d-flex justify-content-between">
+      <div>
+        <mat-card-title class="f-s-20">43,246</mat-card-title>
+        <span class="f-s-14">Yearly Sales </span>
+
+        <div
+          class="d-flex align-items-center justify-space-between m-t-24 p-t-16 gap-30"
+        >
+          <span class="d-flex align-items-center gap-8">
+            <span class="text-overline">
+              <i-tabler
+                name="circle-filled"
+                class="text-primary icon-12 d-flex"
+              ></i-tabler>
+            </span>
+            <span class="font-weight-regular">2021</span>
+          </span>
+          <span class="d-flex align-items-center gap-8">
+            <span class="text-overline">
+              <i-tabler
+                name="circle-filled"
+                class="text-accent icon-12 d-flex"
+              ></i-tabler>
+            </span>
+            <span class="font-weight-regular">2020</span>
+          </span>
+        </div>
+        <div
+          class="d-flex align-items-center justify-space-between gap-30 m-t-10"
+        >
+          <span class="d-flex align-items-center gap-8">
+            <span class="text-overline">
+              <i-tabler
+                name="circle-filled"
+                class="text-warning icon-12 d-flex"
+              ></i-tabler>
+            </span>
+            <span class="font-weight-regular">2019</span>
+          </span>
+          <span class="d-flex align-items-center gap-8">
+            <span class="text-overline">
+              <i-tabler
+                name="circle-filled"
+                class="text-gray-100 icon-12 d-flex"
+              ></i-tabler>
+            </span>
+            <span class="font-weight-regular">2018</span>
+          </span>
+        </div>
+      </div>
+      <div class="m-l-auto position-relative" style="width: 130px">
+        <apx-chart
+          [series]="yearlySalesChart.series"
+          [chart]="yearlySalesChart.chart"
+          [plotOptions]="yearlySalesChart.plotOptions"
+          [tooltip]="yearlySalesChart.tooltip"
+          [labels]="yearlySalesChart.labels"
+          [colors]="yearlySalesChart.colors"
+          [dataLabels]="yearlySalesChart.dataLabels"
+          [markers]="yearlySalesChart.markers"
+          [legend]="yearlySalesChart.legend"
+          [stroke]="yearlySalesChart.stroke"
+        >
+        </apx-chart>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,41 @@
+<mat-card class="cardWithShadow bg-primary">
+    <mat-card-content class="p-24">
+      <div class="d-flex align-items-center">
+        <span>
+          <mat-icon class="text-white f-s-24">donut_large</mat-icon>
+        </span>
+        <div class="m-l-16">
+          <mat-card-title class="text-white m-0"
+            >Bandwidth usage</mat-card-title
+          >
+          <span class="text-white f-s-14 f-w-400 m-t-0">March 2023</span>
+        </div>
+      </div>
+      <!-- column -->
+      <div class="row m-t-16">
+        <div class="col-6 d-flex align-items-center">
+          <span class="text-white m-0 f-s-18 f-w-400 d-block m-t-16"
+            >50 GB</span
+          >
+        </div>
+        <div class="col-6">
+          <div class="d-flex flex-column">
+            <apx-chart
+              [series]="inexpuchartOptions.series"
+              [chart]="inexpuchartOptions.chart"
+              [dataLabels]="inexpuchartOptions.dataLabels"
+              [plotOptions]="inexpuchartOptions.plotOptions"
+              [yaxis]="inexpuchartOptions.yaxis"
+              [legend]="inexpuchartOptions.legend"
+              [fill]="inexpuchartOptions.fill"
+              [stroke]="inexpuchartOptions.stroke"
+              [tooltip]="inexpuchartOptions.tooltip"
+              [xaxis]="inexpuchartOptions.xaxis"
+              [grid]="inexpuchartOptions.grid"
+            >
+            </apx-chart>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>

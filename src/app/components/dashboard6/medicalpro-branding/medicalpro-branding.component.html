@@ -1,0 +1,86 @@
+<mat-card class="cardWithShadow">
+  <mat-card-content class="p-24">
+    <div class="d-flex justify-content-between m-b-24">
+      <mat-card-title>Medicalpro Branding</mat-card-title>
+      <button
+        mat-icon-button
+        [matMenuTriggerFor]="menu"
+        aria-label="Example icon-button with a menu"
+      >
+        <mat-icon>more_horiz</mat-icon>
+      </button>
+      <mat-menu #menu="matMenu" class="cardWithShadow">
+        <button mat-menu-item>
+          <mat-icon>dialpad</mat-icon>
+          <span>Redial</span>
+        </button>
+        <button mat-menu-item>
+          <mat-icon>voicemail</mat-icon>
+          <span>Check voice mail</span>
+        </button>
+        <button mat-menu-item>
+          <mat-icon>notifications_off</mat-icon>
+          <span>Disable alerts</span>
+        </button>
+      </mat-menu>
+    </div>
+
+    <!-- content -->
+    <span
+      class="bg-light-primary text-primary rounded f-s-12 f-w-500 p-x-8 p-y-4"
+      >16 APR, 2022
+    </span>
+    <div class="row m-t-20">
+      <div class="col-4">
+        <span class="f-s-12">Dua Date</span>
+        <span class="f-s-14 f-w-500 d-block">Oct 23, 2022</span>
+      </div>
+      <div class="col-4">
+        <span class="f-s-12">Budget</span>
+        <span class="f-s-14 f-w-500 d-block">$98,500</span>
+      </div>
+      <div class="col-4">
+        <span class="f-s-12">Expense</span>
+        <span class="f-s-14 f-w-500 d-block">$63,000</span>
+      </div>
+    </div>
+    <mat-divider class="m-y-20"></mat-divider>
+    <h6 class="mat-subtitle-1 f-w-500 f-s-14 m-b-4">Teams</h6>
+    <div class="d-flex gap-10">
+      <span
+        class="bg-light-warning text-warning rounded f-s-12 f-w-500 p-x-8 p-y-4"
+        >Bootstrap
+      </span>
+      <span class="bg-light-error text-error rounded f-s-12 f-w-500 p-x-8 p-y-4"
+        >Angular
+      </span>
+    </div>
+    <mat-divider class="m-y-20"></mat-divider>
+    <h6 class="mat-subtitle-1 f-w-500 f-s-14 m-b-4">Leaders</h6>
+    <div class="d-flex align-items-center gap-8">
+      <span
+        ><img
+          src="assets/images/profile/user-1.jpg"
+          width="40"
+          class="rounded-circle"
+      /></span>
+      <span
+        ><img
+          src="assets/images/profile/user-2.jpg"
+          width="40"
+          class="rounded-circle"
+      /></span>
+      <span
+        ><img
+          src="assets/images/profile/user-3.jpg"
+          width="40"
+          class="rounded-circle"
+      /></span>
+    </div>
+    <mat-divider class="m-y-20"></mat-divider>
+    <div class="p-t-10 d-flex justify-content-between align-items-center">
+        <button mat-flat-button color="accent">Add</button>
+        <span class="f-s-14">36 Recent Transactions</span>
+    </div>
+  </mat-card-content>
+</mat-card>

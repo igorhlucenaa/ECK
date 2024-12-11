@@ -1,0 +1,26 @@
+<mat-card class="cardWithShadow">
+  <mat-card-content class="p-34">
+    <mat-card-title class="m-b-10">Browser Stats</mat-card-title>
+
+    @for(brower of browers; track brower.img) {
+    <div class="d-flex align-items-center p-y-10">
+      <span>
+        <img
+          src="{{ brower.img }}"
+          alt="img"
+          class="rounded-circle"
+          width="35"
+        />
+      </span>
+      <span class="f-s-14 m-l-8">{{ brower.title }}</span>
+      <span
+        class="bg-light-{{ brower.color }} text-{{
+          brower.color
+        }} rounded f-w-500 p-6 p-y-4 f-s-12 m-l-auto"
+      >
+        {{ brower.percent }}%
+      </span>
+    </div>
+    }
+  </mat-card-content>
+</mat-card>

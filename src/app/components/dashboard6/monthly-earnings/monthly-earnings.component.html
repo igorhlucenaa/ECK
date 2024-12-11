@@ -1,0 +1,31 @@
+<mat-card class="cardWithShadow bg-accent">
+  <mat-card-content class="p-24">
+    <!-- column -->
+
+    <mat-card-title class="text-white">Monthly Earnings</mat-card-title>
+
+    <div class="d-flex flex-column m-t-30">
+      <apx-chart
+        [series]="monthlyOptions.series"
+        [chart]="monthlyOptions.chart"
+        [dataLabels]="monthlyOptions.dataLabels"
+        [plotOptions]="monthlyOptions.plotOptions"
+        [yaxis]="monthlyOptions.yaxis"
+        [legend]="monthlyOptions.legend"
+        [fill]="monthlyOptions.fill"
+        [stroke]="monthlyOptions.stroke"
+        [tooltip]="monthlyOptions.tooltip"
+        [xaxis]="monthlyOptions.xaxis"
+        [grid]="monthlyOptions.grid"
+      >
+      </apx-chart>
+    </div>
+
+    <div class="f-s-18 f-w-500 m-t-12 d-flex align-items-center text-white m-t-30">
+      $39,358
+      <span class="f-s-14 f-w-400 d-flex align-items-center m-l-12"
+        ><i-tabler name="arrow-up-left" class="icon-16"></i-tabler>+9 this week</span
+      >
+    </div>
+  </mat-card-content>
+</mat-card>

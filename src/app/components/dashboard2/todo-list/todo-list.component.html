@@ -1,0 +1,51 @@
+<mat-card class="cardWithShadow">
+  <mat-card-header>
+    <mat-card-title>To do List</mat-card-title>
+    <mat-card-subtitle>Task to complete </mat-card-subtitle>
+  </mat-card-header>
+
+  @for(todo of todos; track todo.message) {
+  <div>
+    <div class="p-x-20 p-y-12">
+      <div class="d-flex align-items-start w-100">
+        <div class="flex-shrink-0">
+          <mat-checkbox class="mat-subheading-1 m-b-0" color="primary">
+            <span class="f-s-14 f-w-400">{{ todo.message }}</span>
+          </mat-checkbox>
+          <div class="d-flex align-items-center m-l-20 p-l-20">
+            @for(user of todo.users; track user.image) {
+            <div class="m-b-10">
+              <span
+                class="bg-light-primary text-primary f-s-14 f-w-500 p-r-10 p-l-4 m-r-8 rounded-pill d-flex align-items-center"
+              >
+                <img
+                  src="{{ user.image }}"
+                  alt="user"
+                  width="25"
+                  class="rounded-circle"
+                />
+                <span class="m-l-8 f-s-12 p-y-6">{{ user.name }}</span>
+              </span>
+            </div>
+            }
+          </div>
+        </div>
+        <div
+          class="d-flex align-items-center m-l-auto justify-content-end m-t-8"
+        >
+          <p class="m-0 f-s-12">
+            {{ todo.date | date }}
+          </p>
+          <span
+            class="m-l-8 bg-light-{{ todo.timecolor }} text-{{
+              todo.timecolor
+            }} mat-body-2 f-w-400 p-x-8 p-y-2 f-s-10 rounded-pill"
+            >{{ todo.time }}</span
+          >
+        </div>
+      </div>
+    </div>
+    <mat-divider></mat-divider>
+  </div>
+  }
+</mat-card>

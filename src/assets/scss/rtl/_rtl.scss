@@ -1,0 +1,107 @@
+[dir="rtl"] {
+
+  // ------------------------------------------------------
+  // header
+  // ------------------------------------------------------
+  .upgrade-bg {
+    left: 0;
+    right: unset;
+    transform: scaleX(-1);
+  }
+
+  // customizer
+  .customizerBtn {
+    left: 30px;
+    right: unset;
+  }
+
+  //   logo flip
+  .branding img {
+    transform: scaleX(-1);
+  }
+
+  .breadcrumb-item {
+    &:after {
+      margin-right: 15px;
+      margin-left: 35px;
+    }
+  }
+
+  .b-r-1 {
+    border-right: 0 !important;
+    border-left: 1px solid $borderColor;
+  }
+
+  .b-l-1 {
+    border-left: 0 !important;
+    border-right: 1px solid $borderColor;
+  }
+
+  .user-profile .profile-img {
+    margin-left: 0;
+    margin-right: 30px;
+  }
+
+  .sidebar-list {
+    &.mdc-list {
+
+      .menu-list-item {
+        padding: 12px 16px !important;
+      }
+    }
+  }
+
+  // minisidebar
+  &.sidebarNav-mini {
+    .sidebarNav {
+      .sidebar-list {
+        .menu-list-item {
+          padding: 11px 11px !important;
+        }
+      }
+
+      .user-profile {
+        .profile-img {
+          margin-left: 0;
+          margin-right: 9px;
+        }
+      }
+
+      &:hover {
+        .user-profile {
+          .profile-img {
+            margin-right: 30px;
+          }
+        }
+
+        .sidebar-list {
+          &.mdc-list {
+
+            .mdc-list-group__subheader {
+              text-align: right;
+            }
+          }
+        }
+      }
+    }
+
+    .contentWrapper {
+      margin-right: $sidenav-mini !important;
+      margin-left: 0 !important;
+      transition: swift-ease-out(width);
+    }
+  }
+
+  // dashboard
+  .profiletimeline {
+    padding-left: 0;
+    padding-right: 40px;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    border-left: 0;
+
+    .sl-left {
+      margin-left: 15px;
+      margin-right: -60px;
+    }
+  }
+}

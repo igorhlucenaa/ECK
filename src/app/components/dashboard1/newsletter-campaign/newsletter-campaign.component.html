@@ -1,0 +1,58 @@
+<mat-card class="cardWithShadow">
+  <mat-card-header>
+    <div class="d-sm-flex justify-content-between w-100">
+      <div class="m-b-4">
+        <mat-card-title>Newsletter Campaign</mat-card-title>
+        <mat-card-subtitle>Overview of Newsletter Campaign</mat-card-subtitle>
+      </div>
+      <div class="d-flex justify-content-end gap-10">
+        <div class="d-flex gap-12">
+          <i-tabler
+            name="circle-filled"
+            class="text-primary icon-12 d-flex"
+          ></i-tabler>
+          <span class="mat-subtitle-2 f-s-14 text-primary">Earnings</span>
+        </div>
+        <div class="d-flex gap-12">
+          <i-tabler
+            name="circle-filled"
+            class="text-accent icon-12 d-flex"
+          ></i-tabler>
+          <span class="mat-subtitle-2 f-s-14 text-accent">Expense</span>
+        </div>
+      </div>
+    </div>
+  </mat-card-header>
+  <mat-card-content class="p-y-24">
+    <apx-chart
+      [series]="newsletterchartOptions.series"
+      [chart]="newsletterchartOptions.chart"
+      [xaxis]="newsletterchartOptions.xaxis"
+      [stroke]="newsletterchartOptions.stroke"
+      [tooltip]="newsletterchartOptions.tooltip"
+      [dataLabels]="newsletterchartOptions.dataLabels"
+      [legend]="newsletterchartOptions.legend"
+      [colors]="newsletterchartOptions.colors"
+      [markers]="newsletterchartOptions.markers"
+      [fill]="newsletterchartOptions.fill"
+      [grid]="newsletterchartOptions.grid"
+    ></apx-chart>
+
+    <div class="d-flex align-items-center justify-content-center gap-30">
+      <div class="d-flex gap-12">
+        <i-tabler
+          name="circle-filled"
+          class="text-primary icon-12 d-flex"
+        ></i-tabler>
+        <span class="mat-subtitle-2 f-s-14 text-primary">Earnings</span>
+      </div>
+      <div class="d-flex gap-12">
+        <i-tabler
+          name="circle-filled"
+          class="text-accent icon-12 d-flex"
+        ></i-tabler>
+        <span class="mat-subtitle-2 f-s-14 text-accent">Expense</span>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,69 @@
+<mat-card class="cardWithShadow">
+  <mat-card-header class="d-flex">
+    <mat-card-title>Total Sales</mat-card-title>
+    <div class="m-l-auto">
+      <mat-form-field class="theme-select" appearance="outline">
+        <mat-select value="mar">
+          @for(month of months; track month.value) {
+          <mat-option [value]="month.value">
+            {{ month.viewValue }}
+          </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card-header>
+  <mat-card-content class="p-24">
+    <mat-divider class="m-y-20"></mat-divider>
+    <div class="d-flex align-items-center justify-content-between">
+      <span class="f-s-14">Sales Yearly</span>
+      <h5 class="f-s-20 m-0 f-w-500">8,364,398</h5>
+    </div>
+
+    <div class="position-relative m-y-30">
+      <apx-chart
+        [series]="totalsalesOptions.series"
+        [chart]="totalsalesOptions.chart"
+        [labels]="totalsalesOptions.labels"
+        [dataLabels]="totalsalesOptions.dataLabels"
+        [plotOptions]="totalsalesOptions.plotOptions"
+        [legend]="totalsalesOptions.legend"
+        [fill]="totalsalesOptions.fill"
+        [colors]="totalsalesOptions.colors"
+        [stroke]="totalsalesOptions.stroke"
+        [tooltip]="totalsalesOptions.tooltip"
+      >
+      </apx-chart>
+      <i-tabler
+        name="shopping-cart"
+        class="icon-30 total-sales-icon"
+      ></i-tabler>
+    </div>
+
+    <div
+      class="d-flex align-items-center justify-content-between gap-30 p-t-12"
+    >
+      <div class="d-flex gap-12">
+        <i-tabler
+          name="circle-filled"
+          class="text-primary icon-12 d-flex"
+        ></i-tabler>
+        <span class="mat-subtitle-2 f-s-14 f-w-500">2021</span>
+      </div>
+      <div class="d-flex gap-12">
+        <i-tabler
+          name="circle-filled"
+          class="text-accent icon-12 d-flex"
+        ></i-tabler>
+        <span class="mat-subtitle-2 f-s-14 f-w-500">2022</span>
+      </div>
+      <div class="d-flex gap-12">
+        <i-tabler
+          name="circle-filled"
+          class="text-warning icon-12 d-flex"
+        ></i-tabler>
+        <span class="mat-subtitle-2 f-s-14 f-w-500">2023</span>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

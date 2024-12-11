@@ -1,0 +1,253 @@
+<mat-card class="cardWithShadow">
+  <mat-card-content class="p-24">
+
+    <div class="taskboard">
+      <div class="d-flex align-items-center justify-content-between m-b-32">
+        <mat-card-title>Taskboard</mat-card-title>
+        <button mat-flat-button (click)="openDialog('Add', {})" color="primary">
+          Create Task
+        </button>
+      </div>
+
+      <div class="table-responsive">
+        <div class="task-list-section" cdkDropListGroup>
+          <div class="task-list-container">
+            <div class="connect-sorting bg-light-primary">
+              <div class="task-container-header m-b-16">
+                <h5 class="mat-subtitle-1 f-s-16 m-b-0 f-w-600">Todo</h5>
+              </div>
+              <div class="connect-sorting-content">
+                <div class="connect-sorting-content" [cdkDropListData]="todos" cdkDropList
+                  (cdkDropListDropped)="drop($event)">
+                  @for(task of todos; track task.id) {
+                  <mat-card class="cardWithShadow img-task m-b-15 overflow-hidden" cdkDrag>
+                    <div class="task-header d-flex align-items-center justify-content-between p-x-12 p-y-10">
+                      <div class="f-s-14 m-b-0 f-w-600">{{ task.title }}</div>
+                      <button class="icon-32 p-0 d-flex align-items-center justify-content-center" mat-icon-button
+                        [matMenuTriggerFor]="menu" aria-label="Example icon-button with a menu">
+                        <mat-icon>more_vert</mat-icon>
+                      </button>
+                      <mat-menu #menu="matMenu" xPosition="before" class="cardWithShadow">
+                        <button mat-menu-item (click)="openDialog('Edit', task)" class="d-flex align-items-center">
+                          <div class="d-flex align-items-center gap-8">
+                            <i-tabler name="edit" class="icon-20 d-flex"></i-tabler>
+                            Edit
+                          </div>
+                        </button>
+                        <button mat-menu-item (click)="deleteTask(task)" class="d-flex align-items-center">
+                          <div class="d-flex align-items-center gap-8">
+                            <i-tabler name="trash" class="icon-20 d-flex"></i-tabler>
+                            Delete
+                          </div>
+                        </button>
+                      </mat-menu>
+                    </div>
+                    <div class="task-content">
+                      @if(task.imageUrl){
+                      <img [src]="task.imageUrl" alt="{{ task.title }} image" class="task-image w-100" height="106" />
+                      } @if(task.description){
+                      <span class="task-decription f-s-12 p-x-12 p-y-10 d-block">{{
+                        task.description
+                        }}</span>
+                      }
+                    </div>
+                    <div class="task-body">
+                      <div class="task-bottom d-flex align-items-center justify-content-between p-x-12 p-y-10">
+                        <div class="d-flex align-items-center gap-4">
+                          <i-tabler name="calendar" class="icon-16"></i-tabler>
+                          <span class="task-decription f-s-12 lh-base">{{
+                            formatDate(task.date) | date : "dd MMMM"
+                            }}</span>
+                        </div>
+                        <span class="task-decription rounded f-s-12 p-x-8 text-white f-w-400"
+                          [ngClass]="getTaskClass(task.taskProperty)">
+                          {{ task.taskProperty }}
+                        </span>
+                      </div>
+                    </div>
+                  </mat-card>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="task-list-container">
+            <div class="connect-sorting bg-light-accent">
+              <div class="task-container-header m-b-16">
+                <h5 class="mat-subtitle-1 f-s-16 m-b-0 f-w-600">Inprogress</h5>
+              </div>
+              <div class="connect-sorting-content" [cdkDropListData]="inprogress" cdkDropList
+                (cdkDropListDropped)="drop($event)">
+                @for(task of inprogress; track task.id){
+                <mat-card class="cardWithShadow img-task m-b-15 overflow-hidden" cdkDrag>
+                  <div class="task-header d-flex align-items-center justify-content-between p-x-12 p-y-10">
+                    <div class="f-s-14 m-b-0 f-w-600">{{ task.title }}</div>
+                    <button class="icon-32 p-0 d-flex align-items-center justify-content-center" mat-icon-button
+                      [matMenuTriggerFor]="menu" aria-label="Example icon-button with a menu">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #menu="matMenu" xPosition="before" class="cardWithShadow">
+                      <button mat-menu-item (click)="openDialog('Edit', task)" class="d-flex align-items-center">
+                        <div class="d-flex align-items-center gap-8">
+                          <i-tabler name="edit" class="icon-20 d-flex"></i-tabler>
+                          Edit
+                        </div>
+                      </button>
+                      <button mat-menu-item (click)="deleteTask(task)" class="d-flex align-items-center">
+                        <div class="d-flex align-items-center gap-8">
+                          <i-tabler name="trash" class="icon-20 d-flex"></i-tabler>
+                          Delete
+                        </div>
+                      </button>
+                    </mat-menu>
+                  </div>
+                  <div class="task-content">
+                    @if(task.imageUrl){
+                    <img [src]="task.imageUrl" alt="{{ task.title }} image" class="task-image w-100" height="106" />
+                    } @if(task.description){
+                    <span class="task-decription f-s-12 p-x-12 p-y-10 d-block">{{
+                      task.description
+                      }}</span>
+                    }
+                  </div>
+                  <div class="task-body">
+                    <div class="task-bottom d-flex align-items-center justify-content-between p-x-12 p-y-10">
+                      <div class="d-flex align-items-center gap-4">
+                        <i-tabler name="calendar" class="icon-16"></i-tabler>
+                        <span class="task-decription f-s-12 lh-base">{{
+                          formatDate(task.date) | date : "dd MMMM"
+                          }}</span>
+                      </div>
+                      <span class="task-decription rounded f-s-12 p-x-8 text-white f-w-400"
+                        [ngClass]="getTaskClass(task.taskProperty)">
+                        {{ task.taskProperty }}
+                      </span>
+                    </div>
+                  </div>
+                </mat-card>
+                }
+              </div>
+            </div>
+          </div>
+          <div class="task-list-container">
+            <div class="connect-sorting bg-light-warning">
+              <div class="task-container-header m-b-16">
+                <h5 class="mat-subtitle-1 f-s-16 m-b-0 f-w-600">Onhold</h5>
+              </div>
+              <div class="connect-sorting-content" [cdkDropListData]="onhold" cdkDropList
+                (cdkDropListDropped)="drop($event)">
+                @for(task of onhold; track task.id){
+                <mat-card class="cardWithShadow img-task m-b-15 overflow-hidden" cdkDrag>
+                  <div class="task-header d-flex align-items-center justify-content-between p-x-12 p-y-10">
+                    <div class="f-s-14 m-b-0 f-w-600">{{ task.title }}</div>
+                    <button class="icon-32 p-0 d-flex align-items-center justify-content-center" mat-icon-button
+                      [matMenuTriggerFor]="menu" aria-label="Example icon-button with a menu">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #menu="matMenu" xPosition="before" class="cardWithShadow">
+                      <button mat-menu-item (click)="openDialog('Edit', task)" class="d-flex align-items-center">
+                        <div class="d-flex align-items-center gap-8">
+                          <i-tabler name="edit" class="icon-20 d-flex"></i-tabler>
+                          Edit
+                        </div>
+                      </button>
+                      <button mat-menu-item (click)="deleteTask(task)" class="d-flex align-items-center">
+                        <div class="d-flex align-items-center gap-8">
+                          <i-tabler name="trash" class="icon-20 d-flex"></i-tabler>
+                          Delete
+                        </div>
+                      </button>
+                    </mat-menu>
+                  </div>
+                  <div class="task-content">
+                    @if(task.imageUrl){
+                    <img [src]="task.imageUrl" alt="{{ task.title }} image" class="task-image w-100" height="106" />
+                    } @if(task.description){
+                    <span class="task-decription f-s-12 p-x-12 p-y-10 d-block">{{
+                      task.description
+                      }}</span>
+                    }
+                  </div>
+                  <div class="task-body">
+                    <div class="task-bottom d-flex align-items-center justify-content-between p-x-12 p-y-10">
+                      <div class="d-flex align-items-center gap-4">
+                        <i-tabler name="calendar" class="icon-16"></i-tabler>
+                        <span class="task-decription f-s-12 lh-base">{{
+                          formatDate(task.date) | date : "dd MMMM"
+                          }}</span>
+                      </div>
+                      <span class="task-decription rounded f-s-12 p-x-8 text-white f-w-400"
+                        [ngClass]="getTaskClass(task.taskProperty)">
+                        {{ task.taskProperty }}
+                      </span>
+                    </div>
+                  </div>
+                </mat-card>
+                }
+              </div>
+            </div>
+          </div>
+          <div class="task-list-container">
+            <div class="connect-sorting bg-light-success">
+              <div class="task-container-header m-b-16">
+                <h5 class="mat-subtitle-1 f-s-16 m-b-0 f-w-600">Completed</h5>
+              </div>
+              <div class="connect-sorting-content" [cdkDropListData]="completed" cdkDropList
+                (cdkDropListDropped)="drop($event)">
+                @for(task of completed; track task.id){
+                <mat-card class="cardWithShadow img-task m-b-15 overflow-hidden" cdkDrag>
+                  <div class="task-header d-flex align-items-center justify-content-between p-x-12 p-y-10">
+                    <div class="f-s-14 m-b-0 f-w-600">{{ task.title }}</div>
+                    <button class="icon-32 p-0 d-flex align-items-center justify-content-center" mat-icon-button
+                      [matMenuTriggerFor]="menu" aria-label="Example icon-button with a menu">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #menu="matMenu" xPosition="before" class="cardWithShadow">
+                      <button mat-menu-item (click)="openDialog('Edit', task)" class="d-flex align-items-center">
+                        <div class="d-flex align-items-center gap-8">
+                          <i-tabler name="edit" class="icon-20 d-flex"></i-tabler>
+                          Edit
+                        </div>
+                      </button>
+                      <button mat-menu-item (click)="deleteTask(task)" class="d-flex align-items-center">
+                        <div class="d-flex align-items-center gap-8">
+                          <i-tabler name="trash" class="icon-20 d-flex"></i-tabler>
+                          Delete
+                        </div>
+                      </button>
+                    </mat-menu>
+                  </div>
+                  <div class="task-content">
+                    @if(task.imageUrl){
+                    <img [src]="task.imageUrl" alt="{{ task.title }} image" class="task-image w-100" height="106" />
+                    } @if(task.description){
+                    <span class="task-decription f-s-12 p-x-12 p-y-10 d-block">{{
+                      task.description
+                      }}</span>
+                    }
+                  </div>
+                  <div class="task-body">
+                    <div class="task-bottom d-flex align-items-center justify-content-between p-x-12 p-y-10">
+                      <div class="d-flex align-items-center gap-4">
+                        <i-tabler name="calendar" class="icon-16"></i-tabler>
+                        <span class="task-decription f-s-12 lh-base">{{
+                          formatDate(task.date) | date : "dd MMMM"
+                          }}</span>
+                      </div>
+                      <span class="task-decription rounded f-s-12 p-x-8 text-white f-w-400"
+                        [ngClass]="getTaskClass(task.taskProperty)">
+                        {{ task.taskProperty }}
+                      </span>
+                    </div>
+                  </div>
+                </mat-card>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </mat-card-content>
+</mat-card>

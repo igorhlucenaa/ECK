@@ -1,0 +1,53 @@
+<h1 class="f-s-20 m-b-8" mat-dialog-title>Add New Contact</h1>
+<mat-dialog-content class="mat-typography">
+  <form>
+    <div class="file-input-container m-b-24">
+      @if(imageUrl){
+      <img [src]="imageUrl" alt="Selected Image" width="100" />
+      }
+      <input type="file" (change)="onFileSelected($event)" accept="image/*" />
+    </div>
+    <mat-form-field appearance="outline" class="w-100">
+      <input matInput [(ngModel)]="contact.firstname" name="firstname" placeholder="First Name here" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <input matInput [(ngModel)]="contact.lastname" name="lastname" placeholder="Last Name here" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <input matInput [(ngModel)]="contact.company" name="company" placeholder="Company Name here" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <input matInput [(ngModel)]="contact.phone" name="phone" placeholder="Phone Number here" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <input matInput [(ngModel)]="contact.email" name="email" type="email" placeholder="Email here" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <input matInput [(ngModel)]="contact.address" name="address" placeholder="Address here" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <textarea matInput [(ngModel)]="contact.notes" name="notes" placeholder="Write Notes here"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Department</mat-label>
+      <mat-select [(ngModel)]="contact.department" name="department">
+        @for(dept of departments; track dept.id) {
+        <mat-option [value]="dept.name">{{ dept.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+<div mat-dialog-actions class="dialog-actions">
+  <button mat-flat-button color="primary" (click)="saveContact()" [disabled]="!isFormValid()">
+    Add Contact
+  </button>
+  <button mat-stroked-button (click)="cancel()" color="warn">Cancel</button>
+</div>

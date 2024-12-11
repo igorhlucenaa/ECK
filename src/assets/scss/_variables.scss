@@ -1,0 +1,174 @@
+@import url("https://fonts.googleapis.com/css?family=Poppins:400,500,300,600,700&display=swap");
+
+// font
+$font-family: 'Poppins', sans-serif;
+
+// light color variable
+$sidebarbg: white;
+$background: #eef5f9;
+$cardbg: white;
+$toolbar: #1B84FF;
+$cardshadow: 0px 5px 20px rgba(0,0,0,.05);
+$hoverBgColor: #EDF5FD;
+
+// Dark color variable
+$darksidebarbg: #152332;
+$darkbackground: #192838;
+$darkcardbg: #152332;
+$darktoolbar: #192838;
+$darkcardshadow: rgba(145, 158, 171, 0.3) 0px 0px 2px 0px,rgba(145, 158, 171, 0.02) 0px 12px 24px -4px;
+$darkborderColor: #333f55;
+$darkformborderColor: #333f55;
+$darkhoverbgcolor: #253662;
+$darkthemelightprimary: #253662;
+$darkthemelightaccent: #1C455D;
+$darkthemelightwarning: #4D3A2A;
+$darkthemelighterror: #4B313D;
+$darkthemelightsuccess: #1B3C48;
+
+// Sidenav
+$sidenav-desktop: 260px !default;
+$sidenav-mini: 72px !default;
+$header-height: 60px !default;
+
+
+//BorderColor
+$borderColor: #ebf1f6;
+$borderformColor: #ebf1f6;
+
+// custom
+$primary: #1B84FF;
+$accent: #43CED7;
+$warning: #F6C000;
+$error: #F8285A;
+$success: #2cd07e;
+$white: #ffffff;
+
+$light: #f2f4f8;
+
+$gray-100:  #7c8fac;
+$gray-50: #e2e2e2;
+
+$light-primary: #EDF5FD;
+$light-accent: #F2FCFC;
+$light-warning: #FFFCF0;
+$light-error: #FFF0F4;
+$light-success: #EDFDF2;
+
+// layout
+$boxedWidth: 1300px;
+
+$border-radius: 7px;
+
+// text color
+$textPrimary: #3A4752;
+
+
+
+html {
+    --mat-expansion-container-shape: 12px !important;
+    --mat-form-field-container-height: 37px !important;
+    --mdc-elevated-card-container-shape: 12px !important;
+    --mdc-elevated-card-container-shape: 12px !important;
+    --mat-standard-button-toggle-selected-state-background-color: #f2f6fa !important;
+    --mat-standard-button-toggle-selected-state-text-color: #526b7a !important;
+    --mdc-switch-unselected-handle-color: #29343d !important;
+    --mdc-switch-unselected-hover-handle-color: #29343d !important;
+    --mdc-switch-unselected-focus-handle-color: #29343d !important;
+    --mdc-switch-unselected-track-color: #bdc3cd !important;
+    --mdc-switch-unselected-hover-state-layer-color: #f2f6fa !important;
+    --mat-stepper-header-icon-background-color: #7c8fac !important;
+    --mat-stepper-header-hover-state-layer-color: #f2f6fa !important;
+    --mat-expansion-header-hover-state-layer-color: #f2f6fa !important;
+    --mat-expansion-header-focus-state-layer-color: #f2f6fa !important;
+    --mat-icon-button-state-layer-color: #635bff !important;
+    --mat-icon-button-hover-state-layer-opacity: 0.09 !important;
+    --mdc-snackbar-container-color: #29343d !important;
+    --mdc-outlined-button-disabled-outline-color: rgb(226 236 249) !important;
+    --mdc-outlined-button-disabled-label-text-color: #7c8fac !important;
+    --mat-text-button-disabled-container-color: rgb(226 236 249) !important;
+    --mdc-filled-button-disabled-container-color: rgb(226 236 249) !important;
+    --mdc-protected-button-disabled-container-color: rgb(226 236 249) !important;
+    --mat-fab-disabled-state-container-color: rgb(226 236 249) !important;
+    --mdc-list-list-item-leading-icon-color: #526b7a !important;
+    --mdc-list-list-item-hover-leading-icon-color: #526b7a !important;
+
+    .mat-mdc-tooltip .mdc-tooltip__surface {
+        --mdc-plain-tooltip-container-color: #29343d !important;
+    }
+
+    .mat-mdc-button .mat-mdc-button-persistent-ripple::before {
+        --mat-text-button-state-layer-color: #f2f6fa !important;
+    }
+
+    .mat-mdc-standard-chip {
+        --mdc-chip-elevated-container-color: #f2f6fa !important;
+        --mdc-chip-elevated-disabled-container-color: #f2f6fa !important;
+        --mdc-chip-flat-disabled-selected-container-color: #f2f6fa !important;
+    }
+
+    .mat-mdc-form-field-infix {
+        --mat-form-field-container-height: 37px;
+        --mat-form-field-container-vertical-padding: 8px;
+    }
+
+    .mat-mdc-tab-header {
+        --mat-tab-header-inactive-label-text-color: #29343d;
+        --mat-tab-header-label-text-weight: 500;
+    }
+
+    .mat-mdc-radio-button .mdc-radio .mdc-radio__background::before {
+        --mat-radio-ripple-color: #f2f6fa !important;
+    }
+
+    .mdc-list-item:focus::before {
+        --mdc-list-list-item-focus-state-layer-color: #f2f6fa !important;
+    }
+}
+
+:root {
+    --mat-divider-color: #dfe5ef;
+}
+
+.mat-mdc-nav-list .mat-mdc-list-item {
+    --mat-list-active-indicator-shape: 0;
+}
+
+.mat-mdc-tooltip {
+    --mdc-plain-tooltip-container-shape: 12px;
+}
+
+.mat-mdc-card {
+    --mdc-elevated-card-container-shape: 12px;
+}
+
+.mdc-checkbox:hover .mdc-checkbox__ripple {
+    --mdc-checkbox-unselected-hover-state-layer-opacity: 1;
+    --mdc-checkbox-unselected-hover-state-layer-color: #f2f6fa;
+}
+
+.mdc-button {
+    --mdc-filled-button-container-shape: 7px;
+    --mdc-text-button-container-shape: 7px;
+    --mdc-protected-button-container-shape: 7px;
+    --mdc-outlined-button-container-shape: 7px;
+    --mat-standard-button-toggle-shape: 7px;
+}
+
+.mdc-text-field {
+    --mdc-outlined-text-field-container-shape: 7px;
+    --mdc-outlined-text-field-outline-color: #dfe5ef;
+    --mdc-outlined-text-field-input-text-color: #29343d;
+}
+
+.mat-mdc-menu-panel {
+    --mat-menu-container-shape: 12px;
+}
+
+.mdc-list-item:hover::before {
+    --mdc-list-list-item-hover-state-layer-opacity: 0.09;
+}
+
+.mat-mdc-mini-fab {
+    --mat-fab-small-foreground-color: #29343d;
+}

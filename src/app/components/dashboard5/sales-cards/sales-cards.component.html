@@ -1,0 +1,96 @@
+<div class="row">
+  <div class="col-lg-4">
+    <mat-card class="cardWithShadow">
+      <mat-card-content class="p-24">
+        <mat-card-title>Product A Sales</mat-card-title>
+
+        <div class="d-flex align-items-center gap-10 m-t-20">
+          <div class="p-r-16 b-r-1 p-y-4">
+            <span class="f-s-12">Monthly</span>
+            <h6 class="mat-subtitle-1 f-s-16 f-w-500 m-0">80.40%</h6>
+          </div>
+          <div class="p-l-8 p-y-4">
+            <span class="f-s-12">Daily</span>
+            <h6 class="mat-subtitle-1 f-s-16 f-w-500 m-0">20.40%</h6>
+          </div>
+        </div>
+      </mat-card-content>
+      <div>
+        <apx-chart
+            [series]="productAChart.series"
+            [chart]="productAChart.chart"
+            [plotOptions]="productAChart.plotOptions"
+            [grid]="productAChart.grid"
+            [tooltip]="productAChart.tooltip"
+            [colors]="productAChart.colors"
+            [dataLabels]="productAChart.dataLabels"
+            [stroke]="productAChart.stroke"
+            [fill]="productAChart.fill"
+          >
+          </apx-chart>
+      </div>
+    </mat-card>
+  </div>
+  <div class="col-lg-4">
+    <mat-card class="cardWithShadow">
+      <mat-card-content class="p-24">
+        <mat-card-title>Product B Sales</mat-card-title>
+        <div class="d-flex align-items-center gap-10 m-t-20">
+            <div class="p-r-16 b-r-1 p-y-4">
+              <span class="f-s-12">Monthly</span>
+              <h6 class="mat-subtitle-1 f-s-16 f-w-500 m-0">12.40%</h6>
+            </div>
+            <div class="p-l-8 p-y-4">
+              <span class="f-s-12">Daily</span>
+              <h6 class="mat-subtitle-1 f-s-16 f-w-500 m-0">56.40%</h6>
+            </div>
+          </div>
+      </mat-card-content>
+      <div>
+        <apx-chart
+            [series]="productBChart.series"
+            [chart]="productBChart.chart"
+            [plotOptions]="productBChart.plotOptions"
+            [grid]="productBChart.grid"
+            [tooltip]="productBChart.tooltip"
+            [colors]="productBChart.colors"
+            [dataLabels]="productBChart.dataLabels"
+            [stroke]="productBChart.stroke"
+            [fill]="productBChart.fill"
+          >
+          </apx-chart>
+      </div>
+    </mat-card>
+  </div>
+  <div class="col-lg-4">
+    <mat-card class="cardWithShadow">
+      <mat-card-content class="p-24">
+        <mat-card-title>Product C Sales</mat-card-title>
+        <div class="d-flex align-items-center gap-10 m-t-20">
+            <div class="p-r-16 b-r-1 p-y-4">
+              <span class="f-s-12">Monthly</span>
+              <h6 class="mat-subtitle-1 f-s-16 f-w-500 m-0">12.20%</h6>
+            </div>
+            <div class="p-l-8 p-y-4">
+              <span class="f-s-12">Daily</span>
+              <h6 class="mat-subtitle-1 f-s-16 f-w-500 m-0">13.45%</h6>
+            </div>
+          </div>
+      </mat-card-content>
+      <div>
+        <apx-chart
+            [series]="productCChart.series"
+            [chart]="productCChart.chart"
+            [plotOptions]="productCChart.plotOptions"
+            [grid]="productCChart.grid"
+            [tooltip]="productCChart.tooltip"
+            [colors]="productCChart.colors"
+            [dataLabels]="productCChart.dataLabels"
+            [stroke]="productCChart.stroke"
+            [fill]="productCChart.fill"
+          >
+          </apx-chart>
+      </div>
+    </mat-card>
+  </div>
+</div>
