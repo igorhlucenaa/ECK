@@ -6,7 +6,7 @@
         color="primary"
         class="hide-hint w-100"
       >
-        <input matInput placeholder="Search here" [(ngModel)]="searchText" />
+        <input matInput placeholder="Digite aqui..." [(ngModel)]="searchText" />
       </mat-form-field>
     </div>
     <div class="col-2 d-flex justify-content-end">
@@ -22,7 +22,7 @@
 </div>
 <mat-divider></mat-divider>
 <mat-dialog-content class="mat-typography search-dialog">
-  <h4 class="f-s-18 f-w-600 mat-subtitle-1 m-b-16">Quick Page Links</h4>
+  <h4 class="f-s-18 f-w-600 mat-subtitle-1 m-b-16">Links Rápidos</h4>
 
   @for(item of navItemsData; track item.displayName) {
   <a

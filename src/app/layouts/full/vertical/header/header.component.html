@@ -26,10 +26,10 @@
   </button>
 
   <!-- Mobile Menu -->
-  <button mat-mini-fab color="inherit" (click)="toggleMobileFilterNav.emit()"
+  <!-- <button mat-mini-fab color="inherit" (click)="toggleMobileFilterNav.emit()"
     class="d-flex d-lg-none justify-content-center">
     <i class="iconify icon-20 d-flex" data-icon="solar:widget-3-line-duotone"></i>
-  </button>
+  </button> -->
 
   <div class="d-none d-lg-flex">
     <!-- --------------------------------------------------------------- -->
@@ -105,9 +105,9 @@
   <!-- --------------------------------------------------------------- -->
   <!-- langugage Dropdown -->
   <!-- --------------------------------------------------------------- -->
-  <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">
+  <!-- <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">
     <img [src]="selectedLanguage.icon" class="rounded icon-20" />
-  </button>
+  </button> -->
   <mat-menu #flags="matMenu" class="cardWithShadow" xPosition="before">
     @for(lang of languages; track lang) {
     <button mat-menu-item (click)="changeLanguage(lang)">
@@ -126,13 +126,13 @@
   <!-- --------------------------------------------------------------- -->
   <!-- Notification Dropdown -->
   <!-- --------------------------------------------------------------- -->
-  <button class="position-relative d-flex align-items-center justify-content-center" mat-icon-button
+  <!-- <button class="position-relative d-flex align-items-center justify-content-center" mat-icon-button
     [matMenuTriggerFor]="notificationmenu" aria-label="Notifications">
     <i class="iconify icon-20 d-flex" data-icon="solar:bell-bing-line-duotone"></i>
     <div class="notify">
       <span class="heartbit"></span> <span class="point"></span>
     </div>
-  </button>
+  </button> -->
   <mat-menu #notificationmenu="matMenu" class="topbar-dd cardWithShadow dd-notifications">
     <div class="p-x-24 p-y-16 bg-primary">
       <h6 class="f-s-16 mat-subtitle-1 m-b-2 text-white f-s-18">Notifications</h6>
@@ -176,13 +176,13 @@
   <!-- --------------------------------------------------------------- -->
   <!-- Messages Dropdown -->
   <!-- --------------------------------------------------------------- -->
-  <button mat-icon-button [matMenuTriggerFor]="inboxmenu" aria-label="Inbox"
+  <!-- <button mat-icon-button [matMenuTriggerFor]="inboxmenu" aria-label="Inbox"
     class="position-relative d-flex align-items-center justify-content-center">
     <i class="iconify icon-20 d-flex" data-icon="solar:inbox-line-line-duotone"></i>
     <div class="notify">
       <span class="heartbit"></span> <span class="point"></span>
     </div>
-  </button>
+  </button> -->
   <mat-menu #inboxmenu="matMenu" class="topbar-dd cardWithShadow dd-notifications">
     <div class="p-x-24 p-y-16 bg-accent">
       <h6 class="f-s-16 mat-subtitle-1 m-b-2 text-white f-s-18">Messages</h6>

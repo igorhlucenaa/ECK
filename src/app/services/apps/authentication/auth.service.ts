@@ -36,14 +36,37 @@ export class AuthService {
 
   // Role
   async getCurrentUserRole(): Promise<string | null> {
-    const user = this.auth.currentUser;
-    if (user) {
-      const docRef = doc(this.firestore, `users/${user.uid}`);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return docSnap.data()['role']; // Retorna o role do usuário
+    try {
+      const user = this.auth.currentUser;
+      // console.log('Usuário atual:', user);
+  
+      if (user) {
+        const docRef = doc(this.firestore, `users/${user.uid}`);
+        // console.log('Referência do documento:', docRef);
+  
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          // console.log('Dados do Firestore:', data);
+  
+          if (data['role']) {
+            return data['role']; // Retorna o papel do usuário
+          } else {
+            console.warn('Campo "role" não encontrado no documento.');
+            return null;
+          }
+        } else {
+          console.warn('Documento do usuário não encontrado no Firestore.');
+          return null;
+        }
+      } else {
+        console.warn('Usuário não autenticado.');
+        return null;
       }
+    } catch (error) {
+      console.error('Erro ao obter papel do usuário:', error);
+      return null;
     }
-    return null; // Retorna null se o usuário não estiver logado ou não tiver role
   }
+  
 }
