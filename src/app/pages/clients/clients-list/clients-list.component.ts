@@ -1,5 +1,12 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { Firestore, collection, collectionData, doc, deleteDoc } from '@angular/fire/firestore';
+import {
+  Firestore,
+  collection,
+  doc,
+  deleteDoc,
+  getDocs,
+  query,
+} from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
@@ -9,18 +16,29 @@ import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { RouterModule } from '@angular/router';
 import { AddClientDialogComponent } from '../add-client-dialog/add-client-dialog.component';
-
+import { PhonePipe } from 'src/app/pipe/phone.pipe';
+import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
 @Component({
   selector: 'app-clients-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, RouterModule],
+  imports: [CommonModule, MaterialModule, RouterModule, PhonePipe, CnpjPipe],
   templateUrl: './clients-list.component.html',
   styleUrls: ['./clients-list.component.scss'],
 })
 export class ClientsListComponent implements OnInit {
-  displayedColumns: string[] = ['companyName', 'email', 'phone', 'sector', 'actions'];
-  dataSource = new MatTableDataSource<any>(); // Usa MatTableDataSource para gerenciar dados
-  searchValue = ''; // Valor da busca
+  displayedColumns: string[] = [
+    'expand',
+    'companyName',
+    'email',
+    'phone',
+    'sector',
+    'cnpj',
+    'actions',
+    'credits',
+  ];
+  dataSource = new MatTableDataSource<any>();
+  searchValue: string = ''; // Adicionando a propriedade searchValue
+  expandedElement: any | null = null;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -28,21 +46,49 @@ export class ClientsListComponent implements OnInit {
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog // Para abrir o modal
+    private dialog: MatDialog
   ) {}
 
-  ngOnInit(): void {
-    const clientsRef = collection(this.firestore, 'clients');
-    collectionData(clientsRef, { idField: 'id' }).subscribe((data) => {
-      console.log('data ===========> ', data)
-      this.dataSource.data = data; // Atualiza a tabela com os dados recebidos
-      this.dataSource.paginator = this.paginator; // Configura a paginação
-      this.dataSource.sort = this.sort; // Configura a ordenação
-    });
+  ngOnInit() {
+    this.loadClients();
+  }
+
+  private loadClients() {
+    const clientsCollection = collection(this.firestore, 'clients');
+    const clientsQuery = query(clientsCollection);
+
+    getDocs(clientsQuery)
+      .then((snapshot) => {
+        const clients = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        this.dataSource.data = clients;
+        this.dataSource.paginator = this.paginator;
+        this.dataSource.sort = this.sort;
+
+        this.dataSource.filterPredicate = (data, filter) => {
+          const dataStr =
+            `${data.companyName} ${data.email} ${data.phone} ${data.sector} ${data.cnpj}`
+              .toLowerCase()
+              .trim();
+          return dataStr.includes(filter);
+        };
+      })
+      .catch((error) => {
+        console.error('Erro ao carregar clientes:', error);
+        this.snackBar.open(
+          'Erro ao carregar a lista de clientes. Tente novamente mais tarde.',
+          'Fechar',
+          { duration: 3000 }
+        );
+      });
   }
 
   applyFilter(event: Event) {
     const filterValue = (event.target as HTMLInputElement).value;
+    this.searchValue = filterValue; // Atualizando a propriedade searchValue
     this.dataSource.filter = filterValue.trim().toLowerCase();
 
     if (this.dataSource.paginator) {
@@ -54,10 +100,19 @@ export class ClientsListComponent implements OnInit {
     const clientDocRef = doc(this.firestore, `clients/${id}`);
     deleteDoc(clientDocRef)
       .then(() => {
-        this.snackBar.open('Cliente excluído com sucesso.', 'Fechar', { duration: 3000 });
+        this.snackBar.open('Cliente excluído com sucesso.', 'Fechar', {
+          duration: 3000,
+        });
+        this.dataSource.data = this.dataSource.data.filter(
+          (client) => client.id !== id
+        );
       })
       .catch((error) => {
-        this.snackBar.open('Erro ao excluir cliente. Tente novamente.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(
+          'Erro ao excluir cliente. Tente novamente.',
+          'Fechar',
+          { duration: 3000 }
+        );
         console.error('Erro ao excluir cliente:', error);
       });
   }
@@ -67,12 +122,17 @@ export class ClientsListComponent implements OnInit {
       width: '500px',
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        this.snackBar.open('Cliente adicionado com sucesso!', 'Fechar', {
-          duration: 3000,
-        });
-      }
+    dialogRef.afterClosed().subscribe(() => {
+      // Recarrega a lista de clientes após fechar o diálogo
+      this.loadClients();
+
+      this.snackBar.open('Lista de clientes atualizada!', 'Fechar', {
+        duration: 3000,
+      });
     });
+  }
+
+  toggleRow(client: any) {
+    this.expandedElement = this.expandedElement === client ? null : client;
   }
 }

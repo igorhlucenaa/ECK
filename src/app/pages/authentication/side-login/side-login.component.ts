@@ -57,10 +57,8 @@ export class AppSideLoginComponent {
 
     try {
       // Login com o AuthService
-      console.log(uname)
-      await this.authService.login(uname!, password!).then(res=>console.log(res))
+      await this.authService.login(uname!, password!)
       this.router.navigate(['/starter']); // Redireciona para a página inicial após login
-      console.log('entrou no try')
     } catch (error: any) {
       // Captura erros do serviço de autenticação
       this.errorMessage =
