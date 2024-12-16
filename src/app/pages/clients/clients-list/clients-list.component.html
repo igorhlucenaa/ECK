@@ -69,8 +69,8 @@
     </ng-container>
     <ng-container matColumnDef="credits">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Créditos</th>
-      <td mat-cell *matCellDef="let client">
-        <mat-icon> attach_money</mat-icon> {{ client.credits }}
+      <td class="credit-cell" mat-cell *matCellDef="let client">
+        {{ client.credits }}
       </td>
     </ng-container>
 
