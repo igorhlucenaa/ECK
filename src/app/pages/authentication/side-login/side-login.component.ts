@@ -1,13 +1,16 @@
 import { Component } from '@angular/core';
 import { CoreService } from 'src/app/services/core.service';
-import { FormGroup, FormControl, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { RouterModule } from '@angular/router';
+import {
+  FormGroup,
+  FormControl,
+  Validators,
+  FormsModule,
+  ReactiveFormsModule,
+} from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MaterialModule } from 'src/app/material.module';
 import { NgIf } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { ReactiveFormsModule } from '@angular/forms';
-import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 @Component({
   selector: 'app-side-login',
@@ -23,7 +26,16 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 })
 export class AppSideLoginComponent {
   options = this.settings.getOptions();
-  errorMessage: string = ''; // Para mensagens de erro
+  form = new FormGroup({
+    uname: new FormControl('', [Validators.required, Validators.email]), // E-mail
+    password: new FormControl('', [
+      Validators.required,
+      Validators.minLength(6),
+    ]), // Senha
+    rememberMe: new FormControl(false), // Lembrar-me
+  });
+
+  errorMessage: string = ''; // Mensagens de erro
   isLoading: boolean = false; // Indicador de carregamento
 
   constructor(
@@ -31,14 +43,6 @@ export class AppSideLoginComponent {
     private authService: AuthService,
     private router: Router
   ) {}
-
-  form = new FormGroup({
-    uname: new FormControl('', [Validators.required, Validators.email]), // Campo de email
-    password: new FormControl('', [
-      Validators.required,
-      Validators.minLength(6),
-    ]), // Campo de senha
-  });
 
   get f() {
     return this.form.controls;
@@ -53,14 +57,13 @@ export class AppSideLoginComponent {
     this.isLoading = true;
     this.errorMessage = ''; // Limpa mensagens anteriores
 
-    const { uname, password } = this.form.value;
+    const { uname, password, rememberMe } = this.form.value;
 
     try {
-      // Login com o AuthService
-      await this.authService.login(uname!, password!)
-      this.router.navigate(['/starter']); // Redireciona para a página inicial após login
+      // Login com persistência configurável
+      await this.authService.login(uname!, password!, rememberMe!);
+      this.router.navigate(['/starter']); // Redireciona após login bem-sucedido
     } catch (error: any) {
-      // Captura erros do serviço de autenticação
       this.errorMessage =
         error.message || 'Erro ao realizar login. Tente novamente.';
     } finally {

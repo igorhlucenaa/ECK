@@ -33,8 +33,8 @@ export class ClientsListComponent implements OnInit {
     'phone',
     'sector',
     'cnpj',
-    'actions',
     'credits',
+    'actions',
   ];
   dataSource = new MatTableDataSource<any>();
   searchValue: string = ''; // Adicionando a propriedade searchValue
