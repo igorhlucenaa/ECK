@@ -10,7 +10,7 @@ import { CoreService } from 'src/app/services/core.service';
     <div class="branding d-none d-lg-flex align-items-center">
       <a [routerLink]="['/']" class="d-flex">
         <img
-          src="./assets/images/logos/eck-consulting.svg"
+          src="./assets/images/logos/eck-branco.svg"
           class="align-middle m-2"
           alt="logo"
         />

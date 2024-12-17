@@ -1,0 +1,55 @@
+<div class="container my-4">
+  <mat-card>
+    <mat-card-title>
+      {{ isEditing ? "Editar Questionário" : "Novo Questionário" }}
+    </mat-card-title>
+    <mat-card-content>
+      <form [formGroup]="questionnaireForm" (ngSubmit)="saveQuestionnaire()">
+        <!-- Nome -->
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>Nome</mat-label>
+          <input matInput formControlName="name" placeholder="Digite o nome" />
+          <mat-error
+            *ngIf="questionnaireForm.get('name')?.hasError('required')"
+          >
+            O nome é obrigatório.
+          </mat-error>
+          <mat-error
+            *ngIf="questionnaireForm.get('name')?.hasError('minlength')"
+          >
+            O nome deve ter pelo menos 3 caracteres.
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Conteúdo -->
+        <mat-label>Conteúdo do Questionário</mat-label>
+        <editor
+          apiKey="9r2xx2pejdeqxjqh0ybdkpfohnxx1gu7wx2mhu9olue5tap8"
+          formControlName="content"
+          [init]="tinyMceConfig"
+        ></editor>
+        <mat-error
+          *ngIf="questionnaireForm.get('content')?.hasError('required')"
+        >
+          O conteúdo é obrigatório.
+        </mat-error>
+
+        <!-- Botões -->
+        <div class="mt-3 text-end">
+          <button mat-flat-button color="primary" type="submit">
+            {{ isEditing ? "Salvar Alterações" : "Criar Questionário" }}
+          </button>
+          <button
+            mat-flat-button
+            color="warn"
+            type="button"
+            (click)="cancel()"
+            style="margin-left: 7px"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
