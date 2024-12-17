@@ -28,7 +28,7 @@ import { PhonePipe } from 'src/app/pipe/phone.pipe';
 export class ClientDetailsViewComponent implements OnInit {
   client: any = null; // Detalhes do cliente
   users: MatTableDataSource<any> = new MatTableDataSource(); // Tabela de usuários
-  displayedColumns: string[] = ['name', 'email', 'role', 'password', 'actions'];
+  displayedColumns: string[] = ['name', 'email', 'role', 'actions'];
 
   visiblePasswords: { [key: string]: boolean } = {}; // Controle de visibilidade de senhas
 

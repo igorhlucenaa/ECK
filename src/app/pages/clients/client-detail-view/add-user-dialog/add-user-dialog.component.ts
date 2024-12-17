@@ -6,7 +6,7 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
@@ -27,7 +27,7 @@ export class AddUserDialogComponent {
       Validators.required,
       Validators.minLength(6),
     ]), // Senha do usuário
-    role: new FormControl('admin', [Validators.required]), // Papel (role) do usuário
+    role: new FormControl('admin_client', [Validators.required]), // Papel (role) do usuário
   });
 
   isSubmitting = false;
@@ -78,9 +78,9 @@ export class AddUserDialogComponent {
       // Obter o UID do usuário recém-criado
       const uid = userCredential.user.uid;
 
-      // Adicionar informações adicionais no Firestore
-      const usersCollection = collection(this.firestore, 'users');
-      await addDoc(usersCollection, {
+      // Adicionar informações adicionais no Firestore usando o UID como identificador do documento
+      const userDocRef = doc(this.firestore, `users/${uid}`);
+      await setDoc(userDocRef, {
         uid,
         name,
         email,

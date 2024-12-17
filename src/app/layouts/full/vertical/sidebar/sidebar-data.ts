@@ -9,6 +9,12 @@ export const navItems: NavItem[] = [
     iconName: 'solar:people-nearby-bold-duotone',
     route: '/clients', // Caminho correto para a página de clientes
   },
+  {
+    displayName: 'Projetos',
+    iconName: 'solar:bill-list-bold-duotone',
+    route: '/projects', // Caminho correto para a página de clientes
+  },
+  // <iconify-icon icon="solar:bill-list-bold-duotone" width="24" height="24"></iconify-icon>
   // {
   //   displayName: 'Analytical',
   //   iconName: 'solar:screencast-2-linear',

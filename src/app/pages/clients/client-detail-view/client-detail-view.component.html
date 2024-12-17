@@ -52,16 +52,14 @@
               </ng-container>
 
               <!-- Adicione a Coluna: Senha -->
-              <ng-container matColumnDef="password">
+              <!-- <ng-container matColumnDef="password">
                 <th mat-header-cell *matHeaderCellDef>Senha</th>
                 <td mat-cell *matCellDef="let user">
                   <div class="d-flex align-items-center">
-                    <!-- Mostra senha ou '****' com base no estado -->
                     <span>{{
                       visiblePasswords[user.id] ? user.password : "****"
                     }}</span>
 
-                    <!-- Botão para alternar visibilidade -->
                     <button
                       mat-icon-button
                       (click)="togglePasswordVisibility(user.id)"
@@ -78,7 +76,7 @@
                     </button>
                   </div>
                 </td>
-              </ng-container>
+              </ng-container> -->
 
               <!-- Coluna: Ações -->
               <ng-container matColumnDef="actions">

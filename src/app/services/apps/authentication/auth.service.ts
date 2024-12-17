@@ -7,6 +7,8 @@ import {
   browserSessionPersistence,
   sendPasswordResetEmail,
   signOut,
+  reload,
+  User,
 } from '@angular/fire/auth';
 import { doc, Firestore, getDoc } from '@angular/fire/firestore';
 
@@ -57,13 +59,47 @@ export class AuthService {
 
   async getCurrentUserRole(): Promise<string | null> {
     try {
-      const user = this.auth.currentUser;
-      if (user) {
-        const docRef = doc(this.firestore, `users/${user.uid}`);
-        const docSnap = await getDoc(docRef);
-        return docSnap.exists() ? (docSnap.data()['role'] as string) : null;
+      let user: User | null = this.auth.currentUser;
+
+      // Recarrega o usuário autenticado se for nulo
+      if (!user) {
+        console.warn(
+          'Nenhum usuário autenticado encontrado. Tentando reload...'
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Espera pequena para garantir sincronização
+        user = this.auth.currentUser;
+
+        if (user) {
+          await reload(user); // Usa o método reload no objeto do tipo User
+        } else {
+          console.warn(
+            'Usuário ainda não autenticado após tentativa de reload.'
+          );
+          return null;
+        }
       }
-      return null;
+
+      console.log('Usuário UID:', user.uid); // Confirme o UID no log
+
+      const docRef = doc(this.firestore, `users/${user.uid}`);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        console.error(
+          `Documento do usuário com UID ${user.uid} não encontrado.`
+        );
+        return null;
+      }
+
+      const data = docSnap.data();
+      console.log('Dados do Firestore:', data);
+
+      if (data && data['role']) {
+        return data['role'] as string;
+      } else {
+        console.warn(`Campo "role" ausente no documento do usuário.`);
+        return null;
+      }
     } catch (error) {
       console.error('Erro ao obter papel do usuário:', error);
       return null;

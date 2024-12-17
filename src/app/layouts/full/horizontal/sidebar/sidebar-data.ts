@@ -9,6 +9,11 @@ export const navItems: NavItem[] = [
     iconName: 'people',
     route: '/clients', // Caminho correto para a página de clientes
   },
+  {
+    displayName: 'Projetos',
+    iconName: 'people',
+    route: '/projects', // Caminho correto para a página de clientes
+  },
   //   children: [
   //     {
   //       displayName: 'Analytical',

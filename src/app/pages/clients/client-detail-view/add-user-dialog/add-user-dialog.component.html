@@ -73,8 +73,8 @@
     <mat-form-field appearance="outline" class="w-100">
       <mat-label>Papel</mat-label>
       <mat-select formControlName="role">
-        <mat-option value="admin">Administrador</mat-option>
-        <mat-option value="user">Usuário</mat-option>
+        <mat-option value="admin_client">Administrador</mat-option>
+        <mat-option value="user_client">Usuário</mat-option>
       </mat-select>
       <mat-error *ngIf="form.get('role')?.touched && form.get('role')?.invalid">
         O papel é obrigatório.

@@ -60,7 +60,7 @@ export const routes: Routes = [
             (m) => m.ProjectsRoutes
           ),
         canActivate: [AuthGuard],
-        data: { role: 'project_manager' },
+        data: { role: 'admin_client' },
       },
       {
         path: 'reports',
