@@ -32,8 +32,7 @@
             "styles": [
               "src/styles.scss",
               "src/assets/scss/style.scss",
-              "node_modules/angular-calendar/css/angular-calendar.css",
-              "node_modules/@ckeditor/ckeditor5-build-classic/build/ckeditor.css"
+              "node_modules/angular-calendar/css/angular-calendar.css"
             ],
             "scripts": []
           },

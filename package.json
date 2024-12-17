@@ -21,8 +21,6 @@
     "@angular/platform-browser": "^18.0.3",
     "@angular/platform-browser-dynamic": "^18.0.3",
     "@angular/router": "^18.0.3",
-    "@ckeditor/ckeditor5-angular": "^9.1.0",
-    "@ckeditor/ckeditor5-build-classic": "^44.1.0",
     "@kolkov/angular-editor": "^2.1.0",
     "@ng-matero/extensions": "^17.0.0",
     "@ngx-translate/core": "^14.0.0",
