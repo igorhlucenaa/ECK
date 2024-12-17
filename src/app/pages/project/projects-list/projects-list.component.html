@@ -56,12 +56,22 @@
           mat-icon-button
           color="accent"
           (click)="goToProjectUsers(project.id)"
+          matTooltip="Usuários do projeto"
         >
           <mat-icon>group</mat-icon>
         </button>
         <button
           mat-icon-button
           color="primary"
+          matTooltip="Templates de E-mail"
+          (click)="goToProjectTemplates(project.id)"
+        >
+          <mat-icon>mail</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          color="primary"
+          matTooltip="Editar Projeto"
           (click)="openProjectForm(project.id)"
         >
           <mat-icon>edit</mat-icon>
@@ -70,6 +80,7 @@
           mat-icon-button
           color="warn"
           (click)="deleteProject(project.id)"
+          matTooltip="Excluir Projeto"
         >
           <mat-icon>delete</mat-icon>
         </button>

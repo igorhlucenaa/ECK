@@ -1,0 +1,77 @@
+<div class="container">
+  <mat-card>
+    <mat-card-title>Templates de E-mail</mat-card-title>
+    <mat-card-content>
+      <!-- Campo de Busca -->
+      <mat-form-field appearance="outline" class="w-100 my-3">
+        <mat-label>Buscar</mat-label>
+        <input
+          matInput
+          (keyup)="applyFilter($event)"
+          placeholder="Digite para buscar"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          *ngIf="dataSource.filter"
+          (click)="applyFilter($event)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <!-- Tabela de Templates -->
+      <table
+        mat-table
+        [dataSource]="dataSource"
+        matSort
+        class="mat-elevation-z8 w-100"
+      >
+        <!-- Nome -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+          <td mat-cell *matCellDef="let template">{{ template.name }}</td>
+        </ng-container>
+
+        <!-- Assunto -->
+        <ng-container matColumnDef="subject">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Assunto</th>
+          <td mat-cell *matCellDef="let template">{{ template.subject }}</td>
+        </ng-container>
+
+        <!-- Ações -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Ações</th>
+          <td mat-cell *matCellDef="let template">
+            <button
+              mat-icon-button
+              color="primary"
+              (click)="editTemplate(template.id)"
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              color="warn"
+              (click)="deleteTemplate(template.id)"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+
+      <!-- Paginação -->
+      <mat-paginator [pageSize]="5" [pageSizeOptions]="[5, 10, 20]">
+      </mat-paginator>
+
+      <!-- Botão para criar novo template -->
+      <button mat-flat-button color="primary" (click)="createTemplate()">
+        Novo Template
+      </button>
+    </mat-card-content>
+  </mat-card>
+</div>

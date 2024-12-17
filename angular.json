@@ -18,7 +18,9 @@
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
             "allowedCommonJsDependencies": [
-              "bezier-easing", "apexcharts", "jszip"
+              "bezier-easing",
+              "apexcharts",
+              "jszip"
             ],
             "outputPath": "dist/Materialpro",
             "index": "src/index.html",
@@ -30,7 +32,8 @@
             "styles": [
               "src/styles.scss",
               "src/assets/scss/style.scss",
-              "node_modules/angular-calendar/css/angular-calendar.css"
+              "node_modules/angular-calendar/css/angular-calendar.css",
+              "node_modules/@ckeditor/ckeditor5-build-classic/build/ckeditor.css"
             ],
             "scripts": []
           },
