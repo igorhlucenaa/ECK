@@ -14,14 +14,21 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { AddClientDialogComponent } from '../add-client-dialog/add-client-dialog.component';
 import { PhonePipe } from 'src/app/pipe/phone.pipe';
 import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
 @Component({
   selector: 'app-clients-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, RouterModule, PhonePipe, CnpjPipe],
+  imports: [
+    CommonModule,
+    MaterialModule,
+    RouterModule,
+    PhonePipe,
+    CnpjPipe,
+    RouterModule,
+  ],
   templateUrl: './clients-list.component.html',
   styleUrls: ['./clients-list.component.scss'],
 })
@@ -46,7 +53,8 @@ export class ClientsListComponent implements OnInit {
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private router: Router
   ) {}
 
   ngOnInit() {
@@ -68,6 +76,7 @@ export class ClientsListComponent implements OnInit {
         this.dataSource.paginator = this.paginator;
         this.dataSource.sort = this.sort;
 
+        console.log(this.dataSource.data)
         this.dataSource.filterPredicate = (data, filter) => {
           const dataStr =
             `${data.companyName} ${data.email} ${data.phone} ${data.sector} ${data.cnpj}`
@@ -134,5 +143,10 @@ export class ClientsListComponent implements OnInit {
 
   toggleRow(client: any) {
     this.expandedElement = this.expandedElement === client ? null : client;
+  }
+
+  redirectToDetails(clientId: string) {
+    // Redireciona para a rota de detalhes do cliente
+    this.router.navigate([`/clients/${clientId}`]);
   }
 }

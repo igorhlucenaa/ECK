@@ -47,3 +47,35 @@ td {
   font-weight: bold;
   text-align: center;
 }
+
+.hoverable-rows tr.clickable-row {
+  cursor: pointer; /* Muda o cursor para indicar clique */
+  transition: background-color 0.2s ease-in-out; /* Suaviza a transição */
+}
+
+.hoverable-rows tr.clickable-row:hover {
+  background-color: #e3f2fd; /* Muda o fundo ao passar o mouse */
+}
+
+table.hoverable-rows tr.clickable-row:hover {
+  background-color: #e3f2fd !important;
+  cursor: pointer !important;
+}
+
+.demo-table {
+  width: 100%;
+}
+
+.mat-mdc-row .mat-mdc-cell {
+  border-bottom: 1px solid transparent;
+  border-top: 1px solid transparent;
+  cursor: pointer;
+}
+
+.mat-mdc-row:hover .mat-mdc-cell {
+  border-color: currentColor;
+}
+
+.demo-row-is-clicked {
+  font-weight: bold;
+}

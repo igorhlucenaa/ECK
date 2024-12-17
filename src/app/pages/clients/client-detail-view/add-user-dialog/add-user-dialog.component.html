@@ -1,0 +1,96 @@
+<h1 mat-dialog-title>Adicionar Usuário</h1>
+<div mat-dialog-content>
+  <form [formGroup]="form">
+    <!-- Campo: Nome -->
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Nome</mat-label>
+      <input matInput formControlName="name" placeholder="Digite o nome" />
+      <mat-error *ngIf="form.get('name')?.touched && form.get('name')?.invalid">
+        O nome é obrigatório.
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Campo: E-mail -->
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>E-mail</mat-label>
+      <input matInput formControlName="email" placeholder="Digite o e-mail" />
+      <mat-error
+        *ngIf="form.get('email')?.touched && form.get('email')?.invalid"
+      >
+        <span *ngIf="form.get('email')?.errors?.['required']"
+          >O e-mail é obrigatório.</span
+        >
+        <span *ngIf="form.get('email')?.errors?.['email']"
+          >Por favor, insira um e-mail válido.</span
+        >
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Campo: Senha -->
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Senha</mat-label>
+      <input
+        matInput
+        [type]="passwordFieldType"
+        formControlName="password"
+        placeholder="Digite a senha"
+      />
+      <!-- Botão para alternar a visibilidade -->
+      <button
+        mat-icon-button
+        matSuffix
+        (click)="togglePasswordVisibility()"
+        [attr.aria-label]="passwordVisible ? 'Ocultar senha' : 'Revelar senha'"
+        [attr.title]="passwordVisible ? 'Ocultar senha' : 'Revelar senha'"
+      >
+        <mat-icon>{{
+          passwordVisible ? "visibility_off" : "visibility"
+        }}</mat-icon>
+      </button>
+      <!-- Botão para gerar senha aleatória -->
+      <button
+        mat-icon-button
+        matSuffix
+        (click)="generateRandomPassword()"
+        title="Gerar senha aleatória"
+        aria-label="Gerar senha aleatória"
+      >
+        <mat-icon>autorenew</mat-icon>
+      </button>
+      <mat-error
+        *ngIf="form.get('password')?.touched && form.get('password')?.invalid"
+      >
+        <span *ngIf="form.get('password')?.errors?.['required']"
+          >A senha é obrigatória.</span
+        >
+        <span *ngIf="form.get('password')?.errors?.['minlength']"
+          >A senha deve ter pelo menos 6 caracteres.</span
+        >
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Campo: Papel (role) -->
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Papel</mat-label>
+      <mat-select formControlName="role">
+        <mat-option value="admin">Administrador</mat-option>
+        <mat-option value="user">Usuário</mat-option>
+      </mat-select>
+      <mat-error *ngIf="form.get('role')?.touched && form.get('role')?.invalid">
+        O papel é obrigatório.
+      </mat-error>
+    </mat-form-field>
+  </form>
+</div>
+<div mat-dialog-actions>
+  <button mat-button (click)="close()">Cancelar</button>
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="form.invalid || isSubmitting"
+    (click)="submit()"
+  >
+    <span *ngIf="isSubmitting">Salvando...</span>
+    <span *ngIf="!isSubmitting">Salvar</span>
+  </button>
+</div>
