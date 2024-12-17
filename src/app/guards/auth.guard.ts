@@ -24,7 +24,6 @@ export class AuthGuard implements CanActivate {
 
     try {
       const userRole = await this.authService.getCurrentUserRole();
-      console.log(userRole)
       // console.log('Papel do usuário:', userRole);
 
       if (!requiredRole || userRole === requiredRole) {

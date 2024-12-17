@@ -1,0 +1,55 @@
+/* Estilização da tabela */
+.table-responsive {
+  overflow-x: auto;
+}
+
+/* Estilo geral para inputs dentro da tabela */
+table.mat-table input[matInput] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.23);
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+/* Focus nos inputs */
+table.mat-table input[matInput]:focus {
+  border-color: #3f51b5; /* Azul padrão do Material */
+  box-shadow: 0 0 2px #3f51b5;
+}
+
+/* Espaçamento entre linhas para manter harmonia */
+table.mat-table tr {
+  height: auto;
+}
+
+/* Ajuste para botões de ações */
+table.mat-table button[mat-icon-button] {
+  margin: 0 4px;
+}
+
+/* Estilo para inputs dentro da linha nova */
+table.mat-table tr.new-row {
+  background-color: #f5f5f5; /* Fundo sutilmente diferente */
+}
+
+table.mat-table tr.new-row input[matInput] {
+  background-color: #fff; /* Fundo branco nos inputs */
+  border: 1px solid #ddd;
+}
+
+/* Botão de adicionar usuário */
+.mt-3.text-end button {
+  margin-top: 16px;
+}
+
+/* Ajuste de responsividade nos inputs */
+@media (max-width: 768px) {
+  table.mat-table input[matInput] {
+    font-size: 12px;
+    padding: 6px;
+  }
+}

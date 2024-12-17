@@ -50,7 +50,6 @@ export class AuthService {
     try {
       await this.auth.setPersistence(browserSessionPersistence); // Redefine persistência
       await signOut(this.auth); // Realiza logout
-      console.log('Usuário deslogado com persistência redefinida.');
     } catch (error) {
       console.error('Erro no logout:', error);
       throw error;
@@ -79,8 +78,6 @@ export class AuthService {
         }
       }
 
-      console.log('Usuário UID:', user.uid); // Confirme o UID no log
-
       const docRef = doc(this.firestore, `users/${user.uid}`);
       const docSnap = await getDoc(docRef);
 
@@ -92,7 +89,6 @@ export class AuthService {
       }
 
       const data = docSnap.data();
-      console.log('Dados do Firestore:', data);
 
       if (data && data['role']) {
         return data['role'] as string;
@@ -102,6 +98,55 @@ export class AuthService {
       }
     } catch (error) {
       console.error('Erro ao obter papel do usuário:', error);
+      return null;
+    }
+  }
+
+  async getCurrentUserClientId(): Promise<string | null> {
+    try {
+      const user = this.auth.currentUser;
+      if (user) {
+        const docRef = doc(this.firestore, `users/${user.uid}`);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          return docSnap.data()['clientId'] || null;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Erro ao obter clientId do usuário:', error);
+      return null;
+    }
+  }
+
+  async getCurrentUserName(): Promise<string | null> {
+    try {
+      const user = this.auth.currentUser;
+      if (user) {
+        const docRef = doc(this.firestore, `users/${user.uid}`);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          return docSnap.data()['name'] || null;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Erro ao obter nome do usuário:', error);
+      return null;
+    }
+  }
+
+  async getCurrentUserEmail(): Promise<string | null> {
+    try {
+      const user = this.auth.currentUser;
+      if (user) {
+        return user.email;
+      }
+      return null;
+    } catch (error) {
+      console.error('Erro ao obter o e-mail do usuário:', error);
       return null;
     }
   }

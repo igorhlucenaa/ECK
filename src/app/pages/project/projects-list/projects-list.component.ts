@@ -15,6 +15,7 @@ import { MatSort } from '@angular/material/sort';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 @Component({
   selector: 'app-projects-list',
@@ -27,7 +28,8 @@ export class ProjectsListComponent implements OnInit {
   displayedColumns: string[] = ['name', 'budget', 'deadline', 'actions'];
   dataSource = new MatTableDataSource<any>();
   searchValue: string = ''; // Campo de busca
-
+  currentUser: any;
+  clientId: any;
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -35,11 +37,16 @@ export class ProjectsListComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
-    this.loadProjects();
+    this.authService.getCurrentUserClientId().then((res) => {
+      console.log(res);
+      this.clientId = res;
+      this.loadProjects();
+    }); // Método que você vai criar
   }
 
   private async loadProjects(): Promise<void> {
@@ -52,7 +59,7 @@ export class ProjectsListComponent implements OnInit {
         id: doc.id,
         ...doc.data(),
       }));
-
+      console.log(projects);
       this.dataSource.data = projects;
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
@@ -99,10 +106,30 @@ export class ProjectsListComponent implements OnInit {
   }
 
   openProjectForm(projectId?: string): void {
-    if (projectId) {
-      this.router.navigate([`/projects/${projectId}/edit`]);
-    } else {
-      this.router.navigate(['/projects/new']);
+    console.log(this.clientId);
+    if (!this.clientId) {
+      this.snackBar.open(
+        'Cliente não identificado. Contate o suporte.',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
+      return;
     }
+
+    if (projectId) {
+      this.router.navigate([`/projects/${projectId}/edit`], {
+        queryParams: { clientId: this.clientId },
+      });
+    } else {
+      this.router.navigate(['/projects/new'], {
+        queryParams: { clientId: this.clientId },
+      });
+    }
+  }
+
+  goToProjectUsers(projectId: string): void {
+    this.router.navigate([`/projects/${projectId}/users`]);
   }
 }

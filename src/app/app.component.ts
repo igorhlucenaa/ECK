@@ -14,7 +14,6 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     // Verifica o estado de autenticação ao inicializar o app
     this.auth.onAuthStateChanged((user: User | null) => {
-      console.log(user)
       if (user) {
         // Se o usuário estiver autenticado, redirecione para a página principal
         this.router.navigate(['/starter']);

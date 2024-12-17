@@ -3,16 +3,19 @@ import { NavItem } from './nav-item/nav-item';
 export const navItems: NavItem[] = [
   {
     navCap: 'Personal',
+    role: 'any', // Visível para todos
   },
   {
     displayName: 'Clientes',
     iconName: 'solar:people-nearby-bold-duotone',
     route: '/clients', // Caminho correto para a página de clientes
+    role: 'admin_master',
   },
   {
     displayName: 'Projetos',
     iconName: 'solar:bill-list-bold-duotone',
-    route: '/projects', // Caminho correto para a página de clientes
+    route: '/projects', // Caminho correto para a página de clientes,
+    role: 'admin_client',
   },
   // <iconify-icon icon="solar:bill-list-bold-duotone" width="24" height="24"></iconify-icon>
   // {

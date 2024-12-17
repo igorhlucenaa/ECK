@@ -4,6 +4,7 @@ import {
   EventEmitter,
   Input,
   ViewEncapsulation,
+  OnInit,
 } from '@angular/core';
 import { CoreService } from 'src/app/services/core.service';
 import { MatDialog } from '@angular/material/dialog';
@@ -16,6 +17,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgScrollbarModule } from 'ngx-scrollbar';
 import { BrandingComponent } from '../sidebar/branding.component';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 interface notifications {
   id: number;
@@ -60,11 +62,18 @@ interface quicklinks {
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [RouterModule, CommonModule, NgScrollbarModule, TablerIconsModule, MaterialModule, BrandingComponent],
+  imports: [
+    RouterModule,
+    CommonModule,
+    NgScrollbarModule,
+    TablerIconsModule,
+    MaterialModule,
+    BrandingComponent,
+  ],
   templateUrl: './header.component.html',
   encapsulation: ViewEncapsulation.None,
 })
-export class HeaderComponent {
+export class HeaderComponent implements OnInit {
   [x: string]: any;
   @Input() showToggle = true;
   @Input() toggleChecked = false;
@@ -104,16 +113,28 @@ export class HeaderComponent {
       icon: '/assets/images/flag/icon-flag-de.svg',
     },
   ];
+  userName: string | null = null;
+  userEmail: string | null = null;
 
   constructor(
     private settings: CoreService,
     private vsidenav: CoreService,
     public dialog: MatDialog,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private authService: AuthService
   ) {
     translate.setDefaultLang('en');
   }
 
+  ngOnInit(): void {
+    this.authService.getCurrentUserName().then((name) => {
+      this.userName = name;
+    });
+
+    this.authService.getCurrentUserEmail().then((email) => {
+      this.userEmail = email;
+    });
+  }
   options = this.settings.getOptions();
 
   setDark() {
@@ -220,32 +241,32 @@ export class HeaderComponent {
   ];
 
   profiledd: profiledd[] = [
-    {
-      id: 1,
-      title: 'My Profile',
-      link: '/',
-    },
-    {
-      id: 2,
-      title: 'My Projects',
-      link: '/',
-    },
-    {
-      id: 3,
-      title: 'Inbox',
-      new: true,
-      link: '/',
-    },
-    {
-      id: 4,
-      title: ' Mode',
-      link: '/',
-    },
-    {
-      id: 5,
-      title: ' Account Settings',
-      link: '/',
-    },
+    // {
+    //   id: 1,
+    //   title: 'My Profile',
+    //   link: '/',
+    // },
+    // {
+    //   id: 2,
+    //   title: 'My Projects',
+    //   link: '/',
+    // },
+    // {
+    //   id: 3,
+    //   title: 'Inbox',
+    //   new: true,
+    //   link: '/',
+    // },
+    // {
+    //   id: 4,
+    //   title: ' Mode',
+    //   link: '/',
+    // },
+    // {
+    //   id: 5,
+    //   title: ' Account Settings',
+    //   link: '/',
+    // },
     {
       id: 6,
       title: 'Sign Out',
@@ -361,12 +382,7 @@ export class HeaderComponent {
 @Component({
   selector: 'search-dialog',
   standalone: true,
-  imports: [
-    RouterModule,
-    MaterialModule,
-    TablerIconsModule,
-    FormsModule
-  ],
+  imports: [RouterModule, MaterialModule, TablerIconsModule, FormsModule],
   templateUrl: 'search-dialog.component.html',
 })
 export class AppSearchDialogComponent {
