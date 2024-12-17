@@ -71,6 +71,14 @@
         <button
           mat-icon-button
           color="primary"
+          matTooltip="Questionários"
+          (click)="goToProjectQuestionnaires(project.id)"
+        >
+          <mat-icon>assignment</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          color="primary"
           matTooltip="Editar Projeto"
           (click)="openProjectForm(project.id)"
         >

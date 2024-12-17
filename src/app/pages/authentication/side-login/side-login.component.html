@@ -5,15 +5,17 @@
         <a [routerLink]="['/starter']">
           <img
             *ngIf="options.theme === 'light'"
-            src="./assets/images/logos/dark-logo.svg"
+            src="./assets/images/logos/eck-consulting.svg"
             class="align-middle m-2"
+            style="max-width: 135px"
             alt="logo"
           />
           <img
             *ngIf="options.theme === 'dark'"
-            src="./assets/images/logos/light-logo.svg"
+            src="./assets/images/logos/eck-consulting.svg"
             class="align-middle m-2"
             alt="logo"
+            style="max-width: 135px"
           />
         </a>
         <div
@@ -91,7 +93,7 @@
               </mat-form-field>
 
               <!-- Checkbox e link de recuperação -->
-              <div class="d-flex align-items-center m-b-12">
+              <!-- <div class="d-flex align-items-center m-b-12">
                 <mat-checkbox formControlName="rememberMe" color="primary"
                   >Lembrar-me</mat-checkbox
                 >
@@ -101,7 +103,7 @@
                 >
                   Esqueceu a senha?
                 </a>
-              </div>
+              </div> -->
 
               <!-- Botão de envio -->
               <button
@@ -120,7 +122,7 @@
               {{ errorMessage }}
             </p>
 
-            <span class="d-block f-w-500 d-block m-t-24"
+            <!-- <span class="d-block f-w-500 d-block m-t-24"
               >Novo por aqui?
               <a
                 [routerLink]="['/register']"
@@ -128,7 +130,7 @@
               >
                 Crie uma conta
               </a>
-            </span>
+            </span> -->
           </div>
         </div>
       </div>

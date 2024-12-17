@@ -5,6 +5,9 @@ import { AuthGuard } from 'src/app/guards/auth.guard';
 import { ProjectUsersComponent } from './project-users/project-users.component';
 import { EmailTemplateListComponent } from './email-template-list/email-template-list.component';
 import { EmailTemplateFormComponent } from './email-template-list/email-template-form/email-template-form.component';
+import { QuestionnaireListComponent } from './questionnaire-list/questionnaire-list.component';
+import { QuestionnaireFormComponent } from './questionnaire-list/questionnaire-form/questionnaire-form.component';
+import { QuestionnairePreviewComponent } from './questionnaire-list/preview-questionnaire/preview-questionnaire.component';
 
 export const ProjectsRoutes: Routes = [
   {
@@ -46,6 +49,30 @@ export const ProjectsRoutes: Routes = [
   {
     path: ':id/templates/:templateId/edit',
     component: EmailTemplateFormComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'admin_client' },
+  },
+  {
+    path: ':id/questionnaires',
+    component: QuestionnaireListComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'admin_client' }, // Apenas admin_client pode visualizar os questionários
+  },
+  {
+    path: ':id/questionnaires/new',
+    component: QuestionnaireFormComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'admin_client' }, // Apenas admin_client pode criar questionários
+  },
+  {
+    path: ':id/questionnaires/:questionnaireId/edit',
+    component: QuestionnaireFormComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'admin_client' }, // Apenas admin_client pode editar questionários
+  },
+  {
+    path: ':id/questionnaires/:questionnaireId/preview',
+    component: QuestionnairePreviewComponent,
     canActivate: [AuthGuard],
     data: { role: 'admin_client' },
   },

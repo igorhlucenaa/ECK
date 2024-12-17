@@ -136,4 +136,8 @@ export class ProjectsListComponent implements OnInit {
   goToProjectTemplates(projectId: string): void {
     this.router.navigate([`/projects/${projectId}/templates`]);
   }
+
+  goToProjectQuestionnaires(projectId: string): void {
+    this.router.navigate([`/projects/${projectId}/questionnaires`]);
+  }
 }

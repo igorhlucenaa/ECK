@@ -1,6 +1,12 @@
 {
   "hosting": {
     "site": "eck360",
-    "public": "dist/Materialpro"
+    "public": "dist/Materialpro",
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }

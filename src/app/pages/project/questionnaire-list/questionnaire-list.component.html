@@ -1,0 +1,89 @@
+<div class="container my-4">
+  <mat-card>
+    <mat-card-title style="margin: 20px 20px 5px"
+      >Questionários do Projeto</mat-card-title
+    >
+    <mat-card-content>
+      <!-- Campo de Busca -->
+      <mat-form-field appearance="outline" class="w-100 my-3">
+        <mat-label>Buscar</mat-label>
+        <input
+          matInput
+          (keyup)="applyFilter($event)"
+          placeholder="Digite para buscar"
+        />
+      </mat-form-field>
+
+      <!-- Tabela -->
+      <table
+        mat-table
+        [dataSource]="dataSource"
+        class="mat-elevation-z8 w-100"
+        matSort
+      >
+        <!-- Nome -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+          <td mat-cell *matCellDef="let questionnaire">
+            {{ questionnaire.name }}
+          </td>
+        </ng-container>
+
+        <!-- Data de Criação -->
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Criado em</th>
+          <td mat-cell *matCellDef="let questionnaire">
+            {{ questionnaire.createdAt?.toDate() | date : "short" }}
+          </td>
+        </ng-container>
+
+        <!-- Ações -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Ações</th>
+          <td mat-cell *matCellDef="let questionnaire">
+            <button
+              mat-icon-button
+              color="accent"
+              matTooltip="Pré-visualizar Questionário"
+              (click)="previewQuestionnaire(questionnaire.id)"
+            >
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              color="primary"
+              matTooltip="Editar Questionário"
+              (click)="editQuestionnaire(questionnaire.id)"
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              color="warn"
+              matTooltip="Excluir Questionário"
+              (click)="deleteQuestionnaire(questionnaire.id)"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+
+      <!-- Paginação -->
+      <mat-paginator
+        [pageSize]="5"
+        [pageSizeOptions]="[5, 10, 20]"
+      ></mat-paginator>
+
+      <!-- Botão para criar novo questionário -->
+      <div class="mt-3 text-end">
+        <button mat-flat-button color="primary" (click)="createQuestionnaire()">
+          Novo Questionário
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

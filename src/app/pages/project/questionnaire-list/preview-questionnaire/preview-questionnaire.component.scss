@@ -1,0 +1,23 @@
+.container {
+  margin: 16px;
+  height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.questionnaire-card {
+  width: 100%;
+  max-width: 900px;
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.questionnaire-content {
+  margin-top: 16px;
+  font-size: 16px;
+  line-height: 1.6;
+}
