@@ -20,6 +20,7 @@ import { AppHorizontalHeaderComponent } from './horizontal/header/header.compone
 import { AppHorizontalSidebarComponent } from './horizontal/sidebar/sidebar.component';
 import { AppBreadcrumbComponent } from './shared/breadcrumb/breadcrumb.component';
 import { CustomizerComponent } from './shared/customizer/customizer.component';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 const MOBILE_VIEW = 'screen and (max-width: 768px)';
 const TABLET_VIEW = 'screen and (min-width: 769px) and (max-width: 1024px)';
@@ -76,6 +77,7 @@ export class FullComponent implements OnInit {
   private isContentWidthFixed = true;
   private isCollapsedWidthFixed = false;
   private htmlElement!: HTMLHtmlElement;
+  userRole: string | null = null;
 
   get isOver(): boolean {
     return this.isMobileScreen;
@@ -193,7 +195,8 @@ export class FullComponent implements OnInit {
     private mediaMatcher: MediaMatcher,
     private router: Router,
     private breakpointObserver: BreakpointObserver,
-    private navService: NavService
+    private navService: NavService,
+    private authService: AuthService
   ) {
     this.htmlElement = document.querySelector('html')!;
     this.layoutChangesSubscription = this.breakpointObserver
@@ -220,7 +223,16 @@ export class FullComponent implements OnInit {
     //   });
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.authService.getCurrentUserRole().then((res) => {
+      this.userRole = res;
+      console.log('Role do usuário:', res);
+      console.log(
+        'Itens filtrados:',
+        this.navItems.filter((item) => item.role === res || item.role === 'any')
+      );
+    });
+  }
 
   ngOnDestroy() {
     this.layoutChangesSubscription.unsubscribe();

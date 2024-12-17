@@ -1,0 +1,97 @@
+<div class="container my-4">
+  <mat-card>
+    <mat-card-title style="padding: 20px 20px 5px"
+      >Usuários do Projeto</mat-card-title
+    >
+    <mat-card-content>
+      <div class="table-responsive">
+        <table
+          mat-table
+          [dataSource]="dataSource"
+          class="mat-elevation-z8 w-100"
+        >
+          <!-- Nome -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Nome</th>
+            <td mat-cell *matCellDef="let user">
+              <input
+                matInput
+                [(ngModel)]="user.name"
+                placeholder="Nome"
+                *ngIf="user.isNew"
+              />
+              <span *ngIf="!user.isNew">{{ user.name }}</span>
+            </td>
+          </ng-container>
+
+          <!-- E-mail -->
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>E-mail</th>
+            <td mat-cell *matCellDef="let user">
+              <input
+                matInput
+                [(ngModel)]="user.email"
+                placeholder="E-mail"
+                *ngIf="user.isNew"
+              />
+              <span *ngIf="!user.isNew">{{ user.email }}</span>
+            </td>
+          </ng-container>
+
+          <!-- CPF -->
+          <ng-container matColumnDef="cpf">
+            <th mat-header-cell *matHeaderCellDef>CPF</th>
+            <td mat-cell *matCellDef="let user">
+              <input
+                matInput
+                [(ngModel)]="user.cpf"
+                placeholder="CPF"
+                *ngIf="user.isNew"
+              />
+              <span *ngIf="!user.isNew">{{ user.cpf | cpf }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Ações -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Ações</th>
+            <td mat-cell *matCellDef="let user">
+              <button
+                mat-icon-button
+                color="primary"
+                (click)="saveUser(user)"
+                *ngIf="user.isNew"
+              >
+                <mat-icon>save</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="deleteUser(user.id)"
+                *ngIf="!user.isNew"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <!-- Linhas -->
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <!-- <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr> -->
+          <tr
+            mat-row
+            *matRowDef="let user; columns: displayedColumns"
+            [class.new-row]="user.isNew"
+          ></tr>
+        </table>
+      </div>
+
+      <!-- Botão Adicionar Novo Usuário -->
+      <div class="mt-3 text-end">
+        <button mat-flat-button color="primary" (click)="addNewUser()">
+          Adicionar Usuário
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

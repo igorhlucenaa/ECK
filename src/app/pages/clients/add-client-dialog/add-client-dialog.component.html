@@ -1,0 +1,189 @@
+<h2 mat-dialog-title>Cadastrar Cliente</h2>
+<mat-dialog-content>
+  <form [formGroup]="form">
+    <!-- Informações Básicas -->
+    <h3>Informações da Empresa</h3>
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Razão Social</mat-label>
+      <input
+        matInput
+        formControlName="corporateName"
+        placeholder="Digite a razão social"
+      />
+      <mat-error
+        *ngIf="
+          form.get('corporateName')?.touched &&
+          form.get('corporateName')?.invalid
+        "
+      >
+        <div *ngIf="form.get('corporateName')?.errors?.['required']">
+          Razão social é obrigatória.
+        </div>
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Nome Fantasia</mat-label>
+      <input
+        matInput
+        formControlName="companyName"
+        placeholder="Digite o nome fantasia"
+      />
+      <mat-error
+        *ngIf="
+          form.get('companyName')?.touched && form.get('companyName')?.invalid
+        "
+      >
+        <div *ngIf="form.get('companyName')?.errors?.['required']">
+          O nome fantasia é obrigatório.
+        </div>
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>CNPJ</mat-label>
+      <input
+        [mask]="cnpjMask"
+        matInput
+        formControlName="cnpj"
+        placeholder="Digite o CNPJ"
+      />
+      <mat-error *ngIf="form.get('cnpj')?.touched && form.get('cnpj')?.invalid">
+        <div *ngIf="form.get('cnpj')?.errors?.['required']">
+          O CNPJ é obrigatório.
+        </div>
+        <div *ngIf="form.get('cnpj')?.errors?.['pattern']">
+          Formato inválido. Ex: 12.345.678/0001-00
+        </div>
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>E-mail</mat-label>
+      <input
+        matInput
+        formControlName="email"
+        placeholder="Digite o e-mail da empresa"
+      />
+      <mat-error
+        *ngIf="form.get('email')?.touched && form.get('email')?.invalid"
+      >
+        <div *ngIf="form.get('email')?.errors?.['required']">
+          O e-mail é obrigatório.
+        </div>
+        <div *ngIf="form.get('email')?.errors?.['email']">
+          Insira um e-mail válido.
+        </div>
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Telefone</mat-label>
+      <input
+        [mask]="'(00) 00000-0000'"
+        matInput
+        formControlName="phone"
+        placeholder="Digite o telefone da empresa"
+      />
+      <mat-error
+        *ngIf="form.get('phone')?.touched && form.get('phone')?.invalid"
+      >
+        <div *ngIf="form.get('phone')?.errors?.['required']">
+          O telefone é obrigatório.
+        </div>
+        <div *ngIf="form.get('phone')?.errors?.['pattern']">
+          Formato inválido. Ex: (99) 99999-9999
+        </div>
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Endereço</mat-label>
+      <input
+        matInput
+        formControlName="address"
+        placeholder="Digite o endereço"
+      />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Setor</mat-label>
+      <input matInput formControlName="sector" placeholder="Digite o setor" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Créditos</mat-label>
+      <input
+        matInput
+        type="number"
+        formControlName="credits"
+        placeholder="Digite os créditos iniciais"
+      />
+    </mat-form-field>
+
+    <!-- Informações do Representante -->
+    <h3>Informações do Representante</h3>
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Nome</mat-label>
+      <input
+        matInput
+        formControlName="representativeName"
+        placeholder="Digite o nome do representante"
+      />
+      <mat-error
+        *ngIf="
+          form.get('representativeName')?.touched &&
+          form.get('representativeName')?.invalid
+        "
+      >
+        <div *ngIf="form.get('representativeName')?.errors?.['required']">
+          O nome do representante é obrigatório.
+        </div>
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Função</mat-label>
+      <input
+        matInput
+        formControlName="representativeRole"
+        placeholder="Digite a função do representante"
+      />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>E-mail</mat-label>
+      <input
+        matInput
+        formControlName="representativeEmail"
+        placeholder="Digite o e-mail do representante"
+      />
+      <mat-error
+        *ngIf="
+          form.get('representativeEmail')?.touched &&
+          form.get('representativeEmail')?.invalid
+        "
+      >
+        <div *ngIf="form.get('representativeEmail')?.errors?.['required']">
+          O e-mail do representante é obrigatório.
+        </div>
+        <div *ngIf="form.get('representativeEmail')?.errors?.['email']">
+          Insira um e-mail válido.
+        </div>
+      </mat-error>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button color="warn" (click)="close()">Cancelar</button>
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="isSubmitting || form.invalid"
+    (click)="submit()"
+  >
+    <span *ngIf="isSubmitting">Salvando...</span>
+    <span *ngIf="!isSubmitting">Salvar</span>
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,81 @@
+.client-list-container {
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.custom-table {
+  width: 100%;
+}
+
+.mat-header-cell {
+  font-weight: bold;
+}
+
+.mat-row:hover {
+  background-color: #f5f5f5;
+}
+
+.expanded-row {
+  background-color: #f9f9f9;
+}
+
+.expanded-content {
+  padding: 16px;
+  font-size: 14px;
+  color: #555;
+}
+.actions-cell button {
+  margin: 0 4px; /* Espaçamento lateral entre os botões */
+}
+
+.mat-header-cell,
+.mat-cell {
+  vertical-align: middle; /* Alinha o conteúdo verticalmente */
+}
+
+.mat-row,
+.mat-header-row {
+  height: 48px; /* Define uma altura fixa para todas as linhas */
+}
+
+td {
+  font-size: 12px;
+}
+
+.credit-cell {
+  font-weight: bold;
+  text-align: center;
+}
+
+.hoverable-rows tr.clickable-row {
+  cursor: pointer; /* Muda o cursor para indicar clique */
+  transition: background-color 0.2s ease-in-out; /* Suaviza a transição */
+}
+
+.hoverable-rows tr.clickable-row:hover {
+  background-color: #e3f2fd; /* Muda o fundo ao passar o mouse */
+}
+
+table.hoverable-rows tr.clickable-row:hover {
+  background-color: #e3f2fd !important;
+  cursor: pointer !important;
+}
+
+.demo-table {
+  width: 100%;
+}
+
+.mat-mdc-row .mat-mdc-cell {
+  border-bottom: 1px solid transparent;
+  border-top: 1px solid transparent;
+  cursor: pointer;
+}
+
+.mat-mdc-row:hover .mat-mdc-cell {
+  border-color: currentColor;
+}
+
+.demo-row-is-clicked {
+  font-weight: bold;
+}

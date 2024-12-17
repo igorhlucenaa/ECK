@@ -1,0 +1,6 @@
+{
+  "hosting": {
+    "site": "eck360",
+    "public": "dist/Materialpro"
+  }
+}

@@ -18,7 +18,9 @@
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
             "allowedCommonJsDependencies": [
-              "bezier-easing", "apexcharts", "jszip"
+              "bezier-easing",
+              "apexcharts",
+              "jszip"
             ],
             "outputPath": "dist/Materialpro",
             "index": "src/index.html",

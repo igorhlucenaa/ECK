@@ -25,6 +25,7 @@ import { MaterialModule } from './material.module';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CalendarModule, DateAdapter } from 'angular-calendar';
 import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
+import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 
 export function HttpLoaderFactory(http: HttpClient): any {
   return new TranslateHttpLoader(http, './assets/i18n/', '.json');
@@ -73,5 +74,6 @@ export const appConfig: ApplicationConfig = {
         },
       })
     ),
+    provideNgxMask(),
   ],
 };

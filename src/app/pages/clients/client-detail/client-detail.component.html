@@ -1,0 +1,93 @@
+<mat-card *ngIf="!isLoading" class="client-detail-container">
+    <h1 class="mb-4">Detalhes do Cliente</h1>
+  
+    <form [formGroup]="clientForm" (ngSubmit)="saveChanges()">
+      <!-- Linha 1: Nome Fantasia e Email -->
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nome Fantasia</mat-label>
+            <input matInput formControlName="companyName" />
+          </mat-form-field>
+        </div>
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Email</mat-label>
+            <input matInput formControlName="email" />
+          </mat-form-field>
+        </div>
+      </div>
+  
+      <!-- Linha 2: Telefone e CNPJ -->
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Telefone</mat-label>
+            <input matInput formControlName="phone" />
+          </mat-form-field>
+        </div>
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>CNPJ</mat-label>
+            <input matInput formControlName="cnpj" />
+          </mat-form-field>
+        </div>
+      </div>
+  
+      <!-- Linha 3: Setor e Notas -->
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Setor</mat-label>
+            <input matInput formControlName="sector" />
+          </mat-form-field>
+        </div>
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Notas Adicionais</mat-label>
+            <textarea matInput formControlName="notes"></textarea>
+          </mat-form-field>
+        </div>
+      </div>
+  
+      <h2 class="mt-4 mb-4">Dados do Representante</h2>
+  
+      <!-- Linha 4: Nome e Email do Representante -->
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nome do Representante</mat-label>
+            <input matInput formControlName="representativeName" />
+          </mat-form-field>
+        </div>
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Email do Representante</mat-label>
+            <input matInput formControlName="representativeEmail" />
+          </mat-form-field>
+        </div>
+      </div>
+  
+      <!-- Linha 5: Função do Representante -->
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Função do Representante</mat-label>
+            <input matInput formControlName="representativeRole" />
+          </mat-form-field>
+        </div>
+      </div>
+  
+      <!-- Botão de Salvar -->
+      <div class="row mt-4">
+        <div class="col text-right">
+          <button mat-flat-button color="primary" type="submit" [disabled]="clientForm.invalid">
+            Salvar Alterações
+          </button>
+        </div>
+      </div>
+    </form>
+  </mat-card>
+  
+  <mat-spinner *ngIf="isLoading"></mat-spinner>
+  

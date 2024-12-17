@@ -3,62 +3,129 @@
     <div class="col-lg-7 col-xl-8 bg-gredient p-0">
       <div class="p-24 h-100">
         <a [routerLink]="['/starter']">
-          <img *ngIf="options.theme === 'light'" src="./assets/images/logos/dark-logo.svg" class="align-middle m-2" alt="logo" />
-          <img *ngIf="options.theme === 'dark'" src="./assets/images/logos/light-logo.svg" class="align-middle m-2" alt="logo" />
+          <img
+            *ngIf="options.theme === 'light'"
+            src="./assets/images/logos/dark-logo.svg"
+            class="align-middle m-2"
+            alt="logo"
+          />
+          <img
+            *ngIf="options.theme === 'dark'"
+            src="./assets/images/logos/light-logo.svg"
+            class="align-middle m-2"
+            alt="logo"
+          />
         </a>
-        <div class="align-items-center justify-content-center img-height d-none d-lg-flex">
-          <img src="/assets/images/backgrounds/login-bg.png" alt="Tela de login" style="max-width: 500px" />
+        <div
+          class="align-items-center justify-content-center img-height d-none d-lg-flex"
+        >
+          <img
+            src="/assets/images/backgrounds/login-bg.png"
+            alt="Tela de login"
+            style="max-width: 500px"
+          />
         </div>
       </div>
     </div>
     <div class="col-lg-5 col-xl-4 p-0">
-      <div class="p-32 d-flex align-items-start align-items-lg-center justify-content-center h-100">
+      <div
+        class="p-32 d-flex align-items-start align-items-lg-center justify-content-center h-100"
+      >
         <div class="row justify-content-center w-100">
           <div class="col-lg-9 max-width-form">
             <h4 class="f-w-700 f-s-24 m-0">Bem-vindo!</h4>
-            <span class="f-s-14 d-block mat-body-1 m-t-8">Por favor, faça login para continuar</span>
+            <span class="f-s-14 d-block mat-body-1 m-t-8"
+              >Por favor, faça login para continuar</span
+            >
 
             <form class="m-t-30" [formGroup]="form" (ngSubmit)="submit()">
               <!-- Campo de e-mail -->
-              <mat-label class="mat-subtitle-2 f-s-14 f-w-600 m-b-12 d-block">E-mail</mat-label>
-              <mat-form-field appearance="outline" class="w-100" color="primary">
-                <input matInput formControlName="uname" placeholder="Digite seu e-mail" />
+              <mat-label class="mat-subtitle-2 f-s-14 f-w-600 m-b-12 d-block"
+                >E-mail</mat-label
+              >
+              <mat-form-field
+                appearance="outline"
+                class="w-100"
+                color="primary"
+              >
+                <input
+                  matInput
+                  formControlName="uname"
+                  placeholder="Digite seu e-mail"
+                />
                 <mat-error *ngIf="f['uname'].touched && f['uname'].invalid">
-                  <div *ngIf="f['uname'].errors?.['required']">O e-mail é obrigatório.</div>
-                  <div *ngIf="f['uname'].errors?.['email']">Por favor, insira um e-mail válido.</div>
+                  <div *ngIf="f['uname'].errors?.['required']">
+                    O e-mail é obrigatório.
+                  </div>
+                  <div *ngIf="f['uname'].errors?.['email']">
+                    Por favor, insira um e-mail válido.
+                  </div>
                 </mat-error>
               </mat-form-field>
 
               <!-- Campo de senha -->
-              <mat-label class="mat-subtitle-2 f-s-14 f-w-600 m-b-12 d-block">Senha</mat-label>
-              <mat-form-field appearance="outline" class="w-100" color="primary">
-                <input matInput type="password" formControlName="password" placeholder="Digite sua senha" />
-                <mat-error *ngIf="f['password'].touched && f['password'].invalid">
-                  <div *ngIf="f['password'].errors?.['required']">A senha é obrigatória.</div>
-                  <div *ngIf="f['password'].errors?.['minlength']">A senha deve ter pelo menos 6 caracteres.</div>
+              <mat-label class="mat-subtitle-2 f-s-14 f-w-600 m-b-12 d-block"
+                >Senha</mat-label
+              >
+              <mat-form-field
+                appearance="outline"
+                class="w-100"
+                color="primary"
+              >
+                <input
+                  matInput
+                  type="password"
+                  formControlName="password"
+                  placeholder="Digite sua senha"
+                />
+                <mat-error
+                  *ngIf="f['password'].touched && f['password'].invalid"
+                >
+                  <div *ngIf="f['password'].errors?.['required']">
+                    A senha é obrigatória.
+                  </div>
+                  <div *ngIf="f['password'].errors?.['minlength']">
+                    A senha deve ter pelo menos 6 caracteres.
+                  </div>
                 </mat-error>
               </mat-form-field>
 
               <!-- Checkbox e link de recuperação -->
               <div class="d-flex align-items-center m-b-12">
-                <mat-checkbox color="primary">Lembrar-me</mat-checkbox>
-                <a [routerLink]="['/forgot-password']" class="text-primary f-w-600 text-decoration-none m-l-auto f-s-14">
+                <mat-checkbox formControlName="rememberMe" color="primary"
+                  >Lembrar-me</mat-checkbox
+                >
+                <a
+                  [routerLink]="['/forgot-password']"
+                  class="text-primary f-w-600 text-decoration-none m-l-auto f-s-14"
+                >
                   Esqueceu a senha?
                 </a>
               </div>
 
               <!-- Botão de envio -->
-              <button mat-flat-button color="primary" class="w-100" [disabled]="!form.valid || isLoading">
+              <button
+                mat-flat-button
+                color="primary"
+                class="w-100"
+                [disabled]="!form.valid || isLoading"
+              >
                 <span *ngIf="isLoading">Carregando...</span>
                 <span *ngIf="!isLoading">Entrar</span>
               </button>
             </form>
 
             <!-- Mensagem de erro -->
-            <p class="text-error m-t-12" *ngIf="errorMessage">{{ errorMessage }}</p>
+            <p class="text-error m-t-12" *ngIf="errorMessage">
+              {{ errorMessage }}
+            </p>
 
-            <span class="d-block f-w-500 d-block m-t-24">Novo por aqui?
-              <a [routerLink]="['/register']" class="text-decoration-none text-primary f-w-500 f-s-14">
+            <span class="d-block f-w-500 d-block m-t-24"
+              >Novo por aqui?
+              <a
+                [routerLink]="['/register']"
+                class="text-decoration-none text-primary f-w-500 f-s-14"
+              >
                 Crie uma conta
               </a>
             </span>
