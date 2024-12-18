@@ -1,6 +1,11 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { Component } from '@angular/core';
-import { Firestore, addDoc, collection, serverTimestamp } from '@angular/fire/firestore';
+import {
+  Firestore,
+  addDoc,
+  collection,
+  serverTimestamp,
+} from '@angular/fire/firestore';
 import {
   FormGroup,
   FormControl,
@@ -57,7 +62,8 @@ export class AddClientDialogComponent {
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private dialogRef: MatDialogRef<AddClientDialogComponent>
+    private dialogRef: MatDialogRef<AddClientDialogComponent>,
+    private location: Location
   ) {}
 
   get cnpjMask() {
@@ -117,5 +123,9 @@ export class AddClientDialogComponent {
       password += charset.charAt(Math.floor(Math.random() * charset.length));
     }
     return password;
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

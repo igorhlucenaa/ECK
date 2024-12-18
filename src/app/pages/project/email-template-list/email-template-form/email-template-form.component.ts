@@ -19,7 +19,7 @@ import {
   AngularEditorConfig,
   AngularEditorModule,
 } from '@kolkov/angular-editor';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 
 @Component({
@@ -60,7 +60,8 @@ export class EmailTemplateFormComponent implements OnInit {
     private firestore: Firestore,
     private route: ActivatedRoute,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private location: Location
   ) {
     this.form = this.fb.group({
       name: ['', Validators.required],
@@ -143,5 +144,9 @@ export class EmailTemplateFormComponent implements OnInit {
     if (this.projectId) {
       this.router.navigate(['/projects', this.projectId, 'templates']);
     }
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

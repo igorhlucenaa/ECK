@@ -20,7 +20,8 @@
             "allowedCommonJsDependencies": [
               "bezier-easing",
               "apexcharts",
-              "jszip"
+              "jszip",
+              "tinymce"
             ],
             "outputPath": "dist/Materialpro",
             "index": "src/index.html",
@@ -28,7 +29,15 @@
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "assets": ["src/favicon.ico", "src/assets"],
+            "assets": [
+              "src/favicon.ico",
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "node_modules/tinymce/",
+                "output": "assets/tinymce/"
+              }
+            ],
             "styles": [
               "src/styles.scss",
               "src/assets/scss/style.scss",

@@ -9,7 +9,7 @@ import {
 } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 
 @Component({
   selector: 'app-client-detail',
@@ -27,7 +27,8 @@ export class ClientDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private firestore: Firestore,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private location: Location
   ) {}
 
   ngOnInit(): void {
@@ -108,5 +109,9 @@ export class ClientDetailComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

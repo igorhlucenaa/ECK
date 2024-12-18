@@ -15,7 +15,7 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 
 @Component({
@@ -48,7 +48,8 @@ export class ProjectDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private firestore: Firestore,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private location: Location
   ) {}
 
   ngOnInit(): void {
@@ -145,5 +146,9 @@ export class ProjectDetailComponent implements OnInit {
 
   cancel() {
     this.router.navigate(['/projects']);
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

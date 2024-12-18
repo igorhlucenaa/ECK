@@ -9,7 +9,7 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { Auth, createUserWithEmailAndPassword } from '@angular/fire/auth';
 
 @Component({
@@ -39,7 +39,8 @@ export class AddUserDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: { clientId: string }, // Dados passados para o modal
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private auth: Auth
+    private auth: Auth,
+    private location: Location
   ) {
     console.log('Client ID recebido:', data.clientId);
   }
@@ -107,5 +108,9 @@ export class AddUserDialogComponent {
 
   close() {
     this.dialogRef.close(false);
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

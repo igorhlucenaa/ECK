@@ -10,7 +10,7 @@ import {
 } from '@angular/fire/firestore';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { ReactiveFormsModule } from '@angular/forms';
 import { EditorModule } from '@tinymce/tinymce-angular';
@@ -32,35 +32,23 @@ export class QuestionnaireFormComponent implements OnInit {
     height: 500,
     menubar: true,
     plugins: [
-      'advlist autolink lists link image charmap print preview anchor',
-      'searchreplace visualblocks code fullscreen',
-      'insertdatetime media table paste code help wordcount',
-      'image',
+      'advlist autolink lists link image charmap preview anchor',
+      'searchreplace visualblocks code fullscreen insertdatetime media table help wordcount',
     ],
     toolbar:
       'undo redo | formatselect | bold italic backcolor | ' +
       'alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | ' +
       'customCheckbox customRadio customTextArea image | removeformat | help',
-    image_title: true,
-    automatic_uploads: true,
-    file_picker_types: 'image',
-    file_picker_callback: (callback: any, value: any, meta: any) => {
-      const input = document.createElement('input');
-      input.setAttribute('type', 'file');
-      input.setAttribute('accept', 'image/*');
-      input.onchange = function () {
-        const file = input.files![0];
-        const reader = new FileReader();
-        reader.onload = function () {
-          const base64 = reader.result as string;
-          callback(base64, { title: file.name });
-        };
-        reader.readAsDataURL(file);
-      };
-      input.click();
+    external_plugins: {
+      print: '/assets/tinymce/plugins/print/plugin.min.js',
+      paste: '/assets/tinymce/plugins/paste/plugin.min.js',
     },
+    base_url: '/assets/tinymce', // Caminho base para o TinyMCE
+    suffix: '.min',
+    skin_url: '/assets/tinymce/skins/ui/oxide',
+    content_css: '/assets/tinymce/skins/content/default/content.min.css',
     setup: (editor: any) => {
-      // Adicionar botão de Checkbox
+      // Custom Buttons
       editor.ui.registry.addButton('customCheckbox', {
         text: 'Checkbox',
         tooltip: 'Inserir Checkbox',
@@ -71,7 +59,6 @@ export class QuestionnaireFormComponent implements OnInit {
         },
       });
 
-      // Adicionar botão de Radio Button
       editor.ui.registry.addButton('customRadio', {
         text: 'Radio Button',
         tooltip: 'Inserir Radio Button',
@@ -82,7 +69,6 @@ export class QuestionnaireFormComponent implements OnInit {
         },
       });
 
-      // Adicionar botão de Text Area
       editor.ui.registry.addButton('customTextArea', {
         text: 'Text Area',
         tooltip: 'Inserir Text Area',
@@ -100,7 +86,8 @@ export class QuestionnaireFormComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private location: Location
   ) {
     this.questionnaireForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
@@ -195,5 +182,9 @@ export class QuestionnaireFormComponent implements OnInit {
 
   cancel(): void {
     this.router.navigate([`/projects/${this.projectId}/questionnaires`]);
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

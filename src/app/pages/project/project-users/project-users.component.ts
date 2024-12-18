@@ -14,7 +14,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CpfPipe } from 'src/app/pipe/cpf.pipe';
 
@@ -35,7 +35,8 @@ export class ProjectUsersComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private firestore: Firestore,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private location: Location
   ) {}
 
   ngOnInit(): void {
@@ -138,5 +139,9 @@ export class ProjectUsersComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+  
+  goBack(): void {
+    this.location.back();
   }
 }
