@@ -12,7 +12,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 
 @Component({
@@ -34,7 +34,8 @@ export class EmailTemplateListComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private location: Location
   ) {}
 
   ngOnInit(): void {
@@ -132,5 +133,9 @@ export class EmailTemplateListComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

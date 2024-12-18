@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MaterialModule } from 'src/app/material.module';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 
 @Component({
   selector: 'app-questionnaire-preview',
@@ -21,7 +21,8 @@ export class QuestionnairePreviewComponent implements OnInit {
   constructor(
     private firestore: Firestore,
     private route: ActivatedRoute,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private location: Location
   ) {}
 
   ngOnInit(): void {
@@ -51,5 +52,9 @@ export class QuestionnairePreviewComponent implements OnInit {
     } catch (error) {
       console.error('Erro ao carregar questionário:', error);
     }
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

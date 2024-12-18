@@ -13,7 +13,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { Router } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
@@ -38,7 +38,8 @@ export class ProjectsListComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router,
     private dialog: MatDialog,
-    private authService: AuthService
+    private authService: AuthService,
+    private location: Location
   ) {}
 
   ngOnInit(): void {
@@ -139,5 +140,9 @@ export class ProjectsListComponent implements OnInit {
 
   goToProjectQuestionnaires(projectId: string): void {
     this.router.navigate([`/projects/${projectId}/questionnaires`]);
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

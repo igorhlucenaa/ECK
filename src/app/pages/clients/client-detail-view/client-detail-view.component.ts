@@ -14,7 +14,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { AddUserDialogComponent } from './add-user-dialog/add-user-dialog.component';
 import { PhonePipe } from 'src/app/pipe/phone.pipe';
 
@@ -39,7 +39,8 @@ export class ClientDetailsViewComponent implements OnInit {
     private route: ActivatedRoute,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private location: Location
   ) {}
 
   ngOnInit(): void {
@@ -120,5 +121,9 @@ export class ClientDetailsViewComponent implements OnInit {
     this.snackBar.open('Usuário excluído com sucesso!', 'Fechar', {
       duration: 3000,
     });
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }
