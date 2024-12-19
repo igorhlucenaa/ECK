@@ -1,0 +1,29 @@
+.container {
+  max-width: 800px;
+  margin: auto;
+}
+
+.mat-card {
+  padding: 20px;
+}
+
+.color-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.color-picker {
+  width: 50px;
+  height: 30px;
+  border: none;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.color-list .color-preview {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  margin-right: 10px;
+}

@@ -1,0 +1,86 @@
+<div class="container my-4">
+  <mat-card>
+    <mat-card-title class="mb-4" style="margin: 10px">
+      Personalização do Cliente
+    </mat-card-title>
+    <mat-card-content>
+      <form [formGroup]="customizationForm" (ngSubmit)="saveCustomization()">
+        <!-- Nome -->
+        <div class="form-group">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Nome da Organização</mat-label>
+            <input
+              matInput
+              formControlName="name"
+              placeholder="Digite o nome da organização"
+            />
+            <mat-error
+              *ngIf="customizationForm.get('name')?.hasError('required')"
+            >
+              O nome é obrigatório.
+            </mat-error>
+            <mat-error
+              *ngIf="customizationForm.get('name')?.hasError('minlength')"
+            >
+              O nome deve ter pelo menos 3 caracteres.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Upload da Logo -->
+        <div class="form-group mt-3" style="margin: 7px 0px 7px">
+          <mat-label>Logo da Organização</mat-label>
+          <input
+            type="file"
+            class="form-control"
+            (change)="onFileChange($event)"
+          />
+          <div class="preview mt-2" *ngIf="logoPreview">
+            <img [src]="logoPreview" alt="Preview da Logo" width="150" />
+          </div>
+        </div>
+
+        <!-- Gerenciamento de Cor Única -->
+        <div class="form-group mt-4" style="margin: 7px 0px 7px">
+          <mat-label>Cor do Tema</mat-label>
+          <div class="color-container mt-2 d-flex">
+            <input
+              type="color"
+              matInput
+              #colorPicker
+              [value]="selectedColor || '#000000'"
+              (input)="updatePrimaryColor(colorPicker.value)"
+              class="form-control color-picker"
+            />
+            <div
+              class="color-preview ml-3"
+              [style.backgroundColor]="selectedColor"
+              title="{{ selectedColor }}"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Botões -->
+        <div class="form-group mt-4 text-end">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            style="margin-right: 7px"
+          >
+            Salvar Personalização
+          </button>
+          <button
+            mat-flat-button
+            color="warn"
+            type="button"
+            (click)="cancel()"
+            class="ml-2"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

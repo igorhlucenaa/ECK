@@ -6,59 +6,39 @@
   top: $header-height !important;
   overflow-x: hidden;
   border-right: 0;
-  box-shadow: 0 3px 4px 0 rgba(0, 0, 0, .03), 0 0 1px 0 rgba(0, 0, 0, .1);
+  box-shadow: 0 3px 4px 0 rgba(0, 0, 0, 0.03), 0 0 1px 0 rgba(0, 0, 0, 0.1);
 
   .mat-drawer-inner-container {
     overflow: hidden;
   }
 }
 
-
-
-// user profile
 .user-profile {
   position: relative;
-  background-size: cover !important;
-
-  .profile-img {
-    width: 50px;
-    margin-left: 30px;
-    padding: 32px 0;
-    border-radius: 100%;
-
-    &::before {
-      -webkit-animation: 2.5s blow 0s linear infinite;
-      animation: 2.5s blow 0s linear infinite;
-      position: absolute;
-      content: "";
-      width: 50px;
-      height: 50px;
-      top: 31px;
-      margin: 0 auto;
-      border-radius: 50%;
-      z-index: 0;
-    }
-
-    img {
-      width: 100%;
-      border-radius: 100%;
-    }
-  }
+  background-size: contain !important;
+  background-position: center top !important; // Alinha a logo ao topo
+  background-repeat: no-repeat !important;
+  height: 200px; // Altura da seção do perfil
+  display: flex;
+  flex-direction: column; // Organiza os elementos em coluna
+  align-items: center;
+  justify-content: flex-end; // Posiciona o texto na parte inferior
+  padding-bottom: 20px; // Espaçamento inferior para o texto
 
   .profile-text {
+    width: 100%;
+    text-align: center;
+    border-radius: 0px;
     position: relative;
     cursor: pointer;
+    text-align: center; // Centraliza o texto horizontalmente
+    background: rgba(0, 0, 0, 0.5);
+    padding: 6px 20px;
+    border-radius: 10px; // Adiciona bordas arredondadas ao fundo do texto
+    white-space: nowrap;
 
-    >a {
-      padding: 6px 20px;
-      background: rgba(0, 0, 0, 0.5);
-      white-space: nowrap;
-
-      &:after {
-        position: absolute;
-        right: 20px;
-        top: 20px;
-      }
+    > a {
+      color: white; // Garante que o texto seja visível
     }
   }
 }
@@ -115,7 +95,6 @@
         .mdc-list-item__content {
           display: none;
         }
-
       }
     }
 
@@ -153,7 +132,6 @@
 
           .mdc-list-item__start {
             margin-left: 0 !important;
-
           }
         }
 
@@ -197,7 +175,6 @@
   }
 }
 
-
 @media (min-width: 1024px) {
   .sidebarNav-mini {
     .contentWrapper {
@@ -232,7 +209,6 @@
       .caption-text {
         display: inline;
       }
-
     }
 
     .menu-list-item {
@@ -254,7 +230,6 @@
       }
 
       &:hover {
-
         .mdc-list-item__start,
         .mdc-list-item__primary-text {
           color: $accent;

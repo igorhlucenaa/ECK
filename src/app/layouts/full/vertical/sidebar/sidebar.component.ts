@@ -1,37 +1,21 @@
-import {
-  Component,
-  EventEmitter,
-  Input,
-  OnInit,
-  Output,
-  ViewChild,
-} from '@angular/core';
-import { BrandingComponent } from './branding.component';
-import { NgIf } from '@angular/common';
-import { TablerIconsModule } from 'angular-tabler-icons';
-import { MaterialModule } from 'src/app/material.module';
-import { RouterModule } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [
-    BrandingComponent,
-    NgIf,
-    TablerIconsModule,
-    MaterialModule,
-    RouterModule,
-    MatButtonModule,
-  ],
+  imports: [CommonModule],
   templateUrl: './sidebar.component.html',
 })
 export class SidebarComponent implements OnInit {
   userRole: string | null = null;
   userName: string | null = null;
+  logo: string | null = null;
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private firestore: Firestore) {}
+
   @Input() showToggle = true;
   @Output() toggleMobileNav = new EventEmitter<void>();
   @Output() toggleCollapsed = new EventEmitter<void>();
@@ -42,5 +26,26 @@ export class SidebarComponent implements OnInit {
       this.userName = name;
       console.log('Nome do usuário:', name);
     });
+
+    // Obter a logo do cliente
+    this.authService.getCurrentUserClientId().then((clientId) => {
+      if (clientId) {
+        this.loadClientLogo(clientId);
+      }
+    });
+  }
+
+  private async loadClientLogo(clientId: string): Promise<void> {
+    try {
+      const clientDoc = doc(this.firestore, `clients/${clientId}`);
+      const clientSnap = await getDoc(clientDoc);
+
+      if (clientSnap.exists()) {
+        this.logo = clientSnap.data()['logo'] || null;
+        console.log('Logo carregada:', this.logo);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar a logo do cliente:', error);
+    }
   }
 }
