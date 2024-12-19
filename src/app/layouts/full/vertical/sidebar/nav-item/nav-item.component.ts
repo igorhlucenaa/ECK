@@ -57,7 +57,7 @@ export class AppNavItemComponent implements OnChanges {
   }
 
   ngOnChanges() {
-    const url = this.navService.currentUrl(); 
+    const url = this.navService.currentUrl();
     if (this.item.route && url) {
       this.expanded = url.indexOf(`/${this.item.route}`) === 0;
       this.ariaExpanded = this.expanded;
@@ -66,27 +66,39 @@ export class AppNavItemComponent implements OnChanges {
 
   onItemSelected(item: NavItem) {
     if (!item.children || !item.children.length) {
-      this.router.navigate([item.route]);
-      
+      if (item.route && item.route.includes(':id')) {
+        this.navService.getClientId().then((clientId) => {
+          console.log(clientId)
+          if (clientId) {
+            const route = item.route?.replace(':id', clientId);
+            this.router.navigate([route]);
+          } else {
+            console.error('Erro: clientId não encontrado.');
+          }
+        });
+      } else {
+        this.router.navigate([item.route]);
+      }
     }
+  
     if (item.children && item.children.length) {
       this.expanded = !this.expanded;
     }
-    //scroll
+  
     window.scroll({
       top: 0,
       left: 0,
       behavior: 'smooth',
     });
-    if (!this.expanded){
-    if (window.innerWidth < 1024) {
+  
+    if (!this.expanded && window.innerWidth < 1024) {
       this.notify.emit();
     }
   }
-  }
+  
 
   onSubItemSelected(item: NavItem) {
-    if (!item.children || !item.children.length){
+    if (!item.children || !item.children.length) {
       if (this.expanded && window.innerWidth < 1024) {
         this.notify.emit();
       }

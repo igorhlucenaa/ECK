@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { BlankComponent } from './layouts/blank/blank.component';
 import { FullComponent } from './layouts/full/full.component';
 import { AuthGuard } from './guards/auth.guard';
+import { ClientCustomizationComponent } from './pages/client-customization/client-customization.component';
 
 export const routes: Routes = [
   {
@@ -52,6 +53,12 @@ export const routes: Routes = [
           import('./pages/clients/clients.routes').then((m) => m.ClientsRoutes),
         canActivate: [AuthGuard],
         data: { role: 'admin_master' },
+      },
+      {
+        path: 'clients/:id/customization',
+        component: ClientCustomizationComponent,
+        canActivate: [AuthGuard],
+        data: { role: 'admin_client' }
       },
       {
         path: 'projects',
