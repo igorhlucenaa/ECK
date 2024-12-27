@@ -31,7 +31,7 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'starter', // Redireciona para starter como página inicial após autenticação
+        redirectTo: 'starter',
         pathMatch: 'full',
       },
       {
@@ -60,7 +60,7 @@ export const routes: Routes = [
         path: 'clients/:id/customization',
         component: ClientCustomizationComponent,
         canActivate: [AuthGuard],
-        data: { role: 'admin_client' }
+        data: { role: 'admin_client' },
       },
       {
         path: 'projects',
@@ -91,13 +91,20 @@ export const routes: Routes = [
         path: 'orders',
         component: CreditOrdersComponent,
         canActivate: [AuthGuard],
-        data: { role: 'admin_master' }, // Visível apenas para admins
+        data: { role: 'admin_master' },
       },
       {
         path: 'orders/new',
-        component: NewCreditOrderComponent, // Novo pedido
+        component: NewCreditOrderComponent,
         canActivate: [AuthGuard],
-        data: { role: 'admin_master' }, // Apenas admin master pode criar pedidos
+        data: { role: 'admin_master' },
+      },
+      {
+        path: 'users',
+        loadChildren: () =>
+          import('./pages/users/users.routes').then((m) => m.UsersRoutes),
+        canActivate: [AuthGuard],
+        data: { role: 'admin_master' }, // Apenas para Administrador Master
       },
     ],
   },

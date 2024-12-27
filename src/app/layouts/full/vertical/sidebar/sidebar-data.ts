@@ -29,6 +29,12 @@ export const navItems: NavItem[] = [
     route: '/orders', // Caminho correto para o componente de gestão de pedidos
     role: 'admin_client', // Visível apenas para clientes
   },
+  {
+    displayName: 'Usuários e Grupos',
+    iconName: 'solar:users-group-bold-duotone', // Ícone representando usuários
+    route: '/users', // Caminho correto para a página de usuários
+    role: 'admin_master', // Visível apenas para Administrador Master
+  },
   // <iconify-icon icon="solar:bill-list-bold-duotone" width="24" height="24"></iconify-icon>
   // {
   //   displayName: 'Analytical',

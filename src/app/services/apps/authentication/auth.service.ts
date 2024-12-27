@@ -9,8 +9,10 @@ import {
   signOut,
   reload,
   User,
+  user,
 } from '@angular/fire/auth';
 import { doc, Firestore, getDoc } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -227,5 +229,22 @@ export class AuthService {
     )
       .toString(16)
       .slice(1)}`;
+  }
+
+  async getCurrentUser(): Promise<{ name: string; email: string } | null> {
+    const firebaseUser = await firstValueFrom(user(this.auth));
+    if (firebaseUser) {
+      const userDocRef = doc(this.firestore, `users/${firebaseUser.uid}`);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        return {
+          name: userData['name'] || 'Usuário Desconhecido',
+          email: userData['email'] || 'Email não informado',
+        };
+      }
+    }
+    return null;
   }
 }
