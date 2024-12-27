@@ -58,7 +58,6 @@
         <mat-nav-list class="sidebar-list">
           @for(item of navItems; track item) {
           <app-nav-item
-            *ngIf="item.role === userRole || item.role === 'any'"
             [item]="item"
             (notify)="sidenav.toggle()"
           ></app-nav-item>
@@ -89,7 +88,6 @@
         <mat-nav-list class="sidebar-list">
           @for(item of navItems; track item) {
           <app-nav-item
-            *ngIf="item.role === userRole || item.role === 'any'"
             [item]="item"
             (notify)="sidenav.toggle()"
           ></app-nav-item>

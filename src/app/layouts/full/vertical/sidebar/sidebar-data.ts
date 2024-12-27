@@ -23,6 +23,12 @@ export const navItems: NavItem[] = [
     route: '/clients/:id/customization', // Caminho correto para o componente de personalização
     role: 'admin_client', // Visível apenas para clientes
   },
+  {
+    displayName: 'Pedidos',
+    iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
+    route: '/orders', // Caminho correto para o componente de gestão de pedidos
+    role: 'admin_client', // Visível apenas para clientes
+  },
   // <iconify-icon icon="solar:bill-list-bold-duotone" width="24" height="24"></iconify-icon>
   // {
   //   displayName: 'Analytical',

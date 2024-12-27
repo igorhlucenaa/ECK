@@ -24,7 +24,6 @@ export class SidebarComponent implements OnInit {
     // Obter o nome do usuário logado
     this.authService.getCurrentUserName().then((name) => {
       this.userName = name;
-      console.log('Nome do usuário:', name);
     });
 
     // Obter a logo do cliente

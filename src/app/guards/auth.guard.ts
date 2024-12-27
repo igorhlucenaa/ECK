@@ -5,7 +5,6 @@ import {
   RouterStateSnapshot,
   Router,
 } from '@angular/router';
-import { Observable } from 'rxjs';
 import { AuthService } from '../services/apps/authentication/auth.service';
 
 @Injectable({
@@ -19,20 +18,23 @@ export class AuthGuard implements CanActivate {
     state: RouterStateSnapshot
   ): Promise<boolean> {
     const requiredRole = route.data['role']; // Papel necessário para a rota
-    // console.log('Rota requisitada:', state.url);
-    // console.log('Papel necessário:', requiredRole);
 
     try {
       const userRole = await this.authService.getCurrentUserRole();
-      // console.log('Papel do usuário:', userRole);
 
+      // Garantir que o `admin_master` tenha acesso irrestrito
+      if (userRole === 'admin_master') {
+        return true; // Permitir acesso para admin_master
+      }
+
+      // Permitir acesso se o papel do usuário corresponder ao necessário
       if (!requiredRole || userRole === requiredRole) {
-        return true; // Permite acesso se o papel for válido
+        return true;
       }
 
       console.warn('Acesso negado: Redirecionando para login.');
       this.router.navigate(['/authentication/login']);
-      return false; // Bloqueia acesso se o papel não corresponder
+      return false;
     } catch (error) {
       console.error('Erro ao verificar papel do usuário:', error);
       this.router.navigate(['/authentication/login']);

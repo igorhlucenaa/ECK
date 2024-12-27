@@ -1,0 +1,42 @@
+/* Status: Pendente */
+.status-pending {
+  margin: 10px;
+  background-color: #fff4e5; /* Amarelo claro */
+  color: #ff9800; /* Amarelo escuro */
+  font-weight: bold;
+  border-radius: 4px;
+  padding: 4px 8px;
+  display: inline-block;
+}
+
+/* Status: Aprovado */
+.status-approved {
+  margin: 10px;
+  background-color: #e8f5e9; /* Verde claro */
+  color: #4caf50; /* Verde escuro */
+  font-weight: bold;
+  border-radius: 4px;
+  padding: 4px 8px;
+  display: inline-block;
+}
+
+/* Status: Rejeitado */
+.status-rejected {
+  margin: 10px;
+  background-color: #ffebee; /* Vermelho claro */
+  color: #f44336; /* Vermelho escuro */
+  font-weight: bold;
+  border-radius: 4px;
+  padding: 4px 8px;
+  display: inline-block;
+}
+
+.filters-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.filter-item {
+  flex: 1 1 200px;
+}

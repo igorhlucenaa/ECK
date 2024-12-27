@@ -3,6 +3,8 @@ import { BlankComponent } from './layouts/blank/blank.component';
 import { FullComponent } from './layouts/full/full.component';
 import { AuthGuard } from './guards/auth.guard';
 import { ClientCustomizationComponent } from './pages/client-customization/client-customization.component';
+import { CreditOrdersComponent } from './pages/credit-orders/credit-orders.component';
+import { NewCreditOrderComponent } from './pages/credit-orders/new-credit-order/new-credit-order.component';
 
 export const routes: Routes = [
   {
@@ -84,6 +86,18 @@ export const routes: Routes = [
           ),
         canActivate: [AuthGuard],
         data: { role: 'admin_account' },
+      },
+      {
+        path: 'orders',
+        component: CreditOrdersComponent,
+        canActivate: [AuthGuard],
+        data: { role: 'admin_master' }, // Visível apenas para admins
+      },
+      {
+        path: 'orders/new',
+        component: NewCreditOrderComponent, // Novo pedido
+        canActivate: [AuthGuard],
+        data: { role: 'admin_master' }, // Apenas admin master pode criar pedidos
       },
     ],
   },
