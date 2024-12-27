@@ -31,7 +31,7 @@ export const navItems: NavItem[] = [
   },
   {
     displayName: 'Usuários e Grupos',
-    iconName: 'solar:users-group-bold-duotone', // Ícone representando usuários
+    iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
     route: '/users', // Caminho correto para a página de usuários
     role: 'admin_master', // Visível apenas para Administrador Master
   },

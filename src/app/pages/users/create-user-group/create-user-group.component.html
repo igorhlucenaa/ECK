@@ -26,6 +26,32 @@
         placeholder="Descreva o grupo"
       ></textarea>
     </mat-form-field>
+
+    <!-- Cliente -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Cliente</mat-label>
+      <mat-select
+        formControlName="clientId"
+        (selectionChange)="onClientChange()"
+      >
+        <mat-option *ngFor="let client of clients" [value]="client.id">
+          {{ client.name }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="groupForm.get('clientId')?.hasError('required')">
+        O cliente é obrigatório.
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Projetos -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Projetos</mat-label>
+      <mat-select formControlName="projectIds" multiple>
+        <mat-option *ngFor="let project of projects" [value]="project.id">
+          {{ project.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
   </form>
 </div>
 <div mat-dialog-actions align="end">

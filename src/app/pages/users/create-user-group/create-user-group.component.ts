@@ -12,14 +12,18 @@ import {
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   Firestore,
   collection,
+  getDocs,
   addDoc,
   doc,
   updateDoc,
+  query,
+  where,
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
@@ -28,6 +32,8 @@ export interface UserGroup {
   id?: string; // Opcional para suportar edição
   name: string;
   description: string;
+  clientId?: string;
+  projectIds?: string[];
 }
 
 @Component({
@@ -38,6 +44,7 @@ export interface UserGroup {
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatButtonModule,
     MatSnackBarModule,
     CommonModule,
@@ -47,6 +54,8 @@ export interface UserGroup {
 })
 export class CreateUserGroupComponent implements OnInit {
   groupForm!: FormGroup;
+  clients: { id: string; name: string }[] = [];
+  projects: { id: string; name: string }[] = [];
   isEditMode: boolean = false; // Indica se o componente está no modo de edição
 
   constructor(
@@ -60,9 +69,11 @@ export class CreateUserGroupComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeForm();
+    this.loadClients();
     if (this.data) {
       this.isEditMode = true; // Ativa o modo de edição
       this.patchFormWithData();
+      this.loadProjects(this.data.clientId || null); // Carrega os projetos do cliente selecionado
     }
   }
 
@@ -70,7 +81,51 @@ export class CreateUserGroupComponent implements OnInit {
     this.groupForm = this.fb.group({
       name: ['', Validators.required],
       description: [''],
+      clientId: ['', Validators.required],
+      projectIds: [[]], // Campo múltiplo para projetos
     });
+  }
+
+  private async loadClients(): Promise<void> {
+    try {
+      const clientsCollection = collection(this.firestore, 'clients');
+      const snapshot = await getDocs(clientsCollection);
+      this.clients = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Sem Nome',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  private async loadProjects(clientId: string | null): Promise<void> {
+    if (!clientId) {
+      this.projects = [];
+      return;
+    }
+
+    try {
+      const projectsCollection = collection(this.firestore, 'projects');
+      const projectsQuery = query(
+        projectsCollection,
+        where('clientId', '==', clientId)
+      );
+      const snapshot = await getDocs(projectsQuery);
+
+      this.projects = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Sem Nome',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar projetos:', error);
+      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
+        duration: 3000,
+      });
+    }
   }
 
   private patchFormWithData(): void {
@@ -78,6 +133,8 @@ export class CreateUserGroupComponent implements OnInit {
     this.groupForm.patchValue({
       name: this.data?.name,
       description: this.data?.description,
+      clientId: this.data?.clientId,
+      projectIds: this.data?.projectIds || [],
     });
   }
 
@@ -107,8 +164,7 @@ export class CreateUserGroupComponent implements OnInit {
 
       const groupsCollection = collection(this.firestore, 'userGroups');
       await addDoc(groupsCollection, {
-        name: this.groupForm.value.name,
-        description: this.groupForm.value.description,
+        ...this.groupForm.value,
         createdBy: currentUser.name,
         createdByEmail: currentUser.email,
         createdAt: new Date(),
@@ -128,8 +184,7 @@ export class CreateUserGroupComponent implements OnInit {
     try {
       const groupDocRef = doc(this.firestore, `userGroups/${this.data?.id}`);
       await updateDoc(groupDocRef, {
-        name: this.groupForm.value.name,
-        description: this.groupForm.value.description,
+        ...this.groupForm.value,
       });
 
       this.snackBar.open('Grupo atualizado com sucesso!', 'Fechar', {
@@ -142,5 +197,10 @@ export class CreateUserGroupComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  onClientChange(): void {
+    const clientId = this.groupForm.get('clientId')?.value;
+    this.loadProjects(clientId);
   }
 }

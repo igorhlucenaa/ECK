@@ -2,13 +2,20 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { Firestore, collection, deleteDoc, doc, getDocs } from '@angular/fire/firestore';
+import {
+  Firestore,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+} from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { CreateUserGroupComponent } from './create-user-group/create-user-group.component';
+import { CreateUserComponent } from './create-user/create-user.component';
 
 export interface User {
   name: string;
@@ -68,24 +75,39 @@ export class UsersComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadUsers();
-    this.loadUserGroups();
+    this.loadData();
+  }
+
+  async loadData(): Promise<void> {
+    try {
+      await this.loadUserGroups(); // Carrega os grupos primeiro
+      await this.loadUsers(); // Depois carrega os usuários
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      this.snackBar.open('Erro ao carregar dados.', 'Fechar', {
+        duration: 3000,
+      });
+    }
   }
 
   // Carrega os dados dos usuários do Firestore
   async loadUsers(): Promise<void> {
     try {
-      const usersCollection = collection(this.firestore, 'users'); // Substitua pelo nome correto da coleção
+      const usersCollection = collection(this.firestore, 'users');
       const snapshot = await getDocs(usersCollection);
 
       const users: User[] = snapshot.docs.map((doc) => {
         const data = doc.data();
+        const groupName = this.groupDataSource.data.find(
+          (group) => group.id === data['group']
+        )?.name; // Busca o nome do grupo pelo ID
+
         return {
-          id: doc.id, // Inclua o ID se necessário
-          name: data['name'] || '', // Garanta que o campo "name" existe ou defina um valor padrão
+          id: doc.id,
+          name: data['name'] || '',
           surname: data['surname'] || '',
           email: data['email'] || '',
-          group: data['group'] || '',
+          group: groupName || 'Grupo não encontrado', // Usa o nome do grupo ou mensagem padrão
           role: data['role'] || '',
           notificationStatus: data['notificationStatus'] || 'Pendente',
         };
@@ -111,11 +133,10 @@ export class UsersComponent implements OnInit {
       const groups: UserGroup[] = snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
-          id: doc.id,
+          id: doc.id, // Inclua o ID para mapeamento
           name: data['name'] || '',
           description: data['description'] || '',
-          createdBy: data['createdBy'] || 'Desconhecido', // Nome do usuário
-          createdByEmail: data['createdByEmail'] || 'Não informado', // Email do usuário
+          createdBy: data['createdBy'] || 'Desconhecido',
         };
       });
 
@@ -150,8 +171,15 @@ export class UsersComponent implements OnInit {
 
   // Ações da tabela de usuários
   editUser(user: User): void {
-    this.snackBar.open(`Editar usuário: ${user.name}`, 'Fechar', {
-      duration: 3000,
+    const dialogRef = this.dialog.open(CreateUserComponent, {
+      width: '500px',
+      data: { user }, // Passa os dados do usuário para edição
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.loadUsers(); // Recarrega a tabela de usuários após edição
+      }
     });
   }
 
@@ -161,7 +189,7 @@ export class UsersComponent implements OnInit {
       width: '500px',
       data: group, // Passa os dados do grupo para edição
     });
-  
+
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.loadUserGroups();
@@ -206,5 +234,17 @@ export class UsersComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  openCreateUserDialog(): void {
+    const dialogRef = this.dialog.open(CreateUserComponent, {
+      width: '500px',
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.loadUsers(); // Recarrega a tabela de usuários
+      }
+    });
   }
 }

@@ -1,0 +1,77 @@
+<div mat-dialog-title>
+  {{ isEditMode ? "Editar Usuário" : "Criar Novo Usuário" }}
+</div>
+<div mat-dialog-content>
+  <form [formGroup]="userForm" (ngSubmit)="saveUser()">
+    <!-- Nome -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Nome</mat-label>
+      <input matInput formControlName="name" placeholder="Digite o nome" />
+      <mat-error *ngIf="userForm.get('name')?.hasError('required')">
+        O nome é obrigatório.
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Sobrenome -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Sobrenome</mat-label>
+      <input
+        matInput
+        formControlName="surname"
+        placeholder="Digite o sobrenome"
+      />
+      <mat-error *ngIf="userForm.get('surname')?.hasError('required')">
+        O sobrenome é obrigatório.
+      </mat-error>
+    </mat-form-field>
+
+    <!-- E-mail -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>E-mail</mat-label>
+      <input matInput formControlName="email" placeholder="Digite o e-mail" />
+      <mat-error *ngIf="userForm.get('email')?.hasError('required')">
+        O e-mail é obrigatório.
+      </mat-error>
+      <mat-error *ngIf="userForm.get('email')?.hasError('email')">
+        Digite um e-mail válido.
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Grupo -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Grupo</mat-label>
+      <mat-select formControlName="group">
+        <mat-option *ngFor="let group of groups" [value]="group.id">
+          {{ group.name }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="userForm.get('group')?.hasError('required')">
+        O grupo é obrigatório.
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Papel -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Papel</mat-label>
+      <mat-select formControlName="role">
+        <mat-option *ngFor="let role of roles" [value]="role.value">
+          {{ role.label }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="userForm.get('role')?.hasError('required')">
+        O papel é obrigatório.
+      </mat-error>
+    </mat-form-field>
+  </form>
+</div>
+<div mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancelar</button>
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="userForm.invalid"
+    (click)="saveUser()"
+  >
+    {{ isEditMode ? "Salvar Alterações" : "Criar Usuário" }}
+  </button>
+</div>

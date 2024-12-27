@@ -107,27 +107,42 @@ export class ProjectsListComponent implements OnInit {
   }
 
   openProjectForm(projectId?: string): void {
-    console.log(this.clientId);
-    if (!this.clientId) {
-      this.snackBar.open(
-        'Cliente não identificado. Contate o suporte.',
-        'Fechar',
-        {
-          duration: 3000,
-        }
-      );
-      return;
-    }
+    this.authService.getCurrentUser().then((user) => {
+      if (!user) {
+        this.snackBar.open(
+          'Erro ao obter informações do usuário. Contate o suporte.',
+          'Fechar',
+          {
+            duration: 3000,
+          }
+        );
+        return;
+      }
 
-    if (projectId) {
-      this.router.navigate([`/projects/${projectId}/edit`], {
-        queryParams: { clientId: this.clientId },
-      });
-    } else {
-      this.router.navigate(['/projects/new'], {
-        queryParams: { clientId: this.clientId },
-      });
-    }
+      if (user.role === 'admin_master') {
+        // Para admin_master, abrir o formulário sem clientId para seleção no formulário
+        this.router.navigate(
+          projectId ? [`/projects/${projectId}/edit`] : ['/projects/new']
+        );
+      } else {
+        // Para outros usuários, verificar clientId
+        if (!this.clientId) {
+          this.snackBar.open(
+            'Cliente não identificado. Contate o suporte.',
+            'Fechar',
+            {
+              duration: 3000,
+            }
+          );
+          return;
+        }
+
+        this.router.navigate(
+          projectId ? [`/projects/${projectId}/edit`] : ['/projects/new'],
+          { queryParams: { clientId: this.clientId } }
+        );
+      }
+    });
   }
 
   goToProjectUsers(projectId: string): void {
