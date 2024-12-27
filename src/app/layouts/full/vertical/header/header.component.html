@@ -117,9 +117,9 @@
   <!-- --------------------------------------------------------------- -->
   <!-- langugage Dropdown -->
   <!-- --------------------------------------------------------------- -->
-  <!-- <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">
+  <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">
     <img [src]="selectedLanguage.icon" class="rounded icon-20" />
-  </button> -->
+  </button>
   <mat-menu #flags="matMenu" class="cardWithShadow" xPosition="before">
     @for(lang of languages; track lang) {
     <button mat-menu-item (click)="changeLanguage(lang)">
