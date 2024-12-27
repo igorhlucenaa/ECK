@@ -24,6 +24,8 @@ export interface User {
   group: string;
   role: string;
   notificationStatus: 'Enviado' | 'Pendente';
+  client: string;
+  project: string
 }
 
 export interface UserGroup {
@@ -107,8 +109,11 @@ export class UsersComponent implements OnInit {
           name: data['name'] || '',
           surname: data['surname'] || '',
           email: data['email'] || '',
-          group: groupName || 'Grupo não encontrado', // Usa o nome do grupo ou mensagem padrão
+          groupName: groupName || 'Grupo não encontrado', // Usa o nome do grupo ou mensagem padrão
+          group: data['group'] || '', // Usa o nome do grupo ou mensagem padrão
           role: data['role'] || '',
+          client: data['client'] || '',
+          project: data['project'] || '',
           notificationStatus: data['notificationStatus'] || 'Pendente',
         };
       });
@@ -170,7 +175,8 @@ export class UsersComponent implements OnInit {
   }
 
   // Ações da tabela de usuários
-  editUser(user: User): void {
+  editUser(user: any): void {
+    console.log(user)
     const dialogRef = this.dialog.open(CreateUserComponent, {
       width: '500px',
       data: { user }, // Passa os dados do usuário para edição

@@ -19,6 +19,8 @@ import {
   Firestore,
   collection,
   getDocs,
+  query,
+  where,
   addDoc,
   doc,
   updateDoc,
@@ -44,6 +46,8 @@ import { CommonModule } from '@angular/common';
 })
 export class CreateUserComponent implements OnInit {
   userForm!: FormGroup;
+  clients: { id: string; name: string }[] = [];
+  projects: { id: string; name: string }[] = [];
   groups: { id: string; name: string }[] = [];
   roles = [
     { label: 'Admin Master', value: 'admin_master' },
@@ -57,19 +61,18 @@ export class CreateUserComponent implements OnInit {
     private dialogRef: MatDialogRef<CreateUserComponent>,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private auth: Auth, // Serviço para autenticação do Firebase
-    @Inject(MAT_DIALOG_DATA) public data: any // Dados para edição, se houver
+    private auth: Auth,
+    @Inject(MAT_DIALOG_DATA) public data: any
   ) {}
 
   ngOnInit(): void {
     this.initializeForm();
-    this.loadGroups();
-
-    // Verifica se é edição
-    if (this.data?.user) {
-      this.isEditMode = true;
-      this.prefillForm(this.data.user);
-    }
+    this.loadClients().then(() => {
+      if (this.data?.user) {
+        this.isEditMode = true;
+        this.prefillForm(this.data.user); // Agora carrega os valores do cliente, projeto e grupo
+      }
+    });
   }
 
   private initializeForm(): void {
@@ -77,33 +80,79 @@ export class CreateUserComponent implements OnInit {
       name: ['', Validators.required],
       surname: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
-      password: [''], // Campo adicional para senha
+      password: [''],
+      client: ['', Validators.required],
+      project: ['', Validators.required],
       group: ['', Validators.required],
       role: ['', Validators.required],
     });
   }
 
-  private prefillForm(user: any): void {
+  private async prefillForm(user: any): Promise<void> {
+    console.log(user)
+    if (user.client) {
+      console.log(user.client);
+      // Carregar projetos e grupos relacionados ao cliente antes de preencher os valores
+      await this.onClientChange(user.client);
+    }
+
     this.userForm.patchValue({
       name: user.name,
       surname: user.surname,
       email: user.email,
+      client: user.client,
+      project: user.project,
       group: user.group,
       role: user.role,
     });
   }
 
-  private async loadGroups(): Promise<void> {
+  private async loadClients(): Promise<void> {
     try {
+      const clientsCollection = collection(this.firestore, 'clients');
+      const snapshot = await getDocs(clientsCollection);
+      this.clients = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['companyName'] || 'Sem Nome',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async onClientChange(clientId: string): Promise<void> {
+    this.projects = [];
+    this.groups = [];
+    this.userForm.patchValue({ project: '', group: '' });
+
+    try {
+      const projectsCollection = collection(this.firestore, 'projects');
+      const projectsQuery = query(
+        projectsCollection,
+        where('clientId', '==', clientId)
+      );
+      const projectsSnapshot = await getDocs(projectsQuery);
+      this.projects = projectsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Sem Nome',
+      }));
+
       const groupsCollection = collection(this.firestore, 'userGroups');
-      const snapshot = await getDocs(groupsCollection);
-      this.groups = snapshot.docs.map((doc) => ({
+      const groupsQuery = query(
+        groupsCollection,
+        where('clientId', '==', clientId)
+      );
+      const groupsSnapshot = await getDocs(groupsQuery);
+      this.groups = groupsSnapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['name'] || 'Sem Nome',
       }));
     } catch (error) {
-      console.error('Erro ao carregar grupos:', error);
-      this.snackBar.open('Erro ao carregar grupos.', 'Fechar', {
+      console.error('Erro ao carregar projetos ou grupos:', error);
+      this.snackBar.open('Erro ao carregar projetos ou grupos.', 'Fechar', {
         duration: 3000,
       });
     }
@@ -115,18 +164,24 @@ export class CreateUserComponent implements OnInit {
     }
 
     try {
-      const { name, surname, email, password, group, role } =
+      const { name, surname, email, password, client, project, group, role } =
         this.userForm.value;
 
       if (this.isEditMode) {
-        // Atualizar usuário existente
         const userDoc = doc(this.firestore, `users/${this.data.user.id}`);
-        await updateDoc(userDoc, { name, surname, email, group, role });
+        await updateDoc(userDoc, {
+          name,
+          surname,
+          email,
+          client,
+          project,
+          group,
+          role,
+        });
         this.snackBar.open('Usuário atualizado com sucesso!', 'Fechar', {
           duration: 3000,
         });
       } else {
-        // Criar novo usuário no Authentication e Firestore
         const userCredential = await createUserWithEmailAndPassword(
           this.auth,
           email,
@@ -138,10 +193,12 @@ export class CreateUserComponent implements OnInit {
           name,
           surname,
           email,
+          client,
+          project,
           group,
           role,
           createdAt: new Date(),
-          uid: userCredential.user.uid, // Relaciona o UID do Firebase Auth
+          uid: userCredential.user.uid,
         });
 
         this.snackBar.open('Usuário criado com sucesso!', 'Fechar', {
