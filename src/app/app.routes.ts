@@ -94,6 +94,16 @@ export const routes: Routes = [
         data: { role: 'admin_master' },
       },
       {
+        path: 'emails-notifications',
+        loadChildren: () =>
+          import(
+            './pages/emails-notifications/emails-notifications.routes'
+          ).then((m) => m.EmailsNotificationsRoutes),
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master', 'admin_client'] },
+      },
+
+      {
         path: 'orders/new',
         component: NewCreditOrderComponent,
         canActivate: [AuthGuard],

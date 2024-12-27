@@ -1,147 +1,145 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import {
-  Firestore,
-  collection,
-  query,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  doc,
-  setDoc,
-} from '@angular/fire/firestore';
+import { Firestore, collection, getDocs } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
-import { MatPaginator } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MaterialModule } from 'src/app/material.module';
+import { MatPaginator } from '@angular/material/paginator';
+import { MatSort } from '@angular/material/sort';
+import { MatDialog } from '@angular/material/dialog';
 import { CommonModule, Location } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { CpfPipe } from 'src/app/pipe/cpf.pipe';
+import { MaterialModule } from 'src/app/material.module';
+import { UsersListByGroupComponent } from './users-list-by-group/users-list-by-group.component';
 
 @Component({
   selector: 'app-project-users',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, CpfPipe],
+  imports: [MaterialModule, CommonModule],
   templateUrl: './project-users.component.html',
   styleUrls: ['./project-users.component.scss'],
 })
 export class ProjectUsersComponent implements OnInit {
-  displayedColumns: string[] = ['name', 'email', 'cpf', 'actions'];
+  displayedColumns: string[] = [
+    'groupName',
+    'clientName',
+    'projectNames',
+    'description',
+    'actions',
+  ];
   dataSource = new MatTableDataSource<any>();
   projectId: string | null = null;
+  searchValue: string = ''; // Adicionando a propriedade de busca
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
     private route: ActivatedRoute,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
+    private dialog: MatDialog,
     private location: Location
   ) {}
 
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id');
     if (this.projectId) {
-      this.loadUsers(this.projectId);
+      this.loadGroupsWithUsers();
     }
+    this.setupFilter(); // Configurar o filtro
   }
 
-  async loadUsers(projectId: string): Promise<void> {
+  async loadGroupsWithUsers(): Promise<void> {
     try {
-      const projectUsersCollection = collection(
-        this.firestore,
-        `projects/${projectId}/users`
-      );
-      const projectUsersQuery = query(projectUsersCollection);
-      const snapshot = await getDocs(projectUsersQuery);
+      const groupsCollection = collection(this.firestore, 'userGroups');
+      const clientsCollection = collection(this.firestore, 'clients');
+      const projectsCollection = collection(this.firestore, 'projects');
 
-      const users = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
+      const [groupsSnapshot, clientsSnapshot, projectsSnapshot] =
+        await Promise.all([
+          getDocs(groupsCollection),
+          getDocs(clientsCollection),
+          getDocs(projectsCollection),
+        ]);
+
+      const clients = clientsSnapshot.docs.map((clientDoc) => ({
+        id: clientDoc.id,
+        ...(clientDoc.data() as { name: string }),
       }));
 
-      this.dataSource.data = users;
-      this.dataSource.paginator = this.paginator;
-    } catch (error) {
-      console.error('Erro ao carregar usuários do projeto:', error);
-      this.snackBar.open('Erro ao carregar usuários.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
+      const projects = projectsSnapshot.docs.map((projectDoc) => ({
+        id: projectDoc.id,
+        ...(projectDoc.data() as { name: string }),
+      }));
 
-  addNewUser(): void {
-    const newUser = { id: null, name: '', email: '', cpf: '', isNew: true };
-    this.dataSource.data = [...this.dataSource.data, newUser];
-  }
-
-  async saveUser(user: any): Promise<void> {
-    if (!user.name || !user.email || !user.cpf) {
-      this.snackBar.open('Preencha todos os campos obrigatórios!', 'Fechar', {
-        duration: 3000,
-      });
-      return;
-    }
-
-    try {
-      const projectUsersCollection = collection(
-        this.firestore,
-        `projects/${this.projectId}/users`
-      );
-      const userData = {
-        name: user.name,
-        email: user.email,
-        cpf: user.cpf,
-        createdAt: new Date(),
-      };
-
-      if (user.isNew) {
-        await addDoc(projectUsersCollection, userData);
-      } else {
-        const userDocRef = doc(
-          this.firestore,
-          `projects/${this.projectId}/users/${user.id}`
+      const groups = groupsSnapshot.docs.map((groupDoc) => {
+        const groupData = groupDoc.data();
+        const client = clients.find(
+          (client) => client.id === groupData['clientId']
         );
-        await setDoc(userDocRef, userData, { merge: true });
-      }
+        const projectNames = groupData['projectIds']
+          .map(
+            (projectId: string) =>
+              projects.find((project) => project.id === projectId)?.name
+          )
+          .filter((name: any) => !!name);
 
-      this.snackBar.open('Usuário salvo com sucesso!', 'Fechar', {
-        duration: 3000,
+        return {
+          id: groupDoc.id,
+          ...groupData,
+          clientName: client?.name || 'N/A', // Nome do cliente
+          projectNames, // Nomes dos projetos
+          users: groupData['users'] || [], // Usuários do grupo
+        };
       });
 
-      this.loadUsers(this.projectId!); // Recarrega os dados
+      this.dataSource.data = groups;
+      this.dataSource.paginator = this.paginator;
+      this.dataSource.sort = this.sort;
     } catch (error) {
-      console.error('Erro ao salvar usuário:', error);
-      this.snackBar.open('Erro ao salvar usuário.', 'Fechar', {
+      console.error('Erro ao carregar grupos, clientes e projetos:', error);
+      this.snackBar.open('Erro ao carregar dados.', 'Fechar', {
         duration: 3000,
       });
     }
   }
 
-  async deleteUser(userId: string): Promise<void> {
-    try {
-      const userDocRef = doc(
-        this.firestore,
-        `projects/${this.projectId}/users/${userId}`
-      );
-      await deleteDoc(userDocRef);
+  // Método para configurar o filtro
+  setupFilter(): void {
+    this.dataSource.filterPredicate = (data: any, filter: string): boolean => {
+      const dataStr = `
+        ${data.name} ${data.clientName} ${data.projectNames.join(',')}
+      `.toLowerCase();
+      return dataStr.includes(filter.trim().toLowerCase());
+    };
+  }
 
-      this.snackBar.open('Usuário removido com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
+  // Método para aplicar o filtro
+  applyFilter(event: Event): void {
+    const filterValue = (event.target as HTMLInputElement).value;
+    this.searchValue = filterValue; // Atualiza o valor do campo de busca
+    this.dataSource.filter = filterValue.trim().toLowerCase();
 
-      this.dataSource.data = this.dataSource.data.filter(
-        (user) => user.id !== userId
-      );
-    } catch (error) {
-      console.error('Erro ao remover usuário:', error);
-      this.snackBar.open('Erro ao remover usuário.', 'Fechar', {
-        duration: 3000,
-      });
+    if (this.dataSource.paginator) {
+      this.dataSource.paginator.firstPage();
     }
   }
-  
+
+  openUsersModal(group: any): void {
+    console.log(group);
+    this.dialog.open(UsersListByGroupComponent, {
+      width: '800px', // Define a largura do modal
+      data: {
+        groupName: group.name,
+        groupId: group.id, // Certifique-se de que group.id existe e está correto
+      },
+    });
+  }
+
   goBack(): void {
     this.location.back();
+  }
+
+  isLastProject(projects: string[], currentProject: string): boolean {
+    return projects.indexOf(currentProject) === projects.length - 1;
   }
 }

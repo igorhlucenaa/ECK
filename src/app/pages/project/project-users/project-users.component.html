@@ -7,99 +7,95 @@
       </button>
     </div>
   </div>
+
   <mat-card>
-    <mat-card-title style="padding: 20px 20px 5px"
-      >Usuários do Projeto</mat-card-title
+    <mat-card-title style="margin: 15px"
+      >Grupos e Usuários do Projeto</mat-card-title
     >
     <mat-card-content>
+      <!-- Campo de Busca -->
+      <mat-form-field appearance="outline" class="w-100 mb-3">
+        <mat-label>Buscar</mat-label>
+        <input
+          matInput
+          (keyup)="applyFilter($event)"
+          placeholder="Busque por nome, cliente ou projeto"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          *ngIf="searchValue"
+          (click)="searchValue = ''; applyFilter($event)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
       <div class="table-responsive">
         <table
           mat-table
           [dataSource]="dataSource"
+          matSort
           class="mat-elevation-z8 w-100"
         >
-          <!-- Nome -->
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Nome</th>
-            <td mat-cell *matCellDef="let user">
-              <input
-                matInput
-                [(ngModel)]="user.name"
-                placeholder="Nome"
-                *ngIf="user.isNew"
-              />
-              <span *ngIf="!user.isNew">{{ user.name }}</span>
+          <!-- Nome do Grupo -->
+          <ng-container matColumnDef="groupName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Grupo</th>
+            <td mat-cell *matCellDef="let group">{{ group.name }}</td>
+          </ng-container>
+
+          <!-- Cliente -->
+          <ng-container matColumnDef="clientName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
+            <td mat-cell *matCellDef="let group">{{ group.clientName }}</td>
+          </ng-container>
+
+          <!-- Projetos -->
+          <ng-container matColumnDef="projectNames">
+            <th mat-header-cell *matHeaderCellDef>Projetos</th>
+            <td mat-cell *matCellDef="let group">
+              <span *ngFor="let project of group.projectNames">
+                {{ project }}
+                <span *ngIf="!isLastProject(group.projectNames, project)"
+                  >,
+                </span>
+              </span>
             </td>
           </ng-container>
 
-          <!-- E-mail -->
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef>E-mail</th>
-            <td mat-cell *matCellDef="let user">
-              <input
-                matInput
-                [(ngModel)]="user.email"
-                placeholder="E-mail"
-                *ngIf="user.isNew"
-              />
-              <span *ngIf="!user.isNew">{{ user.email }}</span>
-            </td>
-          </ng-container>
-
-          <!-- CPF -->
-          <ng-container matColumnDef="cpf">
-            <th mat-header-cell *matHeaderCellDef>CPF</th>
-            <td mat-cell *matCellDef="let user">
-              <input
-                matInput
-                [(ngModel)]="user.cpf"
-                placeholder="CPF"
-                *ngIf="user.isNew"
-              />
-              <span *ngIf="!user.isNew">{{ user.cpf | cpf }}</span>
-            </td>
-          </ng-container>
-
-          <!-- Ações -->
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Ações</th>
-            <td mat-cell *matCellDef="let user">
+            <td mat-cell *matCellDef="let group">
+              <!-- Botão para abrir o modal -->
               <button
                 mat-icon-button
                 color="primary"
-                (click)="saveUser(user)"
-                *ngIf="user.isNew"
+                matTooltip="Usuários do Grupo"
+                (click)="openUsersModal(group)"
               >
-                <mat-icon>save</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                color="warn"
-                (click)="deleteUser(user.id)"
-                *ngIf="!user.isNew"
-              >
-                <mat-icon>delete</mat-icon>
+                <mat-icon>group</mat-icon>
               </button>
             </td>
           </ng-container>
 
-          <!-- Linhas -->
+          <!-- Descrição -->
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef>Descrição</th>
+            <td mat-cell *matCellDef="let group">{{ group.description }}</td>
+          </ng-container>
+
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <!-- <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr> -->
-          <tr
-            mat-row
-            *matRowDef="let user; columns: displayedColumns"
-            [class.new-row]="user.isNew"
-          ></tr>
+          <tr mat-row *matRowDef="let group; columns: displayedColumns"></tr>
         </table>
       </div>
 
-      <!-- Botão Adicionar Novo Usuário -->
-      <div class="mt-3 text-end">
-        <button mat-flat-button color="primary" (click)="addNewUser()">
-          Adicionar Usuário
-        </button>
-      </div>
+      <!-- Paginação -->
+      <mat-paginator
+        [pageSize]="5"
+        [pageSizeOptions]="[5, 10, 20]"
+        showFirstLastButtons
+      >
+      </mat-paginator>
     </mat-card-content>
   </mat-card>
 </div>

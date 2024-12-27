@@ -35,6 +35,12 @@ export const navItems: NavItem[] = [
     route: '/users', // Caminho correto para a página de usuários
     role: 'admin_master', // Visível apenas para Administrador Master
   },
+  // {
+  //   displayName: 'E-mails e Notificações',
+  //   iconName: 'solar:dialog-bold-duotone', // Ícone para representação
+  //   route: '/emails-notifications',
+  //   role: 'admin_master', // Visível para admin_master
+  // },
   // <iconify-icon icon="solar:bill-list-bold-duotone" width="24" height="24"></iconify-icon>
   // {
   //   displayName: 'Analytical',

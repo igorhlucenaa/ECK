@@ -17,7 +17,7 @@ export class AuthGuard implements CanActivate {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Promise<boolean> {
-    const requiredRole = route.data['role']; // Papel necessário para a rota
+    const requiredRole = route.data['role']; // Papel necessário para a rota (pode ser string ou array)
 
     try {
       const userRole = await this.authService.getCurrentUserRole();
@@ -27,8 +27,12 @@ export class AuthGuard implements CanActivate {
         return true; // Permitir acesso para admin_master
       }
 
-      // Permitir acesso se o papel do usuário corresponder ao necessário
-      if (!requiredRole || userRole === requiredRole) {
+      // Verificar se `requiredRole` é um array ou string e validar o acesso
+      if (Array.isArray(requiredRole)) {
+        if (requiredRole.includes(userRole)) {
+          return true;
+        }
+      } else if (requiredRole === userRole) {
         return true;
       }
 

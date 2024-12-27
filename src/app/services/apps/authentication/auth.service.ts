@@ -235,6 +235,7 @@ export class AuthService {
     name: string;
     email: string;
     role: string;
+    clientId: string;
   } | null> {
     const firebaseUser = await firstValueFrom(user(this.auth));
     if (firebaseUser) {
@@ -247,6 +248,7 @@ export class AuthService {
           name: userData['name'] || 'Usuário Desconhecido',
           email: userData['email'] || 'Email não informado',
           role: userData['role'] || 'Role não informado',
+          clientId: userData['clientId'] || 'clientId não informado',
         };
       }
     }
