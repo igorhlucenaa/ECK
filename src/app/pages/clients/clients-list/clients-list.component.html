@@ -22,30 +22,13 @@
   <table
     mat-table
     [dataSource]="dataSource"
-    class="mat-elevation-z8 custom-table hoverable-rows demo-table"
+    class="mat-elevation-z8 custom-table hoverable-rows"
     matSort
-    multiTemplateDataRows
   >
-    <!-- Coluna: Expandir -->
-    <ng-container matColumnDef="expand">
-      <th mat-header-cell *matHeaderCellDef></th>
-      <td mat-cell *matCellDef="let client">
-        <button mat-icon-button (click)="toggleRow(client)">
-          <mat-icon>{{
-            expandedElement === client ? "expand_less" : "expand_more"
-          }}</mat-icon>
-        </button>
-      </td>
-    </ng-container>
-
-    <!-- Coluna: Nome Fantasia -->
+    <!-- Coluna: Nome do Cliente -->
     <ng-container matColumnDef="companyName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome Fantasia</th>
-      <td
-        mat-cell
-        *matCellDef="let client"
-        (click)="redirectToDetails(client.id)"
-      >
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome do Cliente</th>
+      <td mat-cell *matCellDef="let client">
         {{ client.companyName }}
       </td>
     </ng-container>
@@ -53,11 +36,7 @@
     <!-- Coluna: Setor -->
     <ng-container matColumnDef="sector">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Setor</th>
-      <td
-        mat-cell
-        *matCellDef="let client"
-        (click)="redirectToDetails(client.id)"
-      >
+      <td mat-cell *matCellDef="let client">
         {{ client.sector }}
       </td>
     </ng-container>
@@ -65,74 +44,39 @@
     <!-- Coluna: CNPJ -->
     <ng-container matColumnDef="cnpj">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>CNPJ</th>
-      <td
-        mat-cell
-        *matCellDef="let client"
-        (click)="redirectToDetails(client.id)"
-      >
+      <td mat-cell *matCellDef="let client">
         {{ client.cnpj | cnpj }}
       </td>
     </ng-container>
+
+    <!-- Coluna: Créditos -->
     <ng-container matColumnDef="credits">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Créditos</th>
-      <td
-        class="credit-cell"
-        mat-cell
-        *matCellDef="let client"
-        (click)="redirectToDetails(client.id)"
-      >
+      <td mat-cell *matCellDef="let client">
         {{ client.credits }}
       </td>
     </ng-container>
 
     <!-- Coluna: Ações -->
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef class="col-1">Ações</th>
-      <td mat-cell *matCellDef="let client" class="col-1 text-center">
-        <div class="row justify-content-center align-items-center">
-          <div class="col">
-            <button
-              mat-icon-button
-              color="primary"
-              routerLink="/clients/{{ client.id }}/edit"
-            >
-              <mat-icon>edit</mat-icon>
-            </button>
-          </div>
-          <div class="col">
-            <button
-              mat-icon-button
-              color="warn"
-              (click)="deleteClient(client.id)"
-            >
-              <mat-icon>delete</mat-icon>
-            </button>
-          </div>
-        </div>
+      <th mat-header-cell *matHeaderCellDef>Ações</th>
+      <td mat-cell *matCellDef="let client" class="text-center">
+        <button
+          mat-icon-button
+          color="primary"
+          (click)="openAddClientDialog(client)"
+        >
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button color="warn" (click)="deleteClient(client.id)">
+          <mat-icon>delete</mat-icon>
+        </button>
       </td>
     </ng-container>
 
     <!-- Linha Principal -->
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let client; columns: displayedColumns"></tr>
-
-    <!-- Linha Expansível -->
-    <tr *matRowDef="let client; columns: ['expand']" class="expanded-row">
-      <td [attr.colspan]="displayedColumns.length">
-        <div *ngIf="expandedElement === client" class="expanded-content">
-          <h4>Dados do Representante</h4>
-          <p>
-            <strong>Nome:</strong> {{ client.representative?.name || "N/A" }}
-          </p>
-          <p>
-            <strong>Email:</strong> {{ client.representative?.email || "N/A" }}
-          </p>
-          <p>
-            <strong>Função:</strong> {{ client.representative?.role || "N/A" }}
-          </p>
-        </div>
-      </td>
-    </tr>
   </table>
 
   <!-- Paginação -->

@@ -31,7 +31,7 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'starter',
+        redirectTo: 'projects',
         pathMatch: 'full',
       },
       {

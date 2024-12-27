@@ -2,14 +2,8 @@ import { NavItem } from './nav-item/nav-item';
 
 export const navItems: NavItem[] = [
   {
-    navCap: 'Personal',
+    navCap: 'Bem Vindo!',
     role: 'any', // Visível para todos
-  },
-  {
-    displayName: 'Clientes',
-    iconName: 'solar:people-nearby-bold-duotone',
-    route: '/clients', // Caminho correto para a página de clientes
-    role: 'admin_master',
   },
   {
     displayName: 'Projetos',
@@ -18,11 +12,17 @@ export const navItems: NavItem[] = [
     role: 'admin_client',
   },
   {
-    displayName: 'Personalização',
-    iconName: 'solar:paint-roller-bold-duotone',
-    route: '/clients/:id/customization', // Caminho correto para o componente de personalização
-    role: 'admin_client', // Visível apenas para clientes
+    displayName: 'Clientes',
+    iconName: 'solar:people-nearby-bold-duotone',
+    route: '/clients', // Caminho correto para a página de clientes
+    role: 'admin_master',
   },
+  // {
+  //   displayName: 'Personalização',
+  //   iconName: 'solar:paint-roller-bold-duotone',
+  //   route: '/clients/:id/customization', // Caminho correto para o componente de personalização
+  //   role: 'admin_client', // Visível apenas para clientes
+  // },
   {
     displayName: 'Pedidos',
     iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro

@@ -1,10 +1,12 @@
 import { CommonModule, Location } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, Inject } from '@angular/core';
 import {
   Firestore,
   addDoc,
   collection,
+  doc,
   serverTimestamp,
+  updateDoc,
 } from '@angular/fire/firestore';
 import {
   FormGroup,
@@ -12,7 +14,7 @@ import {
   Validators,
   ReactiveFormsModule,
 } from '@angular/forms';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NgxMaskDirective, NgxMaskPipe } from 'ngx-mask';
 import { MaterialModule } from 'src/app/material.module';
@@ -31,43 +33,50 @@ import { MaterialModule } from 'src/app/material.module';
 })
 export class AddClientDialogComponent {
   form = new FormGroup({
-    // Dados da Empresa
-    companyName: new FormControl('', [Validators.required]), // Nome fantasia
-    corporateName: new FormControl('', [Validators.required]), // Razão social
-    cnpj: new FormControl('', [
-      Validators.required,
-      // Validators.pattern(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\;d{2}$/), // Validação básica para CNPJ
-    ]),
-    email: new FormControl('', [Validators.required, Validators.email]), // E-mail da empresa
-    phone: new FormControl('', [
-      Validators.required,
-      // Validators.pattern(/^\(\d{2}\) \d{5}-\d{4}$/),
-    ]), // Telefone
-    address: new FormControl(''), // Endereço
-    sector: new FormControl(''), // Setor de atuação
-    credits: new FormControl(0, [Validators.min(0)]), // Créditos iniciais
-    notes: new FormControl(''), // Notas adicionais
-
-    // Dados do Representante
-    representativeName: new FormControl('', [Validators.required]), // Nome do representante
-    representativeRole: new FormControl(''), // Função do representante
-    representativeEmail: new FormControl('', [
-      Validators.required,
-      Validators.email,
-    ]), // E-mail do representante
+    companyName: new FormControl('', [Validators.required]), // Nome do Cliente
+    sector: new FormControl('', [Validators.required]), // Setor
+    cnpj: new FormControl('', [Validators.required]), // CNPJ
+    credits: new FormControl(0), // Créditos
+    logo: new FormControl(), // Logo em Base64
   });
-
+  logoPreview: string | null = null;
   isSubmitting = false;
+  isEditing = false; // Flag para edição
+  clientId: string | null = null; // ID do cliente, se for edição
 
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private dialogRef: MatDialogRef<AddClientDialogComponent>,
-    private location: Location
-  ) {}
+    @Inject(MAT_DIALOG_DATA) public data: any
+  ) {
+    if (data?.client) {
+      this.isEditing = true;
+      this.clientId = data.client.id;
+      this.form.patchValue({
+        companyName: data.client.companyName,
+        sector: data.client.sector,
+        cnpj: data.client.cnpj,
+        credits: data.client.credits,
+        logo: data.client.logo,
+      });
+      this.logoPreview = data.client.logo; // Pré-visualização da logo existente
+    }
+  }
 
-  get cnpjMask() {
-    return '00.000.000/0000-00'; // Máscara fixa para CNPJ
+  onFileSelected(event: Event): void {
+    const fileInput = event.target as HTMLInputElement;
+    if (fileInput.files && fileInput.files[0]) {
+      const file = fileInput.files[0];
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64Logo = reader.result as string;
+        this.form.patchValue({ logo: base64Logo });
+        this.logoPreview = base64Logo;
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   async submit() {
@@ -76,56 +85,39 @@ export class AddClientDialogComponent {
     this.isSubmitting = true;
     const formData = this.form.value;
 
-    // Gerar senha aleatória para o representante
-    const representativePassword = this.generateRandomPassword();
-
-    const clientData = {
-      ...formData,
-      representative: {
-        name: formData.representativeName,
-        email: formData.representativeEmail,
-        role: formData.representativeRole,
-        password: representativePassword,
-      },
-      createdAt: serverTimestamp(), // Adiciona timestamp ao criar o cliente
-    };
-
     try {
-      const clientsRef = collection(this.firestore, 'clients');
-      const docRef = await addDoc(clientsRef, clientData); // Cria o documento
-      this.snackBar.open(`Cliente cadastrado com ID ${docRef.id}!`, 'Fechar', {
+      if (this.isEditing && this.clientId) {
+        const clientDocRef = doc(this.firestore, `clients/${this.clientId}`);
+        await updateDoc(clientDocRef, formData); // Atualiza o cliente
+        this.snackBar.open('Cliente atualizado com sucesso!', 'Fechar', {
+          duration: 3000,
+        });
+      } else {
+        const clientsRef = collection(this.firestore, 'clients');
+        const docRef = await addDoc(clientsRef, {
+          ...formData,
+          createdAt: serverTimestamp(),
+        }); // Adiciona novo cliente
+        this.snackBar.open(
+          `Cliente cadastrado com ID ${docRef.id}!`,
+          'Fechar',
+          {
+            duration: 3000,
+          }
+        );
+      }
+      this.dialogRef.close(true);
+    } catch (error) {
+      console.error('Erro ao salvar cliente:', error);
+      this.snackBar.open('Erro ao salvar cliente. Tente novamente.', 'Fechar', {
         duration: 3000,
       });
-      this.dialogRef.close();
-    } catch (error) {
-      console.error('Erro ao cadastrar cliente:', error);
-      this.snackBar.open(
-        'Erro ao cadastrar cliente. Tente novamente.',
-        'Fechar',
-        {
-          duration: 3000,
-        }
-      );
     } finally {
       this.isSubmitting = false;
     }
   }
 
   close() {
-    this.dialogRef.close(false); // Fecha o diálogo sem salvar
-  }
-
-  generateRandomPassword(length: number = 8): string {
-    const charset =
-      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
-    let password = '';
-    for (let i = 0; i < length; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length));
-    }
-    return password;
-  }
-
-  goBack(): void {
-    this.location.back();
+    this.dialogRef.close(false);
   }
 }

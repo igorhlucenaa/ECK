@@ -34,7 +34,6 @@ import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
 })
 export class ClientsListComponent implements OnInit {
   displayedColumns: string[] = [
-    'expand',
     'companyName',
     'sector',
     'cnpj',
@@ -43,7 +42,6 @@ export class ClientsListComponent implements OnInit {
   ];
   dataSource = new MatTableDataSource<any>();
   searchValue: string = ''; // Adicionando a propriedade searchValue
-  expandedElement: any | null = null;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -74,10 +72,9 @@ export class ClientsListComponent implements OnInit {
         this.dataSource.paginator = this.paginator;
         this.dataSource.sort = this.sort;
 
-        console.log(this.dataSource.data)
         this.dataSource.filterPredicate = (data, filter) => {
           const dataStr =
-            `${data.companyName} ${data.email} ${data.phone} ${data.sector} ${data.cnpj}`
+            `${data.companyName} ${data.sector} ${data.cnpj} ${data.credits}`
               .toLowerCase()
               .trim();
           return dataStr.includes(filter);
@@ -124,27 +121,19 @@ export class ClientsListComponent implements OnInit {
       });
   }
 
-  openAddClientDialog() {
+  openAddClientDialog(client?: any) {
     const dialogRef = this.dialog.open(AddClientDialogComponent, {
       width: '500px',
+      data: { client }, // Passa os dados do cliente, se houver
     });
 
-    dialogRef.afterClosed().subscribe(() => {
-      // Recarrega a lista de clientes após fechar o diálogo
-      this.loadClients();
-
-      this.snackBar.open('Lista de clientes atualizada!', 'Fechar', {
-        duration: 3000,
-      });
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.loadClients();
+        this.snackBar.open('Lista de clientes atualizada!', 'Fechar', {
+          duration: 3000,
+        });
+      }
     });
-  }
-
-  toggleRow(client: any) {
-    this.expandedElement = this.expandedElement === client ? null : client;
-  }
-
-  redirectToDetails(clientId: string) {
-    // Redireciona para a rota de detalhes do cliente
-    this.router.navigate([`/clients/${clientId}`]);
   }
 }
