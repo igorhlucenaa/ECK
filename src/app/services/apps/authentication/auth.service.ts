@@ -32,6 +32,16 @@ export class AuthService {
 
       await this.auth.setPersistence(persistence).then(async () => {
         await signInWithEmailAndPassword(this.auth, email, password);
+
+        // Obter o papel do usuário após login
+        const userRole = await this.getCurrentUserRole();
+
+        // Redirecionar com base no papel do usuário
+        if (userRole === 'admin_master') {
+          location.assign('/projects'); // Redireciona para 'products' diretamente
+        } else {
+          location.assign('/starter'); // Ou outra rota padrão para outros papéis
+        }
       });
     } catch (error) {
       console.error('Erro no login:', error);

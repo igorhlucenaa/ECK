@@ -17,17 +17,20 @@ export class AuthGuard implements CanActivate {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Promise<boolean> {
-    const requiredRole = route.data['role']; // Papel necessário para a rota (pode ser string ou array)
+    const requiredRole = route.data['role'];
 
     try {
       const userRole = await this.authService.getCurrentUserRole();
 
-      // Garantir que o `admin_master` tenha acesso irrestrito
       if (userRole === 'admin_master') {
-        return true; // Permitir acesso para admin_master
+        // Redireciona para 'products' se o papel for 'admin_master'
+        if (state.url === '/authentication/login') {
+          this.router.navigate(['/projects']);
+          return false;
+        }
+        return true;
       }
 
-      // Verificar se `requiredRole` é um array ou string e validar o acesso
       if (Array.isArray(requiredRole)) {
         if (requiredRole.includes(userRole)) {
           return true;
@@ -36,13 +39,12 @@ export class AuthGuard implements CanActivate {
         return true;
       }
 
-      console.warn('Acesso negado: Redirecionando para login.');
       this.router.navigate(['/authentication/login']);
       return false;
     } catch (error) {
       console.error('Erro ao verificar papel do usuário:', error);
       this.router.navigate(['/authentication/login']);
-      return false; // Bloqueia acesso em caso de erro
+      return false;
     }
   }
 }
