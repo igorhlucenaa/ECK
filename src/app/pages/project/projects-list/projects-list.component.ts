@@ -25,11 +25,22 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
   styleUrls: ['./projects-list.component.scss'],
 })
 export class ProjectsListComponent implements OnInit {
-  displayedColumns: string[] = ['name', 'budget', 'deadline', 'actions'];
+  displayedColumns: string[] = [
+    'name',
+    'client',
+    // 'budget',
+    'deadline',
+    'actions',
+  ];
   dataSource = new MatTableDataSource<any>();
   searchValue: string = ''; // Campo de busca
   currentUser: any;
   clientId: any;
+  clientsMap: { [key: string]: string } = {}; // Mapeia clientId para clientName
+  clients: { id: string; name: string }[] = []; // Lista de clientes para o filtro
+  selectedClientId: string | null = null; // Cliente selecionado para filtro
+  isAdminMaster: boolean = false; // Verifica se o usuário é admin_master
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -43,11 +54,35 @@ export class ProjectsListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.authService.getCurrentUserClientId().then((res) => {
-      console.log(res);
-      this.clientId = res;
+    this.authService.getCurrentUser().then((user) => {
+      this.isAdminMaster = user?.role === 'admin_master';
+      if (this.isAdminMaster) {
+        this.loadClients();
+      }
+      this.clientId = user?.clientId;
       this.loadProjects();
-    }); // Método que você vai criar
+    });
+  }
+
+  private async loadClients(): Promise<void> {
+    try {
+      const clientsCollection = collection(this.firestore, 'clients');
+      const snapshot = await getDocs(clientsCollection);
+
+      this.clients = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Cliente Desconhecido',
+      }));
+
+      this.clients.forEach((client) => {
+        this.clientsMap[client.id] = client.name;
+      });
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+        duration: 3000,
+      });
+    }
   }
 
   private async loadProjects(): Promise<void> {
@@ -56,12 +91,17 @@ export class ProjectsListComponent implements OnInit {
       const projectsQuery = query(projectsCollection);
 
       const snapshot = await getDocs(projectsQuery);
-      const projects = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log(projects);
-      this.dataSource.data = projects;
+      const projects = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          clientName:
+            this.clientsMap[data['clientId']] || 'Cliente não encontrado',
+        };
+      });
+
+      this.dataSource.data = this.filterProjectsByClient(projects);
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
 
@@ -73,6 +113,19 @@ export class ProjectsListComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  private filterProjectsByClient(projects: any[]): any[] {
+    if (this.isAdminMaster && this.selectedClientId) {
+      return projects.filter(
+        (project) => project.clientId === this.selectedClientId
+      );
+    }
+    return projects;
+  }
+
+  onClientChange(): void {
+    this.loadProjects();
   }
 
   applyFilter(event: Event): void {
@@ -107,8 +160,7 @@ export class ProjectsListComponent implements OnInit {
   }
 
   openProjectForm(projectId?: string): void {
-    console.log(this.clientId);
-    if (!this.clientId) {
+    if (!this.clientId && !this.isAdminMaster) {
       this.snackBar.open(
         'Cliente não identificado. Contate o suporte.',
         'Fechar',
@@ -119,15 +171,10 @@ export class ProjectsListComponent implements OnInit {
       return;
     }
 
-    if (projectId) {
-      this.router.navigate([`/projects/${projectId}/edit`], {
-        queryParams: { clientId: this.clientId },
-      });
-    } else {
-      this.router.navigate(['/projects/new'], {
-        queryParams: { clientId: this.clientId },
-      });
-    }
+    this.router.navigate(
+      projectId ? [`/projects/${projectId}/edit`] : ['/projects/new'],
+      { queryParams: { clientId: this.clientId } }
+    );
   }
 
   goToProjectUsers(projectId: string): void {

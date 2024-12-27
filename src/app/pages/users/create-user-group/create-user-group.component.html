@@ -1,0 +1,67 @@
+<div mat-dialog-title>
+  {{ isEditMode ? "Editar Grupo de Usuários" : "Criar Novo Grupo de Usuários" }}
+</div>
+<div mat-dialog-content>
+  <form [formGroup]="groupForm" (ngSubmit)="saveGroup()">
+    <!-- Nome do Grupo -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Nome do Grupo</mat-label>
+      <input
+        matInput
+        formControlName="name"
+        placeholder="Digite o nome do grupo"
+      />
+      <mat-error *ngIf="groupForm.get('name')?.hasError('required')">
+        O nome do grupo é obrigatório.
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Descrição do Grupo -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Descrição</mat-label>
+      <textarea
+        matInput
+        formControlName="description"
+        rows="3"
+        placeholder="Descreva o grupo"
+      ></textarea>
+    </mat-form-field>
+
+    <!-- Cliente -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Cliente</mat-label>
+      <mat-select
+        formControlName="clientId"
+        (selectionChange)="onClientChange()"
+      >
+        <mat-option *ngFor="let client of clients" [value]="client.id">
+          {{ client.name }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="groupForm.get('clientId')?.hasError('required')">
+        O cliente é obrigatório.
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Projetos -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Projetos</mat-label>
+      <mat-select formControlName="projectIds" multiple>
+        <mat-option *ngFor="let project of projects" [value]="project.id">
+          {{ project.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+  </form>
+</div>
+<div mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancelar</button>
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="groupForm.invalid"
+    (click)="saveGroup()"
+  >
+    {{ isEditMode ? "Salvar Alterações" : "Criar Grupo" }}
+  </button>
+</div>

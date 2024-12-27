@@ -2,14 +2,8 @@ import { NavItem } from './nav-item/nav-item';
 
 export const navItems: NavItem[] = [
   {
-    navCap: 'Personal',
+    navCap: 'Bem Vindo!',
     role: 'any', // Visível para todos
-  },
-  {
-    displayName: 'Clientes',
-    iconName: 'solar:people-nearby-bold-duotone',
-    route: '/clients', // Caminho correto para a página de clientes
-    role: 'admin_master',
   },
   {
     displayName: 'Projetos',
@@ -18,11 +12,35 @@ export const navItems: NavItem[] = [
     role: 'admin_client',
   },
   {
-    displayName: 'Personalização',
-    iconName: 'solar:paint-roller-bold-duotone',
-    route: '/clients/:id/customization', // Caminho correto para o componente de personalização
+    displayName: 'Clientes',
+    iconName: 'solar:people-nearby-bold-duotone',
+    route: '/clients', // Caminho correto para a página de clientes
+    role: 'admin_master',
+  },
+  // {
+  //   displayName: 'Personalização',
+  //   iconName: 'solar:paint-roller-bold-duotone',
+  //   route: '/clients/:id/customization', // Caminho correto para o componente de personalização
+  //   role: 'admin_client', // Visível apenas para clientes
+  // },
+  {
+    displayName: 'Pedidos',
+    iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
+    route: '/orders', // Caminho correto para o componente de gestão de pedidos
     role: 'admin_client', // Visível apenas para clientes
   },
+  {
+    displayName: 'Usuários e Grupos',
+    iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
+    route: '/users', // Caminho correto para a página de usuários
+    role: 'admin_master', // Visível apenas para Administrador Master
+  },
+  // {
+  //   displayName: 'E-mails e Notificações',
+  //   iconName: 'solar:dialog-bold-duotone', // Ícone para representação
+  //   route: '/emails-notifications',
+  //   role: 'admin_master', // Visível para admin_master
+  // },
   // <iconify-icon icon="solar:bill-list-bold-duotone" width="24" height="24"></iconify-icon>
   // {
   //   displayName: 'Analytical',

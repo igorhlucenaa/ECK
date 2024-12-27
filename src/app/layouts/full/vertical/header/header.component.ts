@@ -84,13 +84,19 @@ export class HeaderComponent implements OnInit {
   showFiller = false;
 
   public selectedLanguage: any = {
-    language: 'English',
-    code: 'en',
-    type: 'US',
-    icon: '/assets/images/flag/icon-flag-en.svg',
+    language: 'Português',
+    code: 'pt-br',
+    type: 'PT-BR',
+    icon: '/assets/images/flag/icon-flag-pt-br.jpg',
   };
 
   public languages: any[] = [
+    {
+      language: 'Português',
+      code: 'pt-br',
+      type: 'PT-BR',
+      icon: '/assets/images/flag/icon-flag-pt-br.jpg',
+    },
     {
       language: 'English',
       code: 'en',
@@ -101,16 +107,6 @@ export class HeaderComponent implements OnInit {
       language: 'Español',
       code: 'es',
       icon: '/assets/images/flag/icon-flag-es.svg',
-    },
-    {
-      language: 'Français',
-      code: 'fr',
-      icon: '/assets/images/flag/icon-flag-fr.svg',
-    },
-    {
-      language: 'German',
-      code: 'de',
-      icon: '/assets/images/flag/icon-flag-de.svg',
     },
   ];
   userName: string | null = null;

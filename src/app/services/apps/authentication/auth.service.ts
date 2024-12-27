@@ -9,8 +9,10 @@ import {
   signOut,
   reload,
   User,
+  user,
 } from '@angular/fire/auth';
 import { doc, Firestore, getDoc } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -30,6 +32,16 @@ export class AuthService {
 
       await this.auth.setPersistence(persistence).then(async () => {
         await signInWithEmailAndPassword(this.auth, email, password);
+
+        // Obter o papel do usuário após login
+        const userRole = await this.getCurrentUserRole();
+
+        // Redirecionar com base no papel do usuário
+        if (userRole === 'admin_master') {
+          location.assign('/projects'); // Redireciona para 'products' diretamente
+        } else {
+          location.assign('/starter'); // Ou outra rota padrão para outros papéis
+        }
       });
     } catch (error) {
       console.error('Erro no login:', error);
@@ -227,5 +239,29 @@ export class AuthService {
     )
       .toString(16)
       .slice(1)}`;
+  }
+
+  async getCurrentUser(): Promise<{
+    name: string;
+    email: string;
+    role: string;
+    clientId: string;
+  } | null> {
+    const firebaseUser = await firstValueFrom(user(this.auth));
+    if (firebaseUser) {
+      const userDocRef = doc(this.firestore, `users/${firebaseUser.uid}`);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        return {
+          name: userData['name'] || 'Usuário Desconhecido',
+          email: userData['email'] || 'Email não informado',
+          role: userData['role'] || 'Role não informado',
+          clientId: userData['clientId'] || 'clientId não informado',
+        };
+      }
+    }
+    return null;
   }
 }

@@ -13,6 +13,24 @@
     </mat-card-title>
     <mat-card-content>
       <form [formGroup]="form" (ngSubmit)="saveProject()">
+        <!-- Seleção de Cliente (Somente para admin_master) -->
+        <div *ngIf="clients.length > 0" class="row">
+          <div class="col-12 mb-3">
+            <mat-form-field appearance="outline" class="w-100">
+              <mat-label>Cliente</mat-label>
+              <mat-select formControlName="clientId">
+                <mat-option *ngFor="let client of clients" [value]="client.id">
+                  {{ client.name }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="form.get('clientId')?.hasError('required')">
+                O cliente é obrigatório.
+              </mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Restante do formulário -->
         <!-- Linha 1 -->
         <div class="row">
           <div class="col-md-6 mb-3">
@@ -49,21 +67,7 @@
           </div>
         </div>
 
-        <!-- Linha 3 -->
-        <div class="row">
-          <div class="col-12 mb-3">
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Descrição</mat-label>
-              <textarea
-                matInput
-                rows="4"
-                formControlName="description"
-              ></textarea>
-            </mat-form-field>
-          </div>
-        </div>
-
-        <!-- Ações -->
+        <!-- Botões de Ação -->
         <div class="text-end mt-3">
           <button mat-flat-button color="warn" (click)="cancel()">
             Voltar
@@ -77,14 +81,6 @@
             <span *ngIf="isLoading">Salvando...</span>
             <span *ngIf="!isLoading">Salvar</span>
           </button>
-        </div>
-
-        <!-- Diagnóstico para Debug -->
-        <div
-          *ngIf="form.invalid && form.touched"
-          class="alert alert-danger mt-3"
-        >
-          Preencha todos os campos obrigatórios!
         </div>
       </form>
     </mat-card-content>
