@@ -24,11 +24,6 @@
     <mat-form-field appearance="outline" class="w-100">
       <mat-label>Setor</mat-label>
       <input matInput formControlName="sector" placeholder="Digite o setor" />
-      <mat-error
-        *ngIf="form.get('sector')?.touched && form.get('sector')?.invalid"
-      >
-        O setor é obrigatório.
-      </mat-error>
     </mat-form-field>
 
     <!-- CNPJ -->
@@ -40,9 +35,6 @@
         placeholder="Digite o CNPJ"
         [mask]="'00.000.000/0000-00'"
       />
-      <mat-error *ngIf="form.get('cnpj')?.touched && form.get('cnpj')?.invalid">
-        O CNPJ é obrigatório.
-      </mat-error>
     </mat-form-field>
 
     <!-- Créditos -->

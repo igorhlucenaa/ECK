@@ -31,7 +31,7 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'products', // Redireciona para a página de produtos
+        redirectTo: 'clients', // Redireciona para a página de produtos
         pathMatch: 'full',
       },
       // Outras rotas...

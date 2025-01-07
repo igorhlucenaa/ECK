@@ -25,7 +25,7 @@ export interface User {
   role: string;
   notificationStatus: 'Enviado' | 'Pendente';
   client: string;
-  project: string
+  project: string;
 }
 
 export interface UserGroup {
@@ -48,6 +48,8 @@ export class UsersComponent implements OnInit {
     'name',
     'surname',
     'email',
+    'client',
+    'project',
     'group',
     'role',
     'notificationStatus',
@@ -96,25 +98,43 @@ export class UsersComponent implements OnInit {
   async loadUsers(): Promise<void> {
     try {
       const usersCollection = collection(this.firestore, 'users');
-      const snapshot = await getDocs(usersCollection);
+      const usersSnapshot = await getDocs(usersCollection);
 
-      const users: User[] = snapshot.docs.map((doc) => {
+      const clientsCollection = collection(this.firestore, 'clients');
+      const clientsSnapshot = await getDocs(clientsCollection);
+
+      const projectsCollection = collection(this.firestore, 'projects');
+      const projectsSnapshot = await getDocs(projectsCollection);
+
+      // Mapeia os clientes por ID para fácil acesso
+      const clientsMap = clientsSnapshot.docs.reduce((acc, doc) => {
+        acc[doc.id] = doc.data()['companyName'];
+        return acc;
+      }, {} as { [key: string]: string });
+
+      // Mapeia os projetos por ID para fácil acesso
+      const projectsMap = projectsSnapshot.docs.reduce((acc, doc) => {
+        acc[doc.id] = doc.data()['name'];
+        return acc;
+      }, {} as { [key: string]: string });
+
+      const users: User[] = usersSnapshot.docs.map((doc) => {
         const data = doc.data();
-        const groupName = this.groupDataSource.data.find(
-          (group) => group.id === data['group']
-        )?.name; // Busca o nome do grupo pelo ID
+        const companyName =
+          clientsMap[data['client']] || 'Cliente não encontrado';
+        const projectName =
+          projectsMap[data['project']] || 'Projeto não encontrado';
 
         return {
           id: doc.id,
           name: data['name'] || '',
           surname: data['surname'] || '',
           email: data['email'] || '',
-          groupName: groupName || 'Grupo não encontrado', // Usa o nome do grupo ou mensagem padrão
-          group: data['group'] || '', // Usa o nome do grupo ou mensagem padrão
+          group: data['group'] || '',
           role: data['role'] || '',
-          client: data['client'] || '',
-          project: data['project'] || '',
           notificationStatus: data['notificationStatus'] || 'Pendente',
+          client: companyName, // Substitui o ID pelo nome do cliente
+          project: projectName, // Substitui o ID pelo nome do projeto
         };
       });
 
@@ -176,7 +196,7 @@ export class UsersComponent implements OnInit {
 
   // Ações da tabela de usuários
   editUser(user: any): void {
-    console.log(user)
+    console.log(user);
     const dialogRef = this.dialog.open(CreateUserComponent, {
       width: '500px',
       data: { user }, // Passa os dados do usuário para edição

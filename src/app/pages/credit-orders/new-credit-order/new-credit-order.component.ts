@@ -63,7 +63,7 @@ export class NewCreditOrderComponent implements OnInit {
     this.orderForm = this.fb.group({
       clientId: ['', Validators.required],
       credits: [null, [Validators.required, Validators.min(1)]],
-      totalAmount: [null, [Validators.required, Validators.min(0)]],
+      // totalAmount: [null, [Validators.required, Validators.min(0)]],
       startDate: [null, Validators.required],
       validityDate: [null, Validators.required],
       notes: [''],
@@ -76,7 +76,7 @@ export class NewCreditOrderComponent implements OnInit {
       const clientsSnapshot = await getDocs(clientsCollection);
       this.clients = clientsSnapshot.docs.map((doc) => ({
         id: doc.id,
-        name: doc.data()['name'] || 'Cliente sem nome',
+        name: doc.data()['companyName'] || 'Cliente sem nome',
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);

@@ -92,7 +92,7 @@ export class CreateUserGroupComponent implements OnInit {
       const snapshot = await getDocs(clientsCollection);
       this.clients = snapshot.docs.map((doc) => ({
         id: doc.id,
-        name: doc.data()['name'] || 'Sem Nome',
+        name: doc.data()['companyName'] || 'Sem Nome',
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);

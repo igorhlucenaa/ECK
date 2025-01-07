@@ -63,7 +63,7 @@ export class ProjectUsersComponent implements OnInit {
 
       const clients = clientsSnapshot.docs.map((clientDoc) => ({
         id: clientDoc.id,
-        ...(clientDoc.data() as { name: string }),
+        ...(clientDoc.data() as { name: string; companyName: string }), // Inclua companyName aqui
       }));
 
       const projects = projectsSnapshot.docs.map((projectDoc) => ({
@@ -76,17 +76,18 @@ export class ProjectUsersComponent implements OnInit {
         const client = clients.find(
           (client) => client.id === groupData['clientId']
         );
+        console.log(client);
         const projectNames = groupData['projectIds']
           .map(
             (projectId: string) =>
               projects.find((project) => project.id === projectId)?.name
           )
           .filter((name: any) => !!name);
-
+        console.log(client);
         return {
           id: groupDoc.id,
           ...groupData,
-          clientName: client?.name || 'N/A', // Nome do cliente
+          clientName: client?.companyName || 'N/A', // Nome do cliente
           projectNames, // Nomes dos projetos
           users: groupData['users'] || [], // Usuários do grupo
         };

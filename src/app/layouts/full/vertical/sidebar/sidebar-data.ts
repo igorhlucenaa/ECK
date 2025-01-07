@@ -5,17 +5,18 @@ export const navItems: NavItem[] = [
     navCap: 'Bem Vindo!',
     role: 'any', // Visível para todos
   },
+  // {
+  //   displayName: 'Projetos',
+  //   iconName: 'solar:bill-list-bold-duotone',
+  //   route: '/projects', // Caminho correto para a página de clientes,
+  //   role: 'admin_client',
+  // },
+
   {
     displayName: 'Projetos',
     iconName: 'solar:bill-list-bold-duotone',
     route: '/projects', // Caminho correto para a página de clientes,
     role: 'admin_client',
-  },
-  {
-    displayName: 'Clientes',
-    iconName: 'solar:people-nearby-bold-duotone',
-    route: '/clients', // Caminho correto para a página de clientes
-    role: 'admin_master',
   },
   // {
   //   displayName: 'Personalização',
@@ -23,18 +24,45 @@ export const navItems: NavItem[] = [
   //   route: '/clients/:id/customization', // Caminho correto para o componente de personalização
   //   role: 'admin_client', // Visível apenas para clientes
   // },
+  // {
+  //   displayName: 'Pedidos',
+  //   iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
+  //   route: '/orders', // Caminho correto para o componente de gestão de pedidos
+  //   role: 'admin_client', // Visível apenas para clientes
+  // },
+  // {
+  //   displayName: 'Usuários e Grupos',
+  //   iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
+  //   route: '/users', // Caminho correto para a página de usuários
+  //   role: 'admin_master', // Visível apenas para Administrador Master
+  // },
+
   {
-    displayName: 'Pedidos',
-    iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
-    route: '/orders', // Caminho correto para o componente de gestão de pedidos
-    role: 'admin_client', // Visível apenas para clientes
+    displayName: 'Definições',
+    iconName: 'solar:document-add-bold-duotone',
+    route: '',
+    children: [
+      {
+        displayName: 'Clientes',
+        iconName: 'solar:people-nearby-bold-duotone',
+        route: '/clients', // Caminho correto para a página de clientes
+        role: 'admin_master',
+      },
+      {
+        displayName: 'Usuários e Grupos',
+        iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
+        route: '/users', // Caminho correto para a página de usuários
+        role: 'admin_master', // Visível apenas para Administrador Master
+      },
+      {
+        displayName: 'Pedidos',
+        iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
+        route: '/orders', // Caminho correto para o componente de gestão de pedidos
+        role: 'admin_client', // Visível apenas para clientes
+      },
+    ],
   },
-  {
-    displayName: 'Usuários e Grupos',
-    iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
-    route: '/users', // Caminho correto para a página de usuários
-    role: 'admin_master', // Visível apenas para Administrador Master
-  },
+
   // {
   //   displayName: 'E-mails e Notificações',
   //   iconName: 'solar:dialog-bold-duotone', // Ícone para representação

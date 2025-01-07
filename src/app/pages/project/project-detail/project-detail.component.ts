@@ -30,10 +30,7 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 export class ProjectDetailComponent implements OnInit {
   form: FormGroup = new FormGroup({
     name: new FormControl('', Validators.required),
-    budget: new FormControl('', [
-      Validators.required,
-      Validators.min(1), // Certifique-se de que o orçamento seja maior que 0
-    ]),
+    budget: new FormControl(''),
     deadline: new FormControl('', Validators.required),
     status: new FormControl('Ativo', Validators.required),
     description: new FormControl(''),
@@ -97,7 +94,7 @@ export class ProjectDetailComponent implements OnInit {
       const snapshot = await getDocs(clientsCollection);
       this.clients = snapshot.docs.map((doc) => ({
         id: doc.id,
-        name: doc.data()['name'] || 'Sem Nome',
+        name: doc.data()['companyName'] || 'Sem Nome',
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);

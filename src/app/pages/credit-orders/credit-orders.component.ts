@@ -102,7 +102,7 @@ export class CreditOrdersComponent implements OnInit {
       const clientsMap: Record<string, string> = clientsSnapshot.docs.reduce(
         (acc, doc) => ({
           ...acc,
-          [doc.id]: doc.data()['name'] || 'Não identificado',
+          [doc.id]: doc.data()['companyName'] || 'Não identificado',
         }),
         {}
       );
@@ -134,7 +134,7 @@ export class CreditOrdersComponent implements OnInit {
           createdAt: data['createdAt']?.toDate(),
         } as Order;
       });
-
+      console.log(orders);
       this.originalData = orders;
       this.dataSource.data = orders;
       this.dataSource.paginator = this.paginator;
@@ -148,6 +148,18 @@ export class CreditOrdersComponent implements OnInit {
   }
 
   applyFilter(): void {
+    // Verifica se a data inicial é maior que a data final
+    if (this.startDate && this.endDate && this.startDate > this.endDate) {
+      this.snackBar.open(
+        'A data inicial não pode ser maior que a data final.',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
+      return; // Interrompe a execução do filtro se a condição for verdadeira
+    }
+
     const filteredData = this.originalData.filter((order) => {
       const matchesStatus =
         !this.selectedStatus || order.status === this.selectedStatus;
@@ -185,7 +197,6 @@ export class CreditOrdersComponent implements OnInit {
     try {
       const orderDoc = doc(this.firestore, `creditOrders/${orderId}`);
       const orderSnapshot = await getDoc(orderDoc);
-
 
       const orderData = orderSnapshot.data();
 

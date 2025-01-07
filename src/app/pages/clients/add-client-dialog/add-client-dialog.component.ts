@@ -34,8 +34,8 @@ import { MaterialModule } from 'src/app/material.module';
 export class AddClientDialogComponent {
   form = new FormGroup({
     companyName: new FormControl('', [Validators.required]), // Nome do Cliente
-    sector: new FormControl('', [Validators.required]), // Setor
-    cnpj: new FormControl('', [Validators.required]), // CNPJ
+    sector: new FormControl(''), // Setor
+    cnpj: new FormControl(''), // CNPJ
     credits: new FormControl(0), // Créditos
     logo: new FormControl(), // Logo em Base64
   });

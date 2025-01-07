@@ -63,10 +63,16 @@ export class ClientsListComponent implements OnInit {
 
     getDocs(clientsQuery)
       .then((snapshot) => {
-        const clients = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const clients = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...(doc.data() as any),
+          }))
+          .sort((a, b) => {
+            const nameA = a.companyName?.toLowerCase() || '';
+            const nameB = b.companyName?.toLowerCase() || '';
+            return nameA.localeCompare(nameB); // Ordena alfabeticamente
+          });
 
         this.dataSource.data = clients;
         this.dataSource.paginator = this.paginator;
