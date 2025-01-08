@@ -60,6 +60,12 @@ export const navItems: NavItem[] = [
         route: '/orders', // Caminho correto para o componente de gestão de pedidos
         role: 'admin_client', // Visível apenas para clientes
       },
+      {
+        displayName: 'Modelos de E-mail',
+        iconName: 'solar:mailbox-bold-duotone', // Ícone representando transações ou dinheiro
+        route: '/mail-templates', // Caminho correto para o componente de gestão de pedidos
+        role: 'admin_client', // Visível apenas para clientes
+      },
     ],
   },
 

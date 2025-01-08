@@ -5,6 +5,7 @@ import { AuthGuard } from './guards/auth.guard';
 import { ClientCustomizationComponent } from './pages/client-customization/client-customization.component';
 import { CreditOrdersComponent } from './pages/credit-orders/credit-orders.component';
 import { NewCreditOrderComponent } from './pages/credit-orders/new-credit-order/new-credit-order.component';
+import { EmailTemplateListComponent } from './pages/project/email-template-list/email-template-list.component';
 
 export const routes: Routes = [
   {
@@ -54,6 +55,12 @@ export const routes: Routes = [
         path: 'clients',
         loadChildren: () =>
           import('./pages/clients/clients.routes').then((m) => m.ClientsRoutes),
+        canActivate: [AuthGuard],
+        data: { role: 'admin_master' },
+      },
+      {
+        path: 'mail-templates',
+        component: EmailTemplateListComponent,
         canActivate: [AuthGuard],
         data: { role: 'admin_master' },
       },

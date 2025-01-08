@@ -26,6 +26,7 @@ export class EmailTemplateListComponent implements OnInit {
   displayedColumns: string[] = ['name', 'subject', 'actions']; // Colunas da tabela
   dataSource = new MatTableDataSource<any>(); // Fonte de dados da tabela
   projectId: string | null = null; // ID do projeto
+  title = 'Templates de E-mail';
 
   @ViewChild(MatPaginator) paginator!: MatPaginator; // Referência ao paginator
   @ViewChild(MatSort) sort!: MatSort; // Referência ao sort
@@ -39,11 +40,15 @@ export class EmailTemplateListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Obter o ID do projeto da rota
+    // Obter o ID do projeto e o caminho da URL
     this.projectId = this.route.snapshot.paramMap.get('id');
+    const path = this.route.snapshot.url[0]?.path;
 
-    if (this.projectId) {
-      this.loadTemplates(); // Carregar templates associados ao projeto
+    // Alterar o título dinamicamente com base no caminho da URL
+    if (path === 'mail-templates') {
+      this.title = 'Templates Padrão';
+    } else if (this.projectId) {
+      this.loadTemplates();
     } else {
       this.snackBar.open('Projeto não encontrado.', 'Fechar', {
         duration: 3000,
@@ -100,7 +105,13 @@ export class EmailTemplateListComponent implements OnInit {
 
   // Navegar para a página de criação de template
   createTemplate(): void {
-    this.router.navigate([`/projects/${this.projectId}/templates/new`]);
+    const path = this.route.snapshot.url[0]?.path;
+
+    if (path === 'mail-templates') {
+      this.router.navigate(['/projects/default-template/new']);
+    } else if (this.projectId) {
+      this.router.navigate([`/projects/${this.projectId}/templates/new`]);
+    }
   }
 
   // Navegar para a página de edição de um template específico
