@@ -8,7 +8,7 @@
     </div>
   </div>
   <mat-card>
-    <mat-card-title style="margin-bottom: 10px;">{{title}}</mat-card-title>
+    <mat-card-title style="margin-bottom: 10px">{{ title }}</mat-card-title>
     <mat-card-content>
       <!-- Campo de Busca -->
       <mat-form-field appearance="outline" class="w-100 my-3">
@@ -47,6 +47,16 @@
           <td mat-cell *matCellDef="let template">{{ template.subject }}</td>
         </ng-container>
 
+        <!-- Tipo de Notificação -->
+        <ng-container matColumnDef="emailType">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            Tipo de Notificação
+          </th>
+          <td mat-cell *matCellDef="let template">
+            {{ template.emailType | titlecase }}
+          </td>
+        </ng-container>
+
         <!-- Ações -->
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef>Ações</th>
@@ -54,14 +64,14 @@
             <button
               mat-icon-button
               color="primary"
-              (click)="editTemplate(template.id)"
+              (click)="editTemplate(template.id, template.isGlobal)"
             >
               <mat-icon>edit</mat-icon>
             </button>
             <button
               mat-icon-button
               color="warn"
-              (click)="deleteTemplate(template.id)"
+              (click)="deleteTemplate(template.id, template.isGlobal)"
             >
               <mat-icon>delete</mat-icon>
             </button>

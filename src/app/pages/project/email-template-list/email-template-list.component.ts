@@ -14,6 +14,8 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
+import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-email-template-list',
@@ -23,7 +25,7 @@ import { MaterialModule } from 'src/app/material.module';
   styleUrls: ['./email-template-list.component.scss'],
 })
 export class EmailTemplateListComponent implements OnInit {
-  displayedColumns: string[] = ['name', 'subject', 'actions']; // Colunas da tabela
+  displayedColumns: string[] = ['name', 'subject', 'emailType', 'actions']; // Colunas da tabela
   dataSource = new MatTableDataSource<any>(); // Fonte de dados da tabela
   projectId: string | null = null; // ID do projeto
   title = 'Templates de E-mail';
@@ -36,7 +38,8 @@ export class EmailTemplateListComponent implements OnInit {
     private snackBar: MatSnackBar,
     private route: ActivatedRoute,
     private router: Router,
-    private location: Location
+    private location: Location,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -71,6 +74,7 @@ export class EmailTemplateListComponent implements OnInit {
       const projectTemplates = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
+        isGlobal: false, // Marca como não global (template de projeto)
       }));
 
       // Carregar templates globais
@@ -82,10 +86,16 @@ export class EmailTemplateListComponent implements OnInit {
       const globalTemplates = globalSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
+        isGlobal: true, // Marca como global
       }));
 
       // Combinar os templates específicos do projeto com os globais
-      this.dataSource.data = [...globalTemplates, ...projectTemplates];
+      this.dataSource.data = [...globalTemplates, ...projectTemplates].map(
+        (template: any) => ({
+          ...template,
+          emailType: template.emailType || 'não definido', // Adiciona o tipo de notificação
+        })
+      );
 
       // Configurar sort e paginador
       this.dataSource.paginator = this.paginator;
@@ -129,34 +139,61 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   // Navegar para a página de edição de um template específico
-  editTemplate(templateId: string): void {
-    this.router.navigate([
-      `/projects/${this.projectId}/templates/${templateId}/edit`,
-    ]);
+  editTemplate(templateId: string, isGlobal: boolean): void {
+    if (isGlobal) {
+      // Navega para editar um template global
+      this.router.navigate([`projects/default-template/${templateId}/edit`]);
+    } else {
+      // Navega para editar um template de projeto específico
+      this.router.navigate([
+        `/projects/${this.projectId}/templates/${templateId}/edit`,
+      ]);
+    }
   }
 
   // Excluir um template específico
-  async deleteTemplate(templateId: string): Promise<void> {
-    try {
-      const templateDocRef = doc(
-        this.firestore,
-        `projects/${this.projectId}/templates/${templateId}`
-      );
-      await deleteDoc(templateDocRef);
+  async deleteTemplate(templateId: string, isGlobal: boolean): Promise<void> {
+    // Exibir o modal de confirmação
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: { message: 'Você tem certeza que deseja excluir este template?' }, // Mensagem do modal
+    });
 
-      // Atualizar a tabela removendo o template excluído
-      this.dataSource.data = this.dataSource.data.filter(
-        (template) => template.id !== templateId
-      );
+    // Esperar pela resposta do usuário no modal
+    const confirmed = await dialogRef.afterClosed().toPromise();
 
-      this.snackBar.open('Template excluído com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Erro ao excluir template:', error);
-      this.snackBar.open('Erro ao excluir template.', 'Fechar', {
-        duration: 3000,
-      });
+    if (confirmed) {
+      try {
+        let templateDocRef;
+        // Verificar se o template é global ou específico do projeto
+        if (isGlobal) {
+          templateDocRef = doc(
+            this.firestore,
+            `defaultMailTemplate/${templateId}`
+          );
+        } else {
+          templateDocRef = doc(
+            this.firestore,
+            `projects/${this.projectId}/templates/${templateId}`
+          );
+        }
+
+        // Excluir o documento
+        await deleteDoc(templateDocRef);
+
+        // Atualizar a tabela removendo o template excluído
+        this.dataSource.data = this.dataSource.data.filter(
+          (template) => template.id !== templateId
+        );
+
+        this.snackBar.open('Template excluído com sucesso!', 'Fechar', {
+          duration: 3000,
+        });
+      } catch (error) {
+        console.error('Erro ao excluir template:', error);
+        this.snackBar.open('Erro ao excluir template.', 'Fechar', {
+          duration: 3000,
+        });
+      }
     }
   }
 

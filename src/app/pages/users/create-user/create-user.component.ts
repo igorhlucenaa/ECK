@@ -28,6 +28,7 @@ import {
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
   getAuth,
+  signInWithEmailAndPassword,
 } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -199,33 +200,22 @@ export class CreateUserComponent implements OnInit {
       const { name, surname, email, password, client, project, group, role } =
         this.userForm.value;
 
-      // Use initializeApp para obter o app Firebase
-      const firebaseApp = initializeApp({
-        apiKey: 'AIzaSyCxUZGayShvR7Ckm3Dpk4JUPgDwoIvquWY',
-        authDomain: 'pwa-workana.firebaseapp.com',
-        databaseURL: 'https://pwa-workana.firebaseio.com',
-        projectId: 'pwa-workana',
-        storageBucket: 'pwa-workana.firebasestorage.app',
-        messagingSenderId: '166389194595',
-        appId: '1:166389194595:web:caa5f30d07b6bcca',
-      });
-
-      // Inicialize a autenticação com a instância do app Firebase
-      const auth = getAuth(firebaseApp);
+      // Salve o usuário atual para reautenticação depois
+      const currentUser = this.auth.currentUser;
+      const currentEmail = currentUser?.email;
+      const currentPassword = '123@qwe'; // Substitua pela senha do usuário atual, se necessário
 
       // Verifique se o usuário já existe no Firebase Authentication
-      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
-      console.log(signInMethods)
+      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
+
       if (signInMethods.length > 0) {
         // O usuário já existe no Firebase Authentication
-        // Verifique se ele existe no Firestore
         const usersCollection = collection(this.firestore, 'users');
         const userQuery = query(usersCollection, where('email', '==', email));
         const querySnapshot = await getDocs(userQuery);
 
         if (querySnapshot.empty) {
-          // O usuário existe no Firebase Authentication, mas não no Firestore, então crie no Firestore
-          // NÃO CRIAR O USUÁRIO NO FIREBASE AUTH, apenas no Firestore
+          // Adiciona o usuário ao Firestore se não existir lá
           await addDoc(usersCollection, {
             name,
             surname,
@@ -235,18 +225,14 @@ export class CreateUserComponent implements OnInit {
             group,
             role,
             createdAt: new Date(),
-            uid: '', // A UID será gerada automaticamente quando a autenticação for realizada
           });
 
           this.snackBar.open(
             'Usuário criado no Firestore com sucesso!',
             'Fechar',
-            {
-              duration: 3000,
-            }
+            { duration: 3000 }
           );
         } else {
-          // O usuário já existe no Firebase Authentication e no Firestore
           this.snackBar.open(
             'Erro: O usuário já existe no Firestore!',
             'Fechar',
@@ -256,13 +242,14 @@ export class CreateUserComponent implements OnInit {
           );
         }
       } else {
-        // O usuário não existe no Firebase Authentication, então criaremos um novo
+        // Crie o novo usuário no Firebase Authentication
         const userCredential = await createUserWithEmailAndPassword(
           this.auth,
           email,
-          password || '123@qwe' // Use um padrão de senha ou o valor fornecido
+          password || '123@qwe'
         );
 
+        // Adicione o usuário ao Firestore
         const usersCollection = collection(this.firestore, 'users');
         await addDoc(usersCollection, {
           name,
@@ -281,9 +268,17 @@ export class CreateUserComponent implements OnInit {
         });
       }
 
-      // Fecha o diálogo e redireciona para /users
+      // Reautentique o usuário anterior
+      if (currentEmail && currentPassword) {
+        await signInWithEmailAndPassword(
+          this.auth,
+          currentEmail,
+          currentPassword
+        );
+      }
+
+      // Fecha o diálogo
       this.dialogRef.close(true);
-      this.router.navigate(['/users']);
     } catch (error) {
       console.error('Erro ao salvar usuário:', error);
       this.snackBar.open(
@@ -291,9 +286,7 @@ export class CreateUserComponent implements OnInit {
           ? 'Erro ao atualizar usuário.'
           : 'Erro ao criar usuário.',
         'Fechar',
-        {
-          duration: 3000,
-        }
+        { duration: 3000 }
       );
     }
   }

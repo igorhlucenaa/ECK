@@ -16,6 +16,8 @@ import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { CreateUserGroupComponent } from './create-user-group/create-user-group.component';
 import { CreateUserComponent } from './create-user/create-user.component';
+import { ConfirmDialogComponent } from '../clients/clients-list/confirm-dialog/confirm-dialog.component';
+import { DetailsModalComponent } from 'src/app/layouts/full/shared/details-modal/details-modal.component';
 
 export interface User {
   id: string;
@@ -27,6 +29,7 @@ export interface User {
   notificationStatus: 'Enviado' | 'Pendente';
   client: string;
   project: string;
+  groups: string[]; // Torna groups opcional
 }
 
 export interface UserGroup {
@@ -125,13 +128,15 @@ export class UsersComponent implements OnInit {
       // Mapeamento de grupos com verificação de userIds
       const groupsMap = groups.reduce((acc, group) => {
         group.userIds.forEach((userId) => {
-          console.log(`Grupo ${group.name} -> userId ${userId}`);
-          acc[userId] = group.name;
+          if (!acc[userId]) {
+            acc[userId] = [];
+          }
+          acc[userId].push(group.name); // Adiciona o nome do grupo na lista do usuário
         });
         return acc;
-      }, {} as { [key: string]: string });
+      }, {} as { [key: string]: string[] }); // Mudança para array de grupos
 
-      console.log('groupsMap:', groupsMap); // Verificar se o mapeamento está correto
+      // console.log('groupsMap:', groupsMap); // Verificar se o mapeamento está correto
 
       const users: User[] = usersSnapshot.docs.map((doc) => {
         const data = doc.data();
@@ -140,25 +145,23 @@ export class UsersComponent implements OnInit {
         const projectName =
           projectsMap[data['project']] || 'Projeto não encontrado';
 
-        // Verificação de grupo
-        const groupName = groupsMap[doc.id] || 'Sem grupo';
-
-        console.log(
-          `Usuário ${data['name']} (${doc.id}): Grupo -> ${groupName}`
-        );
-
+        // Verificação de grupos (usuário pode estar em múltiplos grupos)
+        const userGroups = groupsMap[doc.id] || [];
+        console.log(userGroups);
         return {
           id: doc.id,
           name: data['name'] || '',
           surname: data['surname'] || '',
           email: data['email'] || '',
-          group: groupName,
+          group: doc.data()['group'], // Exibe os grupos como uma lista separada por vírgula
           role: data['role'] || '',
           notificationStatus: data['notificationStatus'] || 'Pendente',
           client: companyName,
           project: projectName,
+          groups: userGroups, // Agora estamos adicionando os grupos dinamicamente
         };
       });
+      console.log(users);
       this.userDataSource.data = users;
       this.userDataSource.paginator = this.userPaginator;
       this.userDataSource.sort = this.userSort;
@@ -235,7 +238,6 @@ export class UsersComponent implements OnInit {
 
   // Ações da tabela de usuários
   editUser(user: any): void {
-    console.log(user);
     const dialogRef = this.dialog.open(CreateUserComponent, {
       width: '500px',
       data: { user }, // Passa os dados do usuário para edição
@@ -251,7 +253,6 @@ export class UsersComponent implements OnInit {
 
   // Ações da tabela de grupos
   editGroup(group: UserGroup): void {
-    console.log(group);
     const dialogRef = this.dialog.open(CreateUserGroupComponent, {
       width: '500px',
       data: group, // Passa os dados do grupo para edição
@@ -277,30 +278,34 @@ export class UsersComponent implements OnInit {
   }
 
   async deleteGroup(group: UserGroup): Promise<void> {
-    try {
-      const confirmDelete = confirm(
-        `Tem certeza de que deseja excluir o grupo "${group.name}"?`
-      );
-      if (!confirmDelete) {
-        return;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        message: `Tem certeza de que deseja excluir o grupo "${group.name}"?`,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result) {
+        try {
+          const groupDoc = doc(this.firestore, `userGroups/${group.id}`);
+          await deleteDoc(groupDoc);
+
+          // Remove o grupo da tabela local
+          this.groupDataSource.data = this.groupDataSource.data.filter(
+            (g) => g.id !== group.id
+          );
+
+          this.snackBar.open('Grupo excluído com sucesso!', 'Fechar', {
+            duration: 3000,
+          });
+        } catch (error) {
+          console.error('Erro ao excluir grupo:', error);
+          this.snackBar.open('Erro ao excluir grupo.', 'Fechar', {
+            duration: 3000,
+          });
+        }
       }
-
-      const groupDoc = doc(this.firestore, `userGroups/${group.id}`);
-      await deleteDoc(groupDoc);
-
-      this.groupDataSource.data = this.groupDataSource.data.filter(
-        (g) => g.name !== group.name
-      );
-
-      this.snackBar.open('Grupo excluído com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Erro ao excluir grupo:', error);
-      this.snackBar.open('Erro ao excluir grupo.', 'Fechar', {
-        duration: 3000,
-      });
-    }
+    });
   }
 
   openCreateUserDialog(): void {
@@ -318,32 +323,34 @@ export class UsersComponent implements OnInit {
 
   // Ações da tabela de usuários
   async deleteUser(user: User): Promise<void> {
-    console.log(user);
-    try {
-      const confirmDelete = confirm(
-        `Tem certeza de que deseja excluir o usuário "${user.name}"?`
-      );
-      if (!confirmDelete) {
-        return;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        message: `Tem certeza de que deseja excluir o usuário "${user.name}"?`,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result) {
+        try {
+          const userDoc = doc(this.firestore, `users/${user.id}`);
+          await deleteDoc(userDoc);
+
+          // Remove o usuário da tabela local
+          this.userDataSource.data = this.userDataSource.data.filter(
+            (u) => u.id !== user.id
+          );
+
+          this.snackBar.open('Usuário excluído com sucesso!', 'Fechar', {
+            duration: 3000,
+          });
+        } catch (error) {
+          console.error('Erro ao excluir usuário:', error);
+          this.snackBar.open('Erro ao excluir usuário.', 'Fechar', {
+            duration: 3000,
+          });
+        }
       }
-
-      const userDoc = doc(this.firestore, `users/${user.id}`);
-      await deleteDoc(userDoc);
-
-      // Remove o usuário da tabela local
-      this.userDataSource.data = this.userDataSource.data.filter(
-        (u) => u.id !== user.id
-      );
-
-      this.snackBar.open('Usuário excluído com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Erro ao excluir usuário:', error);
-      this.snackBar.open('Erro ao excluir usuário.', 'Fechar', {
-        duration: 3000,
-      });
-    }
+    });
   }
 
   // Enviar e-mail de notificação
@@ -355,6 +362,13 @@ export class UsersComponent implements OnInit {
 
     this.snackBar.open(`E-mail enviado para ${user.email}`, 'Fechar', {
       duration: 3000,
+    });
+  }
+
+  openDetailsModal(title: string, items: string[]): void {
+    this.dialog.open(DetailsModalComponent, {
+      width: '400px',
+      data: { title, items },
     });
   }
 }

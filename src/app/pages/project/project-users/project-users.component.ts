@@ -54,6 +54,7 @@ export class ProjectUsersComponent implements OnInit {
 
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id');
+    console.log(this.projectId);
     if (this.projectId) {
       this.loadGroupsWithUsers();
     }
@@ -65,67 +66,83 @@ export class ProjectUsersComponent implements OnInit {
       const groupsCollection = collection(this.firestore, 'userGroups');
       const clientsCollection = collection(this.firestore, 'clients');
       const projectsCollection = collection(this.firestore, 'projects');
+      const usersCollection = collection(this.firestore, 'users');
 
-      const [groupsSnapshot, clientsSnapshot, projectsSnapshot] =
+      // Carrega os documentos de cada coleção
+      const [groupsSnapshot, clientsSnapshot, projectsSnapshot, usersSnapshot] =
         await Promise.all([
           getDocs(groupsCollection),
           getDocs(clientsCollection),
           getDocs(projectsCollection),
+          getDocs(usersCollection),
         ]);
 
-      const clients = clientsSnapshot.docs.map((clientDoc) => ({
-        id: clientDoc.id,
-        ...(clientDoc.data() as { companyName: string }),
+      // Mapear clientes, projetos e usuários
+      const clients = clientsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as { companyName: string }),
+      }));
+      const projects = projectsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as {
+          name: string;
+          clientId: string;
+          groupIds: string[];
+        }),
+      }));
+      const users = usersSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as { name: string; email: string; client: string }),
       }));
 
-      const projects = projectsSnapshot.docs.map((projectDoc) => ({
-        id: projectDoc.id,
-        ...(projectDoc.data() as { name: string }),
-      }));
+      // Obter clientId e projectId atuais
+      let currentClientId = this.route.snapshot.queryParamMap.get('clientId');
+      if (!currentClientId && this.projectId) {
+        const currentProject = projects.find(
+          (project) => project.id === this.projectId
+        );
+        currentClientId = currentProject?.clientId || null;
+      }
 
-      const currentClientId = this.route.snapshot.queryParamMap.get('clientId');
-
-      const groups: UserGroupDetailed[] = groupsSnapshot.docs
-        .map((groupDoc) => {
-          const groupData = groupDoc.data();
-          const client = clients.find(
-            (client) => client.id === groupData['clientId']
-          );
-
-          const projectIds: string[] = groupData['projectIds'] || [];
-          const projectNames: string[] = projectIds
-            .map(
-              (projectId: string) =>
-                projects.find((project) => project.id === projectId)?.name || ''
-            )
-            .filter((name: string) => name !== '');
+      // Filtrar grupos com base no clientId e projectId
+      const groups = groupsSnapshot.docs
+        .map((doc) => {
+          const groupData = doc.data();
+          const client = clients.find((c) => c.id === groupData['clientId']);
+          const projectIds = projects
+            .filter((p) => p.groupIds?.includes(doc.id))
+            .map((p) => p.name);
+          const groupUsers = (groupData['userIds'] || [])
+            .map((userId: string) => users.find((u) => u.id === userId)?.name)
+            .filter((name: any) => name);
 
           return {
-            id: groupDoc.id,
-            name: groupData['name'] || '',
+            id: doc.id,
+            name: groupData['name'] || 'Sem Nome',
             description: groupData['description'] || '',
             createdBy: groupData['createdBy'] || 'Desconhecido',
             clientId: groupData['clientId'] || '',
-            projectIds,
             clientName: client?.companyName || 'N/A',
-            projectNames,
-            users: groupData['users'] || [],
+            projectNames: projectIds,
+            users: groupUsers,
           };
         })
         .filter((group) => {
-          // Filtra apenas grupos que pertencem ao projeto atual e ao cliente especificado (se houver)
-          const belongsToProject = group.projectIds.includes(this.projectId!);
           const belongsToClient = currentClientId
             ? group.clientId === currentClientId
-            : true; // Se clientId não estiver especificado, não filtra por cliente
-          return belongsToProject && belongsToClient;
+            : true;
+          const belongsToProject = this.projectId
+            ? projects.some((p) => p.groupIds?.includes(group.id))
+            : true;
+          return belongsToClient && belongsToProject;
         });
 
+      // Atualizar a tabela
       this.dataSource.data = groups;
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
     } catch (error) {
-      console.error('Erro ao carregar grupos, clientes e projetos:', error);
+      console.error('Erro ao carregar grupos:', error);
       this.snackBar.open('Erro ao carregar dados.', 'Fechar', {
         duration: 3000,
       });

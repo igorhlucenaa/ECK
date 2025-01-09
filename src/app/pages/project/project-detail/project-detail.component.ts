@@ -140,7 +140,16 @@ export class ProjectDetailComponent implements OnInit {
       const projectSnapshot = await getDoc(projectDoc);
 
       if (projectSnapshot.exists()) {
-        this.form.patchValue(projectSnapshot.data());
+        const projectData = projectSnapshot.data();
+
+        // Converter deadline para um objeto Date, se necessário
+        if (projectData['deadline'] && projectData['deadline'].seconds) {
+          projectData['deadline'] = new Date(
+            projectData['deadline'].seconds * 1000
+          );
+        }
+
+        this.form.patchValue(projectData);
         await this.updateUsersInGroups(); // Carregar usuários dos grupos selecionados
       } else {
         this.snackBar.open('Projeto não encontrado!', 'Fechar', {

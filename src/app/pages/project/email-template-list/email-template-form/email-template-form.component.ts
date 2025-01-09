@@ -68,40 +68,61 @@ export class EmailTemplateFormComponent implements OnInit {
       name: ['', Validators.required],
       subject: ['', Validators.required],
       content: ['', Validators.required],
+      emailType: ['', Validators.required],
     });
   }
 
   ngOnInit(): void {
     const currentPath = this.router.url;
 
-    this.isDefaultTemplate = currentPath.includes('default-template/new');
+    // Verifica se estamos lidando com um template global (default-template)
+    this.isDefaultTemplate = currentPath.includes('default-template');
+    console.log('isDefaultTemplate', this.isDefaultTemplate); // Verifique se está correto
+
+    // Não precisamos de projectId para templates globais
     if (!this.isDefaultTemplate) {
+      // Para templates específicos de projeto, o projectId é necessário
       this.projectId = this.route.snapshot.paramMap.get('id');
-      this.templateId = this.route.snapshot.paramMap.get('templateId');
     }
 
-    if (this.projectId && this.templateId) {
+    this.templateId = this.route.snapshot.paramMap.get('templateId'); // Sempre pega o templateId
+
+    console.log('projectId:', this.projectId, 'templateId:', this.templateId); // Verifique os valores
+
+    if (this.templateId) {
       this.isEditMode = true;
-      this.loadTemplate();
+      this.loadTemplate(); // Carrega o template com base no templateId
     }
   }
 
   private async loadTemplate(): Promise<void> {
-    if (!this.projectId || !this.templateId) return;
+    if (!this.templateId) return;
 
-    const docRef = doc(
-      this.firestore,
-      `projects/${this.projectId}/templates/${this.templateId}`
-    );
+    let docRef;
+    console.log(this.isDefaultTemplate); // Verifica se é template global
 
+    if (this.isDefaultTemplate) {
+      // Para templates globais, busca na coleção 'defaultMailTemplate'
+      docRef = doc(this.firestore, `defaultMailTemplate/${this.templateId}`);
+    } else {
+      // Para templates específicos de projeto, busca na coleção do projeto
+      docRef = doc(
+        this.firestore,
+        `projects/${this.projectId}/templates/${this.templateId}`
+      );
+    }
+
+    // Carrega o template
     const snapshot = await getDoc(docRef);
 
     if (snapshot.exists()) {
+      console.log(snapshot.data()); // Verifique os dados retornados
       this.form.patchValue(snapshot.data());
     } else {
       this.snackBar.open('Template não encontrado!', 'Fechar', {
         duration: 3000,
       });
+      // Redireciona de volta para a lista de templates
       this.router.navigate([`/projects/${this.projectId}/templates`]);
     }
   }
@@ -116,13 +137,32 @@ export class EmailTemplateFormComponent implements OnInit {
 
     try {
       if (this.isDefaultTemplate) {
-        console.log('entrou aqui')
-        // Salvar em `defaultMailTemplate`
+        console.log('Salvando template global');
         const templatesCollection = collection(
           this.firestore,
           'defaultMailTemplate'
         );
-        await addDoc(templatesCollection, this.form.value);
+
+        if (this.isEditMode && this.templateId) {
+          // Se está no modo de edição, atualiza o template existente
+          const docRef = doc(
+            this.firestore,
+            `defaultMailTemplate/${this.templateId}`
+          );
+          await setDoc(docRef, this.form.value);
+        } else {
+          // Se não está no modo de edição, cria um novo template
+          await addDoc(templatesCollection, this.form.value);
+        }
+
+        this.snackBar.open(
+          this.isEditMode
+            ? 'Template atualizado com sucesso!'
+            : 'Template criado com sucesso!',
+          'Fechar',
+          { duration: 3000 }
+        );
+        this.router.navigate(['/mail-templates']); // Redireciona para a lista de templates
       } else {
         const templatesCollection = collection(
           this.firestore,
@@ -138,20 +178,20 @@ export class EmailTemplateFormComponent implements OnInit {
         } else {
           await addDoc(templatesCollection, this.form.value);
         }
-      }
 
-      this.snackBar.open(
-        this.isEditMode
-          ? 'Template atualizado com sucesso!'
-          : 'Template criado com sucesso!',
-        'Fechar',
-        { duration: 3000 }
-      );
+        this.snackBar.open(
+          this.isEditMode
+            ? 'Template atualizado com sucesso!'
+            : 'Template criado com sucesso!',
+          'Fechar',
+          { duration: 3000 }
+        );
 
-      if (this.isDefaultTemplate) {
-        this.router.navigate(['/projects/default-template']);
-      } else {
-        this.router.navigate([`/projects/${this.projectId}/templates`]);
+        if (this.isDefaultTemplate) {
+          this.router.navigate(['/mail-templates']);
+        } else {
+          this.router.navigate([`/projects/${this.projectId}/templates`]);
+        }
       }
     } catch (error) {
       console.error('Erro ao salvar template:', error);

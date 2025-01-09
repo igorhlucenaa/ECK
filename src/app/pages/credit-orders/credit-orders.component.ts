@@ -11,6 +11,8 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
+  query,
+  orderBy,
 } from '@angular/fire/firestore';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -62,8 +64,8 @@ export interface Order {
 })
 export class CreditOrdersComponent implements OnInit {
   displayedColumns: string[] = [
-    'id',
     'clientName',
+    'id',
     'openingBalance',
     'usedBalance',
     'remainingBalance',
@@ -95,7 +97,16 @@ export class CreditOrdersComponent implements OnInit {
   private async loadOrders(): Promise<void> {
     try {
       const ordersCollection = collection(this.firestore, 'creditOrders');
-      const ordersSnapshot = await getDocs(ordersCollection);
+
+      // Ordenar primeiro pelo status (Pendente no topo) e depois pela data mais recente
+      const ordersSnapshot = await getDocs(
+        query(
+          ordersCollection,
+          orderBy('status', 'desc'), // Coloca "Pendente" no topo, pois "Pendente" vem antes de "Aprovado", etc.
+          orderBy('createdAt', 'desc') // Ordena pela data mais recente
+        )
+      );
+
       const clientsCollection = collection(this.firestore, 'clients');
       const clientsSnapshot = await getDocs(clientsCollection);
 
@@ -134,7 +145,7 @@ export class CreditOrdersComponent implements OnInit {
           createdAt: data['createdAt']?.toDate(),
         } as Order;
       });
-      console.log(orders);
+
       this.originalData = orders;
       this.dataSource.data = orders;
       this.dataSource.paginator = this.paginator;
@@ -189,7 +200,11 @@ export class CreditOrdersComponent implements OnInit {
     this.startDate = null;
     this.endDate = null;
     this.selectedStatus = '';
-    this.dataSource.data = [...this.originalData];
+
+    // Recarrega os dados da tabela para garantir que o status e outras informações sejam atualizadas
+    this.loadOrders();
+
+    // Volta à primeira página da tabela
     this.dataSource.paginator?.firstPage();
   }
 
@@ -265,15 +280,42 @@ export class CreditOrdersComponent implements OnInit {
   async deleteOrder(orderId: string): Promise<void> {
     try {
       const orderDoc = doc(this.firestore, `creditOrders/${orderId}`);
+      const orderSnapshot = await getDoc(orderDoc);
+      const orderData = orderSnapshot.data();
+
+      if (!orderData) {
+        throw new Error('Pedido não encontrado.');
+      }
+
+      const creditsToDeduct = orderData['credits'];
+
+      // Exclui o pedido
       await deleteDoc(orderDoc);
 
+      // Deduz os créditos do cliente
+      const clientDoc = doc(this.firestore, `clients/${orderData['clientId']}`);
+      const clientSnapshot = await getDoc(clientDoc);
+      const clientData = clientSnapshot.data();
+
+      if (clientData) {
+        const currentCredits = clientData['credits'] || 0;
+        await updateDoc(clientDoc, {
+          credits: Math.max(0, currentCredits - creditsToDeduct),
+        });
+      }
+
+      // Atualiza a tabela localmente
       this.dataSource.data = this.dataSource.data.filter(
         (order) => order.id !== orderId
       );
 
-      this.snackBar.open('Pedido excluído com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(
+        'Pedido excluído e créditos deduzidos com sucesso!',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
     } catch (error) {
       console.error('Erro ao excluir pedido:', error);
       this.snackBar.open('Erro ao excluir pedido.', 'Fechar', {
@@ -333,7 +375,7 @@ export class CreditOrdersComponent implements OnInit {
       }
 
       this.snackBar.open(
-        'Pedidos expirados processados com sucesso!',
+        'Pedidos expirados processados e créditos deduzidos com sucesso!',
         'Fechar',
         {
           duration: 3000,
