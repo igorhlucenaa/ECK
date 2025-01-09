@@ -6,6 +6,8 @@ import {
   deleteDoc,
   getDocs,
   query,
+  writeBatch,
+  where,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -18,6 +20,7 @@ import { Router, RouterModule } from '@angular/router';
 import { AddClientDialogComponent } from '../add-client-dialog/add-client-dialog.component';
 import { PhonePipe } from 'src/app/pipe/phone.pipe';
 import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
+import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
 @Component({
   selector: 'app-clients-list',
   standalone: true,
@@ -28,6 +31,7 @@ import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
     PhonePipe,
     CnpjPipe,
     RouterModule,
+    ConfirmDialogComponent,
   ],
   templateUrl: './clients-list.component.html',
   styleUrls: ['./clients-list.component.scss'],
@@ -107,24 +111,77 @@ export class ClientsListComponent implements OnInit {
   }
 
   deleteClient(id: string) {
-    const clientDocRef = doc(this.firestore, `clients/${id}`);
-    deleteDoc(clientDocRef)
-      .then(() => {
-        this.snackBar.open('Cliente excluído com sucesso.', 'Fechar', {
-          duration: 3000,
-        });
-        this.dataSource.data = this.dataSource.data.filter(
-          (client) => client.id !== id
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: {
+        message: `Ao remover o cliente, todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?`,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (confirmed) {
+        // Referências às coleções relacionadas
+        const projectsCollection = collection(this.firestore, 'projects');
+        const userGroupsCollection = collection(this.firestore, 'userGroups');
+        const usersCollection = collection(this.firestore, 'users');
+
+        // Queries para localizar documentos relacionados
+        const projectsQuery = query(
+          projectsCollection,
+          where('clientId', '==', id)
         );
-      })
-      .catch((error) => {
-        this.snackBar.open(
-          'Erro ao excluir cliente. Tente novamente.',
-          'Fechar',
-          { duration: 3000 }
+        const userGroupsQuery = query(
+          userGroupsCollection,
+          where('clientId', '==', id)
         );
-        console.error('Erro ao excluir cliente:', error);
-      });
+        const usersQuery = query(usersCollection, where('client', '==', id));
+
+        // Função auxiliar para deletar documentos de uma query
+        const deleteDocuments = async (querySnapshot: any) => {
+          const batch = writeBatch(this.firestore);
+          querySnapshot.forEach((doc: any) => {
+            batch.delete(doc.ref);
+          });
+          await batch.commit();
+        };
+
+        // Deletar cliente e seus relacionados
+        Promise.all([
+          getDocs(projectsQuery).then(deleteDocuments),
+          getDocs(userGroupsQuery).then(deleteDocuments),
+          getDocs(usersQuery).then(deleteDocuments),
+        ])
+          .then(() => {
+            // Após excluir documentos relacionados, exclua o cliente
+            const clientDocRef = doc(this.firestore, `clients/${id}`);
+            return deleteDoc(clientDocRef);
+          })
+          .then(() => {
+            this.snackBar.open(
+              'Cliente e dados relacionados excluídos com sucesso.',
+              'Fechar',
+              {
+                duration: 3000,
+              }
+            );
+            // Atualizar tabela
+            this.dataSource.data = this.dataSource.data.filter(
+              (client) => client.id !== id
+            );
+          })
+          .catch((error) => {
+            console.error(
+              'Erro ao excluir cliente e dados relacionados:',
+              error
+            );
+            this.snackBar.open(
+              'Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.',
+              'Fechar',
+              { duration: 3000 }
+            );
+          });
+      }
+    });
   }
 
   openAddClientDialog(client?: any) {

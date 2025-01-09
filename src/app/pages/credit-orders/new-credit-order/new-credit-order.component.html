@@ -73,6 +73,7 @@
             matInput
             formControlName="validityDate"
             [matDatepicker]="validityDatePicker"
+            [min]="orderForm.get('startDate')?.value"
             placeholder="Selecione a data de validade"
           />
           <mat-datepicker-toggle
@@ -80,6 +81,9 @@
             [for]="validityDatePicker"
           ></mat-datepicker-toggle>
           <mat-datepicker #validityDatePicker></mat-datepicker>
+          <mat-error *ngIf="orderForm.get('validityDate')?.hasError('minDate')">
+            A data de validade deve ser maior ou igual à data de início.
+          </mat-error>
         </mat-form-field>
 
         <!-- Notas -->

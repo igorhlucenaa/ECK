@@ -18,6 +18,7 @@ import { CreateUserGroupComponent } from './create-user-group/create-user-group.
 import { CreateUserComponent } from './create-user/create-user.component';
 
 export interface User {
+  id: string;
   name: string;
   surname: string;
   email: string;
@@ -33,6 +34,9 @@ export interface UserGroup {
   name: string;
   description: string;
   createdBy: string;
+  projectIds: [];
+  userIds: [];
+  clientId: string;
 }
 
 @Component({
@@ -60,6 +64,7 @@ export class UsersComponent implements OnInit {
   // Tabela de grupos de usuários
   displayedGroupColumns: string[] = [
     'name',
+    'client',
     'description',
     'createdBy',
     'actions',
@@ -153,15 +158,31 @@ export class UsersComponent implements OnInit {
   async loadUserGroups(): Promise<void> {
     try {
       const groupsCollection = collection(this.firestore, 'userGroups');
-      const snapshot = await getDocs(groupsCollection);
+      const groupsSnapshot = await getDocs(groupsCollection);
 
-      const groups: UserGroup[] = snapshot.docs.map((doc) => {
+      const clientsCollection = collection(this.firestore, 'clients');
+      const clientsSnapshot = await getDocs(clientsCollection);
+
+      // Mapeia os clientes por ID para fácil acesso
+      const clientsMap = clientsSnapshot.docs.reduce((acc, doc) => {
+        acc[doc.id] = doc.data()['companyName'];
+        return acc;
+      }, {} as { [key: string]: string });
+
+      const groups: UserGroup[] = groupsSnapshot.docs.map((doc) => {
         const data = doc.data();
+        const clientName =
+          clientsMap[data['clientId']] || 'Cliente não encontrado';
+
         return {
-          id: doc.id, // Inclua o ID para mapeamento
+          id: doc.id,
           name: data['name'] || '',
           description: data['description'] || '',
           createdBy: data['createdBy'] || 'Desconhecido',
+          client: clientName, // Vincula o nome do cliente
+          projectIds: data['projectIds'] || [],
+          userIds: data['userIds'] || [],
+          clientId: data['clientId'],
         };
       });
 
@@ -211,6 +232,7 @@ export class UsersComponent implements OnInit {
 
   // Ações da tabela de grupos
   editGroup(group: UserGroup): void {
+    console.log(group);
     const dialogRef = this.dialog.open(CreateUserGroupComponent, {
       width: '500px',
       data: group, // Passa os dados do grupo para edição
@@ -271,6 +293,48 @@ export class UsersComponent implements OnInit {
       if (result) {
         this.loadUsers(); // Recarrega a tabela de usuários
       }
+    });
+  }
+
+  // Ações da tabela de usuários
+  async deleteUser(user: User): Promise<void> {
+    console.log(user);
+    try {
+      const confirmDelete = confirm(
+        `Tem certeza de que deseja excluir o usuário "${user.name}"?`
+      );
+      if (!confirmDelete) {
+        return;
+      }
+
+      const userDoc = doc(this.firestore, `users/${user.id}`);
+      await deleteDoc(userDoc);
+
+      // Remove o usuário da tabela local
+      this.userDataSource.data = this.userDataSource.data.filter(
+        (u) => u.id !== user.id
+      );
+
+      this.snackBar.open('Usuário excluído com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao excluir usuário:', error);
+      this.snackBar.open('Erro ao excluir usuário.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  // Enviar e-mail de notificação
+  sendEmailNotification(user: User): void {
+    console.log('Enviando e-mail para:', user.email);
+    // Aqui você implementaria a lógica de envio de e-mail, usando um serviço backend
+    // Por exemplo, se você estiver usando Firebase Functions ou outro serviço:
+    // this.emailService.sendNotification(user.email);
+
+    this.snackBar.open(`E-mail enviado para ${user.email}`, 'Fechar', {
+      duration: 3000,
     });
   }
 }

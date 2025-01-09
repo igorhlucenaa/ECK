@@ -52,8 +52,8 @@ export class EmailTemplateFormComponent implements OnInit {
     placeholder: 'Digite o conteúdo do e-mail aqui...',
     translate: 'no',
     defaultFontName: 'Arial',
-    defaultFontSize: '14',
-    toolbarHiddenButtons: [['italic'], ['fontSize']],
+    defaultFontSize: '12',
+    toolbarHiddenButtons: [],
   };
 
   constructor(
@@ -74,7 +74,7 @@ export class EmailTemplateFormComponent implements OnInit {
   ngOnInit(): void {
     const currentPath = this.router.url;
 
-    this.isDefaultTemplate = currentPath.includes('default-template-new');
+    this.isDefaultTemplate = currentPath.includes('default-template/new');
     if (!this.isDefaultTemplate) {
       this.projectId = this.route.snapshot.paramMap.get('id');
       this.templateId = this.route.snapshot.paramMap.get('templateId');
@@ -116,6 +116,7 @@ export class EmailTemplateFormComponent implements OnInit {
 
     try {
       if (this.isDefaultTemplate) {
+        console.log('entrou aqui')
         // Salvar em `defaultMailTemplate`
         const templatesCollection = collection(
           this.firestore,
@@ -162,7 +163,7 @@ export class EmailTemplateFormComponent implements OnInit {
 
   goToTemplates(): void {
     if (this.isDefaultTemplate) {
-      this.router.navigate(['/projects/default-template']);
+      this.router.navigate(['/mail-templates']);
     } else if (this.projectId) {
       this.router.navigate(['/projects', this.projectId, 'templates']);
     }

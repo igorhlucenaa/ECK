@@ -52,6 +52,16 @@
         </mat-option>
       </mat-select>
     </mat-form-field>
+
+    <!-- Usuários -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Usuários</mat-label>
+      <mat-select formControlName="userIds" multiple>
+        <mat-option *ngFor="let user of users" [value]="user.id">
+          {{ user.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
   </form>
 </div>
 <div mat-dialog-actions align="end">

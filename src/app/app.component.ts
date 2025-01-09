@@ -22,7 +22,7 @@ export class AppComponent implements OnInit {
       if (user) {
         this.authService.applyUserTheme();
         // Se o usuário estiver autenticado, redirecione para a página principal
-        this.router.navigate(['/projects']);
+        this.router.navigate(['/clients']);
       } else {
         // Se o usuário não estiver autenticado, redirecione para a página de login
         this.router.navigate(['/authentication/login']);

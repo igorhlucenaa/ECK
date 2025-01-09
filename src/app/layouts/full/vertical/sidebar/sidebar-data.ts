@@ -11,13 +11,13 @@ export const navItems: NavItem[] = [
   //   route: '/projects', // Caminho correto para a página de clientes,
   //   role: 'admin_client',
   // },
-
   {
-    displayName: 'Projetos',
-    iconName: 'solar:bill-list-bold-duotone',
-    route: '/projects', // Caminho correto para a página de clientes,
-    role: 'admin_client',
+    displayName: 'Clientes',
+    iconName: 'solar:people-nearby-bold-duotone',
+    route: '/clients', // Caminho correto para a página de clientes
+    role: 'admin_master',
   },
+
   // {
   //   displayName: 'Personalização',
   //   iconName: 'solar:paint-roller-bold-duotone',
@@ -43,10 +43,10 @@ export const navItems: NavItem[] = [
     route: '',
     children: [
       {
-        displayName: 'Clientes',
-        iconName: 'solar:people-nearby-bold-duotone',
-        route: '/clients', // Caminho correto para a página de clientes
-        role: 'admin_master',
+        displayName: 'Pedidos',
+        iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
+        route: '/orders', // Caminho correto para o componente de gestão de pedidos
+        role: 'admin_client', // Visível apenas para clientes
       },
       {
         displayName: 'Usuários e Grupos',
@@ -55,10 +55,10 @@ export const navItems: NavItem[] = [
         role: 'admin_master', // Visível apenas para Administrador Master
       },
       {
-        displayName: 'Pedidos',
-        iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
-        route: '/orders', // Caminho correto para o componente de gestão de pedidos
-        role: 'admin_client', // Visível apenas para clientes
+        displayName: 'Projetos',
+        iconName: 'solar:bill-list-bold-duotone',
+        route: '/projects', // Caminho correto para a página de clientes,
+        role: 'admin_client',
       },
       {
         displayName: 'Modelos de E-mail',

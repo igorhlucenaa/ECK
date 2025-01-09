@@ -83,7 +83,7 @@ export class CreateUserComponent implements OnInit {
       password: [''],
       client: ['', Validators.required],
       project: ['', Validators.required],
-      group: ['', Validators.required],
+      group: [''],
       role: ['', Validators.required],
     });
   }

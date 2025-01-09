@@ -4,6 +4,8 @@ import {
   FormGroup,
   Validators,
   ReactiveFormsModule,
+  AbstractControl,
+  ValidatorFn,
 } from '@angular/forms';
 import {
   Firestore,
@@ -63,11 +65,32 @@ export class NewCreditOrderComponent implements OnInit {
     this.orderForm = this.fb.group({
       clientId: ['', Validators.required],
       credits: [null, [Validators.required, Validators.min(1)]],
-      // totalAmount: [null, [Validators.required, Validators.min(0)]],
       startDate: [null, Validators.required],
       validityDate: [null, Validators.required],
       notes: [''],
     });
+
+    // Atualiza o valor mínimo para a data de validade com base na data de início
+    this.orderForm.get('startDate')?.valueChanges.subscribe((startDate) => {
+      const validityControl = this.orderForm.get('validityDate');
+      if (startDate) {
+        validityControl?.setValidators([
+          Validators.required,
+          this.minDateValidator(new Date(startDate)),
+        ]);
+        validityControl?.updateValueAndValidity();
+      }
+    });
+  }
+
+  private minDateValidator(minDate: Date): ValidatorFn {
+    return (control: AbstractControl): { [key: string]: any } | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      const date = new Date(value);
+      return date >= minDate ? null : { minDate: true };
+    };
   }
 
   private async loadClients(): Promise<void> {
@@ -98,7 +121,7 @@ export class NewCreditOrderComponent implements OnInit {
       return;
     }
 
-    const { clientId, credits, totalAmount, startDate, validityDate, notes } =
+    const { clientId, credits, startDate, validityDate, notes } =
       this.orderForm.value;
 
     try {
@@ -106,7 +129,6 @@ export class NewCreditOrderComponent implements OnInit {
       await addDoc(ordersCollection, {
         clientId,
         credits,
-        totalAmount,
         startDate,
         validityDate,
         notes: notes || '',
