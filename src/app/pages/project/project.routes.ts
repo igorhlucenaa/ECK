@@ -47,6 +47,12 @@ export const ProjectsRoutes: Routes = [
     data: { role: 'admin_client' },
   },
   {
+    path: 'default-template/new',
+    component: EmailTemplateFormComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'admin_client' },
+  },
+  {
     path: ':id/templates/:templateId/edit',
     component: EmailTemplateFormComponent,
     canActivate: [AuthGuard],

@@ -26,6 +26,7 @@ export class EmailTemplateListComponent implements OnInit {
   displayedColumns: string[] = ['name', 'subject', 'actions']; // Colunas da tabela
   dataSource = new MatTableDataSource<any>(); // Fonte de dados da tabela
   projectId: string | null = null; // ID do projeto
+  title = 'Templates de E-mail';
 
   @ViewChild(MatPaginator) paginator!: MatPaginator; // Referência ao paginator
   @ViewChild(MatSort) sort!: MatSort; // Referência ao sort
@@ -39,11 +40,17 @@ export class EmailTemplateListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Obter o ID do projeto da rota
+    // Obter o ID do projeto e o caminho da URL
     this.projectId = this.route.snapshot.paramMap.get('id');
+    const path = this.route.snapshot.url[0]?.path;
 
-    if (this.projectId) {
-      this.loadTemplates(); // Carregar templates associados ao projeto
+    // Alterar o título dinamicamente com base no caminho da URL
+    if (path === 'mail-templates') {
+      this.title = 'Templates Globais'; // Atualize para 'Globais' se for a visualização dos templates globais
+      this.loadTemplates(); // Carregar templates globais
+    } else if (this.projectId) {
+      this.title = 'Templates de E-mail do Projeto';
+      this.loadTemplates(); // Carregar templates específicos do projeto
     } else {
       this.snackBar.open('Projeto não encontrado.', 'Fechar', {
         duration: 3000,
@@ -58,15 +65,27 @@ export class EmailTemplateListComponent implements OnInit {
         this.firestore,
         `projects/${this.projectId}/templates`
       );
-      const snapshot = await getDocs(query(templatesCollection));
 
-      // Mapeia os dados retornados para a tabela
-      const templates = snapshot.docs.map((doc) => ({
+      // Carregar templates específicos do projeto
+      const snapshot = await getDocs(query(templatesCollection));
+      const projectTemplates = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
 
-      this.dataSource.data = templates;
+      // Carregar templates globais
+      const globalTemplatesCollection = collection(
+        this.firestore,
+        'defaultMailTemplate'
+      );
+      const globalSnapshot = await getDocs(query(globalTemplatesCollection));
+      const globalTemplates = globalSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Combinar os templates específicos do projeto com os globais
+      this.dataSource.data = [...globalTemplates, ...projectTemplates];
 
       // Configurar sort e paginador
       this.dataSource.paginator = this.paginator;
@@ -100,7 +119,13 @@ export class EmailTemplateListComponent implements OnInit {
 
   // Navegar para a página de criação de template
   createTemplate(): void {
-    this.router.navigate([`/projects/${this.projectId}/templates/new`]);
+    const path = this.route.snapshot.url[0]?.path;
+
+    if (path === 'mail-templates') {
+      this.router.navigate(['/projects/default-template/new']);
+    } else if (this.projectId) {
+      this.router.navigate([`/projects/${this.projectId}/templates/new`]);
+    }
   }
 
   // Navegar para a página de edição de um template específico

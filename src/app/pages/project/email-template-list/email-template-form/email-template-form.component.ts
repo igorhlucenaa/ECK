@@ -41,6 +41,7 @@ export class EmailTemplateFormComponent implements OnInit {
   projectId: string | null = null;
   templateId: string | null = null;
   isEditMode = false;
+  isDefaultTemplate = false; // Indica se a rota é para templates padrão
 
   // AngularEditor configuration
   editorConfig: AngularEditorConfig = {
@@ -51,8 +52,8 @@ export class EmailTemplateFormComponent implements OnInit {
     placeholder: 'Digite o conteúdo do e-mail aqui...',
     translate: 'no',
     defaultFontName: 'Arial',
-    defaultFontSize: '14',
-    toolbarHiddenButtons: [['italic'], ['fontSize']],
+    defaultFontSize: '12',
+    toolbarHiddenButtons: [],
   };
 
   constructor(
@@ -71,8 +72,13 @@ export class EmailTemplateFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.projectId = this.route.snapshot.paramMap.get('id');
-    this.templateId = this.route.snapshot.paramMap.get('templateId');
+    const currentPath = this.router.url;
+
+    this.isDefaultTemplate = currentPath.includes('default-template/new');
+    if (!this.isDefaultTemplate) {
+      this.projectId = this.route.snapshot.paramMap.get('id');
+      this.templateId = this.route.snapshot.paramMap.get('templateId');
+    }
 
     if (this.projectId && this.templateId) {
       this.isEditMode = true;
@@ -108,20 +114,30 @@ export class EmailTemplateFormComponent implements OnInit {
       return;
     }
 
-    const templatesCollection = collection(
-      this.firestore,
-      `projects/${this.projectId}/templates`
-    );
-
     try {
-      if (this.isEditMode && this.templateId) {
-        const docRef = doc(
+      if (this.isDefaultTemplate) {
+        console.log('entrou aqui')
+        // Salvar em `defaultMailTemplate`
+        const templatesCollection = collection(
           this.firestore,
-          `projects/${this.projectId}/templates/${this.templateId}`
+          'defaultMailTemplate'
         );
-        await setDoc(docRef, this.form.value);
-      } else {
         await addDoc(templatesCollection, this.form.value);
+      } else {
+        const templatesCollection = collection(
+          this.firestore,
+          `projects/${this.projectId}/templates`
+        );
+
+        if (this.isEditMode && this.templateId) {
+          const docRef = doc(
+            this.firestore,
+            `projects/${this.projectId}/templates/${this.templateId}`
+          );
+          await setDoc(docRef, this.form.value);
+        } else {
+          await addDoc(templatesCollection, this.form.value);
+        }
       }
 
       this.snackBar.open(
@@ -131,7 +147,12 @@ export class EmailTemplateFormComponent implements OnInit {
         'Fechar',
         { duration: 3000 }
       );
-      this.router.navigate([`/projects/${this.projectId}/templates`]);
+
+      if (this.isDefaultTemplate) {
+        this.router.navigate(['/projects/default-template']);
+      } else {
+        this.router.navigate([`/projects/${this.projectId}/templates`]);
+      }
     } catch (error) {
       console.error('Erro ao salvar template:', error);
       this.snackBar.open('Erro ao salvar template.', 'Fechar', {
@@ -141,7 +162,9 @@ export class EmailTemplateFormComponent implements OnInit {
   }
 
   goToTemplates(): void {
-    if (this.projectId) {
+    if (this.isDefaultTemplate) {
+      this.router.navigate(['/mail-templates']);
+    } else if (this.projectId) {
       this.router.navigate(['/projects', this.projectId, 'templates']);
     }
   }

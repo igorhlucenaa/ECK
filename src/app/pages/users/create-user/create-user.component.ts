@@ -70,7 +70,7 @@ export class CreateUserComponent implements OnInit {
     this.loadClients().then(() => {
       if (this.data?.user) {
         this.isEditMode = true;
-        this.prefillForm(this.data.user); // Agora carrega os valores do cliente, projeto e grupo
+        this.prefillForm(this.data.user); // Carrega os valores no modo de edição
       }
     });
   }
@@ -83,28 +83,44 @@ export class CreateUserComponent implements OnInit {
       password: [''],
       client: ['', Validators.required],
       project: ['', Validators.required],
-      group: ['', Validators.required],
+      group: [''],
       role: ['', Validators.required],
     });
   }
 
   private async prefillForm(user: any): Promise<void> {
-    console.log(user)
-    if (user.client) {
-      console.log(user.client);
-      // Carregar projetos e grupos relacionados ao cliente antes de preencher os valores
-      await this.onClientChange(user.client);
+    console.log('Usuário para edição:', user);
+
+    // Obtém o ID do cliente correspondente ao nome (se necessário)
+    const clientId = this.clients.find(
+      (client) => client.name === user.client
+    )?.id;
+
+    if (clientId) {
+      console.log('Carregando dados relacionados ao cliente:', clientId);
+
+      // Aguarda o carregamento dos projetos e grupos
+      await this.onClientChange(clientId);
     }
 
+    // Após os dados serem carregados, preenche o formulário
     this.userForm.patchValue({
       name: user.name,
       surname: user.surname,
       email: user.email,
-      client: user.client,
+      client: clientId || '', // Atualiza com o ID ou mantém vazio
       project: user.project,
       group: user.group,
       role: user.role,
     });
+
+    // Habilita campos desabilitados caso já estejam preenchidos
+    if (user.project) {
+      this.userForm.get('project')?.enable();
+    }
+    if (user.group) {
+      this.userForm.get('group')?.enable();
+    }
   }
 
   private async loadClients(): Promise<void> {
@@ -124,11 +140,20 @@ export class CreateUserComponent implements OnInit {
   }
 
   async onClientChange(clientId: string): Promise<void> {
+    console.log('Cliente selecionado:', clientId);
+
+    if (!clientId) {
+      console.warn('Nenhum cliente válido selecionado.');
+      return;
+    }
+
+    // Inicializa os campos dependentes
     this.projects = [];
     this.groups = [];
     this.userForm.patchValue({ project: '', group: '' });
 
     try {
+      // Carrega projetos relacionados ao cliente
       const projectsCollection = collection(this.firestore, 'projects');
       const projectsQuery = query(
         projectsCollection,
@@ -140,6 +165,7 @@ export class CreateUserComponent implements OnInit {
         name: doc.data()['name'] || 'Sem Nome',
       }));
 
+      // Carrega grupos relacionados ao cliente
       const groupsCollection = collection(this.firestore, 'userGroups');
       const groupsQuery = query(
         groupsCollection,
@@ -150,6 +176,9 @@ export class CreateUserComponent implements OnInit {
         id: doc.id,
         name: doc.data()['name'] || 'Sem Nome',
       }));
+
+      console.log('Projetos carregados:', this.projects);
+      console.log('Grupos carregados:', this.groups);
     } catch (error) {
       console.error('Erro ao carregar projetos ou grupos:', error);
       this.snackBar.open('Erro ao carregar projetos ou grupos.', 'Fechar', {

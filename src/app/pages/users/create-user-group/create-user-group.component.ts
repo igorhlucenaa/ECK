@@ -29,11 +29,12 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 export interface UserGroup {
-  id?: string; // Opcional para suportar edição
+  id?: string;
   name: string;
   description: string;
   clientId?: string;
   projectIds?: string[];
+  userIds?: string[];
 }
 
 @Component({
@@ -56,7 +57,8 @@ export class CreateUserGroupComponent implements OnInit {
   groupForm!: FormGroup;
   clients: { id: string; name: string }[] = [];
   projects: { id: string; name: string }[] = [];
-  isEditMode: boolean = false; // Indica se o componente está no modo de edição
+  users: { id: string; name: string }[] = [];
+  isEditMode: boolean = false;
 
   constructor(
     private fb: FormBuilder,
@@ -64,17 +66,26 @@ export class CreateUserGroupComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private authService: AuthService,
-    @Inject(MAT_DIALOG_DATA) public data: UserGroup | null // Dados do grupo para edição
+    @Inject(MAT_DIALOG_DATA) public data: UserGroup | null
   ) {}
 
   ngOnInit(): void {
     this.initializeForm();
-    this.loadClients();
-    if (this.data) {
-      this.isEditMode = true; // Ativa o modo de edição
-      this.patchFormWithData();
-      this.loadProjects(this.data.clientId || null); // Carrega os projetos do cliente selecionado
-    }
+    this.loadClients().then(() => {
+      if (this.data) {
+        this.isEditMode = true;
+        this.patchFormWithData()
+          .then(() =>
+            console.log(
+              'Formulário preenchido com os dados:',
+              this.groupForm.value
+            )
+          )
+          .catch((error) =>
+            console.error('Erro ao preencher o formulário:', error)
+          );
+      }
+    });
   }
 
   private initializeForm(): void {
@@ -82,7 +93,8 @@ export class CreateUserGroupComponent implements OnInit {
       name: ['', Validators.required],
       description: [''],
       clientId: ['', Validators.required],
-      projectIds: [[]], // Campo múltiplo para projetos
+      projectIds: [[]],
+      userIds: [[]],
     });
   }
 
@@ -92,7 +104,7 @@ export class CreateUserGroupComponent implements OnInit {
       const snapshot = await getDocs(clientsCollection);
       this.clients = snapshot.docs.map((doc) => ({
         id: doc.id,
-        name: doc.data()['name'] || 'Sem Nome',
+        name: doc.data()['companyName'] || 'Sem Nome',
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
@@ -105,6 +117,7 @@ export class CreateUserGroupComponent implements OnInit {
   private async loadProjects(clientId: string | null): Promise<void> {
     if (!clientId) {
       this.projects = [];
+      console.log('Nenhum clientId fornecido para carregar projetos.');
       return;
     }
 
@@ -120,6 +133,7 @@ export class CreateUserGroupComponent implements OnInit {
         id: doc.id,
         name: doc.data()['name'] || 'Sem Nome',
       }));
+      console.log('Projetos carregados:', this.projects);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
       this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
@@ -128,14 +142,68 @@ export class CreateUserGroupComponent implements OnInit {
     }
   }
 
-  private patchFormWithData(): void {
-    // Preenche o formulário com os dados existentes para edição
-    this.groupForm.patchValue({
-      name: this.data?.name,
-      description: this.data?.description,
-      clientId: this.data?.clientId,
-      projectIds: this.data?.projectIds || [],
-    });
+  private async loadUsers(clientId: string | null): Promise<void> {
+    if (!clientId) {
+      this.users = [];
+      return;
+    }
+
+    try {
+      const usersCollection = collection(this.firestore, 'users');
+      const usersQuery = query(
+        usersCollection,
+        where('client', '==', clientId)
+      );
+      const snapshot = await getDocs(usersQuery);
+
+      this.users = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Sem Nome',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+      this.snackBar.open('Erro ao carregar usuários.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  private async patchFormWithData(): Promise<void> {
+    if (this.data) {
+      console.log('Dados do grupo recebidos no patch:', this.data);
+      const clientId = this.data.clientId;
+
+      if (clientId) {
+        try {
+          console.log(
+            'Iniciando o carregamento de projetos e usuários para clientId:',
+            clientId
+          );
+          await Promise.all([
+            this.loadProjects(clientId),
+            this.loadUsers(clientId),
+          ]);
+          console.log('Carregamento concluído.');
+        } catch (error) {
+          console.error('Erro ao carregar dados associados ao cliente:', error);
+        }
+      }
+
+      console.log('Dados após carregamento:', this.data);
+
+      this.groupForm.patchValue({
+        name: this.data.name,
+        description: this.data.description,
+        clientId: this.data.clientId, // Verifique se clientId está correto aqui
+        projectIds: this.data.projectIds || [],
+        userIds: this.data.userIds || [],
+      });
+
+      console.log(
+        'Formulário atualizado com os valores:',
+        this.groupForm.value
+      );
+    }
   }
 
   async saveGroup(): Promise<void> {
@@ -202,5 +270,6 @@ export class CreateUserGroupComponent implements OnInit {
   onClientChange(): void {
     const clientId = this.groupForm.get('clientId')?.value;
     this.loadProjects(clientId);
+    this.loadUsers(clientId);
   }
 }

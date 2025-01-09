@@ -9,6 +9,18 @@ import { MatDialog } from '@angular/material/dialog';
 import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { UsersListByGroupComponent } from './users-list-by-group/users-list-by-group.component';
+// Adicione esta interface no início do seu arquivo component.ts ou em um arquivo separado de interfaces
+export interface UserGroupDetailed {
+  id: string;
+  name: string;
+  description: string;
+  createdBy: string;
+  clientId: string;
+  projectIds: string[];
+  clientName: string;
+  projectNames: string[];
+  users: any[];
+}
 
 @Component({
   selector: 'app-project-users',
@@ -63,7 +75,7 @@ export class ProjectUsersComponent implements OnInit {
 
       const clients = clientsSnapshot.docs.map((clientDoc) => ({
         id: clientDoc.id,
-        ...(clientDoc.data() as { name: string }),
+        ...(clientDoc.data() as { companyName: string }),
       }));
 
       const projects = projectsSnapshot.docs.map((projectDoc) => ({
@@ -71,26 +83,43 @@ export class ProjectUsersComponent implements OnInit {
         ...(projectDoc.data() as { name: string }),
       }));
 
-      const groups = groupsSnapshot.docs.map((groupDoc) => {
-        const groupData = groupDoc.data();
-        const client = clients.find(
-          (client) => client.id === groupData['clientId']
-        );
-        const projectNames = groupData['projectIds']
-          .map(
-            (projectId: string) =>
-              projects.find((project) => project.id === projectId)?.name
-          )
-          .filter((name: any) => !!name);
+      const currentClientId = this.route.snapshot.queryParamMap.get('clientId');
 
-        return {
-          id: groupDoc.id,
-          ...groupData,
-          clientName: client?.name || 'N/A', // Nome do cliente
-          projectNames, // Nomes dos projetos
-          users: groupData['users'] || [], // Usuários do grupo
-        };
-      });
+      const groups: UserGroupDetailed[] = groupsSnapshot.docs
+        .map((groupDoc) => {
+          const groupData = groupDoc.data();
+          const client = clients.find(
+            (client) => client.id === groupData['clientId']
+          );
+
+          const projectIds: string[] = groupData['projectIds'] || [];
+          const projectNames: string[] = projectIds
+            .map(
+              (projectId: string) =>
+                projects.find((project) => project.id === projectId)?.name || ''
+            )
+            .filter((name: string) => name !== '');
+
+          return {
+            id: groupDoc.id,
+            name: groupData['name'] || '',
+            description: groupData['description'] || '',
+            createdBy: groupData['createdBy'] || 'Desconhecido',
+            clientId: groupData['clientId'] || '',
+            projectIds,
+            clientName: client?.companyName || 'N/A',
+            projectNames,
+            users: groupData['users'] || [],
+          };
+        })
+        .filter((group) => {
+          // Filtra apenas grupos que pertencem ao projeto atual e ao cliente especificado (se houver)
+          const belongsToProject = group.projectIds.includes(this.projectId!);
+          const belongsToClient = currentClientId
+            ? group.clientId === currentClientId
+            : true; // Se clientId não estiver especificado, não filtra por cliente
+          return belongsToProject && belongsToClient;
+        });
 
       this.dataSource.data = groups;
       this.dataSource.paginator = this.paginator;

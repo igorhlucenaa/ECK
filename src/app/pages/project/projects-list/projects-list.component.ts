@@ -71,7 +71,7 @@ export class ProjectsListComponent implements OnInit {
 
       this.clients = snapshot.docs.map((doc) => ({
         id: doc.id,
-        name: doc.data()['name'] || 'Cliente Desconhecido',
+        name: doc.data()['companyName'] || 'Cliente Desconhecido',
       }));
 
       this.clients.forEach((client) => {

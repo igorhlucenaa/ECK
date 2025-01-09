@@ -1,6 +1,8 @@
 <div class="container my-4">
   <mat-card>
-    <mat-card-title style="margin: 15px;">Gestão de Pedidos de Crédito</mat-card-title>
+    <mat-card-title style="margin: 15px"
+      >Gestão de Pedidos de Crédito</mat-card-title
+    >
     <mat-card-content>
       <!-- Filtros -->
       <div class="row mb-4 align-items-center">
@@ -12,6 +14,7 @@
               [matDatepicker]="startDatePicker"
               [(ngModel)]="startDate"
               (dateChange)="applyFilter()"
+              [max]="endDate"
             />
             <mat-datepicker-toggle
               matSuffix
@@ -28,6 +31,7 @@
               [matDatepicker]="endDatePicker"
               [(ngModel)]="endDate"
               (dateChange)="applyFilter()"
+              [min]="startDate"
             />
             <mat-datepicker-toggle
               matSuffix
@@ -47,6 +51,7 @@
               <mat-option value="Pendente">Pendente</mat-option>
               <mat-option value="Aprovado">Aprovado</mat-option>
               <mat-option value="Rejeitado">Rejeitado</mat-option>
+              <mat-option value="Expirado">Expirado</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
@@ -64,7 +69,7 @@
 
       <!-- Botão Limpar Filtros -->
       <div class="row mb-4">
-        <div class="col-md-12" style="text-align: end;">
+        <div class="col-md-12" style="text-align: end">
           <button mat-flat-button color="accent" (click)="resetFilters()">
             Limpar Filtros
           </button>
