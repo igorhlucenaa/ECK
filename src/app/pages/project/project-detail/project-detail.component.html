@@ -45,6 +45,21 @@
               <input matInput type="number" formControlName="budget" />
             </mat-form-field>
           </div> -->
+
+          <!-- Grupo de Usuários -->
+          <div class="col-md-12 mb-3">
+            <mat-form-field appearance="outline" class="w-100">
+              <mat-label>Grupos de Usuários</mat-label>
+              <mat-select formControlName="groupIds" multiple>
+                <mat-option *ngFor="let group of groups" [value]="group.id">
+                  {{ group.name }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="form.get('groupIds')?.hasError('required')">
+                Pelo menos um grupo de usuário é obrigatório.
+              </mat-error>
+            </mat-form-field>
+          </div>
         </div>
 
         <!-- Linha 2 -->
@@ -52,9 +67,22 @@
           <div class="col-md-6 mb-3">
             <mat-form-field appearance="outline" class="w-100">
               <mat-label>Prazo</mat-label>
-              <input matInput type="date" formControlName="deadline" />
+              <input
+                matInput
+                [matDatepicker]="picker"
+                formControlName="deadline"
+              />
+              <mat-datepicker-toggle
+                matSuffix
+                [for]="picker"
+              ></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+              <mat-error *ngIf="form.get('deadline')?.hasError('required')">
+                O prazo é obrigatório.
+              </mat-error>
             </mat-form-field>
           </div>
+
           <div class="col-md-6 mb-3">
             <mat-form-field appearance="outline" class="w-100">
               <mat-label>Status</mat-label>

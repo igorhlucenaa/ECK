@@ -89,8 +89,9 @@ export class UsersComponent implements OnInit {
 
   async loadData(): Promise<void> {
     try {
-      await this.loadUserGroups(); // Carrega os grupos primeiro
-      await this.loadUsers(); // Depois carrega os usuários
+      const groups = await this.loadUserGroups(); // Carrega os grupos e retorna a lista
+      console.log(groups);
+      await this.loadUsers(groups); // Passa os grupos para associar
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       this.snackBar.open('Erro ao carregar dados.', 'Fechar', {
@@ -100,7 +101,7 @@ export class UsersComponent implements OnInit {
   }
 
   // Carrega os dados dos usuários do Firestore
-  async loadUsers(): Promise<void> {
+  async loadUsers(groups: UserGroup[]): Promise<void> {
     try {
       const usersCollection = collection(this.firestore, 'users');
       const usersSnapshot = await getDocs(usersCollection);
@@ -111,17 +112,26 @@ export class UsersComponent implements OnInit {
       const projectsCollection = collection(this.firestore, 'projects');
       const projectsSnapshot = await getDocs(projectsCollection);
 
-      // Mapeia os clientes por ID para fácil acesso
       const clientsMap = clientsSnapshot.docs.reduce((acc, doc) => {
         acc[doc.id] = doc.data()['companyName'];
         return acc;
       }, {} as { [key: string]: string });
 
-      // Mapeia os projetos por ID para fácil acesso
       const projectsMap = projectsSnapshot.docs.reduce((acc, doc) => {
         acc[doc.id] = doc.data()['name'];
         return acc;
       }, {} as { [key: string]: string });
+
+      // Mapeamento de grupos com verificação de userIds
+      const groupsMap = groups.reduce((acc, group) => {
+        group.userIds.forEach((userId) => {
+          console.log(`Grupo ${group.name} -> userId ${userId}`);
+          acc[userId] = group.name;
+        });
+        return acc;
+      }, {} as { [key: string]: string });
+
+      console.log('groupsMap:', groupsMap); // Verificar se o mapeamento está correto
 
       const users: User[] = usersSnapshot.docs.map((doc) => {
         const data = doc.data();
@@ -130,19 +140,25 @@ export class UsersComponent implements OnInit {
         const projectName =
           projectsMap[data['project']] || 'Projeto não encontrado';
 
+        // Verificação de grupo
+        const groupName = groupsMap[doc.id] || 'Sem grupo';
+
+        console.log(
+          `Usuário ${data['name']} (${doc.id}): Grupo -> ${groupName}`
+        );
+
         return {
           id: doc.id,
           name: data['name'] || '',
           surname: data['surname'] || '',
           email: data['email'] || '',
-          group: data['group'] || '',
+          group: groupName,
           role: data['role'] || '',
           notificationStatus: data['notificationStatus'] || 'Pendente',
-          client: companyName, // Substitui o ID pelo nome do cliente
-          project: projectName, // Substitui o ID pelo nome do projeto
+          client: companyName,
+          project: projectName,
         };
       });
-
       this.userDataSource.data = users;
       this.userDataSource.paginator = this.userPaginator;
       this.userDataSource.sort = this.userSort;
@@ -155,7 +171,7 @@ export class UsersComponent implements OnInit {
   }
 
   // Carrega os dados dos grupos de usuários do Firestore
-  async loadUserGroups(): Promise<void> {
+  async loadUserGroups(): Promise<UserGroup[]> {
     try {
       const groupsCollection = collection(this.firestore, 'userGroups');
       const groupsSnapshot = await getDocs(groupsCollection);
@@ -163,7 +179,6 @@ export class UsersComponent implements OnInit {
       const clientsCollection = collection(this.firestore, 'clients');
       const clientsSnapshot = await getDocs(clientsCollection);
 
-      // Mapeia os clientes por ID para fácil acesso
       const clientsMap = clientsSnapshot.docs.reduce((acc, doc) => {
         acc[doc.id] = doc.data()['companyName'];
         return acc;
@@ -179,7 +194,7 @@ export class UsersComponent implements OnInit {
           name: data['name'] || '',
           description: data['description'] || '',
           createdBy: data['createdBy'] || 'Desconhecido',
-          client: clientName, // Vincula o nome do cliente
+          client: clientName,
           projectIds: data['projectIds'] || [],
           userIds: data['userIds'] || [],
           clientId: data['clientId'],
@@ -189,11 +204,14 @@ export class UsersComponent implements OnInit {
       this.groupDataSource.data = groups;
       this.groupDataSource.paginator = this.groupPaginator;
       this.groupDataSource.sort = this.groupSort;
+
+      return groups;
     } catch (error) {
       console.error('Erro ao carregar grupos de usuários:', error);
       this.snackBar.open('Erro ao carregar grupos de usuários.', 'Fechar', {
         duration: 3000,
       });
+      return [];
     }
   }
 
@@ -223,9 +241,10 @@ export class UsersComponent implements OnInit {
       data: { user }, // Passa os dados do usuário para edição
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
+    dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
-        this.loadUsers(); // Recarrega a tabela de usuários após edição
+        const groups = await this.loadUserGroups(); // Carrega os grupos e retorna a lista
+        await this.loadUsers(groups); // Recarrega a tabela de usuários após edição
       }
     });
   }
@@ -289,9 +308,10 @@ export class UsersComponent implements OnInit {
       width: '500px',
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
+    dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
-        this.loadUsers(); // Recarrega a tabela de usuários
+        const groups = await this.loadUserGroups(); // Carrega os grupos e retorna a lista
+        await this.loadUsers(groups); // Recarrega a tabela de usuários após edição
       }
     });
   }

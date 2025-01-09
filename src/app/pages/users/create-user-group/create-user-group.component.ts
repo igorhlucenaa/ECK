@@ -93,7 +93,7 @@ export class CreateUserGroupComponent implements OnInit {
       name: ['', Validators.required],
       description: [''],
       clientId: ['', Validators.required],
-      projectIds: [[]],
+      // projectIds: [[]],
       userIds: [[]],
     });
   }
@@ -143,17 +143,14 @@ export class CreateUserGroupComponent implements OnInit {
   }
 
   private async loadUsers(clientId: string | null): Promise<void> {
-    if (!clientId) {
-      this.users = [];
-      return;
-    }
+    // if (!clientId) {
+    //   this.users = [];
+    //   return;
+    // }
 
     try {
       const usersCollection = collection(this.firestore, 'users');
-      const usersQuery = query(
-        usersCollection,
-        where('client', '==', clientId)
-      );
+      const usersQuery = query(usersCollection);
       const snapshot = await getDocs(usersQuery);
 
       this.users = snapshot.docs.map((doc) => ({
@@ -211,14 +208,24 @@ export class CreateUserGroupComponent implements OnInit {
       return;
     }
 
+    const userIds = this.groupForm.get('userIds')?.value || [];
+    const clientId = this.groupForm.get('clientId')?.value;
+    const projectIds = this.groupForm.get('projectIds')?.value || [];
+
     if (this.isEditMode) {
-      await this.updateGroup();
+      // Atualizar o grupo
+      await this.updateGroup(clientId, userIds, projectIds);
     } else {
-      await this.createGroup();
+      // Criar um novo grupo
+      await this.createGroup(clientId, userIds, projectIds);
     }
   }
 
-  private async createGroup(): Promise<void> {
+  private async createGroup(
+    clientId: string,
+    userIds: string[],
+    projectIds: string[]
+  ): Promise<void> {
     try {
       const currentUser = await this.authService.getCurrentUser();
       if (!currentUser) {
@@ -231,12 +238,15 @@ export class CreateUserGroupComponent implements OnInit {
       }
 
       const groupsCollection = collection(this.firestore, 'userGroups');
-      await addDoc(groupsCollection, {
+      const groupRef = await addDoc(groupsCollection, {
         ...this.groupForm.value,
         createdBy: currentUser.name,
         createdByEmail: currentUser.email,
         createdAt: new Date(),
       });
+
+      // Atualizar os usuários e o cliente/projeto para cada usuário
+      await this.updateUserDocuments(userIds, clientId, projectIds);
 
       this.snackBar.open('Grupo criado com sucesso!', 'Fechar', {
         duration: 3000,
@@ -248,12 +258,19 @@ export class CreateUserGroupComponent implements OnInit {
     }
   }
 
-  private async updateGroup(): Promise<void> {
+  private async updateGroup(
+    clientId: string,
+    userIds: string[],
+    projectIds: string[]
+  ): Promise<void> {
     try {
       const groupDocRef = doc(this.firestore, `userGroups/${this.data?.id}`);
       await updateDoc(groupDocRef, {
         ...this.groupForm.value,
       });
+
+      // Atualizar os usuários e o cliente/projeto para cada usuário
+      await this.updateUserDocuments(userIds, clientId, projectIds);
 
       this.snackBar.open('Grupo atualizado com sucesso!', 'Fechar', {
         duration: 3000,
@@ -264,6 +281,34 @@ export class CreateUserGroupComponent implements OnInit {
       this.snackBar.open('Erro ao atualizar grupo.', 'Fechar', {
         duration: 3000,
       });
+    }
+  }
+
+  private async updateUserDocuments(
+    userIds: string[],
+    clientId: string,
+    projectIds: string[]
+  ): Promise<void> {
+    try {
+      // Atualizar cada usuário
+      for (const userId of userIds) {
+        const userDocRef = doc(this.firestore, `users/${userId}`);
+        await updateDoc(userDocRef, {
+          client: clientId,
+          project: projectIds.length > 0 ? projectIds[0] : null, // Atualizando com o primeiro projeto (você pode ajustar se necessário)
+        });
+      }
+
+      this.snackBar.open('Usuários atualizados com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar documentos dos usuários:', error);
+      this.snackBar.open(
+        'Erro ao atualizar documentos dos usuários.',
+        'Fechar',
+        { duration: 3000 }
+      );
     }
   }
 

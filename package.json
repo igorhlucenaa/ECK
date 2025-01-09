@@ -37,6 +37,7 @@
     "echarts-stat": "^1.2.0",
     "firebase": "^11.0.2",
     "jspdf": "^2.5.2",
+    "mat-select-search": "^1.2.21",
     "ng-apexcharts": "^1.7.6",
     "ng2-search-filter": "^0.5.1",
     "ngx-echarts": "^18.0.0",

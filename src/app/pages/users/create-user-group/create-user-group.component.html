@@ -1,7 +1,7 @@
 <div mat-dialog-title>
   {{ isEditMode ? "Editar Grupo de Usuários" : "Criar Novo Grupo de Usuários" }}
 </div>
-<div mat-dialog-content>
+<div mat-dialog-content style="padding-top: 5px;">
   <form [formGroup]="groupForm" (ngSubmit)="saveGroup()">
     <!-- Nome do Grupo -->
     <mat-form-field appearance="outline" class="w-100 mb-3">
@@ -44,14 +44,14 @@
     </mat-form-field>
 
     <!-- Projetos -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
+    <!-- <mat-form-field appearance="outline" class="w-100 mb-3">
       <mat-label>Projetos</mat-label>
       <mat-select formControlName="projectIds" multiple>
         <mat-option *ngFor="let project of projects" [value]="project.id">
           {{ project.name }}
         </mat-option>
       </mat-select>
-    </mat-form-field>
+    </mat-form-field> -->
 
     <!-- Usuários -->
     <mat-form-field appearance="outline" class="w-100 mb-3">
