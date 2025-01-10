@@ -30,6 +30,7 @@ export interface User {
   client: string;
   project: string;
   groups: string[]; // Torna groups opcional
+  projects: string[]; // Modificado para múltiplos projetos
 }
 
 export interface UserGroup {
@@ -56,7 +57,7 @@ export class UsersComponent implements OnInit {
     'surname',
     'email',
     'client',
-    'project',
+    'projects',
     'group',
     'role',
     'notificationStatus',
@@ -106,62 +107,92 @@ export class UsersComponent implements OnInit {
   // Carrega os dados dos usuários do Firestore
   async loadUsers(groups: UserGroup[]): Promise<void> {
     try {
+      // Buscar dados das coleções
       const usersCollection = collection(this.firestore, 'users');
       const usersSnapshot = await getDocs(usersCollection);
-
       const clientsCollection = collection(this.firestore, 'clients');
       const clientsSnapshot = await getDocs(clientsCollection);
-
       const projectsCollection = collection(this.firestore, 'projects');
       const projectsSnapshot = await getDocs(projectsCollection);
+      const groupsCollection = collection(this.firestore, 'userGroups');
+      const groupsSnapshot = await getDocs(groupsCollection);
 
+      // Mapeamento de clientes
       const clientsMap = clientsSnapshot.docs.reduce((acc, doc) => {
         acc[doc.id] = doc.data()['companyName'];
         return acc;
       }, {} as { [key: string]: string });
 
+      // Mapeamento de projetos
       const projectsMap = projectsSnapshot.docs.reduce((acc, doc) => {
-        acc[doc.id] = doc.data()['name'];
+        acc[doc.id] = {
+          name: doc.data()['name'],
+          groupIds: doc.data()['groupIds'] || [],
+        };
         return acc;
-      }, {} as { [key: string]: string });
+      }, {} as { [key: string]: { name: string; groupIds: string[] } });
 
-      // Mapeamento de grupos com verificação de userIds
-      const groupsMap = groups.reduce((acc, group) => {
-        group.userIds.forEach((userId) => {
-          if (!acc[userId]) {
-            acc[userId] = [];
-          }
-          acc[userId].push(group.name); // Adiciona o nome do grupo na lista do usuário
-        });
+      // Mapeamento de grupos para usuários
+      const groupsMap = groupsSnapshot.docs.reduce((acc, doc) => {
+        const groupData = doc.data();
+        const groupId = doc.id;
+        if (groupData['userIds'] && Array.isArray(groupData['userIds'])) {
+          groupData['userIds'].forEach((userId: string) => {
+            if (!acc[userId]) {
+              acc[userId] = { groups: [], projects: [] };
+            }
+            acc[userId].groups.push(groupData['name']);
+            // Adicionando projetos ao usuário com base nos projetos do grupo
+            projectsSnapshot.docs.forEach((projectDoc) => {
+              const project = projectDoc.data();
+              if (
+                project['groupIds'] &&
+                project['groupIds'].includes(groupId)
+              ) {
+                if (!acc[userId].projects.includes(projectDoc.id)) {
+                  acc[userId].projects.push(projectDoc.id); // Associando o projeto ao usuário
+                }
+              }
+            });
+          });
+        }
         return acc;
-      }, {} as { [key: string]: string[] }); // Mudança para array de grupos
+      }, {} as { [key: string]: { groups: string[]; projects: string[] } });
 
-      // console.log('groupsMap:', groupsMap); // Verificar se o mapeamento está correto
-
-      const users: User[] = usersSnapshot.docs.map((doc) => {
+      // Mapeando usuários com seus grupos e projetos
+      const users: any[] = usersSnapshot.docs.map((doc) => {
         const data = doc.data();
         const companyName =
           clientsMap[data['client']] || 'Cliente não encontrado';
-        const projectName =
-          projectsMap[data['project']] || 'Projeto não encontrado';
 
-        // Verificação de grupos (usuário pode estar em múltiplos grupos)
-        const userGroups = groupsMap[doc.id] || [];
-        console.log(userGroups);
+        // Mapeando grupos e projetos para o usuário
+        const userGroups = groupsMap[doc.id]?.groups || [];
+        const userProjects = (groupsMap[doc.id]?.projects || [])
+          .map((projectId) => {
+            const project = projectsMap[projectId];
+            if (project) {
+              return project.name;
+            }
+            return null;
+          })
+          .filter((projectName) => projectName !== null);
+
         return {
           id: doc.id,
           name: data['name'] || '',
           surname: data['surname'] || '',
           email: data['email'] || '',
-          group: doc.data()['group'], // Exibe os grupos como uma lista separada por vírgula
           role: data['role'] || '',
           notificationStatus: data['notificationStatus'] || 'Pendente',
           client: companyName,
-          project: projectName,
-          groups: userGroups, // Agora estamos adicionando os grupos dinamicamente
+          projects: userProjects, // Agora com múltiplos projetos
+          groups: userGroups, // A lista de grupos
         };
       });
-      console.log(users);
+
+      console.log('Users data:', users);
+
+      // Atualiza o dataSource com os dados dos usuários
       this.userDataSource.data = users;
       this.userDataSource.paginator = this.userPaginator;
       this.userDataSource.sort = this.userSort;
