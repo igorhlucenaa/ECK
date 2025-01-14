@@ -48,6 +48,13 @@ export class ProjectDetailComponent implements OnInit {
     groupIds: new FormControl([], Validators.required), // Novo campo para selecionar grupos
   });
 
+  filterDates = (date: Date | null): boolean => {
+    const today = new Date();
+    // Zera as horas, minutos, segundos e milissegundos para comparar apenas a data
+    today.setHours(0, 0, 0, 0);
+    return date ? date >= today : false;
+  };
+
   isEditMode = false;
   projectId: string | null = null;
   clientId: string | null = null;

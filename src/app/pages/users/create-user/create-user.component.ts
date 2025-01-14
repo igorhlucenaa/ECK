@@ -27,12 +27,10 @@ import {
   Auth,
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
-  getAuth,
-  signInWithEmailAndPassword,
 } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { initializeApp } from 'firebase/app';
+import { updateDoc, doc } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-create-user',
@@ -200,22 +198,60 @@ export class CreateUserComponent implements OnInit {
       const { name, surname, email, password, client, project, group, role } =
         this.userForm.value;
 
-      // Salve o usuário atual para reautenticação depois
       const currentUser = this.auth.currentUser;
       const currentEmail = currentUser?.email;
-      const currentPassword = '123@qwe'; // Substitua pela senha do usuário atual, se necessário
 
-      // Verifique se o usuário já existe no Firebase Authentication
-      const signInMethods = await fetchSignInMethodsForEmail(this.auth, email);
-
-      if (signInMethods.length > 0) {
-        // O usuário já existe no Firebase Authentication
+      // Se estiver editando, ignore a verificação do e-mail
+      if (this.isEditMode) {
         const usersCollection = collection(this.firestore, 'users');
         const userQuery = query(usersCollection, where('email', '==', email));
         const querySnapshot = await getDocs(userQuery);
 
-        if (querySnapshot.empty) {
-          // Adiciona o usuário ao Firestore se não existir lá
+        if (!querySnapshot.empty) {
+          // Pega o primeiro documento
+          const userDoc = querySnapshot.docs[0];
+
+          // Atualiza o documento do usuário
+          await updateDoc(userDoc.ref, {
+            name,
+            surname,
+            email,
+            client,
+            project,
+            group,
+            role,
+            updatedAt: new Date(),
+          });
+
+          this.snackBar.open('Usuário atualizado com sucesso!', 'Fechar', {
+            duration: 3000,
+          });
+        } else {
+          this.snackBar.open('Usuário não encontrado.', 'Fechar', {
+            duration: 3000,
+          });
+        }
+      } else {
+        // Se não estiver editando, crie um novo usuário
+        const signInMethods = await fetchSignInMethodsForEmail(
+          this.auth,
+          email
+        );
+
+        if (signInMethods.length > 0) {
+          this.snackBar.open('O usuário já existe no sistema!', 'Fechar', {
+            duration: 3000,
+          });
+        } else {
+          // Crie o novo usuário no Firebase Authentication
+          const userCredential = await createUserWithEmailAndPassword(
+            this.auth,
+            email,
+            password || '123@qwe'
+          );
+
+          // Adicione o usuário ao Firestore
+          const usersCollection = collection(this.firestore, 'users');
           await addDoc(usersCollection, {
             name,
             surname,
@@ -225,56 +261,13 @@ export class CreateUserComponent implements OnInit {
             group,
             role,
             createdAt: new Date(),
+            uid: userCredential.user.uid,
           });
 
-          this.snackBar.open(
-            'Usuário criado no Firestore com sucesso!',
-            'Fechar',
-            { duration: 3000 }
-          );
-        } else {
-          this.snackBar.open(
-            'Erro: O usuário já existe no Firestore!',
-            'Fechar',
-            {
-              duration: 3000,
-            }
-          );
+          this.snackBar.open('Usuário criado com sucesso!', 'Fechar', {
+            duration: 3000,
+          });
         }
-      } else {
-        // Crie o novo usuário no Firebase Authentication
-        const userCredential = await createUserWithEmailAndPassword(
-          this.auth,
-          email,
-          password || '123@qwe'
-        );
-
-        // Adicione o usuário ao Firestore
-        const usersCollection = collection(this.firestore, 'users');
-        await addDoc(usersCollection, {
-          name,
-          surname,
-          email,
-          client,
-          project,
-          group,
-          role,
-          createdAt: new Date(),
-          uid: userCredential.user.uid,
-        });
-
-        this.snackBar.open('Usuário criado com sucesso!', 'Fechar', {
-          duration: 3000,
-        });
-      }
-
-      // Reautentique o usuário anterior
-      if (currentEmail && currentPassword) {
-        await signInWithEmailAndPassword(
-          this.auth,
-          currentEmail,
-          currentPassword
-        );
       }
 
       // Fecha o diálogo

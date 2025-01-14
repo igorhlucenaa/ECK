@@ -64,15 +64,17 @@ export interface Order {
 })
 export class CreditOrdersComponent implements OnInit {
   displayedColumns: string[] = [
+    'createdAt', // Adiciona a coluna de data do pedido
     'clientName',
-    'id',
     'openingBalance',
     'usedBalance',
     'remainingBalance',
     'daysRemaining',
     'status',
     'actions',
+    'id',
   ];
+
   dataSource = new MatTableDataSource<Order>();
 
   startDate: Date | null = null;
@@ -94,18 +96,26 @@ export class CreditOrdersComponent implements OnInit {
     this.expireOrders(); // Processa pedidos expirados na inicialização
   }
 
+  private getStatusPriority(status: string): number {
+    // Define a prioridade para cada status
+    switch (status) {
+      case 'Pendente':
+        return 1;
+      case 'Aprovado':
+        return 2;
+      case 'Rejeitado':
+        return 3;
+      case 'Expirado':
+        return 4;
+      default:
+        return 5; // Prioridade mais baixa para status desconhecidos
+    }
+  }
+
   private async loadOrders(): Promise<void> {
     try {
       const ordersCollection = collection(this.firestore, 'creditOrders');
-
-      // Ordenar primeiro pelo status (Pendente no topo) e depois pela data mais recente
-      const ordersSnapshot = await getDocs(
-        query(
-          ordersCollection,
-          orderBy('status', 'desc'), // Coloca "Pendente" no topo, pois "Pendente" vem antes de "Aprovado", etc.
-          orderBy('createdAt', 'desc') // Ordena pela data mais recente
-        )
-      );
+      const ordersSnapshot = await getDocs(query(ordersCollection));
 
       const clientsCollection = collection(this.firestore, 'clients');
       const clientsSnapshot = await getDocs(clientsCollection);
@@ -131,8 +141,8 @@ export class CreditOrdersComponent implements OnInit {
           : 0;
 
         const openingBalance = data['credits'] || 0;
-        const remainingBalance = data['remainingCredits'] ?? openingBalance; // Se não houver remainingCredits, assume o valor inicial de credits
-        const usedBalance = openingBalance - remainingBalance; // Calcula o saldo utilizado corretamente
+        const remainingBalance = data['remainingCredits'] ?? openingBalance;
+        const usedBalance = openingBalance - remainingBalance;
 
         return {
           id: doc.id,
@@ -144,6 +154,16 @@ export class CreditOrdersComponent implements OnInit {
           status: data['status'],
           createdAt: data['createdAt']?.toDate(),
         } as Order;
+      });
+
+      // Classifica os pedidos pela prioridade de status e, em seguida, pela data mais recente
+      orders.sort((a, b) => {
+        const statusPriorityDiff =
+          this.getStatusPriority(a.status) - this.getStatusPriority(b.status);
+        if (statusPriorityDiff !== 0) {
+          return statusPriorityDiff; // Ordena pelo status
+        }
+        return b.createdAt.getTime() - a.createdAt.getTime(); // Ordena pela data
       });
 
       this.originalData = orders;
@@ -245,9 +265,7 @@ export class CreditOrdersComponent implements OnInit {
       this.snackBar.open(
         'Pedido aprovado com sucesso e créditos atualizados!',
         'Fechar',
-        {
-          duration: 3000,
-        }
+        { duration: 3000 }
       );
     } catch (error) {
       console.error('Erro ao aprovar pedido:', error);
@@ -260,11 +278,14 @@ export class CreditOrdersComponent implements OnInit {
   async rejectOrder(orderId: string): Promise<void> {
     try {
       const orderDoc = doc(this.firestore, `creditOrders/${orderId}`);
-      await updateDoc(orderDoc, { status: 'Rejeitado' });
 
+      // Atualiza o status do pedido para "Rejeitado"
+      await updateDoc(orderDoc, { status: 'Rejeitado' });
+      // Atualiza a tabela localmente
       this.dataSource.data = this.dataSource.data.map((order) =>
         order.id === orderId ? { ...order, status: 'Rejeitado' } : order
       );
+      console.log(orderId);
 
       this.snackBar.open('Pedido rejeitado com sucesso!', 'Fechar', {
         duration: 3000,

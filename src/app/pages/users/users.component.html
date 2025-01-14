@@ -48,7 +48,14 @@
                   Cliente
                 </th>
                 <td mat-cell *matCellDef="let user">
-                  {{ user.client }}
+                  <a
+                    *ngIf="user.client.length > 0"
+                    href="javascript:void(0)"
+                    (click)="openDetailsModal('Clientes do Usuário', user.client)"
+                  >
+                    Ver Clientes
+                  </a>
+                  <span *ngIf="user.client.length === 0">Sem Clientes</span>
                 </td>
               </ng-container>
 

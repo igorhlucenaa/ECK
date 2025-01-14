@@ -40,3 +40,22 @@
 .filter-item {
   flex: 1 1 200px;
 }
+
+/* Cabeçalho fixo da tabela */
+.mat-header-cell {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #fff; /* Cor de fundo para o cabeçalho */
+}
+
+/* Corpo da tabela com rolagem vertical */
+.table-responsive {
+  max-height: 400px; /* Defina a altura desejada para a tabela */
+  overflow-y: auto; /* Ativa o scroll vertical */
+}
+
+/* Estilos para as células de dados */
+.mat-cell {
+  white-space: nowrap; /* Evita que o texto se quebre e cause um aumento de altura */
+}

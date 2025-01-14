@@ -10,23 +10,40 @@
   <mat-card>
     <mat-card-title style="margin-bottom: 10px">{{ title }}</mat-card-title>
     <mat-card-content>
-      <!-- Campo de Busca -->
-      <mat-form-field appearance="outline" class="w-100 my-3">
-        <mat-label>Buscar</mat-label>
-        <input
-          matInput
-          (keyup)="applyFilter($event)"
-          placeholder="Digite para buscar"
-        />
-        <button
-          mat-icon-button
-          matSuffix
-          *ngIf="dataSource.filter"
-          (click)="applyFilter($event)"
-        >
-          <mat-icon>close</mat-icon>
-        </button>
-      </mat-form-field>
+      <!-- Filtros -->
+      <div class="row my-3">
+        <!-- Filtro de Tipo de Notificação -->
+        <div class="col-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Tipo de Notificação</mat-label>
+            <mat-select (selectionChange)="onEmailTypeChange($event)">
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="convite">Convite</mat-option>
+              <mat-option value="lembrete">Lembrete</mat-option>
+              <mat-option value="cadastro">Cadastro do Usuário</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Filtro de Busca -->
+        <div class="col-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Buscar</mat-label>
+            <input
+              matInput
+              (keyup)="applyFilter($event)"
+              placeholder="Digite para buscar"
+            />
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Limpar Filtros -->
+      <div class="row">
+        <div class="col-12 text-right">
+          <button mat-button (click)="clearFilters()">Limpar Filtros</button>
+        </div>
+      </div>
 
       <!-- Tabela de Templates -->
       <table
@@ -35,19 +52,16 @@
         matSort
         class="mat-elevation-z8 w-100"
       >
-        <!-- Nome -->
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
           <td mat-cell *matCellDef="let template">{{ template.name }}</td>
         </ng-container>
 
-        <!-- Assunto -->
         <ng-container matColumnDef="subject">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>Assunto</th>
           <td mat-cell *matCellDef="let template">{{ template.subject }}</td>
         </ng-container>
 
-        <!-- Tipo de Notificação -->
         <ng-container matColumnDef="emailType">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             Tipo de Notificação
@@ -57,7 +71,6 @@
           </td>
         </ng-container>
 
-        <!-- Ações -->
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef>Ações</th>
           <td mat-cell *matCellDef="let template">
@@ -83,8 +96,10 @@
       </table>
 
       <!-- Paginação -->
-      <mat-paginator [pageSize]="5" [pageSizeOptions]="[5, 10, 20]">
-      </mat-paginator>
+      <mat-paginator
+        [pageSize]="5"
+        [pageSizeOptions]="[5, 10, 20]"
+      ></mat-paginator>
 
       <!-- Botão para criar novo template -->
       <button mat-flat-button color="primary" (click)="createTemplate()">

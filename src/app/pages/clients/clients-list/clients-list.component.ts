@@ -110,7 +110,8 @@ export class ClientsListComponent implements OnInit {
     const ordersCollection = collection(this.firestore, 'creditOrders');
     const ordersQuery = query(
       ordersCollection,
-      where('clientId', '==', client.id)
+      where('clientId', '==', client.id),
+      where('status', '==', 'Aprovado')
     );
 
     try {

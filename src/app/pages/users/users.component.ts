@@ -160,35 +160,37 @@ export class UsersComponent implements OnInit {
       }, {} as { [key: string]: { groups: string[]; projects: string[] } });
 
       // Mapeando usuários com seus grupos e projetos
-      const users: any[] = usersSnapshot.docs.map((doc) => {
-        const data = doc.data();
-        const companyName =
-          clientsMap[data['client']] || 'Cliente não encontrado';
+      const users: any[] = usersSnapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          const companyName =
+            clientsMap[data['client']] || 'Cliente não encontrado';
 
-        // Mapeando grupos e projetos para o usuário
-        const userGroups = groupsMap[doc.id]?.groups || [];
-        const userProjects = (groupsMap[doc.id]?.projects || [])
-          .map((projectId) => {
-            const project = projectsMap[projectId];
-            if (project) {
-              return project.name;
-            }
-            return null;
-          })
-          .filter((projectName) => projectName !== null);
+          // Mapeando grupos e projetos para o usuário
+          const userGroups = groupsMap[doc.id]?.groups || [];
+          const userProjects = (groupsMap[doc.id]?.projects || [])
+            .map((projectId) => {
+              const project = projectsMap[projectId];
+              if (project) {
+                return project.name;
+              }
+              return null;
+            })
+            .filter((projectName) => projectName !== null);
 
-        return {
-          id: doc.id,
-          name: data['name'] || '',
-          surname: data['surname'] || '',
-          email: data['email'] || '',
-          role: data['role'] || '',
-          notificationStatus: data['notificationStatus'] || 'Pendente',
-          client: companyName,
-          projects: userProjects, // Agora com múltiplos projetos
-          groups: userGroups, // A lista de grupos
-        };
-      });
+          return {
+            id: doc.id,
+            name: data['name'] || '',
+            surname: data['surname'] || '',
+            email: data['email'] || '',
+            role: data['role'] || '',
+            notificationStatus: data['notificationStatus'] || 'Pendente',
+            client: companyName,
+            projects: userProjects, // Agora com múltiplos projetos
+            groups: userGroups, // A lista de grupos
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
 
       console.log('Users data:', users);
 
@@ -218,22 +220,24 @@ export class UsersComponent implements OnInit {
         return acc;
       }, {} as { [key: string]: string });
 
-      const groups: UserGroup[] = groupsSnapshot.docs.map((doc) => {
-        const data = doc.data();
-        const clientName =
-          clientsMap[data['clientId']] || 'Cliente não encontrado';
+      const groups: UserGroup[] = groupsSnapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          const clientName =
+            clientsMap[data['clientId']] || 'Cliente não encontrado';
 
-        return {
-          id: doc.id,
-          name: data['name'] || '',
-          description: data['description'] || '',
-          createdBy: data['createdBy'] || 'Desconhecido',
-          client: clientName,
-          projectIds: data['projectIds'] || [],
-          userIds: data['userIds'] || [],
-          clientId: data['clientId'],
-        };
-      });
+          return {
+            id: doc.id,
+            name: data['name'] || '',
+            description: data['description'] || '',
+            createdBy: data['createdBy'] || 'Desconhecido',
+            client: clientName,
+            projectIds: data['projectIds'] || [],
+            userIds: data['userIds'] || [],
+            clientId: data['clientId'],
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
 
       this.groupDataSource.data = groups;
       this.groupDataSource.paginator = this.groupPaginator;
@@ -289,9 +293,12 @@ export class UsersComponent implements OnInit {
       data: group, // Passa os dados do grupo para edição
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
+    dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
-        this.loadUserGroups();
+        // Após editar o grupo, recarrega a lista de grupos
+        const groups = await this.loadUserGroups();
+        // Agora, recarrega os usuários com os novos grupos
+        await this.loadUsers(groups);
       }
     });
   }
@@ -301,9 +308,12 @@ export class UsersComponent implements OnInit {
       width: '500px',
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
+    dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
-        this.loadUserGroups(); // Recarrega a tabela de grupos
+        // Após criar o grupo, recarrega a lista de grupos
+        const groups = await this.loadUserGroups();
+        // Agora, recarrega os usuários com os novos grupos
+        await this.loadUsers(groups);
       }
     });
   }
@@ -325,6 +335,10 @@ export class UsersComponent implements OnInit {
           this.groupDataSource.data = this.groupDataSource.data.filter(
             (g) => g.id !== group.id
           );
+
+          // Recarrega a lista de grupos e usuários após exclusão
+          const groups = await this.loadUserGroups();
+          await this.loadUsers(groups);
 
           this.snackBar.open('Grupo excluído com sucesso!', 'Fechar', {
             duration: 3000,
@@ -396,7 +410,8 @@ export class UsersComponent implements OnInit {
     });
   }
 
-  openDetailsModal(title: string, items: string[]): void {
+  openDetailsModal(title: string, items: any): void {
+    console.log(items)
     this.dialog.open(DetailsModalComponent, {
       width: '400px',
       data: { title, items },
