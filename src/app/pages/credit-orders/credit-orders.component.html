@@ -162,7 +162,9 @@
                 mat-icon-button
                 color="primary"
                 matTooltip="Aprovar Pedido"
-                *ngIf="order.status === 'Pendente'"
+                *ngIf="
+                  order.status === 'Pendente' && userRole === 'admin_master'
+                "
                 (click)="approveOrder(order.id)"
               >
                 <mat-icon>check</mat-icon>
@@ -171,7 +173,9 @@
                 mat-icon-button
                 color="warn"
                 matTooltip="Rejeitar Pedido"
-                *ngIf="order.status === 'Pendente'"
+                *ngIf="
+                  order.status === 'Pendente' && userRole === 'admin_master'
+                "
                 (click)="rejectOrder(order.id)"
               >
                 <mat-icon>close</mat-icon>

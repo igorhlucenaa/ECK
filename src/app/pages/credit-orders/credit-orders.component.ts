@@ -13,6 +13,7 @@ import {
   getDoc,
   query,
   orderBy,
+  where,
 } from '@angular/fire/firestore';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -26,6 +27,7 @@ import { MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 export interface Order {
   id: string;
@@ -75,6 +77,7 @@ export class CreditOrdersComponent implements OnInit {
     'id',
   ];
 
+  userRole: any;
   dataSource = new MatTableDataSource<Order>();
 
   startDate: Date | null = null;
@@ -88,7 +91,8 @@ export class CreditOrdersComponent implements OnInit {
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -114,8 +118,30 @@ export class CreditOrdersComponent implements OnInit {
 
   private async loadOrders(): Promise<void> {
     try {
+      this.userRole = await this.authService.getCurrentUserRole();
+      const clientId = await this.authService.getCurrentClientId();
+
+      if (this.userRole === 'admin_client' && !clientId) {
+        console.warn('clientId não encontrado para admin_client.');
+        this.snackBar.open(
+          'Erro ao carregar pedidos. ID do cliente não encontrado.',
+          'Fechar',
+          { duration: 3000 }
+        );
+        return;
+      }
+
       const ordersCollection = collection(this.firestore, 'creditOrders');
-      const ordersSnapshot = await getDocs(query(ordersCollection));
+      let queryConstraint = query(ordersCollection);
+
+      if (this.userRole === 'admin_client') {
+        queryConstraint = query(
+          ordersCollection,
+          where('clientId', '==', clientId)
+        );
+      }
+
+      const ordersSnapshot = await getDocs(queryConstraint);
 
       const clientsCollection = collection(this.firestore, 'clients');
       const clientsSnapshot = await getDocs(clientsCollection);
@@ -140,30 +166,16 @@ export class CreditOrdersComponent implements OnInit {
             )
           : 0;
 
-        const openingBalance = data['credits'] || 0;
-        const remainingBalance = data['remainingCredits'] ?? openingBalance;
-        const usedBalance = openingBalance - remainingBalance;
-
         return {
           id: doc.id,
           clientName: clientsMap[data['clientId']] || 'Não identificado',
-          openingBalance,
-          usedBalance,
-          remainingBalance,
+          openingBalance: data['credits'] || 0,
+          usedBalance: (data['credits'] || 0) - (data['remainingCredits'] || 0),
+          remainingBalance: data['remainingCredits'] || 0,
           daysRemaining,
           status: data['status'],
           createdAt: data['createdAt']?.toDate(),
         } as Order;
-      });
-
-      // Classifica os pedidos pela prioridade de status e, em seguida, pela data mais recente
-      orders.sort((a, b) => {
-        const statusPriorityDiff =
-          this.getStatusPriority(a.status) - this.getStatusPriority(b.status);
-        if (statusPriorityDiff !== 0) {
-          return statusPriorityDiff; // Ordena pelo status
-        }
-        return b.createdAt.getTime() - a.createdAt.getTime(); // Ordena pela data
       });
 
       this.originalData = orders;
