@@ -93,15 +93,40 @@ export class CreateUserGroupComponent implements OnInit {
       name: ['', Validators.required],
       description: [''],
       clientId: ['', Validators.required],
-      // projectIds: [[]],
       userIds: [[]],
+    });
+
+    this.authService.getCurrentUserRole().then(async (role) => {
+      if (role === 'admin_client') {
+        const clientId = await this.authService.getCurrentClientId();
+        this.groupForm.get('clientId')?.setValue(clientId);
+        this.groupForm.get('clientId')?.disable(); // Impede alteração do cliente
+        this.loadProjects(clientId);
+        this.loadUsers(clientId);
+      }
     });
   }
 
   private async loadClients(): Promise<void> {
     try {
+      const userRole = await this.authService.getCurrentUserRole();
+      const clientId = await this.authService.getCurrentClientId();
+
       const clientsCollection = collection(this.firestore, 'clients');
-      const snapshot = await getDocs(clientsCollection);
+      let snapshot;
+
+      if (userRole === 'admin_client' && clientId) {
+        snapshot = await getDocs(
+          query(clientsCollection, where('__name__', '==', clientId))
+        );
+      } else if (userRole === 'admin_master') {
+        snapshot = await getDocs(clientsCollection);
+      } else {
+        console.warn('Usuário não autorizado para carregar clientes.');
+        this.clients = [];
+        return;
+      }
+
       this.clients = snapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['companyName'] || 'Sem Nome',
@@ -143,14 +168,17 @@ export class CreateUserGroupComponent implements OnInit {
   }
 
   private async loadUsers(clientId: string | null): Promise<void> {
-    // if (!clientId) {
-    //   this.users = [];
-    //   return;
-    // }
+    if (!clientId) {
+      this.users = [];
+      return;
+    }
 
     try {
       const usersCollection = collection(this.firestore, 'users');
-      const usersQuery = query(usersCollection);
+      const usersQuery = query(
+        usersCollection,
+        where('client', '==', clientId)
+      );
       const snapshot = await getDocs(usersQuery);
 
       this.users = snapshot.docs.map((doc) => ({
@@ -314,7 +342,9 @@ export class CreateUserGroupComponent implements OnInit {
 
   onClientChange(): void {
     const clientId = this.groupForm.get('clientId')?.value;
-    this.loadProjects(clientId);
-    this.loadUsers(clientId);
+    if (clientId) {
+      this.loadProjects(clientId);
+      this.loadUsers(clientId);
+    }
   }
 }

@@ -8,6 +8,8 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  query,
+  where,
 } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
@@ -18,6 +20,7 @@ import { CreateUserGroupComponent } from './create-user-group/create-user-group.
 import { CreateUserComponent } from './create-user/create-user.component';
 import { ConfirmDialogComponent } from '../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { DetailsModalComponent } from 'src/app/layouts/full/shared/details-modal/details-modal.component';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 export interface User {
   id: string;
@@ -64,7 +67,7 @@ export class UsersComponent implements OnInit {
     'actions',
   ];
   userDataSource = new MatTableDataSource<User>([]);
-
+  userRole: any;
   // Tabela de grupos de usuários
   displayedGroupColumns: string[] = [
     'name',
@@ -84,7 +87,8 @@ export class UsersComponent implements OnInit {
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -107,23 +111,47 @@ export class UsersComponent implements OnInit {
   // Carrega os dados dos usuários do Firestore
   async loadUsers(groups: UserGroup[]): Promise<void> {
     try {
-      // Buscar dados das coleções
+      this.userRole = await this.authService.getCurrentUserRole();
+      const clientId = await this.authService.getCurrentClientId();
+
+      console.log('Role do usuário:', this.userRole);
+      console.log('Client ID do usuário:', clientId);
+
+      // Coleção de usuários
       const usersCollection = collection(this.firestore, 'users');
-      const usersSnapshot = await getDocs(usersCollection);
+      let usersSnapshot;
+
+      // Admin_client pode ver apenas os usuários do seu cliente
+      if (this.userRole === 'admin_client' && clientId) {
+        console.log('Carregando usuários do cliente:', clientId);
+        usersSnapshot = await getDocs(
+          query(usersCollection, where('client', '==', clientId))
+        );
+      } else if (this.userRole === 'admin_master') {
+        console.log('Carregando todos os usuários');
+        usersSnapshot = await getDocs(usersCollection);
+      } else {
+        console.warn('Usuário não autorizado para carregar dados.');
+        this.userDataSource.data = [];
+        return;
+      }
+
       const clientsCollection = collection(this.firestore, 'clients');
       const clientsSnapshot = await getDocs(clientsCollection);
+
       const projectsCollection = collection(this.firestore, 'projects');
       const projectsSnapshot = await getDocs(projectsCollection);
+
       const groupsCollection = collection(this.firestore, 'userGroups');
       const groupsSnapshot = await getDocs(groupsCollection);
 
-      // Mapeamento de clientes
+      // Mapear clientes
       const clientsMap = clientsSnapshot.docs.reduce((acc, doc) => {
         acc[doc.id] = doc.data()['companyName'];
         return acc;
       }, {} as { [key: string]: string });
 
-      // Mapeamento de projetos
+      // Mapear projetos
       const projectsMap = projectsSnapshot.docs.reduce((acc, doc) => {
         acc[doc.id] = {
           name: doc.data()['name'],
@@ -132,17 +160,18 @@ export class UsersComponent implements OnInit {
         return acc;
       }, {} as { [key: string]: { name: string; groupIds: string[] } });
 
-      // Mapeamento de grupos para usuários
+      // Mapear grupos
       const groupsMap = groupsSnapshot.docs.reduce((acc, doc) => {
         const groupData = doc.data();
         const groupId = doc.id;
+
         if (groupData['userIds'] && Array.isArray(groupData['userIds'])) {
           groupData['userIds'].forEach((userId: string) => {
             if (!acc[userId]) {
               acc[userId] = { groups: [], projects: [] };
             }
             acc[userId].groups.push(groupData['name']);
-            // Adicionando projetos ao usuário com base nos projetos do grupo
+
             projectsSnapshot.docs.forEach((projectDoc) => {
               const project = projectDoc.data();
               if (
@@ -150,7 +179,7 @@ export class UsersComponent implements OnInit {
                 project['groupIds'].includes(groupId)
               ) {
                 if (!acc[userId].projects.includes(projectDoc.id)) {
-                  acc[userId].projects.push(projectDoc.id); // Associando o projeto ao usuário
+                  acc[userId].projects.push(projectDoc.id);
                 }
               }
             });
@@ -159,14 +188,13 @@ export class UsersComponent implements OnInit {
         return acc;
       }, {} as { [key: string]: { groups: string[]; projects: string[] } });
 
-      // Mapeando usuários com seus grupos e projetos
-      const users: any[] = usersSnapshot.docs
+      // Mapear usuários com grupos e projetos
+      const users = usersSnapshot.docs
         .map((doc) => {
           const data = doc.data();
           const companyName =
             clientsMap[data['client']] || 'Cliente não encontrado';
 
-          // Mapeando grupos e projetos para o usuário
           const userGroups = groupsMap[doc.id]?.groups || [];
           const userProjects = (groupsMap[doc.id]?.projects || [])
             .map((projectId) => {
@@ -188,13 +216,15 @@ export class UsersComponent implements OnInit {
             client: companyName,
             projects: userProjects, // Agora com múltiplos projetos
             groups: userGroups, // A lista de grupos
-          };
+            group: userGroups.join(', '), // Ajusta para interface `User`
+            project: userProjects.join(', '), // Ajusta para interface `User`
+          } as User;
         })
         .sort((a, b) => a.name.localeCompare(b.name));
 
       console.log('Users data:', users);
 
-      // Atualiza o dataSource com os dados dos usuários
+      // Atualizar dataSource
       this.userDataSource.data = users;
       this.userDataSource.paginator = this.userPaginator;
       this.userDataSource.sort = this.userSort;
@@ -209,8 +239,29 @@ export class UsersComponent implements OnInit {
   // Carrega os dados dos grupos de usuários do Firestore
   async loadUserGroups(): Promise<UserGroup[]> {
     try {
+      const userRole = await this.authService.getCurrentUserRole();
+      const clientId = await this.authService.getCurrentClientId();
+
+      console.log('Role do usuário:', userRole);
+      console.log('Client ID do usuário:', clientId);
+
       const groupsCollection = collection(this.firestore, 'userGroups');
-      const groupsSnapshot = await getDocs(groupsCollection);
+      let groupsSnapshot;
+
+      // Admin_client pode ver apenas os grupos do seu cliente
+      if (userRole === 'admin_client' && clientId) {
+        console.log('Carregando grupos do cliente:', clientId);
+        groupsSnapshot = await getDocs(
+          query(groupsCollection, where('clientId', '==', clientId))
+        );
+      } else if (userRole === 'admin_master') {
+        console.log('Carregando todos os grupos');
+        groupsSnapshot = await getDocs(groupsCollection);
+      } else {
+        console.warn('Usuário não autorizado para carregar dados.');
+        this.groupDataSource.data = [];
+        return [];
+      }
 
       const clientsCollection = collection(this.firestore, 'clients');
       const clientsSnapshot = await getDocs(clientsCollection);
@@ -411,7 +462,7 @@ export class UsersComponent implements OnInit {
   }
 
   openDetailsModal(title: string, items: any): void {
-    console.log(items)
+    console.log(items);
     this.dialog.open(DetailsModalComponent, {
       width: '400px',
       data: { title, items },

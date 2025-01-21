@@ -31,6 +31,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { updateDoc, doc } from '@angular/fire/firestore';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 @Component({
   selector: 'app-create-user',
@@ -67,17 +68,36 @@ export class CreateUserComponent implements OnInit {
     private snackBar: MatSnackBar,
     private auth: Auth,
     @Inject(MAT_DIALOG_DATA) public data: any,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
     this.initializeForm();
-    this.loadClients().then(() => {
+    this.loadClients().then(async () => {
+      const userRole = await this.getCurrentUserRole();
+
+      if (userRole === 'admin_client') {
+        this.roles = this.roles.filter((role) =>
+          ['admin_client', 'viewer'].includes(role.value)
+        );
+      }
+
       if (this.data?.user) {
         this.isEditMode = true;
         this.prefillForm(this.data.user); // Carrega os valores no modo de edição
       }
     });
+  }
+
+  private async getCurrentUserRole(): Promise<string | null> {
+    try {
+      const role = await this.authService.getCurrentUserRole();
+      return role;
+    } catch (error) {
+      console.error('Erro ao obter role do usuário atual:', error);
+      return null;
+    }
   }
 
   private initializeForm(): void {
@@ -127,12 +147,26 @@ export class CreateUserComponent implements OnInit {
 
   private async loadClients(): Promise<void> {
     try {
-      const clientsCollection = collection(this.firestore, 'clients');
-      const snapshot = await getDocs(clientsCollection);
-      this.clients = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['companyName'] || 'Sem Nome',
-      }));
+      const userRole = await this.getCurrentUserRole();
+      const clientId = await this.authService.getCurrentClientId();
+
+      if (userRole === 'admin_client' && clientId) {
+        this.clients = [
+          {
+            id: clientId,
+            name: 'Seu Cliente',
+          },
+        ];
+        this.userForm.get('client')?.setValue(clientId);
+        this.userForm.get('client')?.disable(); // Desabilita a seleção do cliente
+      } else if (userRole === 'admin_master') {
+        const clientsCollection = collection(this.firestore, 'clients');
+        const snapshot = await getDocs(clientsCollection);
+        this.clients = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          name: doc.data()['companyName'] || 'Sem Nome',
+        }));
+      }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
@@ -191,6 +225,23 @@ export class CreateUserComponent implements OnInit {
 
   async saveUser(): Promise<void> {
     if (this.userForm.invalid) {
+      return;
+    }
+
+    const userRole = await this.getCurrentUserRole();
+    const selectedRole = this.userForm.get('role')?.value;
+
+    if (
+      userRole === 'admin_client' &&
+      !['viewer', 'admin_client'].includes(selectedRole)
+    ) {
+      this.snackBar.open(
+        'Você não tem permissão para atribuir este papel.',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
       return;
     }
 
