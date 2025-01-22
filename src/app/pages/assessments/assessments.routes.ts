@@ -39,6 +39,14 @@ export const AssessmentsRoutes: Routes = [
             (m) => m.CreateAssessmentComponent
           ),
       },
+      {
+        path: 'participants',
+        loadComponent: () =>
+          import('./participants/participants.component').then(
+            (m) => m.ParticipantsComponent
+          ),
+      },
+      
     ],
   },
 ];
