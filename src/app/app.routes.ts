@@ -32,7 +32,7 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'clients', // Pode ser ajustado dinamicamente no AppComponent
+        redirectTo: 'clients',
         pathMatch: 'full',
       },
       {
@@ -79,20 +79,20 @@ export const routes: Routes = [
         data: { role: 'admin_client' },
       },
       {
+        path: 'assessments',
+        loadChildren: () =>
+          import('./pages/assessments/assessments.routes').then(
+            (m) => m.AssessmentsRoutes
+          ),
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
+      },
+      {
         path: 'reports',
         loadChildren: () =>
           import('./pages/reports/reports.routes').then((m) => m.ReportsRoutes),
         canActivate: [AuthGuard],
         data: { role: 'viewer' },
-      },
-      {
-        path: 'dashboards',
-        loadChildren: () =>
-          import('./pages/dashboards/dashboards.routes').then(
-            (m) => m.DashboardsRoutes
-          ),
-        canActivate: [AuthGuard],
-        data: { role: 'admin_account' },
       },
       {
         path: 'orders',
@@ -120,7 +120,7 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./pages/users/users.routes').then((m) => m.UsersRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] }, // Agora permite acesso para ambos
+        data: { role: ['admin_master', 'admin_client'] },
       },
     ],
   },

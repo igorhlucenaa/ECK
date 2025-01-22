@@ -32,6 +32,10 @@ import * as TablerIcons from 'angular-tabler-icons/icons';
 import { NgScrollbarModule } from 'ngx-scrollbar';
 import { NgxPermissionsModule } from 'ngx-permissions';
 
+// ngx-formly
+import { FormlyModule } from '@ngx-formly/core';
+import { FormlyMaterialModule } from '@ngx-formly/material';
+
 // Import all material modules
 import { MaterialModule } from './material.module';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -76,6 +80,8 @@ export const appConfig: ApplicationConfig = {
       FormsModule,
       ReactiveFormsModule,
       MaterialModule,
+      FormlyModule.forRoot(), // Configuração do ngx-formly
+      FormlyMaterialModule, // Suporte para Material Design
       NgxPermissionsModule.forRoot(),
       TablerIconsModule.pick(TablerIcons),
       NgScrollbarModule,

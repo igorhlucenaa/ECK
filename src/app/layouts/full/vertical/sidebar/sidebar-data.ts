@@ -40,6 +40,12 @@ export const navItems: NavItem[] = [
         route: '/mail-templates', // Caminho correto para o componente de gestão de pedidos
         role: ['admin_client'], // Visível apenas para clientes
       },
+      {
+        displayName: 'Avaliações',
+        iconName: 'solar:chart-2-bold-duotone', // Ícone representando avaliações ou relatórios
+        route: '/assessments', // Caminho para o componente pai das avaliações
+        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
+      },
     ],
   },
 
