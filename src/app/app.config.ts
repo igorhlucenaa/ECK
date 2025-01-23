@@ -53,6 +53,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { LOCALE_ID } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
+import { EmailEditorModule } from 'angular-email-editor';
 
 registerLocaleData(localePt);
 
@@ -77,6 +78,7 @@ export const appConfig: ApplicationConfig = {
     provideAuth(() => getAuth()),
     provideFirestore(() => getFirestore()),
     importProvidersFrom(
+      EmailEditorModule,
       FormsModule,
       ReactiveFormsModule,
       MaterialModule,

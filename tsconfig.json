@@ -2,7 +2,9 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "typeRoots": ["node_modules/@types"],
+    "typeRoots": [
+      "node_modules/@types"
+    ],
     "baseUrl": "./",
     "outDir": "./dist/out-tsc",
     "forceConsistentCasingInFileNames": true,
@@ -21,7 +23,13 @@
     "module": "ES2022",
     "useDefineForClassFields": false,
     "strictPropertyInitialization": false,
-    "lib": ["ES2022", "dom"]
+    "lib": [
+      "ES2022",
+      "dom"
+    ],
+    "allowSyntheticDefaultImports": true, // Adicionado
+    "esModuleInterop": true, // Adicionado
+    "skipLibCheck": true // Adicionado (opcional)
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
