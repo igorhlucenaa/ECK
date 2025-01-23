@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import {
   Firestore,
+  Timestamp,
   collection,
   deleteDoc,
   doc,
@@ -16,6 +17,7 @@ import { Router } from '@angular/router';
 import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-projects-list',
@@ -93,9 +95,17 @@ export class ProjectsListComponent implements OnInit {
       const snapshot = await getDocs(projectsQuery);
       const projects = snapshot.docs.map((doc) => {
         const data = doc.data();
+
+        // Converte o campo deadline de Timestamp para Date, se necessário
+        const deadline =
+          data['deadline'] instanceof Timestamp
+            ? data['deadline'].toDate()
+            : null;
+
         return {
           id: doc.id,
           ...data,
+          deadline: deadline, // Campo deadline agora é um Date ou null
           clientName:
             this.clientsMap[data['clientId']] || 'Cliente não encontrado',
         };
@@ -139,24 +149,33 @@ export class ProjectsListComponent implements OnInit {
   }
 
   deleteProject(projectId: string): void {
-    const projectDocRef = doc(this.firestore, `projects/${projectId}`);
-    deleteDoc(projectDocRef)
-      .then(() => {
-        this.dataSource.data = this.dataSource.data.filter(
-          (project) => project.id !== projectId
-        );
-        this.snackBar.open('Projeto excluído com sucesso.', 'Fechar', {
-          duration: 3000,
-        });
-      })
-      .catch((error) => {
-        console.error('Erro ao excluir projeto:', error);
-        this.snackBar.open(
-          'Erro ao excluir projeto. Tente novamente mais tarde.',
-          'Fechar',
-          { duration: 3000 }
-        );
-      });
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: { message: 'Tem certeza de que deseja excluir este projeto?' },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        const projectDocRef = doc(this.firestore, `projects/${projectId}`);
+        deleteDoc(projectDocRef)
+          .then(() => {
+            this.dataSource.data = this.dataSource.data.filter(
+              (project) => project.id !== projectId
+            );
+            this.snackBar.open('Projeto excluído com sucesso.', 'Fechar', {
+              duration: 3000,
+            });
+          })
+          .catch((error) => {
+            console.error('Erro ao excluir projeto:', error);
+            this.snackBar.open(
+              'Erro ao excluir projeto. Tente novamente mais tarde.',
+              'Fechar',
+              { duration: 3000 }
+            );
+          });
+      }
+    });
   }
 
   openProjectForm(projectId?: string): void {

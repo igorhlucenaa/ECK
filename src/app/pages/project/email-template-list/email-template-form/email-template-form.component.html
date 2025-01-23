@@ -1,46 +1,52 @@
 <div class="container">
   <div class="row" style="margin-bottom: 10px">
     <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
+      <button style="width: 100px" mat-button (click)="goBack()">
         <mat-icon>arrow_back</mat-icon>
         Voltar
       </button>
     </div>
   </div>
-  <mat-card>
-    <mat-card-title>{{
-      isEditMode ? "Editar Template" : "Criar Template"
-    }}</mat-card-title>
-    <mat-card-content>
-      <form [formGroup]="form" (ngSubmit)="saveTemplate()">
-        <!-- Nome do Template -->
+  <form [formGroup]="form">
+    <mat-card>
+      <mat-card-title style="margin: 15px">{{
+        isEditMode ? "Editar Template" : "Criar Template"
+      }}</mat-card-title>
+      <mat-card-content>
         <mat-form-field class="w-100">
           <mat-label>Nome do Template</mat-label>
           <input matInput formControlName="name" />
         </mat-form-field>
 
-        <!-- Assunto -->
+        <mat-form-field class="w-100">
+          <mat-label>Tipo de Notificação</mat-label>
+          <mat-select formControlName="emailType">
+            <mat-option value="convite">Convite</mat-option>
+            <mat-option value="lembrete">Lembrete</mat-option>
+            <mat-option value="cadastro">Cadastro do Usuário</mat-option>
+          </mat-select>
+        </mat-form-field>
+
         <mat-form-field class="w-100">
           <mat-label>Assunto</mat-label>
           <input matInput formControlName="subject" />
         </mat-form-field>
+      </mat-card-content>
+    </mat-card>
 
-        <!-- Editor de Conteúdo -->
-        <angular-editor
-          formControlName="content"
-          [config]="editorConfig"
-        ></angular-editor>
+    <!-- Editor Unlayer -->
+    <div class="col-12">
+      <email-editor
+        (loaded)="editorLoaded()"
+        (ready)="onEditorReady()"
+      ></email-editor>
+    </div>
 
-        <!-- Botões -->
-        <div class="text-end mt-3" style="margin-top: 7px">
-          <button mat-button (click)="goToTemplates()">
-            Voltar para Templates
-          </button>
-          <button mat-flat-button color="primary" type="submit">
-            {{ isEditMode ? "Salvar Alterações" : "Criar Template" }}
-          </button>
-        </div>
-      </form>
-    </mat-card-content>
-  </mat-card>
+    <div class="text-end mt-3">
+      <!-- <button mat-button (click)="goBack()">Voltar para Templates</button> -->
+      <button mat-flat-button color="primary" (click)="saveTemplate()">
+        {{ isEditMode ? "Salvar Alterações" : "Criar Template" }}
+      </button>
+    </div>
+  </form>
 </div>

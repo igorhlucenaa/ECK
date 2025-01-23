@@ -1,0 +1,10 @@
+nav {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 1rem;
+}
+
+nav .active {
+  font-weight: bold;
+  text-decoration: underline;
+}

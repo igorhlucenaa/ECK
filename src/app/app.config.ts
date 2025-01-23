@@ -32,6 +32,10 @@ import * as TablerIcons from 'angular-tabler-icons/icons';
 import { NgScrollbarModule } from 'ngx-scrollbar';
 import { NgxPermissionsModule } from 'ngx-permissions';
 
+// ngx-formly
+import { FormlyModule } from '@ngx-formly/core';
+import { FormlyMaterialModule } from '@ngx-formly/material';
+
 // Import all material modules
 import { MaterialModule } from './material.module';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -49,6 +53,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { LOCALE_ID } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
+import { EmailEditorModule } from 'angular-email-editor';
 
 registerLocaleData(localePt);
 
@@ -73,9 +78,12 @@ export const appConfig: ApplicationConfig = {
     provideAuth(() => getAuth()),
     provideFirestore(() => getFirestore()),
     importProvidersFrom(
+      EmailEditorModule,
       FormsModule,
       ReactiveFormsModule,
       MaterialModule,
+      FormlyModule.forRoot(), // Configuração do ngx-formly
+      FormlyMaterialModule, // Suporte para Material Design
       NgxPermissionsModule.forRoot(),
       TablerIconsModule.pick(TablerIcons),
       NgScrollbarModule,

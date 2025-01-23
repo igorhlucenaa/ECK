@@ -18,11 +18,33 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     // Verifica o estado de autenticação ao inicializar o app
-    this.auth.onAuthStateChanged((user: User | null) => {
+    this.auth.onAuthStateChanged(async (user: User | null) => {
       if (user) {
-        this.authService.applyUserTheme();
-        // Se o usuário estiver autenticado, redirecione para a página principal
-        this.router.navigate(['/clients']);
+        try {
+          // Aplica o tema do usuário
+          await this.authService.applyUserTheme();
+
+          // Obtém o papel do usuário
+          const role = await this.authService.getCurrentUserRole();
+
+          // Redireciona com base no papel do usuário
+          if (role === 'admin_master') {
+            this.router.navigate(['/clients']);
+          } else if (role === 'admin_client') {
+            this.router.navigate(['/users']); // Redireciona para a página de usuários
+          } else {
+            console.warn(
+              'Papel do usuário não reconhecido. Redirecionando para login.'
+            );
+            this.router.navigate(['/authentication/login']);
+          }
+        } catch (error) {
+          console.error(
+            'Erro ao redirecionar com base no papel do usuário:',
+            error
+          );
+          this.router.navigate(['/authentication/login']);
+        }
       } else {
         // Se o usuário não estiver autenticado, redirecione para a página de login
         this.router.navigate(['/authentication/login']);

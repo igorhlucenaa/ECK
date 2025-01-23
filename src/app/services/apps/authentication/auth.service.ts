@@ -11,7 +11,15 @@ import {
   User,
   user,
 } from '@angular/fire/auth';
-import { doc, Firestore, getDoc } from '@angular/fire/firestore';
+import {
+  collection,
+  doc,
+  Firestore,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from '@angular/fire/firestore';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable({
@@ -40,7 +48,7 @@ export class AuthService {
         if (userRole === 'admin_master') {
           location.assign('/projects'); // Redireciona para 'products' diretamente
         } else {
-          location.assign('/starter'); // Ou outra rota padrão para outros papéis
+          location.assign('/users'); // Ou outra rota padrão para outros papéis
         }
       });
     } catch (error) {
@@ -70,44 +78,32 @@ export class AuthService {
 
   async getCurrentUserRole(): Promise<string | null> {
     try {
-      let user: User | null = this.auth.currentUser;
+      const user = this.auth.currentUser;
 
-      // Recarrega o usuário autenticado se for nulo
-      if (!user) {
-        console.warn(
-          'Nenhum usuário autenticado encontrado. Tentando reload...'
-        );
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Espera pequena para garantir sincronização
-        user = this.auth.currentUser;
-
-        if (user) {
-          await reload(user); // Usa o método reload no objeto do tipo User
-        } else {
-          console.warn(
-            'Usuário ainda não autenticado após tentativa de reload.'
-          );
-          return null;
-        }
+      if (!user || !user.email) {
+        console.warn('Usuário não autenticado ou email não encontrado.');
+        return null;
       }
 
-      const docRef = doc(this.firestore, `users/${user.uid}`);
-      const docSnap = await getDoc(docRef);
+      // Busca o usuário pelo email no Firestore
+      const usersCollection = collection(this.firestore, 'users');
+      const emailQuery = query(
+        usersCollection,
+        where('email', '==', user.email)
+      );
+      const querySnapshot = await getDocs(emailQuery);
 
-      if (!docSnap.exists()) {
-        console.error(
-          `Documento do usuário com UID ${user.uid} não encontrado.`
+      if (querySnapshot.empty) {
+        console.warn(
+          `Nenhum documento encontrado para o e-mail ${user.email}.`
         );
         return null;
       }
 
+      const docSnap = querySnapshot.docs[0];
       const data = docSnap.data();
 
-      if (data && data['role']) {
-        return data['role'] as string;
-      } else {
-        console.warn(`Campo "role" ausente no documento do usuário.`);
-        return null;
-      }
+      return data?.['role'] || null;
     } catch (error) {
       console.error('Erro ao obter papel do usuário:', error);
       return null;
@@ -117,15 +113,29 @@ export class AuthService {
   async getCurrentUserClientId(): Promise<string | null> {
     try {
       const user = this.auth.currentUser;
-      if (user) {
-        const docRef = doc(this.firestore, `users/${user.uid}`);
-        const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
-          return docSnap.data()['clientId'] || null;
-        }
+      if (!user || !user.email) {
+        console.warn('Usuário não autenticado ou email não encontrado.');
+        return null;
       }
-      return null;
+
+      // Busca o documento do usuário pelo email
+      const usersCollection = collection(this.firestore, 'users');
+      const emailQuery = query(
+        usersCollection,
+        where('email', '==', user.email)
+      );
+      const querySnapshot = await getDocs(emailQuery);
+
+      if (querySnapshot.empty) {
+        console.warn(
+          `Nenhum documento encontrado para o e-mail ${user.email}.`
+        );
+        return null;
+      }
+
+      const docSnap = querySnapshot.docs[0];
+      return docSnap.data()?.['clientId'] || null;
     } catch (error) {
       console.error('Erro ao obter clientId do usuário:', error);
       return null;
@@ -135,15 +145,29 @@ export class AuthService {
   async getCurrentUserName(): Promise<string | null> {
     try {
       const user = this.auth.currentUser;
-      if (user) {
-        const docRef = doc(this.firestore, `users/${user.uid}`);
-        const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
-          return docSnap.data()['name'] || null;
-        }
+      if (!user || !user.email) {
+        console.warn('Usuário não autenticado ou email não encontrado.');
+        return null;
       }
-      return null;
+
+      // Busca o documento do usuário pelo email
+      const usersCollection = collection(this.firestore, 'users');
+      const emailQuery = query(
+        usersCollection,
+        where('email', '==', user.email)
+      );
+      const querySnapshot = await getDocs(emailQuery);
+
+      if (querySnapshot.empty) {
+        console.warn(
+          `Nenhum documento encontrado para o e-mail ${user.email}.`
+        );
+        return null;
+      }
+
+      const docSnap = querySnapshot.docs[0];
+      return docSnap.data()?.['name'] || null;
     } catch (error) {
       console.error('Erro ao obter nome do usuário:', error);
       return null;
@@ -247,21 +271,95 @@ export class AuthService {
     role: string;
     clientId: string;
   } | null> {
-    const firebaseUser = await firstValueFrom(user(this.auth));
-    if (firebaseUser) {
-      const userDocRef = doc(this.firestore, `users/${firebaseUser.uid}`);
-      const userDoc = await getDoc(userDocRef);
+    try {
+      const user = this.auth.currentUser;
 
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        return {
-          name: userData['name'] || 'Usuário Desconhecido',
-          email: userData['email'] || 'Email não informado',
-          role: userData['role'] || 'Role não informado',
-          clientId: userData['clientId'] || 'clientId não informado',
-        };
+      if (!user || !user.email) {
+        console.warn('Usuário não autenticado ou email não encontrado.');
+        return null;
       }
+
+      // Busca o documento do usuário pelo email
+      const usersCollection = collection(this.firestore, 'users');
+      const emailQuery = query(
+        usersCollection,
+        where('email', '==', user.email)
+      );
+      const querySnapshot = await getDocs(emailQuery);
+
+      if (querySnapshot.empty) {
+        console.warn(
+          `Nenhum documento encontrado para o e-mail ${user.email}.`
+        );
+        return null;
+      }
+
+      const docSnap = querySnapshot.docs[0];
+      const data = docSnap.data();
+
+      return {
+        name: data?.['name'] || 'Usuário Desconhecido',
+        email: user.email,
+        role: data?.['role'] || 'Role não informado',
+        clientId: data?.['clientId'] || 'clientId não informado',
+      };
+    } catch (error) {
+      console.error('Erro ao obter informações do usuário:', error);
+      return null;
     }
+  }
+
+  private async getUserByEmail(email: string): Promise<any> {
+    const usersCollection = collection(this.firestore, 'users');
+    const emailQuery = query(usersCollection, where('email', '==', email));
+    const querySnapshot = await getDocs(emailQuery);
+
+    if (!querySnapshot.empty) {
+      return querySnapshot.docs[0].data();
+    }
+
     return null;
+  }
+
+  async getCurrentClientId(): Promise<string | null> {
+    try {
+      const user = this.auth.currentUser;
+
+      if (!user || !user.email) {
+        console.warn('Usuário não autenticado ou email não encontrado.');
+        return null;
+      }
+
+      // Busca o documento do usuário pelo email no Firestore
+      const usersCollection = collection(this.firestore, 'users');
+      const emailQuery = query(
+        usersCollection,
+        where('email', '==', user.email)
+      );
+      const querySnapshot = await getDocs(emailQuery);
+
+      if (querySnapshot.empty) {
+        console.warn(
+          `Nenhum documento encontrado para o e-mail ${user.email}.`
+        );
+        return null;
+      }
+
+      // Obter o primeiro documento correspondente
+      const docSnap = querySnapshot.docs[0];
+      const data = docSnap.data();
+
+      if (data && data['client']) {
+        // Alterado de 'clientId' para 'client'
+        console.log(`client encontrado: ${data['client']}`);
+        return data['client']; // Alterado de 'clientId' para 'client'
+      } else {
+        console.warn('Campo "client" ausente no documento do usuário.');
+        return null;
+      }
+    } catch (error) {
+      console.error('Erro ao obter clientId do usuário:', error);
+      return null;
+    }
   }
 }

@@ -1,7 +1,7 @@
 <div mat-dialog-title>
   {{ isEditMode ? "Editar Usuário" : "Criar Novo Usuário" }}
 </div>
-<div mat-dialog-content>
+<div mat-dialog-content style="padding-top: 5px;">
   <form [formGroup]="userForm" (ngSubmit)="saveUser()">
     <!-- Nome -->
     <mat-form-field appearance="outline" class="w-100 mb-3">
@@ -38,7 +38,7 @@
     </mat-form-field>
 
     <!-- Cliente -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
+    <!-- <mat-form-field appearance="outline" class="w-100 mb-3">
       <mat-label>Cliente</mat-label>
       <mat-select
         formControlName="client"
@@ -51,10 +51,10 @@
       <mat-error *ngIf="userForm.get('client')?.hasError('required')">
         O cliente é obrigatório.
       </mat-error>
-    </mat-form-field>
+    </mat-form-field> -->
 
     <!-- Projeto -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
+    <!-- <mat-form-field appearance="outline" class="w-100 mb-3">
       <mat-label>Projeto</mat-label>
       <mat-select
         formControlName="project"
@@ -64,13 +64,10 @@
           {{ project.name }}
         </mat-option>
       </mat-select>
-      <mat-error *ngIf="userForm.get('project')?.hasError('required')">
-        O projeto é obrigatório.
-      </mat-error>
-    </mat-form-field>
+    </mat-form-field> -->
 
     <!-- Grupo -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
+    <!-- <mat-form-field appearance="outline" class="w-100 mb-3">
       <mat-label>Grupo</mat-label>
       <mat-select
         formControlName="group"
@@ -80,7 +77,7 @@
           {{ group.name }}
         </mat-option>
       </mat-select>
-    </mat-form-field>
+    </mat-form-field> -->
 
     <!-- Papel -->
     <mat-form-field appearance="outline" class="w-100 mb-3">

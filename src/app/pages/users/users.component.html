@@ -1,199 +1,268 @@
 <div class="container my-4">
-  <!-- Tabela de Grupos -->
-  <mat-card class="mt-4">
-    <mat-card-title style="margin: 15px">Grupos de Usuários</mat-card-title>
-    <mat-card-content>
-      <mat-form-field appearance="outline" class="w-100 mb-3">
-        <mat-label>Buscar Grupo</mat-label>
-        <input
-          matInput
-          (keyup)="applyGroupFilter($event)"
-          placeholder="Digite para buscar"
-        />
-      </mat-form-field>
-
-      <table
-        mat-table
-        [dataSource]="groupDataSource"
-        matSort
-        class="mat-elevation-z8 w-100"
-      >
-        <!-- Nome -->
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
-          <td mat-cell *matCellDef="let group">{{ group.name }}</td>
-        </ng-container>
-
-        <!-- Cliente -->
-        <ng-container matColumnDef="client">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
-          <td mat-cell *matCellDef="let group">{{ group.client }}</td>
-        </ng-container>
-
-        <!-- Descrição -->
-        <ng-container matColumnDef="description">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Descrição</th>
-          <td mat-cell *matCellDef="let group">{{ group.description }}</td>
-        </ng-container>
-
-        <!-- Criado por -->
-        <ng-container matColumnDef="createdBy">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Criado por</th>
-          <td mat-cell *matCellDef="let group">{{ group.createdBy }}</td>
-        </ng-container>
-
-        <!-- Ações -->
-        <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef>Ações</th>
-          <td mat-cell *matCellDef="let group">
-            <button mat-icon-button color="primary" (click)="editGroup(group)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              color="warn"
-              (click)="deleteGroup(group)"
-              matTooltip="Excluir Grupo"
+  <mat-tab-group>
+    <mat-tab label="Usuários">
+      <!-- Tabela de Usuários -->
+      <mat-card>
+        <mat-card-title style="margin: 15px">Usuários</mat-card-title>
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="w-100 mb-3">
+            <mat-label>Buscar Usuário</mat-label>
+            <input
+              matInput
+              (keyup)="applyUserFilter($event)"
+              placeholder="Digite para buscar"
+            />
+          </mat-form-field>
+          <div class="table-responsive">
+            <table
+              mat-table
+              [dataSource]="userDataSource"
+              matSort
+              class="mat-elevation-z8 w-100"
             >
-              <mat-icon>delete</mat-icon>
-            </button>
-          </td>
-        </ng-container>
+              <!-- Nome -->
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+                <td mat-cell *matCellDef="let user">{{ user.name }}</td>
+              </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="displayedGroupColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedGroupColumns"></tr>
-      </table>
+              <!-- Sobrenome -->
+              <ng-container matColumnDef="surname">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                  Sobrenome
+                </th>
+                <td mat-cell *matCellDef="let user">{{ user.surname }}</td>
+              </ng-container>
 
-      <mat-paginator
-        [pageSize]="5"
-        [pageSizeOptions]="[5, 10, 20]"
-        #groupPaginator
-      ></mat-paginator>
+              <!-- E-mail -->
+              <ng-container matColumnDef="email">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                  E-mail
+                </th>
+                <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+              </ng-container>
 
-      <div class="row mb-3">
-        <div class="col-12 text-end">
+              <!-- Cliente -->
+              <ng-container matColumnDef="client">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                  Cliente
+                </th>
+                <td mat-cell *matCellDef="let user">
+                  <a
+                    *ngIf="user.client.length > 0"
+                    href="javascript:void(0)"
+                    (click)="openDetailsModal('Clientes do Usuário', user.client)"
+                  >
+                    Ver Clientes
+                  </a>
+                  <span *ngIf="user.client.length === 0">Sem Clientes</span>
+                </td>
+              </ng-container>
+
+              <!-- Projetos -->
+              <ng-container matColumnDef="projects">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                  Projetos
+                </th>
+                <td mat-cell *matCellDef="let user">
+                  <a
+                    *ngIf="user.projects.length > 0"
+                    href="javascript:void(0)"
+                    (click)="
+                      openDetailsModal('Projetos do Usuário', user.projects)
+                    "
+                  >
+                    Ver Projetos
+                  </a>
+                  <span *ngIf="user.projects.length === 0">Sem projetos</span>
+                </td>
+              </ng-container>
+
+              <!-- Grupo -->
+              <ng-container matColumnDef="group">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                  Grupos
+                </th>
+                <td mat-cell *matCellDef="let user">
+                  <a
+                    *ngIf="user.groups.length > 0"
+                    href="javascript:void(0)"
+                    (click)="openDetailsModal('Grupos do Usuário', user.groups)"
+                  >
+                    Ver Grupos
+                  </a>
+                  <span *ngIf="user.groups.length === 0">Sem grupos</span>
+                </td>
+              </ng-container>
+
+              <!-- Papel -->
+              <ng-container matColumnDef="role">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Papel</th>
+                <td mat-cell *matCellDef="let user">{{ user.role }}</td>
+              </ng-container>
+
+              <!-- Status de Notificação -->
+              <ng-container matColumnDef="notificationStatus">
+                <th mat-header-cell *matHeaderCellDef>Status de Notificação</th>
+                <td mat-cell *matCellDef="let user">
+                  {{ user.notificationStatus }}
+                </td>
+              </ng-container>
+
+              <!-- Ações -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Ações</th>
+                <td mat-cell *matCellDef="let user">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="editUser(user)"
+                    [disabled]="user.role === 'admin_master'"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    [disabled]="user.role === 'admin_master'"
+                    (click)="deleteUser(user)"
+                    matTooltip="Excluir Usuário"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="accent"
+                    (click)="sendEmailNotification(user)"
+                    matTooltip="Enviar E-mail"
+                  >
+                    <mat-icon>email</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedUserColumns"></tr>
+              <tr
+                mat-row
+                *matRowDef="let row; columns: displayedUserColumns"
+              ></tr>
+            </table>
+          </div>
+          <mat-paginator
+            [pageSize]="5"
+            [pageSizeOptions]="[5, 10, 20]"
+            #userPaginator
+          ></mat-paginator>
+
           <button
             mat-flat-button
             color="primary"
-            (click)="openCreateGroupDialog()"
+            (click)="openCreateUserDialog()"
           >
-            <mat-icon>group_add</mat-icon>
-            Novo Grupo de Usuários
+            <mat-icon>person_add</mat-icon>
+            Novo Usuário
           </button>
-        </div>
-      </div>
-    </mat-card-content>
-  </mat-card>
+        </mat-card-content>
+      </mat-card>
+    </mat-tab>
 
-  <!-- Tabela de Usuários -->
-  <mat-card>
-    <mat-card-title style="margin: 15px">Usuários</mat-card-title>
-    <mat-card-content>
-      <mat-form-field appearance="outline" class="w-100 mb-3">
-        <mat-label>Buscar Usuário</mat-label>
-        <input
-          matInput
-          (keyup)="applyUserFilter($event)"
-          placeholder="Digite para buscar"
-        />
-      </mat-form-field>
-      <div class="table-responsive">
-        <table
-          mat-table
-          [dataSource]="userDataSource"
-          matSort
-          class="mat-elevation-z8 w-100"
-        >
-          <!-- Nome -->
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
-            <td mat-cell *matCellDef="let user">{{ user.name }}</td>
-          </ng-container>
+    <mat-tab label="Grupos">
+      <!-- Tabela de Grupos -->
+      <mat-card class="mt-4">
+        <mat-card-title style="margin: 15px">Grupos de Usuários</mat-card-title>
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="w-100 mb-3">
+            <mat-label>Buscar Grupo</mat-label>
+            <input
+              matInput
+              (keyup)="applyGroupFilter($event)"
+              placeholder="Digite para buscar"
+            />
+          </mat-form-field>
 
-          <!-- Sobrenome -->
-          <ng-container matColumnDef="surname">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Sobrenome</th>
-            <td mat-cell *matCellDef="let user">{{ user.surname }}</td>
-          </ng-container>
+          <table
+            mat-table
+            [dataSource]="groupDataSource"
+            matSort
+            class="mat-elevation-z8 w-100"
+          >
+            <!-- Nome -->
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+              <td mat-cell *matCellDef="let group">{{ group.name }}</td>
+            </ng-container>
 
-          <!-- E-mail -->
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>E-mail</th>
-            <td mat-cell *matCellDef="let user">{{ user.email }}</td>
-          </ng-container>
+            <!-- Cliente -->
+            <ng-container matColumnDef="client">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
+              <td mat-cell *matCellDef="let group">{{ group.client }}</td>
+            </ng-container>
 
-          <!-- Cliente -->
-          <ng-container matColumnDef="client">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
-            <td mat-cell *matCellDef="let user">{{ user.client }}</td>
-          </ng-container>
+            <!-- Descrição -->
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Descrição
+              </th>
+              <td mat-cell *matCellDef="let group">{{ group.description }}</td>
+            </ng-container>
 
-          <!-- Projeto -->
-          <ng-container matColumnDef="project">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Projeto</th>
-            <td mat-cell *matCellDef="let user">{{ user.project }}</td>
-          </ng-container>
+            <!-- Criado por -->
+            <ng-container matColumnDef="createdBy">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Criado por
+              </th>
+              <td mat-cell *matCellDef="let group">{{ group.createdBy }}</td>
+            </ng-container>
 
-          <!-- Grupo -->
-          <ng-container matColumnDef="group">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Grupo</th>
-            <td mat-cell *matCellDef="let user">{{ user.groupName }}</td>
-          </ng-container>
+            <!-- Ações -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Ações</th>
+              <td mat-cell *matCellDef="let group">
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="editGroup(group)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="deleteGroup(group)"
+                  matTooltip="Excluir Grupo"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
 
-          <!-- Papel -->
-          <ng-container matColumnDef="role">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Papel</th>
-            <td mat-cell *matCellDef="let user">{{ user.role }}</td>
-          </ng-container>
+            <tr mat-header-row *matHeaderRowDef="displayedGroupColumns"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedGroupColumns"
+            ></tr>
+          </table>
 
-          <!-- Status de Notificação -->
-          <ng-container matColumnDef="notificationStatus">
-            <th mat-header-cell *matHeaderCellDef>Status de Notificação</th>
-            <td mat-cell *matCellDef="let user">
-              {{ user.notificationStatus }}
-            </td>
-          </ng-container>
+          <mat-paginator
+            [pageSize]="5"
+            [pageSizeOptions]="[5, 10, 20]"
+            #groupPaginator
+          ></mat-paginator>
 
-          <!-- Ações -->
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Ações</th>
-            <td mat-cell *matCellDef="let user">
-              <button mat-icon-button color="primary" (click)="editUser(user)">
-                <mat-icon>edit</mat-icon>
-              </button>
+          <div class="row mb-3">
+            <div class="col-12 text-end">
               <button
-                mat-icon-button
-                color="warn"
-                (click)="deleteUser(user)"
-                matTooltip="Excluir Usuário"
+                mat-flat-button
+                color="primary"
+                (click)="openCreateGroupDialog()"
               >
-                <mat-icon>delete</mat-icon>
+                <mat-icon>group_add</mat-icon>
+                Novo Grupo de Usuários
               </button>
-              <button
-                mat-icon-button
-                color="accent"
-                (click)="sendEmailNotification(user)"
-                matTooltip="Enviar E-mail"
-              >
-                <mat-icon>email</mat-icon>
-              </button>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedUserColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedUserColumns"></tr>
-        </table>
-      </div>
-      <mat-paginator
-        [pageSize]="5"
-        [pageSizeOptions]="[5, 10, 20]"
-        #userPaginator
-      ></mat-paginator>
-
-      <button mat-flat-button color="primary" (click)="openCreateUserDialog()">
-        <mat-icon>person_add</mat-icon>
-        Novo Usuário
-      </button>
-    </mat-card-content>
-  </mat-card>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </mat-tab>
+  </mat-tab-group>
 </div>

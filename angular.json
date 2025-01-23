@@ -43,7 +43,8 @@
               "src/assets/scss/style.scss",
               "node_modules/angular-calendar/css/angular-calendar.css",
               "node_modules/tinymce/skins/ui/oxide/skin.min.css",
-              "node_modules/tinymce/skins/content/default/content.min.css"
+              "node_modules/tinymce/skins/content/default/content.min.css",
+              "node_modules/grapesjs/dist/css/grapes.min.css"
             ],
             "scripts": ["node_modules/tinymce/tinymce.min.js"]
           },

@@ -2,12 +2,13 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import {
   Firestore,
   collection,
-  doc,
-  deleteDoc,
-  getDocs,
   query,
-  writeBatch,
+  getDocs,
   where,
+  Timestamp,
+  deleteDoc,
+  doc,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -21,6 +22,7 @@ import { AddClientDialogComponent } from '../add-client-dialog/add-client-dialog
 import { PhonePipe } from 'src/app/pipe/phone.pipe';
 import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
 import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
+
 @Component({
   selector: 'app-clients-list',
   standalone: true,
@@ -61,43 +63,77 @@ export class ClientsListComponent implements OnInit {
     this.loadClients();
   }
 
-  private loadClients() {
+  private async loadClients() {
     const clientsCollection = collection(this.firestore, 'clients');
     const clientsQuery = query(clientsCollection);
 
-    getDocs(clientsQuery)
-      .then((snapshot) => {
-        const clients = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...(doc.data() as any),
-          }))
-          .sort((a, b) => {
-            const nameA = a.companyName?.toLowerCase() || '';
-            const nameB = b.companyName?.toLowerCase() || '';
-            return nameA.localeCompare(nameB); // Ordena alfabeticamente
-          });
+    try {
+      const snapshot = await getDocs(clientsQuery);
+      const clients = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as any),
+        }))
+        .sort((a, b) => {
+          const nameA = a.companyName?.toLowerCase() || '';
+          const nameB = b.companyName?.toLowerCase() || '';
+          return nameA.localeCompare(nameB);
+        });
 
-        this.dataSource.data = clients;
-        this.dataSource.paginator = this.paginator;
-        this.dataSource.sort = this.sort;
+      // Processar todos os clientes e calcular créditos
+      await Promise.all(
+        clients.map((client) => this.calculateCreditsForClient(client))
+      );
 
-        this.dataSource.filterPredicate = (data, filter) => {
-          const dataStr =
-            `${data.companyName} ${data.sector} ${data.cnpj} ${data.credits}`
-              .toLowerCase()
-              .trim();
-          return dataStr.includes(filter);
-        };
-      })
-      .catch((error) => {
-        console.error('Erro ao carregar clientes:', error);
-        this.snackBar.open(
-          'Erro ao carregar a lista de clientes. Tente novamente mais tarde.',
-          'Fechar',
-          { duration: 3000 }
-        );
+      this.dataSource.data = clients; // Atualizar a tabela após o cálculo dos créditos
+      this.dataSource.paginator = this.paginator;
+      this.dataSource.sort = this.sort;
+
+      this.dataSource.filterPredicate = (data, filter) => {
+        const dataStr =
+          `${data.companyName} ${data.sector} ${data.cnpj} ${data.credits}`
+            .toLowerCase()
+            .trim();
+        return dataStr.includes(filter);
+      };
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      this.snackBar.open(
+        'Erro ao carregar a lista de clientes. Tente novamente mais tarde.',
+        'Fechar',
+        { duration: 3000 }
+      );
+    }
+  }
+
+  private async calculateCreditsForClient(client: any) {
+    const ordersCollection = collection(this.firestore, 'creditOrders');
+    const ordersQuery = query(
+      ordersCollection,
+      where('clientId', '==', client.id),
+      where('status', '==', 'Aprovado')
+    );
+
+    try {
+      const ordersSnapshot = await getDocs(ordersQuery);
+      let totalCredits = 0;
+
+      ordersSnapshot.docs.forEach((orderDoc) => {
+        const orderData = orderDoc.data();
+        const validityDate = orderData['validityDate']?.toDate(); // Usar o campo correto
+        const credits = orderData['credits'] || 0;
+        const currentDate = new Date();
+
+        if (validityDate && validityDate > currentDate) {
+          totalCredits += credits; // Só conta créditos válidos
+        }
       });
+
+      // Atualiza os créditos do cliente
+      client.credits = totalCredits;
+    } catch (error) {
+      console.error('Erro ao calcular créditos:', error);
+    }
   }
 
   applyFilter(event: Event) {

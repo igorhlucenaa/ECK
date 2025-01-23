@@ -32,10 +32,9 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'clients', // Redireciona para a página de produtos
+        redirectTo: 'clients',
         pathMatch: 'full',
       },
-      // Outras rotas...
       {
         path: 'starter',
         loadChildren: () =>
@@ -80,6 +79,15 @@ export const routes: Routes = [
         data: { role: 'admin_client' },
       },
       {
+        path: 'assessments',
+        loadChildren: () =>
+          import('./pages/assessments/assessments.routes').then(
+            (m) => m.AssessmentsRoutes
+          ),
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
+      },
+      {
         path: 'reports',
         loadChildren: () =>
           import('./pages/reports/reports.routes').then((m) => m.ReportsRoutes),
@@ -87,19 +95,10 @@ export const routes: Routes = [
         data: { role: 'viewer' },
       },
       {
-        path: 'dashboards',
-        loadChildren: () =>
-          import('./pages/dashboards/dashboards.routes').then(
-            (m) => m.DashboardsRoutes
-          ),
-        canActivate: [AuthGuard],
-        data: { role: 'admin_account' },
-      },
-      {
         path: 'orders',
         component: CreditOrdersComponent,
         canActivate: [AuthGuard],
-        data: { role: 'admin_master' },
+        data: { role: ['admin_master', 'admin_client'] },
       },
       {
         path: 'emails-notifications',
@@ -110,19 +109,18 @@ export const routes: Routes = [
         canActivate: [AuthGuard],
         data: { role: ['admin_master', 'admin_client'] },
       },
-
       {
         path: 'orders/new',
         component: NewCreditOrderComponent,
         canActivate: [AuthGuard],
-        data: { role: 'admin_master' },
+        data: { role: ['admin_master', 'admin_client'] },
       },
       {
         path: 'users',
         loadChildren: () =>
           import('./pages/users/users.routes').then((m) => m.UsersRoutes),
         canActivate: [AuthGuard],
-        data: { role: 'admin_master' }, // Apenas para Administrador Master
+        data: { role: ['admin_master', 'admin_client'] },
       },
     ],
   },

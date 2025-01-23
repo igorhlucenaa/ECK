@@ -15,3 +15,22 @@ quill-editor {
   border-radius: 4px;
   margin-bottom: 16px;
 }
+
+#blocks {
+  display: flex;
+  flex-direction: column; // Define os elementos em coluna
+  gap: 10px; // Espaço entre os botões
+  padding: 10px;
+  border-right: 1px solid #ddd;
+  background: #f9f9f9;
+}
+
+button {
+  width: 100%; // Botões ocupam toda a largura do painel
+}
+
+#gjs {
+  min-height: 600px;
+  border: 1px solid #ddd;
+  background-color: #fff;
+}

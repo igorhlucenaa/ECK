@@ -1,0 +1,25 @@
+<div class="container my-4">
+  <nav class="mb-4">
+    <button
+      mat-button
+      routerLink="/assessments"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+    >
+      Lista de Avaliações
+    </button>
+    <button mat-button routerLink="upload" routerLinkActive="active">
+      Upload de Listas
+    </button>
+    <button mat-button routerLink="dashboard" routerLinkActive="active">
+      Dashboard
+    </button>
+    <button mat-button routerLink="export" routerLinkActive="active">
+      Exportar Dados
+    </button>
+    <button mat-button routerLink="participants" routerLinkActive="active">
+      Avaliadores e Avaliados
+    </button>
+  </nav>
+  <router-outlet></router-outlet>
+</div>

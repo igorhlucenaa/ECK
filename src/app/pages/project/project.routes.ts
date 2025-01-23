@@ -59,6 +59,12 @@ export const ProjectsRoutes: Routes = [
     data: { role: 'admin_client' },
   },
   {
+    path: 'default-template/:templateId/edit',
+    component: EmailTemplateFormComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'admin_client' }, // Garantir que apenas o admin_client possa editar templates
+  },
+  {
     path: ':id/questionnaires',
     component: QuestionnaireListComponent,
     canActivate: [AuthGuard],
