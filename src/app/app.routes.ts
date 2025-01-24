@@ -32,14 +32,8 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'clients',
+        redirectTo: 'dashboard', // Redireciona para o Dashboard
         pathMatch: 'full',
-      },
-      {
-        path: 'starter',
-        loadChildren: () =>
-          import('./pages/pages.routes').then((m) => m.PagesRoutes),
-        canActivate: [AuthGuard],
       },
       {
         path: 'dashboard',
@@ -48,7 +42,7 @@ export const routes: Routes = [
             (m) => m.DashboardRoutes
           ),
         canActivate: [AuthGuard],
-        data: { role: 'admin_master' },
+        data: { role: ['admin_master', 'admin_client'] }, // Permissões ajustadas
       },
       {
         path: 'clients',

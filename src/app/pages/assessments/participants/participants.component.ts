@@ -78,7 +78,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const evaluators = snapshot.docs
       .map((doc) => doc.data())
       .filter((participant: any) => participant.type === 'avaliador');
-
+    console.log(evaluators);
     this.evaluatorsDataSource.data = evaluators;
   }
 
@@ -98,6 +98,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const client = clientDoc.docs.find(
         (doc) => doc.id === evaluatee.clientId
       );
+      console.log(client);
       const project = projectDoc.docs.find(
         (doc) => doc.id === evaluatee.projectId
       );

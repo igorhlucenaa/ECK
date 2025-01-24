@@ -29,9 +29,9 @@ export class AppComponent implements OnInit {
 
           // Redireciona com base no papel do usuário
           if (role === 'admin_master') {
-            this.router.navigate(['/clients']);
+            this.router.navigate(['/dashboard']);
           } else if (role === 'admin_client') {
-            this.router.navigate(['/users']); // Redireciona para a página de usuários
+            this.router.navigate(['/dashboard']); // Redireciona para a página de usuários
           } else {
             console.warn(
               'Papel do usuário não reconhecido. Redirecionando para login.'
