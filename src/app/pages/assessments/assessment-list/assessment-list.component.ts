@@ -107,6 +107,7 @@ export class AssessmentListComponent implements OnInit {
   }
 
   previewAssessment(assessment: any): void {
+    console.log(assessment)
     this.dialog.open(AssessmentPreviewComponent, {
       width: '600px',
       data: assessment, // Passar os dados da avaliação selecionada para o modal

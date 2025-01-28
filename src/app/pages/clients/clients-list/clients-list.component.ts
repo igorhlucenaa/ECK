@@ -85,6 +85,7 @@ export class ClientsListComponent implements OnInit {
         clients.map((client) => this.calculateCreditsForClient(client))
       );
 
+
       this.dataSource.data = clients; // Atualizar a tabela após o cálculo dos créditos
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;

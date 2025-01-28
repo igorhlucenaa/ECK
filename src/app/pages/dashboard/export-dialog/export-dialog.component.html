@@ -1,0 +1,34 @@
+<h2 mat-dialog-title>Exportar Tabelas</h2>
+
+<mat-dialog-content>
+  <!-- Seleção de Tabela -->
+  <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 20px">
+    <mat-label>Selecione a Tabela</mat-label>
+    <mat-select [(ngModel)]="selectedTable">
+      <mat-option *ngFor="let table of data.availableTables" [value]="table">
+        {{ table.label }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <!-- Seleção de Formato -->
+  <mat-form-field appearance="outline" style="width: 100%">
+    <mat-label>Selecione o Formato</mat-label>
+    <mat-select [(ngModel)]="selectedFormat">
+      <mat-option value="excel">Excel</mat-option>
+      <mat-option value="pdf">PDF</mat-option>
+    </mat-select>
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button
+    mat-raised-button
+    color="primary"
+    [disabled]="!selectedTable || !selectedFormat"
+    (click)="confirm()"
+  >
+    Exportar
+  </button>
+</mat-dialog-actions>

@@ -60,6 +60,7 @@ export class QuestionnaireListComponent implements OnInit {
         id: doc.id,
         ...doc.data(),
       }));
+      console.log(questionnaires)
 
       this.dataSource.data = questionnaires;
       this.dataSource.paginator = this.paginator;

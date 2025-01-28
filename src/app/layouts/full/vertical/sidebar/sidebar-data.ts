@@ -6,6 +6,12 @@ export const navItems: NavItem[] = [
     role: 'any', // Visível para todos
   },
   {
+    displayName: 'Dashboard',
+    iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando o dashboard
+    route: '/dashboard',
+    role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
+  },
+  {
     displayName: 'Clientes',
     iconName: 'solar:people-nearby-bold-duotone',
     route: '/clients', // Caminho correto para a página de clientes

@@ -98,7 +98,6 @@ export class UsersComponent implements OnInit {
   async loadData(): Promise<void> {
     try {
       const groups = await this.loadUserGroups(); // Carrega os grupos e retorna a lista
-      console.log(groups);
       await this.loadUsers(groups); // Passa os grupos para associar
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -114,21 +113,16 @@ export class UsersComponent implements OnInit {
       this.userRole = await this.authService.getCurrentUserRole();
       const clientId = await this.authService.getCurrentClientId();
 
-      console.log('Role do usuário:', this.userRole);
-      console.log('Client ID do usuário:', clientId);
-
       // Coleção de usuários
       const usersCollection = collection(this.firestore, 'users');
       let usersSnapshot;
 
       // Admin_client pode ver apenas os usuários do seu cliente
       if (this.userRole === 'admin_client' && clientId) {
-        console.log('Carregando usuários do cliente:', clientId);
         usersSnapshot = await getDocs(
           query(usersCollection, where('client', '==', clientId))
         );
       } else if (this.userRole === 'admin_master') {
-        console.log('Carregando todos os usuários');
         usersSnapshot = await getDocs(usersCollection);
       } else {
         console.warn('Usuário não autorizado para carregar dados.');
@@ -144,7 +138,6 @@ export class UsersComponent implements OnInit {
 
       const groupsCollection = collection(this.firestore, 'userGroups');
       const groupsSnapshot = await getDocs(groupsCollection);
-
       // Mapear clientes
       const clientsMap = clientsSnapshot.docs.reduce((acc, doc) => {
         acc[doc.id] = doc.data()['companyName'];
@@ -222,7 +215,6 @@ export class UsersComponent implements OnInit {
         })
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      console.log('Users data:', users);
 
       // Atualizar dataSource
       this.userDataSource.data = users;
@@ -242,20 +234,16 @@ export class UsersComponent implements OnInit {
       const userRole = await this.authService.getCurrentUserRole();
       const clientId = await this.authService.getCurrentClientId();
 
-      console.log('Role do usuário:', userRole);
-      console.log('Client ID do usuário:', clientId);
 
       const groupsCollection = collection(this.firestore, 'userGroups');
       let groupsSnapshot;
 
       // Admin_client pode ver apenas os grupos do seu cliente
       if (userRole === 'admin_client' && clientId) {
-        console.log('Carregando grupos do cliente:', clientId);
         groupsSnapshot = await getDocs(
           query(groupsCollection, where('clientId', '==', clientId))
         );
       } else if (userRole === 'admin_master') {
-        console.log('Carregando todos os grupos');
         groupsSnapshot = await getDocs(groupsCollection);
       } else {
         console.warn('Usuário não autorizado para carregar dados.');
@@ -462,7 +450,6 @@ export class UsersComponent implements OnInit {
   }
 
   openDetailsModal(title: string, items: any): void {
-    console.log(items);
     this.dialog.open(DetailsModalComponent, {
       width: '400px',
       data: { title, items },

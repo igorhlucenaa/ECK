@@ -1,5 +1,5 @@
-import { Component, ViewChild } from '@angular/core';
-import { TablerIconsModule } from 'angular-tabler-icons';
+import { CommonModule } from '@angular/common';
+import { Component, ViewChild, Input, OnInit } from '@angular/core';
 import {
   ApexChart,
   ChartComponent,
@@ -14,42 +14,50 @@ import {
 } from 'ng-apexcharts';
 import { MaterialModule } from 'src/app/material.module';
 
-export interface newschartOptions {
-  series: ApexAxisChartSeries | any;
-  chart: ApexChart | any;
-  xaxis: ApexXAxis | any;
+export interface NewsChartOptions {
+  series: ApexAxisChartSeries;
+  chart: ApexChart;
+  xaxis: ApexXAxis;
   stroke: any;
-  tooltip: ApexTooltip | any;
-  dataLabels: ApexDataLabels | any;
-  legend: ApexLegend | any;
-  colors: string[] | any;
+  tooltip: ApexTooltip;
+  dataLabels: ApexDataLabels;
+  legend: ApexLegend;
+  colors: string[];
   markers: any;
-  grid: ApexGrid | any;
-  fill: ApexFill | any;
+  grid: ApexGrid;
+  fill: ApexFill;
 }
 
 @Component({
   selector: 'app-newsletter-campaign2',
   standalone: true,
-  imports: [NgApexchartsModule, MaterialModule, TablerIconsModule],
+  imports: [NgApexchartsModule, MaterialModule, CommonModule],
   templateUrl: './newsletter-campaign2.component.html',
 })
-export class AppNewsletterCampaign2Component {
+export class AppNewsletterCampaign2Component implements OnInit {
   @ViewChild('chart') chart: ChartComponent = Object.create(null);
+  @Input() creditUsageData: {
+    month: string;
+    used: number;
+    remaining: number;
+  }[] = [];
 
-  public newschartOptions!: Partial<newschartOptions> | any;
+  public newschartOptions!: Partial<NewsChartOptions>;
 
-  constructor() {
+  ngOnInit(): void {
+    this.updateChart();
+  }
+
+  private updateChart(): void {
+    const months = this.creditUsageData.map((data) => data.month) || [];
+    const usedCredits = this.creditUsageData.map((data) => data.used) || [];
+    const remainingCredits =
+      this.creditUsageData.map((data) => data.remaining) || [];
+
     this.newschartOptions = {
       series: [
-        {
-          name: 'Earnings',
-          data: [0, 5, 6, 8, 25, 9, 11, 24],
-        },
-        {
-          name: 'Expense',
-          data: [0, 3, 1, 2, 8, 1, 5, 1],
-        },
+        { name: 'Créditos Usados', data: usedCredits },
+        { name: 'Créditos Restantes', data: remainingCredits },
       ],
       chart: {
         height: 260,
@@ -66,26 +74,21 @@ export class AppNewsletterCampaign2Component {
         border: 1,
       },
       legend: {
-        show: false,
+        show: true,
+        position: 'top',
       },
       xaxis: {
-        categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+        categories: months,
+        labels: {
+          rotate: -45,
+        },
       },
       grid: {
         show: true,
         borderColor: 'rgba(0, 0, 0, .2)',
-        color: 'rgba(0, 0, 0, .2)',
         strokeDashArray: 2,
-        xaxis: {
-          lines: {
-            show: false,
-          },
-        },
-        yaxis: {
-          lines: {
-            show: true,
-          },
-        },
+        xaxis: { lines: { show: false } },
+        yaxis: { lines: { show: true } },
       },
       stroke: {
         curve: 'smooth',
@@ -93,13 +96,15 @@ export class AppNewsletterCampaign2Component {
       },
       fill: {
         type: 'gradient',
-        opacity: ['0.1', '0.1'],
+        gradient: {
+          shade: 'light',
+          type: 'vertical',
+          opacityFrom: 0.4,
+          opacityTo: 0.1,
+        },
       },
       tooltip: {
         theme: 'dark',
-        x: {
-          format: 'dd/MM/yy HH:mm',
-        },
       },
     };
   }

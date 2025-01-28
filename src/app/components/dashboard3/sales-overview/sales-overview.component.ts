@@ -1,5 +1,11 @@
-import { Component, ViewChild } from '@angular/core';
-import { TablerIconsModule } from 'angular-tabler-icons';
+import { CommonModule } from '@angular/common';
+import {
+  Component,
+  ViewChild,
+  Input,
+  OnChanges,
+  SimpleChanges,
+} from '@angular/core';
 import {
   ApexChart,
   ChartComponent,
@@ -13,83 +19,90 @@ import {
   ApexGrid,
   ApexPlotOptions,
   ApexFill,
-  ApexMarkers,
   NgApexchartsModule,
 } from 'ng-apexcharts';
 import { MaterialModule } from 'src/app/material.module';
 
-export interface salesoverChart {
-  series: ApexAxisChartSeries | any;
-  chart: ApexChart | any;
-  dataLabels: ApexDataLabels | any;
-  plotOptions: ApexPlotOptions | any;
-  yaxis: ApexYAxis | any;
-  xaxis: ApexXAxis | any;
-  fill: ApexFill | any;
-  tooltip: ApexTooltip | any;
-  stroke: ApexStroke | any;
-  legend: ApexLegend | any;
-  grid: ApexGrid | any;
-  marker: ApexMarkers | any;
+export interface SalesOverviewChart {
+  series: ApexAxisChartSeries;
+  chart: ApexChart;
+  dataLabels: ApexDataLabels;
+  plotOptions: ApexPlotOptions;
+  yaxis: ApexYAxis;
+  xaxis: ApexXAxis;
+  fill: ApexFill;
+  tooltip: ApexTooltip;
+  stroke: ApexStroke;
+  legend: ApexLegend;
+  grid: ApexGrid;
 }
 
 @Component({
   selector: 'app-sales-overview2',
   standalone: true,
-  imports: [NgApexchartsModule, MaterialModule, TablerIconsModule],
+  imports: [NgApexchartsModule, MaterialModule, CommonModule],
   templateUrl: './sales-overview.component.html',
 })
-export class AppSalesOverview2Component {
+export class AppSalesOverview2Component implements OnChanges {
   @ViewChild('chart') chart: ChartComponent = Object.create(null);
+  @Input() creditOrdersData!: { date: string; credits: number }[];
 
-  public salesoverChart!: Partial<salesoverChart> | any;
+  public salesoverChart!: Partial<SalesOverviewChart>;
 
-  constructor() {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['creditOrdersData']) {
+      this.updateChart();
+    }
+  }
+
+  private updateChart(): void {
+    const dates = this.creditOrdersData.map((order) => order.date);
+    const credits = this.creditOrdersData.map((order) => order.credits);
+
     this.salesoverChart = {
       series: [
-        { name: 'Ample', data: [355, 390, 300, 350, 390, 180, 250] },
-        { name: 'Pixel', data: [280, 250, 325, 215, 250, 310, 170] },
+        {
+          name: 'Créditos',
+          data: credits,
+        },
       ],
       chart: {
         type: 'bar',
         height: 280,
-        offsetX: -15,
         toolbar: { show: false },
         foreColor: '#adb0bb',
         fontFamily: 'Poppins',
         sparkline: { enabled: false },
       },
       grid: {
-        show: false,
+        show: true,
       },
       plotOptions: {
-        bar: { horizontal: false, columnWidth: '35%', borderRadius: 0 },
+        bar: { horizontal: false, columnWidth: '35%', borderRadius: 5 },
       },
       dataLabels: {
         enabled: false,
       },
       xaxis: {
         type: 'category',
-        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        categories: dates,
       },
       yaxis: {
         show: true,
-        min: 100,
-        max: 400,
-        tickAmount: 3,
+        min: 0,
+        tickAmount: 5,
       },
       stroke: {
         show: true,
-        width: 5,
-        lineCap: 'butt',
+        width: 2,
         colors: ['transparent'],
       },
-
       legend: {
-        show: false,
+        show: true,
+        position: 'top',
       },
       fill: {
-        colors: ['#26c6da', '#1e88e5'],
+        colors: ['#26c6da'],
         opacity: 1,
       },
       tooltip: {

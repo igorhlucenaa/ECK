@@ -11,6 +11,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  deleteDoc,
 } from '@angular/fire/firestore';
 import * as Papa from 'papaparse';
 import { MaterialModule } from 'src/app/material.module';
@@ -43,8 +44,19 @@ interface Evaluatee {
   styleUrls: ['./participants.component.scss'],
 })
 export class ParticipantsComponent implements OnInit, AfterViewInit {
-  evaluatorsDisplayedColumns: string[] = ['name', 'email', 'category'];
-  evaluateesDisplayedColumns: string[] = ['name', 'email', 'client', 'project'];
+  evaluatorsDisplayedColumns: string[] = [
+    'name',
+    'email',
+    'category',
+    'actions',
+  ];
+  evaluateesDisplayedColumns: string[] = [
+    'name',
+    'email',
+    'client',
+    'project',
+    'actions',
+  ];
 
   evaluatorsDataSource = new MatTableDataSource<any>([]);
   evaluateesDataSource = new MatTableDataSource<any>([]);
@@ -78,7 +90,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const evaluators = snapshot.docs
       .map((doc) => doc.data())
       .filter((participant: any) => participant.type === 'avaliador');
-
+    console.log(evaluators);
     this.evaluatorsDataSource.data = evaluators;
   }
 
@@ -98,6 +110,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const client = clientDoc.docs.find(
         (doc) => doc.id === evaluatee.clientId
       );
+      console.log(client);
       const project = projectDoc.docs.find(
         (doc) => doc.id === evaluatee.projectId
       );
@@ -292,5 +305,71 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     link.href = 'assets/templates/Modelo_Avaliacao_360.xlsx'; // Caminho para o arquivo no diretório assets
     link.download = 'Modelo_Avaliacao_360.xlsx'; // Nome do arquivo baixado
     link.click();
+  }
+
+  async deleteEvaluator(evaluator: Evaluator): Promise<void> {
+    try {
+      const evaluatorsCollection = collection(this.firestore, 'participants');
+      const snapshot = await getDocs(evaluatorsCollection);
+
+      // Localiza o documento correspondente no Firestore
+      const docToDelete = snapshot.docs.find(
+        (doc) => doc.data()['email'] === evaluator.email
+      );
+
+      if (docToDelete) {
+        await deleteDoc(docToDelete.ref);
+        this.snackBar.open('Avaliador excluído com sucesso!', 'Fechar', {
+          duration: 3000,
+        });
+
+        // Atualiza a tabela localmente
+        this.evaluatorsDataSource.data = this.evaluatorsDataSource.data.filter(
+          (e) => e.email !== evaluator.email
+        );
+      } else {
+        this.snackBar.open('Avaliador não encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao excluir avaliador:', error);
+      this.snackBar.open('Erro ao excluir avaliador.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async deleteEvaluatee(evaluatee: Evaluatee): Promise<void> {
+    try {
+      const evaluateesCollection = collection(this.firestore, 'participants');
+      const snapshot = await getDocs(evaluateesCollection);
+
+      // Localiza o documento correspondente no Firestore
+      const docToDelete = snapshot.docs.find(
+        (doc) => doc.data()['email'] === evaluatee.email
+      );
+
+      if (docToDelete) {
+        await deleteDoc(docToDelete.ref);
+        this.snackBar.open('Avaliado excluído com sucesso!', 'Fechar', {
+          duration: 3000,
+        });
+
+        // Atualiza a tabela localmente
+        this.evaluateesDataSource.data = this.evaluateesDataSource.data.filter(
+          (e) => e.email !== evaluatee.email
+        );
+      } else {
+        this.snackBar.open('Avaliado não encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao excluir avaliado:', error);
+      this.snackBar.open('Erro ao excluir avaliado.', 'Fechar', {
+        duration: 3000,
+      });
+    }
   }
 }

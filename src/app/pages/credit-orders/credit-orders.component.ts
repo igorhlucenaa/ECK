@@ -156,6 +156,7 @@ export class CreditOrdersComponent implements OnInit {
 
       const orders = ordersSnapshot.docs.map((doc) => {
         const data = doc.data();
+        console.log(data)
         const validityDate = data['validityDate']?.toDate();
         const daysRemaining = validityDate
           ? Math.max(

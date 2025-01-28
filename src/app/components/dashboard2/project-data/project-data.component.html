@@ -1,119 +1,117 @@
 <mat-card class="cardWithShadow">
   <mat-card-header>
-    <mat-card-title>Project Data</mat-card-title>
-    <mat-card-subtitle>Table data</mat-card-subtitle>
+    <mat-card-title
+      >Clientes com Créditos Próximos ao Vencimento</mat-card-title
+    >
+    <mat-card-subtitle
+      >Verifique os créditos que expiram em breve</mat-card-subtitle
+    >
   </mat-card-header>
   <mat-card-content>
     <div class="table-responsive m-t-30">
       <table mat-table [dataSource]="dataSource2" class="w-100">
-        <!-- Position Column -->
-        <ng-container matColumnDef="assigned">
+        <!-- Client Column -->
+        <ng-container matColumnDef="client">
           <th
             mat-header-cell
             *matHeaderCellDef
             class="f-w-500 mat-subtitle-1 f-s-14"
           >
-            Assigned
+            Cliente
           </th>
           <td mat-cell *matCellDef="let element">
             <div class="d-flex align-items-center">
               <img
-                [src]="element.imagePath"
-                alt="users"
+                *ngIf="element.logo"
+                [src]="element.logo"
+                alt="Logo"
                 width="40"
                 class="rounded-circle"
               />
               <div class="m-l-16">
                 <h6 class="mat-subtitle-1 f-s-14 f-w-500 lh-sm">
-                  {{ element.uname }}
+                  {{ element.clientName }}
                 </h6>
-                <div class="f-s-12">
-                  {{ element.post }}
-                </div>
               </div>
             </div>
           </td>
         </ng-container>
 
-        <!-- Name Column -->
-        <ng-container matColumnDef="name">
+        <!-- Credits Column -->
+        <ng-container matColumnDef="credits">
           <th
             mat-header-cell
             *matHeaderCellDef
             class="f-w-500 mat-subtitle-1 f-s-14"
           >
-            Name
+            Créditos
           </th>
           <td mat-cell *matCellDef="let element" class="mat-body-1">
-            {{ element.productName }}
+            {{ element.credits }}
           </td>
         </ng-container>
 
-        <!-- Weight Column -->
+        <!-- Validity Date Column -->
+        <ng-container matColumnDef="validityDate">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            class="f-w-500 mat-subtitle-1 f-s-14"
+          >
+            Vencimento
+          </th>
+          <td mat-cell *matCellDef="let element" class="mat-body-1">
+            {{ element.validityDate | date : "shortDate" }}
+          </td>
+        </ng-container>
+
+        <!-- Priority Column -->
         <ng-container matColumnDef="priority">
           <th
             mat-header-cell
             *matHeaderCellDef
             class="f-w-500 mat-subtitle-1 f-s-14"
           >
-            Priority
+            Prioridade
           </th>
           <td mat-cell *matCellDef="let element">
-            <ng-template [ngIf]="element.priority == 'low'">
-              <span
-                class="bg-light-accent text-accent rounded f-w-500 p-6 p-y-4 f-s-12"
-              >
-                {{ element.priority | titlecase }}
-              </span>
-            </ng-template>
-            <ng-template [ngIf]="element.priority == 'medium'">
-              <span
-                class="bg-light-primary text-primary rounded f-w-500 p-6 p-y-4 f-s-12"
-              >
-                {{ element.priority | titlecase }}
-              </span>
-            </ng-template>
-            <ng-template [ngIf]="element.priority == 'high'">
-              <span
-                class="bg-light-warning text-warning rounded f-w-500 p-6 p-y-4 f-s-12"
-              >
-                {{ element.priority | titlecase }}
-              </span>
-            </ng-template>
-            <ng-template [ngIf]="element.priority == 'critical'">
-              <span
-                class="bg-light-error text-error rounded f-w-500 p-6 p-y-4 f-s-12"
-              >
-                {{ element.priority | titlecase }}
-              </span>
-            </ng-template>
-            <ng-template [ngIf]="element.priority == 'moderate'">
-              <span
-                class="bg-light-success text-success rounded f-w-500 p-6 p-y-4 f-s-12"
-              >
-                {{ element.priority | titlecase }}
-              </span>
-            </ng-template>
-          </td>
-        </ng-container>
-
-        <!-- Symbol Column -->
-        <ng-container matColumnDef="budget">
-          <th
-            mat-header-cell
-            *matHeaderCellDef
-            class="f-w-500 mat-subtitle-1 f-s-14"
-          >
-            Budget
-          </th>
-          <td mat-cell *matCellDef="let element" class="mat-body-1">
-            ${{ element.budget }}k
+            <span
+              *ngIf="element.priority === 'critical'"
+              class="bg-light-error text-error rounded f-w-500 p-6 p-y-4 f-s-12"
+            >
+              Crítica
+            </span>
+            <span
+              *ngIf="element.priority === 'high'"
+              class="bg-light-warning text-warning rounded f-w-500 p-6 p-y-4 f-s-12"
+            >
+              Alta
+            </span>
+            <span
+              *ngIf="element.priority === 'medium'"
+              class="bg-light-primary text-primary rounded f-w-500 p-6 p-y-4 f-s-12"
+            >
+              Média
+            </span>
+            <span
+              *ngIf="element.priority === 'low'"
+              class="bg-light-accent text-accent rounded f-w-500 p-6 p-y-4 f-s-12"
+            >
+              Baixa
+            </span>
           </td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="displayedColumns2"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns2"></tr>
       </table>
+
+      <!-- Paginator -->
+      <mat-paginator
+        [pageSize]="10"
+        [pageSizeOptions]="[10, 20, 30]"
+        showFirstLastButtons
+      ></mat-paginator>
     </div>
   </mat-card-content>
 </mat-card>
