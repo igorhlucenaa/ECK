@@ -38,6 +38,7 @@
     "echarts": "^5.5.0",
     "echarts-gl": "^2.0.9",
     "echarts-stat": "^1.2.0",
+    "exceljs": "^4.4.0",
     "firebase": "^11.0.2",
     "grapesjs": "^0.22.5",
     "grapesjs-preset-webpage": "^1.0.3",
@@ -60,6 +61,7 @@
     "tinymce": "^7.6.0",
     "tslib": "^2.3.0",
     "xlsx": "^0.18.5",
+    "xlsx-style": "^0.8.13",
     "zone.js": "~0.14.2"
   },
   "devDependencies": {
