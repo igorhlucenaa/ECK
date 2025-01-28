@@ -1,10 +1,10 @@
-<div class="container">
+<div class="container" style="max-height: 90vh">
   <h2 class="mb-4">Pré-visualização</h2>
 
   <!-- Informações Básicas -->
   <div class="mb-4">
     <p><strong>Descrição:</strong> {{ data.description }}</p>
-    <p><strong>Criado Por:</strong> {{ data.createdBy }}</p>
+    <p><strong>Criado Por:</strong> {{ data.createdBy.name }}</p>
     <p>
       <strong>Data de Criação:</strong>
       {{ data.createdAt?.toDate() | date : "short" }}

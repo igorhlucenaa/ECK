@@ -3,6 +3,7 @@ import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MaterialModule } from 'src/app/material.module';
 import { AssessmentListComponent } from '../assessment-list/assessment-list.component';
+import { DateRange } from '@angular/material/datepicker';
 
 @Component({
   selector: 'app-assessment-preview',
@@ -36,7 +37,9 @@ export class AssessmentPreviewComponent {
   constructor(
     public dialogRef: MatDialogRef<AssessmentPreviewComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
-  ) {}
+  ) {
+    console.log(DateRange)
+  }
 
   closeDialog(): void {
     this.dialogRef.close();
