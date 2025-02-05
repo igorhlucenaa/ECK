@@ -57,7 +57,7 @@ export class CreateUserGroupComponent implements OnInit {
   groupForm!: FormGroup;
   clients: { id: string; name: string }[] = [];
   projects: { id: string; name: string }[] = [];
-  users: { id: string; name: string }[] = [];
+  users: { id: string; name: string; surname: string }[] = [];
   isEditMode: boolean = false;
 
   constructor(
@@ -175,15 +175,13 @@ export class CreateUserGroupComponent implements OnInit {
 
     try {
       const usersCollection = collection(this.firestore, 'users');
-      const usersQuery = query(
-        usersCollection,
-        where('client', '==', clientId)
-      );
+      const usersQuery = query(usersCollection);
       const snapshot = await getDocs(usersQuery);
 
       this.users = snapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['name'] || 'Sem Nome',
+        surname: doc.data()['surname'] || 'Sem Sobrenome',
       }));
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);

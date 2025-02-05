@@ -1,0 +1,104 @@
+<h2 mat-dialog-title>Selecionar Destinatários</h2>
+<div mat-dialog-content class="container">
+  <div class="row">
+    <!-- Tipo de E-mail -->
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Tipo de E-mail</mat-label>
+        <mat-select [(value)]="emailType">
+          <mat-option value="convite">Convite</mat-option>
+          <mat-option value="lembrete">Lembrete</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <!-- Campo de Busca -->
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Buscar Participante</mat-label>
+        <input
+          matInput
+          (keyup)="applyFilter($event)"
+          placeholder="Digite para buscar"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          *ngIf="searchValue()"
+          (click)="searchValue.set(''); applyFilter($event)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Tabela com barra de rolagem -->
+  <div class="row">
+    <div class="col-12">
+      <div class="table-container">
+        <table
+          mat-table
+          [dataSource]="dataSource"
+          class="mat-elevation-z8 w-100"
+        >
+          <!-- Seleção -->
+          <ng-container matColumnDef="select">
+            <th mat-header-cell *matHeaderCellDef>
+              <mat-checkbox (change)="selectAll($event)"></mat-checkbox>
+            </th>
+            <td mat-cell *matCellDef="let participant">
+              <mat-checkbox
+                (change)="toggleSelection(participant)"
+                [checked]="selectedParticipants.has(participant.email)"
+              >
+              </mat-checkbox>
+            </td>
+          </ng-container>
+
+          <!-- Nome -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Nome</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.name }}
+            </td>
+          </ng-container>
+
+          <!-- E-mail -->
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>E-mail</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.email }}
+            </td>
+          </ng-container>
+
+          <!-- Categoria -->
+          <ng-container matColumnDef="category">
+            <th mat-header-cell *matHeaderCellDef>Categoria</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.category }}
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ações -->
+<div mat-dialog-actions class="row mt-3">
+  <div class="col-12 text-end" style="text-align: end">
+    <button mat-button (click)="close()">Cancelar</button>
+    <button
+      mat-flat-button
+      color="primary"
+      (click)="sendEmails()"
+      [disabled]="selectedParticipants.size === 0"
+    >
+      Enviar E-mails
+    </button>
+  </div>
+</div>

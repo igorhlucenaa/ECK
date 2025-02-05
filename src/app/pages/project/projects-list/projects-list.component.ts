@@ -18,6 +18,7 @@ import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
+import { EmailSelectionDialogComponent } from './email-selection-dialog/email-selection-dialog.component';
 
 @Component({
   selector: 'app-projects-list',
@@ -210,5 +211,12 @@ export class ProjectsListComponent implements OnInit {
 
   goBack(): void {
     this.location.back();
+  }
+
+  openEmailSelectionModal(projectId: string): void {
+    this.dialog.open(EmailSelectionDialogComponent, {
+      width: '900px',
+      data: { projectId },
+    });
   }
 }

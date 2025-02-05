@@ -114,14 +114,14 @@ export class DashboardComponent implements OnInit {
       { value: data.totalClients, label: 'Clientes', color: '#1e88e5' },
       { value: data.totalProjects, label: 'Projetos Ativos', color: '#26c6da' },
       {
-        value: data.totalCreditOrders,
-        label: 'Pedidos de Crédito',
-        color: '#ffb22b',
-      },
-      {
         value: data.totalEvaluatedParticipants,
         label: 'Avaliados',
         color: '#fc4b6c',
+      },
+      {
+        value: data.totalCreditOrders,
+        label: 'Pedidos de Crédito',
+        color: '#ffb22b',
       },
     ];
 

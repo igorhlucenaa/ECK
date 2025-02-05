@@ -8,8 +8,7 @@
 
 //Theme colors
 
-
-@import 'themecolors/_dynamic_theme';
+@import "themecolors/_dynamic_theme";
 // @import "themecolors/default_theme";
 @include mat.all-component-themes($bluetheme);
 
@@ -72,4 +71,34 @@
 
 body {
   margin: 0px !important;
+}
+
+// .custom-dropdown.mat-select-panel {
+//   max-height: 200px !important; /* Define a altura máxima do dropdown */
+//   overflow-y: auto !important; /* Adiciona rolagem caso haja muitas opções */
+// }
+
+// // Customize the entire app. Change :root to your selector if you want to scope the styles.
+// :root {
+//   @include mat.select-overrides(
+//     (
+//       panel-background-color: orange,
+//       enabled-trigger-text-color: red,
+//     )
+//   );
+// }
+
+.custom-dropdown.mat-mdc-select-panel {
+  max-height: 200px !important; /* Altura máxima do dropdown */
+  overflow-y: auto !important; /* Ativa rolagem se necessário */
+}
+
+.custom-dropdown.mat-mdc-select-panel-above {
+  max-height: 200px !important;
+  overflow-y: auto !important;
+}
+
+.custom-dropdown.mat-mdc-select-panel-below {
+  max-height: 200px !important;
+  overflow-y: auto !important;
 }

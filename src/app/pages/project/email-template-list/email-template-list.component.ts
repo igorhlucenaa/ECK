@@ -7,6 +7,7 @@ import {
   getDocs,
   deleteDoc,
   doc,
+  where,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -16,6 +17,8 @@ import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { EmailSelectionDialogComponent } from '../projects-list/email-selection-dialog/email-selection-dialog.component';
 
 @Component({
   selector: 'app-email-template-list',
@@ -25,14 +28,24 @@ import { MatDialog } from '@angular/material/dialog';
   styleUrls: ['./email-template-list.component.scss'],
 })
 export class EmailTemplateListComponent implements OnInit {
-  displayedColumns: string[] = ['name', 'subject', 'emailType', 'actions'];
+  displayedColumns: string[] = [
+    'client',
+    'name',
+    'subject',
+    'emailType',
+    'actions',
+  ];
   dataSource = new MatTableDataSource<any>();
   projectId: string | null = null;
   title = 'Templates de E-mail';
   emailTypeFilter: string = ''; // Filtro de tipo de notificação
   searchQuery: string = ''; // Filtro de busca
-
   allTemplates: any[] = []; // Armazena todos os templates carregados
+  userRole: string = ''; // Papel do usuário logado
+  userClientId: string | null = null; // ID do cliente logado
+
+  clients: any[] = []; // Lista de clientes para o filtro
+  clientFilter: string = ''; // Filtro por cliente
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -43,25 +56,40 @@ export class EmailTemplateListComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private location: Location,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private authService: AuthService
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.projectId = this.route.snapshot.paramMap.get('id');
-    const path = this.route.snapshot.url[0]?.path;
 
-    console.log('Iniciando ngOnInit...');
-    if (path === 'mail-templates') {
-      this.title = 'Templates Globais';
-      this.loadTemplates();
-    } else if (this.projectId) {
-      this.title = 'Templates de E-mail do Projeto';
-      this.loadTemplates();
-    } else {
-      this.snackBar.open('Projeto não encontrado.', 'Fechar', {
+    const user = await this.authService.getCurrentUser();
+
+    if (!user) {
+      this.snackBar.open('Erro ao obter informações do usuário.', 'Fechar', {
         duration: 3000,
       });
-      console.log('Projeto não encontrado.');
+      return;
+    }
+
+    this.userRole = user.role;
+    this.userClientId = user.clientId;
+
+    await this.loadClients();
+    await this.loadTemplates();
+  }
+
+  private async loadClients(): Promise<void> {
+    console.log('Carregando lista de clientes...');
+    try {
+      const clientsCollection = collection(this.firestore, 'clients');
+      const snapshot = await getDocs(clientsCollection);
+      this.clients = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['companyName'],
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
     }
   }
 
@@ -69,32 +97,41 @@ export class EmailTemplateListComponent implements OnInit {
     console.log('Carregando templates...');
 
     try {
-      const templatesCollection = collection(
-        this.firestore,
-        `projects/${this.projectId}/templates`
-      );
-      const snapshot = await getDocs(query(templatesCollection));
-      const projectTemplates = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        isGlobal: false,
-      }));
+      const templatesCollection = collection(this.firestore, 'mailTemplates');
+      let queryConstraint;
 
-      const globalTemplatesCollection = collection(
-        this.firestore,
-        'defaultMailTemplate'
-      );
-      const globalSnapshot = await getDocs(query(globalTemplatesCollection));
-      const globalTemplates = globalSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        isGlobal: true,
-      }));
+      if (this.userRole === 'admin_master') {
+        queryConstraint = query(templatesCollection);
+      } else if (this.userRole === 'admin_client' && this.userClientId) {
+        queryConstraint = query(
+          templatesCollection,
+          where('clientId', '==', this.userClientId)
+        );
+      } else {
+        this.snackBar.open(
+          'Você não tem permissão para visualizar templates.',
+          'Fechar',
+          {
+            duration: 3000,
+          }
+        );
+        return;
+      }
 
-      this.allTemplates = [...globalTemplates, ...projectTemplates];
-      console.log('Templates carregados:', this.allTemplates);
+      const snapshot = await getDocs(queryConstraint);
+      this.allTemplates = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          isGlobal: !data['clientId'],
+          clientName:
+            this.clients.find((c) => c.id === data['clientId'])?.name ||
+            'TEMPLATE PADRÃO', // Substitui clientId pelo nome
+        };
+      });
 
-      this.applyFilter(); // Aplica o filtro atual aos dados
+      this.applyFilter();
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
       this.snackBar.open('Erro ao carregar templates.', 'Fechar', {
@@ -103,116 +140,122 @@ export class EmailTemplateListComponent implements OnInit {
     }
   }
 
-  applyFilter(event?: Event): void {
-    console.log('Aplicando filtro...');
-
-    let filterValue = this.searchQuery.trim().toLowerCase();
-    if (event) {
-      filterValue = (event.target as HTMLInputElement).value
-        .trim()
-        .toLowerCase();
-      console.log('Filtro de busca:', filterValue);
-    }
+  applyFilter(): void {
+    const inputElement =
+      document.querySelector<HTMLInputElement>('#searchInput');
+    const filterValue = inputElement
+      ? inputElement.value.trim().toLowerCase()
+      : '';
 
     const filteredData = this.allTemplates.filter((data: any) => {
       const matchesSearch =
         data.name.toLowerCase().includes(filterValue) ||
         data.subject.toLowerCase().includes(filterValue);
 
-      // Aplica o filtro de tipo de notificação somente se emailTypeFilter não estiver vazio
       const matchesType = this.emailTypeFilter
         ? data.emailType.toLowerCase() === this.emailTypeFilter.toLowerCase()
         : true;
 
-      // Log detalhado para verificar os valores
-      console.log(
-        `Verificando item ${data.name} (search: ${matchesSearch}, type: ${matchesType})`
-      );
+      const matchesClient = this.clientFilter
+        ? data.clientName === this.clientFilter
+        : true;
 
-      return matchesSearch && matchesType;
+      return matchesSearch && matchesType && matchesClient;
     });
 
-    console.log('Dados filtrados:', filteredData);
-
     this.dataSource.data = filteredData;
-
     if (this.dataSource.paginator) {
       this.dataSource.paginator.firstPage();
     }
   }
 
-  clearFilters(): void {
-    console.log('Limpando filtros...');
-    this.searchQuery = '';
-    this.emailTypeFilter = ''; // Limpa também o filtro de tipo
-    this.applyFilter(); // Reaplicar filtro para mostrar todos os dados
+  onClientChange(event: any): void {
+    this.clientFilter = event.value;
+    this.applyFilter();
   }
 
-  // Método para capturar mudanças no dropdown de tipo
+  clearFilters(): void {
+    this.searchQuery = '';
+    this.emailTypeFilter = '';
+    this.clientFilter = '';
+    this.applyFilter();
+  }
+
+  openEmailSelectionModal(projectId: string): void {
+    this.dialog.open(EmailSelectionDialogComponent, {
+      width: '900px',
+      data: { projectId },
+    });
+  }
+
   onEmailTypeChange(event: any): void {
     this.emailTypeFilter = event.value;
-    console.log('Tipo de notificação selecionado:', this.emailTypeFilter); // Log do tipo selecionado
-    this.applyFilter(); // Reaplicar filtro após mudança
+    this.applyFilter();
   }
 
-  // Navegar para a página de criação de template
   createTemplate(): void {
-    const path = this.route.snapshot.url[0]?.path;
-
-    if (path === 'mail-templates') {
+    if (this.userRole === 'admin_master') {
       this.router.navigate(['/projects/default-template/new']);
-    } else if (this.projectId) {
-      this.router.navigate([`/projects/${this.projectId}/templates/new`]);
+    } else if (this.userRole === 'admin_client' && this.userClientId) {
+      this.router.navigate([`/projects/${this.userClientId}/templates/new`]);
     }
   }
 
-  // Navegar para a página de edição de um template específico
   editTemplate(templateId: string, isGlobal: boolean): void {
-    if (isGlobal) {
-      // Navega para editar um template global
+    if (isGlobal && this.userRole === 'admin_master') {
       this.router.navigate([`projects/default-template/${templateId}/edit`]);
-    } else {
-      // Navega para editar um template de projeto específico
+    } else if (
+      !isGlobal &&
+      this.userRole === 'admin_client' &&
+      this.userClientId
+    ) {
       this.router.navigate([
-        `/projects/${this.projectId}/templates/${templateId}/edit`,
+        `/projects/${this.userClientId}/templates/${templateId}/edit`,
       ]);
+    } else {
+      this.snackBar.open(
+        'Você não tem permissão para editar este template.',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
     }
   }
 
-  // Excluir um template específico
   async deleteTemplate(templateId: string, isGlobal: boolean): Promise<void> {
-    // Exibir o modal de confirmação
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: { message: 'Você tem certeza que deseja excluir este template?' }, // Mensagem do modal
+      data: { message: 'Você tem certeza que deseja excluir este template?' },
     });
 
-    // Esperar pela resposta do usuário no modal
     const confirmed = await dialogRef.afterClosed().toPromise();
 
     if (confirmed) {
       try {
         let templateDocRef;
-        // Verificar se o template é global ou específico do projeto
-        if (isGlobal) {
-          templateDocRef = doc(
-            this.firestore,
-            `defaultMailTemplate/${templateId}`
-          );
+        if (isGlobal && this.userRole === 'admin_master') {
+          templateDocRef = doc(this.firestore, `mailTemplates/${templateId}`);
+        } else if (
+          !isGlobal &&
+          this.userRole === 'admin_client' &&
+          this.userClientId
+        ) {
+          templateDocRef = doc(this.firestore, `mailTemplates/${templateId}`);
         } else {
-          templateDocRef = doc(
-            this.firestore,
-            `projects/${this.projectId}/templates/${templateId}`
+          this.snackBar.open(
+            'Você não tem permissão para excluir este template.',
+            'Fechar',
+            {
+              duration: 3000,
+            }
           );
+          return;
         }
 
-        // Excluir o documento
         await deleteDoc(templateDocRef);
-
-        // Atualizar a tabela removendo o template excluído
         this.dataSource.data = this.dataSource.data.filter(
           (template) => template.id !== templateId
         );
-
         this.snackBar.open('Template excluído com sucesso!', 'Fechar', {
           duration: 3000,
         });

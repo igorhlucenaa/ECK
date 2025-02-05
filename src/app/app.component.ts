@@ -17,6 +17,7 @@ export class AppComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // this.registerUser()
     // Verifica o estado de autenticação ao inicializar o app
     this.auth.onAuthStateChanged(async (user: User | null) => {
       if (user) {
@@ -50,5 +51,24 @@ export class AppComponent implements OnInit {
         this.router.navigate(['/authentication/login']);
       }
     });
+  }
+
+  async registerUser() {
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge: new Uint8Array(32), // Um desafio aleatório do servidor
+        rp: { name: 'Minha Empresa' }, // Identidade do servidor
+        user: {
+          id: new Uint8Array(16), // ID único do usuário
+          name: 'usuario@exemplo.com',
+          displayName: 'Usuário Exemplo',
+        },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' }], // Algoritmo ECDSA
+        authenticatorSelection: { authenticatorAttachment: 'platform' },
+        timeout: 60000, // Tempo limite para resposta
+        attestation: 'direct',
+      },
+    });
+    console.log('Chave registrada:', credential);
   }
 }

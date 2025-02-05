@@ -31,12 +31,31 @@
           <mat-label>Assunto</mat-label>
           <input matInput formControlName="subject" />
         </mat-form-field>
+
+        <!-- Campo de Cliente (apenas admin_master pode ver) -->
+        <mat-form-field class="w-100" *ngIf="userRole === 'admin_master'">
+          <mat-label>Cliente</mat-label>
+          <mat-select formControlName="clientId">
+            <mat-option value="">TEMPLATE PADRÃO</mat-option>
+            <mat-option *ngFor="let client of clients" [value]="client.id">
+              {{ client.name }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
       </mat-card-content>
+
+      <!-- Para admin_client, o clientId já está preenchido e oculto -->
+      <input
+        type="hidden"
+        formControlName="clientId"
+        *ngIf="userRole === 'admin_client'"
+      />
     </mat-card>
 
     <!-- Editor Unlayer -->
     <div class="col-12">
       <email-editor
+        [options]="{ locale: 'pt-BR' }"
         (loaded)="editorLoaded()"
         (ready)="onEditorReady()"
       ></email-editor>

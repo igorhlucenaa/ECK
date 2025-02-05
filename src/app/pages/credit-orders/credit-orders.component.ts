@@ -38,6 +38,7 @@ export interface Order {
   daysRemaining: number; // Dias até expiração
   status: 'Pendente' | 'Aprovado' | 'Rejeitado' | 'Expirado';
   createdAt: Date;
+  expirationDate: Date; // Data de expiração
 }
 
 @Component({
@@ -72,6 +73,7 @@ export class CreditOrdersComponent implements OnInit {
     'usedBalance',
     'remainingBalance',
     'daysRemaining',
+    'expirationDate',
     'status',
     'actions',
     'id',
@@ -156,7 +158,7 @@ export class CreditOrdersComponent implements OnInit {
 
       const orders = ordersSnapshot.docs.map((doc) => {
         const data = doc.data();
-        console.log(data)
+        console.log(data);
         const validityDate = data['validityDate']?.toDate();
         const daysRemaining = validityDate
           ? Math.max(
@@ -174,6 +176,7 @@ export class CreditOrdersComponent implements OnInit {
           usedBalance: (data['credits'] || 0) - (data['remainingCredits'] || 0),
           remainingBalance: data['remainingCredits'] || 0,
           daysRemaining,
+          expirationDate: validityDate,
           status: data['status'],
           createdAt: data['createdAt']?.toDate(),
         } as Order;
