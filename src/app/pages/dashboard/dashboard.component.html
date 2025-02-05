@@ -1,9 +1,14 @@
-
 <div class="d-flex justify-content-end mb-4" style="margin-bottom: 10px">
   <button mat-raised-button color="primary" (click)="generatePDF()">
     Exportar Dashboard
   </button>
-  <button style="margin-left: 10px" mat-raised-button color="accent" class="ml-2" (click)="openExportDialog()">
+  <button
+    style="margin-left: 10px"
+    mat-raised-button
+    color="accent"
+    class="ml-2"
+    (click)="openExportDialog()"
+  >
     Exportar Tabelas
   </button>
 </div>
@@ -14,7 +19,7 @@
   <div class="row">
     <div class="col-lg-6">
       <app-sales-overview2
-        [creditOrdersData]="creditOrdersData"
+        [projectsByClientData]="projectsByClientData"
       ></app-sales-overview2>
     </div>
     <div class="col-lg-6">

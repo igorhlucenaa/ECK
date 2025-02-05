@@ -99,6 +99,9 @@ export class DashboardComponent implements OnInit {
     ],
   };
 
+  projectsByClientData: { client: string; projects: number }[] = [];
+  totalActiveProjects: number = 0;
+
   availableTables = [
     { key: 'clients', label: 'Clientes' },
     { key: 'projects', label: 'Projetos' },
@@ -109,10 +112,11 @@ export class DashboardComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     const data = await this.fetchDashboardData();
     this.creditOrdersData = await this.fetchCreditOrdersData();
+    // await this.fetchProjectsByClient();
     // Dados para os gráficos de pizza
     this.pieCardsData = [
       { value: data.totalClients, label: 'Clientes', color: '#1e88e5' },
-      { value: data.totalProjects, label: 'Projetos Ativos', color: '#26c6da' },
+      { value: data.totalActiveProjects, label: 'Projetos Ativos', color: '#26c6da' },
       {
         value: data.totalEvaluatedParticipants,
         label: 'Avaliados',
@@ -123,6 +127,11 @@ export class DashboardComponent implements OnInit {
         label: 'Pedidos de Crédito',
         color: '#ffb22b',
       },
+      {
+        value: data.totalRemainingCredits,
+        label: 'Créditos Remanescentes',
+        color: '#4caf50',
+      }, // Novo KPI!
     ];
 
     // Dados vazios (placeholder)
@@ -203,10 +212,6 @@ export class DashboardComponent implements OnInit {
     const creditOrdersSnapshot = await getDocs(creditOrdersCollection);
     const participantsSnapshot = await getDocs(participantsCollection);
 
-    const activeProjects = projectsSnapshot.docs.filter(
-      (doc) => doc.data()['status'] === 'Ativo'
-    ).length;
-
     const evaluatedParticipants = participantsSnapshot.docs.filter(
       (doc) => doc.data()['type'] === 'avaliado'
     ).length;
@@ -216,12 +221,54 @@ export class DashboardComponent implements OnInit {
       return sum + (data['credits'] || 0);
     }, 0);
 
+    const activeProjects = projectsSnapshot.docs.filter(
+      (doc) => doc.data()['status'] === 'Ativo'
+    );
+
+    // Criar um mapa de clientes para contar projetos ativos
+    const projectCountByClient = new Map<string, number>();
+
+    activeProjects.forEach((doc) => {
+      const clientId = doc.data()['clientId'];
+      if (clientId) {
+        projectCountByClient.set(
+          clientId,
+          (projectCountByClient.get(clientId) || 0) + 1
+        );
+      }
+    });
+
+    // Transformar os dados para incluir o nome dos clientes e corrigir os nomes das propriedades
+    this.projectsByClientData = clientsSnapshot.docs.map((doc) => ({
+      client: doc.data()['companyName'], // Nome do cliente
+      projects: projectCountByClient.get(doc.id) || 0, // Número de projetos ativos do cliente
+    }));
+
+    this.totalActiveProjects = activeProjects.length;
+
+    let remainingCredits = 0;
+    clientsSnapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      const credits = data['credits'] || 0;
+      const validityDate = data['validityDate']
+        ? new Date(data['validityDate'].seconds * 1000)
+        : null;
+      const today = new Date();
+
+      // Apenas créditos não expirados são somados
+      if (!validityDate || validityDate > today) {
+        remainingCredits += credits;
+      }
+    });
+
     return {
       totalClients: clientsSnapshot.size || 0,
       totalProjects: activeProjects || 0,
       totalCreditOrders: creditOrdersSnapshot.size || 0,
       totalEvaluatedParticipants: evaluatedParticipants || 0,
       totalCredits,
+      totalRemainingCredits: remainingCredits,
+      totalActiveProjects: this.totalActiveProjects,
     };
   }
 
