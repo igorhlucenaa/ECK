@@ -101,6 +101,7 @@ export class EmailTemplateListComponent implements OnInit {
       let queryConstraint;
 
       if (this.userRole === 'admin_master') {
+        console.log('entrou nesse 1');
         queryConstraint = query(templatesCollection);
       } else if (this.userRole === 'admin_client' && this.userClientId) {
         queryConstraint = query(
@@ -108,6 +109,7 @@ export class EmailTemplateListComponent implements OnInit {
           where('clientId', '==', this.userClientId)
         );
       } else {
+        console.log('entrou nesse 2');
         this.snackBar.open(
           'Você não tem permissão para visualizar templates.',
           'Fechar',
@@ -202,7 +204,8 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   editTemplate(templateId: string, isGlobal: boolean): void {
-    if (isGlobal && this.userRole === 'admin_master') {
+    console.log(this.userRole);
+    if (this.userRole === 'admin_master') {
       this.router.navigate([`projects/default-template/${templateId}/edit`]);
     } else if (
       !isGlobal &&
@@ -242,6 +245,7 @@ export class EmailTemplateListComponent implements OnInit {
         ) {
           templateDocRef = doc(this.firestore, `mailTemplates/${templateId}`);
         } else {
+          console.log('entrou nesse 3');
           this.snackBar.open(
             'Você não tem permissão para excluir este template.',
             'Fechar',

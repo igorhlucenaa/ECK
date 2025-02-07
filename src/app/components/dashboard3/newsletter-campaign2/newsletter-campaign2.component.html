@@ -1,24 +1,25 @@
 <mat-card class="cardWithShadow">
   <mat-card-header>
-    <mat-card-title>Uso de Créditos</mat-card-title>
+    <mat-card-title>Avaliações Cadastradas por Cliente</mat-card-title>
     <mat-card-subtitle
-      >Relação entre créditos usados e restantes</mat-card-subtitle
+      >Quantidade de avaliações cadastradas por cliente</mat-card-subtitle
     >
   </mat-card-header>
   <mat-card-content class="p-y-24">
     <apx-chart
-      *ngIf="newschartOptions"
-      [series]="newschartOptions.series"
-      [chart]="newschartOptions.chart"
-      [xaxis]="newschartOptions.xaxis"
-      [stroke]="newschartOptions.stroke"
-      [tooltip]="newschartOptions.tooltip"
-      [dataLabels]="newschartOptions.dataLabels"
-      [legend]="newschartOptions.legend"
-      [colors]="newschartOptions.colors"
-      [markers]="newschartOptions.markers"
-      [fill]="newschartOptions.fill"
-      [grid]="newschartOptions.grid"
-    ></apx-chart>
+      *ngIf="assessmentsChart"
+      [series]="assessmentsChart.series"
+      [chart]="assessmentsChart.chart"
+      [xaxis]="assessmentsChart.xaxis"
+      [stroke]="assessmentsChart.stroke"
+      [tooltip]="assessmentsChart.tooltip"
+      [dataLabels]="assessmentsChart.dataLabels"
+      [legend]="assessmentsChart.legend"
+      [plotOptions]="assessmentsChart.plotOptions"
+      [fill]="assessmentsChart.fill"
+      [grid]="assessmentsChart.grid"
+      [yaxis]="assessmentsChart.yaxis"
+      ></apx-chart>
+      <!-- [colors]="assessmentsChart.fill.colors" -->
   </mat-card-content>
 </mat-card>

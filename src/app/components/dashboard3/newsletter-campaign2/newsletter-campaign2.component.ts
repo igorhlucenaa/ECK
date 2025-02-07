@@ -1,31 +1,40 @@
 import { CommonModule } from '@angular/common';
-import { Component, ViewChild, Input, OnInit } from '@angular/core';
+import {
+  Component,
+  ViewChild,
+  Input,
+  OnChanges,
+  SimpleChanges,
+} from '@angular/core';
 import {
   ApexChart,
   ChartComponent,
   ApexDataLabels,
   ApexLegend,
+  ApexStroke,
   ApexTooltip,
   ApexAxisChartSeries,
   ApexXAxis,
+  ApexYAxis,
   ApexGrid,
+  ApexPlotOptions,
   ApexFill,
   NgApexchartsModule,
 } from 'ng-apexcharts';
 import { MaterialModule } from 'src/app/material.module';
 
-export interface NewsChartOptions {
+export interface AssessmentsChart {
   series: ApexAxisChartSeries;
   chart: ApexChart;
-  xaxis: ApexXAxis;
-  stroke: any;
-  tooltip: ApexTooltip;
   dataLabels: ApexDataLabels;
-  legend: ApexLegend;
-  colors: string[];
-  markers: any;
-  grid: ApexGrid;
+  plotOptions: ApexPlotOptions;
+  yaxis: ApexYAxis;
+  xaxis: ApexXAxis;
   fill: ApexFill;
+  tooltip: ApexTooltip;
+  stroke: ApexStroke;
+  legend: ApexLegend;
+  grid: ApexGrid;
 }
 
 @Component({
@@ -34,74 +43,80 @@ export interface NewsChartOptions {
   imports: [NgApexchartsModule, MaterialModule, CommonModule],
   templateUrl: './newsletter-campaign2.component.html',
 })
-export class AppNewsletterCampaign2Component implements OnInit {
+export class AppNewsletterCampaign2Component implements OnChanges {
   @ViewChild('chart') chart: ChartComponent = Object.create(null);
+
   @Input() creditUsageData: {
-    month: string;
+    client: string;
     used: number;
     remaining: number;
   }[] = [];
 
-  public newschartOptions!: Partial<NewsChartOptions>;
+  public assessmentsChart!: Partial<AssessmentsChart>;
 
-  ngOnInit(): void {
-    this.updateChart();
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['creditUsageData'] && changes['creditUsageData'].currentValue) {
+      this.updateChart();
+    }
   }
 
   private updateChart(): void {
-    const months = this.creditUsageData.map((data) => data.month) || [];
-    const usedCredits = this.creditUsageData.map((data) => data.used) || [];
-    const remainingCredits =
-      this.creditUsageData.map((data) => data.remaining) || [];
+    if (!this.creditUsageData || this.creditUsageData.length === 0) {
+      console.warn('Nenhum dado disponível para o gráfico.');
+      return;
+    }
 
-    this.newschartOptions = {
+    const clientNames = this.creditUsageData.map((data) => data.client);
+    const assessmentsCounts = this.creditUsageData.map((data) => data.used);
+
+    console.log('Clientes:', clientNames);
+    console.log('Avaliações cadastradas:', assessmentsCounts);
+
+    this.assessmentsChart = {
       series: [
-        { name: 'Créditos Usados', data: usedCredits },
-        { name: 'Créditos Restantes', data: remainingCredits },
+        {
+          name: 'Avaliações Cadastradas',
+          data: assessmentsCounts,
+        },
       ],
       chart: {
-        height: 260,
-        fontFamily: 'Poppins,sans-serif',
-        type: 'area',
+        type: 'bar',
+        height: 280,
+        toolbar: { show: false },
         foreColor: '#adb0bb',
+        fontFamily: 'Poppins',
+        sparkline: { enabled: false },
       },
-      colors: ['#1e88e5', '#26c6da'],
+      grid: {
+        show: true,
+      },
+      plotOptions: {
+        bar: { horizontal: false, columnWidth: '35%', borderRadius: 5 },
+      },
       dataLabels: {
         enabled: false,
       },
-      markers: {
-        size: 4,
-        border: 1,
+      xaxis: {
+        type: 'category',
+        categories: clientNames,
+      },
+      yaxis: {
+        show: true,
+        min: 0,
+        tickAmount: 5,
+      },
+      stroke: {
+        show: true,
+        width: 2,
+        colors: ['transparent'],
       },
       legend: {
         show: true,
         position: 'top',
       },
-      xaxis: {
-        categories: months,
-        labels: {
-          rotate: -45,
-        },
-      },
-      grid: {
-        show: true,
-        borderColor: 'rgba(0, 0, 0, .2)',
-        strokeDashArray: 2,
-        xaxis: { lines: { show: false } },
-        yaxis: { lines: { show: true } },
-      },
-      stroke: {
-        curve: 'smooth',
-        width: 3,
-      },
       fill: {
-        type: 'gradient',
-        gradient: {
-          shade: 'light',
-          type: 'vertical',
-          opacityFrom: 0.4,
-          opacityTo: 0.1,
-        },
+        colors: ['#1e88e5'],
+        opacity: 1,
       },
       tooltip: {
         theme: 'dark',

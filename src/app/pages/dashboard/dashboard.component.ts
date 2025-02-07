@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import {
@@ -47,7 +47,7 @@ import { MatDialog } from '@angular/material/dialog';
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {
-  constructor(private dialog: MatDialog) {}
+  constructor(private dialog: MatDialog, private cdr: ChangeDetectorRef) {}
 
   pieCardsData: { value: number; label: string; color: string }[] = [];
   totalEvaluatedParticipants: number = 0;
@@ -98,6 +98,7 @@ export class DashboardComponent implements OnInit {
       { key: 'createdAt', header: 'Data de Criação' },
     ],
   };
+  assessmentsData: { client: string; used: number; remaining: number }[] = [];
 
   projectsByClientData: { client: string; projects: number }[] = [];
   totalActiveProjects: number = 0;
@@ -112,11 +113,19 @@ export class DashboardComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     const data = await this.fetchDashboardData();
     this.creditOrdersData = await this.fetchCreditOrdersData();
+    this.assessmentsData = await this.fetchAssessmentsData();
+    console.log(this.assessmentsData);
+
+    this.cdr.detectChanges();
     // await this.fetchProjectsByClient();
     // Dados para os gráficos de pizza
     this.pieCardsData = [
       { value: data.totalClients, label: 'Clientes', color: '#1e88e5' },
-      { value: data.totalActiveProjects, label: 'Projetos Ativos', color: '#26c6da' },
+      {
+        value: data.totalActiveProjects,
+        label: 'Projetos Ativos',
+        color: '#26c6da',
+      },
       {
         value: data.totalEvaluatedParticipants,
         label: 'Avaliados',
@@ -147,6 +156,43 @@ export class DashboardComponent implements OnInit {
     this.totalEvaluatedParticipants = data.totalEvaluatedParticipants;
     this.activeProjects = data.totalProjects;
     this.totalCredits = data.totalCredits;
+  }
+
+  private async fetchAssessmentsData(): Promise<
+    { client: string; used: number; remaining: number }[]
+  > {
+    const assessmentsCollection = collection(this.firestore, 'assessments');
+    const clientsCollection = collection(this.firestore, 'clients');
+
+    const assessmentsSnapshot = await getDocs(assessmentsCollection);
+    const clientsSnapshot = await getDocs(clientsCollection);
+
+    // Criar um mapa para associar clientId ao nome do cliente
+    const clientMap = new Map(
+      clientsSnapshot.docs.map((doc) => [doc.id, doc.data()['companyName']])
+    );
+
+    // Criar um mapa para contar avaliações por cliente
+    const assessmentsByClient = new Map<string, number>();
+
+    assessmentsSnapshot.docs.forEach((doc) => {
+      const clientId = doc.data()['clientId'];
+      if (clientId) {
+        assessmentsByClient.set(
+          clientId,
+          (assessmentsByClient.get(clientId) || 0) + 1
+        );
+      }
+    });
+
+    // Transformar os dados para o formato esperado
+    return Array.from(assessmentsByClient.entries()).map(
+      ([clientId, count]) => ({
+        client: clientMap.get(clientId) || 'Desconhecido',
+        used: count, // Número de avaliações cadastradas por cliente
+        remaining: 0, // Não usado aqui, mas mantido para compatibilidade com o gráfico
+      })
+    );
   }
 
   async generatePDF(): Promise<void> {

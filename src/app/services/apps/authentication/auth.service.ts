@@ -57,6 +57,35 @@ export class AuthService {
     }
   }
 
+  async loginCreateUsers(
+    email: string,
+    password: string,
+    rememberMe: boolean
+  ): Promise<void> {
+    try {
+      const persistence = rememberMe
+        ? browserLocalPersistence
+        : browserSessionPersistence;
+
+      await this.auth.setPersistence(persistence).then(async () => {
+        await signInWithEmailAndPassword(this.auth, email, password);
+
+        // Obter o papel do usuário após login
+        // const userRole = await this.getCurrentUserRole();
+
+        // Redirecionar com base no papel do usuário
+        // if (userRole === 'admin_master') {
+          // location.assign('/projects'); // Redireciona para 'products' diretamente
+        // } else {
+          location.assign('/users'); // Ou outra rota padrão para outros papéis
+        // }
+      });
+    } catch (error) {
+      console.error('Erro no login:', error);
+      throw new Error('Falha ao realizar login. Verifique suas credenciais.');
+    }
+  }
+
   async resetPassword(email: string): Promise<void> {
     try {
       await sendPasswordResetEmail(this.auth, email);

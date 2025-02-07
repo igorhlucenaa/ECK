@@ -294,13 +294,6 @@ export class CreateUserComponent implements OnInit {
             duration: 3000,
           });
         } else {
-          // Crie o novo usuário no Firebase Authentication
-          const userCredential = await createUserWithEmailAndPassword(
-            this.auth,
-            email,
-            password || '123@qwe'
-          );
-
           // Adicione o usuário ao Firestore
           const usersCollection = collection(this.firestore, 'users');
           await addDoc(usersCollection, {
@@ -312,7 +305,6 @@ export class CreateUserComponent implements OnInit {
             group,
             role,
             createdAt: new Date(),
-            uid: userCredential.user.uid,
           });
 
           this.snackBar.open('Usuário criado com sucesso!', 'Fechar', {
