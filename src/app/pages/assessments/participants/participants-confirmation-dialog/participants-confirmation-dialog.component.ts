@@ -16,7 +16,7 @@ import { MaterialModule } from 'src/app/material.module';
           <mat-label>Selecionar Cliente</mat-label>
           <mat-select
             [(ngModel)]="selectedClient"
-            (selectionChange)="loadProjects()"
+            (selectionChange)="loadClients()"
           >
             <mat-option *ngFor="let client of data.clients" [value]="client.id">
               {{ client.name }}
@@ -24,6 +24,25 @@ import { MaterialModule } from 'src/app/material.module';
           </mat-select>
         </mat-form-field>
       </div>
+
+      <div class="mb-3">
+        <mat-form-field class="w-100" appearance="outline">
+          <mat-label>Selecionar Avaliação(ões)</mat-label>
+          <mat-select
+            [(ngModel)]="selectedEvaluations"
+            multiple
+            [disabled]="!selectedClient"
+          >
+            <mat-option
+              *ngFor="let evaluation of evaluations"
+              [value]="evaluation.id"
+            >
+              {{ evaluation.name }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
       <div class="mb-3">
         <mat-form-field class="w-100" appearance="outline">
           <mat-label>Selecionar Projeto</mat-label>
@@ -44,13 +63,6 @@ import { MaterialModule } from 'src/app/material.module';
           <td mat-cell *matCellDef="let participant">{{ participant.name }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="category">
-          <th mat-header-cell *matHeaderCellDef>Categoria</th>
-          <td mat-cell *matCellDef="let participant">
-            {{ participant.category }}
-          </td>
-        </ng-container>
-
         <ng-container matColumnDef="email">
           <th mat-header-cell *matHeaderCellDef>Email</th>
           <td mat-cell *matCellDef="let participant">
@@ -62,15 +74,18 @@ import { MaterialModule } from 'src/app/material.module';
         <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
       </table>
     </div>
+
     <div mat-dialog-actions align="end">
       <button mat-button (click)="dialogRef.close(null)">Cancelar</button>
       <button
         mat-flat-button
         color="primary"
-        [disabled]="!selectedClient || !selectedProject"
-        (click)="
-          dialogRef.close({ client: selectedClient, project: selectedProject })
+        [disabled]="
+          !selectedClient ||
+          !selectedProject ||
+          selectedEvaluations.length === 0
         "
+        (click)="confirmSelection()"
       >
         Confirmar
       </button>
@@ -79,10 +94,12 @@ import { MaterialModule } from 'src/app/material.module';
   styleUrls: ['./participants-confirmation-dialog.component.scss'],
 })
 export class ParticipantsConfirmationDialogComponent implements OnInit {
-  displayedColumns = ['name', 'category', 'email'];
+  displayedColumns = ['name', 'email'];
   selectedClient: string | null = null;
   selectedProject: string | null = null;
+  selectedEvaluations: string[] = [];
   projects: { id: string; name: string }[] = [];
+  evaluations: { id: string; name: string }[] = [];
 
   constructor(
     public dialogRef: MatDialogRef<ParticipantsConfirmationDialogComponent>,
@@ -91,12 +108,13 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
       participants: any[];
       clients: { id: string; name: string }[];
       loadProjects: (clientId: string) => any;
+      loadEvaluations: (projectId: string) => any;
     }
   ) {}
 
   ngOnInit(): void {}
 
-  loadProjects(): void {
+  loadClients(): void {
     if (this.selectedClient) {
       this.data
         .loadProjects(this.selectedClient)
@@ -104,8 +122,38 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
         .catch((error: any) =>
           console.error('Erro ao carregar projetos no modal:', error)
         );
+
+      // 🔹 Carregar avaliações imediatamente ao selecionar o cliente
+      this.data
+        .loadEvaluations(this.selectedClient)
+        .then((evaluations: any) => (this.evaluations = evaluations))
+        .catch((error: any) =>
+          console.error('Erro ao carregar avaliações no modal:', error)
+        );
     } else {
       this.projects = [];
+      this.evaluations = [];
     }
+  }
+
+  loadEvaluations(): void {
+    if (this.selectedProject) {
+      this.data
+        .loadEvaluations(this.selectedProject)
+        .then((evaluations: any) => (this.evaluations = evaluations))
+        .catch((error: any) =>
+          console.error('Erro ao carregar avaliações no modal:', error)
+        );
+    } else {
+      this.evaluations = [];
+    }
+  }
+
+  confirmSelection(): void {
+    this.dialogRef.close({
+      client: this.selectedClient,
+      project: this.selectedProject,
+      evaluations: this.selectedEvaluations,
+    });
   }
 }

@@ -59,6 +59,55 @@
             </td>
           </ng-container>
 
+          <ng-container matColumnDef="assessments">
+            <th mat-header-cell *matHeaderCellDef>Avaliações</th>
+            <td mat-cell *matCellDef="let evaluator">
+              <div *ngIf="evaluator.isEditing; else viewMode">
+                <mat-form-field class="w-100">
+                  <mat-label>Selecione as avaliações</mat-label>
+                  <mat-select [(ngModel)]="evaluator.assessments" multiple>
+                    <mat-option
+                      *ngFor="let assessment of availableAssessments"
+                      [value]="assessment.id"
+                    >
+                      {{ assessment.name }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="saveAssessments(evaluator)"
+                >
+                  <mat-icon>check</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="cancelEdit(evaluator)"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <ng-template #viewMode>
+                <span *ngIf="evaluator.assessments?.length; else noAssessments">
+                  {{ getAssessmentNames(evaluator.assessments) }}
+                </span>
+                <ng-template #noAssessments>
+                  <span>Sem avaliações</span>
+                </ng-template>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="editAssessments(evaluator)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+              </ng-template>
+            </td>
+          </ng-container>
+
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Ações</th>
             <td mat-cell *matCellDef="let evaluator">
@@ -124,6 +173,109 @@
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Projeto</th>
             <td mat-cell *matCellDef="let evaluatee">
               {{ evaluatee.projectName }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="assessments">
+            <th mat-header-cell *matHeaderCellDef>Avaliações</th>
+            <td mat-cell *matCellDef="let evaluatee">
+              <div *ngIf="evaluatee.isEditing; else viewMode">
+                <mat-form-field class="w-100">
+                  <mat-label>Selecione as avaliações</mat-label>
+                  <mat-select [(ngModel)]="evaluatee.assessments" multiple>
+                    <mat-option
+                      *ngFor="let assessment of availableAssessments"
+                      [value]="assessment.id"
+                    >
+                      {{ assessment.name }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="saveEvaluateeAssessments(evaluatee)"
+                >
+                  <mat-icon>check</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="cancelEvaluateeEdit(evaluatee)"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <ng-template #viewMode>
+                <span *ngIf="evaluatee.assessments?.length; else noAssessments">
+                  {{ getAssessmentNames(evaluatee.assessments) }}
+                </span>
+                <ng-template #noAssessments>
+                  <span>Sem avaliações</span>
+                </ng-template>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="editEvaluateeAssessments(evaluatee)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+              </ng-template>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="evaluators">
+            <th mat-header-cell *matHeaderCellDef>Avaliadores</th>
+            <td mat-cell *matCellDef="let evaluatee">
+              <div *ngIf="evaluatee.isEditingEvaluators; else viewMode">
+                <mat-form-field class="w-100">
+                  <mat-label>Selecione os avaliadores</mat-label>
+                  <mat-select [(ngModel)]="evaluatee.evaluators" multiple>
+                    <mat-option
+                      *ngFor="let evaluator of availableEvaluators"
+                      [value]="evaluator.id"
+                    >
+                      {{ evaluator.name }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="saveEvaluateeEvaluators(evaluatee)"
+                >
+                  <mat-icon>check</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="cancelEvaluateeEvaluatorsEdit(evaluatee)"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <ng-template #viewMode>
+                <span
+                  *ngIf="
+                    evaluatee.evaluators?.length && availableEvaluators?.length;
+                    else noEvaluators
+                  "
+                >
+                  {{ getEvaluatorNames(evaluatee.evaluators) }}
+                </span>
+                <ng-template #noEvaluators>
+                  <span>Sem avaliadores</span>
+                </ng-template>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="editEvaluateeEvaluators(evaluatee)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+              </ng-template>
             </td>
           </ng-container>
 

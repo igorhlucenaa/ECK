@@ -2,6 +2,7 @@ import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
+  FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
@@ -12,6 +13,8 @@ import {
   addDoc,
   getDocs,
   deleteDoc,
+  doc,
+  updateDoc,
 } from '@angular/fire/firestore';
 import * as Papa from 'papaparse';
 import { MaterialModule } from 'src/app/material.module';
@@ -30,16 +33,18 @@ interface Evaluator {
 }
 
 interface Evaluatee {
+  id: string;
   name: string;
   email: string;
   clientId: string;
   projectId: string;
+  assessments?: string[];
 }
 
 @Component({
   selector: 'app-participants',
   standalone: true,
-  imports: [MaterialModule, CommonModule, ReactiveFormsModule],
+  imports: [MaterialModule, CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './participants.component.html',
   styleUrls: ['./participants.component.scss'],
 })
@@ -48,6 +53,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'name',
     'email',
     'category',
+    'assessments',
     'actions',
   ];
   evaluateesDisplayedColumns: string[] = [
@@ -55,6 +61,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'email',
     'client',
     'project',
+    'assessments', // Avaliações que o avaliado responderá
+    'evaluators', // 🔹 Nova coluna mostrando os avaliadores
     'actions',
   ];
 
@@ -69,6 +77,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   clients: { id: string; name: string }[] = [];
   projects: { id: string; name: string }[] = [];
   currentUser: any = null;
+  availableAssessments: { id: string; name: string }[] = [];
+  availableEvaluators: { id: string; name: string }[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -81,6 +91,53 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     await this.loadClients();
     await this.loadEvaluators();
     await this.loadEvaluatees();
+    await this.loadAssessments();
+    await this.loadEvaluatorsList(); // 🔹 Carregar avaliadores ao iniciar
+
+    console.log('Avaliadores carregados:', this.availableEvaluators); // Debugging
+  }
+
+  async loadEvaluatorsList(): Promise<void> {
+    try {
+      const evaluatorsCollection = collection(this.firestore, 'participants');
+      const snapshot = await getDocs(evaluatorsCollection);
+
+      const allParticipants: any = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()?.['name'] || 'Nome Desconhecido', // 🔹 Garante que sempre tenha um nome
+        type: doc.data()?.['type'] || '',
+      }));
+
+      console.log('Todos os participantes carregados:', allParticipants); // 🛠 Verificar os dados carregados
+
+      this.availableEvaluators = allParticipants.filter((participant: any) => {
+        return participant.type.toLowerCase() === 'avaliador';
+      });
+
+      console.log('Avaliadores filtrados:', this.availableEvaluators); // 🛠 Verificar os avaliadores filtrados
+    } catch (error) {
+      console.error('Erro ao carregar avaliadores:', error);
+      this.snackBar.open('Erro ao carregar avaliadores.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async loadAssessments(): Promise<void> {
+    try {
+      const assessmentsCollection = collection(this.firestore, 'assessments');
+      const snapshot = await getDocs(assessmentsCollection);
+
+      this.availableAssessments = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'],
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar avaliações:', error);
+      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
+        duration: 3000,
+      });
+    }
   }
 
   async loadEvaluators(): Promise<void> {
@@ -88,37 +145,164 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const snapshot = await getDocs(evaluatorsCollection);
 
     const evaluators = snapshot.docs
-      .map((doc) => doc.data())
+      .map((doc) => ({
+        id: doc.id, // 🔹 Adiciona o ID do documento
+        ...doc.data(),
+      }))
       .filter((participant: any) => participant.type === 'avaliador');
-    console.log(evaluators);
+
     this.evaluatorsDataSource.data = evaluators;
+  }
+
+  editEvaluateeAssessments(evaluatee: any): void {
+    evaluatee.isEditing = true;
+  }
+
+  cancelEvaluateeEdit(evaluatee: any): void {
+    evaluatee.isEditing = false;
+  }
+
+  async saveEvaluateeAssessments(evaluatee: any): Promise<void> {
+    if (!evaluatee.id) {
+      console.error('Erro: O ID do avaliado está indefinido!');
+      this.snackBar.open(
+        'Erro ao atualizar avaliações: ID não encontrado.',
+        'Fechar',
+        { duration: 3000 }
+      );
+      return;
+    }
+
+    try {
+      const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
+      await updateDoc(evaluateeDoc, {
+        assessments: evaluatee.assessments || [],
+      });
+
+      evaluatee.isEditing = false;
+      this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar avaliações:', error);
+      this.snackBar.open('Erro ao salvar avaliações.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  editEvaluateeEvaluators(evaluatee: any): void {
+    evaluatee.isEditingEvaluators = true;
+  }
+
+  cancelEvaluateeEvaluatorsEdit(evaluatee: any): void {
+    evaluatee.isEditingEvaluators = false;
+  }
+
+  async saveEvaluateeEvaluators(evaluatee: any): Promise<void> {
+    if (!evaluatee.id) {
+      console.error('Erro: O ID do avaliado está indefinido!');
+      this.snackBar.open(
+        'Erro ao atualizar avaliadores: ID não encontrado.',
+        'Fechar',
+        { duration: 3000 }
+      );
+      return;
+    }
+
+    try {
+      const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
+      await updateDoc(evaluateeDoc, { evaluators: evaluatee.evaluators || [] });
+
+      evaluatee.isEditingEvaluators = false;
+      this.snackBar.open('Avaliadores atualizados com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar avaliadores:', error);
+      this.snackBar.open('Erro ao salvar avaliadores.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  getEvaluatorNames(evaluatorIds: string[]): string {
+    if (!this.availableEvaluators || this.availableEvaluators.length === 0) {
+      return 'Carregando avaliadores...';
+    }
+
+    return (
+      this.availableEvaluators
+        .filter((e) => evaluatorIds?.includes(e.id))
+        .map((e) => e.name)
+        .join(', ') || 'Nenhum avaliador'
+    );
   }
 
   async loadEvaluatees(): Promise<void> {
     const evaluateesCollection = collection(this.firestore, 'participants');
+    const evaluatorsCollection = collection(this.firestore, 'participants');
     const snapshot = await getDocs(evaluateesCollection);
+    const evaluatorsSnapshot = await getDocs(evaluatorsCollection);
 
-    const evaluatees = snapshot.docs
-      .map((doc) => doc.data() as any)
-      .filter((participant) => participant.type === 'avaliado');
+    // Carregar todos os avaliadores
+    const allEvaluators = evaluatorsSnapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      .filter((participant: any) => participant.type === 'avaliador');
 
-    // Carregar nomes de clientes e projetos
+    const evaluatees: any = snapshot.docs
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          evaluators: [], // Inicializa a lista de avaliadores
+        };
+      })
+      .filter((participant: any) => participant.type === 'avaliado');
+
     for (const evaluatee of evaluatees) {
+      if (!evaluatee.clientId) {
+        console.error(
+          `Erro: O avaliado ${evaluatee.name} não tem um clientId!`
+        );
+        evaluatee.clientId = 'Desconhecido';
+      }
+      if (!evaluatee.projectId) {
+        console.error(
+          `Erro: O avaliado ${evaluatee.name} não tem um projectId!`
+        );
+        evaluatee.projectId = 'Desconhecido';
+      }
+
       const clientDoc = await getDocs(collection(this.firestore, 'clients'));
       const projectDoc = await getDocs(collection(this.firestore, 'projects'));
 
       const client = clientDoc.docs.find(
         (doc) => doc.id === evaluatee.clientId
       );
-      console.log(client);
       const project = projectDoc.docs.find(
         (doc) => doc.id === evaluatee.projectId
       );
 
       evaluatee['clientName'] =
-        client?.data()['companyName'] || 'Cliente Não Encontrado';
+        client?.data()?.['companyName'] || 'Cliente Não Encontrado';
       evaluatee['projectName'] =
-        project?.data()['name'] || 'Projeto Não Encontrado';
+        project?.data()?.['name'] || 'Projeto Não Encontrado';
+
+      // 🔹 Encontrar avaliadores que compartilham as mesmas avaliações
+      if (evaluatee.assessments && evaluatee.assessments.length > 0) {
+        evaluatee.evaluators = allEvaluators
+          .filter((evaluator: any) =>
+            evaluator.assessments?.some((assessment: string) =>
+              evaluatee.assessments.includes(assessment)
+            )
+          )
+          .map((e) => e.id); // Armazena apenas os IDs dos avaliadores
+      }
     }
 
     this.evaluateesDataSource.data = evaluatees;
@@ -130,6 +314,38 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
     this.evaluateesDataSource.paginator = this.evaluateesPaginator;
     this.evaluateesDataSource.sort = this.evaluateesSort;
+  }
+
+  editAssessments(evaluator: any): void {
+    evaluator.isEditing = true;
+  }
+
+  cancelEdit(evaluator: any): void {
+    evaluator.isEditing = false;
+  }
+
+  async saveAssessments(evaluator: any): Promise<void> {
+    try {
+      const participantDoc = doc(this.firestore, 'participants', evaluator.id);
+      await updateDoc(participantDoc, { assessments: evaluator.assessments });
+
+      evaluator.isEditing = false;
+      this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar avaliações:', error);
+      this.snackBar.open('Erro ao salvar avaliações.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  getAssessmentNames(assessmentIds: string[]): string {
+    return this.availableAssessments
+      .filter((a) => assessmentIds.includes(a.id))
+      .map((a) => a.name)
+      .join(', ');
   }
 
   applyFilter(event: Event, type: 'evaluators' | 'evaluatees'): void {
@@ -207,85 +423,81 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         header: 1, // Lê como array
       });
 
-      // Filtra os dados a partir da linha 31 (índice 30 no array)
-      const dataRows = jsonData.slice(30); // Dados começam na linha 31
+      const dataRows = jsonData.slice(30);
       const participants = dataRows
-        .filter((row) => row && row[1] && row[2] && row[3]) // Filtra linhas válidas
-        .map((row) => {
-          const type =
-            row[2]?.toLowerCase().includes('gestor') ||
-            row[2]?.toLowerCase().includes('par') ||
-            row[2]?.toLowerCase().includes('subordinado')
-              ? 'avaliador'
-              : 'avaliado';
+        .filter((row) => row && row[1] && row[2] && row[3])
+        .map((row) => ({
+          name: row[1]?.toString().trim() || '',
+          category: row[2]?.toString().trim() || '',
+          email: row[3]?.toString().trim() || '',
+          type: 'avaliado',
+        }));
 
-          return {
-            name: row[1]?.toString().trim() || '', // Coluna B (Nome)
-            category: row[2]?.toString().trim() || '', // Coluna C (Categoria)
-            email: row[3]?.toString().trim() || '', // Coluna D (Email)
-            type, // Define o tipo com base na categoria
-          };
-        });
-
-      // Exibe os participantes no modal para confirmação
       const dialogRef = this.dialog.open(
         ParticipantsConfirmationDialogComponent,
         {
           width: '800px',
           data: {
             participants,
-            clients: this.clients, // Lista de clientes carregada anteriormente
-            loadProjects: (clientId: string) => this.loadProjects(clientId), // Passa a função para o modal
+            clients: this.clients,
+            loadProjects: (clientId: string) => this.loadProjects(clientId),
+            loadEvaluations: (clientId: string) =>
+              this.loadEvaluations(clientId),
           },
         }
       );
 
-      // Aguarda a confirmação do usuário
       dialogRef.afterClosed().subscribe(async (result) => {
         if (result) {
-          const { client, project } = result;
-
-          // Salva os participantes no Firebase com cliente e projeto
           for (const participant of participants) {
             try {
-              const participantsCollection = collection(
-                this.firestore,
-                'participants'
-              );
-              await addDoc(participantsCollection, {
+              await addDoc(collection(this.firestore, 'participants'), {
                 ...participant,
-                clientId: client, // ID do cliente selecionado
-                projectId: project, // ID do projeto selecionado
+                clientId: result.client,
+                projectId: result.project,
+                evaluations: result.evaluations, // 🔹 Salvar avaliações selecionadas
                 createdAt: new Date(),
               });
 
-              // Atualiza a tabela localmente
-              this.updateTable({
-                ...participant,
-                clientId: client,
-                projectId: project,
-                clientName:
-                  this.clients.find((c) => c.id === client)?.name ||
-                  'Cliente Não Encontrado',
-                projectName:
-                  this.projects.find((p) => p.id === project)?.name ||
-                  'Projeto Não Encontrado',
-              });
+              this.updateTable(participant);
             } catch (error) {
-              console.error('Erro ao salvar participante:', participant, error);
+              console.error('Erro ao salvar participante:', error);
             }
           }
 
           this.snackBar.open('Upload e salvamento concluídos!', 'Fechar', {
             duration: 3000,
           });
-        } else {
-          console.log('Upload cancelado pelo usuário.');
         }
       });
     };
 
     reader.readAsArrayBuffer(file);
+  }
+
+  async loadEvaluations(
+    clientId: string
+  ): Promise<{ id: string; name: string }[]> {
+    if (!clientId) return [];
+
+    try {
+      const assessmentsCollection = collection(this.firestore, 'assessments'); // Collection correta
+      const snapshot = await getDocs(assessmentsCollection);
+
+      // Filtrar avaliações pelo clientId
+      return snapshot.docs
+        .filter((doc) => doc.data()['clientId'] === clientId)
+        .map((doc) => ({
+          id: doc.id,
+          name: doc.data()['name'] || 'Avaliação Sem Nome',
+        }));
+    } catch (error) {
+      console.error('Erro ao carregar avaliações:', error);
+      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
+        duration: 3000,
+      });
+      return [];
+    }
   }
 
   updateTable(participant: any): void {
