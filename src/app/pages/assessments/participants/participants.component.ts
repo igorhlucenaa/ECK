@@ -79,6 +79,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   currentUser: any = null;
   availableAssessments: { id: string; name: string }[] = [];
   availableEvaluators: { id: string; name: string }[] = [];
+  selectedEvaluations: string[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -163,10 +164,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async saveEvaluateeAssessments(evaluatee: any): Promise<void> {
-    if (!evaluatee.id) {
-      console.error('Erro: O ID do avaliado está indefinido!');
+    if (!evaluatee || !evaluatee.id) {
+      console.error('Erro: O ID do avaliado está indefinido!', evaluatee);
       this.snackBar.open(
-        'Erro ao atualizar avaliações: ID não encontrado.',
+        'Erro ao atualizar avaliações: ID do avaliado não encontrado.',
         'Fechar',
         { duration: 3000 }
       );
@@ -174,10 +175,30 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
 
     try {
+      // 🔹 Garantir que assessments é um array antes de salvar
+      const updatedAssessments = evaluatee.assessments
+        ? [...evaluatee.assessments]
+        : [];
+
+      console.log(
+        'Atualizando avaliações para:',
+        evaluatee.id,
+        updatedAssessments
+      ); // Debugging
+
+      // 🔹 Criar referência correta ao documento no Firestore
       const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
-      await updateDoc(evaluateeDoc, {
-        assessments: evaluatee.assessments || [],
-      });
+
+      await updateDoc(evaluateeDoc, { assessments: updatedAssessments });
+
+      // 🔹 Atualizar os dados na tabela localmente para refletir imediatamente na UI
+      const index = this.evaluateesDataSource.data.findIndex(
+        (e) => e.id === evaluatee.id
+      );
+      if (index !== -1) {
+        this.evaluateesDataSource.data[index].assessments = updatedAssessments;
+        this.evaluateesDataSource._updateChangeSubscription(); // Força a atualização da tabela
+      }
 
       evaluatee.isEditing = false;
       this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
@@ -418,21 +439,54 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
 
-      // Converte a planilha para um array de arrays
+      // Converte a planilha para JSON como array de arrays
       const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1, // Lê como array
+        header: 1, // Retorna como array
       });
 
-      const dataRows = jsonData.slice(30);
-      const participants = dataRows
-        .filter((row) => row && row[1] && row[2] && row[3])
-        .map((row) => ({
-          name: row[1]?.toString().trim() || '',
-          category: row[2]?.toString().trim() || '',
-          email: row[3]?.toString().trim() || '',
-          type: 'avaliado',
-        }));
+      console.log('Planilha carregada:', jsonData); // Debugging
 
+      const startRowIndex = 19;
+      const participants: any[] = [];
+
+      for (let i = startRowIndex; i < jsonData.length; i++) {
+        const row = jsonData[i];
+
+        if (
+          !Array.isArray(row) ||
+          row.length < 4 ||
+          !row[1] ||
+          !row[2] ||
+          !row[3]
+        ) {
+          continue; // Pula linhas inválidas
+        }
+
+        const category = row[3]?.toString().trim() || ''; // E - Categoria
+        const type = ['Gestor', 'Par', 'Subordinado', 'Outros'].includes(
+          category
+        )
+          ? 'avaliador'
+          : 'avaliado';
+
+        participants.push({
+          name: row[1]?.toString().trim() || '', // C - Nome e Sobrenome
+          email: row[2]?.toString().trim() || '', // D - Email
+          category,
+          type,
+        });
+      }
+
+      console.log('Participantes processados:', participants); // Debugging
+
+      if (participants.length === 0) {
+        this.snackBar.open('Nenhum participante válido encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+        return;
+      }
+
+      // 🔹 Abre o diálogo de confirmação antes de salvar no Firestore
       const dialogRef = this.dialog.open(
         ParticipantsConfirmationDialogComponent,
         {
@@ -447,23 +501,39 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         }
       );
 
+      // 🔹 Após fechar o diálogo, salvar no Firestore e atualizar tabelas
       dialogRef.afterClosed().subscribe(async (result) => {
         if (result) {
+          const savedParticipants = [];
+
           for (const participant of participants) {
             try {
-              await addDoc(collection(this.firestore, 'participants'), {
-                ...participant,
-                clientId: result.client,
-                projectId: result.project,
-                evaluations: result.evaluations, // 🔹 Salvar avaliações selecionadas
-                createdAt: new Date(),
-              });
+              const docRef = await addDoc(
+                collection(this.firestore, 'participants'),
+                {
+                  ...participant,
+                  clientId: result.client,
+                  projectId: result.project,
+                  assessments: result.evaluations, // 🔹 Adiciona avaliações selecionadas
+                  createdAt: new Date(),
+                }
+              );
 
-              this.updateTable(participant);
+              savedParticipants.push({
+                ...participant,
+                id: docRef.id,
+                assessments: result.evaluations,
+              });
             } catch (error) {
               console.error('Erro ao salvar participante:', error);
             }
           }
+
+          // 🔹 Atualiza a tabela corretamente após o upload
+          this.updateTable(savedParticipants);
+
+          // 🔹 Atualiza a tabela de avaliados para refletir os novos avaliadores corretamente
+          await this.updateEvaluateesTable();
 
           this.snackBar.open('Upload e salvamento concluídos!', 'Fechar', {
             duration: 3000,
@@ -473,6 +543,50 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     };
 
     reader.readAsArrayBuffer(file);
+  }
+
+  async updateEvaluateesTable(): Promise<void> {
+    try {
+      const evaluateesCollection = collection(this.firestore, 'participants');
+      const evaluatorsCollection = collection(this.firestore, 'participants');
+      const evaluateesSnapshot = await getDocs(evaluateesCollection);
+      const evaluatorsSnapshot = await getDocs(evaluatorsCollection);
+
+      const allEvaluators = evaluatorsSnapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .filter((participant: any) => participant.type === 'avaliador');
+
+      const evaluatees: any = evaluateesSnapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            evaluators: [],
+          };
+        })
+        .filter((participant: any) => participant.type === 'avaliado');
+
+      for (const evaluatee of evaluatees) {
+        const evaluatorsForThisEvaluatee = allEvaluators
+          .filter((evaluator: any) =>
+            evaluator.assessments?.some((assessment: string) =>
+              evaluatee.assessments?.includes(assessment)
+            )
+          )
+          .map((e) => e.id);
+
+        evaluatee.evaluators = evaluatorsForThisEvaluatee;
+      }
+
+      this.evaluateesDataSource.data = evaluatees;
+      this.evaluateesDataSource._updateChangeSubscription();
+    } catch (error) {
+      console.error('Erro ao atualizar tabela de avaliados:', error);
+    }
   }
 
   async loadEvaluations(
@@ -500,15 +614,36 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  updateTable(participant: any): void {
-    if (participant.type === 'avaliador') {
-      // Atualiza a tabela de Avaliadores
-      const currentData = this.evaluatorsDataSource.data;
-      this.evaluatorsDataSource.data = [...currentData, participant];
-    } else if (participant.type === 'avaliado') {
-      // Atualiza a tabela de Avaliados
-      const currentData = this.evaluateesDataSource.data;
-      this.evaluateesDataSource.data = [...currentData, participant];
+  updateTable(newParticipants: any[]): void {
+    if (!newParticipants || newParticipants.length === 0) return;
+
+    const evaluators = newParticipants.filter((p) => p.type === 'avaliador');
+    const evaluatees = newParticipants.filter((p) => p.type === 'avaliado');
+
+    // Atualiza os avaliadores na tabela
+    if (evaluators.length > 0) {
+      this.evaluatorsDataSource.data = [
+        ...this.evaluatorsDataSource.data,
+        ...evaluators,
+      ];
+      this.evaluatorsDataSource._updateChangeSubscription();
+    }
+
+    // Atualiza os avaliados na tabela
+    if (evaluatees.length > 0) {
+      // 🔹 Vincula avaliadores corretamente ao avaliado
+      evaluatees.forEach((evaluatee) => {
+        const evaluatorsEmails = evaluatee.evaluators || [];
+        evaluatee.evaluators = this.availableEvaluators
+          .filter((ev: any) => evaluatorsEmails.includes(ev.email))
+          .map((ev) => ev.name);
+      });
+
+      this.evaluateesDataSource.data = [
+        ...this.evaluateesDataSource.data,
+        ...evaluatees,
+      ];
+      this.evaluateesDataSource._updateChangeSubscription();
     }
   }
 
