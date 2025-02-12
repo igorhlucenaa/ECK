@@ -40,6 +40,7 @@
           mat-table
           [dataSource]="evaluatorsDataSource"
           matSort
+          #evaluatorsSort="matSort"
           class="mat-elevation-z8"
         >
           <ng-container matColumnDef="name">
@@ -150,6 +151,7 @@
           mat-table
           [dataSource]="evaluateesDataSource"
           matSort
+          #evaluateesSort="matSort"
           class="mat-elevation-z8"
         >
           <ng-container matColumnDef="name">
@@ -225,6 +227,25 @@
             </td>
           </ng-container>
 
+          <!-- <ng-container matColumnDef="evaluators">
+            <th mat-header-cell *matHeaderCellDef>Avaliadores</th>
+            <td mat-cell *matCellDef="let evaluatee">
+              <ng-container
+                *ngIf="evaluatee.evaluators?.length; else noEvaluators"
+              >
+                <a
+                  href="javascript:void(0)"
+                  (click)="openEvaluatorsModal(evaluatee)"
+                >
+                  Ver Avaliadores ({{ evaluatee.evaluators.length }})
+                </a>
+              </ng-container>
+              <ng-template #noEvaluators>
+                <span>Sem avaliadores</span>
+              </ng-template>
+            </td>
+          </ng-container> -->
+
           <ng-container matColumnDef="evaluators">
             <th mat-header-cell *matHeaderCellDef>Avaliadores</th>
             <td mat-cell *matCellDef="let evaluatee">
@@ -257,14 +278,16 @@
               </div>
 
               <ng-template #viewMode>
-                <span
-                  *ngIf="
-                    evaluatee.evaluators?.length && availableEvaluators?.length;
-                    else noEvaluators
-                  "
+                <ng-container
+                  *ngIf="evaluatee.evaluators?.length; else noEvaluators"
                 >
-                  {{ getEvaluatorNames(evaluatee.evaluators) }}
-                </span>
+                  <a
+                    href="javascript:void(0)"
+                    (click)="openEvaluatorsModal(evaluatee)"
+                  >
+                    Ver Avaliadores ({{ evaluatee.evaluators.length }})
+                  </a>
+                </ng-container>
                 <ng-template #noEvaluators>
                   <span>Sem avaliadores</span>
                 </ng-template>

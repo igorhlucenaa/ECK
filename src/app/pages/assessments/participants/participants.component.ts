@@ -25,6 +25,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
+import { EvaluatorsModalComponent } from './evaluators-modal/evaluators-modal.component';
 
 interface Evaluator {
   name: string;
@@ -72,8 +73,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   @ViewChild('evaluatorsPaginator') evaluatorsPaginator!: MatPaginator;
   @ViewChild('evaluateesPaginator') evaluateesPaginator!: MatPaginator;
 
-  @ViewChild('evaluatorsSort') evaluatorsSort!: MatSort;
-  @ViewChild('evaluateesSort') evaluateesSort!: MatSort;
+  @ViewChild('evaluatorsSort', { static: false }) evaluatorsSort!: MatSort;
+  @ViewChild('evaluateesSort', { static: false }) evaluateesSort!: MatSort;
   clients: { id: string; name: string }[] = [];
   projects: { id: string; name: string }[] = [];
   currentUser: any = null;
@@ -103,19 +104,19 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const evaluatorsCollection = collection(this.firestore, 'participants');
       const snapshot = await getDocs(evaluatorsCollection);
 
-      const allParticipants: any = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()?.['name'] || 'Nome Desconhecido', // 🔹 Garante que sempre tenha um nome
-        type: doc.data()?.['type'] || '',
-      }));
+      this.availableEvaluators = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          name: doc.data()?.['name'] || 'Nome Desconhecido',
+          email: doc.data()?.['email'] || 'Sem e-mail', // 🔹 Garante que o email existe
+          category: doc.data()?.['category'] || 'Não informado', // 🔹 Garante que a categoria existe
+          type: doc.data()?.['type'] || '',
+        }))
+        .filter(
+          (participant: any) => participant.type.toLowerCase() === 'avaliador'
+        );
 
-      console.log('Todos os participantes carregados:', allParticipants); // 🛠 Verificar os dados carregados
-
-      this.availableEvaluators = allParticipants.filter((participant: any) => {
-        return participant.type.toLowerCase() === 'avaliador';
-      });
-
-      console.log('Avaliadores filtrados:', this.availableEvaluators); // 🛠 Verificar os avaliadores filtrados
+      console.log('Avaliadores carregados:', this.availableEvaluators); // Debugging
     } catch (error) {
       console.error('Erro ao carregar avaliadores:', error);
       this.snackBar.open('Erro ao carregar avaliadores.', 'Fechar', {
@@ -587,6 +588,21 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     } catch (error) {
       console.error('Erro ao atualizar tabela de avaliados:', error);
     }
+  }
+
+  openEvaluatorsModal(evaluatee: any): void {
+    const evaluators = this.availableEvaluators
+      .filter((evaluator: any) => evaluatee.evaluators.includes(evaluator.id))
+      .map((evaluator: any) => ({
+        name: evaluator.name,
+        email: evaluator.email || 'Sem e-mail', // 🔹 Garante que o email exista
+        category: evaluator.category || 'Não informado', // 🔹 Garante que a categoria exista
+      }));
+
+    this.dialog.open(EvaluatorsModalComponent, {
+      width: '600px',
+      data: { evaluatee, evaluators },
+    });
   }
 
   async loadEvaluations(

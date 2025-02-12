@@ -18,6 +18,12 @@ export const navItems: NavItem[] = [
     role: ['admin_master'],
   },
   {
+    displayName: 'Projetos',
+    iconName: 'solar:bill-list-bold-duotone',
+    route: '/projects', // Caminho correto para a página de clientes,
+    role: ['admin_client'],
+  },
+  {
     displayName: 'Definições',
     iconName: 'solar:document-add-bold-duotone',
     route: '',
@@ -33,12 +39,6 @@ export const navItems: NavItem[] = [
         iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
         route: '/users', // Caminho correto para a página de usuários
         role: ['admin_client'], // Visível apenas para Administrador Master
-      },
-      {
-        displayName: 'Projetos',
-        iconName: 'solar:bill-list-bold-duotone',
-        route: '/projects', // Caminho correto para a página de clientes,
-        role: ['admin_client'],
       },
       {
         displayName: 'Modelos de E-mail',

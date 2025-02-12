@@ -160,6 +160,7 @@ export class NewCreditOrderComponent implements OnInit {
       await addDoc(ordersCollection, {
         clientId,
         credits,
+        remainingCredits: credits, // Define os créditos remanescentes inicialmente
         startDate,
         validityDate,
         notes: notes || '',

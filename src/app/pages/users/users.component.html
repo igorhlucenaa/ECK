@@ -18,6 +18,7 @@
               mat-table
               [dataSource]="userDataSource"
               matSort
+              #userSort="matSort"
               class="mat-elevation-z8 w-100"
             >
               <!-- Nome -->
@@ -51,7 +52,9 @@
                   <a
                     *ngIf="user.client.length > 0"
                     href="javascript:void(0)"
-                    (click)="openDetailsModal('Clientes do Usuário', user.client)"
+                    (click)="
+                      openDetailsModal('Clientes do Usuário', user.client)
+                    "
                   >
                     Ver Clientes
                   </a>
@@ -184,6 +187,7 @@
             mat-table
             [dataSource]="groupDataSource"
             matSort
+            #groupSort="matSort"
             class="mat-elevation-z8 w-100"
           >
             <!-- Nome -->

@@ -29,8 +29,8 @@ import { EmailSelectionDialogComponent } from './email-selection-dialog/email-se
 })
 export class ProjectsListComponent implements OnInit {
   displayedColumns: string[] = [
-    'name',
     'client',
+    'name',
     // 'budget',
     'deadline',
     'actions',
@@ -114,6 +114,19 @@ export class ProjectsListComponent implements OnInit {
 
       this.dataSource.data = this.filterProjectsByClient(projects);
       this.dataSource.paginator = this.paginator;
+
+      this.dataSource.sortingDataAccessor = (item, property) => {
+        switch (property) {
+          case 'client':
+            return item.clientName.toLowerCase(); // Garante a ordenação por nome do cliente
+          case 'name':
+            return item.name.toLowerCase(); // Ordena por nome do projeto
+          case 'deadline':
+            return item.deadline ? item.deadline.getTime() : 0; // Ordena datas corretamente
+          default:
+            return item[property];
+        }
+      };
       this.dataSource.sort = this.sort;
 
       this.dataSource.filterPredicate = (data, filter) =>

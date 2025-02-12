@@ -86,6 +86,8 @@ export class CreditOrdersComponent implements OnInit {
   endDate: Date | null = null;
   selectedStatus: string = '';
   originalData: Order[] = []; // Dados originais para filtro
+  clientsList: { id: string; name: string }[] = [];
+  selectedClient: string = '';
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -123,15 +125,13 @@ export class CreditOrdersComponent implements OnInit {
       this.userRole = await this.authService.getCurrentUserRole();
       const clientId = await this.authService.getCurrentClientId();
 
-      if (this.userRole === 'admin_client' && !clientId) {
-        console.warn('clientId não encontrado para admin_client.');
-        this.snackBar.open(
-          'Erro ao carregar pedidos. ID do cliente não encontrado.',
-          'Fechar',
-          { duration: 3000 }
-        );
-        return;
-      }
+      const clientsCollection = collection(this.firestore, 'clients');
+      const clientsSnapshot = await getDocs(clientsCollection);
+
+      this.clientsList = clientsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['companyName'] || 'Não identificado',
+      }));
 
       const ordersCollection = collection(this.firestore, 'creditOrders');
       let queryConstraint = query(ordersCollection);
@@ -145,20 +145,16 @@ export class CreditOrdersComponent implements OnInit {
 
       const ordersSnapshot = await getDocs(queryConstraint);
 
-      const clientsCollection = collection(this.firestore, 'clients');
-      const clientsSnapshot = await getDocs(clientsCollection);
-
-      const clientsMap: Record<string, string> = clientsSnapshot.docs.reduce(
-        (acc, doc) => ({
-          ...acc,
-          [doc.id]: doc.data()['companyName'] || 'Não identificado',
-        }),
+      const clientsMap: Record<string, string> = this.clientsList.reduce(
+        (acc: any, client) => {
+          acc[client.id] = client.name;
+          return acc;
+        },
         {}
       );
 
       const orders = ordersSnapshot.docs.map((doc) => {
         const data = doc.data();
-        console.log(data);
         const validityDate = data['validityDate']?.toDate();
         const daysRemaining = validityDate
           ? Math.max(
@@ -169,12 +165,16 @@ export class CreditOrdersComponent implements OnInit {
             )
           : 0;
 
+        const totalCredits = data['credits'] || 0;
+        const remainingCredits = data['remainingCredits'] || 0;
+
         return {
           id: doc.id,
+          clientId: data['clientId'],
           clientName: clientsMap[data['clientId']] || 'Não identificado',
           openingBalance: data['credits'] || 0,
-          usedBalance: (data['credits'] || 0) - (data['remainingCredits'] || 0),
-          remainingBalance: data['remainingCredits'] || 0,
+          usedBalance: totalCredits - remainingCredits,
+          remainingBalance: remainingCredits,
           daysRemaining,
           expirationDate: validityDate,
           status: data['status'],
@@ -195,34 +195,29 @@ export class CreditOrdersComponent implements OnInit {
   }
 
   applyFilter(): void {
-    // Verifica se a data inicial é maior que a data final
     if (this.startDate && this.endDate && this.startDate > this.endDate) {
       this.snackBar.open(
         'A data inicial não pode ser maior que a data final.',
         'Fechar',
-        {
-          duration: 3000,
-        }
+        { duration: 3000 }
       );
-      return; // Interrompe a execução do filtro se a condição for verdadeira
+      return;
     }
 
-    const filteredData = this.originalData.filter((order) => {
+    const filteredData = this.originalData.filter((order: any) => {
       const matchesStatus =
         !this.selectedStatus || order.status === this.selectedStatus;
-
+      const matchesClient =
+        !this.selectedClient || order.clientId === this.selectedClient;
       const matchesDate =
         (!this.startDate || order.createdAt >= this.startDate) &&
         (!this.endDate || order.createdAt <= this.endDate);
 
-      return matchesStatus && matchesDate;
+      return matchesStatus && matchesClient && matchesDate;
     });
 
     this.dataSource.data = filteredData;
-
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+    this.dataSource.paginator?.firstPage();
   }
 
   applyTextFilter(event: Event): void {
@@ -236,11 +231,9 @@ export class CreditOrdersComponent implements OnInit {
     this.startDate = null;
     this.endDate = null;
     this.selectedStatus = '';
+    this.selectedClient = '';
 
-    // Recarrega os dados da tabela para garantir que o status e outras informações sejam atualizadas
     this.loadOrders();
-
-    // Volta à primeira página da tabela
     this.dataSource.paginator?.firstPage();
   }
 
@@ -258,10 +251,10 @@ export class CreditOrdersComponent implements OnInit {
       const clientId = orderData['clientId'];
       const creditsToAdd = orderData['credits'];
 
-      // Atualiza o status do pedido
+      // Atualiza o status do pedido para "Aprovado"
       await updateDoc(orderDoc, { status: 'Aprovado' });
 
-      // Atualiza o saldo do cliente
+      // Atualiza os créditos remanescentes do cliente
       const clientDoc = doc(this.firestore, `clients/${clientId}`);
       const clientSnapshot = await getDoc(clientDoc);
       const clientData = clientSnapshot.data();
@@ -270,8 +263,11 @@ export class CreditOrdersComponent implements OnInit {
         throw new Error('Cliente não encontrado.');
       }
 
-      const currentCredits = clientData['credits'] || 0;
-      await updateDoc(clientDoc, { credits: currentCredits + creditsToAdd });
+      const currentRemainingCredits = clientData['remainingCredits'] || 0;
+
+      await updateDoc(clientDoc, {
+        remainingCredits: currentRemainingCredits + creditsToAdd,
+      });
 
       // Atualiza a tabela localmente
       this.dataSource.data = this.dataSource.data.map((order) =>
@@ -279,7 +275,7 @@ export class CreditOrdersComponent implements OnInit {
       );
 
       this.snackBar.open(
-        'Pedido aprovado com sucesso e créditos atualizados!',
+        'Pedido aprovado com sucesso e créditos adicionados aos remanescentes!',
         'Fechar',
         { duration: 3000 }
       );

@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
@@ -53,7 +53,7 @@ export interface UserGroup {
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent implements OnInit, AfterViewInit {
   // Tabela de usuários
   displayedUserColumns: string[] = [
     'name',
@@ -79,10 +79,11 @@ export class UsersComponent implements OnInit {
   groupDataSource = new MatTableDataSource<UserGroup>([]);
 
   @ViewChild('userPaginator') userPaginator!: MatPaginator;
-  @ViewChild('userSort') userSort!: MatSort;
 
   @ViewChild('groupPaginator') groupPaginator!: MatPaginator;
-  @ViewChild('groupSort') groupSort!: MatSort;
+
+  @ViewChild('userSort', { static: false }) userSort!: MatSort;
+  @ViewChild('groupSort', { static: false }) groupSort!: MatSort;
 
   constructor(
     private firestore: Firestore,
@@ -93,6 +94,13 @@ export class UsersComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadData();
+  }
+
+  ngAfterViewInit(): void {
+    console.log('userSort:', this.userSort);
+    console.log('userPaginator:', this.userPaginator);
+    this.userDataSource.sort = this.userSort;
+    this.userDataSource.paginator = this.userPaginator;
   }
 
   async loadData(): Promise<void> {
@@ -215,11 +223,12 @@ export class UsersComponent implements OnInit {
         })
         .sort((a, b) => a.name.localeCompare(b.name));
 
-
       // Atualizar dataSource
       this.userDataSource.data = users;
-      this.userDataSource.paginator = this.userPaginator;
-      this.userDataSource.sort = this.userSort;
+      setTimeout(() => {
+        this.userDataSource.sort = this.userSort;
+        this.userDataSource.paginator = this.userPaginator;
+      });
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
       this.snackBar.open('Erro ao carregar usuários.', 'Fechar', {
@@ -233,7 +242,6 @@ export class UsersComponent implements OnInit {
     try {
       const userRole = await this.authService.getCurrentUserRole();
       const clientId = await this.authService.getCurrentClientId();
-
 
       const groupsCollection = collection(this.firestore, 'userGroups');
       let groupsSnapshot;
@@ -279,8 +287,10 @@ export class UsersComponent implements OnInit {
         .sort((a, b) => a.name.localeCompare(b.name));
 
       this.groupDataSource.data = groups;
-      this.groupDataSource.paginator = this.groupPaginator;
-      this.groupDataSource.sort = this.groupSort;
+      setTimeout(() => {
+        this.groupDataSource.sort = this.groupSort;
+        this.groupDataSource.paginator = this.groupPaginator;
+      });
 
       return groups;
     } catch (error) {

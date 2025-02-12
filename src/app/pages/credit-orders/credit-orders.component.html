@@ -6,7 +6,25 @@
     <mat-card-content>
       <!-- Filtros -->
       <div class="row mb-4 align-items-center">
-        <div class="col-md-4 mb-4">
+        <div class="col-md-6 mb-4">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Cliente</mat-label>
+            <mat-select
+              [(ngModel)]="selectedClient"
+              (selectionChange)="applyFilter()"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option
+                *ngFor="let client of clientsList"
+                [value]="client.id"
+              >
+                {{ client.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- <div class="col-md-4 mb-4">
           <mat-form-field appearance="outline" class="w-100">
             <mat-label>Data Início</mat-label>
             <input
@@ -39,8 +57,8 @@
             ></mat-datepicker-toggle>
             <mat-datepicker #endDatePicker></mat-datepicker>
           </mat-form-field>
-        </div>
-        <div class="col-md-4 mb-4">
+        </div> -->
+        <div class="col-md-6 mb-4">
           <mat-form-field appearance="outline" class="w-100">
             <mat-label>Status</mat-label>
             <mat-select

@@ -3,30 +3,6 @@
 </div>
 <div mat-dialog-content style="padding-top: 5px">
   <form [formGroup]="groupForm" (ngSubmit)="saveGroup()">
-    <!-- Nome do Grupo -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>Nome do Grupo</mat-label>
-      <input
-        matInput
-        formControlName="name"
-        placeholder="Digite o nome do grupo"
-      />
-      <mat-error *ngIf="groupForm.get('name')?.hasError('required')">
-        O nome do grupo é obrigatório.
-      </mat-error>
-    </mat-form-field>
-
-    <!-- Descrição do Grupo -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>Descrição</mat-label>
-      <textarea
-        matInput
-        formControlName="description"
-        rows="3"
-        placeholder="Descreva o grupo"
-      ></textarea>
-    </mat-form-field>
-
     <!-- Cliente -->
     <mat-form-field appearance="outline" class="w-100 mb-3">
       <mat-label>Cliente</mat-label>
@@ -43,15 +19,18 @@
       </mat-error>
     </mat-form-field>
 
-    <!-- Projetos -->
-    <!-- <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>Projetos</mat-label>
-      <mat-select formControlName="projectIds" multiple>
-        <mat-option *ngFor="let project of projects" [value]="project.id">
-          {{ project.name }}
-        </mat-option>
-      </mat-select>
-    </mat-form-field> -->
+    <!-- Nome do Grupo -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Nome do Grupo</mat-label>
+      <input
+        matInput
+        formControlName="name"
+        placeholder="Digite o nome do grupo"
+      />
+      <mat-error *ngIf="groupForm.get('name')?.hasError('required')">
+        O nome do grupo é obrigatório.
+      </mat-error>
+    </mat-form-field>
 
     <!-- Usuários -->
     <mat-form-field appearance="outline" class="w-100 mb-3">
@@ -66,6 +45,27 @@
         </mat-option>
       </mat-select>
     </mat-form-field>
+
+    <!-- Descrição do Grupo -->
+    <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Descrição</mat-label>
+      <textarea
+        matInput
+        formControlName="description"
+        rows="3"
+        placeholder="Descreva o grupo"
+      ></textarea>
+    </mat-form-field>
+
+    <!-- Projetos -->
+    <!-- <mat-form-field appearance="outline" class="w-100 mb-3">
+      <mat-label>Projetos</mat-label>
+      <mat-select formControlName="projectIds" multiple>
+        <mat-option *ngFor="let project of projects" [value]="project.id">
+          {{ project.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field> -->
   </form>
 </div>
 <div mat-dialog-actions align="end">

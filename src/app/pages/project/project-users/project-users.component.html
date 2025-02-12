@@ -1,4 +1,86 @@
 <div class="container my-4">
+  <div class="row mb-3">
+    <div class="col-12">
+      <button mat-button (click)="goBack()" class="mb-3">
+        <mat-icon>arrow_back</mat-icon> Voltar
+      </button>
+    </div>
+  </div>
+
+  <mat-card>
+    <mat-card-title class="p-3" style="padding: 20px"
+      >Usuários do Projeto</mat-card-title
+    >
+    <mat-card-content>
+      <!-- Campo de Busca -->
+      <mat-form-field appearance="outline" class="w-100 mb-3">
+        <mat-label>Buscar</mat-label>
+        <input
+          matInput
+          (keyup)="applyFilter($event)"
+          placeholder="Busque por nome, email ou tipo de usuário"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          *ngIf="searchValue"
+          (click)="searchValue = ''; applyFilter($event)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <div class="table-responsive">
+        <table
+          mat-table
+          [dataSource]="dataSource"
+          matSort
+          class="mat-elevation-z8 w-100"
+          *ngIf="dataSource.data.length > 0"
+        >
+          <!-- Nome -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+            <td mat-cell *matCellDef="let user">{{ user.name }}</td>
+          </ng-container>
+
+          <!-- E-mail -->
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>E-mail</th>
+            <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+          </ng-container>
+
+          <!-- Tipo de Usuário -->
+          <ng-container matColumnDef="role">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Tipo</th>
+            <td mat-cell *matCellDef="let user">{{ user.role }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let user; columns: displayedColumns"></tr>
+        </table>
+      </div>
+
+      <!-- Exibir mensagem quando não houver usuários -->
+      <div *ngIf="dataSource.data.length === 0" class="text-center p-4">
+        <mat-icon class="mb-2" style="font-size: 48px; color: gray"
+          >group_off</mat-icon
+        >
+        <p class="text-muted">Este projeto não possui usuários</p>
+      </div>
+
+      <mat-paginator
+        *ngIf="dataSource.data.length > 0"
+        [pageSize]="5"
+        [pageSizeOptions]="[5, 10, 20]"
+        showFirstLastButtons
+      >
+      </mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- <div class="container my-4">
   <div class="row" style="margin-bottom: 10px">
     <div class="col-12">
       <button mat-button (click)="goBack()" class="mb-3">
@@ -13,7 +95,6 @@
       >Grupos e Usuários do Projeto</mat-card-title
     >
     <mat-card-content>
-      <!-- Campo de Busca -->
       <mat-form-field appearance="outline" class="w-100 mb-3">
         <mat-label>Buscar</mat-label>
         <input
@@ -38,19 +119,16 @@
           matSort
           class="mat-elevation-z8 w-100"
         >
-          <!-- Nome do Grupo -->
           <ng-container matColumnDef="groupName">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Grupo</th>
             <td mat-cell *matCellDef="let group">{{ group.clientName }}</td>
           </ng-container>
 
-          <!-- Cliente -->
           <ng-container matColumnDef="clientName">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
             <td mat-cell *matCellDef="let group">{{ group.name }}</td>
           </ng-container>
 
-          <!-- Projetos -->
           <ng-container matColumnDef="projectNames">
             <th mat-header-cell *matHeaderCellDef>Projetos</th>
             <td mat-cell *matCellDef="let group">
@@ -66,7 +144,6 @@
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Ações</th>
             <td mat-cell *matCellDef="let group">
-              <!-- Botão para abrir o modal -->
               <button
                 mat-icon-button
                 color="primary"
@@ -78,7 +155,6 @@
             </td>
           </ng-container>
 
-          <!-- Descrição -->
           <ng-container matColumnDef="description">
             <th mat-header-cell *matHeaderCellDef>Descrição</th>
             <td mat-cell *matCellDef="let group">{{ group.description }}</td>
@@ -89,7 +165,6 @@
         </table>
       </div>
 
-      <!-- Paginação -->
       <mat-paginator
         [pageSize]="5"
         [pageSizeOptions]="[5, 10, 20]"
@@ -98,4 +173,4 @@
       </mat-paginator>
     </mat-card-content>
   </mat-card>
-</div>
+</div> -->
