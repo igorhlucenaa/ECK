@@ -1,52 +1,81 @@
-import * as functions from 'firebase-functions';
+import { onCall } from 'firebase-functions/v2/https';
+import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
+import { defineString } from 'firebase-functions/params';
 
-// Definição do tipo para os dados recebidos pela função
-interface EmailRequest {
-  email: string; // Email do destinatário
-  subject: string; // Assunto do email
-  body: string; // Corpo do email
-}
+admin.initializeApp();
 
-// Configurar o transporte para envio de emails
+// Método híbrido para definir variáveis de ambiente corretamente
+const EMAIL_USER =
+  defineString('EMAIL_USER').value() ||
+  process.env.EMAIL_USER ||
+  'igorhlucenaa@gmail.com';
+
+const EMAIL_PASS =
+  defineString('EMAIL_PASS').value() ||
+  process.env.EMAIL_PASS ||
+  'nkik bvji wshf xzpg';
+
+// Configuração correta do transporte SMTP
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Usando Gmail como exemplo
+  host: 'smtp.gmail.com', // Servidor SMTP do Gmail
+  port: 587, // Porta correta para STARTTLS
+  secure: false, // false para STARTTLS, true para SSL
   auth: {
-    user: functions.config().email.user, // Configurado pelo Firebase CLI
-    pass: functions.config().email.pass,
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
   },
 });
 
-// Função para enviar emails
-export const sendEmail = functions.https.onCall(
-  async (request: functions.https.CallableRequest<EmailRequest>, context) => {
-    const { email, subject, body } = request.data;
+// Função para buscar o template de e-mail correto no Firestore
+const getTemplate = async (clientId: string, emailType: string) => {
+  const templateRef = admin.firestore().collection('mailTemplates');
+  const snapshot = await templateRef
+    .where('clientId', '==', clientId)
+    .where('emailType', '==', emailType)
+    .limit(1)
+    .get();
 
-    // Validação dos campos obrigatórios
-    if (!email || !subject || !body) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Os campos email, subject e body são obrigatórios.'
-      );
+  if (snapshot.empty) {
+    throw new Error('Template de e-mail não encontrado.');
+  }
+
+  return snapshot.docs[0].data();
+};
+
+// Função de envio de e-mail utilizando Firebase Functions v2
+export const sendEmail = onCall(async (request) => {
+  const { email, clientId, emailType } = request.data;
+
+  if (!email || !clientId || !emailType) {
+    throw new Error('Campos obrigatórios faltando.');
+  }
+
+  try {
+    // Obtendo o template correto
+    const template = await getTemplate(clientId, emailType);
+
+    // Converter o content de string JSON para objeto, se necessário
+    let emailHtml;
+    try {
+      const parsedContent = JSON.parse(template.content);
+      emailHtml = parsedContent.body.rows[0].columns[0].contents[0].values.text;
+    } catch (err) {
+      throw new Error('Erro ao processar o template de e-mail.');
     }
 
     const mailOptions = {
-      from: 'ECK Avaliação 360 <seu-email@gmail.com>', // Nome e email remetente
-      to: email, // Destinatário
-      subject: subject, // Assunto
-      text: body, // Corpo do email
+      from: `ECK Avaliação 360 <${EMAIL_USER}>`,
+      to: email,
+      subject: template.subject,
+      html: emailHtml,
     };
 
-    try {
-      await transporter.sendMail(mailOptions);
-      console.log(`Email enviado para: ${email}`);
-      return { success: true };
-    } catch (error) {
-      console.error('Erro ao enviar email:', error);
-      throw new functions.https.HttpsError(
-        'internal',
-        'Erro ao enviar email. Por favor, tente novamente mais tarde.'
-      );
-    }
+    await transporter.sendMail(mailOptions);
+    console.log(`Email enviado para: ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao enviar email:', error);
+    throw new Error('Erro ao enviar email.');
   }
-);
+});
