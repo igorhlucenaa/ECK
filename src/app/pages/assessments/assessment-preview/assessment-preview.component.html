@@ -11,70 +11,8 @@
     </p>
   </div>
 
-  <!-- Perguntas Renderizadas como Formulário -->
-  <form>
-    <div *ngFor="let question of data.questions; let i = index" class="mb-3">
-      <p>
-        <strong>{{ i + 1 }}. {{ question.label }}</strong>
-      </p>
-
-      <!-- Campo de Texto -->
-      <ng-container *ngIf="question.type === 'input'">
-        <mat-form-field class="w-100" appearance="outline">
-          <input matInput placeholder="Digite sua resposta" />
-        </mat-form-field>
-      </ng-container>
-
-      <!-- Área de Texto -->
-      <ng-container *ngIf="question.type === 'textarea'">
-        <mat-form-field class="w-100" appearance="outline">
-          <textarea matInput placeholder="Digite sua resposta"></textarea>
-        </mat-form-field>
-      </ng-container>
-
-      <!-- Múltipla Escolha -->
-      <ng-container *ngIf="question.type === 'select'">
-        <mat-form-field class="w-100" appearance="outline">
-          <mat-label>Selecione uma opção</mat-label>
-          <mat-select>
-            <mat-option
-              *ngFor="let option of question.options"
-              [value]="option"
-            >
-              {{ option }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-      </ng-container>
-
-      <!-- Checkbox -->
-      <ng-container *ngIf="question.type === 'checkbox'">
-        <div
-          *ngFor="let option of question.options"
-          class="d-flex align-items-center mb-2"
-        >
-          <mat-checkbox>{{ option }}</mat-checkbox>
-        </div>
-      </ng-container>
-
-      <!-- Data -->
-      <ng-container *ngIf="question.type === 'datepicker'">
-        <mat-form-field class="w-100" appearance="outline">
-          <mat-label>Selecione uma data</mat-label>
-          <input
-            matInput
-            [matDatepicker]="picker"
-            placeholder="Escolha uma data"
-          />
-          <mat-datepicker-toggle
-            matSuffix
-            [for]="picker"
-          ></mat-datepicker-toggle>
-          <mat-datepicker #picker></mat-datepicker>
-        </mat-form-field>
-      </ng-container>
-    </div>
-  </form>
+  <!-- Perguntas Renderizadas usando SurveyJS -->
+  <survey [model]="surveyModel"></survey>
 
   <!-- Botão de Fechar -->
   <div class="text-end">
