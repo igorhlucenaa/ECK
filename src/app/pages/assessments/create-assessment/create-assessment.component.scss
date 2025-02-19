@@ -1,5 +1,4 @@
 .container {
-  max-width: 900px;
   margin: auto;
   padding: 20px;
 }
@@ -74,4 +73,40 @@ mat-card-title {
 
 .btn-forms {
   margin-bottom: 10px;
+}
+
+mat-card-title {
+  margin: 15px;
+}
+
+#surveyCreator {
+  height: 100vh;
+  width: 100vw;
+}
+
+.svc-creator__banner .ng-star-inserted {
+  display: none !important;
+}
+
+.svc-creator__non-commercial-text {
+  display: none !important;
+}
+
+.svc-creator__banner {
+  width: 100%;
+  line-height: calc(4 * (var(--sjs-base-unit, var(--base-unit, 8px))));
+  background-color: var(
+    --ctr-page-banner-background-color,
+    var(--sjs-secondary-backcolor, var(--secondary, #ff9814))
+  );
+  text-align: center;
+  display: none;
+}
+
+::ng-deep .svc-creator__banner .ng-star-inserted {
+  display: none !important;
+}
+
+::ng-deep .svc-creator__non-commercial-text {
+  display: none !important;
 }
