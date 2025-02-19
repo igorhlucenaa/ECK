@@ -20,12 +20,16 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 
 import { SurveyCreatorModel } from 'survey-creator-core';
-// import { SurveyComponent } from 'survey-angular-ui';
-// survey-creator.component.ts
-// import 'survey-core/defaultV2.css';
-// import 'survey-creator-core/survey-creator-core.css';
-// import { SurveyCreatorModule } from 'survey-creator-angular';
-import { SurveyCreatorModule } from 'survey-creator-angular'; // <- Importa o módulo correto
+import { SurveyCreatorModule } from 'survey-creator-angular';
+
+import 'survey-core/survey.i18n.js'; // Para localização da pesquisa em si
+import 'survey-creator-core/survey-creator-core.i18n.js'; // Para a UI do Survey Creator
+import { editorLocalization } from 'survey-creator-core';
+
+// Sobrescrevendo traduções individuais em uma localização existente (opcional)
+const ptBRLocale = editorLocalization.getLocale('pt');
+// Exemplo de sobrescrita:
+ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
 
 @Component({
   selector: 'app-create-assessment',
@@ -36,7 +40,7 @@ import { SurveyCreatorModule } from 'survey-creator-angular'; // <- Importa o m�
     CommonModule,
     MaterialModule,
     ReactiveFormsModule,
-    SurveyCreatorModule
+    SurveyCreatorModule,
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
@@ -59,19 +63,19 @@ export class CreateAssessmentComponent implements OnInit {
       name: ['', Validators.required],
       description: ['', Validators.required],
     });
-
-    // Inicializa o SurveyJS Form Builder
-    
   }
 
   async ngOnInit(): Promise<void> {
-    this.creatorModel = await new SurveyCreatorModel({
+    // Inicialização do SurveyCreatorModel antes de configurar a localização
+    this.creatorModel = new SurveyCreatorModel({
       showLogicTab: true, // Exibe a aba de lógica condicional
       isAutoSave: true, // Desativa salvamento automático
       showJSONEditorTab: true, // Permite edição JSON
     });
 
-    this.creatorModel.locale = "pt-BR";
+    // Aplica a localização após a inicialização do modelo
+    this.creatorModel.locale = 'pt';
+    this.creatorModel.survey.locale = 'pt';
 
     const currentUser = await this.authService.getCurrentUser();
     this.userRole = currentUser?.role || null;
