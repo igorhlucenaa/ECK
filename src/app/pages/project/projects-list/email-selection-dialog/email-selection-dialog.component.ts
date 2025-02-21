@@ -11,16 +11,20 @@ import {
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { MatTableDataSource } from '@angular/material/table';
+import { EmailService } from './email.service';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-email-selection-dialog',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, FormsModule],
   templateUrl: './email-selection-dialog.component.html',
   styleUrls: ['./email-selection-dialog.component.scss'],
 })
 export class EmailSelectionDialogComponent implements OnInit {
-  emailType: 'convite' | 'lembrete' | null = null;
+  emailType: any;
+  selectedAssessmentId: string | any = null; // Armazenar o ID da avaliação selecionada
+  assessments: any[] = []; // Array para armazenar as avaliações disponíveis
   dataSource = new MatTableDataSource<any>([]);
   selectedParticipants = new Set<string>();
   isLoading = signal(false);
@@ -30,13 +34,18 @@ export class EmailSelectionDialogComponent implements OnInit {
 
   constructor(
     private dialogRef: MatDialogRef<EmailSelectionDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { projectId: string },
+    @Inject(MAT_DIALOG_DATA)
+    public data: { projectId: string; templateId: string; emailType: string },
     private firestore: Firestore,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private emailService: EmailService // Injetando o EmailService
   ) {}
 
   ngOnInit(): void {
+    this.emailType = this.data.emailType;
     this.loadParticipants();
+    this.loadAssessments(); // Carregar as avaliações disponíveis
+    console.log('data =====> ', this.data);
   }
 
   async loadParticipants() {
@@ -56,6 +65,16 @@ export class EmailSelectionDialogComponent implements OnInit {
 
     this.dataSource.data = participants;
     this.isLoading.set(false);
+  }
+
+  async loadAssessments() {
+    const assessmentsCollection = collection(this.firestore, 'assessments');
+    const snapshot = await getDocs(assessmentsCollection);
+
+    this.assessments = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      name: doc.data()['name'], // Supondo que cada avaliação tenha um campo "name"
+    }));
   }
 
   applyFilter(event: Event) {
@@ -92,10 +111,45 @@ export class EmailSelectionDialogComponent implements OnInit {
       return;
     }
 
-    // Simulação de envio de e-mails
-    this.snackBar.open('E-mails enviados com sucesso!', 'Fechar', {
-      duration: 3000,
+    if (!this.selectedAssessmentId) {
+      this.snackBar.open('Selecione uma avaliação.', 'Fechar', {
+        duration: 3000,
+      });
+      return;
+    }
+
+    // Enviar e-mails para os participantes selecionados
+    this.selectedParticipants.forEach((email) => {
+      const participant = this.dataSource.data.find((p) => p.email === email);
+      if (participant) {
+        // Enviar e-mail usando o serviço
+        this.emailService
+          .sendEmail(
+            participant.email,
+            this.data.templateId,
+            participant.id,
+            this.selectedAssessmentId // Passando o ID da avaliação selecionada
+          )
+          .subscribe({
+            next: () => {
+              this.snackBar.open(
+                'E-mail enviado para ' + participant.name,
+                'Fechar',
+                {
+                  duration: 3000,
+                }
+              );
+            },
+            error: (err) => {
+              console.error('Erro ao enviar e-mail:', err);
+              this.snackBar.open('Erro ao enviar e-mail.', 'Fechar', {
+                duration: 3000,
+              });
+            },
+          });
+      }
     });
+
     this.dialogRef.close();
   }
 

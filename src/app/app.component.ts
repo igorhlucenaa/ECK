@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { Auth, User } from '@angular/fire/auth';
 import { AuthService } from './services/apps/authentication/auth.service';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
@@ -17,22 +18,27 @@ export class AppComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // this.registerUser()
-    // Verifica o estado de autenticação ao inicializar o app
+    // Verifica o estado de autenticação apenas na inicialização
     this.auth.onAuthStateChanged(async (user: User | null) => {
       if (user) {
         try {
-          // Aplica o tema do usuário
           await this.authService.applyUserTheme();
-
-          // Obtém o papel do usuário
           const role = await this.authService.getCurrentUserRole();
+          const currentUrl = this.router.url.split('?')[0];
 
-          // Redireciona com base no papel do usuário
-          if (role === 'admin_master') {
-            this.router.navigate(['/dashboard']);
-          } else if (role === 'admin_client') {
-            this.router.navigate(['/dashboard']); // Redireciona para a página de usuários
+          // Define páginas públicas que não requerem redirecionamento
+          const publicPages = ['/', '/assessment'];
+          const isPublicPage = publicPages.includes(currentUrl);
+
+          if (isPublicPage) {
+            return; // Não redireciona em páginas públicas
+          }
+
+          // Redireciona para dashboard apenas se estiver em uma rota inicial ou inválida
+          if (role === 'admin_master' || role === 'admin_client') {
+            if (currentUrl === '/' || currentUrl === '') {
+              this.router.navigate(['/dashboard']);
+            }
           } else {
             console.warn(
               'Papel do usuário não reconhecido. Redirecionando para login.'
@@ -40,35 +46,28 @@ export class AppComponent implements OnInit {
             this.router.navigate(['/authentication/login']);
           }
         } catch (error) {
-          console.error(
-            'Erro ao redirecionar com base no papel do usuário:',
-            error
-          );
+          console.error('Erro ao processar autenticação:', error);
           this.router.navigate(['/authentication/login']);
         }
       } else {
-        // Se o usuário não estiver autenticado, redirecione para a página de login
-        this.router.navigate(['/authentication/login']);
+        // Se não houver usuário autenticado, redireciona para login, exceto em páginas públicas
+        const currentUrl = this.router.url.split('?')[0];
+        const publicPages = ['/', '/assessment'];
+        if (!publicPages.includes(currentUrl)) {
+          this.router.navigate(['/authentication/login']);
+        }
       }
     });
-  }
 
-  async registerUser() {
-    const credential = await navigator.credentials.create({
-      publicKey: {
-        challenge: new Uint8Array(32), // Um desafio aleatório do servidor
-        rp: { name: 'Minha Empresa' }, // Identidade do servidor
-        user: {
-          id: new Uint8Array(16), // ID único do usuário
-          name: 'usuario@exemplo.com',
-          displayName: 'Usuário Exemplo',
-        },
-        pubKeyCredParams: [{ alg: -7, type: 'public-key' }], // Algoritmo ECDSA
-        authenticatorSelection: { authenticatorAttachment: 'platform' },
-        timeout: 60000, // Tempo limite para resposta
-        attestation: 'direct',
-      },
-    });
-    console.log('Chave registrada:', credential);
+    // Opcional: log de navegação para debug
+    this.router.events
+      .pipe(
+        filter(
+          (event): event is NavigationEnd => event instanceof NavigationEnd
+        )
+      )
+      .subscribe((event) => {
+        console.log('Current URL:', event.urlAfterRedirects);
+      });
   }
 }

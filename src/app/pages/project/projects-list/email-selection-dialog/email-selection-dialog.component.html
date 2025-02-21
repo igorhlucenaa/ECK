@@ -31,6 +31,24 @@
         </button>
       </mat-form-field>
     </div>
+
+    <div class="col-12" *ngIf="emailType === 'convite'">
+      <mat-form-field appearance="outline">
+        <mat-label>Selecione a avaliação</mat-label>
+        <mat-select [(ngModel)]="selectedAssessmentId">
+          <mat-option
+            *ngFor="let assessment of assessments"
+            [value]="assessment.id"
+          >
+            {{ assessment.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <!-- Adicionando o botão para enviar e-mails -->
+    <button mat-raised-button color="primary" (click)="sendEmails()">
+      Enviar E-mails
+    </button>
   </div>
 
   <!-- Tabela com barra de rolagem -->

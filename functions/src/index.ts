@@ -2,6 +2,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import { defineString } from 'firebase-functions/params';
+const cors = require('cors')({ origin: true });
 
 admin.initializeApp();
 
@@ -108,117 +109,125 @@ function renderTemplateToHtml(
 }
 
 // Função para enviar o e-mail
-export const sendEmail = onRequest(async (req, res) => {
-  console.log('Dados recebidos:', req.body); // Log para verificar os dados recebidos
-  const { email, templateId, participantId, assessmentId } = req.body;
+export const sendEmail = onRequest((req, res) => {
+  cors(req, res, async () => {
+    // Torne a função de callback assíncrona
+    console.log('Dados recebidos:', req.body); // Log para verificar os dados recebidos
+    const { email, templateId, participantId, assessmentId } = req.body;
 
-  // Verificar campos obrigatórios
-  if (!email || !templateId || !participantId || !assessmentId) {
-    res.status(400).send({
-      error:
-        'Campos obrigatórios faltando: email, templateId, participantId, assessmentId.',
-    });
-    return;
-  }
-
-  // Resolver os valores de email e senha em tempo de execução
-  const emailUser =
-    EMAIL_USER_PARAM.value() ||
-    process.env.EMAIL_USER ||
-    'igorhlucenaa@gmail.com';
-  const emailPass =
-    EMAIL_PASS_PARAM.value() || process.env.EMAIL_PASS || 'nkik bvji wshf xzpg';
-
-  // Criar o transporter em tempo de execução
-  const transporter = getTransporter(emailUser, emailPass);
-
-  try {
-    // Obtendo o template de e-mail pelo ID
-    const template = await getTemplateById(templateId);
-
-    // Verificar se o template foi encontrado
-    if (!template) {
-      res.status(404).send({ error: 'Template de e-mail não encontrado.' });
-      return;
-    }
-
-    // Gerar o link de avaliação
-    const assessmentLink = `https://seu-dominio.com/assessment?token=${
-      Math.random().toString(36).substr(2) + Date.now().toString(36)
-    }&participant=${participantId}&assessment=${assessmentId}`;
-
-    // Parsear o template e renderizar o HTML
-    let emailHtml;
-    try {
-      const parsedContent = JSON.parse(template.content);
-      console.log('Conteúdo em JSON:', parsedContent);
-
-      // Renderizar o template com substituições
-      emailHtml = renderTemplateToHtml(parsedContent, {
-        LINK_AVALIACAO: assessmentLink,
+    // Verificar campos obrigatórios
+    if (!email || !templateId || !participantId || !assessmentId) {
+      res.status(400).send({
+        error:
+          'Campos obrigatórios faltando: email, templateId, participantId, assessmentId.',
       });
-
-      console.log('HTML gerado:', emailHtml);
-    } catch (err) {
-      res
-        .status(500)
-        .send({ error: 'Erro ao processar o template de e-mail.' });
       return;
     }
 
-    // Criar o objeto do link de avaliação
-    const assessmentLinkObj = {
-      assessmentId,
-      token: Math.random().toString(36).substr(2) + Date.now().toString(36),
-      status: 'sent', // Status inicial
-    };
+    // Resolver os valores de email e senha em tempo de execução
+    const emailUser =
+      EMAIL_USER_PARAM.value() ||
+      process.env.EMAIL_USER ||
+      'igorhlucenaa@gmail.com';
+    const emailPass =
+      EMAIL_PASS_PARAM.value() ||
+      process.env.EMAIL_PASS ||
+      'nkik bvji wshf xzpg';
 
-    // Salvar o link e status no Firestore (em participants)
-    const participantRef = admin
-      .firestore()
-      .collection('participants')
-      .doc(participantId);
-    await participantRef.update({
-      assessmentLinks: admin.firestore.FieldValue.arrayUnion(assessmentLinkObj),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    // Criar o transporter em tempo de execução
+    const transporter = getTransporter(emailUser, emailPass);
 
-    // Configurar as opções do e-mail
-    const mailOptions = {
-      from: `ECK Avaliação 360 <${emailUser}>`, // Usar emailUser diretamente
-      to: email,
-      subject: template.subject,
-      html: emailHtml,
-    };
+    try {
+      // Obtendo o template de e-mail pelo ID
+      const template = await getTemplateById(templateId);
 
-    // Enviar o e-mail
-    await transporter.sendMail(mailOptions);
-    console.log(`E-mail enviado para: ${email}`);
+      // Verificar se o template foi encontrado
+      if (!template) {
+        res.status(404).send({ error: 'Template de e-mail não encontrado.' });
+        return;
+      }
 
-    // Atualizar status de entrega após envio bem-sucedido
-    await participantRef.update({
-      deliveryStatus: 'sent',
-      lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      // Gerar o link de avaliação
+      const assessmentLink = `https://eck360.web.app/assessment?token=${
+        Math.random().toString(36).substr(2) + Date.now().toString(36)
+      }&participant=${participantId}&assessment=${assessmentId}`;
 
-    // Retornar resposta de sucesso
-    res.status(200).send({ success: true });
-  } catch (error: any) {
-    console.error('Erro ao enviar e-mail:', error);
+      // Parsear o template e renderizar o HTML
+      let emailHtml;
+      try {
+        const parsedContent = JSON.parse(template.content);
+        console.log('Conteúdo em JSON:', parsedContent);
 
-    // Atualizar status para 'failed' em caso de erro
-    if (participantId) {
-      await admin
+        // Renderizar o template com substituições
+        emailHtml = renderTemplateToHtml(parsedContent, {
+          LINK_AVALIACAO: assessmentLink,
+        });
+
+        console.log('HTML gerado:', emailHtml);
+      } catch (err) {
+        res
+          .status(500)
+          .send({ error: 'Erro ao processar o template de e-mail.' });
+        return;
+      }
+
+      // Criar o objeto do link de avaliação
+      const assessmentLinkObj = {
+        assessmentId,
+        token: Math.random().toString(36).substr(2) + Date.now().toString(36),
+        status: 'sent', // Status inicial
+      };
+
+      // Salvar o link e status no Firestore (em participants)
+      const participantRef = admin
         .firestore()
         .collection('participants')
-        .doc(participantId)
-        .update({
-          deliveryStatus: 'failed',
-          errorMessage: error.message,
-        });
-    }
+        .doc(participantId);
+      await participantRef.update({
+        assessmentLinks:
+          admin.firestore.FieldValue.arrayUnion(assessmentLinkObj),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
-    // Retornar erro
-    res.status(500).send({ error: `Erro ao enviar e-mail: ${error.message}` });
-  }
+      // Configurar as opções do e-mail
+      const mailOptions = {
+        from: `ECK Avaliação 360 <${emailUser}>`, // Usar emailUser diretamente
+        to: email,
+        subject: template.subject,
+        html: emailHtml,
+      };
+
+      // Enviar o e-mail
+      await transporter.sendMail(mailOptions);
+      console.log(`E-mail enviado para: ${email}`);
+
+      // Atualizar status de entrega após envio bem-sucedido
+      await participantRef.update({
+        deliveryStatus: 'sent',
+        lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Retornar resposta de sucesso
+      res.status(200).send({ success: true });
+    } catch (error: any) {
+      console.error('Erro ao enviar e-mail:', error);
+
+      // Atualizar status para 'failed' em caso de erro
+      if (participantId) {
+        await admin
+          .firestore()
+          .collection('participants')
+          .doc(participantId)
+          .update({
+            deliveryStatus: 'failed',
+            errorMessage: error.message,
+          });
+      }
+
+      // Retornar erro
+      res
+        .status(500)
+        .send({ error: `Erro ao enviar e-mail: ${error.message}` });
+    }
+  });
 });

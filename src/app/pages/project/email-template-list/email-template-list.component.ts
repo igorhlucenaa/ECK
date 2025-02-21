@@ -183,10 +183,14 @@ export class EmailTemplateListComponent implements OnInit {
     this.applyFilter();
   }
 
-  openEmailSelectionModal(projectId: string): void {
+  openEmailSelectionModal(
+    projectId: string,
+    templateId: string,
+    emailType: string
+  ): void {
     this.dialog.open(EmailSelectionDialogComponent, {
       width: '900px',
-      data: { projectId },
+      data: { projectId, templateId, emailType }, // Adiciona o templateId aqui
     });
   }
 
@@ -257,6 +261,7 @@ export class EmailTemplateListComponent implements OnInit {
         }
 
         await deleteDoc(templateDocRef);
+        console.log(this.dataSource.data);
         this.dataSource.data = this.dataSource.data.filter(
           (template) => template.id !== templateId
         );

@@ -38,6 +38,7 @@
             </mat-select>
           </mat-form-field>
         </div>
+        
 
         <!-- Filtro de Busca -->
         <div class="col-12">
@@ -97,8 +98,10 @@
             <button
               mat-icon-button
               color="primary"
-              matTooltip="Templates de E-mail"
-              (click)="openEmailSelectionModal(template.projectId)"
+              matTooltip="Enviar E-mail"
+              (click)="
+                openEmailSelectionModal(template.projectId, template.id, template.emailType)
+              "
             >
               <mat-icon>mail</mat-icon>
             </button>
