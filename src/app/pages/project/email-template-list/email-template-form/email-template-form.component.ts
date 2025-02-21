@@ -77,26 +77,24 @@ export class EmailTemplateFormComponent implements OnInit {
     this.userRole = user.role;
     this.userClientId = user.clientId;
 
-    this.isDefaultTemplate = this.route.snapshot.url
-      .map((segment) => segment.path)
-      .includes('default-template');
-
     this.templateId = this.route.snapshot.paramMap.get('templateId');
     this.isEditMode = !!this.templateId;
 
     if (this.userRole === 'admin_master') {
-      await this.loadClients(); // 🔹 Admin Master precisa carregar a lista de clientes
+      await this.loadClients();
     }
 
     if (this.isEditMode) {
+      // Carregar o template salvo
       this.loadTemplate().then((content) => {
         try {
           const design = content
             ? JSON.parse(content)
-            : this.getDefaultTemplate();
+            : this.getDefaultTemplateWithLink(
+                this.form.get('emailType')?.value
+              );
           console.log('Design carregado:', design);
 
-          // Esperar o editor estar pronto antes de carregar o template
           const interval = setInterval(() => {
             if (this.editorReady) {
               this.emailEditor.editor.loadDesign(design);
@@ -105,14 +103,82 @@ export class EmailTemplateFormComponent implements OnInit {
           }, 100);
         } catch (error) {
           console.error('Erro ao carregar template salvo:', error);
-          this.emailEditor.editor.loadDesign(this.getDefaultTemplate());
+          this.emailEditor.editor.loadDesign(
+            this.getDefaultTemplateWithLink(this.form.get('emailType')?.value)
+          );
         }
       });
+    } else {
+      // 🔹 Garante que emailType esteja definido antes de usá-lo
+      const emailType = this.form.get('emailType')?.value;
+      if (emailType === 'convite' || emailType === 'lembrete') {
+        this.emailEditor.editor.loadDesign(
+          this.getDefaultTemplateWithLink(emailType)
+        );
+      }
     }
+    this.form.get('emailType')?.valueChanges.subscribe((newValue) => {
+      if (newValue === 'convite' || newValue === 'lembrete') {
+        this.emailEditor.editor.loadDesign(
+          this.getDefaultTemplateWithLink(newValue)
+        );
+      }
+    });
+    // 🔹 Só adiciona o evento se o campo já estiver no formulário
+    // if (this.form.get('emailType')) {
+    //   this.form.get('emailType')!.valueChanges.subscribe((newValue) => {
+    //     if (newValue === 'convite' || newValue === 'lembrete') {
+    //       this.addLinkToEmailEditor();
+    //     } else {
+    //       this.removeLinkFromEmailEditor();
+    //     }
+    //   });
+    // }
+  }
 
-    if (this.userRole === 'admin_client') {
-      this.form.patchValue({ clientId: this.userClientId });
-    }
+  addLinkToEmailEditor(): void {
+    if (!this.emailEditor || !this.editorReady) return;
+
+    this.emailEditor.editor.exportHtml((data: any) => {
+      if (
+        !data ||
+        !data.design ||
+        !data.design.body ||
+        !Array.isArray(data.design.body.rows)
+      ) {
+        console.error(
+          'Erro: O design exportado não está no formato esperado',
+          data
+        );
+        return;
+      }
+
+      let design = data.design;
+
+      // Verifica se o link já está presente
+      const linkPlaceholder =
+        '<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>';
+      const linkExists = JSON.stringify(design).includes('[LINK_AVALIACAO]');
+
+      if (!linkExists) {
+        design.body.rows.push({
+          columns: [
+            {
+              contents: [
+                {
+                  type: 'text',
+                  values: {
+                    text: 'Acesse sua avaliação aqui: ' + linkPlaceholder,
+                  },
+                },
+              ],
+            },
+          ],
+        });
+
+        this.emailEditor.editor.loadDesign(design);
+      }
+    });
   }
 
   private async loadClients(): Promise<void> {
@@ -133,16 +199,98 @@ export class EmailTemplateFormComponent implements OnInit {
     console.log('Editor está pronto!');
     this.editorReady = true;
   }
+
   editorLoaded(): void {
-    console.log('Editor carregado:', this.emailEditor);
-    try {
-      if (!this.isEditMode) {
-        this.emailEditor.editor.loadDesign({}); // Design vazio
+    console.log('Editor carregado!');
+    this.editorReady = true;
+
+    // Carregar template correto dependendo do tipo de notificação
+    if (!this.isEditMode) {
+      const emailType = this.form.value.emailType;
+      if (emailType === 'convite' || emailType === 'lembrete') {
+        this.emailEditor.editor.loadDesign(
+          this.getDefaultTemplateWithLink(emailType)
+        );
       }
-    } catch (error) {
-      console.error('Erro ao carregar o design:', error);
     }
   }
+
+  private getDefaultTemplateWithLink(emailType: string): object {
+    let message = '';
+
+    if (emailType === 'convite') {
+      message = '<p>Aqui está o link da sua avaliação:</p>';
+    } else if (emailType === 'lembrete') {
+      message =
+        '<p>Este é um lembrete da sua avaliação. Não se esqueça de preenchê-la!</p>';
+    }
+
+    return {
+      counters: {
+        u_row: 1,
+        u_column: 1,
+        u_content_text: 1,
+      },
+      body: {
+        id: 'email-template',
+        rows: [
+          {
+            id: 'row-1',
+            cells: [1],
+            columns: [
+              {
+                id: 'col-1',
+                contents: [
+                  {
+                    id: 'text-1',
+                    type: 'text',
+                    values: {
+                      containerPadding: '10px',
+                      anchor: '',
+                      fontSize: '17px',
+                      textAlign: 'center',
+                      lineHeight: '140%',
+                      hideDesktop: false,
+                      text: `${message}<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>`,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+  }
+
+  removeLinkFromEmailEditor(): void {
+    if (!this.emailEditor || !this.editorReady) return;
+
+    this.emailEditor.editor.exportHtml((data: any) => {
+      if (
+        !data ||
+        !data.design ||
+        !data.design.body ||
+        !Array.isArray(data.design.body.rows)
+      ) {
+        console.error(
+          'Erro: O design exportado não está no formato esperado',
+          data
+        );
+        return;
+      }
+
+      let design = data.design;
+
+      // Remove qualquer ocorrência do [LINK_AVALIACAO]
+      design.body.rows = design.body.rows.filter((row: any) => {
+        return !JSON.stringify(row).includes('[LINK_AVALIACAO]');
+      });
+
+      this.emailEditor.editor.loadDesign(design);
+    });
+  }
+
   private getDefaultTemplate(): object {
     return {
       body: {
@@ -209,7 +357,20 @@ export class EmailTemplateFormComponent implements OnInit {
     this.emailEditor.editor.exportHtml((data: any) => {
       console.log('Exportando design e HTML:', data);
 
-      const design = JSON.stringify(data.design);
+      let design = JSON.stringify(data.design);
+
+      // Garantir que o placeholder [LINK_AVALIACAO] esteja no template de convite ou lembrete
+      if (
+        (this.form.value.emailType === 'convite' ||
+          this.form.value.emailType === 'lembrete') &&
+        !design.includes('[LINK_AVALIACAO]')
+      ) {
+        design = design.replace(
+          '</body>',
+          '<p>Acesse sua avaliação clicando aqui: <a href="[LINK_AVALIACAO]">[LINK_AVALIACAO]</a></p></body>'
+        );
+      }
+
       console.log('Design exportado:', design);
 
       if (!design) {
