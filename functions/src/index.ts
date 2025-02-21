@@ -1,11 +1,11 @@
-import { onCall } from 'firebase-functions/v2/https';
+import { onRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import { defineString } from 'firebase-functions/params';
 
 admin.initializeApp();
 
-// Método híbrido para definir variáveis de ambiente corretamente
+// Definindo variáveis de ambiente
 const EMAIL_USER =
   defineString('EMAIL_USER').value() ||
   process.env.EMAIL_USER ||
@@ -16,54 +16,106 @@ const EMAIL_PASS =
   process.env.EMAIL_PASS ||
   'nkik bvji wshf xzpg';
 
-// Configuração correta do transporte SMTP
+// Configuração do transporte de e-mail
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com', // Servidor SMTP do Gmail
-  port: 587, // Porta correta para STARTTLS
-  secure: false, // false para STARTTLS, true para SSL
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // false para STARTTLS
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
   },
 });
 
-// Função para buscar o template de e-mail correto no Firestore
-const getTemplate = async (clientId: string, emailType: string) => {
+// Função para obter o template de e-mail pelo ID
+const getTemplateById = async (templateId: string) => {
   const templateRef = admin.firestore().collection('mailTemplates');
-  const snapshot = await templateRef
-    .where('clientId', '==', clientId)
-    .where('emailType', '==', emailType)
-    .limit(1)
-    .get();
+  const snapshot = await templateRef.doc(templateId).get();
 
-  if (snapshot.empty) {
+  if (!snapshot.exists) {
     throw new Error('Template de e-mail não encontrado.');
   }
 
-  return snapshot.docs[0].data();
+  return snapshot.data();
 };
 
-// Função de envio de e-mail utilizando Firebase Functions v2
-export const sendEmail = onCall(async (request) => {
-  const { email, clientId, emailType } = request.data;
+// Função para enviar o e-mail
+export const sendEmail = onRequest(async (req, res) => {
+  console.log('Dados recebidos:', req.body); // Log para verificar os dados recebidos
+  const { email, templateId, participantId, assessmentId } = req.body;
 
-  if (!email || !clientId || !emailType) {
-    throw new Error('Campos obrigatórios faltando.');
+  // Verificar campos obrigatórios
+  if (!email || !templateId || !participantId || !assessmentId) {
+    res.status(400).send({
+      error:
+        'Campos obrigatórios faltando: email, templateId, participantId, assessmentId.',
+    });
+    return;
   }
 
   try {
-    // Obtendo o template correto
-    const template = await getTemplate(clientId, emailType);
+    // Obtendo o template de e-mail pelo ID
+    const template = await getTemplateById(templateId);
 
-    // Converter o content de string JSON para objeto, se necessário
-    let emailHtml;
-    try {
-      const parsedContent = JSON.parse(template.content);
-      emailHtml = parsedContent.body.rows[0].columns[0].contents[0].values.text;
-    } catch (err) {
-      throw new Error('Erro ao processar o template de e-mail.');
+    // Verificar se o template foi encontrado
+    if (!template) {
+      res.status(404).send({ error: 'Template de e-mail não encontrado.' });
+      return;
     }
 
+    // Converter o conteúdo do template de string JSON para objeto
+    let emailHtml = '';
+    try {
+      const parsedContent = JSON.parse(template.content);
+      console.log('Este é o conteúdo em JSON:', parsedContent);
+
+      // Encontrar o conteúdo de texto com o placeholder [LINK_AVALIACAO]
+      const contents = parsedContent.body.rows[0].columns[0].contents;
+      const textContentItem = contents.find((item: any) =>
+        item.values.text.includes('[LINK_AVALIACAO]')
+      );
+
+      if (!textContentItem) {
+        throw new Error(
+          'Placeholder [LINK_AVALIACAO] não encontrado no template.'
+        );
+      }
+
+      // Substituir o placeholder no texto encontrado
+      const textContent = textContentItem.values.text;
+      emailHtml = textContent.replace(
+        '[LINK_AVALIACAO]',
+        `https://seu-dominio.com/assessment?token=${
+          Math.random().toString(36).substr(2) + Date.now().toString(36)
+        }&participant=${participantId}&assessment=${assessmentId}`
+      );
+
+      console.log('Este é o conteúdo processado:', emailHtml);
+    } catch (err) {
+      res
+        .status(500)
+        .send({ error: 'Erro ao processar o template de e-mail.' });
+      return;
+    }
+
+    // Criar o objeto do link de avaliação
+    const assessmentLink = {
+      assessmentId,
+      token: Math.random().toString(36).substr(2) + Date.now().toString(36),
+      status: 'sent', // Status inicial
+    };
+
+    // Salvar o link e status no Firestore (em participants)
+    const participantRef = admin
+      .firestore()
+      .collection('participants')
+      .doc(participantId);
+    await participantRef.update({
+      assessmentLinks: admin.firestore.FieldValue.arrayUnion(assessmentLink),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Configurar as opções do e-mail
     const mailOptions = {
       from: `ECK Avaliação 360 <${EMAIL_USER}>`,
       to: email,
@@ -71,11 +123,34 @@ export const sendEmail = onCall(async (request) => {
       html: emailHtml,
     };
 
+    // Enviar o e-mail
     await transporter.sendMail(mailOptions);
-    console.log(`Email enviado para: ${email}`);
-    return { success: true };
-  } catch (error) {
-    console.error('Erro ao enviar email:', error);
-    throw new Error('Erro ao enviar email.');
+    console.log(`E-mail enviado para: ${email}`);
+
+    // Atualizar status de entrega após envio bem-sucedido
+    await participantRef.update({
+      deliveryStatus: 'sent',
+      lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Retornar resposta de sucesso
+    res.status(200).send({ success: true });
+  } catch (error: any) {
+    console.error('Erro ao enviar e-mail:', error);
+
+    // Atualizar status para 'failed' em caso de erro
+    if (participantId) {
+      await admin
+        .firestore()
+        .collection('participants')
+        .doc(participantId)
+        .update({
+          deliveryStatus: 'failed',
+          errorMessage: error.message,
+        });
+    }
+
+    // Retornar erro
+    res.status(500).send({ error: `Erro ao enviar e-mail: ${error.message}` });
   }
 });

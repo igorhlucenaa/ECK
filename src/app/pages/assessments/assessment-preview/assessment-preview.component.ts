@@ -1,14 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MaterialModule } from 'src/app/material.module';
-import { AssessmentListComponent } from '../assessment-list/assessment-list.component';
-import { DateRange } from '@angular/material/datepicker';
+import { SurveyModel } from 'survey-core';
+import { SurveyModule } from 'survey-angular-ui';
 
 @Component({
   selector: 'app-assessment-preview',
   standalone: true,
-  imports: [MaterialModule, CommonModule],
+  imports: [MaterialModule, CommonModule, SurveyModule],
   templateUrl: './assessment-preview.component.html',
   styles: [
     `
@@ -23,22 +23,26 @@ import { DateRange } from '@angular/material/datepicker';
         margin: auto;
       }
 
-      mat-form-field {
-        margin-bottom: 15px;
-      }
-
       .text-end {
         margin-top: 20px;
       }
     `,
   ],
 })
-export class AssessmentPreviewComponent {
+export class AssessmentPreviewComponent implements OnInit {
+  surveyModel: SurveyModel;
+
   constructor(
     public dialogRef: MatDialogRef<AssessmentPreviewComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
-  ) {
-    console.log(DateRange)
+  ) {}
+
+  ngOnInit(): void {
+    // Certifique-se de que 'data.surveyJSON' existe e contém JSON válido para o survey
+    if (this.data.surveyJSON) {
+      this.surveyModel = new SurveyModel(this.data.surveyJSON);
+      this.surveyModel.locale = 'pt'; // Configura a localização se necessário
+    }
   }
 
   closeDialog(): void {

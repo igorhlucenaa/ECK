@@ -1,11 +1,9 @@
 <div class="container mt-4">
   <h2 class="mb-4">Criar Formulário</h2>
+
   <form [formGroup]="form" (ngSubmit)="saveForm()">
-    <!-- Informações do Formulário -->
     <mat-card>
-      <mat-card-title style="margin: 15px"
-        >Informações do Formulário</mat-card-title
-      >
+      <mat-card-title>Informações do Formulário</mat-card-title>
       <mat-card-content>
         <div class="row">
           <div class="col-md-6">
@@ -45,146 +43,30 @@
                 formControlName="clientId"
                 (selectionChange)="onClientChange($event)"
               >
-                <mat-option *ngFor="let client of clients" [value]="client.id">
-                  {{ client.name }}
-                </mat-option>
+                <mat-option
+                  *ngFor="let client of clients"
+                  [value]="client.id"
+                  >{{ client.name }}</mat-option
+                >
               </mat-select>
-              <mat-error *ngIf="form.get('clientId')?.invalid">
-                O cliente é obrigatório.
-              </mat-error>
+              <mat-error *ngIf="form.get('clientId')?.invalid"
+                >O cliente é obrigatório.</mat-error
+              >
             </mat-form-field>
           </div>
         </div>
       </mat-card-content>
     </mat-card>
 
-    <!-- Sidebar e Perguntas -->
-    <div class="row">
-      <!-- Sidebar -->
-      <div class="col-md-3">
-        <mat-card class="sidebar">
-          <mat-card-title class="text-center">Adicionar Campos</mat-card-title>
-          <mat-card-content>
-            <button
-              class="btn-forms"
-              mat-icon-button
-              color="primary"
-              matTooltip="Campo de Texto"
-              (click)="addQuestion('input')"
-            >
-              <mat-icon>text_fields</mat-icon>
-            </button>
-            <button
-              class="btn-forms"
-              mat-icon-button
-              color="primary"
-              matTooltip="Área de Texto"
-              (click)="addQuestion('textarea')"
-            >
-              <mat-icon>notes</mat-icon>
-            </button>
-            <button
-              class="btn-forms"
-              mat-icon-button
-              color="primary"
-              matTooltip="Múltipla Escolha"
-              (click)="addQuestion('select')"
-            >
-              <mat-icon>list</mat-icon>
-            </button>
-            <button
-              class="btn-forms"
-              mat-icon-button
-              color="primary"
-              matTooltip="Caixa de Seleção"
-              (click)="addQuestion('checkbox')"
-            >
-              <mat-icon>check_box</mat-icon>
-            </button>
-            <button
-              class="btn-forms"
-              mat-icon-button
-              color="primary"
-              matTooltip="Data"
-              (click)="addQuestion('datepicker')"
-            >
-              <mat-icon>calendar_today</mat-icon>
-            </button>
-          </mat-card-content>
-        </mat-card>
-      </div>
+    <mat-card class="mt-4">
+      <mat-card-title>Construtor de Formulários</mat-card-title>
+      <mat-card-content *ngIf="creatorModel">
+        <!-- SurveyJS Form Builder -->
+        <survey-creator [model]="creatorModel"></survey-creator>
+      </mat-card-content>
+    </mat-card>
 
-      <!-- Perguntas -->
-      <div class="col-md-9">
-        <mat-card>
-          <mat-card-title style="margin: 15px"
-            >Campos do Formulário</mat-card-title
-          >
-          <mat-card-content>
-            <div
-              *ngFor="let question of questionList; let i = index"
-              class="question-container"
-            >
-              <mat-card>
-                <div class="d-flex justify-content-between align-items-center">
-                  <mat-form-field class="w-75" appearance="outline">
-                    <mat-label>Label da Pergunta</mat-label>
-                    <input
-                      matInput
-                      [formControl]="question.labelControl"
-                      placeholder="Digite o label"
-                    />
-                  </mat-form-field>
-                  <button
-                    mat-icon-button
-                    color="warn"
-                    matTooltip="Remover Pergunta"
-                    (click)="removeQuestion(i)"
-                  >
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </div>
-
-                <!-- Opções de Resposta -->
-                <div
-                  *ngIf="
-                    question.type === 'select' || question.type === 'checkbox'
-                  "
-                >
-                  <h6>Opções</h6>
-                  <div
-                    *ngFor="let option of question.options; let j = index"
-                    class="option-container"
-                  >
-                    <mat-form-field class="w-75" appearance="outline">
-                      <mat-label>Opção {{ j + 1 }}</mat-label>
-                      <input
-                        matInput
-                        [formControl]="option.control"
-                        placeholder="Digite a opção"
-                      />
-                    </mat-form-field>
-                    <button
-                      mat-icon-button
-                      color="warn"
-                      matTooltip="Remover Opção"
-                      (click)="removeOption(i, j)"
-                    >
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </div>
-                  <button mat-button color="primary" (click)="addOption(i)">
-                    Adicionar Opção
-                  </button>
-                </div>
-              </mat-card>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
-    </div>
-
-    <!-- Botões de Ação -->
+    <!-- Botão de Salvar -->
     <div class="text-end mt-4">
       <button
         mat-flat-button

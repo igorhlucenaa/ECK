@@ -1,38 +1,35 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
 import {
   FormGroup,
-  FormControl,
   FormBuilder,
   Validators,
   ReactiveFormsModule,
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   Firestore,
-  addDoc,
   collection,
+  addDoc,
   doc,
   getDoc,
   getDocs,
-  query,
-  where,
 } from '@angular/fire/firestore';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 
-interface Question {
-  labelControl: FormControl<string | null>;
-  type: string;
-  options: { control: FormControl<string | null> }[];
-}
+import { SurveyCreatorModel } from 'survey-creator-core';
+import { SurveyCreatorModule } from 'survey-creator-angular';
+
+import 'survey-core/survey.i18n.js'; // Para localização da pesquisa em si
+import 'survey-creator-core/survey-creator-core.i18n.js'; // Para a UI do Survey Creator
+import { editorLocalization } from 'survey-creator-core';
+
+// Sobrescrevendo traduções individuais em uma localização existente (opcional)
+const ptBRLocale = editorLocalization.getLocale('pt');
+// Exemplo de sobrescrita:
+ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
 
 @Component({
   selector: 'app-create-assessment',
@@ -42,20 +39,16 @@ interface Question {
   imports: [
     CommonModule,
     MaterialModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatTooltipModule,
     ReactiveFormsModule,
+    SurveyCreatorModule,
   ],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class CreateAssessmentComponent implements OnInit {
   form: FormGroup;
-  questionList: Question[] = [];
   clients: { id: string; name: string }[] = [];
   userRole: string | null = null;
+  creatorModel: SurveyCreatorModel;
 
   constructor(
     private fb: FormBuilder,
@@ -64,6 +57,7 @@ export class CreateAssessmentComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router
   ) {
+    // Inicializa o formulário de metadados (Título, Cliente, Descrição)
     this.form = this.fb.group({
       clientId: ['', Validators.required],
       name: ['', Validators.required],
@@ -72,20 +66,27 @@ export class CreateAssessmentComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    // Inicialização do SurveyCreatorModel antes de configurar a localização
+    this.creatorModel = new SurveyCreatorModel({
+      showLogicTab: true, // Exibe a aba de lógica condicional
+      isAutoSave: true, // Desativa salvamento automático
+      showJSONEditorTab: true, // Permite edição JSON
+    });
+
+    // Aplica a localização após a inicialização do modelo
+    this.creatorModel.locale = 'pt';
+    this.creatorModel.survey.locale = 'pt';
+
     const currentUser = await this.authService.getCurrentUser();
     this.userRole = currentUser?.role || null;
-
+    console.log('Criando SurveyJS:', this.creatorModel);
     if (this.userRole === 'admin_client') {
-      // Usuário admin_client só vê o cliente associado
+      // Usuário admin_client vê apenas o cliente associado
       const clientId = currentUser?.clientId || '';
-
       if (clientId) {
         const clientName = await this.getClientName(clientId);
         this.clients = [
-          {
-            id: clientId,
-            name: clientName || 'Cliente Indefinido',
-          },
+          { id: clientId, name: clientName || 'Cliente Indefinido' },
         ];
         this.form.get('clientId')?.setValue(clientId);
         this.form.get('clientId')?.disable();
@@ -100,15 +101,11 @@ export class CreateAssessmentComponent implements OnInit {
     try {
       const clientDocRef = doc(this.firestore, 'clients', clientId);
       const clientDoc = await getDoc(clientDocRef);
-
-      if (clientDoc.exists()) {
-        return clientDoc.data()['companyName'] || null;
-      } else {
-        console.warn(`Cliente com ID ${clientId} não encontrado.`);
-        return null;
-      }
+      return clientDoc.exists()
+        ? clientDoc.data()['companyName'] || null
+        : null;
     } catch (error) {
-      console.error('Erro ao buscar o nome do cliente:', error);
+      console.error('Erro ao buscar nome do cliente:', error);
       return null;
     }
   }
@@ -126,38 +123,6 @@ export class CreateAssessmentComponent implements OnInit {
     }
   }
 
-  onClientChange(event: any): void {
-    console.log('Cliente selecionado:', event.value);
-  }
-
-  addQuestion(type: string): void {
-    const newQuestion: Question = {
-      labelControl: new FormControl<string | null>('', Validators.required),
-      type,
-      options: [],
-    };
-
-    if (type === 'select' || type === 'checkbox') {
-      newQuestion.options.push({ control: new FormControl<string | null>('') });
-    }
-
-    this.questionList.push(newQuestion);
-  }
-
-  removeQuestion(index: number): void {
-    this.questionList.splice(index, 1);
-  }
-
-  addOption(questionIndex: number): void {
-    this.questionList[questionIndex].options.push({
-      control: new FormControl<string | null>('', Validators.required),
-    });
-  }
-
-  removeOption(questionIndex: number, optionIndex: number): void {
-    this.questionList[questionIndex].options.splice(optionIndex, 1);
-  }
-
   async saveForm(): Promise<void> {
     if (this.form.invalid) {
       console.error('O formulário é inválido.');
@@ -165,9 +130,7 @@ export class CreateAssessmentComponent implements OnInit {
     }
 
     try {
-      // Aguarde o retorno do usuário autenticado
       const currentUser = await this.authService.getCurrentUser();
-
       if (!currentUser) {
         console.error('Erro ao obter usuário autenticado.');
         return;
@@ -175,11 +138,7 @@ export class CreateAssessmentComponent implements OnInit {
 
       const formData = {
         ...this.form.value,
-        questions: this.questionList.map((q) => ({
-          label: q.labelControl.value,
-          type: q.type,
-          options: q.options.map((opt) => opt.control.value),
-        })),
+        surveyJSON: this.creatorModel.JSON, // Obtém o JSON do SurveyJS
         createdBy: {
           name: currentUser.name,
           email: currentUser.email,
@@ -201,10 +160,13 @@ export class CreateAssessmentComponent implements OnInit {
       this.snackBar.open(
         'Erro ao salvar formulário. Tente novamente.',
         'Fechar',
-        {
-          duration: 3000,
-        }
+        { duration: 3000 }
       );
     }
+  }
+
+  onClientChange(event: any): void {
+    console.log('Cliente selecionado:', event.value);
+    this.form.get('clientId')?.setValue(event.value);
   }
 }
