@@ -21,14 +21,14 @@ import { Router } from '@angular/router';
 
 import { SurveyCreatorModel } from 'survey-creator-core';
 import { SurveyCreatorModule } from 'survey-creator-angular';
+import { SurveyModel, ITheme } from 'survey-core'; // Usando ITheme corretamente
 
-import 'survey-core/survey.i18n.js'; // Para localização da pesquisa em si
+import 'survey-core/survey.i18n.js'; // Para localização da pesquisa
 import 'survey-creator-core/survey-creator-core.i18n.js'; // Para a UI do Survey Creator
 import { editorLocalization } from 'survey-creator-core';
 
-// Sobrescrevendo traduções individuais em uma localização existente (opcional)
+// Sobrescrevendo traduções
 const ptBRLocale = editorLocalization.getLocale('pt');
-// Exemplo de sobrescrita:
 ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
 
 @Component({
@@ -66,20 +66,25 @@ export class CreateAssessmentComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    // Inicialização do SurveyCreatorModel antes de configurar a localização
+    // Inicialização do SurveyCreatorModel com o Theme Editor habilitado
     this.creatorModel = new SurveyCreatorModel({
       showLogicTab: true, // Exibe a aba de lógica condicional
       isAutoSave: true, // Desativa salvamento automático
       showJSONEditorTab: true, // Permite edição JSON
+      showThemeTab: true, // Habilita a aba de temas (Theme Editor)
     });
 
-    // Aplica a localização após a inicialização do modelo
+    // Configurar a função de salvar o tema
+    this.setupThemeSaving();
+
+    // Aplica a localização
     this.creatorModel.locale = 'pt';
     this.creatorModel.survey.locale = 'pt';
 
     const currentUser = await this.authService.getCurrentUser();
     this.userRole = currentUser?.role || null;
     console.log('Criando SurveyJS:', this.creatorModel);
+
     if (this.userRole === 'admin_client') {
       // Usuário admin_client vê apenas o cliente associado
       const clientId = currentUser?.clientId || '';
@@ -95,6 +100,38 @@ export class CreateAssessmentComponent implements OnInit {
       // Usuário admin_master vê todos os clientes
       await this.loadClients();
     }
+
+    // Sincronizar o tema inicial com o Theme Editor
+    this.syncThemeWithEditor();
+  }
+
+  private setupThemeSaving(): void {
+    // Função personalizada para salvar o tema no Firestore junto com o formulário
+    this.creatorModel.saveThemeFunc = (saveNo: any, callback: any) => {
+      // O tema já está disponível em this.creatorModel.theme
+      const theme = this.creatorModel.theme as ITheme;
+      // Aqui, não precisamos salvar em localStorage ou serviço web, pois salvaremos no Firestore no saveForm()
+      callback(saveNo, true); // Indica que o salvamento foi bem-sucedido (não precisamos de ação externa aqui)
+    };
+  }
+
+  private syncThemeWithEditor(): void {
+    // Configurar um tema inicial padrão usando ITheme
+    const defaultTheme: ITheme = {
+      themeName: 'modern', // Nome do tema base
+      colorPalette: 'light', // Paleta de cores (pode ser 'light' ou 'dark')
+      isPanelless: false, // Mantém os painéis (false para manter o layout padrão)
+      cssVariables: {
+        '--sjs-primary-backcolor': '#007BFF', // Cor primária padrão
+        '--sjs-secondary-backcolor': '#6C757D', // Cor secundária padrão
+        '--sjs-general-backcolor': '#F8F9FA', // Fundo geral
+        '--sjs-general-forecolor': '#212529', // Texto geral
+        '--sjs-hover-color': '#0056B3', // Cor ao passar o mouse
+      },
+    };
+
+    // Aplicar o tema inicial ao Theme Editor
+    this.creatorModel.theme = defaultTheme;
   }
 
   private async getClientName(clientId: string): Promise<string | null> {
@@ -136,9 +173,15 @@ export class CreateAssessmentComponent implements OnInit {
         return;
       }
 
+      // Capturar o JSON do formulário e o tema atual
+      const surveyJSON = this.creatorModel.JSON;
+
+      // Adicionar o tema atual como um atributo 'theme' ao surveyJSON
+      const currentTheme = this.creatorModel.theme as ITheme; // Cast para ITheme
       const formData = {
         ...this.form.value,
-        surveyJSON: this.creatorModel.JSON, // Obtém o JSON do SurveyJS
+        surveyJSON: surveyJSON, // Inclui o JSON do formulário
+        theme: currentTheme, // Adiciona o tema como um atributo separado
         createdBy: {
           name: currentUser.name,
           email: currentUser.email,

@@ -18,25 +18,35 @@ export class AppComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Verifica o estado de autenticação apenas na inicialização
     this.auth.onAuthStateChanged(async (user: User | null) => {
+      const currentUrl = this.router.url.split('?')[0];
+      console.log(
+        'Auth state changed. User:',
+        user ? user.uid : null,
+        'Current URL:',
+        currentUrl
+      );
+
       if (user) {
         try {
           await this.authService.applyUserTheme();
           const role = await this.authService.getCurrentUserRole();
-          const currentUrl = this.router.url.split('?')[0];
+          console.log('User role:', role);
 
-          // Define páginas públicas que não requerem redirecionamento
           const publicPages = ['/', '/assessment'];
           const isPublicPage = publicPages.includes(currentUrl);
 
           if (isPublicPage) {
-            return; // Não redireciona em páginas públicas
+            return; // Não interfere em páginas públicas
           }
 
-          // Redireciona para dashboard apenas se estiver em uma rota inicial ou inválida
+          // Permite a navegação após login sem forçar redirecionamento
           if (role === 'admin_master' || role === 'admin_client') {
-            if (currentUrl === '/' || currentUrl === '') {
+            if (
+              currentUrl === '/' ||
+              currentUrl === '' ||
+              currentUrl.includes('/authentication')
+            ) {
               this.router.navigate(['/dashboard']);
             }
           } else {
@@ -50,16 +60,16 @@ export class AppComponent implements OnInit {
           this.router.navigate(['/authentication/login']);
         }
       } else {
-        // Se não houver usuário autenticado, redireciona para login, exceto em páginas públicas
-        const currentUrl = this.router.url.split('?')[0];
-        const publicPages = ['/', '/assessment'];
-        if (!publicPages.includes(currentUrl)) {
+        // Se não houver usuário, permite acesso a páginas públicas e login
+        const allowedPages = ['/', '/assessment', '/authentication/login'];
+        if (!allowedPages.includes(currentUrl)) {
+          console.log('Usuário não autenticado. Redirecionando para login.');
           this.router.navigate(['/authentication/login']);
         }
       }
     });
 
-    // Opcional: log de navegação para debug
+    // Log de navegação para debug
     this.router.events
       .pipe(
         filter(
@@ -67,7 +77,7 @@ export class AppComponent implements OnInit {
         )
       )
       .subscribe((event) => {
-        console.log('Current URL:', event.urlAfterRedirects);
+        console.log('NavigationEnd - Current URL:', event.urlAfterRedirects);
       });
   }
 }

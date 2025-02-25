@@ -3,6 +3,14 @@ import { ActivatedRoute } from '@angular/router';
 import * as Survey from 'survey-angular';
 import { SurveyService } from './survey.service';
 import { CommonModule } from '@angular/common';
+// Removi ITheme, pois pode não ser suportado na versão 1.12.23
+
+// Defina a interface para o objeto Assessment retornado pelo SurveyService
+interface Assessment {
+  surveyJSON: any;
+  ['theme']?: any; // Usando any para flexibilidade, pois ITheme pode não existir nessa versão
+  // Adicione outros campos, se necessário (ex.: clientId, name, etc.)
+}
 
 @Component({
   selector: 'app-assessment',
@@ -54,12 +62,54 @@ export class AssessmentComponent implements OnInit {
   }
 
   async loadSurvey(assessmentId: string, participantId: string): Promise<void> {
-    const assessment = await this.surveyService.getAssessment(assessmentId);
+    const assessment: any = await this.surveyService.getAssessment(
+      assessmentId
+    );
 
     if (assessment && assessment.surveyJSON) {
       this.surveyJSON = assessment.surveyJSON;
 
+      // Carregar o tema do atributo 'theme' do documento, se existir
+      const theme: any = assessment['theme']; // Usando any para flexibilidade
+
+      console.log('Tema carregado do Firestore:', theme); // Log para depuração
+
       const survey = new Survey.Model(this.surveyJSON);
+
+      // Aplicar o tema salvo, se existir, com validação para versão 1.12.23
+      if (theme && theme.cssVariables) {
+        try {
+          // Tentar aplicar as variáveis CSS diretamente
+          Object.entries(theme.cssVariables).forEach(([key, value]) => {
+            // Usar notação de colchetes para acessar setCssVariable, se existir
+            if ('setCssVariable' in survey) {
+              (survey as any)['setCssVariable'](key, value as string);
+            } else {
+              // Alternativa: aplicar via CSS dinâmico (se setCssVariable não existe)
+              const style = document.createElement('style');
+              style.textContent = `:root { ${key}: ${value}; }`;
+              document.head.appendChild(style);
+              console.warn(
+                'Usando CSS dinâmico, pois setCssVariable não está disponível.'
+              );
+            }
+          });
+
+          // Tentar aplicar o tema, se suportado
+          if ('theme' in survey) {
+            survey['theme'] = theme; // Usar notação de colchetes
+            console.log('Tema aplicado ao survey:', survey['theme']); // Log para depuração
+          } else {
+            console.warn(
+              'Propriedade theme não suportada nesta versão do SurveyJS.'
+            );
+          }
+        } catch (error) {
+          console.error('Erro ao aplicar o tema:', error);
+        }
+      } else {
+        console.warn('Nenhum tema ou cssVariables encontrado no documento.');
+      }
 
       // Carrega progresso anterior, se houver
       const existingData = await this.surveyService.getAssessmentProgress(
