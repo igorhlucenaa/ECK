@@ -17,6 +17,7 @@ import {
   updateDoc,
   query,
   where,
+  setDoc,
 } from '@angular/fire/firestore';
 import * as Papa from 'papaparse';
 import { MaterialModule } from 'src/app/material.module';
@@ -34,7 +35,6 @@ interface Evaluator {
   email: string;
   category: string;
   assessments?: string[];
-  assessmentStatus?: string; // Novo campo para status do assessment
   selected?: boolean;
 }
 
@@ -48,9 +48,23 @@ interface Evaluatee {
   clientName?: string;
   projectName?: string;
   evaluators?: string[];
-  assessmentStatus?: string; // Novo campo para status do assessment
   selected?: boolean;
   [key: string]: any;
+}
+
+interface AssessmentDetail {
+  id: string;
+  name: string;
+  status: string; // 'Respondido' ou 'Pendente'
+  linkSent: boolean; // Se o link foi enviado por e-mail
+}
+
+interface MailTemplate {
+  id: string;
+  name: string;
+  content: string;
+  emailType: string;
+  subject: string;
 }
 
 @Component({
@@ -67,7 +81,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'email',
     'category',
     'assessments',
-    'assessmentStatus', // Nova coluna para status
     'actions',
   ];
   evaluateesDisplayedColumns: string[] = [
@@ -78,7 +91,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'project',
     'assessments',
     'evaluators',
-    'assessmentStatus', // Nova coluna para status
     'actions',
   ];
 
@@ -96,6 +108,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   currentUser: any = null;
   availableAssessments: { id: string; name: string }[] = [];
   availableEvaluators: { id: string; name: string }[] = [];
+  mailTemplates: MailTemplate[] = []; // Novo array para templates de e-mail
   selectedEvaluations: string[] = [];
 
   constructor(
@@ -111,6 +124,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     await this.loadEvaluatees();
     await this.loadAssessments();
     await this.loadEvaluatorsList();
+    await this.loadMailTemplates(); // Carrega templates de e-mail
 
     console.log('Avaliadores carregados:', this.evaluatorsDataSource.data);
     console.log('Avaliados carregados:', this.evaluateesDataSource.data);
@@ -149,7 +163,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.availableAssessments = snapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['name'],
-        status: doc.data()['status'] || 'pending', // Supondo que assessments pode ter um status
       }));
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
@@ -167,21 +180,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       );
       const snapshot = await getDocs(evaluatorsQuery);
 
-      const evaluators = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data['name'],
-          email: data['email'],
-          category: data['category'] || 'Não informado',
-          assessments: data['assessments'] ?? [],
-          assessmentStatus: this.getAssessmentStatus(
-            data['assessments'],
-            data['assessmentLinks']
-          ), // Determina o status
-          selected: false,
-        };
-      });
+      const evaluators = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'],
+        email: doc.data()['email'],
+        category: doc.data()['category'] || 'Não informado',
+        assessments: doc.data()['assessments'] ?? [],
+        selected: false,
+      }));
 
       console.log('Avaliadores recuperados do Firestore:', evaluators);
       this.evaluatorsDataSource.data = evaluators;
@@ -232,10 +238,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           projectId: data['projectId'] || 'Desconhecido',
           assessments: data['assessments'] ?? [],
           evaluators: [],
-          assessmentStatus: this.getAssessmentStatus(
-            data['assessments'],
-            data['assessmentLinks']
-          ), // Determina o status
           selected: false,
         } as Evaluatee;
       });
@@ -298,29 +300,26 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  private getAssessmentStatus(
-    assessments: any[] | undefined,
-    assessmentLinks: any[] | undefined
-  ): string {
-    if (!assessments || assessments.length === 0) {
-      return 'Pendente';
-    }
+  async loadMailTemplates(): Promise<void> {
+    try {
+      const templatesCollection = collection(this.firestore, 'mailTemplates');
+      const snapshot = await getDocs(templatesCollection);
 
-    // Supondo que cada assessment ou assessmentLink tem um campo 'status' ou 'deliveryStatus'
-    const latestAssessment = assessments[assessments.length - 1];
-    if (latestAssessment?.status === 'completed') {
-      return 'Concluído';
-    }
+      this.mailTemplates = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'],
+        content: doc.data()['content'],
+        emailType: doc.data()['emailType'],
+        subject: doc.data()['subject'],
+      }));
 
-    // Verifica assessmentLinks, se existir
-    if (assessmentLinks && assessmentLinks.length > 0) {
-      const latestLink = assessmentLinks[assessmentLinks.length - 1];
-      if (latestLink?.deliveryStatus === 'completed') {
-        return 'Concluído';
-      }
+      console.log('Templates de e-mail carregados:', this.mailTemplates);
+    } catch (error) {
+      console.error('Erro ao carregar templates de e-mail:', error);
+      this.snackBar.open('Erro ao carregar templates de e-mail.', 'Fechar', {
+        duration: 3000,
+      });
     }
-
-    return 'Pendente';
   }
 
   ngAfterViewInit() {
@@ -367,57 +366,184 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  editEvaluateeAssessments(evaluatee: Evaluatee): void {
-    evaluatee['isEditing'] = true;
-  }
+  showAssessmentsModal(evaluatee: Evaluatee): void {
+    const assessmentsDetails = this.getAssessmentsDetails(
+      evaluatee.assessments ?? []
+    );
+    const dialogRef = this.dialog.open(EvaluatorsModalComponent, {
+      width: '800px',
+      data: {
+        evaluatee,
+        assessments: assessmentsDetails,
+        mailTemplates: this.mailTemplates,
+      },
+    });
 
-  cancelEvaluateeEdit(evaluatee: Evaluatee): void {
-    evaluatee['isEditing'] = false;
-  }
-
-  async saveEvaluateeAssessments(evaluatee: Evaluatee): Promise<void> {
-    if (!evaluatee || !evaluatee.id) {
-      console.error('Erro: O ID do avaliado está indefinido!', evaluatee);
-      this.snackBar.open(
-        'Erro ao atualizar avaliações: ID do avaliado não encontrado.',
-        'Fechar',
-        { duration: 3000 }
+    dialogRef
+      .afterClosed()
+      .subscribe(
+        async (result: {
+          updatedAssessments?: string[];
+          selectedAssessment?: string;
+          selectedTemplate?: string;
+        }) => {
+          if (result) {
+            if (result.updatedAssessments) {
+              await this.updateParticipantAssessments(
+                evaluatee,
+                result.updatedAssessments
+              );
+            }
+            if (result.selectedAssessment && result.selectedTemplate) {
+              await this.sendAssessmentLink(
+                evaluatee,
+                result.selectedAssessment,
+                result.selectedTemplate
+              );
+            }
+          }
+        }
       );
-      return;
-    }
+  }
 
+  private getAssessmentsDetails(assessmentIds: string[]): AssessmentDetail[] {
+    return assessmentIds.map((id) => {
+      const assessment = this.availableAssessments.find((a) => a.id === id);
+      const assessmentData: any = this.getAssessmentDataFromFirestore(id);
+      return {
+        id: id,
+        name: assessment?.name || 'Avaliação Desconhecida',
+        status:
+          assessmentData?.status === 'completed' ? 'Respondido' : 'Pendente',
+        linkSent: assessmentData?.linkSent || false,
+      };
+    });
+  }
+
+  private async getAssessmentDataFromFirestore(
+    assessmentId: string
+  ): Promise<any> {
     try {
-      const updatedAssessments = evaluatee.assessments ?? [];
-
-      console.log(
-        'Atualizando avaliações para:',
-        evaluatee.id,
-        updatedAssessments
+      const assessmentDoc = doc(this.firestore, 'assessments', assessmentId);
+      const snapshot = await getDocs(
+        query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('assessmentId', '==', assessmentId)
+        )
       );
+      const linkData = snapshot.docs[0]?.data();
+      return {
+        status: linkData?.['status'] || 'pending',
+        linkSent: !!linkData?.['sentAt'], // Assume que 'sentAt' indica envio
+      };
+    } catch (error) {
+      console.error('Erro ao carregar dados da avaliação:', error);
+      return { status: 'pending', linkSent: false };
+    }
+  }
 
+  async updateParticipantAssessments(
+    evaluatee: Evaluatee,
+    newAssessments: string[]
+  ): Promise<void> {
+    try {
       const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
-      await updateDoc(evaluateeDoc, { assessments: updatedAssessments });
+      await updateDoc(evaluateeDoc, { assessments: newAssessments });
 
       const index = this.evaluateesDataSource.data.findIndex(
         (e) => e.id === evaluatee.id
       );
       if (index !== -1) {
-        this.evaluateesDataSource.data[index].assessments = updatedAssessments;
-        this.evaluateesDataSource.data[index].assessmentStatus =
-          this.getAssessmentStatus(updatedAssessments, undefined); // Atualiza o status
+        this.evaluateesDataSource.data[index].assessments = newAssessments;
         this.evaluateesDataSource._updateChangeSubscription();
       }
 
-      evaluatee['isEditing'] = false;
       this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
         duration: 3000,
       });
     } catch (error) {
-      console.error('Erro ao atualizar avaliações:', error);
+      console.error('Erro ao atualizar avaliações do participante:', error);
       this.snackBar.open('Erro ao salvar avaliações.', 'Fechar', {
         duration: 3000,
       });
     }
+  }
+
+  async sendAssessmentLink(
+    evaluatee: Evaluatee,
+    assessmentId: string,
+    templateId: string
+  ): Promise<void> {
+    try {
+      const template = this.mailTemplates.find((t) => t.id === templateId);
+      if (!template) {
+        this.snackBar.open('Template de e-mail não encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+        return;
+      }
+
+      const assessmentData = await this.getAssessmentDataFromFirestore(
+        assessmentId
+      );
+      if (assessmentData.linkSent) {
+        this.snackBar.open(
+          'O link já foi enviado para esta avaliação.',
+          'Fechar',
+          { duration: 3000 }
+        );
+        return;
+      }
+
+      // Simula o envio do e-mail (substitua por integração real com serviço de e-mail, como Firebase Functions)
+      const assessmentLinkDoc = doc(
+        collection(this.firestore, 'assessmentLinks')
+      );
+      await setDoc(assessmentLinkDoc, {
+        assessmentId: assessmentId,
+        participantId: evaluatee.id,
+        sentAt: new Date(),
+        status: 'pending',
+        emailTemplate: templateId,
+        participantEmail: evaluatee.email,
+      });
+
+      // Atualiza o status no dataSource
+      const index = this.evaluateesDataSource.data.findIndex(
+        (e) => e.id === evaluatee.id
+      );
+      if (index !== -1) {
+        const updatedAssessments =
+          this.evaluateesDataSource.data[index].assessments?.map((id: any) => {
+            if (id === assessmentId) {
+              return id; // O status será atualizado via Firestore listener ou nova chamada
+            }
+            return id;
+          }) || [];
+        this.evaluateesDataSource.data[index].assessments = updatedAssessments;
+        this.evaluateesDataSource.data[index].assessmentStatus =
+          this.updateAssessmentStatus(updatedAssessments); // Atualiza o status, se necessário
+        this.evaluateesDataSource._updateChangeSubscription();
+      }
+
+      this.snackBar.open('Link de avaliação enviado com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao enviar link de avaliação:', error);
+      this.snackBar.open('Erro ao enviar link de avaliação.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  private updateAssessmentStatus(assessments: string[]): string {
+    // Simula a atualização do status com base nos assessments
+    const allCompleted = assessments.every((id) => {
+      const data: any = this.getAssessmentDataFromFirestore(id);
+      return data?.status === 'completed';
+    });
+    return allCompleted ? 'Concluído' : 'Pendente';
   }
 
   editEvaluateeEvaluators(evaluatee: Evaluatee): void {
@@ -722,10 +848,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           id: doc.id,
           ...data,
           evaluators: [],
-          assessmentStatus: this.getAssessmentStatus(
-            data['assessments'],
-            data['assessmentLinks']
-          ),
         } as any;
       });
 
@@ -799,11 +921,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     if (evaluators.length > 0) {
       this.evaluatorsDataSource.data = [
         ...this.evaluatorsDataSource.data,
-        ...evaluators.map((p) => ({
-          ...p,
-          selected: false,
-          assessmentStatus: this.getAssessmentStatus(p.assessments, undefined),
-        })),
+        ...evaluators.map((p) => ({ ...p, selected: false })),
       ];
       this.evaluatorsDataSource._updateChangeSubscription();
     }
@@ -814,10 +932,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         evaluatee.evaluators = this.availableEvaluators
           .filter((ev: any) => evaluatorsEmails.includes(ev.email))
           .map((ev) => ev.name);
-        evaluatee.assessmentStatus = this.getAssessmentStatus(
-          evaluatee.assessments,
-          undefined
-        );
       });
 
       this.evaluateesDataSource.data = [

@@ -29,7 +29,7 @@
     <mat-tab label="Avaliadores">
       <div class="mt-4">
         <!-- Filtros -->
-        <div class="row mb-3">
+        <div class="row mb-3" style="margin-top: 20px">
           <div class="col-md-6">
             <mat-form-field class="w-100">
               <mat-label>Buscar</mat-label>
@@ -150,15 +150,6 @@
             </td>
           </ng-container>
 
-          <ng-container matColumnDef="assessmentStatus">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Status do Assessment
-            </th>
-            <td mat-cell *matCellDef="let evaluator">
-              {{ evaluator.assessmentStatus || "Pendente" }}
-            </td>
-          </ng-container>
-
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Ações</th>
             <td mat-cell *matCellDef="let evaluator">
@@ -191,7 +182,7 @@
     <mat-tab label="Avaliados">
       <div class="mt-4">
         <!-- Filtros -->
-        <div class="row mb-3">
+        <div class="row mb-3" style="margin-top: 20px">
           <div class="col-md-6">
             <mat-form-field class="w-100">
               <mat-label>Buscar</mat-label>
@@ -270,52 +261,22 @@
           <ng-container matColumnDef="assessments">
             <th mat-header-cell *matHeaderCellDef>Avaliações</th>
             <td mat-cell *matCellDef="let evaluatee">
-              <div *ngIf="evaluatee.isEditing; else viewMode">
-                <mat-form-field class="w-100">
-                  <mat-label>Selecione as avaliações</mat-label>
-                  <mat-select [(ngModel)]="evaluatee.assessments" multiple>
-                    <mat-option
-                      *ngFor="let assessment of availableAssessments"
-                      [value]="assessment.id"
-                    >
-                      {{ assessment.name }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
-                <button
-                  mat-icon-button
-                  color="primary"
-                  (click)="saveEvaluateeAssessments(evaluatee)"
+              <!-- Apenas exibe e abre modal -->
+              <ng-container
+                *ngIf="
+                  (evaluatee.assessments?.length ?? 0) > 0;
+                  else noAssessments
+                "
+              >
+                <a
+                  href="javascript:void(0)"
+                  (click)="showAssessmentsModal(evaluatee)"
                 >
-                  <mat-icon>check</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  color="warn"
-                  (click)="cancelEvaluateeEdit(evaluatee)"
-                >
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-              <ng-template #viewMode>
-                <span
-                  *ngIf="
-                    (evaluatee.assessments?.length ?? 0) > 0;
-                    else noAssessments
-                  "
-                >
-                  {{ getAssessmentNames(evaluatee.assessments) }}
-                </span>
-                <ng-template #noAssessments>
-                  <span>Sem avaliações</span>
-                </ng-template>
-                <button
-                  mat-icon-button
-                  color="primary"
-                  (click)="editEvaluateeAssessments(evaluatee)"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
+                  Ver Avaliações ({{ evaluatee.assessments.length }})
+                </a>
+              </ng-container>
+              <ng-template #noAssessments>
+                <span>Sem avaliações</span>
               </ng-template>
             </td>
           </ng-container>
@@ -375,15 +336,6 @@
                   <mat-icon>edit</mat-icon>
                 </button>
               </ng-template>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="assessmentStatus">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Status do Assessment
-            </th>
-            <td mat-cell *matCellDef="let evaluatee">
-              {{ evaluatee.assessmentStatus || "Pendente" }}
             </td>
           </ng-container>
 
