@@ -189,7 +189,7 @@ export class EmailTemplateListComponent implements OnInit {
     emailType: string
   ): void {
     this.dialog.open(EmailSelectionDialogComponent, {
-      width: '900px',
+      width: '75%',
       data: { projectId, templateId, emailType }, // Adiciona o templateId aqui
     });
   }

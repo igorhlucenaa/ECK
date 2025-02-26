@@ -31,9 +31,60 @@
         </button>
       </mat-form-field>
     </div>
+  </div>
 
+  <!-- Filtros Adicionais -->
+  <div class="row mb-3">
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Filtrar por Categoria</mat-label>
+        <mat-select (selectionChange)="filterByCategory($event.value)">
+          <mat-option value="">Todos</mat-option>
+          <mat-option value="gestor">Gestor</mat-option>
+          <mat-option value="par">Par</mat-option>
+          <mat-option value="subordinado">Subordinado</mat-option>
+          <mat-option value="avaliado">Avaliado</mat-option>
+          <mat-option value="outros">Outros</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Filtrar por Status</mat-label>
+        <mat-select (selectionChange)="filterByStatus($event.value)">
+          <mat-option value="">Todos</mat-option>
+          <mat-option value="pending">Pendente</mat-option>
+          <mat-option value="completed">Concluído</mat-option>
+          <mat-option value="in_progress">Em Andamento</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Filtrar por Status de Entrega</mat-label>
+        <mat-select (selectionChange)="filterByDeliveryStatus($event.value)">
+          <mat-option value="">Todos</mat-option>
+          <mat-option value="sent">Enviado</mat-option>
+          <mat-option value="failed">Não Entregue</mat-option>
+          <mat-option value="pending">Pendente</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Filtrar por Link Expirado</mat-label>
+        <mat-select (selectionChange)="filterByLinkExpired($event.value)">
+          <mat-option value="">Todos</mat-option>
+          <mat-option value="true">Expirado</mat-option>
+          <mat-option value="false">Não Expirado</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <div class="row">
     <div class="col-12" *ngIf="emailType === 'convite'">
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-100">
         <mat-label>Selecione a avaliação</mat-label>
         <mat-select [(ngModel)]="selectedAssessmentId">
           <mat-option
@@ -45,16 +96,18 @@
         </mat-select>
       </mat-form-field>
     </div>
-    <!-- Adicionando o botão para enviar e-mails -->
-    <button mat-raised-button color="primary" (click)="sendEmails()">
-      Enviar E-mails
-    </button>
   </div>
 
   <!-- Tabela com barra de rolagem -->
   <div class="row">
     <div class="col-12">
       <div class="table-container">
+        @if (isLoading()) {
+        <mat-progress-spinner
+          mode="indeterminate"
+          diameter="40"
+        ></mat-progress-spinner>
+        } @else {
         <table
           mat-table
           [dataSource]="dataSource"
@@ -98,9 +151,49 @@
             </td>
           </ng-container>
 
+          <!-- Status -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.status }}
+            </td>
+          </ng-container>
+
+          <!-- Status de Entrega -->
+          <ng-container matColumnDef="deliveryStatus">
+            <th mat-header-cell *matHeaderCellDef>Status de Entrega</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.deliveryStatus }}
+            </td>
+          </ng-container>
+
+          <!-- Link Expirado -->
+          <ng-container matColumnDef="isLinkExpired">
+            <th mat-header-cell *matHeaderCellDef>Link Expirado</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.isLinkExpired ? "Sim" : "Não" }}
+            </td>
+          </ng-container>
+
+          <!-- Data de Validade -->
+          <ng-container matColumnDef="linkValidityDate">
+            <th mat-header-cell *matHeaderCellDef>Data de Validade</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.linkValidityDate }}
+            </td>
+          </ng-container>
+
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
         </table>
+
+        <!-- Paginação (opcional) -->
+        <mat-paginator
+          [pageSize]="10"
+          [pageSizeOptions]="[5, 10, 20]"
+          showFirstLastButtons
+        ></mat-paginator>
+        }
       </div>
     </div>
   </div>
