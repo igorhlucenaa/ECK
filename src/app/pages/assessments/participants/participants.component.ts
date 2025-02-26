@@ -76,7 +76,7 @@ interface MailTemplate {
 })
 export class ParticipantsComponent implements OnInit, AfterViewInit {
   evaluatorsDisplayedColumns: string[] = [
-    'select',
+    // 'select',
     'name',
     'email',
     'category',
@@ -84,7 +84,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'actions',
   ];
   evaluateesDisplayedColumns: string[] = [
-    'select',
+    // 'select',
     'name',
     'email',
     'client',
