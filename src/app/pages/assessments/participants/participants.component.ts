@@ -162,7 +162,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
       this.availableAssessments = snapshot.docs.map((doc) => ({
         id: doc.id,
-        name: doc.data()['name'],
+        name: doc.data()['name'] || 'Avaliação Desconhecida',
+        status: 'Pendente', // Valor padrão
+        linkSent: false, // Valor padrão
       }));
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
@@ -236,7 +238,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           email: data['email'],
           clientId: data['clientId'] || 'Desconhecido',
           projectId: data['projectId'] || 'Desconhecido',
-          assessments: data['assessments'] ?? [],
+          assessments: data['assessments']?.map((a: any) => a.id) ?? [], // Ajuste para mapear apenas IDs
           evaluators: [],
           selected: false,
         } as Evaluatee;
@@ -366,8 +368,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  showAssessmentsModal(evaluatee: Evaluatee): void {
-    const assessmentsDetails = this.getAssessmentsDetails(
+  async showAssessmentsModal(evaluatee: Evaluatee): Promise<void> {
+    const assessmentsDetails = await this.getUpdatedAssessmentsDetails(
       evaluatee.assessments ?? []
     );
     const dialogRef = this.dialog.open(EvaluatorsModalComponent, {
@@ -379,31 +381,59 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       },
     });
 
-    dialogRef
-      .afterClosed()
-      .subscribe(
-        async (result: {
-          updatedAssessments?: string[];
-          selectedAssessment?: string;
-          selectedTemplate?: string;
-        }) => {
-          if (result) {
-            if (result.updatedAssessments) {
-              await this.updateParticipantAssessments(
-                evaluatee,
-                result.updatedAssessments
-              );
-            }
-            if (result.selectedAssessment && result.selectedTemplate) {
-              await this.sendAssessmentLink(
-                evaluatee,
-                result.selectedAssessment,
-                result.selectedTemplate
-              );
-            }
+    dialogRef.afterClosed().subscribe(
+      async (result: {
+        updatedAssessments?: {
+          id: string;
+          name: string;
+          status: string;
+          linkSent: boolean;
+        }[];
+      }) => {
+        if (result?.updatedAssessments) {
+          // await this.updateParticipantAssessments(
+          //   evaluatee,
+          //   result.updatedAssessments.map((a) => a.id)
+          // );
+          // Atualiza o dataSource para refletir as mudanças na tabela de avaliados
+          const index = this.evaluateesDataSource.data.findIndex(
+            (e) => e.id === evaluatee.id
+          );
+          if (index !== -1) {
+            this.evaluateesDataSource.data[index].assessments =
+              result.updatedAssessments.map((a) => a.id);
+            this.evaluateesDataSource._updateChangeSubscription();
           }
         }
-      );
+      }
+    );
+  }
+
+  async getUpdatedAssessmentsDetails(
+    assessmentIds: string[]
+  ): Promise<AssessmentDetail[]> {
+    try {
+      const assessments: AssessmentDetail[] = [];
+      for (const id of assessmentIds) {
+        console.log('Carregando dados para assessmentId:', id); // Log para depuração
+        const assessmentData = await this.getAssessmentDataFromFirestore(id);
+        const assessment = this.availableAssessments.find((a) => a.id === id);
+        assessments.push({
+          id: id,
+          name: (assessment && assessment.name) || 'Avaliação Desconhecida',
+          status:
+            assessmentData?.status === 'completed' ? 'Respondido' : 'Pendente',
+          linkSent: assessmentData?.linkSent || false,
+        });
+      }
+      return assessments;
+    } catch (error) {
+      console.error('Erro ao carregar detalhes das avaliações:', error);
+      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
+        duration: 3000,
+      });
+      return [];
+    }
   }
 
   private getAssessmentsDetails(assessmentIds: string[]): AssessmentDetail[] {
@@ -424,6 +454,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     assessmentId: string
   ): Promise<any> {
     try {
+      // Verifica se assessmentId é uma string válida
+      if (!assessmentId || typeof assessmentId !== 'string') {
+        console.error('assessmentId inválido:', assessmentId);
+        return { status: 'pending', linkSent: false };
+      }
+
       const assessmentDoc = doc(this.firestore, 'assessments', assessmentId);
       const snapshot = await getDocs(
         query(
@@ -438,6 +474,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       };
     } catch (error) {
       console.error('Erro ao carregar dados da avaliação:', error);
+      this.snackBar.open('Erro ao carregar dados da avaliação.', 'Fechar', {
+        duration: 3000,
+      });
       return { status: 'pending', linkSent: false };
     }
   }
@@ -448,15 +487,18 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   ): Promise<void> {
     try {
       const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
-      await updateDoc(evaluateeDoc, { assessments: newAssessments });
-
-      const index = this.evaluateesDataSource.data.findIndex(
-        (e) => e.id === evaluatee.id
-      );
-      if (index !== -1) {
-        this.evaluateesDataSource.data[index].assessments = newAssessments;
-        this.evaluateesDataSource._updateChangeSubscription();
-      }
+      const updatedAssessments = newAssessments.map((id) => {
+        const assessment = this.availableAssessments.find((a) => a.id === id);
+        return {
+          id: id,
+          name: assessment?.name || 'Avaliação Desconhecida',
+          status: 'Pendente',
+          linkSent: false,
+        };
+      });
+      await updateDoc(evaluateeDoc, {
+        assessments: updatedAssessments,
+      });
 
       this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
         duration: 3000,
