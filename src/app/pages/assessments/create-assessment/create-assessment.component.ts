@@ -14,10 +14,11 @@ import {
   doc,
   getDoc,
   getDocs,
+  updateDoc,
 } from '@angular/fire/firestore';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { SurveyCreatorModel } from 'survey-creator-core';
 import { SurveyCreatorModule } from 'survey-creator-angular';
@@ -55,7 +56,8 @@ export class CreateAssessmentComponent implements OnInit {
     private firestore: Firestore,
     private authService: AuthService,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     // Inicializa o formulário de metadados (Título, Cliente, Descrição)
     this.form = this.fb.group({
@@ -103,6 +105,45 @@ export class CreateAssessmentComponent implements OnInit {
 
     // Sincronizar o tema inicial com o Theme Editor
     this.syncThemeWithEditor();
+
+    this.route.paramMap.subscribe(async (params) => {
+      const assessmentId = params.get('id');
+      if (assessmentId) {
+        this.loadAssessment(assessmentId);
+      }
+    });
+  }
+
+  async loadAssessment(assessmentId: string): Promise<void> {
+    try {
+      const docRef = doc(this.firestore, 'assessments', assessmentId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        this.form.patchValue({
+          clientId: data['clientId'],
+          name: data['name'],
+          description: data['description'],
+        });
+
+        if (this.userRole === 'admin_client') {
+          this.form.get('clientId')?.disable();
+        }
+
+        // Carregar o JSON do SurveyJS
+        if (data['surveyJSON']) {
+          this.creatorModel.JSON = data['surveyJSON'];
+        }
+
+        // Carregar o tema salvo
+        if (data['theme']) {
+          this.creatorModel.theme = data['theme'];
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar formulário:', error);
+    }
   }
 
   private setupThemeSaving(): void {
@@ -173,15 +214,13 @@ export class CreateAssessmentComponent implements OnInit {
         return;
       }
 
-      // Capturar o JSON do formulário e o tema atual
       const surveyJSON = this.creatorModel.JSON;
+      const currentTheme = this.creatorModel.theme as ITheme;
 
-      // Adicionar o tema atual como um atributo 'theme' ao surveyJSON
-      const currentTheme = this.creatorModel.theme as ITheme; // Cast para ITheme
       const formData = {
         ...this.form.value,
-        surveyJSON: surveyJSON, // Inclui o JSON do formulário
-        theme: currentTheme, // Adiciona o tema como um atributo separado
+        surveyJSON,
+        theme: currentTheme,
         createdBy: {
           name: currentUser.name,
           email: currentUser.email,
@@ -190,21 +229,29 @@ export class CreateAssessmentComponent implements OnInit {
         createdAt: new Date(),
       };
 
-      const assessmentsCollection = collection(this.firestore, 'assessments');
-      await addDoc(assessmentsCollection, formData);
+      const assessmentId = this.route.snapshot.paramMap.get('id');
+      if (assessmentId) {
+        // Atualiza documento existente
+        const docRef = doc(this.firestore, 'assessments', assessmentId);
+        await updateDoc(docRef, formData);
+        this.snackBar.open('Formulário atualizado com sucesso!', 'Fechar', {
+          duration: 3000,
+        });
+      } else {
+        // Cria um novo formulário
+        const assessmentsCollection = collection(this.firestore, 'assessments');
+        await addDoc(assessmentsCollection, formData);
+        this.snackBar.open('Formulário criado com sucesso!', 'Fechar', {
+          duration: 3000,
+        });
+      }
 
-      console.log('Formulário salvo com sucesso:', formData);
-      this.snackBar.open('Formulário salvo com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
       this.router.navigate(['/assessments']);
     } catch (error) {
       console.error('Erro ao salvar formulário:', error);
-      this.snackBar.open(
-        'Erro ao salvar formulário. Tente novamente.',
-        'Fechar',
-        { duration: 3000 }
-      );
+      this.snackBar.open('Erro ao salvar. Tente novamente.', 'Fechar', {
+        duration: 3000,
+      });
     }
   }
 

@@ -3,7 +3,15 @@ import { ActivatedRoute } from '@angular/router';
 import * as Survey from 'survey-angular';
 import { SurveyService } from './survey.service';
 import { CommonModule } from '@angular/common';
-// Removi ITheme, pois pode não ser suportado na versão 1.12.23
+import {
+  Firestore,
+  doc,
+  updateDoc,
+  query,
+  where,
+  getDocs,
+  collection,
+} from '@angular/fire/firestore'; // Adicionado para acessar o Firestore diretamente, se necessário
 
 // Defina a interface para o objeto Assessment retornado pelo SurveyService
 interface Assessment {
@@ -29,7 +37,8 @@ export class AssessmentComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
-    private surveyService: SurveyService
+    private surveyService: SurveyService,
+    private firestore: Firestore // Injetei Firestore para atualizações diretas, se necessário
   ) {}
 
   ngOnInit(): void {
@@ -155,18 +164,59 @@ export class AssessmentComponent implements OnInit {
 
     if (this.assessmentId && this.token && this.participantId) {
       try {
+        // Chama o método do SurveyService para completar a avaliação
         await this.surveyService.completeAssessment(
           this.assessmentId,
           this.participantId,
           this.token,
           surveyData
         );
+
+        // Atualiza o status em assessmentLinks para 'completed'
+        await this.updateAssessmentLinkStatus(
+          this.assessmentId,
+          this.participantId
+        );
+
         this.surveyCompleted = true;
       } catch (error) {
         console.error('Erro ao salvar conclusão:', error);
       }
     } else {
       console.warn('Faltam parâmetros para salvar a conclusão.');
+    }
+  }
+
+  // Método para atualizar o status em assessmentLinks
+  private async updateAssessmentLinkStatus(
+    assessmentId: string,
+    participantId: string
+  ): Promise<void> {
+    try {
+      const assessmentLinksQuery = query(
+        collection(this.firestore, 'assessmentLinks'),
+        where('assessmentId', '==', assessmentId),
+        where('participantId', '==', participantId)
+      );
+      const snapshot = await getDocs(assessmentLinksQuery);
+
+      if (!snapshot.empty) {
+        const linkDoc = doc(
+          this.firestore,
+          'assessmentLinks',
+          snapshot.docs[0].id
+        );
+        await updateDoc(linkDoc, {
+          status: 'completed',
+          completedAt: new Date(), // Opcional: adicionar timestamp de conclusão
+        });
+        console.log('Status de assessmentLink atualizado para "completed".');
+      } else {
+        console.warn('Nenhum document link encontrado para atualização.');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar status em assessmentLinks:', error);
+      throw error; // Repropaga o erro para tratamento no onSurveyCompleted
     }
   }
 }
