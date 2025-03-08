@@ -31,8 +31,7 @@ export class AppComponent implements OnInit {
         try {
           await this.authService.applyUserTheme();
           const role = await this.authService.getCurrentUserRole();
-          console.log('User role:', role);
-
+          
           const publicPages = ['/', '/assessment'];
           const isPublicPage = publicPages.includes(currentUrl);
 
@@ -63,8 +62,7 @@ export class AppComponent implements OnInit {
         // Se não houver usuário, permite acesso a páginas públicas e login
         const allowedPages = ['/', '/assessment', '/authentication/login'];
         if (!allowedPages.includes(currentUrl)) {
-          console.log('Usuário não autenticado. Redirecionando para login.');
-          this.router.navigate(['/authentication/login']);
+                    this.router.navigate(['/authentication/login']);
         }
       }
     });
@@ -77,7 +75,6 @@ export class AppComponent implements OnInit {
         )
       )
       .subscribe((event) => {
-        console.log('NavigationEnd - Current URL:', event.urlAfterRedirects);
-      });
+              });
   }
 }

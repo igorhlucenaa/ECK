@@ -93,8 +93,7 @@ export class EmailTemplateFormComponent implements OnInit {
             : this.getDefaultTemplateWithLink(
                 this.form.get('emailType')?.value
               );
-          console.log('Design carregado:', design);
-
+          
           const interval = setInterval(() => {
             if (this.editorReady) {
               this.emailEditor.editor.loadDesign(design);
@@ -182,8 +181,7 @@ export class EmailTemplateFormComponent implements OnInit {
   }
 
   private async loadClients(): Promise<void> {
-    console.log('Carregando lista de clientes...');
-    try {
+        try {
       const clientsCollection = collection(this.firestore, 'clients');
       const snapshot = await getDocs(clientsCollection);
       this.clients = snapshot.docs.map((doc) => ({
@@ -196,13 +194,11 @@ export class EmailTemplateFormComponent implements OnInit {
   }
 
   onEditorReady(): void {
-    console.log('Editor está pronto!');
-    this.editorReady = true;
+        this.editorReady = true;
   }
 
   editorLoaded(): void {
-    console.log('Editor carregado!');
-    this.editorReady = true;
+        this.editorReady = true;
 
     // Carregar template correto dependendo do tipo de notificação
     if (!this.isEditMode) {
@@ -345,8 +341,7 @@ export class EmailTemplateFormComponent implements OnInit {
         return JSON.stringify(this.getDefaultTemplate());
       }
 
-      console.log('Conteúdo do template carregado:', content);
-      return content;
+            return content;
     }
 
     console.warn('Template não encontrado, carregando design padrão.');
@@ -355,8 +350,7 @@ export class EmailTemplateFormComponent implements OnInit {
 
   async saveTemplate(): Promise<void> {
     this.emailEditor.editor.exportHtml((data: any) => {
-      console.log('Exportando design e HTML:', data);
-
+      
       let design = JSON.stringify(data.design);
 
       // Garantir que o placeholder [LINK_AVALIACAO] esteja no template de convite ou lembrete
@@ -371,8 +365,7 @@ export class EmailTemplateFormComponent implements OnInit {
         );
       }
 
-      console.log('Design exportado:', design);
-
+      
       if (!design) {
         this.snackBar.open('Erro ao exportar o design do editor.', 'Fechar', {
           duration: 3000,
@@ -422,8 +415,7 @@ export class EmailTemplateFormComponent implements OnInit {
   }
 
   // editorLoaded(): void {
-  //   console.log('Editor carregado:', this.emailEditor);
-  //   this.editorReady = true; // Marcamos que o editor está pronto
+  //     //   this.editorReady = true; // Marcamos que o editor está pronto
 
   //   // Se não estamos editando, carregar template vazio
   //   if (!this.isEditMode) {

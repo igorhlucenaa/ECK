@@ -52,7 +52,7 @@ export class AssessmentResponsesModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: ResponseData,
     private firestore: Firestore
   ) {
-    console.log(this.data)
+    
   }
 
   async ngOnInit(): Promise<void> {

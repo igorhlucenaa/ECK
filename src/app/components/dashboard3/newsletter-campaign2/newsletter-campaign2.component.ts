@@ -69,9 +69,7 @@ export class AppNewsletterCampaign2Component implements OnChanges {
     const clientNames = this.creditUsageData.map((data) => data.client);
     const assessmentsCounts = this.creditUsageData.map((data) => data.used);
 
-    console.log('Clientes:', clientNames);
-    console.log('Avaliações cadastradas:', assessmentsCounts);
-
+        
     this.assessmentsChart = {
       series: [
         {

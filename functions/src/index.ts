@@ -112,7 +112,7 @@ function renderTemplateToHtml(
 export const sendEmail = onRequest((req, res) => {
   cors(req, res, async () => {
     // Torne a função de callback assíncrona
-    console.log('Dados recebidos:', req.body); // Log para verificar os dados recebidos
+     // Log para verificar os dados recebidos
     const { email, templateId, participantId, assessmentId } = req.body;
 
     // Verificar campos obrigatórios
@@ -156,15 +156,13 @@ export const sendEmail = onRequest((req, res) => {
       let emailHtml;
       try {
         const parsedContent = JSON.parse(template.content);
-        console.log('Conteúdo em JSON:', parsedContent);
-
+        
         // Renderizar o template com substituições
         emailHtml = renderTemplateToHtml(parsedContent, {
           LINK_AVALIACAO: assessmentLink,
         });
 
-        console.log('HTML gerado:', emailHtml);
-      } catch (err) {
+              } catch (err) {
         res
           .status(500)
           .send({ error: 'Erro ao processar o template de e-mail.' });
@@ -199,8 +197,7 @@ export const sendEmail = onRequest((req, res) => {
 
       // Enviar o e-mail
       await transporter.sendMail(mailOptions);
-      console.log(`E-mail enviado para: ${email}`);
-
+      
       // Atualizar status de entrega após envio bem-sucedido
       await participantRef.update({
         deliveryStatus: 'sent',

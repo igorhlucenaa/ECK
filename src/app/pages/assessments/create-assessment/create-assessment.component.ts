@@ -63,7 +63,7 @@ export class CreateAssessmentComponent implements OnInit {
     this.form = this.fb.group({
       clientId: ['', Validators.required],
       name: ['', Validators.required],
-      description: ['', Validators.required],
+      description: [''],
     });
   }
 
@@ -85,8 +85,7 @@ export class CreateAssessmentComponent implements OnInit {
 
     const currentUser = await this.authService.getCurrentUser();
     this.userRole = currentUser?.role || null;
-    console.log('Criando SurveyJS:', this.creatorModel);
-
+    
     if (this.userRole === 'admin_client') {
       // Usuário admin_client vê apenas o cliente associado
       const clientId = currentUser?.clientId || '';
@@ -256,7 +255,6 @@ export class CreateAssessmentComponent implements OnInit {
   }
 
   onClientChange(event: any): void {
-    console.log('Cliente selecionado:', event.value);
-    this.form.get('clientId')?.setValue(event.value);
+        this.form.get('clientId')?.setValue(event.value);
   }
 }

@@ -93,8 +93,7 @@ export class ParticipantResponsesModalComponent {
     private dialog: MatDialog,
     private firestore: Firestore
   ) {
-    console.log('Dados recebidos no modal:', this.data);
-  }
+      }
 
   async viewParticipantResponses(participantId: string): Promise<void> {
     try {

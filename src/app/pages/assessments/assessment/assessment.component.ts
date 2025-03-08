@@ -63,8 +63,7 @@ export class AssessmentComponent implements OnInit {
     );
 
     if (this.alreadyCompleted) {
-      console.log('Bloqueando carregamento: avaliação já concluída.');
-      return;
+            return;
     }
 
     await this.loadSurvey(assessmentId, participantId);
@@ -81,7 +80,7 @@ export class AssessmentComponent implements OnInit {
       // Carregar o tema do atributo 'theme' do documento, se existir
       const theme: any = assessment['theme']; // Usando any para flexibilidade
 
-      console.log('Tema carregado do Firestore:', theme); // Log para depuração
+       // Log para depuração
 
       const survey = new Survey.Model(this.surveyJSON);
 
@@ -107,7 +106,7 @@ export class AssessmentComponent implements OnInit {
           // Tentar aplicar o tema, se suportado
           if ('theme' in survey) {
             survey['theme'] = theme; // Usar notação de colchetes
-            console.log('Tema aplicado ao survey:', survey['theme']); // Log para depuração
+             // Log para depuração
           } else {
             console.warn(
               'Propriedade theme não suportada nesta versão do SurveyJS.'
@@ -140,8 +139,7 @@ export class AssessmentComponent implements OnInit {
 
   async onValueChanged(sender: Survey.SurveyModel): Promise<void> {
     const surveyData = sender.data;
-    console.log('Resposta alterada:', surveyData);
-
+    
     if (this.assessmentId && this.token && this.participantId) {
       try {
         await this.surveyService.saveAssessmentProgress(
@@ -160,8 +158,7 @@ export class AssessmentComponent implements OnInit {
 
   async onSurveyCompleted(sender: Survey.SurveyModel): Promise<void> {
     const surveyData = sender.data;
-    console.log('Survey completed:', surveyData);
-
+    
     if (this.assessmentId && this.token && this.participantId) {
       try {
         // Chama o método do SurveyService para completar a avaliação
@@ -210,8 +207,7 @@ export class AssessmentComponent implements OnInit {
           status: 'completed',
           completedAt: new Date(), // Opcional: adicionar timestamp de conclusão
         });
-        console.log('Status de assessmentLink atualizado para "completed".');
-      } else {
+              } else {
         console.warn('Nenhum document link encontrado para atualização.');
       }
     } catch (error) {

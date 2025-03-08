@@ -97,9 +97,7 @@ export class UsersComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    console.log('userSort:', this.userSort);
-    console.log('userPaginator:', this.userPaginator);
-    this.userDataSource.sort = this.userSort;
+            this.userDataSource.sort = this.userSort;
     this.userDataSource.paginator = this.userPaginator;
   }
 
@@ -449,8 +447,7 @@ export class UsersComponent implements OnInit, AfterViewInit {
 
   // Enviar e-mail de notificação
   sendEmailNotification(user: User): void {
-    console.log('Enviando e-mail para:', user.email);
-    // Aqui você implementaria a lógica de envio de e-mail, usando um serviço backend
+        // Aqui você implementaria a lógica de envio de e-mail, usando um serviço backend
     // Por exemplo, se você estiver usando Firebase Functions ou outro serviço:
     // this.emailService.sendNotification(user.email);
 

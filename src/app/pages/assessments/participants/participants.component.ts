@@ -18,6 +18,7 @@ import {
   query,
   where,
   setDoc,
+  getDoc,
 } from '@angular/fire/firestore';
 import * as Papa from 'papaparse';
 import { MaterialModule } from 'src/app/material.module';
@@ -80,6 +81,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'name',
     'email',
     'category',
+    'client',
+    'project',
     'assessments',
     'actions',
   ];
@@ -120,15 +123,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   async ngOnInit(): Promise<void> {
     await this.loadClients();
+    await this.loadProjectsForEV();
     await this.loadEvaluators();
     await this.loadEvaluatees();
     await this.loadAssessments();
     await this.loadEvaluatorsList();
     await this.loadMailTemplates(); // Carrega templates de e-mail
 
-    console.log('Avaliadores carregados:', this.evaluatorsDataSource.data);
-    console.log('Avaliados carregados:', this.evaluateesDataSource.data);
-  }
+          }
 
   async loadEvaluatorsList(): Promise<void> {
     try {
@@ -146,8 +148,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         type: doc.data()['type'] || '',
       }));
 
-      console.log('Avaliadores carregados (lista):', this.availableEvaluators);
-    } catch (error) {
+          } catch (error) {
       console.error('Erro ao carregar avaliadores (lista):', error);
       this.snackBar.open('Erro ao carregar lista de avaliadores.', 'Fechar', {
         duration: 3000,
@@ -182,31 +183,48 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       );
       const snapshot = await getDocs(evaluatorsQuery);
 
-      const evaluators = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'],
-        email: doc.data()['email'],
-        category: doc.data()['category'] || 'Não informado',
-        assessments: doc.data()['assessments'] ?? [],
-        selected: false,
-      }));
+      const evaluators = snapshot.docs.map((doc) => {
+        const data = doc.data() as { [key: string]: any }; // Tipo genérico para acessar dinamicamente
+        const evaluator: any = {
+          id: doc.id,
+          name: data['name'] || '',
+          email: data['email'] || '',
+          category: data['category'] || 'Não informado',
+          assessments: data['assessments'] ?? [],
+          selected: false,
+          clientId: data['clientId'] || 'Desconhecido',
+          projectId: data['projectId'] || 'Desconhecido',
+        };
 
-      console.log('Avaliadores recuperados do Firestore:', evaluators);
-      this.evaluatorsDataSource.data = evaluators;
-      this.evaluatorsDataSource._updateChangeSubscription();
-      console.log(
-        'Avaliadores carregados para tabela:',
-        this.evaluatorsDataSource.data
-      );
-    } catch (error) {
-      console.error('Erro ao carregar avaliadores:', error);
-      this.snackBar.open(
-        'Erro ao carregar avaliadores para tabela.',
-        'Fechar',
-        {
-          duration: 3000,
+        // Buscar cliente em this.clients
+        if (evaluator.clientId && evaluator.clientId !== 'Desconhecido') {
+          const client = this.clients.find((c) => c.id === evaluator.clientId);
+          evaluator.clientName = client?.name || 'Cliente Não Encontrado';
+        } else {
+          evaluator.clientName = 'Sem Cliente';
         }
-      );
+
+        // Buscar projeto em this.projects
+        
+        if (evaluator.projectId && evaluator.projectId !== 'Desconhecido') {
+          const project = this.projects.find((p) => p.id === evaluator.projectId);
+          
+          
+          evaluator.projectName = project?.name || 'Projeto Não Encontrado';
+        } else {
+          evaluator.projectName = 'Sem Projeto';
+        }
+
+        return evaluator;
+      });
+
+            this.evaluatorsDataSource.data = evaluators;
+      this.evaluatorsDataSource._updateChangeSubscription();
+          } catch (error) {
+      console.error('Erro ao carregar avaliadores:', error);
+      this.snackBar.open('Erro ao carregar avaliadores para tabela.', 'Fechar', {
+        duration: 3000,
+      });
     }
   }
 
@@ -227,7 +245,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         id: doc.id,
         name: doc.data()['name'],
         email: doc.data()['email'],
+        clientId: doc.data()['clientId'] || 'Desconhecido',
+        projectId: doc.data()['projectId'] || 'Desconhecido',
         category: doc.data()['category'] || 'Não informado',
+        assessments: doc.data()['assessments'] ?? [], // Certifique-se de que os assessments estão disponíveis
       }));
 
       const evaluatees = snapshot.docs.map((doc) => {
@@ -238,43 +259,39 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           email: data['email'],
           clientId: data['clientId'] || 'Desconhecido',
           projectId: data['projectId'] || 'Desconhecido',
-          assessments: data['assessments']?.map((a: any) => a.id) ?? [], // Ajuste para mapear apenas IDs
+          assessments: data['assessments']?.map((a: any) => a.id) ?? [],
           evaluators: [],
           selected: false,
         } as Evaluatee;
       });
 
       for (const evaluatee of evaluatees) {
-        if (!evaluatee.clientId) {
-          console.error(
-            `Erro: O avaliado ${evaluatee.name} não tem um clientId!`
+        // Verificar se o clientId e projectId estão presentes
+        if (!evaluatee.clientId || evaluatee.clientId === 'Desconhecido') {
+          console.warn(
+            `Aviso: O avaliado ${evaluatee.name} não tem um clientId válido!`
           );
           evaluatee.clientId = 'Desconhecido';
+          evaluatee.clientName = 'Sem Cliente';
+        } else {
+          const client = this.clients.find((c) => c.id === evaluatee.clientId);
+          evaluatee.clientName = client?.name || 'Cliente Não Encontrado';
         }
-        if (!evaluatee.projectId) {
-          console.error(
-            `Erro: O avaliado ${evaluatee.name} não tem um projectId!`
+
+        if (!evaluatee.projectId || evaluatee.projectId === 'Desconhecido') {
+          console.warn(
+            `Aviso: O avaliado ${evaluatee.name} não tem um projectId válido!`
           );
           evaluatee.projectId = 'Desconhecido';
+          evaluatee.projectName = 'Sem Projeto';
+        } else {
+          const project = this.projects.find(
+            (p) => p.id === evaluatee.projectId
+          );
+          evaluatee.projectName = project?.name || 'Projeto Não Encontrado';
         }
 
-        const clientDoc = await getDocs(collection(this.firestore, 'clients'));
-        const projectDoc = await getDocs(
-          collection(this.firestore, 'projects')
-        );
-
-        const client = clientDoc.docs.find(
-          (doc) => doc.id === evaluatee.clientId
-        );
-        const project = projectDoc.docs.find(
-          (doc) => doc.id === evaluatee.projectId
-        );
-
-        evaluatee.clientName =
-          client?.data()['companyName'] || 'Cliente Não Encontrado';
-        evaluatee.projectName =
-          project?.data()['name'] || 'Projeto Não Encontrado';
-
+        // Associar avaliadores com base nas avaliações
         const assessments = evaluatee.assessments ?? [];
         if (assessments.length > 0) {
           evaluatee.evaluators = allEvaluators
@@ -287,8 +304,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         }
       }
 
-      console.log('Avaliados recuperados do Firestore:', evaluatees);
-      this.evaluateesDataSource.data = evaluatees;
+            this.evaluateesDataSource.data = evaluatees;
       this.evaluateesDataSource._updateChangeSubscription();
       console.log(
         'Avaliados carregados para tabela:',
@@ -315,8 +331,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         subject: doc.data()['subject'],
       }));
 
-      console.log('Templates de e-mail carregados:', this.mailTemplates);
-    } catch (error) {
+          } catch (error) {
       console.error('Erro ao carregar templates de e-mail:', error);
       this.snackBar.open('Erro ao carregar templates de e-mail.', 'Fechar', {
         duration: 3000,
@@ -325,8 +340,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    console.log('Inicializando paginadores e ordenação...');
-    this.evaluatorsDataSource.paginator = this.evaluatorsPaginator;
+        this.evaluatorsDataSource.paginator = this.evaluatorsPaginator;
     this.evaluatorsDataSource.sort = this.evaluatorsSort;
     console.log(
       'DataSource de avaliadores após inicialização:',
@@ -415,7 +429,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     try {
       const assessments: AssessmentDetail[] = [];
       for (const id of assessmentIds) {
-        console.log('Carregando dados para assessmentId:', id); // Log para depuração
+         // Log para depuração
         const assessmentData = await this.getAssessmentDataFromFirestore(id);
         const assessment = this.availableAssessments.find((a) => a.id === id);
         assessments.push({
@@ -609,7 +623,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
     try {
       const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
-      await updateDoc(evaluateeDoc, { evaluators: evaluatee.evaluators || [] });
+      await updateDoc(evaluateeDoc, { evaluators: evaluatee.evaluators || [] }).then(res => 
 
       evaluatee['isEditingEvaluators'] = false;
       this.snackBar.open('Avaliadores atualizados com sucesso!', 'Fechar', {
@@ -720,10 +734,27 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         name: doc.data()['companyName'] || 'Cliente Sem Nome',
       }));
 
-      console.log('Clientes carregados:', this.clients);
-    } catch (error) {
+          } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async loadProjectsForEV(): Promise<void> {
+    try {
+      const projectsCollection = collection(this.firestore, 'projects');
+      const snapshot = await getDocs(projectsCollection);
+  
+      this.projects = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Projeto Sem Nome',
+      }));
+  
+          } catch (error) {
+      console.error('Erro ao carregar projetos:', error);
+      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
         duration: 3000,
       });
     }
@@ -770,8 +801,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         header: 1,
       });
 
-      console.log('Planilha carregada:', jsonData);
-
+      
       const startRowIndex = 19;
       const participants: any[] = [];
 
@@ -803,8 +833,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         });
       }
 
-      console.log('Participantes processados:', participants);
-
+      
       if (participants.length === 0) {
         this.snackBar.open('Nenhum participante válido encontrado.', 'Fechar', {
           duration: 3000,

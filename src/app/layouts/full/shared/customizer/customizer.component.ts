@@ -43,7 +43,7 @@ export class CustomizerComponent {
   }
 
   setColor(color: string) {
-    console.log(color)
+    
     this.settings.setOptions({ activeTheme: color });
     this.emitOptions();
   }

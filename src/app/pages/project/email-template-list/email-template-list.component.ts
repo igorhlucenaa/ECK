@@ -80,8 +80,7 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   private async loadClients(): Promise<void> {
-    console.log('Carregando lista de clientes...');
-    try {
+        try {
       const clientsCollection = collection(this.firestore, 'clients');
       const snapshot = await getDocs(clientsCollection);
       this.clients = snapshot.docs.map((doc) => ({
@@ -94,23 +93,20 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   private async loadTemplates(): Promise<void> {
-    console.log('Carregando templates...');
-
+    
     try {
       const templatesCollection = collection(this.firestore, 'mailTemplates');
       let queryConstraint;
 
       if (this.userRole === 'admin_master') {
-        console.log('entrou nesse 1');
-        queryConstraint = query(templatesCollection);
+                queryConstraint = query(templatesCollection);
       } else if (this.userRole === 'admin_client' && this.userClientId) {
         queryConstraint = query(
           templatesCollection,
           where('clientId', '==', this.userClientId)
         );
       } else {
-        console.log('entrou nesse 2');
-        this.snackBar.open(
+                this.snackBar.open(
           'Você não tem permissão para visualizar templates.',
           'Fechar',
           {
@@ -208,8 +204,7 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   editTemplate(templateId: string, isGlobal: boolean): void {
-    console.log(this.userRole);
-    if (this.userRole === 'admin_master') {
+        if (this.userRole === 'admin_master') {
       this.router.navigate([`projects/default-template/${templateId}/edit`]);
     } else if (
       !isGlobal &&
@@ -249,8 +244,7 @@ export class EmailTemplateListComponent implements OnInit {
         ) {
           templateDocRef = doc(this.firestore, `mailTemplates/${templateId}`);
         } else {
-          console.log('entrou nesse 3');
-          this.snackBar.open(
+                    this.snackBar.open(
             'Você não tem permissão para excluir este template.',
             'Fechar',
             {
@@ -261,8 +255,7 @@ export class EmailTemplateListComponent implements OnInit {
         }
 
         await deleteDoc(templateDocRef);
-        console.log(this.dataSource.data);
-        this.dataSource.data = this.dataSource.data.filter(
+                this.dataSource.data = this.dataSource.data.filter(
           (template) => template.id !== templateId
         );
         this.snackBar.open('Template excluído com sucesso!', 'Fechar', {

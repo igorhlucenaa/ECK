@@ -47,8 +47,7 @@ export class SurveyService {
         },
         { merge: true }
       );
-      console.log('Progresso salvo com sucesso!');
-    } catch (error) {
+          } catch (error) {
       console.error('Erro ao salvar progresso:', error);
       throw error;
     }
@@ -76,8 +75,7 @@ export class SurveyService {
         },
         { merge: true }
       );
-      console.log('Avaliação concluída e salva com sucesso!');
-    } catch (error) {
+          } catch (error) {
       console.error('Erro ao salvar conclusão da avaliação:', error);
       throw error;
     }
@@ -95,8 +93,7 @@ export class SurveyService {
       const resultSnap = await getDoc(resultRef);
 
       if (resultSnap.exists() && resultSnap.data()?.['completedAt']) {
-        console.log('Avaliação já foi concluída por este participante.');
-        return true;
+                return true;
       }
       return false;
     } catch (error) {

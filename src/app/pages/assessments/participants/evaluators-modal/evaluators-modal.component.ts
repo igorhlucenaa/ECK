@@ -94,8 +94,7 @@ export class EvaluatorsModalComponent implements OnInit {
       const resultSnap = await getDoc(resultRef);
 
       if (resultSnap.exists() && resultSnap.data()?.['completedAt']) {
-        console.log('Avaliação já foi concluída por este participante.');
-        return true;
+                return true;
       }
       return false;
     } catch (error) {
@@ -269,7 +268,7 @@ export class EvaluatorsModalComponent implements OnInit {
           assessmentId: assessmentId,
         };
 
-        console.log('Payload enviado para sendEmail:', emailRequest); // Log para depuração
+         // Log para depuração
 
         // Faz a chamada à função Firebase Cloud Function
         const response = await fetch(

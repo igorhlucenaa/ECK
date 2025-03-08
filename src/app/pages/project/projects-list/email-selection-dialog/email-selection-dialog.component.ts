@@ -61,8 +61,7 @@ export class EmailSelectionDialogComponent implements OnInit {
     this.emailType = this.data.emailType;
     this.loadParticipants();
     this.loadAssessments(); // Carregar as avaliações disponíveis
-    console.log('data =====> ', this.data);
-  }
+      }
 
   async loadParticipants() {
     this.isLoading.set(true);

@@ -10,6 +10,7 @@ import {
   doc,
   query,
   where,
+  getDoc,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -18,42 +19,51 @@ import { AssessmentPreviewComponent } from '../assessment-preview/assessment-pre
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { ParticipantResponsesModalComponent } from './participant-responses-modal/participant-responses-modal.component';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 interface Assessment {
   id: string;
   name: string;
   createdBy: { name: string };
   createdAt: Date;
-  responsesCount?: number; // Mantido como propriedade opcional
-  // Outros campos, se necessário
+  responsesCount?: number;
+  clientId?: string;
+  clientName?: string;
 }
 
 interface Participant {
   id: string;
   name: string;
   email: string;
-  sentAt?: Date; // Data de envio do e-mail
-  completedAt?: Date; // Data de resposta do usuário
-  // Outros campos, se necessário
+  sentAt?: Date;
+  completedAt?: Date;
+}
+
+interface Client {
+  id: string;
+  companyName: string;
 }
 
 @Component({
   selector: 'app-assessment-list',
   standalone: true,
-  imports: [MaterialModule, CommonModule],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './assessment-list.component.html',
   styleUrls: ['./assessment-list.component.scss'],
 })
 export class AssessmentListComponent implements OnInit {
   displayedColumns: string[] = [
+    'clientName',
     'name',
     'createdBy',
     'createdAt',
-    'responses',
+    // 'responses',
     'actions',
-  ]; // Adicionei 'responses'
+  ];
   dataSource = new MatTableDataSource<any>([]);
   searchValue: string = '';
+  clientFilter = new FormControl(''); // FormControl para o filtro de cliente
+  clients: Client[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -62,11 +72,26 @@ export class AssessmentListComponent implements OnInit {
     private router: Router,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog // Injetar o MatDialog
-  ) {}
+    private dialog: MatDialog
+  ) {
+    // Definir o valor inicial do clientFilter como 'Todos' ('')
+    this.clientFilter.setValue('');
+  }
 
   ngOnInit(): void {
-    this.loadAssessments();
+    // Configurar o filterPredicate antes de carregar os dados
+    this.dataSource.filterPredicate = (data: any, filter: string) => {
+      const filterObj = JSON.parse(filter);
+      const textMatch = data.name.toLowerCase().includes(filterObj.text);
+      const clientMatch =
+        !filterObj.client || data.clientId === filterObj.client;
+      return textMatch && clientMatch;
+    };
+
+    // Carregar os dados de forma assíncrona e aplicar o filtro inicial
+    Promise.all([this.loadClients(), this.loadAssessments()]).then(() => {
+      this.applyFilters();
+    });
   }
 
   async loadAssessments(): Promise<void> {
@@ -79,11 +104,30 @@ export class AssessmentListComponent implements OnInit {
         ...doc.data(),
       }));
 
-      // Para cada avaliação, contar o número de participantes que responderam
       for (const assessment of assessments) {
         assessment.responsesCount = await this.countRespondedParticipants(
           assessment.id
         );
+
+        if (assessment.clientId) {
+          const clientDoc = await getDoc(
+            doc(this.firestore, 'clients', assessment.clientId)
+          );
+          if (clientDoc.exists()) {
+            assessment.clientName =
+              clientDoc.data()['companyName'] || 'Desconhecido';
+          } else {
+            assessment.clientName = 'Desconhecido';
+            console.warn(
+              `Cliente com ID ${assessment.clientId} não encontrado.`
+            );
+          }
+        } else {
+          assessment.clientName = 'Sem Cliente';
+          console.warn(
+            `Avaliação ${assessment.id} não possui clientId associado.`
+          );
+        }
       }
 
       this.dataSource.data = assessments;
@@ -97,6 +141,23 @@ export class AssessmentListComponent implements OnInit {
     }
   }
 
+  async loadClients(): Promise<void> {
+    try {
+      const clientsCollection = collection(this.firestore, 'clients');
+      const snapshot = await getDocs(clientsCollection);
+      this.clients = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        companyName: doc.data()['companyName'] || 'Sem Nome',
+      }));
+      this.clients.unshift({ id: '', companyName: 'Todos' });
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
   async countRespondedParticipants(assessmentId: string): Promise<number> {
     try {
       const assessmentLinksQuery = query(
@@ -105,7 +166,6 @@ export class AssessmentListComponent implements OnInit {
       );
       const snapshot = await getDocs(assessmentLinksQuery);
 
-      // Filtrar localmente os documentos com status 'completed'
       const completedLinks = snapshot.docs.filter(
         (doc) => doc.data()['status'] === 'completed'
       );
@@ -113,8 +173,8 @@ export class AssessmentListComponent implements OnInit {
         `Contando respostas para assessmentId ${assessmentId}:`,
         completedLinks.length,
         completedLinks
-      ); // Log detalhado
-      return completedLinks.length; // Retorna a quantidade de participantes que responderam
+      );
+      return completedLinks.length;
     } catch (error) {
       console.error('Erro ao contar participantes respondentes:', error);
       this.snackBar.open(
@@ -130,7 +190,6 @@ export class AssessmentListComponent implements OnInit {
 
   async showRespondedParticipants(assessmentId: string): Promise<void> {
     try {
-      // Buscar todos os links para esta avaliação, independentemente do status
       const assessmentLinksQuery = query(
         collection(this.firestore, 'assessmentLinks'),
         where('assessmentId', '==', assessmentId)
@@ -140,9 +199,8 @@ export class AssessmentListComponent implements OnInit {
       console.log(
         `Links encontrados para assessmentId ${assessmentId}:`,
         linksSnapshot.docs
-      ); // Log para depuração
+      );
 
-      // Filtrar localmente os links com status 'completed'
       const completedLinks = linksSnapshot.docs.filter(
         (doc) => doc.data()['status'] === 'completed'
       );
@@ -154,20 +212,19 @@ export class AssessmentListComponent implements OnInit {
         console.log(
           `Dados do link para participantId ${participantId}:`,
           linkData
-        ); // Log para depuração
+        );
 
-        // Tentar buscar pelo campo 'id' ou outro identificador único (ex.: 'documentId' se for o ID do documento)
         const participantDoc = await getDocs(
           query(
             collection(this.firestore, 'participants'),
-            where('id', '==', participantId) // Tentei buscar pelo 'id', ajuste se necessário
+            where('id', '==', participantId)
           )
         );
         const participantData = participantDoc.docs[0]?.data();
         console.log(
           `Dados do participante para id ${participantId}:`,
           participantData
-        ); // Log para depuração
+        );
 
         if (participantData) {
           participants.push({
@@ -176,16 +233,15 @@ export class AssessmentListComponent implements OnInit {
             email: participantData['email'] || 'Sem e-mail',
             sentAt: linkData['sentAt']
               ? linkData['sentAt'].toDate()
-              : undefined, // Data de envio do e-mail
+              : undefined,
             completedAt: linkData['completedAt']
               ? linkData['completedAt'].toDate()
-              : undefined, // Data de resposta
+              : undefined,
           });
         } else {
           console.warn(
             `Participante não encontrado para id ${participantId}. Verificando pelo document ID...`
           );
-          // Tentar buscar pelo document ID diretamente, se 'id' não for o campo correto
           const participantDocById = await getDocs(
             collection(this.firestore, 'participants')
           ).then((snapshot) => {
@@ -216,8 +272,7 @@ export class AssessmentListComponent implements OnInit {
         }
       }
 
-      console.log('Participantes encontrados para o modal:', participants); // Log para depuração
-
+      
       if (participants.length === 0) {
         console.warn(
           'Nenhum participante respondente encontrado para esta avaliação.'
@@ -232,7 +287,6 @@ export class AssessmentListComponent implements OnInit {
         return;
       }
 
-      // Abrir o modal com os participantes respondentes
       this.dialog.open(ParticipantResponsesModalComponent, {
         width: '75%',
         data: {
@@ -255,16 +309,28 @@ export class AssessmentListComponent implements OnInit {
     }
   }
 
-  applyFilter(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value
-      .trim()
-      .toLowerCase();
-    this.searchValue = filterValue;
-    this.dataSource.filter = filterValue;
+  applyFilters(): void {
+    const textFilter = this.searchValue.trim().toLowerCase();
+    const clientFilterValue = this.clientFilter.value || '';
+
+    this.dataSource.filter = JSON.stringify({
+      text: textFilter,
+      client: clientFilterValue,
+    });
 
     if (this.dataSource.paginator) {
       this.dataSource.paginator.firstPage();
     }
+  }
+
+  applyFilter(event: Event): void {
+    const filterValue = (event.target as HTMLInputElement).value;
+    this.searchValue = filterValue;
+    this.applyFilters();
+  }
+
+  onClientFilterChange(): void {
+    this.applyFilters();
   }
 
   createNewAssessment(): void {
@@ -300,10 +366,9 @@ export class AssessmentListComponent implements OnInit {
   }
 
   previewAssessment(assessment: any): void {
-    console.log(assessment);
-    this.dialog.open(AssessmentPreviewComponent, {
+        this.dialog.open(AssessmentPreviewComponent, {
       width: '600px',
-      data: assessment, // Passar os dados da avaliação selecionada para o modal
+      data: assessment,
     });
   }
 }
