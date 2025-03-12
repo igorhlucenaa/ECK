@@ -58,7 +58,11 @@ interface MailTemplate {
     <h2 mat-dialog-title>Reenviar Link para Respondentes</h2>
     <mat-dialog-content>
       <!-- Campo de Seleção de Template -->
-      <mat-form-field class="w-100 mb-3" appearance="outline">
+      <mat-form-field
+        class="w-100 mb-3"
+        appearance="outline"
+        style="margin-top: 20px"
+      >
         <mat-label>Escolha um Template de E-mail</mat-label>
         <mat-select [formControl]="templateFormControl" required>
           <mat-option

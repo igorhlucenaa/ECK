@@ -67,7 +67,7 @@
           (click)="goToProjectUsers(project.id)"
           matTooltip="Usuários do projeto"
         >
-          <mat-icon>group</mat-icon>
+          <mat-icon>groups</mat-icon>
         </button>
         <button
           mat-icon-button
@@ -87,6 +87,14 @@
         </button>
         <button
           mat-icon-button
+          color="accent"
+          matTooltip="Participantes"
+          (click)="openResendModal(project.id, project.clientId)"
+        >
+          <mat-icon>supervisor_account</mat-icon>
+        </button>
+        <button
+          mat-icon-button
           color="primary"
           matTooltip="Editar Projeto"
           (click)="openProjectForm(project.id)"
@@ -102,14 +110,6 @@
           <mat-icon>delete</mat-icon>
         </button>
         <!-- Novo Botão de Participantes -->
-        <button
-          mat-icon-button
-          color="accent"
-          matTooltip="Participantes"
-          (click)="openResendModal(project.id, project.clientId)"
-        >
-          <mat-icon>people</mat-icon>
-        </button>
       </td>
     </ng-container>
 

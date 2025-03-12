@@ -21,6 +21,7 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { EmailSelectionDialogComponent } from './email-selection-dialog/email-selection-dialog.component';
 import { ResendAssessmentModalComponent } from '../resend-assessment-modal/resend-assessment-modal.component';
+import { ParticipantsModalComponent } from '../participants-modal/participants-modal.component';
 
 @Component({
   selector: 'app-projects-list',
@@ -104,9 +105,10 @@ export class ProjectsListComponent implements OnInit {
               ? data['deadline'].toDate()
               : null;
 
+          const projectId = doc.id;
           const assessmentId = data['assessmentId'];
           const [respondedCount, totalParticipants] =
-            await this.countAssessmentResponses(assessmentId);
+            await this.countAssessmentResponses(projectId, assessmentId);
 
           return {
             id: doc.id,
@@ -151,11 +153,22 @@ export class ProjectsListComponent implements OnInit {
   }
 
   private async countAssessmentResponses(
+    projectId: string,
     assessmentId: string
   ): Promise<[number, number]> {
     try {
-      if (!assessmentId) return [0, 0];
+      if (!projectId || !assessmentId) return [0, 0];
 
+      // Contar todos os participantes avaliados do projeto
+      const participantsQuery = query(
+        collection(this.firestore, 'participants'),
+        where('projectId', '==', projectId),
+        where('type', '==', 'avaliado')
+      );
+      const participantsSnapshot = await getDocs(participantsQuery);
+      const totalParticipants = participantsSnapshot.docs.length;
+
+      // Contar respostas completadas (status === 'completed') em assessmentLinks
       const assessmentLinksQuery = query(
         collection(this.firestore, 'assessmentLinks'),
         where('assessmentId', '==', assessmentId)
@@ -165,7 +178,6 @@ export class ProjectsListComponent implements OnInit {
       const respondedCount = linksSnapshot.docs.filter(
         (doc) => doc.data()['status'] === 'completed'
       ).length;
-      const totalParticipants = linksSnapshot.docs.length;
 
       return [respondedCount, totalParticipants];
     } catch (error) {
@@ -267,7 +279,7 @@ export class ProjectsListComponent implements OnInit {
   }
 
   openResendModal(projectId: string, clientId: string): void {
-    const dialogRef = this.dialog.open(ResendAssessmentModalComponent, {
+    const dialogRef = this.dialog.open(ParticipantsModalComponent, {
       width: '80%',
       data: {
         projectId: projectId,
@@ -276,7 +288,6 @@ export class ProjectsListComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe(() => {
-      // Recarregar a tabela para atualizar os dados de respostas, se necessário
       this.loadProjects();
     });
   }
