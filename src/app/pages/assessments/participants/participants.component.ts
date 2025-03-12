@@ -129,8 +129,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     await this.loadAssessments();
     await this.loadEvaluatorsList();
     await this.loadMailTemplates(); // Carrega templates de e-mail
-
-          }
+  }
 
   async loadEvaluatorsList(): Promise<void> {
     try {
@@ -147,8 +146,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         category: doc.data()['category'] || 'Não informado',
         type: doc.data()['type'] || '',
       }));
-
-          } catch (error) {
+    } catch (error) {
       console.error('Erro ao carregar avaliadores (lista):', error);
       this.snackBar.open('Erro ao carregar lista de avaliadores.', 'Fechar', {
         duration: 3000,
@@ -205,11 +203,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         }
 
         // Buscar projeto em this.projects
-        
+
         if (evaluator.projectId && evaluator.projectId !== 'Desconhecido') {
-          const project = this.projects.find((p) => p.id === evaluator.projectId);
-          
-          
+          const project = this.projects.find(
+            (p) => p.id === evaluator.projectId
+          );
+
           evaluator.projectName = project?.name || 'Projeto Não Encontrado';
         } else {
           evaluator.projectName = 'Sem Projeto';
@@ -218,13 +217,17 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         return evaluator;
       });
 
-            this.evaluatorsDataSource.data = evaluators;
+      this.evaluatorsDataSource.data = evaluators;
       this.evaluatorsDataSource._updateChangeSubscription();
-          } catch (error) {
+    } catch (error) {
       console.error('Erro ao carregar avaliadores:', error);
-      this.snackBar.open('Erro ao carregar avaliadores para tabela.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(
+        'Erro ao carregar avaliadores para tabela.',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
     }
   }
 
@@ -304,7 +307,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         }
       }
 
-            this.evaluateesDataSource.data = evaluatees;
+      this.evaluateesDataSource.data = evaluatees;
       this.evaluateesDataSource._updateChangeSubscription();
       console.log(
         'Avaliados carregados para tabela:',
@@ -330,8 +333,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         emailType: doc.data()['emailType'],
         subject: doc.data()['subject'],
       }));
-
-          } catch (error) {
+    } catch (error) {
       console.error('Erro ao carregar templates de e-mail:', error);
       this.snackBar.open('Erro ao carregar templates de e-mail.', 'Fechar', {
         duration: 3000,
@@ -340,7 +342,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-        this.evaluatorsDataSource.paginator = this.evaluatorsPaginator;
+    this.evaluatorsDataSource.paginator = this.evaluatorsPaginator;
     this.evaluatorsDataSource.sort = this.evaluatorsSort;
     console.log(
       'DataSource de avaliadores após inicialização:',
@@ -429,7 +431,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     try {
       const assessments: AssessmentDetail[] = [];
       for (const id of assessmentIds) {
-         // Log para depuração
+        // Log para depuração
         const assessmentData = await this.getAssessmentDataFromFirestore(id);
         const assessment = this.availableAssessments.find((a) => a.id === id);
         assessments.push({
@@ -623,7 +625,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
     try {
       const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
-      await updateDoc(evaluateeDoc, { evaluators: evaluatee.evaluators || [] }).then(res => 
+      await updateDoc(evaluateeDoc, {
+        evaluators: evaluatee.evaluators || [],
+      }).then((res) => {
+        console.log(res);
+      });
 
       evaluatee['isEditingEvaluators'] = false;
       this.snackBar.open('Avaliadores atualizados com sucesso!', 'Fechar', {
@@ -733,8 +739,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         id: doc.id,
         name: doc.data()['companyName'] || 'Cliente Sem Nome',
       }));
-
-          } catch (error) {
+    } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
         duration: 3000,
@@ -746,13 +751,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     try {
       const projectsCollection = collection(this.firestore, 'projects');
       const snapshot = await getDocs(projectsCollection);
-  
+
       this.projects = snapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['name'] || 'Projeto Sem Nome',
       }));
-  
-          } catch (error) {
+    } catch (error) {
       console.error('Erro ao carregar projetos:', error);
       this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
         duration: 3000,
@@ -801,7 +805,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         header: 1,
       });
 
-      
       const startRowIndex = 19;
       const participants: any[] = [];
 
@@ -833,7 +836,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         });
       }
 
-      
       if (participants.length === 0) {
         this.snackBar.open('Nenhum participante válido encontrado.', 'Fechar', {
           duration: 3000,
@@ -849,8 +851,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             participants,
             clients: this.clients,
             loadProjects: (clientId: string) => this.loadProjects(clientId),
-            loadEvaluations: (clientId: string) =>
-              this.loadEvaluations(clientId),
+            loadEvaluation: (projectId: string) =>
+              this.loadEvaluation(projectId), // Nova função
           },
         }
       );
@@ -867,7 +869,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
                   ...participant,
                   clientId: result.client,
                   projectId: result.project,
-                  assessments: result.evaluations ?? [],
+                  assessments: result.evaluation ? [result.evaluation] : [], // Usa a avaliação associada ao projeto
                   createdAt: new Date(),
                 }
               );
@@ -875,7 +877,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
               savedParticipants.push({
                 ...participant,
                 id: docRef.id,
-                assessments: result.evaluations ?? [],
+                assessments: result.evaluation ? [result.evaluation] : [],
               });
             } catch (error) {
               console.error('Erro ao salvar participante:', error);
@@ -893,6 +895,54 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     };
 
     reader.readAsArrayBuffer(file);
+  }
+
+  async loadEvaluation(
+    projectId: string
+  ): Promise<{ id: string; name: string } | null> {
+    if (!projectId) return null;
+
+    try {
+      // Buscar o projeto para obter o assessmentId
+      const projectDoc = doc(this.firestore, 'projects', projectId);
+      const projectSnapshot = await getDoc(projectDoc);
+      if (!projectSnapshot.exists()) {
+        throw new Error('Projeto não encontrado');
+      }
+
+      const projectData = projectSnapshot.data();
+      const assessmentId = projectData['assessmentId'];
+
+      if (!assessmentId) {
+        this.snackBar.open(
+          'Nenhuma avaliação associada a este projeto.',
+          'Fechar',
+          {
+            duration: 3000,
+          }
+        );
+        return null;
+      }
+
+      // Buscar a avaliação associada
+      const assessmentDoc = doc(this.firestore, 'assessments', assessmentId);
+      const assessmentSnapshot = await getDoc(assessmentDoc);
+      if (!assessmentSnapshot.exists()) {
+        throw new Error('Avaliação não encontrada');
+      }
+
+      const assessmentData = assessmentSnapshot.data();
+      return {
+        id: assessmentId,
+        name: assessmentData['name'] || 'Avaliação Sem Nome',
+      };
+    } catch (error) {
+      console.error('Erro ao carregar avaliação:', error);
+      this.snackBar.open('Erro ao carregar avaliação.', 'Fechar', {
+        duration: 3000,
+      });
+      return null;
+    }
   }
 
   async updateEvaluateesTable(): Promise<void> {

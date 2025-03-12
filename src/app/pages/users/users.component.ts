@@ -70,8 +70,8 @@ export class UsersComponent implements OnInit, AfterViewInit {
   userRole: any;
   // Tabela de grupos de usuários
   displayedGroupColumns: string[] = [
-    'name',
     'client',
+    'name',
     'description',
     'createdBy',
     'actions',

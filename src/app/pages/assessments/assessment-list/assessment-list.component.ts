@@ -1,6 +1,6 @@
 import { MatDialog } from '@angular/material/dialog';
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   Firestore,
@@ -11,6 +11,12 @@ import {
   query,
   where,
   getDoc,
+  setDoc,
+  CollectionReference,
+  DocumentData,
+  Query,
+  updateDoc,
+  Timestamp,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -19,6 +25,7 @@ import { AssessmentPreviewComponent } from '../assessment-preview/assessment-pre
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { ParticipantResponsesModalComponent } from './participant-responses-modal/participant-responses-modal.component';
+import { SendAssessmentModalComponent } from './send-assessment-modal/send-assessment-modal.component';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 interface Assessment {
@@ -29,6 +36,7 @@ interface Assessment {
   responsesCount?: number;
   clientId?: string;
   clientName?: string;
+  projectId?: string;
 }
 
 interface Participant {
@@ -44,6 +52,20 @@ interface Client {
   companyName: string;
 }
 
+interface Project {
+  id: string;
+  name: string;
+  clientId: string;
+}
+
+interface MailTemplate {
+  id: string;
+  name: string;
+  content: string;
+  emailType: string;
+  subject: string;
+}
+
 @Component({
   selector: 'app-assessment-list',
   standalone: true,
@@ -57,13 +79,16 @@ export class AssessmentListComponent implements OnInit {
     'name',
     'createdBy',
     'createdAt',
-    // 'responses',
+    'responses',
     'actions',
   ];
   dataSource = new MatTableDataSource<any>([]);
   searchValue: string = '';
   clientFilter = new FormControl(''); // FormControl para o filtro de cliente
   clients: Client[] = [];
+  projects: Project[] = []; // Lista de projetos para inferir o clientId
+  projectId: string | null = null; // Armazena o projectId da URL
+  mailTemplates: MailTemplate[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -72,24 +97,30 @@ export class AssessmentListComponent implements OnInit {
     private router: Router,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private route: ActivatedRoute
   ) {
-    // Definir o valor inicial do clientFilter como 'Todos' ('')
     this.clientFilter.setValue('');
   }
 
   ngOnInit(): void {
-    // Configurar o filterPredicate antes de carregar os dados
     this.dataSource.filterPredicate = (data: any, filter: string) => {
       const filterObj = JSON.parse(filter);
       const textMatch = data.name.toLowerCase().includes(filterObj.text);
       const clientMatch =
-        !filterObj.client || data.clientId === filterObj.client;
+        (!filterObj.client || data.clientId === filterObj.client) &&
+        (!this.projectId || data.projectId === this.projectId);
       return textMatch && clientMatch;
     };
 
-    // Carregar os dados de forma assíncrona e aplicar o filtro inicial
-    Promise.all([this.loadClients(), this.loadAssessments()]).then(() => {
+    this.projectId = this.route.snapshot.paramMap.get('id'); // Corrigido para 'projectId'
+    console.log('Project ID:', this.projectId); // Log para depuração
+    Promise.all([
+      this.loadClients(),
+      this.loadProjects(),
+      this.loadAssessments(),
+      this.loadMailTemplates(),
+    ]).then(() => {
       this.applyFilters();
     });
   }
@@ -97,38 +128,85 @@ export class AssessmentListComponent implements OnInit {
   async loadAssessments(): Promise<void> {
     try {
       const assessmentsCollection = collection(this.firestore, 'assessments');
-      const snapshot = await getDocs(assessmentsCollection);
+      let q:
+        | CollectionReference<DocumentData, DocumentData>
+        | Query<DocumentData, DocumentData> = assessmentsCollection;
 
-      const assessments: any = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      for (const assessment of assessments) {
-        assessment.responsesCount = await this.countRespondedParticipants(
-          assessment.id
+      if (this.projectId) {
+        q = query(
+          assessmentsCollection,
+          where('projectId', '==', this.projectId)
         );
+      }
 
-        if (assessment.clientId) {
-          const clientDoc = await getDoc(
-            doc(this.firestore, 'clients', assessment.clientId)
-          );
-          if (clientDoc.exists()) {
-            assessment.clientName =
-              clientDoc.data()['companyName'] || 'Desconhecido';
+      const snapshot = await getDocs(q);
+
+      const assessments: Assessment[] = await Promise.all(
+        snapshot.docs.map(async (document) => {
+          const data = document.data();
+          let createdAtDate: Date;
+
+          // Verificar e converter createdAt
+          if (data['createdAt'] instanceof Timestamp) {
+            createdAtDate = data['createdAt'].toDate();
+          } else if (data['createdAt'] instanceof Date) {
+            createdAtDate = data['createdAt'];
+          } else if (typeof data['createdAt'] === 'string') {
+            createdAtDate = new Date(data['createdAt']);
           } else {
-            assessment.clientName = 'Desconhecido';
+            createdAtDate = new Date(); // Valor padrão se inválido
             console.warn(
-              `Cliente com ID ${assessment.clientId} não encontrado.`
+              `createdAt inválido para assessment ${document.id}, usando data atual.`
             );
           }
-        } else {
-          assessment.clientName = 'Sem Cliente';
-          console.warn(
-            `Avaliação ${assessment.id} não possui clientId associado.`
+
+          const assessment: Assessment = {
+            id: document.id,
+            name: data['name'] || 'Sem Nome',
+            createdBy: data['createdBy'] || { name: 'Desconhecido' },
+            createdAt: createdAtDate,
+            clientId: data['clientId'],
+            projectId: data['projectId'],
+          };
+
+          // Contar respostas
+          assessment.responsesCount = await this.countRespondedParticipants(
+            assessment.id
           );
-        }
-      }
+
+          // Buscar nome do cliente
+          if (assessment.clientId) {
+            const clientDoc = await getDoc(
+              doc(this.firestore, 'clients', assessment.clientId)
+            );
+            assessment.clientName = clientDoc.exists()
+              ? clientDoc.data()['companyName'] || 'Desconhecido'
+              : 'Desconhecido';
+          } else {
+            // Tentar inferir o clientId a partir do projectId
+            if (assessment.projectId) {
+              const project = this.projects.find(
+                (p) => p.id === assessment.projectId
+              );
+              if (project && project.clientId) {
+                assessment.clientId = project.clientId;
+                const clientDoc = await getDoc(
+                  doc(this.firestore, 'clients', project.clientId)
+                );
+                assessment.clientName = clientDoc.exists()
+                  ? clientDoc.data()['companyName'] || 'Desconhecido'
+                  : 'Desconhecido';
+              } else {
+                assessment.clientName = 'Sem Cliente';
+              }
+            } else {
+              assessment.clientName = 'Sem Cliente';
+            }
+          }
+
+          return assessment;
+        })
+      );
 
       this.dataSource.data = assessments;
       this.dataSource.paginator = this.paginator;
@@ -158,6 +236,42 @@ export class AssessmentListComponent implements OnInit {
     }
   }
 
+  async loadProjects(): Promise<void> {
+    try {
+      const projectsCollection = collection(this.firestore, 'projects');
+      const snapshot = await getDocs(projectsCollection);
+      this.projects = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Sem Nome',
+        clientId: doc.data()['clientId'] || 'Desconhecido',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar projetos:', error);
+      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async loadMailTemplates(): Promise<void> {
+    try {
+      const templatesCollection = collection(this.firestore, 'mailTemplates');
+      const snapshot = await getDocs(templatesCollection);
+      this.mailTemplates = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Sem Nome',
+        content: doc.data()['content'] || '',
+        emailType: doc.data()['emailType'] || '',
+        subject: doc.data()['subject'] || '',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar templates de e-mail:', error);
+      this.snackBar.open('Erro ao carregar templates de e-mail.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
   async countRespondedParticipants(assessmentId: string): Promise<number> {
     try {
       const assessmentLinksQuery = query(
@@ -168,11 +282,6 @@ export class AssessmentListComponent implements OnInit {
 
       const completedLinks = snapshot.docs.filter(
         (doc) => doc.data()['status'] === 'completed'
-      );
-      console.log(
-        `Contando respostas para assessmentId ${assessmentId}:`,
-        completedLinks.length,
-        completedLinks
       );
       return completedLinks.length;
     } catch (error) {
@@ -188,105 +297,162 @@ export class AssessmentListComponent implements OnInit {
     }
   }
 
-  async showRespondedParticipants(assessmentId: string): Promise<void> {
+  async sendAssessment(assessmentId: string, clientId: any): Promise<void> {
     try {
-      const assessmentLinksQuery = query(
-        collection(this.firestore, 'assessmentLinks'),
-        where('assessmentId', '==', assessmentId)
-      );
-      const linksSnapshot = await getDocs(assessmentLinksQuery);
+      const dialogRef = this.dialog.open(SendAssessmentModalComponent, {
+        width: '80%',
+        data: {
+          assessmentId: assessmentId,
+          projectId: this.projectId, // Passa o projectId corretamente
+          clientId: clientId
+        },
+      });
 
-      console.log(
-        `Links encontrados para assessmentId ${assessmentId}:`,
-        linksSnapshot.docs
-      );
-
-      const completedLinks = linksSnapshot.docs.filter(
-        (doc) => doc.data()['status'] === 'completed'
-      );
-
-      const participants: Participant[] = [];
-      for (const doc of completedLinks) {
-        const linkData = doc.data();
-        const participantId = linkData['participantId'];
-        console.log(
-          `Dados do link para participantId ${participantId}:`,
-          linkData
-        );
-
-        const participantDoc = await getDocs(
-          query(
-            collection(this.firestore, 'participants'),
-            where('id', '==', participantId)
-          )
-        );
-        const participantData = participantDoc.docs[0]?.data();
-        console.log(
-          `Dados do participante para id ${participantId}:`,
-          participantData
-        );
-
-        if (participantData) {
-          participants.push({
-            id: participantId,
-            name: participantData['name'] || 'Desconhecido',
-            email: participantData['email'] || 'Sem e-mail',
-            sentAt: linkData['sentAt']
-              ? linkData['sentAt'].toDate()
-              : undefined,
-            completedAt: linkData['completedAt']
-              ? linkData['completedAt'].toDate()
-              : undefined,
-          });
-        } else {
-          console.warn(
-            `Participante não encontrado para id ${participantId}. Verificando pelo document ID...`
-          );
-          const participantDocById = await getDocs(
-            collection(this.firestore, 'participants')
-          ).then((snapshot) => {
-            return snapshot.docs.find((doc) => doc.id === participantId);
-          });
-          const participantDataById = participantDocById?.data();
-          if (participantDataById) {
-            console.log(
-              `Participante encontrado pelo document ID ${participantId}:`,
-              participantDataById
-            );
-            participants.push({
-              id: participantId,
-              name: participantDataById['name'] || 'Desconhecido',
-              email: participantDataById['email'] || 'Sem e-mail',
-              sentAt: linkData['sentAt']
-                ? linkData['sentAt'].toDate()
-                : undefined,
-              completedAt: linkData['completedAt']
-                ? linkData['completedAt'].toDate()
-                : undefined,
-            });
-          } else {
-            console.error(
-              `Nenhum participante encontrado para participantId ${participantId} em 'participants'.`
-            );
+      dialogRef
+        .afterClosed()
+        .subscribe(
+          async (result: {
+            selectedTemplate?: string;
+            selectedParticipants?: Participant[];
+          }) => {
+            if (
+              result?.selectedTemplate &&
+              result?.selectedParticipants?.length
+            ) {
+              await this.sendAssessmentLinks(
+                assessmentId,
+                result.selectedTemplate,
+                result.selectedParticipants
+              );
+            }
           }
-        }
+        );
+    } catch (error) {
+      console.error('Erro ao abrir modal de envio:', error);
+      this.snackBar.open('Erro ao abrir modal de envio.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async sendAssessmentLinks(
+    assessmentId: string,
+    templateId: string,
+    participants: Participant[]
+  ): Promise<void> {
+    try {
+      const template = this.mailTemplates.find((t) => t.id === templateId);
+      if (!template) {
+        this.snackBar.open('Template de e-mail não encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+        return;
       }
 
-      
-      if (participants.length === 0) {
-        console.warn(
-          'Nenhum participante respondente encontrado para esta avaliação.'
-        );
-        this.snackBar.open(
-          'Nenhum participante respondente encontrado.',
-          'Fechar',
+      for (const participant of participants) {
+        const emailRequest = {
+          email: participant.email,
+          templateId: templateId,
+          participantId: participant.id,
+          assessmentId: assessmentId,
+        };
+
+        const response = await fetch(
+          'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
           {
-            duration: 3000,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emailRequest),
           }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Erro ao enviar e-mail para ${
+              participant.email
+            }: ${await response.text()}`
+          );
+        }
+
+        const assessmentLinkDoc = doc(
+          collection(this.firestore, 'assessmentLinks')
+        );
+        await setDoc(assessmentLinkDoc, {
+          assessmentId: assessmentId,
+          participantId: participant.id,
+          sentAt: new Date(),
+          status: 'pending',
+          emailTemplate: templateId,
+          participantEmail: participant.email,
+        });
+      }
+
+      this.snackBar.open(
+        `Avaliação enviada para ${participants.length} participantes!`,
+        'Fechar',
+        { duration: 3000 }
+      );
+    } catch (error: any) {
+      console.error('Erro ao enviar links de avaliação:', error);
+      this.snackBar.open(
+        `Erro ao enviar links de avaliação: ${error.message}`,
+        'Fechar',
+        { duration: 3000 }
+      );
+    }
+  }
+
+  async showRespondedParticipants(assessmentId: string): Promise<void> {
+    try {
+      // Passo 1: Buscar todos os participantes associados ao projectId
+      if (!this.projectId) {
+        throw new Error('Nenhum projectId fornecido.');
+      }
+
+      const participantsQuery = query(
+        collection(this.firestore, 'participants'),
+        where('projectId', '==', this.projectId)
+      );
+      const participantsSnapshot = await getDocs(participantsQuery);
+
+      const participants: Participant[] = [];
+      for (const participantDoc of participantsSnapshot.docs) {
+        const participantData = participantDoc.data();
+        const participantId = participantDoc.id;
+
+        // Verificar status no assessmentLinks
+        const assessmentLinksQuery = query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('assessmentId', '==', assessmentId),
+          where('participantId', '==', participantId)
+        );
+        const linksSnapshot = await getDocs(assessmentLinksQuery);
+        const linkData = linksSnapshot.docs[0]?.data() || {};
+
+        participants.push({
+          id: participantId,
+          name: participantData['name'] || 'Desconhecido',
+          email: participantData['email'] || 'Sem e-mail',
+          sentAt: linkData['sentAt']
+            ? (linkData['sentAt'] as Timestamp).toDate()
+            : undefined,
+          completedAt:
+            linkData['status'] === 'completed' && linkData['completedAt']
+              ? (linkData['completedAt'] as Timestamp).toDate()
+              : undefined,
+        });
+      }
+
+      if (participants.length === 0) {
+        this.snackBar.open(
+          'Nenhum participante encontrado para este projeto.',
+          'Fechar',
+          { duration: 3000 }
         );
         return;
       }
 
+      // Passo 2: Abrir o modal com os participantes e seus status
       this.dialog.open(ParticipantResponsesModalComponent, {
         width: '75%',
         data: {
@@ -302,9 +468,7 @@ export class AssessmentListComponent implements OnInit {
       this.snackBar.open(
         'Erro ao carregar participantes respondentes.',
         'Fechar',
-        {
-          duration: 3000,
-        }
+        { duration: 3000 }
       );
     }
   }
@@ -351,6 +515,12 @@ export class AssessmentListComponent implements OnInit {
       const assessmentDocRef = doc(this.firestore, `assessments/${id}`);
       await deleteDoc(assessmentDocRef);
 
+      // Remover a referência do assessmentId no projeto associado
+      if (this.projectId) {
+        const projectRef = doc(this.firestore, 'projects', this.projectId);
+        await updateDoc(projectRef, { assessmentId: null });
+      }
+
       this.dataSource.data = this.dataSource.data.filter(
         (item) => item.id !== id
       );
@@ -366,7 +536,7 @@ export class AssessmentListComponent implements OnInit {
   }
 
   previewAssessment(assessment: any): void {
-        this.dialog.open(AssessmentPreviewComponent, {
+    this.dialog.open(AssessmentPreviewComponent, {
       width: '600px',
       data: assessment,
     });

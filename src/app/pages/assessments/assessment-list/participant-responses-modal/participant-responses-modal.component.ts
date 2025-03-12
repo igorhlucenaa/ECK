@@ -3,8 +3,17 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { MatDialog } from '@angular/material/dialog';
-import { AssessmentResponsesModalComponent } from './assessment-responses-modal/assessment-responses-modal.component'; // Importe o novo componente
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { AssessmentResponsesModalComponent } from './assessment-responses-modal/assessment-responses-modal.component';
+import {
+  Firestore,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from '@angular/fire/firestore';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 interface Participant {
   id: string;
@@ -20,7 +29,7 @@ interface Participant {
   imports: [MaterialModule, CommonModule],
   template: `
     <h2 mat-dialog-title>
-      Participantes que Responderam: {{ data.assessmentName }}
+      Participantes do Projeto: {{ data.assessmentName }}
     </h2>
     <mat-dialog-content>
       <table
@@ -47,7 +56,11 @@ interface Participant {
         <ng-container matColumnDef="completedAt">
           <th mat-header-cell *matHeaderCellDef>Data de Resposta</th>
           <td mat-cell *matCellDef="let participant">
-            {{ participant.completedAt | date : 'short' }}
+            {{
+              participant.completedAt
+                ? (participant.completedAt | date : 'short')
+                : 'Não Respondido'
+            }}
           </td>
         </ng-container>
         <ng-container matColumnDef="viewResponses">
@@ -57,6 +70,7 @@ interface Participant {
               mat-icon-button
               color="primary"
               matTooltip="Ver Respostas"
+              [disabled]="!participant.completedAt"
               (click)="viewParticipantResponses(participant.id)"
             >
               <mat-icon>visibility</mat-icon>
@@ -80,7 +94,7 @@ export class ParticipantResponsesModalComponent {
     'sentAt',
     'completedAt',
     'viewResponses',
-  ]; // Adicionei 'viewResponses'
+  ];
 
   constructor(
     public dialogRef: MatDialogRef<ParticipantResponsesModalComponent>,
@@ -89,22 +103,35 @@ export class ParticipantResponsesModalComponent {
       participants: Participant[];
       assessmentName: string;
       assessmentId: string;
-    }, // Adicionei assessmentId
+    },
     private dialog: MatDialog,
-    private firestore: Firestore
-  ) {
-      }
+    private firestore: Firestore,
+    private snackBar: MatSnackBar
+  ) {}
 
   async viewParticipantResponses(participantId: string): Promise<void> {
     try {
-      // Usar o assessmentId passado no data
       const assessmentId = this.data.assessmentId;
       if (!assessmentId) {
         console.error('assessmentId não encontrado para o participante.');
         return;
       }
 
-      // Buscar os dados da avaliação e as respostas do participante
+      // Verificar se o participante respondeu antes de prosseguir
+      const assessmentLinksQuery = query(
+        collection(this.firestore, 'assessmentLinks'),
+        where('assessmentId', '==', assessmentId),
+        where('participantId', '==', participantId)
+      );
+      const linksSnapshot = await getDocs(assessmentLinksQuery);
+      const linkData = linksSnapshot.docs[0]?.data() || {};
+      if (!linkData || linkData['status'] !== 'completed') {
+        this.snackBar.open('Este participante ainda não respondeu.', 'Fechar', {
+          duration: 3000,
+        });
+        return;
+      }
+
       const assessmentRef = doc(this.firestore, `assessments/${assessmentId}`);
       const assessmentSnap = await getDoc(assessmentRef);
       if (!assessmentSnap.exists()) {
@@ -116,7 +143,6 @@ export class ParticipantResponsesModalComponent {
       const surveyJSON = assessmentData['surveyJSON'];
       const assessmentName = assessmentData['name'] || 'Avaliação';
 
-      // Buscar os dados das respostas do participante
       const resultRef = doc(
         this.firestore,
         `assessments/${assessmentId}/results/${participantId}`
@@ -129,13 +155,12 @@ export class ParticipantResponsesModalComponent {
 
       const surveyData = resultSnap.data()['surveyData'];
 
-      // Abrir o modal de visualização em tela cheia
       this.dialog.open(AssessmentResponsesModalComponent, {
         width: '100vw',
         height: '100vh',
         maxWidth: '100vw',
         maxHeight: '100vh',
-        panelClass: 'full-screen-modal', // Classe CSS para estilizar como tela cheia
+        panelClass: 'full-screen-modal',
         data: {
           assessmentId,
           participantId,
@@ -145,6 +170,13 @@ export class ParticipantResponsesModalComponent {
       });
     } catch (error) {
       console.error('Erro ao carregar respostas do participante:', error);
+      this.snackBar.open(
+        'Erro ao carregar respostas do participante.',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
     }
   }
 }

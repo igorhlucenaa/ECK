@@ -7,6 +7,7 @@ import {
   doc,
   getDocs,
   query,
+  where,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -19,6 +20,7 @@ import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { EmailSelectionDialogComponent } from './email-selection-dialog/email-selection-dialog.component';
+import { ResendAssessmentModalComponent } from '../resend-assessment-modal/resend-assessment-modal.component';
 
 @Component({
   selector: 'app-projects-list',
@@ -31,18 +33,18 @@ export class ProjectsListComponent implements OnInit {
   displayedColumns: string[] = [
     'client',
     'name',
-    // 'budget',
     'deadline',
+    'responses',
     'actions',
   ];
   dataSource = new MatTableDataSource<any>();
-  searchValue: string = ''; // Campo de busca
+  searchValue: string = '';
   currentUser: any;
   clientId: any;
-  clientsMap: { [key: string]: string } = {}; // Mapeia clientId para clientName
-  clients: { id: string; name: string }[] = []; // Lista de clientes para o filtro
-  selectedClientId: string | null = null; // Cliente selecionado para filtro
-  isAdminMaster: boolean = false; // Verifica se o usuário é admin_master
+  clientsMap: { [key: string]: string } = {};
+  clients: { id: string; name: string }[] = [];
+  selectedClientId: string | null = null;
+  isAdminMaster: boolean = false;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -94,23 +96,30 @@ export class ProjectsListComponent implements OnInit {
       const projectsQuery = query(projectsCollection);
 
       const snapshot = await getDocs(projectsQuery);
-      const projects = snapshot.docs.map((doc) => {
-        const data = doc.data();
+      const projects = await Promise.all(
+        snapshot.docs.map(async (doc) => {
+          const data = doc.data();
+          const deadline =
+            data['deadline'] instanceof Timestamp
+              ? data['deadline'].toDate()
+              : null;
 
-        // Converte o campo deadline de Timestamp para Date, se necessário
-        const deadline =
-          data['deadline'] instanceof Timestamp
-            ? data['deadline'].toDate()
-            : null;
+          const assessmentId = data['assessmentId'];
+          const [respondedCount, totalParticipants] =
+            await this.countAssessmentResponses(assessmentId);
 
-        return {
-          id: doc.id,
-          ...data,
-          deadline: deadline, // Campo deadline agora é um Date ou null
-          clientName:
-            this.clientsMap[data['clientId']] || 'Cliente não encontrado',
-        };
-      });
+          return {
+            id: doc.id,
+            ...data,
+            deadline: deadline,
+            clientName:
+              this.clientsMap[data['clientId']] || 'Cliente não encontrado',
+            respondedCount: respondedCount || 0,
+            totalParticipants: totalParticipants || 0,
+            pendingCount: (totalParticipants || 0) - (respondedCount || 0),
+          };
+        })
+      );
 
       this.dataSource.data = this.filterProjectsByClient(projects);
       this.dataSource.paginator = this.paginator;
@@ -118,11 +127,13 @@ export class ProjectsListComponent implements OnInit {
       this.dataSource.sortingDataAccessor = (item, property) => {
         switch (property) {
           case 'client':
-            return item.clientName.toLowerCase(); // Garante a ordenação por nome do cliente
+            return item.clientName.toLowerCase();
           case 'name':
-            return item.name.toLowerCase(); // Ordena por nome do projeto
+            return item.name.toLowerCase();
           case 'deadline':
-            return item.deadline ? item.deadline.getTime() : 0; // Ordena datas corretamente
+            return item.deadline ? item.deadline.getTime() : 0;
+          case 'responses':
+            return item.respondedCount;
           default:
             return item[property];
         }
@@ -136,6 +147,30 @@ export class ProjectsListComponent implements OnInit {
       this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
         duration: 3000,
       });
+    }
+  }
+
+  private async countAssessmentResponses(
+    assessmentId: string
+  ): Promise<[number, number]> {
+    try {
+      if (!assessmentId) return [0, 0];
+
+      const assessmentLinksQuery = query(
+        collection(this.firestore, 'assessmentLinks'),
+        where('assessmentId', '==', assessmentId)
+      );
+      const linksSnapshot = await getDocs(assessmentLinksQuery);
+
+      const respondedCount = linksSnapshot.docs.filter(
+        (doc) => doc.data()['status'] === 'completed'
+      ).length;
+      const totalParticipants = linksSnapshot.docs.length;
+
+      return [respondedCount, totalParticipants];
+    } catch (error) {
+      console.error('Erro ao contar respostas da avaliação:', error);
+      return [0, 0];
     }
   }
 
@@ -197,9 +232,7 @@ export class ProjectsListComponent implements OnInit {
       this.snackBar.open(
         'Cliente não identificado. Contate o suporte.',
         'Fechar',
-        {
-          duration: 3000,
-        }
+        { duration: 3000 }
       );
       return;
     }
@@ -219,7 +252,7 @@ export class ProjectsListComponent implements OnInit {
   }
 
   goToProjectQuestionnaires(projectId: string): void {
-    this.router.navigate([`/projects/${projectId}/questionnaires`]);
+    this.router.navigate([`/projects/assessments/${projectId}`]);
   }
 
   goBack(): void {
@@ -230,6 +263,21 @@ export class ProjectsListComponent implements OnInit {
     this.dialog.open(EmailSelectionDialogComponent, {
       width: '900px',
       data: { projectId },
+    });
+  }
+
+  openResendModal(projectId: string, clientId: string): void {
+    const dialogRef = this.dialog.open(ResendAssessmentModalComponent, {
+      width: '80%',
+      data: {
+        projectId: projectId,
+        clientId: clientId,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      // Recarregar a tabela para atualizar os dados de respostas, se necessário
+      this.loadProjects();
     });
   }
 }

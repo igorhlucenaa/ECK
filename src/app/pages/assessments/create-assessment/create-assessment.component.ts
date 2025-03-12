@@ -15,17 +15,17 @@ import {
   getDoc,
   getDocs,
   updateDoc,
+  where,
+  query,
 } from '@angular/fire/firestore';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
-
 import { SurveyCreatorModel } from 'survey-creator-core';
 import { SurveyCreatorModule } from 'survey-creator-angular';
-import { SurveyModel, ITheme } from 'survey-core'; // Usando ITheme corretamente
-
-import 'survey-core/survey.i18n.js'; // Para localização da pesquisa
-import 'survey-creator-core/survey-creator-core.i18n.js'; // Para a UI do Survey Creator
+import { SurveyModel, ITheme } from 'survey-core';
+import 'survey-core/survey.i18n.js';
+import 'survey-creator-core/survey-creator-core.i18n.js';
 import { editorLocalization } from 'survey-creator-core';
 
 // Sobrescrevendo traduções
@@ -48,6 +48,7 @@ ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
 export class CreateAssessmentComponent implements OnInit {
   form: FormGroup;
   clients: { id: string; name: string }[] = [];
+  projects: { id: string; name: string }[] = []; // Nova lista de projetos
   userRole: string | null = null;
   creatorModel: SurveyCreatorModel;
 
@@ -59,35 +60,31 @@ export class CreateAssessmentComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute
   ) {
-    // Inicializa o formulário de metadados (Título, Cliente, Descrição)
+    // Inicializa o formulário de metadados (Título, Cliente, Descrição, Projeto)
     this.form = this.fb.group({
       clientId: ['', Validators.required],
+      projectId: ['', Validators.required], // Campo obrigatório para projeto
       name: ['', Validators.required],
       description: [''],
     });
   }
 
   async ngOnInit(): Promise<void> {
-    // Inicialização do SurveyCreatorModel com o Theme Editor habilitado
     this.creatorModel = new SurveyCreatorModel({
-      showLogicTab: true, // Exibe a aba de lógica condicional
-      isAutoSave: true, // Desativa salvamento automático
-      showJSONEditorTab: true, // Permite edição JSON
-      showThemeTab: true, // Habilita a aba de temas (Theme Editor)
+      showLogicTab: true,
+      isAutoSave: true,
+      showJSONEditorTab: true,
+      showThemeTab: true,
     });
 
-    // Configurar a função de salvar o tema
     this.setupThemeSaving();
-
-    // Aplica a localização
     this.creatorModel.locale = 'pt';
     this.creatorModel.survey.locale = 'pt';
 
     const currentUser = await this.authService.getCurrentUser();
     this.userRole = currentUser?.role || null;
-    
+
     if (this.userRole === 'admin_client') {
-      // Usuário admin_client vê apenas o cliente associado
       const clientId = currentUser?.clientId || '';
       if (clientId) {
         const clientName = await this.getClientName(clientId);
@@ -96,19 +93,18 @@ export class CreateAssessmentComponent implements OnInit {
         ];
         this.form.get('clientId')?.setValue(clientId);
         this.form.get('clientId')?.disable();
+        await this.loadProjects(clientId); // Carrega projetos para admin_client
       }
     } else if (this.userRole === 'admin_master') {
-      // Usuário admin_master vê todos os clientes
       await this.loadClients();
     }
 
-    // Sincronizar o tema inicial com o Theme Editor
     this.syncThemeWithEditor();
 
     this.route.paramMap.subscribe(async (params) => {
       const assessmentId = params.get('id');
       if (assessmentId) {
-        this.loadAssessment(assessmentId);
+        await this.loadAssessment(assessmentId);
       }
     });
   }
@@ -122,6 +118,7 @@ export class CreateAssessmentComponent implements OnInit {
         const data = docSnap.data();
         this.form.patchValue({
           clientId: data['clientId'],
+          projectId: data['projectId'], // Carrega o projectId
           name: data['name'],
           description: data['description'],
         });
@@ -130,15 +127,16 @@ export class CreateAssessmentComponent implements OnInit {
           this.form.get('clientId')?.disable();
         }
 
-        // Carregar o JSON do SurveyJS
         if (data['surveyJSON']) {
           this.creatorModel.JSON = data['surveyJSON'];
         }
 
-        // Carregar o tema salvo
         if (data['theme']) {
           this.creatorModel.theme = data['theme'];
         }
+
+        // Carrega projetos após definir clientId
+        await this.loadProjects(data['clientId']);
       }
     } catch (error) {
       console.error('Erro ao carregar formulário:', error);
@@ -146,31 +144,26 @@ export class CreateAssessmentComponent implements OnInit {
   }
 
   private setupThemeSaving(): void {
-    // Função personalizada para salvar o tema no Firestore junto com o formulário
     this.creatorModel.saveThemeFunc = (saveNo: any, callback: any) => {
-      // O tema já está disponível em this.creatorModel.theme
       const theme = this.creatorModel.theme as ITheme;
-      // Aqui, não precisamos salvar em localStorage ou serviço web, pois salvaremos no Firestore no saveForm()
-      callback(saveNo, true); // Indica que o salvamento foi bem-sucedido (não precisamos de ação externa aqui)
+      callback(saveNo, true);
     };
   }
 
   private syncThemeWithEditor(): void {
-    // Configurar um tema inicial padrão usando ITheme
     const defaultTheme: ITheme = {
-      themeName: 'modern', // Nome do tema base
-      colorPalette: 'light', // Paleta de cores (pode ser 'light' ou 'dark')
-      isPanelless: false, // Mantém os painéis (false para manter o layout padrão)
+      themeName: 'modern',
+      colorPalette: 'light',
+      isPanelless: false,
       cssVariables: {
-        '--sjs-primary-backcolor': '#007BFF', // Cor primária padrão
-        '--sjs-secondary-backcolor': '#6C757D', // Cor secundária padrão
-        '--sjs-general-backcolor': '#F8F9FA', // Fundo geral
-        '--sjs-general-forecolor': '#212529', // Texto geral
-        '--sjs-hover-color': '#0056B3', // Cor ao passar o mouse
+        '--sjs-primary-backcolor': '#007BFF',
+        '--sjs-secondary-backcolor': '#6C757D',
+        '--sjs-general-backcolor': '#F8F9FA',
+        '--sjs-general-forecolor': '#212529',
+        '--sjs-hover-color': '#0056B3',
       },
     };
 
-    // Aplicar o tema inicial ao Theme Editor
     this.creatorModel.theme = defaultTheme;
   }
 
@@ -197,6 +190,35 @@ export class CreateAssessmentComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
+    }
+  }
+
+  async loadProjects(clientId: string): Promise<void> {
+    try {
+      if (!clientId) {
+        this.projects = [];
+        return;
+      }
+
+      const projectsCollection = collection(this.firestore, 'projects');
+      const projectsQuery = query(
+        projectsCollection,
+        where('clientId', '==', clientId)
+      );
+      const snapshot = await getDocs(projectsQuery);
+      this.projects = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Projeto Indefinido',
+      }));
+
+      // Se for edição, tenta pré-selecionar o projectId
+      const projectId = this.form.get('projectId')?.value;
+      if (projectId && !this.projects.some((p) => p.id === projectId)) {
+        this.form.get('projectId')?.setValue(''); // Limpa se o projectId não estiver na lista
+      }
+    } catch (error) {
+      console.error('Erro ao carregar projetos:', error);
+      this.projects = [];
     }
   }
 
@@ -233,19 +255,30 @@ export class CreateAssessmentComponent implements OnInit {
         // Atualiza documento existente
         const docRef = doc(this.firestore, 'assessments', assessmentId);
         await updateDoc(docRef, formData);
+
+        // Atualiza o projectId no projeto associado (se necessário)
+        const projectRef = doc(this.firestore, 'projects', formData.projectId);
+        await updateDoc(projectRef, { assessmentId: assessmentId });
+
         this.snackBar.open('Formulário atualizado com sucesso!', 'Fechar', {
           duration: 3000,
         });
       } else {
-        // Cria um novo formulário
+        // Cria um novo formulário e associa ao projeto
         const assessmentsCollection = collection(this.firestore, 'assessments');
-        await addDoc(assessmentsCollection, formData);
+        const assessmentDocRef = await addDoc(assessmentsCollection, formData);
+        const assessmentId = assessmentDocRef.id;
+
+        // Associa o assessmentId ao projeto
+        const projectRef = doc(this.firestore, 'projects', formData.projectId);
+        await updateDoc(projectRef, { assessmentId: assessmentId });
+
         this.snackBar.open('Formulário criado com sucesso!', 'Fechar', {
           duration: 3000,
         });
       }
 
-      this.router.navigate(['/assessments']);
+      this.router.navigate(['/projects']); // Redireciona para a lista de projetos
     } catch (error) {
       console.error('Erro ao salvar formulário:', error);
       this.snackBar.open('Erro ao salvar. Tente novamente.', 'Fechar', {
@@ -255,6 +288,9 @@ export class CreateAssessmentComponent implements OnInit {
   }
 
   onClientChange(event: any): void {
-        this.form.get('clientId')?.setValue(event.value);
+    const clientId = event.value;
+    this.form.get('clientId')?.setValue(clientId);
+    this.loadProjects(clientId); // Carrega projetos quando o cliente muda
+    this.form.get('projectId')?.setValue(''); // Limpa o projeto ao mudar o cliente
   }
 }
