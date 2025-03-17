@@ -1,5 +1,14 @@
 <div class="container my-4">
   <!-- Cabeçalho -->
+  <div class="row" style="margin-bottom: 10px">
+    <div class="col-12">
+      <button mat-button (click)="goBack()" class="mb-3">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+    </div>
+  </div>
+
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Formulários de Avaliação</h2>
     <button mat-flat-button color="primary" (click)="createNewAssessment()">

@@ -14,6 +14,9 @@ import {
   addDoc,
   getDoc,
   getDocs,
+  query,
+  where,
+  Timestamp,
 } from '@angular/fire/firestore';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { CommonModule, Location } from '@angular/common';
@@ -30,7 +33,7 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
     MaterialModule,
     MatSnackBarModule,
     RouterModule,
-    EmailEditorModule, // Importa o módulo do Angular Email Editor
+    EmailEditorModule,
   ],
   templateUrl: './email-template-form.component.html',
   styleUrls: ['./email-template-form.component.scss'],
@@ -44,7 +47,12 @@ export class EmailTemplateFormComponent implements OnInit {
   userRole: string = '';
   userClientId: string | null = null;
   editorReady: boolean = false;
-  clients: any[] = []; // 🔹 Agora a lista de clientes existe!
+  clients: { id: string; name: string }[] = [];
+  projects: { id: string; name: string }[] = [];
+  projectIdFromRoute: string | null = null; // Armazena o projectId da rota
+  clientIdFromProject: string | null = null; // Armazena o clientId associado ao projectId
+  projectNameFromRoute: string | null = null; // Armazena o nome do projeto
+  clientNameFromProject: string | null = null; // Armazena o companyName do cliente
 
   constructor(
     private fb: FormBuilder,
@@ -60,7 +68,8 @@ export class EmailTemplateFormComponent implements OnInit {
       subject: ['', Validators.required],
       content: ['', Validators.required],
       emailType: ['', Validators.required],
-      clientId: [''], // O clientId será preenchido dinamicamente
+      clientId: [''],
+      projectId: [''],
     });
   }
 
@@ -80,20 +89,43 @@ export class EmailTemplateFormComponent implements OnInit {
     this.templateId = this.route.snapshot.paramMap.get('templateId');
     this.isEditMode = !!this.templateId;
 
-    if (this.userRole === 'admin_master') {
-      await this.loadClients();
+    // Verificar se a rota contém um projectId como parâmetro
+    this.projectIdFromRoute = this.route.snapshot.paramMap.get('id');
+    if (this.projectIdFromRoute) {
+      await this.loadProjectDetails(this.projectIdFromRoute);
+      this.form.get('projectId')?.setValue(this.projectIdFromRoute);
+      this.form.get('clientId')?.setValue(this.clientIdFromProject);
+      this.form.get('clientId')?.disable(); // Desabilitar clientId
+      this.form.get('projectId')?.disable(); // Desabilitar projectId
+    } else {
+      if (this.userRole === 'admin_master') {
+        await this.loadClients();
+      }
+      if (this.userRole === 'admin_client' && this.userClientId) {
+        this.form.get('clientId')?.setValue(this.userClientId);
+        await this.loadProjects(this.userClientId);
+      }
     }
 
+    this.form.get('clientId')?.valueChanges.subscribe((clientId) => {
+      if (clientId && !this.projectIdFromRoute) {
+        this.loadProjects(clientId);
+      } else if (!this.projectIdFromRoute) {
+        this.projects = [];
+        this.form.get('projectId')?.setValue('');
+      }
+    });
+
     if (this.isEditMode) {
-      // Carregar o template salvo
-      this.loadTemplate().then((content) => {
+      this.loadTemplate().then(async (content) => {
         try {
           const design = content
             ? JSON.parse(content)
-            : this.getDefaultTemplateWithLink(
-                this.form.get('emailType')?.value
+            : await this.getDefaultTemplateWithLink(
+                this.form.get('emailType')?.value,
+                this.form.get('projectId')?.value
               );
-          
+
           const interval = setInterval(() => {
             if (this.editorReady) {
               this.emailEditor.editor.loadDesign(design);
@@ -102,86 +134,60 @@ export class EmailTemplateFormComponent implements OnInit {
           }, 100);
         } catch (error) {
           console.error('Erro ao carregar template salvo:', error);
-          this.emailEditor.editor.loadDesign(
-            this.getDefaultTemplateWithLink(this.form.get('emailType')?.value)
+          const defaultDesign = await this.getDefaultTemplateWithLink(
+            this.form.get('emailType')?.value,
+            this.form.get('projectId')?.value
           );
+          const interval = setInterval(() => {
+            if (this.editorReady) {
+              this.emailEditor.editor.loadDesign(defaultDesign);
+              clearInterval(interval);
+            }
+          }, 100);
         }
       });
     } else {
-      // 🔹 Garante que emailType esteja definido antes de usá-lo
       const emailType = this.form.get('emailType')?.value;
       if (emailType === 'convite' || emailType === 'lembrete') {
-        this.emailEditor.editor.loadDesign(
-          this.getDefaultTemplateWithLink(emailType)
-        );
+        this.getDefaultTemplateWithLink(
+          emailType,
+          this.form.get('projectId')?.value
+        ).then((design) => {
+          if (this.editorReady) {
+            this.emailEditor.editor.loadDesign(design);
+          }
+        });
       }
     }
-    this.form.get('emailType')?.valueChanges.subscribe((newValue) => {
+
+    this.form.get('emailType')?.valueChanges.subscribe(async (newValue) => {
       if (newValue === 'convite' || newValue === 'lembrete') {
-        this.emailEditor.editor.loadDesign(
-          this.getDefaultTemplateWithLink(newValue)
+        const design = await this.getDefaultTemplateWithLink(
+          newValue,
+          this.form.get('projectId')?.value
         );
+        if (this.editorReady) {
+          this.emailEditor.editor.loadDesign(design);
+        }
       }
     });
-    // 🔹 Só adiciona o evento se o campo já estiver no formulário
-    // if (this.form.get('emailType')) {
-    //   this.form.get('emailType')!.valueChanges.subscribe((newValue) => {
-    //     if (newValue === 'convite' || newValue === 'lembrete') {
-    //       this.addLinkToEmailEditor();
-    //     } else {
-    //       this.removeLinkFromEmailEditor();
-    //     }
-    //   });
-    // }
-  }
 
-  addLinkToEmailEditor(): void {
-    if (!this.emailEditor || !this.editorReady) return;
-
-    this.emailEditor.editor.exportHtml((data: any) => {
-      if (
-        !data ||
-        !data.design ||
-        !data.design.body ||
-        !Array.isArray(data.design.body.rows)
-      ) {
-        console.error(
-          'Erro: O design exportado não está no formato esperado',
-          data
+    this.form.get('projectId')?.valueChanges.subscribe(async (projectId) => {
+      const emailType = this.form.get('emailType')?.value;
+      if (emailType === 'convite' || emailType === 'lembrete') {
+        const design = await this.getDefaultTemplateWithLink(
+          emailType,
+          projectId
         );
-        return;
-      }
-
-      let design = data.design;
-
-      // Verifica se o link já está presente
-      const linkPlaceholder =
-        '<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>';
-      const linkExists = JSON.stringify(design).includes('[LINK_AVALIACAO]');
-
-      if (!linkExists) {
-        design.body.rows.push({
-          columns: [
-            {
-              contents: [
-                {
-                  type: 'text',
-                  values: {
-                    text: 'Acesse sua avaliação aqui: ' + linkPlaceholder,
-                  },
-                },
-              ],
-            },
-          ],
-        });
-
-        this.emailEditor.editor.loadDesign(design);
+        if (this.editorReady) {
+          this.emailEditor.editor.loadDesign(design);
+        }
       }
     });
   }
 
   private async loadClients(): Promise<void> {
-        try {
+    try {
       const clientsCollection = collection(this.firestore, 'clients');
       const snapshot = await getDocs(clientsCollection);
       this.clients = snapshot.docs.map((doc) => ({
@@ -193,32 +199,112 @@ export class EmailTemplateFormComponent implements OnInit {
     }
   }
 
-  onEditorReady(): void {
-        this.editorReady = true;
-  }
-
-  editorLoaded(): void {
-        this.editorReady = true;
-
-    // Carregar template correto dependendo do tipo de notificação
-    if (!this.isEditMode) {
-      const emailType = this.form.value.emailType;
-      if (emailType === 'convite' || emailType === 'lembrete') {
-        this.emailEditor.editor.loadDesign(
-          this.getDefaultTemplateWithLink(emailType)
-        );
-      }
+  private async loadProjects(clientId: string): Promise<void> {
+    try {
+      const projectsCollection = collection(this.firestore, 'projects');
+      const projectsQuery = query(
+        projectsCollection,
+        where('clientId', '==', clientId)
+      );
+      const snapshot = await getDocs(projectsQuery);
+      this.projects = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Projeto sem nome',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar projetos:', error);
+      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
+        duration: 3000,
+      });
     }
   }
 
-  private getDefaultTemplateWithLink(emailType: string): object {
+  private async loadProjectDetails(projectId: string): Promise<void> {
+    try {
+      const projectDoc = await getDoc(
+        doc(this.firestore, 'projects', projectId)
+      );
+      if (projectDoc.exists()) {
+        const projectData = projectDoc.data();
+        this.clientIdFromProject = projectData['clientId'] || null;
+        this.projectNameFromRoute = projectData['name'] || 'Projeto sem nome';
+        if (this.clientIdFromProject) {
+          await this.loadClientName(this.clientIdFromProject);
+        }
+      } else {
+        this.snackBar.open('Projeto não encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar detalhes do projeto:', error);
+      this.snackBar.open('Erro ao carregar detalhes do projeto.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  private async loadClientName(clientId: string): Promise<void> {
+    try {
+      const clientDoc = await getDoc(doc(this.firestore, 'clients', clientId));
+      if (clientDoc.exists()) {
+        this.clientNameFromProject =
+          clientDoc.data()['companyName'] || 'Não identificado';
+      } else {
+        this.clientNameFromProject = 'Não identificado';
+      }
+    } catch (error) {
+      console.error('Erro ao carregar nome do cliente:', error);
+      this.clientNameFromProject = 'Não identificado';
+    }
+  }
+
+  private async getDeadline(projectId: string): Promise<string> {
+    try {
+      const projectDoc = await getDoc(
+        doc(this.firestore, 'projects', projectId)
+      );
+      if (projectDoc.exists()) {
+        const projectData = projectDoc.data();
+        const deadline = projectData['deadline'] as Timestamp;
+        if (deadline) {
+          return deadline.toDate().toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          });
+        }
+      }
+      return '[DEADLINE]';
+    } catch (error) {
+      console.error('Erro ao buscar deadline do projeto:', error);
+      return '[DEADLINE]';
+    }
+  }
+
+  private async getDefaultTemplateWithLink(
+    emailType: string,
+    projectId?: string
+  ): Promise<object> {
     let message = '';
+    let deadlineText = '';
+
+    // Se projectId vier da rota ou do formulário, buscar o deadline
+    if (projectId || this.projectIdFromRoute) {
+      const effectiveProjectId = projectId || this.projectIdFromRoute!;
+      deadlineText = await this.getDeadline(effectiveProjectId);
+    }
 
     if (emailType === 'convite') {
-      message = '<p>Aqui está o link da sua avaliação:</p>';
+      message =
+        projectId || this.projectIdFromRoute
+          ? `<p>Aqui está o link da sua avaliação. Por favor, preencha até ${deadlineText}:</p>`
+          : '<p>Aqui está o link da sua avaliação:</p>';
     } else if (emailType === 'lembrete') {
       message =
-        '<p>Este é um lembrete da sua avaliação. Não se esqueça de preenchê-la!</p>';
+        projectId || this.projectIdFromRoute
+          ? `<p>Este é um lembrete da sua avaliação. Não se esqueça de preenchê-la até ${deadlineText}!</p>`
+          : '<p>Este é um lembrete da sua avaliação. Não se esqueça de preenchê-la!</p>';
     }
 
     return {
@@ -259,6 +345,72 @@ export class EmailTemplateFormComponent implements OnInit {
     };
   }
 
+  addLinkToEmailEditor(): void {
+    if (!this.emailEditor || !this.editorReady) return;
+
+    this.emailEditor.editor.exportHtml((data: any) => {
+      if (
+        !data ||
+        !data.design ||
+        !data.design.body ||
+        !Array.isArray(data.design.body.rows)
+      ) {
+        console.error(
+          'Erro: O design exportado não está no formato esperado',
+          data
+        );
+        return;
+      }
+
+      let design = data.design;
+
+      const linkPlaceholder =
+        '<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>';
+      const linkExists = JSON.stringify(design).includes('[LINK_AVALIACAO]');
+
+      if (!linkExists) {
+        design.body.rows.push({
+          columns: [
+            {
+              contents: [
+                {
+                  type: 'text',
+                  values: {
+                    text: 'Acesse sua avaliação aqui: ' + linkPlaceholder,
+                  },
+                },
+              ],
+            },
+          ],
+        });
+
+        this.emailEditor.editor.loadDesign(design);
+      }
+    });
+  }
+
+  onEditorReady(): void {
+    this.editorReady = true;
+  }
+
+  editorLoaded(): void {
+    this.editorReady = true;
+
+    if (!this.isEditMode) {
+      const emailType = this.form.value.emailType;
+      if (emailType === 'convite' || emailType === 'lembrete') {
+        this.getDefaultTemplateWithLink(
+          emailType,
+          this.form.get('projectId')?.value
+        ).then((design) => {
+          if (this.editorReady) {
+            this.emailEditor.editor.loadDesign(design);
+          }
+        });
+      }
+    }
+  }
+
   removeLinkFromEmailEditor(): void {
     if (!this.emailEditor || !this.editorReady) return;
 
@@ -278,7 +430,6 @@ export class EmailTemplateFormComponent implements OnInit {
 
       let design = data.design;
 
-      // Remove qualquer ocorrência do [LINK_AVALIACAO]
       design.body.rows = design.body.rows.filter((row: any) => {
         return !JSON.stringify(row).includes('[LINK_AVALIACAO]');
       });
@@ -325,12 +476,18 @@ export class EmailTemplateFormComponent implements OnInit {
     if (snapshot.exists()) {
       const data = snapshot.data();
       this.form.patchValue({
-        name: data?.['name'] ?? '', // Se não existir, preenche com string vazia
+        name: data?.['name'] ?? '',
         subject: data?.['subject'] ?? '',
         emailType: data?.['emailType'] ?? '',
         content: data?.['content'] ?? '',
         clientId: data?.['clientId'] ?? '',
+        projectId: data?.['projectId'] ?? '',
       });
+
+      if (data?.['clientId'] && !this.projectIdFromRoute) {
+        await this.loadProjects(data['clientId']);
+        await this.loadClientName(data['clientId']); // Carregar companyName para edição
+      }
 
       const content = data?.['content'] || '';
 
@@ -341,7 +498,7 @@ export class EmailTemplateFormComponent implements OnInit {
         return JSON.stringify(this.getDefaultTemplate());
       }
 
-            return content;
+      return content;
     }
 
     console.warn('Template não encontrado, carregando design padrão.');
@@ -350,10 +507,8 @@ export class EmailTemplateFormComponent implements OnInit {
 
   async saveTemplate(): Promise<void> {
     this.emailEditor.editor.exportHtml((data: any) => {
-      
       let design = JSON.stringify(data.design);
 
-      // Garantir que o placeholder [LINK_AVALIACAO] esteja no template de convite ou lembrete
       if (
         (this.form.value.emailType === 'convite' ||
           this.form.value.emailType === 'lembrete') &&
@@ -365,7 +520,6 @@ export class EmailTemplateFormComponent implements OnInit {
         );
       }
 
-      
       if (!design) {
         this.snackBar.open('Erro ao exportar o design do editor.', 'Fechar', {
           duration: 3000,
@@ -413,15 +567,6 @@ export class EmailTemplateFormComponent implements OnInit {
       });
     }
   }
-
-  // editorLoaded(): void {
-  //     //   this.editorReady = true; // Marcamos que o editor está pronto
-
-  //   // Se não estamos editando, carregar template vazio
-  //   if (!this.isEditMode) {
-  //     this.emailEditor.editor.loadDesign(this.getDefaultTemplate());
-  //   }
-  // }
 
   goBack(): void {
     this.location.back();

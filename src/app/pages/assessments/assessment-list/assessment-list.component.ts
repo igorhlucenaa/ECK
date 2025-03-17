@@ -23,7 +23,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { AssessmentPreviewComponent } from '../assessment-preview/assessment-preview.component';
 import { MaterialModule } from 'src/app/material.module';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ParticipantResponsesModalComponent } from './participant-responses-modal/participant-responses-modal.component';
 import { SendAssessmentModalComponent } from './send-assessment-modal/send-assessment-modal.component';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -98,7 +98,8 @@ export class AssessmentListComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private location: Location
   ) {
     this.clientFilter.setValue('');
   }
@@ -304,7 +305,7 @@ export class AssessmentListComponent implements OnInit {
         data: {
           assessmentId: assessmentId,
           projectId: this.projectId, // Passa o projectId corretamente
-          clientId: clientId
+          clientId: clientId,
         },
       });
 
@@ -540,5 +541,9 @@ export class AssessmentListComponent implements OnInit {
       width: '600px',
       data: assessment,
     });
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 }

@@ -21,9 +21,19 @@
         <mat-form-field class="w-100">
           <mat-label>Tipo de Notificação</mat-label>
           <mat-select formControlName="emailType">
-            <mat-option value="convite">Convite</mat-option>
-            <mat-option value="lembrete">Lembrete</mat-option>
             <mat-option value="cadastro">Cadastro do Usuário</mat-option>
+            <mat-option value="conviteAvaliador"
+              >Convite - Avaliador</mat-option
+            >
+            <mat-option value="conviteRespondente"
+              >Convite - Avaliado</mat-option
+            >
+            <mat-option value="lembreteAvaliador"
+              >Lembrete - Avaliador</mat-option
+            >
+            <mat-option value="lembreteRespondente"
+              >Lembrete - Avaliado</mat-option
+            >
           </mat-select>
         </mat-form-field>
 
@@ -32,8 +42,11 @@
           <input matInput formControlName="subject" />
         </mat-form-field>
 
-        <!-- Campo de Cliente (apenas admin_master pode ver) -->
-        <mat-form-field class="w-100" *ngIf="userRole === 'admin_master'">
+        <!-- Campo de Cliente (apenas admin_master e sem projectId na rota) -->
+        <mat-form-field
+          class="w-100"
+          *ngIf="userRole === 'admin_master' && !projectIdFromRoute"
+        >
           <mat-label>Cliente</mat-label>
           <mat-select formControlName="clientId">
             <mat-option value="">TEMPLATE PADRÃO</mat-option>
@@ -42,26 +55,55 @@
             </mat-option>
           </mat-select>
         </mat-form-field>
-      </mat-card-content>
 
-      <!-- Para admin_client, o clientId já está preenchido e oculto -->
-      <input
-        type="hidden"
-        formControlName="clientId"
-        *ngIf="userRole === 'admin_client'"
-      />
+        <!-- Campo de Projeto (apenas admin_master e admin_client sem projectId na rota) -->
+        <mat-form-field
+          class="w-100"
+          *ngIf="
+            ((userRole === 'admin_master' && form.get('clientId')?.value) ||
+              userRole === 'admin_client') &&
+            !projectIdFromRoute
+          "
+        >
+          <mat-label>Projeto</mat-label>
+          <mat-select formControlName="projectId">
+            <mat-option value="">Nenhum projeto selecionado</mat-option>
+            <mat-option *ngFor="let project of projects" [value]="project.id">
+              {{ project.name }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Para admin_client, o clientId já está preenchido e oculto -->
+        <input
+          type="hidden"
+          formControlName="clientId"
+          *ngIf="userRole === 'admin_client' && !projectIdFromRoute"
+        />
+
+        <!-- Exibir companyName e projectName como texto se vierem da rota -->
+        <div *ngIf="projectIdFromRoute" class="w-100">
+          <p>
+            <strong>Cliente:</strong>
+            {{ clientNameFromProject || "Não identificado" }}
+          </p>
+          <p>
+            <strong>Projeto:</strong>
+            {{ projectNameFromRoute || "Não identificado" }}
+          </p>
+        </div>
+      </mat-card-content>
     </mat-card>
 
     <!-- Editor Unlayer -->
     <div class="col-12">
       <email-editor
         [options]="{ locale: 'pt' }"
-        (ready)="editorLoaded()"
+        (ready)="onEditorReady()"
       ></email-editor>
     </div>
 
     <div class="text-end mt-3">
-      <!-- <button mat-button (click)="goBack()">Voltar para Templates</button> -->
       <button mat-flat-button color="primary" (click)="saveTemplate()">
         {{ isEditMode ? "Salvar Alterações" : "Criar Template" }}
       </button>

@@ -80,7 +80,7 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   private async loadClients(): Promise<void> {
-        try {
+    try {
       const clientsCollection = collection(this.firestore, 'clients');
       const snapshot = await getDocs(clientsCollection);
       this.clients = snapshot.docs.map((doc) => ({
@@ -93,20 +93,19 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   private async loadTemplates(): Promise<void> {
-    
     try {
       const templatesCollection = collection(this.firestore, 'mailTemplates');
       let queryConstraint;
 
       if (this.userRole === 'admin_master') {
-                queryConstraint = query(templatesCollection);
+        queryConstraint = query(templatesCollection);
       } else if (this.userRole === 'admin_client' && this.userClientId) {
         queryConstraint = query(
           templatesCollection,
           where('clientId', '==', this.userClientId)
         );
       } else {
-                this.snackBar.open(
+        this.snackBar.open(
           'Você não tem permissão para visualizar templates.',
           'Fechar',
           {
@@ -196,7 +195,10 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   createTemplate(): void {
-    if (this.userRole === 'admin_master') {
+    if (this.projectId) {
+      // Se estamos na rota /projects/:projectId/templates, navegar para a rota com projectId
+      this.router.navigate([`/projects/${this.projectId}/templates/new`]);
+    } else if (this.userRole === 'admin_master') {
       this.router.navigate(['/projects/default-template/new']);
     } else if (this.userRole === 'admin_client' && this.userClientId) {
       this.router.navigate([`/projects/${this.userClientId}/templates/new`]);
@@ -204,7 +206,12 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   editTemplate(templateId: string, isGlobal: boolean): void {
-        if (this.userRole === 'admin_master') {
+    if (this.projectId) {
+      // Se estamos na rota /projects/:projectId/templates, manter o projectId na rota de edição
+      this.router.navigate([
+        `/projects/${this.projectId}/templates/${templateId}/edit`,
+      ]);
+    } else if (this.userRole === 'admin_master') {
       this.router.navigate([`projects/default-template/${templateId}/edit`]);
     } else if (
       !isGlobal &&
@@ -244,7 +251,7 @@ export class EmailTemplateListComponent implements OnInit {
         ) {
           templateDocRef = doc(this.firestore, `mailTemplates/${templateId}`);
         } else {
-                    this.snackBar.open(
+          this.snackBar.open(
             'Você não tem permissão para excluir este template.',
             'Fechar',
             {
@@ -255,7 +262,7 @@ export class EmailTemplateListComponent implements OnInit {
         }
 
         await deleteDoc(templateDocRef);
-                this.dataSource.data = this.dataSource.data.filter(
+        this.dataSource.data = this.dataSource.data.filter(
           (template) => template.id !== templateId
         );
         this.snackBar.open('Template excluído com sucesso!', 'Fechar', {

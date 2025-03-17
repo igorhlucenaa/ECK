@@ -6,8 +6,15 @@
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Tipo de E-mail</mat-label>
         <mat-select [(value)]="emailType">
-          <mat-option value="convite">Convite</mat-option>
-          <mat-option value="lembrete">Lembrete</mat-option>
+          <mat-option value="cadastro">Cadastro do Usuário</mat-option>
+          <mat-option value="conviteAvaliador">Convite - Avaliador</mat-option>
+          <mat-option value="conviteRespondente">Convite - Avaliado</mat-option>
+          <mat-option value="lembreteAvaliador"
+            >Lembrete - Avaliador</mat-option
+          >
+          <mat-option value="lembreteRespondente"
+            >Lembrete - Avaliado</mat-option
+          >
         </mat-select>
       </mat-form-field>
     </div>
