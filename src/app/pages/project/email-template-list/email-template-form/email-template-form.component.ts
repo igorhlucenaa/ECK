@@ -148,7 +148,12 @@ export class EmailTemplateFormComponent implements OnInit {
       });
     } else {
       const emailType = this.form.get('emailType')?.value;
-      if (emailType === 'convite' || emailType === 'lembrete') {
+      if (
+        emailType === 'conviteAvaliador' ||
+        emailType === 'conviteRespondente' ||
+        emailType === 'lembreteAvaliador' ||
+        emailType === 'lembreteRespondente'
+      ) {
         this.getDefaultTemplateWithLink(
           emailType,
           this.form.get('projectId')?.value
@@ -161,7 +166,12 @@ export class EmailTemplateFormComponent implements OnInit {
     }
 
     this.form.get('emailType')?.valueChanges.subscribe(async (newValue) => {
-      if (newValue === 'convite' || newValue === 'lembrete') {
+      if (
+        newValue === 'conviteAvaliador' ||
+        newValue === 'conviteRespondente' ||
+        newValue === 'lembreteAvaliador' ||
+        newValue === 'lembreteRespondente'
+      ) {
         const design = await this.getDefaultTemplateWithLink(
           newValue,
           this.form.get('projectId')?.value
@@ -174,7 +184,12 @@ export class EmailTemplateFormComponent implements OnInit {
 
     this.form.get('projectId')?.valueChanges.subscribe(async (projectId) => {
       const emailType = this.form.get('emailType')?.value;
-      if (emailType === 'convite' || emailType === 'lembrete') {
+      if (
+        emailType === 'conviteAvaliador' ||
+        emailType === 'conviteRespondente' ||
+        emailType === 'lembreteAvaliador' ||
+        emailType === 'lembreteRespondente'
+      ) {
         const design = await this.getDefaultTemplateWithLink(
           emailType,
           projectId
@@ -295,16 +310,22 @@ export class EmailTemplateFormComponent implements OnInit {
       deadlineText = await this.getDeadline(effectiveProjectId);
     }
 
-    if (emailType === 'convite') {
+    if (
+      emailType === 'conviteAvaliador' ||
+      emailType === 'conviteRespondente'
+    ) {
       message =
         projectId || this.projectIdFromRoute
-          ? `<p>Aqui está o link da sua avaliação. Por favor, preencha até ${deadlineText}:</p>`
+          ? `<p>Aqui está o link da sua avaliação.\n Por favor, preencha até ${deadlineText}:</p>`
           : '<p>Aqui está o link da sua avaliação:</p>';
-    } else if (emailType === 'lembrete') {
+    } else if (
+      emailType === 'lembreteAvaliador' ||
+      emailType === 'lembreteRespondente'
+    ) {
       message =
         projectId || this.projectIdFromRoute
-          ? `<p>Este é um lembrete da sua avaliação. Não se esqueça de preenchê-la até ${deadlineText}!</p>`
-          : '<p>Este é um lembrete da sua avaliação. Não se esqueça de preenchê-la!</p>';
+          ? `<p>Este é um lembrete da sua avaliação.\n Não se esqueça de preenchê-la até ${deadlineText}!</p>`
+          : '<p>Este é um lembrete da sua avaliação.\n Não se esqueça de preenchê-la!</p>';
     }
 
     return {
@@ -333,7 +354,9 @@ export class EmailTemplateFormComponent implements OnInit {
                       textAlign: 'center',
                       lineHeight: '140%',
                       hideDesktop: false,
-                      text: `${message}<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>`,
+                      text: `Olá, $%Nome do usuário preenchido dinâmicamente$%\n\n
+                      
+                      ${message}<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>`,
                     },
                   },
                 ],
@@ -398,7 +421,12 @@ export class EmailTemplateFormComponent implements OnInit {
 
     if (!this.isEditMode) {
       const emailType = this.form.value.emailType;
-      if (emailType === 'convite' || emailType === 'lembrete') {
+      if (
+        emailType === 'conviteAvaliador' ||
+        emailType === 'conviteRespondente' ||
+        emailType === 'lembreteAvaliador' ||
+        emailType === 'lembreteRespondente'
+      ) {
         this.getDefaultTemplateWithLink(
           emailType,
           this.form.get('projectId')?.value
@@ -510,8 +538,10 @@ export class EmailTemplateFormComponent implements OnInit {
       let design = JSON.stringify(data.design);
 
       if (
-        (this.form.value.emailType === 'convite' ||
-          this.form.value.emailType === 'lembrete') &&
+        (this.form.value.emailType === 'conviteAvaliador' ||
+          this.form.value.emailType === 'conviteRespondente' ||
+          this.form.value.emailType === 'lembreteAvaliador' ||
+          this.form.value.emailType === 'lembreteRespondente') &&
         !design.includes('[LINK_AVALIACAO]')
       ) {
         design = design.replace(

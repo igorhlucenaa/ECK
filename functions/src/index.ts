@@ -43,7 +43,6 @@ function renderTemplateToHtml(
   const rows = templateContent.body.rows;
   let html = '';
 
-  // Estilos globais do body
   const bodyStyles = `
     font-family: ${templateContent.body.values.fontFamily.value};
     color: ${templateContent.body.values.textColor};
@@ -55,7 +54,6 @@ function renderTemplateToHtml(
 
   html += `<div style="${bodyStyles}">`;
 
-  // Iterar sobre as rows
   for (const row of rows) {
     const rowStyles = `
       padding: ${row.values.padding};
@@ -63,11 +61,9 @@ function renderTemplateToHtml(
     `;
     html += `<div style="${rowStyles}">`;
 
-    // Iterar sobre as columns
     for (const column of row.columns) {
       html += '<div>';
 
-      // Iterar sobre os contents
       for (const content of column.contents) {
         const containerStyles = `padding: ${content.values.containerPadding};`;
 
@@ -85,10 +81,19 @@ function renderTemplateToHtml(
             line-height: ${content.values.lineHeight};
           `;
           let textContent = content.values.text;
-          // Substituir placeholders
-          for (const [key, value] of Object.entries(replacements)) {
-            textContent = textContent.replace(`[${key}]`, value);
-          }
+
+          // Substituir tudo entre $% $% pelo nome do participante
+          textContent = textContent.replace(
+            /\$%.*?\$%/g,
+            replacements.participantName
+          );
+
+          // Substituir [LINK_AVALIACAO] pelo link
+          textContent = textContent.replace(
+            '[LINK_AVALIACAO]',
+            replacements.LINK_AVALIACAO
+          );
+
           html += `<div style="${containerStyles} ${textStyles}">${textContent}</div>`;
         } else if (content.type === 'social') {
           const socialStyles = `
@@ -111,11 +116,8 @@ function renderTemplateToHtml(
 // Função para enviar o e-mail
 export const sendEmail = onRequest((req, res) => {
   cors(req, res, async () => {
-    // Torne a função de callback assíncrona
-     // Log para verificar os dados recebidos
     const { email, templateId, participantId, assessmentId } = req.body;
 
-    // Verificar campos obrigatórios
     if (!email || !templateId || !participantId || !assessmentId) {
       res.status(400).send({
         error:
@@ -124,7 +126,6 @@ export const sendEmail = onRequest((req, res) => {
       return;
     }
 
-    // Resolver os valores de email e senha em tempo de execução
     const emailUser =
       EMAIL_USER_PARAM.value() ||
       process.env.EMAIL_USER ||
@@ -134,82 +135,81 @@ export const sendEmail = onRequest((req, res) => {
       process.env.EMAIL_PASS ||
       'nkik bvji wshf xzpg';
 
-    // Criar o transporter em tempo de execução
     const transporter = getTransporter(emailUser, emailPass);
 
     try {
-      // Obtendo o template de e-mail pelo ID
+      // Buscar o nome do participante
+      const participantRef = admin
+        .firestore()
+        .collection('participants')
+        .doc(participantId);
+      const participantDoc = await participantRef.get();
+
+      if (!participantDoc.exists) {
+        res.status(404).send({ error: 'Participante não encontrado.' });
+        return;
+      }
+
+      const participantData = participantDoc.data();
+      const participantName = participantData?.name || 'Participante';
+
       const template = await getTemplateById(templateId);
 
-      // Verificar se o template foi encontrado
       if (!template) {
         res.status(404).send({ error: 'Template de e-mail não encontrado.' });
         return;
       }
 
-      // Gerar o link de avaliação
       const assessmentLink = `https://eck360.web.app/assessment?token=${
         Math.random().toString(36).substr(2) + Date.now().toString(36)
       }&participant=${participantId}&assessment=${assessmentId}`;
 
-      // Parsear o template e renderizar o HTML
       let emailHtml;
       try {
         const parsedContent = JSON.parse(template.content);
-        
-        // Renderizar o template com substituições
+
+        // Passar o nome do participante e o link
         emailHtml = renderTemplateToHtml(parsedContent, {
           LINK_AVALIACAO: assessmentLink,
+          participantName: participantName, // Passamos o nome explicitamente
         });
-
-              } catch (err) {
+      } catch (err) {
         res
           .status(500)
           .send({ error: 'Erro ao processar o template de e-mail.' });
         return;
       }
 
-      // Criar o objeto do link de avaliação
+      // Restante do código permanece igual
       const assessmentLinkObj = {
         assessmentId,
         token: Math.random().toString(36).substr(2) + Date.now().toString(36),
-        status: 'sent', // Status inicial
+        status: 'sent',
       };
 
-      // Salvar o link e status no Firestore (em participants)
-      const participantRef = admin
-        .firestore()
-        .collection('participants')
-        .doc(participantId);
       await participantRef.update({
         assessmentLinks:
           admin.firestore.FieldValue.arrayUnion(assessmentLinkObj),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Configurar as opções do e-mail
       const mailOptions = {
-        from: `ECK Avaliação 360 <${emailUser}>`, // Usar emailUser diretamente
+        from: `ECK Avaliação 360 <${emailUser}>`,
         to: email,
         subject: template.subject,
         html: emailHtml,
       };
 
-      // Enviar o e-mail
       await transporter.sendMail(mailOptions);
-      
-      // Atualizar status de entrega após envio bem-sucedido
+
       await participantRef.update({
         deliveryStatus: 'sent',
         lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Retornar resposta de sucesso
       res.status(200).send({ success: true });
     } catch (error: any) {
       console.error('Erro ao enviar e-mail:', error);
-
-      // Atualizar status para 'failed' em caso de erro
       if (participantId) {
         await admin
           .firestore()
@@ -220,8 +220,6 @@ export const sendEmail = onRequest((req, res) => {
             errorMessage: error.message,
           });
       }
-
-      // Retornar erro
       res
         .status(500)
         .send({ error: `Erro ao enviar e-mail: ${error.message}` });

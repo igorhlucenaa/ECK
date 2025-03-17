@@ -329,6 +329,8 @@ export class SendAssessmentModalComponent implements OnInit {
   }
 
   confirm(): void {
+    console.log(this.sendForm.value)
+
     if (this.sendForm.valid && this.selectedParticipants.length > 0) {
       this.dialogRef.close({
         selectedTemplate: this.sendForm.get('template')?.value,
