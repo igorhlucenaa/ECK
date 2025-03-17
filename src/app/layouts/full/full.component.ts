@@ -123,8 +123,7 @@ export class FullComponent implements OnInit {
   ngOnInit(): void {
     this.authService.getCurrentUserRole().then((res) => {
       this.userRole = res;
-      console.log('Role do usuário:', res);
-
+      
       // Atualizar os itens do menu de acordo com a role
       if (this.userRole === 'admin_master') {
         this.navItems = navItems; // Exibe todas as opções para admin_master

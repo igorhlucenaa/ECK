@@ -68,7 +68,7 @@ export class AppNavItemComponent implements OnChanges {
     if (!item.children || !item.children.length) {
       if (item.route && item.route.includes(':id')) {
         this.navService.getClientId().then((clientId) => {
-          console.log(clientId)
+          
           if (clientId) {
             const route = item.route?.replace(':id', clientId);
             this.router.navigate([route]);

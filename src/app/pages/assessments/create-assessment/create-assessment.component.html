@@ -28,15 +28,12 @@
                 rows="2"
                 placeholder="Digite a descrição"
               ></textarea>
-              <mat-error *ngIf="form.get('description')?.invalid"
-                >A descrição é obrigatória.</mat-error
-              >
             </mat-form-field>
           </div>
         </div>
 
         <div class="row">
-          <div class="col-md-12">
+          <div class="col-md-6">
             <mat-form-field class="w-100" appearance="outline">
               <mat-label>Cliente</mat-label>
               <mat-select
@@ -51,6 +48,27 @@
               </mat-select>
               <mat-error *ngIf="form.get('clientId')?.invalid"
                 >O cliente é obrigatório.</mat-error
+              >
+            </mat-form-field>
+          </div>
+          <div class="col-md-6">
+            <mat-form-field class="w-100" appearance="outline">
+              <mat-label>Projeto</mat-label>
+              <mat-select
+                formControlName="projectId"
+                [disabled]="!form.get('clientId')?.value"
+              >
+                <mat-option
+                  *ngFor="let project of projects"
+                  [value]="project.id"
+                  >{{ project.name }}</mat-option
+                >
+              </mat-select>
+              <mat-error
+                *ngIf="
+                  form.get('projectId')?.invalid && form.get('clientId')?.value
+                "
+                >O projeto é obrigatório.</mat-error
               >
             </mat-form-field>
           </div>

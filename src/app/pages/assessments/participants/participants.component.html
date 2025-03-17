@@ -25,128 +25,40 @@
   </div>
 
   <mat-tab-group>
-    <!-- Tabela de Avaliadores -->
-    <mat-tab label="Avaliadores">
-      <div class="mt-4">
-        <mat-form-field class="w-100" appearance="outline">
-          <mat-label>Buscar Avaliadores</mat-label>
-          <input
-            matInput
-            (keyup)="applyFilter($event, 'evaluators')"
-            placeholder="Digite para buscar"
-          />
-        </mat-form-field>
-        <table
-          mat-table
-          [dataSource]="evaluatorsDataSource"
-          matSort
-          #evaluatorsSort="matSort"
-          class="mat-elevation-z8"
-        >
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
-            <td mat-cell *matCellDef="let evaluator">{{ evaluator.name }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Email</th>
-            <td mat-cell *matCellDef="let evaluator">{{ evaluator.email }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="category">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoria</th>
-            <td mat-cell *matCellDef="let evaluator">
-              {{ evaluator.category }}
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="assessments">
-            <th mat-header-cell *matHeaderCellDef>Avaliações</th>
-            <td mat-cell *matCellDef="let evaluator">
-              <div *ngIf="evaluator.isEditing; else viewMode">
-                <mat-form-field class="w-100">
-                  <mat-label>Selecione as avaliações</mat-label>
-                  <mat-select [(ngModel)]="evaluator.assessments" multiple>
-                    <mat-option
-                      *ngFor="let assessment of availableAssessments"
-                      [value]="assessment.id"
-                    >
-                      {{ assessment.name }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
-                <button
-                  mat-icon-button
-                  color="primary"
-                  (click)="saveEvaluateeAssessments(evaluator)"
-                >
-                  <mat-icon>check</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  color="warn"
-                  (click)="cancelEdit(evaluator)"
-                >
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-
-              <ng-template #viewMode>
-                <span *ngIf="evaluator.assessments?.length; else noAssessments">
-                  {{ getAssessmentNames(evaluator.assessments) }}
-                </span>
-                <ng-template #noAssessments>
-                  <span>Sem avaliações</span>
-                </ng-template>
-                <button
-                  mat-icon-button
-                  color="primary"
-                  (click)="editAssessments(evaluator)"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-              </ng-template>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Ações</th>
-            <td mat-cell *matCellDef="let evaluator">
-              <button
-                mat-icon-button
-                color="warn"
-                (click)="deleteEvaluator(evaluator)"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="evaluatorsDisplayedColumns"></tr>
-          <tr
-            mat-row
-            *matRowDef="let row; columns: evaluatorsDisplayedColumns"
-          ></tr>
-        </table>
-        <mat-paginator
-          [pageSize]="5"
-          [pageSizeOptions]="[5, 10, 25]"
-          showFirstLastButtons
-        ></mat-paginator>
-      </div>
-    </mat-tab>
-
     <!-- Tabela de Avaliados -->
     <mat-tab label="Avaliados">
       <div class="mt-4">
-        <mat-form-field class="w-100" appearance="outline">
-          <mat-label>Buscar Avaliados</mat-label>
-          <input
-            matInput
-            (keyup)="applyFilter($event, 'evaluatees')"
-            placeholder="Digite para buscar"
-          />
-        </mat-form-field>
+        <!-- Filtros -->
+        <div class="row mb-3" style="margin-top: 20px">
+          <div class="col-md-6">
+            <mat-form-field class="w-100">
+              <mat-label>Buscar</mat-label>
+              <input
+                matInput
+                (keyup)="applyFilter($event, 'evaluatees')"
+                placeholder="Digite para buscar"
+              />
+            </mat-form-field>
+          </div>
+          <!-- <div class="col-md-6">
+            <mat-form-field class="w-100">
+              <mat-label>Filtrar por Categoria</mat-label>
+              <mat-select
+                (selectionChange)="
+                  filterTable('evaluatees', { category: $event.value })
+                "
+              >
+                <mat-option value="">Todos</mat-option>
+                <mat-option value="gestor">Gestor</mat-option>
+                <mat-option value="par">Par</mat-option>
+                <mat-option value="subordinado">Subordinado</mat-option>
+                <mat-option value="avaliado">Avaliado</mat-option>
+                <mat-option value="outros">Outros</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div> -->
+        </div>
+
         <table
           mat-table
           [dataSource]="evaluateesDataSource"
@@ -154,6 +66,21 @@
           #evaluateesSort="matSort"
           class="mat-elevation-z8"
         >
+          <!-- Seleção -->
+          <!-- <ng-container matColumnDef="select">
+            <th mat-header-cell *matHeaderCellDef>
+              <mat-checkbox
+                (change)="selectAll('evaluatees', $event)"
+              ></mat-checkbox>
+            </th>
+            <td mat-cell *matCellDef="let evaluatee">
+              <mat-checkbox
+                (change)="toggleSelection('evaluatees', evaluatee)"
+                [checked]="evaluatee.selected"
+              ></mat-checkbox>
+            </td>
+          </ng-container> -->
+
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
             <td mat-cell *matCellDef="let evaluatee">{{ evaluatee.name }}</td>
@@ -181,70 +108,25 @@
           <ng-container matColumnDef="assessments">
             <th mat-header-cell *matHeaderCellDef>Avaliações</th>
             <td mat-cell *matCellDef="let evaluatee">
-              <div *ngIf="evaluatee.isEditing; else viewMode">
-                <mat-form-field class="w-100">
-                  <mat-label>Selecione as avaliações</mat-label>
-                  <mat-select [(ngModel)]="evaluatee.assessments" multiple>
-                    <mat-option
-                      *ngFor="let assessment of availableAssessments"
-                      [value]="assessment.id"
-                    >
-                      {{ assessment.name }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
-                <button
-                  mat-icon-button
-                  color="primary"
-                  (click)="saveEvaluateeAssessments(evaluatee)"
-                >
-                  <mat-icon>check</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  color="warn"
-                  (click)="cancelEvaluateeEdit(evaluatee)"
-                >
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-
-              <ng-template #viewMode>
-                <span *ngIf="evaluatee.assessments?.length; else noAssessments">
-                  {{ getAssessmentNames(evaluatee.assessments) }}
-                </span>
-                <ng-template #noAssessments>
-                  <span>Sem avaliações</span>
-                </ng-template>
-                <button
-                  mat-icon-button
-                  color="primary"
-                  (click)="editEvaluateeAssessments(evaluatee)"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-              </ng-template>
-            </td>
-          </ng-container>
-
-          <!-- <ng-container matColumnDef="evaluators">
-            <th mat-header-cell *matHeaderCellDef>Avaliadores</th>
-            <td mat-cell *matCellDef="let evaluatee">
+              <!-- Apenas exibe e abre modal -->
               <ng-container
-                *ngIf="evaluatee.evaluators?.length; else noEvaluators"
+                *ngIf="
+                  (evaluatee.assessments?.length ?? 0) > 0;
+                  else noAssessments
+                "
               >
                 <a
                   href="javascript:void(0)"
-                  (click)="openEvaluatorsModal(evaluatee)"
+                  (click)="showAssessmentsModal(evaluatee)"
                 >
-                  Ver Avaliadores ({{ evaluatee.evaluators.length }})
+                  Ver Avaliações ({{ evaluatee.assessments.length }})
                 </a>
               </ng-container>
-              <ng-template #noEvaluators>
-                <span>Sem avaliadores</span>
+              <ng-template #noAssessments>
+                <span>Sem avaliações</span>
               </ng-template>
             </td>
-          </ng-container> -->
+          </ng-container>
 
           <ng-container matColumnDef="evaluators">
             <th mat-header-cell *matHeaderCellDef>Avaliadores</th>
@@ -276,10 +158,12 @@
                   <mat-icon>close</mat-icon>
                 </button>
               </div>
-
               <ng-template #viewMode>
                 <ng-container
-                  *ngIf="evaluatee.evaluators?.length; else noEvaluators"
+                  *ngIf="
+                    (evaluatee.evaluators?.length ?? 0) > 0;
+                    else noEvaluators
+                  "
                 >
                   <a
                     href="javascript:void(0)"
@@ -322,6 +206,174 @@
           ></tr>
         </table>
         <mat-paginator
+          #evaluateesPaginator
+          [pageSize]="5"
+          [pageSizeOptions]="[5, 10, 25]"
+          showFirstLastButtons
+        ></mat-paginator>
+      </div>
+    </mat-tab>
+
+    <!-- Tabela de Avaliadores -->
+    <mat-tab label="Avaliadores">
+      <div class="mt-4">
+        <!-- Filtros -->
+        <div class="row mb-3" style="margin-top: 20px">
+          <div class="col-md-6">
+            <mat-form-field class="w-100">
+              <mat-label>Buscar</mat-label>
+              <input
+                matInput
+                (keyup)="applyFilter($event, 'evaluators')"
+                placeholder="Digite para buscar"
+              />
+            </mat-form-field>
+          </div>
+          <div class="col-md-6">
+            <mat-form-field class="w-100">
+              <mat-label>Filtrar por Categoria</mat-label>
+              <mat-select
+                (selectionChange)="
+                  filterTable('evaluators', { category: $event.value })
+                "
+              >
+                <mat-option value="">Todos</mat-option>
+                <mat-option value="gestor">Gestor</mat-option>
+                <mat-option value="par">Par</mat-option>
+                <mat-option value="subordinado">Subordinado</mat-option>
+                <mat-option value="outros">Outros</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <table
+          mat-table
+          [dataSource]="evaluatorsDataSource"
+          matSort
+          #evaluatorsSort="matSort"
+          class="mat-elevation-z8"
+        >
+          <!-- Seleção -->
+          <!-- <ng-container matColumnDef="select">
+            <th mat-header-cell *matHeaderCellDef>
+              <mat-checkbox
+                (change)="selectAll('evaluators', $event)"
+              ></mat-checkbox>
+            </th>
+            <td mat-cell *matCellDef="let evaluator">
+              <mat-checkbox
+                (change)="toggleSelection('evaluators', evaluator)"
+                [checked]="evaluator.selected"
+              ></mat-checkbox>
+            </td>
+          </ng-container> -->
+
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+            <td mat-cell *matCellDef="let evaluator">{{ evaluator.name }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="client">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
+            <td mat-cell *matCellDef="let evaluator">
+              {{ evaluator.clientName }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="project">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Projeto</th>
+            <td mat-cell *matCellDef="let evaluator">
+              {{ evaluator.projectName }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Email</th>
+            <td mat-cell *matCellDef="let evaluator">{{ evaluator.email }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="category">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoria</th>
+            <td mat-cell *matCellDef="let evaluator">
+              {{ evaluator.category }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="assessments">
+            <th mat-header-cell *matHeaderCellDef>Avaliações</th>
+            <td mat-cell *matCellDef="let evaluator">
+              <div *ngIf="evaluator.isEditing; else viewMode">
+                <mat-form-field class="w-100">
+                  <mat-label>Selecione as avaliações</mat-label>
+                  <mat-select [(ngModel)]="evaluator.assessments" multiple>
+                    <mat-option
+                      *ngFor="let assessment of availableAssessments"
+                      [value]="assessment.id"
+                    >
+                      {{ assessment.name }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="saveAssessments(evaluator)"
+                >
+                  <mat-icon>check</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="cancelEdit(evaluator)"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+              <ng-template #viewMode>
+                <span
+                  *ngIf="
+                    (evaluator.assessments?.length ?? 0) > 0;
+                    else noAssessments
+                  "
+                >
+                  {{ getAssessmentNames(evaluator.assessments) }}
+                </span>
+                <ng-template #noAssessments>
+                  <span>Sem avaliações</span>
+                </ng-template>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="editAssessments(evaluator)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+              </ng-template>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Ações</th>
+            <td mat-cell *matCellDef="let evaluator">
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="deleteEvaluator(evaluator)"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="evaluatorsDisplayedColumns"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: evaluatorsDisplayedColumns"
+          ></tr>
+        </table>
+        <mat-paginator
+          #evaluatorsPaginator
           [pageSize]="5"
           [pageSizeOptions]="[5, 10, 25]"
           showFirstLastButtons

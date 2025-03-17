@@ -6,8 +6,13 @@ import { ClientCustomizationComponent } from './pages/client-customization/clien
 import { CreditOrdersComponent } from './pages/credit-orders/credit-orders.component';
 import { NewCreditOrderComponent } from './pages/credit-orders/new-credit-order/new-credit-order.component';
 import { EmailTemplateListComponent } from './pages/project/email-template-list/email-template-list.component';
+import { AssessmentComponent } from './pages/assessments/assessment/assessment.component';
 
 export const routes: Routes = [
+  {
+    path: 'assessment',
+    component: AssessmentComponent,
+  },
   {
     path: '',
     component: BlankComponent,

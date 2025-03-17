@@ -114,16 +114,14 @@ export class CreateUserComponent implements OnInit {
   }
 
   private async prefillForm(user: any): Promise<void> {
-    console.log('Usuário para edição:', user);
-
+    
     // Obtém o ID do cliente correspondente ao nome (se necessário)
     const clientId = this.clients.find(
       (client) => client.name === user.client
     )?.id;
 
     if (clientId) {
-      console.log('Carregando dados relacionados ao cliente:', clientId);
-
+      
       // Aguarda o carregamento dos projetos e grupos
       await this.onClientChange(clientId);
     }
@@ -176,8 +174,7 @@ export class CreateUserComponent implements OnInit {
   }
 
   async onClientChange(clientId: string): Promise<void> {
-    console.log('Cliente selecionado:', clientId);
-
+    
     if (!clientId) {
       console.warn('Nenhum cliente válido selecionado.');
       return;
@@ -213,9 +210,7 @@ export class CreateUserComponent implements OnInit {
         name: doc.data()['name'] || 'Sem Nome',
       }));
 
-      console.log('Projetos carregados:', this.projects);
-      console.log('Grupos carregados:', this.groups);
-    } catch (error) {
+                } catch (error) {
       console.error('Erro ao carregar projetos ou grupos:', error);
       this.snackBar.open('Erro ao carregar projetos ou grupos.', 'Fechar', {
         duration: 3000,

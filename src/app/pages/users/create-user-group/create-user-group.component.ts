@@ -142,8 +142,7 @@ export class CreateUserGroupComponent implements OnInit {
   private async loadProjects(clientId: string | null): Promise<void> {
     if (!clientId) {
       this.projects = [];
-      console.log('Nenhum clientId fornecido para carregar projetos.');
-      return;
+            return;
     }
 
     try {
@@ -158,8 +157,7 @@ export class CreateUserGroupComponent implements OnInit {
         id: doc.id,
         name: doc.data()['name'] || 'Sem Nome',
       }));
-      console.log('Projetos carregados:', this.projects);
-    } catch (error) {
+          } catch (error) {
       console.error('Erro ao carregar projetos:', error);
       this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
         duration: 3000,
@@ -193,8 +191,7 @@ export class CreateUserGroupComponent implements OnInit {
 
   private async patchFormWithData(): Promise<void> {
     if (this.data) {
-      console.log('Dados do grupo recebidos no patch:', this.data);
-      const clientId = this.data.clientId;
+            const clientId = this.data.clientId;
 
       if (clientId) {
         try {
@@ -206,14 +203,12 @@ export class CreateUserGroupComponent implements OnInit {
             this.loadProjects(clientId),
             this.loadUsers(clientId),
           ]);
-          console.log('Carregamento concluído.');
-        } catch (error) {
+                  } catch (error) {
           console.error('Erro ao carregar dados associados ao cliente:', error);
         }
       }
 
-      console.log('Dados após carregamento:', this.data);
-
+      
       this.groupForm.patchValue({
         name: this.data.name,
         description: this.data.description,

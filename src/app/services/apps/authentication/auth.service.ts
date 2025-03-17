@@ -380,8 +380,7 @@ export class AuthService {
 
       if (data && data['client']) {
         // Alterado de 'clientId' para 'client'
-        console.log(`client encontrado: ${data['client']}`);
-        return data['client']; // Alterado de 'clientId' para 'client'
+                return data['client']; // Alterado de 'clientId' para 'client'
       } else {
         console.warn('Campo "client" ausente no documento do usuário.');
         return null;

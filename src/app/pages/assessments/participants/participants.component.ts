@@ -15,6 +15,10 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  query,
+  where,
+  setDoc,
+  getDoc,
 } from '@angular/fire/firestore';
 import * as Papa from 'papaparse';
 import { MaterialModule } from 'src/app/material.module';
@@ -31,6 +35,8 @@ interface Evaluator {
   name: string;
   email: string;
   category: string;
+  assessments?: string[];
+  selected?: boolean;
 }
 
 interface Evaluatee {
@@ -40,6 +46,26 @@ interface Evaluatee {
   clientId: string;
   projectId: string;
   assessments?: string[];
+  clientName?: string;
+  projectName?: string;
+  evaluators?: string[];
+  selected?: boolean;
+  [key: string]: any;
+}
+
+interface AssessmentDetail {
+  id: string;
+  name: string;
+  status: string; // 'Respondido' ou 'Pendente'
+  linkSent: boolean; // Se o link foi enviado por e-mail
+}
+
+interface MailTemplate {
+  id: string;
+  name: string;
+  content: string;
+  emailType: string;
+  subject: string;
 }
 
 @Component({
@@ -51,19 +77,23 @@ interface Evaluatee {
 })
 export class ParticipantsComponent implements OnInit, AfterViewInit {
   evaluatorsDisplayedColumns: string[] = [
+    // 'select',
     'name',
     'email',
     'category',
+    'client',
+    'project',
     'assessments',
     'actions',
   ];
   evaluateesDisplayedColumns: string[] = [
+    // 'select',
     'name',
     'email',
     'client',
     'project',
-    'assessments', // Avaliações que o avaliado responderá
-    'evaluators', // 🔹 Nova coluna mostrando os avaliadores
+    'assessments',
+    'evaluators',
     'actions',
   ];
 
@@ -75,11 +105,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   @ViewChild('evaluatorsSort', { static: false }) evaluatorsSort!: MatSort;
   @ViewChild('evaluateesSort', { static: false }) evaluateesSort!: MatSort;
+
   clients: { id: string; name: string }[] = [];
   projects: { id: string; name: string }[] = [];
   currentUser: any = null;
   availableAssessments: { id: string; name: string }[] = [];
   availableEvaluators: { id: string; name: string }[] = [];
+  mailTemplates: MailTemplate[] = []; // Novo array para templates de e-mail
   selectedEvaluations: string[] = [];
 
   constructor(
@@ -91,35 +123,32 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   async ngOnInit(): Promise<void> {
     await this.loadClients();
+    await this.loadProjectsForEV();
     await this.loadEvaluators();
     await this.loadEvaluatees();
     await this.loadAssessments();
-    await this.loadEvaluatorsList(); // 🔹 Carregar avaliadores ao iniciar
-
-    console.log('Avaliadores carregados:', this.availableEvaluators); // Debugging
+    await this.loadEvaluatorsList();
+    await this.loadMailTemplates(); // Carrega templates de e-mail
   }
 
   async loadEvaluatorsList(): Promise<void> {
     try {
-      const evaluatorsCollection = collection(this.firestore, 'participants');
-      const snapshot = await getDocs(evaluatorsCollection);
+      const evaluatorsQuery = query(
+        collection(this.firestore, 'participants'),
+        where('type', '==', 'avaliador')
+      );
+      const snapshot = await getDocs(evaluatorsQuery);
 
-      this.availableEvaluators = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          name: doc.data()?.['name'] || 'Nome Desconhecido',
-          email: doc.data()?.['email'] || 'Sem e-mail', // 🔹 Garante que o email existe
-          category: doc.data()?.['category'] || 'Não informado', // 🔹 Garante que a categoria existe
-          type: doc.data()?.['type'] || '',
-        }))
-        .filter(
-          (participant: any) => participant.type.toLowerCase() === 'avaliador'
-        );
-
-      console.log('Avaliadores carregados:', this.availableEvaluators); // Debugging
+      this.availableEvaluators = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Nome Desconhecido',
+        email: doc.data()['email'] || 'Sem e-mail',
+        category: doc.data()['category'] || 'Não informado',
+        type: doc.data()['type'] || '',
+      }));
     } catch (error) {
-      console.error('Erro ao carregar avaliadores:', error);
-      this.snackBar.open('Erro ao carregar avaliadores.', 'Fechar', {
+      console.error('Erro ao carregar avaliadores (lista):', error);
+      this.snackBar.open('Erro ao carregar lista de avaliadores.', 'Fechar', {
         duration: 3000,
       });
     }
@@ -132,7 +161,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
       this.availableAssessments = snapshot.docs.map((doc) => ({
         id: doc.id,
-        name: doc.data()['name'],
+        name: doc.data()['name'] || 'Avaliação Desconhecida',
+        status: 'Pendente', // Valor padrão
+        linkSent: false, // Valor padrão
       }));
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
@@ -143,199 +174,187 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async loadEvaluators(): Promise<void> {
-    const evaluatorsCollection = collection(this.firestore, 'participants');
-    const snapshot = await getDocs(evaluatorsCollection);
-
-    const evaluators = snapshot.docs
-      .map((doc) => ({
-        id: doc.id, // 🔹 Adiciona o ID do documento
-        ...doc.data(),
-      }))
-      .filter((participant: any) => participant.type === 'avaliador');
-
-    this.evaluatorsDataSource.data = evaluators;
-  }
-
-  editEvaluateeAssessments(evaluatee: any): void {
-    evaluatee.isEditing = true;
-  }
-
-  cancelEvaluateeEdit(evaluatee: any): void {
-    evaluatee.isEditing = false;
-  }
-
-  async saveEvaluateeAssessments(evaluatee: any): Promise<void> {
-    if (!evaluatee || !evaluatee.id) {
-      console.error('Erro: O ID do avaliado está indefinido!', evaluatee);
-      this.snackBar.open(
-        'Erro ao atualizar avaliações: ID do avaliado não encontrado.',
-        'Fechar',
-        { duration: 3000 }
-      );
-      return;
-    }
-
     try {
-      // 🔹 Garantir que assessments é um array antes de salvar
-      const updatedAssessments = evaluatee.assessments
-        ? [...evaluatee.assessments]
-        : [];
-
-      console.log(
-        'Atualizando avaliações para:',
-        evaluatee.id,
-        updatedAssessments
-      ); // Debugging
-
-      // 🔹 Criar referência correta ao documento no Firestore
-      const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
-
-      await updateDoc(evaluateeDoc, { assessments: updatedAssessments });
-
-      // 🔹 Atualizar os dados na tabela localmente para refletir imediatamente na UI
-      const index = this.evaluateesDataSource.data.findIndex(
-        (e) => e.id === evaluatee.id
+      const evaluatorsQuery = query(
+        collection(this.firestore, 'participants'),
+        where('type', '==', 'avaliador')
       );
-      if (index !== -1) {
-        this.evaluateesDataSource.data[index].assessments = updatedAssessments;
-        this.evaluateesDataSource._updateChangeSubscription(); // Força a atualização da tabela
-      }
+      const snapshot = await getDocs(evaluatorsQuery);
 
-      evaluatee.isEditing = false;
-      this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
-        duration: 3000,
+      const evaluators = snapshot.docs.map((doc) => {
+        const data = doc.data() as { [key: string]: any }; // Tipo genérico para acessar dinamicamente
+        const evaluator: any = {
+          id: doc.id,
+          name: data['name'] || '',
+          email: data['email'] || '',
+          category: data['category'] || 'Não informado',
+          assessments: data['assessments'] ?? [],
+          selected: false,
+          clientId: data['clientId'] || 'Desconhecido',
+          projectId: data['projectId'] || 'Desconhecido',
+        };
+
+        // Buscar cliente em this.clients
+        if (evaluator.clientId && evaluator.clientId !== 'Desconhecido') {
+          const client = this.clients.find((c) => c.id === evaluator.clientId);
+          evaluator.clientName = client?.name || 'Cliente Não Encontrado';
+        } else {
+          evaluator.clientName = 'Sem Cliente';
+        }
+
+        // Buscar projeto em this.projects
+
+        if (evaluator.projectId && evaluator.projectId !== 'Desconhecido') {
+          const project = this.projects.find(
+            (p) => p.id === evaluator.projectId
+          );
+
+          evaluator.projectName = project?.name || 'Projeto Não Encontrado';
+        } else {
+          evaluator.projectName = 'Sem Projeto';
+        }
+
+        return evaluator;
       });
+
+      this.evaluatorsDataSource.data = evaluators;
+      this.evaluatorsDataSource._updateChangeSubscription();
     } catch (error) {
-      console.error('Erro ao atualizar avaliações:', error);
-      this.snackBar.open('Erro ao salvar avaliações.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
-
-  editEvaluateeEvaluators(evaluatee: any): void {
-    evaluatee.isEditingEvaluators = true;
-  }
-
-  cancelEvaluateeEvaluatorsEdit(evaluatee: any): void {
-    evaluatee.isEditingEvaluators = false;
-  }
-
-  async saveEvaluateeEvaluators(evaluatee: any): Promise<void> {
-    if (!evaluatee.id) {
-      console.error('Erro: O ID do avaliado está indefinido!');
+      console.error('Erro ao carregar avaliadores:', error);
       this.snackBar.open(
-        'Erro ao atualizar avaliadores: ID não encontrado.',
+        'Erro ao carregar avaliadores para tabela.',
         'Fechar',
-        { duration: 3000 }
+        {
+          duration: 3000,
+        }
       );
-      return;
     }
-
-    try {
-      const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
-      await updateDoc(evaluateeDoc, { evaluators: evaluatee.evaluators || [] });
-
-      evaluatee.isEditingEvaluators = false;
-      this.snackBar.open('Avaliadores atualizados com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Erro ao atualizar avaliadores:', error);
-      this.snackBar.open('Erro ao salvar avaliadores.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
-
-  getEvaluatorNames(evaluatorIds: string[]): string {
-    if (!this.availableEvaluators || this.availableEvaluators.length === 0) {
-      return 'Carregando avaliadores...';
-    }
-
-    return (
-      this.availableEvaluators
-        .filter((e) => evaluatorIds?.includes(e.id))
-        .map((e) => e.name)
-        .join(', ') || 'Nenhum avaliador'
-    );
   }
 
   async loadEvaluatees(): Promise<void> {
-    const evaluateesCollection = collection(this.firestore, 'participants');
-    const evaluatorsCollection = collection(this.firestore, 'participants');
-    const snapshot = await getDocs(evaluateesCollection);
-    const evaluatorsSnapshot = await getDocs(evaluatorsCollection);
+    try {
+      const evaluateesQuery = query(
+        collection(this.firestore, 'participants'),
+        where('type', '==', 'avaliado')
+      );
+      const evaluatorsQuery = query(
+        collection(this.firestore, 'participants'),
+        where('type', '==', 'avaliador')
+      );
+      const snapshot = await getDocs(evaluateesQuery);
+      const evaluatorsSnapshot = await getDocs(evaluatorsQuery);
 
-    // Carregar todos os avaliadores
-    const allEvaluators = evaluatorsSnapshot.docs
-      .map((doc) => ({
+      const allEvaluators = evaluatorsSnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data(),
-      }))
-      .filter((participant: any) => participant.type === 'avaliador');
+        name: doc.data()['name'],
+        email: doc.data()['email'],
+        clientId: doc.data()['clientId'] || 'Desconhecido',
+        projectId: doc.data()['projectId'] || 'Desconhecido',
+        category: doc.data()['category'] || 'Não informado',
+        assessments: doc.data()['assessments'] ?? [], // Certifique-se de que os assessments estão disponíveis
+      }));
 
-    const evaluatees: any = snapshot.docs
-      .map((doc) => {
+      const evaluatees = snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
           id: doc.id,
-          ...data,
-          evaluators: [], // Inicializa a lista de avaliadores
-        };
-      })
-      .filter((participant: any) => participant.type === 'avaliado');
+          name: data['name'],
+          email: data['email'],
+          clientId: data['clientId'] || 'Desconhecido',
+          projectId: data['projectId'] || 'Desconhecido',
+          assessments: data['assessments']?.map((a: any) => a.id) ?? [],
+          evaluators: [],
+          selected: false,
+        } as Evaluatee;
+      });
 
-    for (const evaluatee of evaluatees) {
-      if (!evaluatee.clientId) {
-        console.error(
-          `Erro: O avaliado ${evaluatee.name} não tem um clientId!`
-        );
-        evaluatee.clientId = 'Desconhecido';
-      }
-      if (!evaluatee.projectId) {
-        console.error(
-          `Erro: O avaliado ${evaluatee.name} não tem um projectId!`
-        );
-        evaluatee.projectId = 'Desconhecido';
-      }
+      for (const evaluatee of evaluatees) {
+        // Verificar se o clientId e projectId estão presentes
+        if (!evaluatee.clientId || evaluatee.clientId === 'Desconhecido') {
+          console.warn(
+            `Aviso: O avaliado ${evaluatee.name} não tem um clientId válido!`
+          );
+          evaluatee.clientId = 'Desconhecido';
+          evaluatee.clientName = 'Sem Cliente';
+        } else {
+          const client = this.clients.find((c) => c.id === evaluatee.clientId);
+          evaluatee.clientName = client?.name || 'Cliente Não Encontrado';
+        }
 
-      const clientDoc = await getDocs(collection(this.firestore, 'clients'));
-      const projectDoc = await getDocs(collection(this.firestore, 'projects'));
+        if (!evaluatee.projectId || evaluatee.projectId === 'Desconhecido') {
+          console.warn(
+            `Aviso: O avaliado ${evaluatee.name} não tem um projectId válido!`
+          );
+          evaluatee.projectId = 'Desconhecido';
+          evaluatee.projectName = 'Sem Projeto';
+        } else {
+          const project = this.projects.find(
+            (p) => p.id === evaluatee.projectId
+          );
+          evaluatee.projectName = project?.name || 'Projeto Não Encontrado';
+        }
 
-      const client = clientDoc.docs.find(
-        (doc) => doc.id === evaluatee.clientId
-      );
-      const project = projectDoc.docs.find(
-        (doc) => doc.id === evaluatee.projectId
-      );
-
-      evaluatee['clientName'] =
-        client?.data()?.['companyName'] || 'Cliente Não Encontrado';
-      evaluatee['projectName'] =
-        project?.data()?.['name'] || 'Projeto Não Encontrado';
-
-      // 🔹 Encontrar avaliadores que compartilham as mesmas avaliações
-      if (evaluatee.assessments && evaluatee.assessments.length > 0) {
-        evaluatee.evaluators = allEvaluators
-          .filter((evaluator: any) =>
-            evaluator.assessments?.some((assessment: string) =>
-              evaluatee.assessments.includes(assessment)
+        // Associar avaliadores com base nas avaliações
+        const assessments = evaluatee.assessments ?? [];
+        if (assessments.length > 0) {
+          evaluatee.evaluators = allEvaluators
+            .filter((evaluator: any) =>
+              (evaluator.assessments ?? []).some((assessment: string) =>
+                assessments.includes(assessment)
+              )
             )
-          )
-          .map((e) => e.id); // Armazena apenas os IDs dos avaliadores
+            .map((e) => e.id);
+        }
       }
-    }
 
-    this.evaluateesDataSource.data = evaluatees;
+      this.evaluateesDataSource.data = evaluatees;
+      this.evaluateesDataSource._updateChangeSubscription();
+      console.log(
+        'Avaliados carregados para tabela:',
+        this.evaluateesDataSource.data
+      );
+    } catch (error) {
+      console.error('Erro ao carregar avaliados:', error);
+      this.snackBar.open('Erro ao carregar avaliados para tabela.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async loadMailTemplates(): Promise<void> {
+    try {
+      const templatesCollection = collection(this.firestore, 'mailTemplates');
+      const snapshot = await getDocs(templatesCollection);
+
+      this.mailTemplates = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'],
+        content: doc.data()['content'],
+        emailType: doc.data()['emailType'],
+        subject: doc.data()['subject'],
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar templates de e-mail:', error);
+      this.snackBar.open('Erro ao carregar templates de e-mail.', 'Fechar', {
+        duration: 3000,
+      });
+    }
   }
 
   ngAfterViewInit() {
     this.evaluatorsDataSource.paginator = this.evaluatorsPaginator;
     this.evaluatorsDataSource.sort = this.evaluatorsSort;
+    console.log(
+      'DataSource de avaliadores após inicialização:',
+      this.evaluatorsDataSource.data
+    );
 
     this.evaluateesDataSource.paginator = this.evaluateesPaginator;
     this.evaluateesDataSource.sort = this.evaluateesSort;
+    console.log(
+      'DataSource de avaliados após inicialização:',
+      this.evaluateesDataSource.data
+    );
   }
 
   editAssessments(evaluator: any): void {
@@ -349,7 +368,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   async saveAssessments(evaluator: any): Promise<void> {
     try {
       const participantDoc = doc(this.firestore, 'participants', evaluator.id);
-      await updateDoc(participantDoc, { assessments: evaluator.assessments });
+      await updateDoc(participantDoc, {
+        assessments: evaluator.assessments || [],
+      });
 
       evaluator.isEditing = false;
       this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
@@ -363,7 +384,285 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  getAssessmentNames(assessmentIds: string[]): string {
+  async showAssessmentsModal(evaluatee: Evaluatee): Promise<void> {
+    const assessmentsDetails = await this.getUpdatedAssessmentsDetails(
+      evaluatee.assessments ?? []
+    );
+    const dialogRef = this.dialog.open(EvaluatorsModalComponent, {
+      width: '800px',
+      data: {
+        evaluatee,
+        assessments: assessmentsDetails,
+        mailTemplates: this.mailTemplates,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(
+      async (result: {
+        updatedAssessments?: {
+          id: string;
+          name: string;
+          status: string;
+          linkSent: boolean;
+        }[];
+      }) => {
+        if (result?.updatedAssessments) {
+          // await this.updateParticipantAssessments(
+          //   evaluatee,
+          //   result.updatedAssessments.map((a) => a.id)
+          // );
+          // Atualiza o dataSource para refletir as mudanças na tabela de avaliados
+          const index = this.evaluateesDataSource.data.findIndex(
+            (e) => e.id === evaluatee.id
+          );
+          if (index !== -1) {
+            this.evaluateesDataSource.data[index].assessments =
+              result.updatedAssessments.map((a) => a.id);
+            this.evaluateesDataSource._updateChangeSubscription();
+          }
+        }
+      }
+    );
+  }
+
+  async getUpdatedAssessmentsDetails(
+    assessmentIds: string[]
+  ): Promise<AssessmentDetail[]> {
+    try {
+      const assessments: AssessmentDetail[] = [];
+      for (const id of assessmentIds) {
+        // Log para depuração
+        const assessmentData = await this.getAssessmentDataFromFirestore(id);
+        const assessment = this.availableAssessments.find((a) => a.id === id);
+        assessments.push({
+          id: id,
+          name: (assessment && assessment.name) || 'Avaliação Desconhecida',
+          status:
+            assessmentData?.status === 'completed' ? 'Respondido' : 'Pendente',
+          linkSent: assessmentData?.linkSent || false,
+        });
+      }
+      return assessments;
+    } catch (error) {
+      console.error('Erro ao carregar detalhes das avaliações:', error);
+      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
+        duration: 3000,
+      });
+      return [];
+    }
+  }
+
+  private getAssessmentsDetails(assessmentIds: string[]): AssessmentDetail[] {
+    return assessmentIds.map((id) => {
+      const assessment = this.availableAssessments.find((a) => a.id === id);
+      const assessmentData: any = this.getAssessmentDataFromFirestore(id);
+      return {
+        id: id,
+        name: assessment?.name || 'Avaliação Desconhecida',
+        status:
+          assessmentData?.status === 'completed' ? 'Respondido' : 'Pendente',
+        linkSent: assessmentData?.linkSent || false,
+      };
+    });
+  }
+
+  private async getAssessmentDataFromFirestore(
+    assessmentId: string
+  ): Promise<any> {
+    try {
+      // Verifica se assessmentId é uma string válida
+      if (!assessmentId || typeof assessmentId !== 'string') {
+        console.error('assessmentId inválido:', assessmentId);
+        return { status: 'pending', linkSent: false };
+      }
+
+      const assessmentDoc = doc(this.firestore, 'assessments', assessmentId);
+      const snapshot = await getDocs(
+        query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('assessmentId', '==', assessmentId)
+        )
+      );
+      const linkData = snapshot.docs[0]?.data();
+      return {
+        status: linkData?.['status'] || 'pending',
+        linkSent: !!linkData?.['sentAt'], // Assume que 'sentAt' indica envio
+      };
+    } catch (error) {
+      console.error('Erro ao carregar dados da avaliação:', error);
+      this.snackBar.open('Erro ao carregar dados da avaliação.', 'Fechar', {
+        duration: 3000,
+      });
+      return { status: 'pending', linkSent: false };
+    }
+  }
+
+  async updateParticipantAssessments(
+    evaluatee: Evaluatee,
+    newAssessments: string[]
+  ): Promise<void> {
+    try {
+      const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
+      const updatedAssessments = newAssessments.map((id) => {
+        const assessment = this.availableAssessments.find((a) => a.id === id);
+        return {
+          id: id,
+          name: assessment?.name || 'Avaliação Desconhecida',
+          status: 'Pendente',
+          linkSent: false,
+        };
+      });
+      await updateDoc(evaluateeDoc, {
+        assessments: updatedAssessments,
+      });
+
+      this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar avaliações do participante:', error);
+      this.snackBar.open('Erro ao salvar avaliações.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async sendAssessmentLink(
+    evaluatee: Evaluatee,
+    assessmentId: string,
+    templateId: string
+  ): Promise<void> {
+    try {
+      const template = this.mailTemplates.find((t) => t.id === templateId);
+      if (!template) {
+        this.snackBar.open('Template de e-mail não encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+        return;
+      }
+
+      const assessmentData = await this.getAssessmentDataFromFirestore(
+        assessmentId
+      );
+      if (assessmentData.linkSent) {
+        this.snackBar.open(
+          'O link já foi enviado para esta avaliação.',
+          'Fechar',
+          { duration: 3000 }
+        );
+        return;
+      }
+
+      // Simula o envio do e-mail (substitua por integração real com serviço de e-mail, como Firebase Functions)
+      const assessmentLinkDoc = doc(
+        collection(this.firestore, 'assessmentLinks')
+      );
+      await setDoc(assessmentLinkDoc, {
+        assessmentId: assessmentId,
+        participantId: evaluatee.id,
+        sentAt: new Date(),
+        status: 'pending',
+        emailTemplate: templateId,
+        participantEmail: evaluatee.email,
+      });
+
+      // Atualiza o status no dataSource
+      const index = this.evaluateesDataSource.data.findIndex(
+        (e) => e.id === evaluatee.id
+      );
+      if (index !== -1) {
+        const updatedAssessments =
+          this.evaluateesDataSource.data[index].assessments?.map((id: any) => {
+            if (id === assessmentId) {
+              return id; // O status será atualizado via Firestore listener ou nova chamada
+            }
+            return id;
+          }) || [];
+        this.evaluateesDataSource.data[index].assessments = updatedAssessments;
+        this.evaluateesDataSource.data[index].assessmentStatus =
+          this.updateAssessmentStatus(updatedAssessments); // Atualiza o status, se necessário
+        this.evaluateesDataSource._updateChangeSubscription();
+      }
+
+      this.snackBar.open('Link de avaliação enviado com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao enviar link de avaliação:', error);
+      this.snackBar.open('Erro ao enviar link de avaliação.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  private updateAssessmentStatus(assessments: string[]): string {
+    // Simula a atualização do status com base nos assessments
+    const allCompleted = assessments.every((id) => {
+      const data: any = this.getAssessmentDataFromFirestore(id);
+      return data?.status === 'completed';
+    });
+    return allCompleted ? 'Concluído' : 'Pendente';
+  }
+
+  editEvaluateeEvaluators(evaluatee: Evaluatee): void {
+    evaluatee['isEditingEvaluators'] = true;
+  }
+
+  cancelEvaluateeEvaluatorsEdit(evaluatee: Evaluatee): void {
+    evaluatee['isEditingEvaluators'] = false;
+  }
+
+  async saveEvaluateeEvaluators(evaluatee: Evaluatee): Promise<void> {
+    if (!evaluatee.id) {
+      console.error('Erro: O ID do avaliado está indefinido!');
+      this.snackBar.open(
+        'Erro ao atualizar avaliadores: ID não encontrado.',
+        'Fechar',
+        { duration: 3000 }
+      );
+      return;
+    }
+
+    try {
+      const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
+      await updateDoc(evaluateeDoc, {
+        evaluators: evaluatee.evaluators || [],
+      }).then((res) => {
+        console.log(res);
+      });
+
+      evaluatee['isEditingEvaluators'] = false;
+      this.snackBar.open('Avaliadores atualizados com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar avaliadores:', error);
+      this.snackBar.open('Erro ao salvar avaliadores.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  getEvaluatorNames(evaluatorIds: string[] | undefined): string {
+    if (!this.availableEvaluators || this.availableEvaluators.length === 0) {
+      return 'Carregando avaliadores...';
+    }
+
+    return (
+      (evaluatorIds ?? [])
+        .map(
+          (id) =>
+            this.availableEvaluators.find((e) => e.id === id)?.name ||
+            'Não encontrado'
+        )
+        .join(', ') || 'Nenhum avaliador'
+    );
+  }
+
+  getAssessmentNames(assessmentIds: string[] | undefined): string {
+    if (!assessmentIds || assessmentIds.length === 0) {
+      return 'Sem avaliações';
+    }
     return this.availableAssessments
       .filter((a) => assessmentIds.includes(a.id))
       .map((a) => a.name)
@@ -381,21 +680,85 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
+  filterTable(type: 'evaluators' | 'evaluatees', filters: any): void {
+    const dataSource =
+      type === 'evaluators'
+        ? this.evaluatorsDataSource
+        : this.evaluateesDataSource;
+    let filteredData = [...dataSource.data];
+
+    if (filters.category) {
+      filteredData = filteredData.filter(
+        (p) => p.category?.toLowerCase() === filters.category.toLowerCase()
+      );
+    }
+    if (filters.status) {
+      filteredData = filteredData.filter(
+        (p) => p.status?.toLowerCase() === filters.status.toLowerCase()
+      );
+    }
+    if (filters.clientId) {
+      filteredData = filteredData.filter(
+        (p) => p.clientId?.toLowerCase() === filters.clientId.toLowerCase()
+      );
+    }
+    if (filters.projectId) {
+      filteredData = filteredData.filter(
+        (p) => p.projectId?.toLowerCase() === filters.projectId.toLowerCase()
+      );
+    }
+
+    dataSource.data = filteredData;
+    dataSource._updateChangeSubscription();
+  }
+
+  selectAll(type: 'evaluators' | 'evaluatees', event: any): void {
+    const dataSource =
+      type === 'evaluators'
+        ? this.evaluatorsDataSource
+        : this.evaluateesDataSource;
+    dataSource.data.forEach((p) => (p.selected = event.checked));
+    dataSource._updateChangeSubscription();
+  }
+
+  toggleSelection(type: 'evaluators' | 'evaluatees', participant: any): void {
+    const dataSource =
+      type === 'evaluators'
+        ? this.evaluatorsDataSource
+        : this.evaluateesDataSource;
+    participant.selected = !participant.selected;
+    dataSource._updateChangeSubscription();
+  }
+
   async loadClients(): Promise<void> {
     try {
-      const clientsCollection = collection(this.firestore, 'clients'); // Nome da coleção 'clients'
+      const clientsCollection = collection(this.firestore, 'clients');
       const snapshot = await getDocs(clientsCollection);
 
-      // Mapeia os documentos da coleção para o array de clientes
       this.clients = snapshot.docs.map((doc) => ({
-        id: doc.id, // ID do documento no Firestore
-        name: doc.data()['companyName'] || 'Cliente Sem Nome', // Campo 'companyName' na coleção
+        id: doc.id,
+        name: doc.data()['companyName'] || 'Cliente Sem Nome',
       }));
-
-      console.log('Clientes carregados:', this.clients); // Verifique os dados carregados
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async loadProjectsForEV(): Promise<void> {
+    try {
+      const projectsCollection = collection(this.firestore, 'projects');
+      const snapshot = await getDocs(projectsCollection);
+
+      this.projects = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Projeto Sem Nome',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar projetos:', error);
+      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
         duration: 3000,
       });
     }
@@ -410,7 +773,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const projectsCollection = collection(this.firestore, 'projects');
       const snapshot = await getDocs(projectsCollection);
 
-      // Filtrar projetos pelo clientId
       return snapshot.docs
         .filter((doc) => doc.data()['clientId'] === clientId)
         .map((doc) => ({
@@ -436,16 +798,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
 
-      // Seleciona a primeira aba da planilha
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
 
-      // Converte a planilha para JSON como array de arrays
       const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1, // Retorna como array
+        header: 1,
       });
-
-      console.log('Planilha carregada:', jsonData); // Debugging
 
       const startRowIndex = 19;
       const participants: any[] = [];
@@ -460,10 +818,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           !row[2] ||
           !row[3]
         ) {
-          continue; // Pula linhas inválidas
+          continue;
         }
 
-        const category = row[3]?.toString().trim() || ''; // E - Categoria
+        const category = row[3]?.toString().trim() || '';
         const type = ['Gestor', 'Par', 'Subordinado', 'Outros'].includes(
           category
         )
@@ -471,14 +829,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           : 'avaliado';
 
         participants.push({
-          name: row[1]?.toString().trim() || '', // C - Nome e Sobrenome
-          email: row[2]?.toString().trim() || '', // D - Email
+          name: row[1]?.toString().trim() || '',
+          email: row[2]?.toString().trim() || '',
           category,
           type,
         });
       }
-
-      console.log('Participantes processados:', participants); // Debugging
 
       if (participants.length === 0) {
         this.snackBar.open('Nenhum participante válido encontrado.', 'Fechar', {
@@ -487,7 +843,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         return;
       }
 
-      // 🔹 Abre o diálogo de confirmação antes de salvar no Firestore
       const dialogRef = this.dialog.open(
         ParticipantsConfirmationDialogComponent,
         {
@@ -496,13 +851,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             participants,
             clients: this.clients,
             loadProjects: (clientId: string) => this.loadProjects(clientId),
-            loadEvaluations: (clientId: string) =>
-              this.loadEvaluations(clientId),
+            loadEvaluation: (projectId: string) =>
+              this.loadEvaluation(projectId), // Nova função
           },
         }
       );
 
-      // 🔹 Após fechar o diálogo, salvar no Firestore e atualizar tabelas
       dialogRef.afterClosed().subscribe(async (result) => {
         if (result) {
           const savedParticipants = [];
@@ -515,7 +869,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
                   ...participant,
                   clientId: result.client,
                   projectId: result.project,
-                  assessments: result.evaluations, // 🔹 Adiciona avaliações selecionadas
+                  assessments: result.evaluation ? [result.evaluation] : [], // Usa a avaliação associada ao projeto
                   createdAt: new Date(),
                 }
               );
@@ -523,17 +877,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
               savedParticipants.push({
                 ...participant,
                 id: docRef.id,
-                assessments: result.evaluations,
+                assessments: result.evaluation ? [result.evaluation] : [],
               });
             } catch (error) {
               console.error('Erro ao salvar participante:', error);
             }
           }
 
-          // 🔹 Atualiza a tabela corretamente após o upload
           this.updateTable(savedParticipants);
-
-          // 🔹 Atualiza a tabela de avaliados para refletir os novos avaliadores corretamente
           await this.updateEvaluateesTable();
 
           this.snackBar.open('Upload e salvamento concluídos!', 'Fechar', {
@@ -546,36 +897,87 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     reader.readAsArrayBuffer(file);
   }
 
+  async loadEvaluation(
+    projectId: string
+  ): Promise<{ id: string; name: string } | null> {
+    if (!projectId) return null;
+
+    try {
+      // Buscar o projeto para obter o assessmentId
+      const projectDoc = doc(this.firestore, 'projects', projectId);
+      const projectSnapshot = await getDoc(projectDoc);
+      if (!projectSnapshot.exists()) {
+        throw new Error('Projeto não encontrado');
+      }
+
+      const projectData = projectSnapshot.data();
+      const assessmentId = projectData['assessmentId'];
+
+      if (!assessmentId) {
+        this.snackBar.open(
+          'Nenhuma avaliação associada a este projeto.',
+          'Fechar',
+          {
+            duration: 3000,
+          }
+        );
+        return null;
+      }
+
+      // Buscar a avaliação associada
+      const assessmentDoc = doc(this.firestore, 'assessments', assessmentId);
+      const assessmentSnapshot = await getDoc(assessmentDoc);
+      if (!assessmentSnapshot.exists()) {
+        throw new Error('Avaliação não encontrada');
+      }
+
+      const assessmentData = assessmentSnapshot.data();
+      return {
+        id: assessmentId,
+        name: assessmentData['name'] || 'Avaliação Sem Nome',
+      };
+    } catch (error) {
+      console.error('Erro ao carregar avaliação:', error);
+      this.snackBar.open('Erro ao carregar avaliação.', 'Fechar', {
+        duration: 3000,
+      });
+      return null;
+    }
+  }
+
   async updateEvaluateesTable(): Promise<void> {
     try {
-      const evaluateesCollection = collection(this.firestore, 'participants');
-      const evaluatorsCollection = collection(this.firestore, 'participants');
-      const evaluateesSnapshot = await getDocs(evaluateesCollection);
-      const evaluatorsSnapshot = await getDocs(evaluatorsCollection);
+      const evaluateesQuery = query(
+        collection(this.firestore, 'participants'),
+        where('type', '==', 'avaliado')
+      );
+      const evaluatorsQuery = query(
+        collection(this.firestore, 'participants'),
+        where('type', '==', 'avaliador')
+      );
+      const evaluateesSnapshot = await getDocs(evaluateesQuery);
+      const evaluatorsSnapshot = await getDocs(evaluatorsQuery);
 
-      const allEvaluators = evaluatorsSnapshot.docs
-        .map((doc) => ({
+      const allEvaluators = evaluatorsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      const evaluatees = evaluateesSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
           id: doc.id,
-          ...doc.data(),
-        }))
-        .filter((participant: any) => participant.type === 'avaliador');
-
-      const evaluatees: any = evaluateesSnapshot.docs
-        .map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            evaluators: [],
-          };
-        })
-        .filter((participant: any) => participant.type === 'avaliado');
+          ...data,
+          evaluators: [],
+        } as any;
+      });
 
       for (const evaluatee of evaluatees) {
+        const assessments = evaluatee.assessments ?? [];
         const evaluatorsForThisEvaluatee = allEvaluators
           .filter((evaluator: any) =>
-            evaluator.assessments?.some((assessment: string) =>
-              evaluatee.assessments?.includes(assessment)
+            (evaluator.assessments ?? []).some((assessment: string) =>
+              assessments.includes(assessment)
             )
           )
           .map((e) => e.id);
@@ -590,13 +992,15 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  openEvaluatorsModal(evaluatee: any): void {
+  openEvaluatorsModal(evaluatee: Evaluatee): void {
     const evaluators = this.availableEvaluators
-      .filter((evaluator: any) => evaluatee.evaluators.includes(evaluator.id))
+      .filter((evaluator: any) =>
+        (evaluatee.evaluators ?? []).includes(evaluator.id)
+      )
       .map((evaluator: any) => ({
         name: evaluator.name,
-        email: evaluator.email || 'Sem e-mail', // 🔹 Garante que o email exista
-        category: evaluator.category || 'Não informado', // 🔹 Garante que a categoria exista
+        email: evaluator.email || 'Sem e-mail',
+        category: evaluator.category || 'Não informado',
       }));
 
     this.dialog.open(EvaluatorsModalComponent, {
@@ -611,10 +1015,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     if (!clientId) return [];
 
     try {
-      const assessmentsCollection = collection(this.firestore, 'assessments'); // Collection correta
+      const assessmentsCollection = collection(this.firestore, 'assessments');
       const snapshot = await getDocs(assessmentsCollection);
 
-      // Filtrar avaliações pelo clientId
       return snapshot.docs
         .filter((doc) => doc.data()['clientId'] === clientId)
         .map((doc) => ({
@@ -636,18 +1039,15 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const evaluators = newParticipants.filter((p) => p.type === 'avaliador');
     const evaluatees = newParticipants.filter((p) => p.type === 'avaliado');
 
-    // Atualiza os avaliadores na tabela
     if (evaluators.length > 0) {
       this.evaluatorsDataSource.data = [
         ...this.evaluatorsDataSource.data,
-        ...evaluators,
+        ...evaluators.map((p) => ({ ...p, selected: false })),
       ];
       this.evaluatorsDataSource._updateChangeSubscription();
     }
 
-    // Atualiza os avaliados na tabela
     if (evaluatees.length > 0) {
-      // 🔹 Vincula avaliadores corretamente ao avaliado
       evaluatees.forEach((evaluatee) => {
         const evaluatorsEmails = evaluatee.evaluators || [];
         evaluatee.evaluators = this.availableEvaluators
@@ -657,7 +1057,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
       this.evaluateesDataSource.data = [
         ...this.evaluateesDataSource.data,
-        ...evaluatees,
+        ...evaluatees.map((p) => ({ ...p, selected: false })),
       ];
       this.evaluateesDataSource._updateChangeSubscription();
     }
@@ -665,8 +1065,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   downloadTemplate(): void {
     const link = document.createElement('a');
-    link.href = 'assets/templates/Modelo_Avaliacao_360.xlsx'; // Caminho para o arquivo no diretório assets
-    link.download = 'Modelo_Avaliacao_360.xlsx'; // Nome do arquivo baixado
+    link.href = 'assets/templates/Modelo_Avaliacao_360.xlsx';
+    link.download = 'Modelo_Avaliacao_360.xlsx';
     link.click();
   }
 
@@ -675,7 +1075,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const evaluatorsCollection = collection(this.firestore, 'participants');
       const snapshot = await getDocs(evaluatorsCollection);
 
-      // Localiza o documento correspondente no Firestore
       const docToDelete = snapshot.docs.find(
         (doc) => doc.data()['email'] === evaluator.email
       );
@@ -686,10 +1085,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           duration: 3000,
         });
 
-        // Atualiza a tabela localmente
         this.evaluatorsDataSource.data = this.evaluatorsDataSource.data.filter(
           (e) => e.email !== evaluator.email
         );
+        this.evaluatorsDataSource._updateChangeSubscription();
       } else {
         this.snackBar.open('Avaliador não encontrado.', 'Fechar', {
           duration: 3000,
@@ -708,7 +1107,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const evaluateesCollection = collection(this.firestore, 'participants');
       const snapshot = await getDocs(evaluateesCollection);
 
-      // Localiza o documento correspondente no Firestore
       const docToDelete = snapshot.docs.find(
         (doc) => doc.data()['email'] === evaluatee.email
       );
@@ -719,10 +1117,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           duration: 3000,
         });
 
-        // Atualiza a tabela localmente
         this.evaluateesDataSource.data = this.evaluateesDataSource.data.filter(
           (e) => e.email !== evaluatee.email
         );
+        this.evaluateesDataSource._updateChangeSubscription();
       } else {
         this.snackBar.open('Avaliado não encontrado.', 'Fechar', {
           duration: 3000,

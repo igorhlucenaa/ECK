@@ -1,30 +1,56 @@
 <div class="container my-4">
   <!-- Cabeçalho -->
+  <div class="row" style="margin-bottom: 10px">
+    <div class="col-12">
+      <button mat-button (click)="goBack()" class="mb-3">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+    </div>
+  </div>
+
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Lista de Avaliações</h2>
+    <h2>Formulários de Avaliação</h2>
     <button mat-flat-button color="primary" (click)="createNewAssessment()">
       <mat-icon>add</mat-icon>
-      Criar Nova Avaliação
+      Criar Novo Formulário de Avaliação
     </button>
   </div>
 
-  <!-- Campo de Busca -->
-  <mat-form-field class="w-100 mb-3" appearance="outline">
-    <mat-label>Buscar Avaliações</mat-label>
-    <input
-      matInput
-      placeholder="Digite para buscar"
-      (keyup)="applyFilter($event)"
-    />
-    <button
-      mat-icon-button
-      matSuffix
-      *ngIf="searchValue"
-      (click)="searchValue = ''; applyFilter($event)"
-    >
-      <mat-icon>close</mat-icon>
-    </button>
-  </mat-form-field>
+  <!-- Campos de Busca -->
+  <div class="d-flex gap-3 mb-3">
+    <!-- Campo de Busca por Texto (somente nome) -->
+    <mat-form-field class="w-100" appearance="outline">
+      <mat-label>Buscar por Nome</mat-label>
+      <input
+        matInput
+        placeholder="Digite o nome da avaliação"
+        [(ngModel)]="searchValue"
+        (ngModelChange)="applyFilter($event)"
+      />
+      <button
+        mat-icon-button
+        matSuffix
+        *ngIf="searchValue"
+        (click)="searchValue = ''; applyFilter($event)"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <!-- Campo de Busca por Cliente (Select) - Exibido apenas se NÃO houver clientId na URL -->
+    <!-- <mat-form-field class="w-50" appearance="outline" *ngIf="!clientId">
+      <mat-label>Filtrar por Cliente</mat-label>
+      <mat-select
+        [formControl]="clientFilter"
+        (selectionChange)="onClientFilterChange()"
+      >
+        <mat-option *ngFor="let client of clients" [value]="client.id">
+          {{ client.companyName }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field> -->
+  </div>
 
   <!-- Tabela de Avaliações -->
   <div class="table-responsive">
@@ -38,6 +64,14 @@
       <ng-container matColumnDef="name">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
         <td mat-cell *matCellDef="let assessment">{{ assessment.name }}</td>
+      </ng-container>
+
+      <!-- Cliente -->
+      <ng-container matColumnDef="clientName">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
+        <td mat-cell *matCellDef="let assessment">
+          {{ assessment.clientName || "Sem Cliente" }}
+        </td>
       </ng-container>
 
       <!-- Criado Por -->
@@ -54,15 +88,39 @@
           Data de Criação
         </th>
         <td mat-cell *matCellDef="let assessment">
-          {{ assessment.createdAt?.toDate() | date : "short" }}
+          {{ assessment.createdAt | date : "short" }}
+        </td>
+      </ng-container>
+
+      <!-- Respondidas -->
+      <ng-container matColumnDef="responses">
+        <th mat-header-cell *matHeaderCellDef>Respondidas</th>
+        <td mat-cell *matCellDef="let assessment">
+          <button
+            mat-icon-button
+            color="primary"
+            matTooltip="Ver participantes que responderam"
+            (click)="showRespondedParticipants(assessment.id)"
+          >
+            <mat-icon>people</mat-icon>
+            {{ assessment.responsesCount || 0 }}
+          </button>
         </td>
       </ng-container>
 
       <!-- Ações -->
-      <!-- Ações -->
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef>Ações</th>
         <td mat-cell *matCellDef="let assessment">
+          <!-- Botão de Envio -->
+          <button
+            mat-icon-button
+            color="primary"
+            matTooltip="Enviar Avaliação"
+            (click)="sendAssessment(assessment.id, assessment.clientId)"
+          >
+            <mat-icon>send</mat-icon>
+          </button>
           <!-- Botão de Pré-visualização -->
           <button
             mat-icon-button

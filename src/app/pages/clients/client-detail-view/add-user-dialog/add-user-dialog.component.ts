@@ -42,8 +42,7 @@ export class AddUserDialogComponent {
     private auth: Auth,
     private location: Location
   ) {
-    console.log('Client ID recebido:', data.clientId);
-  }
+      }
 
   togglePasswordVisibility() {
     this.passwordVisible = !this.passwordVisible;

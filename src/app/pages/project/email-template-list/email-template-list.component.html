@@ -1,4 +1,13 @@
 <div class="container">
+  <div class="row" style="margin-bottom: 10px" *ngIf="projectId">
+    <div class="col-12">
+      <button mat-button (click)="goBack()" class="mb-3">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+    </div>
+  </div>
+
   <mat-card>
     <mat-card-title style="margin-bottom: 10px">{{ title }}</mat-card-title>
     <mat-card-content>
@@ -15,13 +24,13 @@
                 >Convite - Avaliador</mat-option
               >
               <mat-option value="conviteRespondente"
-                >Convite - Respondente</mat-option
+                >Convite - Avaliado</mat-option
               >
               <mat-option value="lembreteAvaliador"
                 >Lembrete - Avaliador</mat-option
               >
               <mat-option value="lembreteRespondente"
-                >Lembrete - Respondente</mat-option
+                >Lembrete - Avaliado</mat-option
               >
             </mat-select>
           </mat-form-field>
@@ -97,8 +106,14 @@
             <button
               mat-icon-button
               color="primary"
-              matTooltip="Templates de E-mail"
-              (click)="openEmailSelectionModal(template.projectId)"
+              matTooltip="Enviar E-mail"
+              (click)="
+                openEmailSelectionModal(
+                  template.projectId,
+                  template.id,
+                  template.emailType
+                )
+              "
             >
               <mat-icon>mail</mat-icon>
             </button>

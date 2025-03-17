@@ -80,7 +80,6 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   private async loadClients(): Promise<void> {
-    console.log('Carregando lista de clientes...');
     try {
       const clientsCollection = collection(this.firestore, 'clients');
       const snapshot = await getDocs(clientsCollection);
@@ -94,14 +93,11 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   private async loadTemplates(): Promise<void> {
-    console.log('Carregando templates...');
-
     try {
       const templatesCollection = collection(this.firestore, 'mailTemplates');
       let queryConstraint;
 
       if (this.userRole === 'admin_master') {
-        console.log('entrou nesse 1');
         queryConstraint = query(templatesCollection);
       } else if (this.userRole === 'admin_client' && this.userClientId) {
         queryConstraint = query(
@@ -109,7 +105,6 @@ export class EmailTemplateListComponent implements OnInit {
           where('clientId', '==', this.userClientId)
         );
       } else {
-        console.log('entrou nesse 2');
         this.snackBar.open(
           'Você não tem permissão para visualizar templates.',
           'Fechar',
@@ -183,10 +178,14 @@ export class EmailTemplateListComponent implements OnInit {
     this.applyFilter();
   }
 
-  openEmailSelectionModal(projectId: string): void {
+  openEmailSelectionModal(
+    projectId: string,
+    templateId: string,
+    emailType: string
+  ): void {
     this.dialog.open(EmailSelectionDialogComponent, {
-      width: '900px',
-      data: { projectId },
+      width: '75%',
+      data: { projectId, templateId, emailType }, // Adiciona o templateId aqui
     });
   }
 
@@ -196,7 +195,10 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   createTemplate(): void {
-    if (this.userRole === 'admin_master') {
+    if (this.projectId) {
+      // Se estamos na rota /projects/:projectId/templates, navegar para a rota com projectId
+      this.router.navigate([`/projects/${this.projectId}/templates/new`]);
+    } else if (this.userRole === 'admin_master') {
       this.router.navigate(['/projects/default-template/new']);
     } else if (this.userRole === 'admin_client' && this.userClientId) {
       this.router.navigate([`/projects/${this.userClientId}/templates/new`]);
@@ -204,8 +206,12 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   editTemplate(templateId: string, isGlobal: boolean): void {
-    console.log(this.userRole);
-    if (this.userRole === 'admin_master') {
+    if (this.projectId) {
+      // Se estamos na rota /projects/:projectId/templates, manter o projectId na rota de edição
+      this.router.navigate([
+        `/projects/${this.projectId}/templates/${templateId}/edit`,
+      ]);
+    } else if (this.userRole === 'admin_master') {
       this.router.navigate([`projects/default-template/${templateId}/edit`]);
     } else if (
       !isGlobal &&
@@ -245,7 +251,6 @@ export class EmailTemplateListComponent implements OnInit {
         ) {
           templateDocRef = doc(this.firestore, `mailTemplates/${templateId}`);
         } else {
-          console.log('entrou nesse 3');
           this.snackBar.open(
             'Você não tem permissão para excluir este template.',
             'Fechar',
