@@ -9,7 +9,7 @@ import { MaterialModule } from 'src/app/material.module';
   standalone: true,
   imports: [MaterialModule, CommonModule, FormsModule],
   template: `
-    <h1 mat-dialog-title>Confirmar Participantes</h1>
+    <h1 mat-dialog-title style="margin-top: 20px">Confirmar Participantes</h1>
     <div mat-dialog-content>
       <!-- Exibir Cliente como texto readonly -->
       <div class="mb-3">
@@ -47,6 +47,12 @@ import { MaterialModule } from 'src/app/material.module';
             {{ participant.email }}
           </td>
         </ng-container>
+        <ng-container matColumnDef="category">
+          <th mat-header-cell *matHeaderCellDef>Categoria</th>
+          <td mat-cell *matCellDef="let participant">
+            {{ participant.category }}
+          </td>
+        </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
@@ -63,7 +69,7 @@ import { MaterialModule } from 'src/app/material.module';
   styleUrls: ['./participants-confirmation-dialog.component.scss'],
 })
 export class ParticipantsConfirmationDialogComponent implements OnInit {
-  displayedColumns = ['name', 'email'];
+  displayedColumns = ['name', 'email', 'category'];
   evaluation: { id: string; name: string } | null = null;
 
   constructor(
@@ -80,6 +86,7 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
+    console.log(this.data.participants);
     // Carregar a avaliação associada ao projectId fornecido
     if (this.data.projectId) {
       try {

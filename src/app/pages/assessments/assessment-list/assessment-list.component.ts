@@ -37,6 +37,7 @@ interface Assessment {
   clientId?: string;
   clientName?: string;
   projectId?: string;
+  projectName?: string; // Adicionado para o nome do projeto
 }
 
 interface Participant {
@@ -76,6 +77,7 @@ interface MailTemplate {
 export class AssessmentListComponent implements OnInit {
   displayedColumns: string[] = [
     'clientName',
+    'projectName', // Adicionada a coluna de projetos
     'name',
     'createdBy',
     'createdAt',
@@ -84,10 +86,10 @@ export class AssessmentListComponent implements OnInit {
   ];
   dataSource = new MatTableDataSource<any>([]);
   searchValue: string = '';
-  clientFilter = new FormControl(''); // FormControl para o filtro de cliente
+  clientFilter = new FormControl('');
   clients: Client[] = [];
-  projects: Project[] = []; // Lista de projetos para inferir o clientId
-  projectId: string | null = null; // Armazena o projectId da URL
+  projects: Project[] = [];
+  projectId: string | null = null;
   mailTemplates: MailTemplate[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -114,8 +116,8 @@ export class AssessmentListComponent implements OnInit {
       return textMatch && clientMatch;
     };
 
-    this.projectId = this.route.snapshot.paramMap.get('id'); // Corrigido para 'projectId'
-    console.log('Project ID:', this.projectId); // Log para depuração
+    this.projectId = this.route.snapshot.paramMap.get('id');
+    console.log('Project ID:', this.projectId);
     Promise.all([
       this.loadClients(),
       this.loadProjects(),
@@ -147,7 +149,6 @@ export class AssessmentListComponent implements OnInit {
           const data = document.data();
           let createdAtDate: Date;
 
-          // Verificar e converter createdAt
           if (data['createdAt'] instanceof Timestamp) {
             createdAtDate = data['createdAt'].toDate();
           } else if (data['createdAt'] instanceof Date) {
@@ -155,7 +156,7 @@ export class AssessmentListComponent implements OnInit {
           } else if (typeof data['createdAt'] === 'string') {
             createdAtDate = new Date(data['createdAt']);
           } else {
-            createdAtDate = new Date(); // Valor padrão se inválido
+            createdAtDate = new Date();
             console.warn(
               `createdAt inválido para assessment ${document.id}, usando data atual.`
             );
@@ -184,7 +185,6 @@ export class AssessmentListComponent implements OnInit {
               ? clientDoc.data()['companyName'] || 'Desconhecido'
               : 'Desconhecido';
           } else {
-            // Tentar inferir o clientId a partir do projectId
             if (assessment.projectId) {
               const project = this.projects.find(
                 (p) => p.id === assessment.projectId
@@ -203,6 +203,18 @@ export class AssessmentListComponent implements OnInit {
             } else {
               assessment.clientName = 'Sem Cliente';
             }
+          }
+
+          // Buscar nome do projeto
+          if (assessment.projectId) {
+            const projectDoc = await getDoc(
+              doc(this.firestore, 'projects', assessment.projectId)
+            );
+            assessment.projectName = projectDoc.exists()
+              ? projectDoc.data()['name'] || 'Sem Nome'
+              : 'Sem Projeto';
+          } else {
+            assessment.projectName = 'Sem Projeto';
           }
 
           return assessment;
@@ -304,7 +316,7 @@ export class AssessmentListComponent implements OnInit {
         width: '80%',
         data: {
           assessmentId: assessmentId,
-          projectId: this.projectId, // Passa o projectId corretamente
+          projectId: this.projectId,
           clientId: clientId,
         },
       });
@@ -405,7 +417,6 @@ export class AssessmentListComponent implements OnInit {
 
   async showRespondedParticipants(assessmentId: string): Promise<void> {
     try {
-      // Passo 1: Buscar todos os participantes associados ao projectId
       if (!this.projectId) {
         throw new Error('Nenhum projectId fornecido.');
       }
@@ -421,7 +432,6 @@ export class AssessmentListComponent implements OnInit {
         const participantData = participantDoc.data();
         const participantId = participantDoc.id;
 
-        // Verificar status no assessmentLinks
         const assessmentLinksQuery = query(
           collection(this.firestore, 'assessmentLinks'),
           where('assessmentId', '==', assessmentId),
@@ -453,7 +463,6 @@ export class AssessmentListComponent implements OnInit {
         return;
       }
 
-      // Passo 2: Abrir o modal com os participantes e seus status
       this.dialog.open(ParticipantResponsesModalComponent, {
         width: '75%',
         data: {
@@ -516,7 +525,6 @@ export class AssessmentListComponent implements OnInit {
       const assessmentDocRef = doc(this.firestore, `assessments/${id}`);
       await deleteDoc(assessmentDocRef);
 
-      // Remover a referência do assessmentId no projeto associado
       if (this.projectId) {
         const projectRef = doc(this.firestore, 'projects', this.projectId);
         await updateDoc(projectRef, { assessmentId: null });

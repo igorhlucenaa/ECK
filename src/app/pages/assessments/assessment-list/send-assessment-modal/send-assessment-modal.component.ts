@@ -56,13 +56,13 @@ interface MailTemplate {
       <!-- Formulário para selecionar o template -->
       <form [formGroup]="sendForm">
         <mat-form-field class="w-100">
-          <mat-label>Escolha um Template de Convite</mat-label>
+          <mat-label>Escolha um Template</mat-label>
           <mat-select formControlName="template">
             <mat-option
               *ngFor="let template of mailTemplates"
               [value]="template.id"
             >
-              {{ template.name }}
+              {{ template.name }} - {{ template.emailType }}
             </mat-option>
           </mat-select>
         </mat-form-field>
@@ -329,7 +329,7 @@ export class SendAssessmentModalComponent implements OnInit {
   }
 
   confirm(): void {
-    console.log(this.sendForm.value)
+    console.log(this.sendForm.value);
 
     if (this.sendForm.valid && this.selectedParticipants.length > 0) {
       this.dialogRef.close({

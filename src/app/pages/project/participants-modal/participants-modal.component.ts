@@ -6,7 +6,6 @@ import {
 } from '@angular/material/dialog';
 import {
   FormBuilder,
-  FormGroup,
   Validators,
   FormsModule,
   ReactiveFormsModule,
@@ -189,7 +188,8 @@ interface MailTemplate {
             *ngFor="let template of mailTemplates"
             [value]="template.id"
           >
-            {{ template.name }}
+            {{ template.name }} -
+            <strong>{{ getFriendlyEmailType(template.emailType) }}</strong>
           </mat-option>
         </mat-select>
         <mat-error *ngIf="templateFormControl.hasError('required')">
@@ -350,7 +350,6 @@ export class ParticipantsModalComponent implements OnInit {
   ];
 
   dataSource = new MatTableDataSource<UnifiedParticipant>([]);
-
   searchValue: string = '';
   filterType: string = '';
   filterCategory: string = '';
@@ -405,6 +404,26 @@ export class ParticipantsModalComponent implements OnInit {
     };
   }
 
+  // Função para formatar o emailType de forma amigável
+  getFriendlyEmailType(emailType: string): string {
+    switch (emailType) {
+      case 'conviteAvaliador':
+        return 'Convite Avaliador';
+      case 'conviteRespondente':
+        return 'Convite Avaliado'; // Conforme solicitado
+      case 'lembreteAvaliador':
+        return 'Lembrete Avaliador';
+      case 'lembreteRespondente':
+        return 'Lembrete Avaliado';
+      case 'lembrete':
+        return 'Lembrete Avaliado';
+      case 'convite':
+        return 'Convite Avaliado';
+      default:
+        return emailType || 'Tipo Desconhecido';
+    }
+  }
+
   async loadParticipants(): Promise<void> {
     try {
       const participantsQuery = query(
@@ -420,18 +439,20 @@ export class ParticipantsModalComponent implements OnInit {
       const assessmentsSnapshot = await getDocs(assessmentsQuery);
       const assessmentIds = assessmentsSnapshot.docs.map((doc) => doc.id);
 
-      const assessmentLinksQuery = query(
-        collection(this.firestore, 'assessmentLinks'),
-        where('assessmentId', 'in', assessmentIds)
-      );
-      const linksSnapshot = await getDocs(assessmentLinksQuery);
+      let linkDataMap: { [key: string]: any } = {};
+      if (assessmentIds.length > 0) {
+        const assessmentLinksQuery = query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('assessmentId', 'in', assessmentIds)
+        );
+        const linksSnapshot = await getDocs(assessmentLinksQuery);
 
-      const linkDataMap: { [key: string]: any } = {};
-      linksSnapshot.docs.forEach((doc) => {
-        const data = doc.data();
-        const key = `${data['participantId']}_${data['assessmentId']}`;
-        linkDataMap[key] = data;
-      });
+        linksSnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          const key = `${data['participantId']}_${data['assessmentId']}`;
+          linkDataMap[key] = data;
+        });
+      }
 
       const participants: UnifiedParticipant[] = [];
       for (const doc of participantsSnapshot.docs) {
@@ -441,7 +462,7 @@ export class ParticipantsModalComponent implements OnInit {
         const type = participantData['type'] as 'avaliado' | 'avaliador';
         const category = participantData['category'] || 'N/A';
 
-        if (type === 'avaliado') {
+        if (type === 'avaliado' && assessmentIds.length > 0) {
           for (const assessmentId of assessmentIds) {
             const key = `${participantId}_${assessmentId}`;
             const linkData = linkDataMap[key] || {};
@@ -476,7 +497,7 @@ export class ParticipantsModalComponent implements OnInit {
             category: category,
             type: type,
             selected: false,
-            status: 'N/A',
+            status: type === 'avaliado' ? 'Não Enviado' : 'N/A',
           });
         }
       }
@@ -683,7 +704,6 @@ export class ParticipantsModalComponent implements OnInit {
           assessmentId: participant.assessmentId,
         };
 
-        // Enviar o e-mail
         const response = await fetch(
           'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
           {
@@ -701,7 +721,6 @@ export class ParticipantsModalComponent implements OnInit {
           );
         }
 
-        // Verificar se já existe um documento em assessmentLinks para o par participantId e assessmentId
         const assessmentLinkQuery = query(
           collection(this.firestore, 'assessmentLinks'),
           where('participantId', '==', participant.id),
@@ -710,7 +729,6 @@ export class ParticipantsModalComponent implements OnInit {
         const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
 
         if (existingLinksSnapshot.empty) {
-          // Criar um novo documento se não existir
           const assessmentLinkDoc = doc(
             collection(this.firestore, 'assessmentLinks')
           );
@@ -723,7 +741,6 @@ export class ParticipantsModalComponent implements OnInit {
             participantEmail: participant.email,
           });
         } else {
-          // Atualizar o documento existente
           const existingLinkDoc = existingLinksSnapshot.docs[0];
           await updateDoc(
             doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
@@ -861,16 +878,16 @@ export class ParticipantsModalComponent implements OnInit {
           width: '800px',
           data: {
             participants,
-            clientId: this.data.clientId, // Passa o clientId do contexto
+            clientId: this.data.clientId,
             clientName:
               this.clients.find((c) => c.id === this.data.clientId)?.name ||
-              'Cliente Desconhecido', // Nome do cliente
-            projectId: this.data.projectId, // Passa o projectId do contexto
+              'Cliente Desconhecido',
+            projectId: this.data.projectId,
             projectName:
               this.projects.find((p) => p.id === this.data.projectId)?.name ||
-              'Projeto Desconhecido', // Nome do projeto
+              'Projeto Desconhecido',
             loadEvaluation: (projectId: string) =>
-              this.loadEvaluation(projectId), // Função para carregar avaliação
+              this.loadEvaluation(projectId),
           },
         }
       );
