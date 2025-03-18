@@ -41,7 +41,7 @@ export const navItems: NavItem[] = [
         role: ['admin_client'], // Visível apenas para Administrador Master
       },
       {
-        displayName: 'Templates de E-mail',
+        displayName: 'Modelos de E-mail',
         iconName: 'solar:mailbox-bold-duotone', // Ícone representando transações ou dinheiro
         route: '/mail-templates', // Caminho correto para o componente de gestão de pedidos
         role: ['admin_client'], // Visível apenas para clientes

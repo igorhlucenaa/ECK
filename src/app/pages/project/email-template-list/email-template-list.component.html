@@ -1,5 +1,5 @@
 <div class="container">
-  <div class="row" style="margin-bottom: 10px" *ngIf="projectId">
+  <div class="row" style="margin-bottom: 10px" *ngIf="clientId">
     <div class="col-12">
       <button mat-button (click)="goBack()" class="mb-3">
         <mat-icon>arrow_back</mat-icon>
@@ -109,7 +109,7 @@
               matTooltip="Enviar E-mail"
               (click)="
                 openEmailSelectionModal(
-                  template.projectId,
+                  clientId,
                   template.id,
                   template.emailType
                 )

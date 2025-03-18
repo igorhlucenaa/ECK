@@ -48,7 +48,6 @@ ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
 export class CreateAssessmentComponent implements OnInit {
   form: FormGroup;
   clients: { id: string; name: string }[] = [];
-  projects: { id: string; name: string }[] = []; // Nova lista de projetos
   userRole: string | null = null;
   creatorModel: SurveyCreatorModel;
 
@@ -60,10 +59,9 @@ export class CreateAssessmentComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute
   ) {
-    // Inicializa o formulário de metadados (Título, Cliente, Descrição, Projeto)
+    // Inicializa o formulário de metadados (Título, Cliente, Descrição)
     this.form = this.fb.group({
       clientId: ['', Validators.required],
-      projectId: ['', Validators.required], // Campo obrigatório para projeto
       name: ['', Validators.required],
       description: [''],
     });
@@ -91,9 +89,9 @@ export class CreateAssessmentComponent implements OnInit {
         this.clients = [
           { id: clientId, name: clientName || 'Cliente Indefinido' },
         ];
-        this.form.get('clientId')?.setValue(clientId);
-        this.form.get('clientId')?.disable();
-        await this.loadProjects(clientId); // Carrega projetos para admin_client
+        this.form.get('clientId')?.setValue(clientId); // Define o valor antes de desabilitar
+        this.form.get('clientId')?.disable(); // Desabilita após definir o valor
+        console.log('Form status after clientId set:', this.form.status); // Depuração
       }
     } else if (this.userRole === 'admin_master') {
       await this.loadClients();
@@ -118,7 +116,6 @@ export class CreateAssessmentComponent implements OnInit {
         const data = docSnap.data();
         this.form.patchValue({
           clientId: data['clientId'],
-          projectId: data['projectId'], // Carrega o projectId
           name: data['name'],
           description: data['description'],
         });
@@ -135,8 +132,7 @@ export class CreateAssessmentComponent implements OnInit {
           this.creatorModel.theme = data['theme'];
         }
 
-        // Carrega projetos após definir clientId
-        await this.loadProjects(data['clientId']);
+        console.log('Form status after loadAssessment:', this.form.status); // Depuração
       }
     } catch (error) {
       console.error('Erro ao carregar formulário:', error);
@@ -193,38 +189,10 @@ export class CreateAssessmentComponent implements OnInit {
     }
   }
 
-  async loadProjects(clientId: string): Promise<void> {
-    try {
-      if (!clientId) {
-        this.projects = [];
-        return;
-      }
-
-      const projectsCollection = collection(this.firestore, 'projects');
-      const projectsQuery = query(
-        projectsCollection,
-        where('clientId', '==', clientId)
-      );
-      const snapshot = await getDocs(projectsQuery);
-      this.projects = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'] || 'Projeto Indefinido',
-      }));
-
-      // Se for edição, tenta pré-selecionar o projectId
-      const projectId = this.form.get('projectId')?.value;
-      if (projectId && !this.projects.some((p) => p.id === projectId)) {
-        this.form.get('projectId')?.setValue(''); // Limpa se o projectId não estiver na lista
-      }
-    } catch (error) {
-      console.error('Erro ao carregar projetos:', error);
-      this.projects = [];
-    }
-  }
-
   async saveForm(): Promise<void> {
     if (this.form.invalid) {
-      console.error('O formulário é inválido.');
+      console.error('O formulário é inválido. Status:', this.form.status);
+      console.log('Valores do formulário:', this.form.value); // Depuração
       return;
     }
 
@@ -256,29 +224,20 @@ export class CreateAssessmentComponent implements OnInit {
         const docRef = doc(this.firestore, 'assessments', assessmentId);
         await updateDoc(docRef, formData);
 
-        // Atualiza o projectId no projeto associado (se necessário)
-        const projectRef = doc(this.firestore, 'projects', formData.projectId);
-        await updateDoc(projectRef, { assessmentId: assessmentId });
-
         this.snackBar.open('Formulário atualizado com sucesso!', 'Fechar', {
           duration: 3000,
         });
       } else {
-        // Cria um novo formulário e associa ao projeto
+        // Cria um novo formulário associado ao cliente
         const assessmentsCollection = collection(this.firestore, 'assessments');
-        const assessmentDocRef = await addDoc(assessmentsCollection, formData);
-        const assessmentId = assessmentDocRef.id;
-
-        // Associa o assessmentId ao projeto
-        const projectRef = doc(this.firestore, 'projects', formData.projectId);
-        await updateDoc(projectRef, { assessmentId: assessmentId });
+        await addDoc(assessmentsCollection, formData);
 
         this.snackBar.open('Formulário criado com sucesso!', 'Fechar', {
           duration: 3000,
         });
       }
 
-      this.router.navigate(['/projects']); // Redireciona para a lista de projetos
+      this.router.navigate(['/assessments']); // Redireciona para a lista de assessments
     } catch (error) {
       console.error('Erro ao salvar formulário:', error);
       this.snackBar.open('Erro ao salvar. Tente novamente.', 'Fechar', {
@@ -290,7 +249,6 @@ export class CreateAssessmentComponent implements OnInit {
   onClientChange(event: any): void {
     const clientId = event.value;
     this.form.get('clientId')?.setValue(clientId);
-    this.loadProjects(clientId); // Carrega projetos quando o cliente muda
-    this.form.get('projectId')?.setValue(''); // Limpa o projeto ao mudar o cliente
+    console.log('Client changed, form status:', this.form.status); // Depuração
   }
 }

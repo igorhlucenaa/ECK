@@ -37,7 +37,7 @@ interface Assessment {
   clientId?: string;
   clientName?: string;
   projectId?: string;
-  projectName?: string; // Adicionado para o nome do projeto
+  projectName?: string; // Mantido por compatibilidade, mas não será usado
 }
 
 interface Participant {
@@ -77,7 +77,7 @@ interface MailTemplate {
 export class AssessmentListComponent implements OnInit {
   displayedColumns: string[] = [
     'clientName',
-    'projectName', // Adicionada a coluna de projetos
+    // 'projectName', // Removido, pois não será mais usado
     'name',
     'createdBy',
     'createdAt',
@@ -88,8 +88,8 @@ export class AssessmentListComponent implements OnInit {
   searchValue: string = '';
   clientFilter = new FormControl('');
   clients: Client[] = [];
-  projects: Project[] = [];
-  projectId: string | null = null;
+  projects: Project[] = []; // Mantido, mas não será usado para filtragem
+  clientId: string | null = null; // Alterado de projectId para clientId
   mailTemplates: MailTemplate[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -112,12 +112,12 @@ export class AssessmentListComponent implements OnInit {
       const textMatch = data.name.toLowerCase().includes(filterObj.text);
       const clientMatch =
         (!filterObj.client || data.clientId === filterObj.client) &&
-        (!this.projectId || data.projectId === this.projectId);
+        (!this.clientId || data.clientId === this.clientId); // Alterado para clientId
       return textMatch && clientMatch;
     };
 
-    this.projectId = this.route.snapshot.paramMap.get('id');
-    console.log('Project ID:', this.projectId);
+    this.clientId = this.route.snapshot.paramMap.get('id'); // Alterado para clientId
+    console.log('Client ID:', this.clientId);
     Promise.all([
       this.loadClients(),
       this.loadProjects(),
@@ -135,11 +135,11 @@ export class AssessmentListComponent implements OnInit {
         | CollectionReference<DocumentData, DocumentData>
         | Query<DocumentData, DocumentData> = assessmentsCollection;
 
-      if (this.projectId) {
+      if (this.clientId) {
         q = query(
           assessmentsCollection,
-          where('projectId', '==', this.projectId)
-        );
+          where('clientId', '==', this.clientId)
+        ); // Alterado para clientId
       }
 
       const snapshot = await getDocs(q);
@@ -168,7 +168,7 @@ export class AssessmentListComponent implements OnInit {
             createdBy: data['createdBy'] || { name: 'Desconhecido' },
             createdAt: createdAtDate,
             clientId: data['clientId'],
-            projectId: data['projectId'],
+            projectId: data['projectId'], // Mantido por compatibilidade, mas não será usado
           };
 
           // Contar respostas
@@ -185,37 +185,10 @@ export class AssessmentListComponent implements OnInit {
               ? clientDoc.data()['companyName'] || 'Desconhecido'
               : 'Desconhecido';
           } else {
-            if (assessment.projectId) {
-              const project = this.projects.find(
-                (p) => p.id === assessment.projectId
-              );
-              if (project && project.clientId) {
-                assessment.clientId = project.clientId;
-                const clientDoc = await getDoc(
-                  doc(this.firestore, 'clients', project.clientId)
-                );
-                assessment.clientName = clientDoc.exists()
-                  ? clientDoc.data()['companyName'] || 'Desconhecido'
-                  : 'Desconhecido';
-              } else {
-                assessment.clientName = 'Sem Cliente';
-              }
-            } else {
-              assessment.clientName = 'Sem Cliente';
-            }
+            assessment.clientName = 'Sem Cliente';
           }
 
-          // Buscar nome do projeto
-          if (assessment.projectId) {
-            const projectDoc = await getDoc(
-              doc(this.firestore, 'projects', assessment.projectId)
-            );
-            assessment.projectName = projectDoc.exists()
-              ? projectDoc.data()['name'] || 'Sem Nome'
-              : 'Sem Projeto';
-          } else {
-            assessment.projectName = 'Sem Projeto';
-          }
+          // Removido o bloco de busca de projectName, pois não será mais usado
 
           return assessment;
         })
@@ -310,14 +283,16 @@ export class AssessmentListComponent implements OnInit {
     }
   }
 
-  async sendAssessment(assessmentId: string, clientId: any): Promise<void> {
+  async sendAssessment(
+    assessmentId: string,
+    clientId: string | null
+  ): Promise<void> {
     try {
       const dialogRef = this.dialog.open(SendAssessmentModalComponent, {
         width: '80%',
         data: {
           assessmentId: assessmentId,
-          projectId: this.projectId,
-          clientId: clientId,
+          clientId: clientId || this.clientId, // Usa clientId da rota como fallback
         },
       });
 
@@ -417,13 +392,13 @@ export class AssessmentListComponent implements OnInit {
 
   async showRespondedParticipants(assessmentId: string): Promise<void> {
     try {
-      if (!this.projectId) {
-        throw new Error('Nenhum projectId fornecido.');
+      if (!this.clientId) {
+        throw new Error('Nenhum clientId fornecido.'); // Alterado de projectId para clientId
       }
 
       const participantsQuery = query(
         collection(this.firestore, 'participants'),
-        where('projectId', '==', this.projectId)
+        where('clientId', '==', this.clientId) // Alterado de projectId para clientId
       );
       const participantsSnapshot = await getDocs(participantsQuery);
 
@@ -456,7 +431,7 @@ export class AssessmentListComponent implements OnInit {
 
       if (participants.length === 0) {
         this.snackBar.open(
-          'Nenhum participante encontrado para este projeto.',
+          'Nenhum participante encontrado para este cliente.',
           'Fechar',
           { duration: 3000 }
         );
@@ -525,10 +500,7 @@ export class AssessmentListComponent implements OnInit {
       const assessmentDocRef = doc(this.firestore, `assessments/${id}`);
       await deleteDoc(assessmentDocRef);
 
-      if (this.projectId) {
-        const projectRef = doc(this.firestore, 'projects', this.projectId);
-        await updateDoc(projectRef, { assessmentId: null });
-      }
+      // Removido o updateDoc do projectId, pois não é mais relevante
 
       this.dataSource.data = this.dataSource.data.filter(
         (item) => item.id !== id

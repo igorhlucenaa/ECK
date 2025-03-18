@@ -42,10 +42,10 @@
           <input matInput formControlName="subject" />
         </mat-form-field>
 
-        <!-- Campo de Cliente (apenas admin_master e sem projectId na rota) -->
+        <!-- Campo de Cliente (apenas admin_master ou preenchido automaticamente) -->
         <mat-form-field
           class="w-100"
-          *ngIf="userRole === 'admin_master' && !projectIdFromRoute"
+          *ngIf="userRole === 'admin_master' && !clientIdFromRoute"
         >
           <mat-label>Cliente</mat-label>
           <mat-select formControlName="clientId">
@@ -56,40 +56,27 @@
           </mat-select>
         </mat-form-field>
 
-        <!-- Campo de Projeto (apenas admin_master e admin_client sem projectId na rota) -->
-        <mat-form-field
+        <!-- Para admin_client ou clientId da rota, exibir como texto ou hidden -->
+        <div
+          *ngIf="!clientIdFromRoute || userRole === 'admin_client'"
           class="w-100"
-          *ngIf="
-            ((userRole === 'admin_master' && form.get('clientId')?.value) ||
-              userRole === 'admin_client') &&
-            !projectIdFromRoute
-          "
         >
-          <mat-label>Projeto</mat-label>
-          <mat-select formControlName="projectId">
-            <mat-option value="">Nenhum projeto selecionado</mat-option>
-            <mat-option *ngFor="let project of projects" [value]="project.id">
-              {{ project.name }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <!-- Para admin_client, o clientId já está preenchido e oculto -->
-        <input
-          type="hidden"
-          formControlName="clientId"
-          *ngIf="userRole === 'admin_client' && !projectIdFromRoute"
-        />
-
-        <!-- Exibir companyName e projectName como texto se vierem da rota -->
-        <div *ngIf="projectIdFromRoute" class="w-100">
           <p>
             <strong>Cliente:</strong>
-            {{ clientNameFromProject || "Não identificado" }}
+            {{ clientNameFromRoute || "Não identificado" }}
           </p>
+          <input
+            type="hidden"
+            formControlName="clientId"
+            [value]="clientIdFromRoute || userClientId"
+          />
+        </div>
+
+        <!-- Exibir apenas clientName se vier da rota -->
+        <div *ngIf="clientIdFromRoute && !projectIdFromRoute" class="w-100">
           <p>
-            <strong>Projeto:</strong>
-            {{ projectNameFromRoute || "Não identificado" }}
+            <strong>Cliente:</strong>
+            {{ clientNameFromRoute || "Não identificado" }}
           </p>
         </div>
       </mat-card-content>

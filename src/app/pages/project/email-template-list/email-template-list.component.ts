@@ -36,7 +36,7 @@ export class EmailTemplateListComponent implements OnInit {
     'actions',
   ];
   dataSource = new MatTableDataSource<any>();
-  projectId: string | null = null;
+  clientId: string | null = null; // Mantido como string | null
   title = 'Templates de E-mail';
   emailTypeFilter: string = ''; // Filtro de tipo de notificação
   searchQuery: string = ''; // Filtro de busca
@@ -61,7 +61,7 @@ export class EmailTemplateListComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
-    this.projectId = this.route.snapshot.paramMap.get('id');
+    this.clientId = this.route.snapshot.paramMap.get('id');
 
     const user = await this.authService.getCurrentUser();
 
@@ -98,12 +98,35 @@ export class EmailTemplateListComponent implements OnInit {
       let queryConstraint;
 
       if (this.userRole === 'admin_master') {
-        queryConstraint = query(templatesCollection);
+        if (this.clientId) {
+          // Para admin_master, exibir apenas templates padrão ou do clientId da rota
+          queryConstraint = query(
+            templatesCollection,
+            where('clientId', 'in', [this.clientId, ''])
+          );
+        } else {
+          queryConstraint = query(templatesCollection); // Todos os templates se não houver clientId
+        }
       } else if (this.userRole === 'admin_client' && this.userClientId) {
-        queryConstraint = query(
-          templatesCollection,
-          where('clientId', '==', this.userClientId)
-        );
+        if (this.clientId) {
+          // Para admin_client, exibir apenas templates do clientId da rota ou padrões, se corresponder ao userClientId
+          if (this.clientId === this.userClientId) {
+            queryConstraint = query(
+              templatesCollection,
+              where('clientId', 'in', [this.clientId, ''])
+            );
+          } else {
+            queryConstraint = query(
+              templatesCollection,
+              where('clientId', '==', '')
+            ); // Apenas templates padrão se o clientId não corresponder
+          }
+        } else {
+          queryConstraint = query(
+            templatesCollection,
+            where('clientId', '==', this.userClientId)
+          ); // Sem clientId na rota, usa o userClientId
+        }
       } else {
         this.snackBar.open(
           'Você não tem permissão para visualizar templates.',
@@ -124,7 +147,7 @@ export class EmailTemplateListComponent implements OnInit {
           isGlobal: !data['clientId'],
           clientName:
             this.clients.find((c) => c.id === data['clientId'])?.name ||
-            'TEMPLATE PADRÃO', // Substitui clientId pelo nome
+            'TEMPLATE PADRÃO',
         };
       });
 
@@ -140,9 +163,7 @@ export class EmailTemplateListComponent implements OnInit {
   applyFilter(): void {
     const inputElement =
       document.querySelector<HTMLInputElement>('#searchInput');
-    const filterValue = inputElement
-      ? inputElement.value.trim().toLowerCase()
-      : '';
+    const filterValue = (inputElement?.value || '').trim().toLowerCase();
 
     const filteredData = this.allTemplates.filter((data: any) => {
       const matchesSearch =
@@ -179,14 +200,27 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   openEmailSelectionModal(
-    projectId: string,
+    clientId: string | null, // Alterado para aceitar string | null
     templateId: string,
     emailType: string
   ): void {
-    this.dialog.open(EmailSelectionDialogComponent, {
-      width: '75%',
-      data: { projectId, templateId, emailType }, // Adiciona o templateId aqui
-    });
+    if (!clientId && this.userClientId) {
+      clientId = this.userClientId; // Fallback para userClientId se clientId for null
+    }
+    if (clientId) {
+      this.dialog.open(EmailSelectionDialogComponent, {
+        width: '75%',
+        data: { clientId, templateId, emailType },
+      });
+    } else {
+      this.snackBar.open(
+        'Nenhum cliente disponível para enviar e-mail.',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
+    }
   }
 
   onEmailTypeChange(event: any): void {
@@ -195,21 +229,27 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   createTemplate(): void {
-    if (this.projectId) {
-      // Se estamos na rota /projects/:projectId/templates, navegar para a rota com projectId
-      this.router.navigate([`/projects/${this.projectId}/templates/new`]);
+    if (this.clientId) {
+      this.router.navigate([`/projects/${this.clientId}/templates/new`]);
     } else if (this.userRole === 'admin_master') {
       this.router.navigate(['/projects/default-template/new']);
     } else if (this.userRole === 'admin_client' && this.userClientId) {
       this.router.navigate([`/projects/${this.userClientId}/templates/new`]);
+    } else {
+      this.snackBar.open(
+        'Nenhum cliente disponível para criar template.',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
     }
   }
 
   editTemplate(templateId: string, isGlobal: boolean): void {
-    if (this.projectId) {
-      // Se estamos na rota /projects/:projectId/templates, manter o projectId na rota de edição
+    if (this.clientId) {
       this.router.navigate([
-        `/projects/${this.projectId}/templates/${templateId}/edit`,
+        `/projects/${this.clientId}/templates/${templateId}/edit`,
       ]);
     } else if (this.userRole === 'admin_master') {
       this.router.navigate([`projects/default-template/${templateId}/edit`]);
