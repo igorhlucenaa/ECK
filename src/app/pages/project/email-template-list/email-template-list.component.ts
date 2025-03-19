@@ -37,7 +37,7 @@ export class EmailTemplateListComponent implements OnInit {
   ];
   dataSource = new MatTableDataSource<any>();
   clientId: string | null = null; // Mantido como string | null
-  title = 'Templates de E-mail';
+  title = 'Modelos de E-mail';
   emailTypeFilter: string = ''; // Filtro de tipo de notificação
   searchQuery: string = ''; // Filtro de busca
   allTemplates: any[] = []; // Armazena todos os templates carregados

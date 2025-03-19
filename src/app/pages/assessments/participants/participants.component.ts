@@ -1,63 +1,56 @@
-import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import {
   Firestore,
   collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc,
   query,
-  where,
-  setDoc,
+  getDocs,
+  doc,
   getDoc,
+  setDoc,
+  updateDoc,
+  where,
+  addDoc,
 } from '@angular/fire/firestore';
-import * as Papa from 'papaparse';
-import { MaterialModule } from 'src/app/material.module';
-import { CommonModule } from '@angular/common';
-import * as XLSX from 'xlsx';
-import { ParticipantsConfirmationDialogComponent } from './participants-confirmation-dialog/participants-confirmation-dialog.component';
-import { MatDialog } from '@angular/material/dialog';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { EvaluatorsModalComponent } from './evaluators-modal/evaluators-modal.component';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MaterialModule } from 'src/app/material.module';
+import { CommonModule } from '@angular/common';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { Timestamp } from '@angular/fire/firestore';
+import * as XLSX from 'xlsx';
+import { MatDialog } from '@angular/material/dialog';
+import { FormBuilder, Validators } from '@angular/forms';
+import { ParticipantsConfirmationDialogComponent } from './participants-confirmation-dialog/participants-confirmation-dialog.component';
+import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
 
-interface Evaluator {
+interface UnifiedParticipant {
+  id: string;
   name: string;
   email: string;
+  assessmentId?: string;
+  sentAt?: Date;
+  completedAt?: Date;
+  status?: string;
   category: string;
-  assessments?: string[];
-  selected?: boolean;
-}
-
-interface Evaluatee {
-  id: string;
-  name: string;
-  email: string;
-  clientId: string;
+  type: 'avaliado' | 'avaliador';
   projectId: string;
-  assessments?: string[];
-  clientName?: string;
-  projectName?: string;
-  evaluators?: string[];
+  projectName: string;
+  clientId: string;
+  clientName: string;
   selected?: boolean;
-  [key: string]: any;
 }
 
-interface AssessmentDetail {
+interface Client {
   id: string;
   name: string;
-  status: string; // 'Respondido' ou 'Pendente'
-  linkSent: boolean; // Se o link foi enviado por e-mail
+}
+
+interface Project {
+  id: string;
+  name: string;
+  clientId: string;
 }
 
 interface MailTemplate {
@@ -66,668 +59,460 @@ interface MailTemplate {
   content: string;
   emailType: string;
   subject: string;
+  clientId: string;
+}
+
+interface Assessment {
+  id: string;
+  name: string;
 }
 
 @Component({
   selector: 'app-participants',
   standalone: true,
-  imports: [MaterialModule, CommonModule, ReactiveFormsModule, FormsModule],
-  templateUrl: './participants.component.html',
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
+  template: `
+    <div class="container mt-4">
+      <h2>Lista de Participantes</h2>
+
+      <!-- Botões de Upload/Download e Adicionar Participante -->
+      <div class="d-flex justify-content-between mb-3">
+        <div>
+          <!-- Botão Baixar Planilha -->
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="downloadTemplate()"
+            style="margin-right: 10px"
+          >
+            <mat-icon>download</mat-icon> Baixar Planilha de Modelo
+          </button>
+
+          <!-- Botão Upload -->
+          <button mat-raised-button color="accent">
+            <label for="uploadExcel" class="btn btn-secondary">
+              <mat-icon>upload_file</mat-icon> Carregar Arquivo Excel
+            </label>
+            <input
+              id="uploadExcel"
+              type="file"
+              accept=".xlsx, .xls"
+              style="display: none"
+              (change)="uploadExcel($event)"
+            />
+          </button>
+        </div>
+
+        <!-- Botão Adicionar Novo Participante -->
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="openAddParticipantModal()"
+          [disabled]="!filterProject"
+        >
+          Adicionar Novo Participante
+        </button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="row mb-3" style="margin-top: 40px">
+        <!-- Filtro por Cliente -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Filtrar por Cliente</mat-label>
+            <mat-select
+              [(ngModel)]="filterClient"
+              (ngModelChange)="onClientChange()"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option *ngFor="let client of clients" [value]="client.id">
+                {{ client.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Filtro por Projeto -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Filtrar por Projeto</mat-label>
+            <mat-select
+              [(ngModel)]="filterProject"
+              (ngModelChange)="onProjectChange()"
+              [disabled]="!filterClient"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option
+                *ngFor="let project of filteredProjects"
+                [value]="project.id"
+              >
+                {{ project.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Filtro por Tipo -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Filtrar por Tipo</mat-label>
+            <mat-select
+              [(ngModel)]="filterType"
+              (ngModelChange)="applyFilter()"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="avaliado">Avaliado</mat-option>
+              <mat-option value="avaliador">Avaliador</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Filtro por Categoria -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Filtrar por Categoria</mat-label>
+            <mat-select
+              [(ngModel)]="filterCategory"
+              (ngModelChange)="applyFilter()"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="Avaliado">Avaliado</mat-option>
+              <mat-option value="Gestor">Gestor</mat-option>
+              <mat-option value="Par">Par</mat-option>
+              <mat-option value="Subordinado">Subordinado</mat-option>
+              <mat-option value="Outros">Outros</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <!-- Filtro por Status -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Filtrar por Status</mat-label>
+            <mat-select
+              [(ngModel)]="filterStatus"
+              (ngModelChange)="applyFilter()"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="Não Enviado">Não Enviado</mat-option>
+              <mat-option value="Enviado (Pendente)"
+                >Enviado (Pendente)</mat-option
+              >
+              <mat-option value="Respondido">Respondido</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Campo de Pesquisa -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Buscar por Nome ou E-mail</mat-label>
+            <input
+              matInput
+              [(ngModel)]="searchValue"
+              (ngModelChange)="applyFilter()"
+            />
+            <button
+              mat-icon-button
+              matSuffix
+              *ngIf="searchValue"
+              (click)="searchValue = ''; applyFilter()"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          </mat-form-field>
+        </div>
+
+        <!-- Campo de Seleção de Template -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Escolha um Template de E-mail</mat-label>
+            <mat-select
+              [formControl]="templateFormControl"
+              required
+              (ngModelChange)="onTemplateChange()"
+            >
+              <mat-option
+                *ngFor="let template of mailTemplates"
+                [value]="template.id"
+              >
+                {{ template.name }} -
+                <strong>{{ getFriendlyEmailType(template.emailType) }}</strong>
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="templateFormControl.hasError('required')">
+              Por favor, selecione um template.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Campo de Seleção de Avaliação -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Escolha uma Avaliação</mat-label>
+            <mat-select [formControl]="assessmentFormControl" required>
+              <mat-option
+                *ngFor="let assessment of assessments"
+                [value]="assessment.id"
+              >
+                {{ assessment.name }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="assessmentFormControl.hasError('required')">
+              Por favor, selecione uma avaliação.
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Mensagem quando não há participantes -->
+      <div *ngIf="dataSource.data.length === 0" class="text-center my-4">
+        <p>Nenhum participante encontrado.</p>
+      </div>
+
+      <!-- Tabela de Participantes -->
+      <div class="table-responsive" *ngIf="dataSource.data.length > 0">
+        <table
+          mat-table
+          [dataSource]="dataSource"
+          matSort
+          class="mat-elevation-z8 w-100"
+        >
+          <!-- Checkbox para Seleção -->
+          <ng-container matColumnDef="select">
+            <th mat-header-cell *matHeaderCellDef>
+              <mat-checkbox
+                (change)="toggleAll($event.checked)"
+                [checked]="allSelected()"
+                [indeterminate]="someSelected() && !allSelected()"
+              ></mat-checkbox>
+            </th>
+            <td mat-cell *matCellDef="let participant">
+              <mat-checkbox
+                [(ngModel)]="participant.selected"
+                (ngModelChange)="updateSelection()"
+                [disabled]="
+                  participant.completedAt != null ||
+                  (selectedTemplate?.emailType === 'conviteAvaliador' ||
+                  selectedTemplate?.emailType === 'lembreteAvaliador'
+                    ? participant.type !== 'avaliador'
+                    : selectedTemplate?.emailType === 'cadastro'
+                    ? false
+                    : participant.type !== 'avaliado')
+                "
+              ></mat-checkbox>
+            </td>
+          </ng-container>
+
+          <!-- Nome -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.name }}
+            </td>
+          </ng-container>
+
+          <!-- E-mail -->
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>E-mail</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.email }}
+            </td>
+          </ng-container>
+
+          <!-- Tipo -->
+          <ng-container matColumnDef="type">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Tipo</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.type }}
+            </td>
+          </ng-container>
+
+          <!-- Categoria -->
+          <ng-container matColumnDef="category">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoria</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.category }}
+            </td>
+          </ng-container>
+
+          <!-- Projeto -->
+          <ng-container matColumnDef="projectName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Projeto</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.projectName || 'N/A' }}
+            </td>
+          </ng-container>
+
+          <!-- Cliente -->
+          <ng-container matColumnDef="clientName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.clientName || 'N/A' }}
+            </td>
+          </ng-container>
+
+          <!-- Status -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.status || 'N/A' }}
+            </td>
+          </ng-container>
+
+          <!-- Data de Envio -->
+          <ng-container matColumnDef="sentAt">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>
+              Data de Envio
+            </th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.sentAt | date : 'short' }}
+            </td>
+          </ng-container>
+
+          <!-- Data de Resposta -->
+          <ng-container matColumnDef="completedAt">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>
+              Data de Resposta
+            </th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.completedAt | date : 'short' }}
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+
+      <!-- Paginação -->
+      <mat-paginator
+        *ngIf="dataSource.data.length > 0"
+        [pageSize]="10"
+        [pageSizeOptions]="[5, 10, 20, 50]"
+        showFirstLastButtons
+      ></mat-paginator>
+
+      <!-- Botão Enviar Links -->
+      <div class="mt-3 text-end" *ngIf="dataSource.data.length > 0">
+        <button
+          mat-button
+          (click)="resendLinks()"
+          [disabled]="
+            isLoading ||
+            selectedParticipants.length === 0 ||
+            !templateFormControl.valid ||
+            !assessmentFormControl.valid
+          "
+        >
+          <mat-spinner *ngIf="isLoading" [diameter]="20"></mat-spinner>
+          <span *ngIf="isLoading">Enviando...</span>
+          <span *ngIf="!isLoading">Enviar Links</span>
+        </button>
+      </div>
+    </div>
+  `,
   styleUrls: ['./participants.component.scss'],
 })
-export class ParticipantsComponent implements OnInit, AfterViewInit {
-  evaluatorsDisplayedColumns: string[] = [
-    // 'select',
+export class ParticipantsComponent implements OnInit {
+  displayedColumns: string[] = [
+    'select',
     'name',
     'email',
+    'type',
     'category',
-    'client',
-    'project',
-    'assessments',
-    'actions',
-  ];
-  evaluateesDisplayedColumns: string[] = [
-    // 'select',
-    'name',
-    'email',
-    'client',
-    'project',
-    'assessments',
-    'evaluators',
-    'actions',
+    'projectName',
+    'clientName',
+    'status',
+    'sentAt',
+    'completedAt',
   ];
 
-  evaluatorsDataSource = new MatTableDataSource<any>([]);
-  evaluateesDataSource = new MatTableDataSource<any>([]);
+  dataSource = new MatTableDataSource<UnifiedParticipant>([]);
+  searchValue: string = '';
+  filterType: string = '';
+  filterCategory: string = '';
+  filterStatus: string = '';
+  filterClient: string = '';
+  filterProject: string = '';
+  clients: Client[] = [];
+  projects: Project[] = [];
+  filteredProjects: Project[] = [];
+  mailTemplates: MailTemplate[] = [];
+  assessments: Assessment[] = [];
+  selectedParticipants: UnifiedParticipant[] = [];
+  isLoading: boolean = false;
+  templateFormControl = this.fb.control('', Validators.required);
+  assessmentFormControl = this.fb.control('', Validators.required);
+  selectedTemplate: MailTemplate | null = null;
 
-  @ViewChild('evaluatorsPaginator') evaluatorsPaginator!: MatPaginator;
-  @ViewChild('evaluateesPaginator') evaluateesPaginator!: MatPaginator;
-
-  @ViewChild('evaluatorsSort', { static: false }) evaluatorsSort!: MatSort;
-  @ViewChild('evaluateesSort', { static: false }) evaluateesSort!: MatSort;
-
-  clients: { id: string; name: string }[] = [];
-  projects: { id: string; name: string }[] = [];
-  currentUser: any = null;
-  availableAssessments: { id: string; name: string }[] = [];
-  availableEvaluators: { id: string; name: string }[] = [];
-  mailTemplates: MailTemplate[] = []; // Novo array para templates de e-mail
-  selectedEvaluations: string[] = [];
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
-    private fb: FormBuilder,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private fb: FormBuilder
   ) {}
 
   async ngOnInit(): Promise<void> {
-    await this.loadClients();
-    await this.loadProjectsForEV();
-    await this.loadEvaluators();
-    await this.loadEvaluatees();
-    await this.loadAssessments();
-    await this.loadEvaluatorsList();
-    await this.loadMailTemplates(); // Carrega templates de e-mail
-  }
+    await Promise.all([
+      this.loadClients(),
+      this.loadProjects(),
+      this.loadParticipants(),
+    ]);
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
 
-  async loadEvaluatorsList(): Promise<void> {
-    try {
-      const evaluatorsQuery = query(
-        collection(this.firestore, 'participants'),
-        where('type', '==', 'avaliador')
+    this.dataSource.filterPredicate = (
+      data: UnifiedParticipant,
+      filter: string
+    ) => {
+      const searchStr =
+        `${data.name} ${data.email} ${data.projectName} ${data.clientName}`.toLowerCase();
+      const typeMatch = !this.filterType || data.type === this.filterType;
+      const categoryMatch =
+        !this.filterCategory || data.category === this.filterCategory;
+      const statusMatch =
+        !this.filterStatus || data.status === this.filterStatus;
+      const clientMatch =
+        !this.filterClient || data.clientId === this.filterClient;
+      const projectMatch =
+        !this.filterProject || data.projectId === this.filterProject;
+      const emailTypeMatch = this.applyEmailTypeFilter(data);
+      return (
+        searchStr.includes(this.searchValue.trim().toLowerCase()) &&
+        typeMatch &&
+        categoryMatch &&
+        statusMatch &&
+        clientMatch &&
+        projectMatch &&
+        emailTypeMatch
       );
-      const snapshot = await getDocs(evaluatorsQuery);
+    };
+  }
 
-      this.availableEvaluators = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'] || 'Nome Desconhecido',
-        email: doc.data()['email'] || 'Sem e-mail',
-        category: doc.data()['category'] || 'Não informado',
-        type: doc.data()['type'] || '',
-      }));
-    } catch (error) {
-      console.error('Erro ao carregar avaliadores (lista):', error);
-      this.snackBar.open('Erro ao carregar lista de avaliadores.', 'Fechar', {
-        duration: 3000,
-      });
+  applyEmailTypeFilter(data: UnifiedParticipant): boolean {
+    if (!this.selectedTemplate) return true;
+    const emailType = this.selectedTemplate.emailType;
+    if (emailType === 'cadastro') return true;
+    if (['conviteAvaliador', 'lembreteAvaliador'].includes(emailType)) {
+      return data.type === 'avaliador';
     }
-  }
-
-  async loadAssessments(): Promise<void> {
-    try {
-      const assessmentsCollection = collection(this.firestore, 'assessments');
-      const snapshot = await getDocs(assessmentsCollection);
-
-      this.availableAssessments = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'] || 'Avaliação Desconhecida',
-        status: 'Pendente', // Valor padrão
-        linkSent: false, // Valor padrão
-      }));
-    } catch (error) {
-      console.error('Erro ao carregar avaliações:', error);
-      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
-        duration: 3000,
-      });
+    if (
+      [
+        'conviteRespondente',
+        'lembreteRespondente',
+        'convite',
+        'lembrete',
+      ].includes(emailType)
+    ) {
+      return data.type === 'avaliado';
     }
-  }
-
-  async loadEvaluators(): Promise<void> {
-    try {
-      const evaluatorsQuery = query(
-        collection(this.firestore, 'participants'),
-        where('type', '==', 'avaliador')
-      );
-      const snapshot = await getDocs(evaluatorsQuery);
-
-      const evaluators = snapshot.docs.map((doc) => {
-        const data = doc.data() as { [key: string]: any }; // Tipo genérico para acessar dinamicamente
-        const evaluator: any = {
-          id: doc.id,
-          name: data['name'] || '',
-          email: data['email'] || '',
-          category: data['category'] || 'Não informado',
-          assessments: data['assessments'] ?? [],
-          selected: false,
-          clientId: data['clientId'] || 'Desconhecido',
-          projectId: data['projectId'] || 'Desconhecido',
-        };
-
-        // Buscar cliente em this.clients
-        if (evaluator.clientId && evaluator.clientId !== 'Desconhecido') {
-          const client = this.clients.find((c) => c.id === evaluator.clientId);
-          evaluator.clientName = client?.name || 'Cliente Não Encontrado';
-        } else {
-          evaluator.clientName = 'Sem Cliente';
-        }
-
-        // Buscar projeto em this.projects
-
-        if (evaluator.projectId && evaluator.projectId !== 'Desconhecido') {
-          const project = this.projects.find(
-            (p) => p.id === evaluator.projectId
-          );
-
-          evaluator.projectName = project?.name || 'Projeto Não Encontrado';
-        } else {
-          evaluator.projectName = 'Sem Projeto';
-        }
-
-        return evaluator;
-      });
-
-      this.evaluatorsDataSource.data = evaluators;
-      this.evaluatorsDataSource._updateChangeSubscription();
-    } catch (error) {
-      console.error('Erro ao carregar avaliadores:', error);
-      this.snackBar.open(
-        'Erro ao carregar avaliadores para tabela.',
-        'Fechar',
-        {
-          duration: 3000,
-        }
-      );
-    }
-  }
-
-  async loadEvaluatees(): Promise<void> {
-    try {
-      const evaluateesQuery = query(
-        collection(this.firestore, 'participants'),
-        where('type', '==', 'avaliado')
-      );
-      const evaluatorsQuery = query(
-        collection(this.firestore, 'participants'),
-        where('type', '==', 'avaliador')
-      );
-      const snapshot = await getDocs(evaluateesQuery);
-      const evaluatorsSnapshot = await getDocs(evaluatorsQuery);
-
-      const allEvaluators = evaluatorsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'],
-        email: doc.data()['email'],
-        clientId: doc.data()['clientId'] || 'Desconhecido',
-        projectId: doc.data()['projectId'] || 'Desconhecido',
-        category: doc.data()['category'] || 'Não informado',
-        assessments: doc.data()['assessments'] ?? [], // Certifique-se de que os assessments estão disponíveis
-      }));
-
-      const evaluatees = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data['name'],
-          email: data['email'],
-          clientId: data['clientId'] || 'Desconhecido',
-          projectId: data['projectId'] || 'Desconhecido',
-          assessments: data['assessments']?.map((a: any) => a.id) ?? [],
-          evaluators: [],
-          selected: false,
-        } as Evaluatee;
-      });
-
-      for (const evaluatee of evaluatees) {
-        // Verificar se o clientId e projectId estão presentes
-        if (!evaluatee.clientId || evaluatee.clientId === 'Desconhecido') {
-          console.warn(
-            `Aviso: O avaliado ${evaluatee.name} não tem um clientId válido!`
-          );
-          evaluatee.clientId = 'Desconhecido';
-          evaluatee.clientName = 'Sem Cliente';
-        } else {
-          const client = this.clients.find((c) => c.id === evaluatee.clientId);
-          evaluatee.clientName = client?.name || 'Cliente Não Encontrado';
-        }
-
-        if (!evaluatee.projectId || evaluatee.projectId === 'Desconhecido') {
-          console.warn(
-            `Aviso: O avaliado ${evaluatee.name} não tem um projectId válido!`
-          );
-          evaluatee.projectId = 'Desconhecido';
-          evaluatee.projectName = 'Sem Projeto';
-        } else {
-          const project = this.projects.find(
-            (p) => p.id === evaluatee.projectId
-          );
-          evaluatee.projectName = project?.name || 'Projeto Não Encontrado';
-        }
-
-        // Associar avaliadores com base nas avaliações
-        const assessments = evaluatee.assessments ?? [];
-        if (assessments.length > 0) {
-          evaluatee.evaluators = allEvaluators
-            .filter((evaluator: any) =>
-              (evaluator.assessments ?? []).some((assessment: string) =>
-                assessments.includes(assessment)
-              )
-            )
-            .map((e) => e.id);
-        }
-      }
-
-      this.evaluateesDataSource.data = evaluatees;
-      this.evaluateesDataSource._updateChangeSubscription();
-      console.log(
-        'Avaliados carregados para tabela:',
-        this.evaluateesDataSource.data
-      );
-    } catch (error) {
-      console.error('Erro ao carregar avaliados:', error);
-      this.snackBar.open('Erro ao carregar avaliados para tabela.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
-
-  async loadMailTemplates(): Promise<void> {
-    try {
-      const templatesCollection = collection(this.firestore, 'mailTemplates');
-      const snapshot = await getDocs(templatesCollection);
-
-      this.mailTemplates = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'],
-        content: doc.data()['content'],
-        emailType: doc.data()['emailType'],
-        subject: doc.data()['subject'],
-      }));
-    } catch (error) {
-      console.error('Erro ao carregar templates de e-mail:', error);
-      this.snackBar.open('Erro ao carregar templates de e-mail.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
-
-  ngAfterViewInit() {
-    this.evaluatorsDataSource.paginator = this.evaluatorsPaginator;
-    this.evaluatorsDataSource.sort = this.evaluatorsSort;
-    console.log(
-      'DataSource de avaliadores após inicialização:',
-      this.evaluatorsDataSource.data
-    );
-
-    this.evaluateesDataSource.paginator = this.evaluateesPaginator;
-    this.evaluateesDataSource.sort = this.evaluateesSort;
-    console.log(
-      'DataSource de avaliados após inicialização:',
-      this.evaluateesDataSource.data
-    );
-  }
-
-  editAssessments(evaluator: any): void {
-    evaluator.isEditing = true;
-  }
-
-  cancelEdit(evaluator: any): void {
-    evaluator.isEditing = false;
-  }
-
-  async saveAssessments(evaluator: any): Promise<void> {
-    try {
-      const participantDoc = doc(this.firestore, 'participants', evaluator.id);
-      await updateDoc(participantDoc, {
-        assessments: evaluator.assessments || [],
-      });
-
-      evaluator.isEditing = false;
-      this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Erro ao atualizar avaliações:', error);
-      this.snackBar.open('Erro ao salvar avaliações.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
-
-  async showAssessmentsModal(evaluatee: Evaluatee): Promise<void> {
-    const assessmentsDetails = await this.getUpdatedAssessmentsDetails(
-      evaluatee.assessments ?? []
-    );
-    const dialogRef = this.dialog.open(EvaluatorsModalComponent, {
-      width: '800px',
-      data: {
-        evaluatee,
-        assessments: assessmentsDetails,
-        mailTemplates: this.mailTemplates,
-      },
-    });
-
-    dialogRef.afterClosed().subscribe(
-      async (result: {
-        updatedAssessments?: {
-          id: string;
-          name: string;
-          status: string;
-          linkSent: boolean;
-        }[];
-      }) => {
-        if (result?.updatedAssessments) {
-          // await this.updateParticipantAssessments(
-          //   evaluatee,
-          //   result.updatedAssessments.map((a) => a.id)
-          // );
-          // Atualiza o dataSource para refletir as mudanças na tabela de avaliados
-          const index = this.evaluateesDataSource.data.findIndex(
-            (e) => e.id === evaluatee.id
-          );
-          if (index !== -1) {
-            this.evaluateesDataSource.data[index].assessments =
-              result.updatedAssessments.map((a) => a.id);
-            this.evaluateesDataSource._updateChangeSubscription();
-          }
-        }
-      }
-    );
-  }
-
-  async getUpdatedAssessmentsDetails(
-    assessmentIds: string[]
-  ): Promise<AssessmentDetail[]> {
-    try {
-      const assessments: AssessmentDetail[] = [];
-      for (const id of assessmentIds) {
-        // Log para depuração
-        const assessmentData = await this.getAssessmentDataFromFirestore(id);
-        const assessment = this.availableAssessments.find((a) => a.id === id);
-        assessments.push({
-          id: id,
-          name: (assessment && assessment.name) || 'Avaliação Desconhecida',
-          status:
-            assessmentData?.status === 'completed' ? 'Respondido' : 'Pendente',
-          linkSent: assessmentData?.linkSent || false,
-        });
-      }
-      return assessments;
-    } catch (error) {
-      console.error('Erro ao carregar detalhes das avaliações:', error);
-      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
-        duration: 3000,
-      });
-      return [];
-    }
-  }
-
-  private getAssessmentsDetails(assessmentIds: string[]): AssessmentDetail[] {
-    return assessmentIds.map((id) => {
-      const assessment = this.availableAssessments.find((a) => a.id === id);
-      const assessmentData: any = this.getAssessmentDataFromFirestore(id);
-      return {
-        id: id,
-        name: assessment?.name || 'Avaliação Desconhecida',
-        status:
-          assessmentData?.status === 'completed' ? 'Respondido' : 'Pendente',
-        linkSent: assessmentData?.linkSent || false,
-      };
-    });
-  }
-
-  private async getAssessmentDataFromFirestore(
-    assessmentId: string
-  ): Promise<any> {
-    try {
-      // Verifica se assessmentId é uma string válida
-      if (!assessmentId || typeof assessmentId !== 'string') {
-        console.error('assessmentId inválido:', assessmentId);
-        return { status: 'pending', linkSent: false };
-      }
-
-      const assessmentDoc = doc(this.firestore, 'assessments', assessmentId);
-      const snapshot = await getDocs(
-        query(
-          collection(this.firestore, 'assessmentLinks'),
-          where('assessmentId', '==', assessmentId)
-        )
-      );
-      const linkData = snapshot.docs[0]?.data();
-      return {
-        status: linkData?.['status'] || 'pending',
-        linkSent: !!linkData?.['sentAt'], // Assume que 'sentAt' indica envio
-      };
-    } catch (error) {
-      console.error('Erro ao carregar dados da avaliação:', error);
-      this.snackBar.open('Erro ao carregar dados da avaliação.', 'Fechar', {
-        duration: 3000,
-      });
-      return { status: 'pending', linkSent: false };
-    }
-  }
-
-  async updateParticipantAssessments(
-    evaluatee: Evaluatee,
-    newAssessments: string[]
-  ): Promise<void> {
-    try {
-      const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
-      const updatedAssessments = newAssessments.map((id) => {
-        const assessment = this.availableAssessments.find((a) => a.id === id);
-        return {
-          id: id,
-          name: assessment?.name || 'Avaliação Desconhecida',
-          status: 'Pendente',
-          linkSent: false,
-        };
-      });
-      await updateDoc(evaluateeDoc, {
-        assessments: updatedAssessments,
-      });
-
-      this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Erro ao atualizar avaliações do participante:', error);
-      this.snackBar.open('Erro ao salvar avaliações.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
-
-  async sendAssessmentLink(
-    evaluatee: Evaluatee,
-    assessmentId: string,
-    templateId: string
-  ): Promise<void> {
-    try {
-      const template = this.mailTemplates.find((t) => t.id === templateId);
-      if (!template) {
-        this.snackBar.open('Template de e-mail não encontrado.', 'Fechar', {
-          duration: 3000,
-        });
-        return;
-      }
-
-      const assessmentData = await this.getAssessmentDataFromFirestore(
-        assessmentId
-      );
-      if (assessmentData.linkSent) {
-        this.snackBar.open(
-          'O link já foi enviado para esta avaliação.',
-          'Fechar',
-          { duration: 3000 }
-        );
-        return;
-      }
-
-      // Simula o envio do e-mail (substitua por integração real com serviço de e-mail, como Firebase Functions)
-      const assessmentLinkDoc = doc(
-        collection(this.firestore, 'assessmentLinks')
-      );
-      await setDoc(assessmentLinkDoc, {
-        assessmentId: assessmentId,
-        participantId: evaluatee.id,
-        sentAt: new Date(),
-        status: 'pending',
-        emailTemplate: templateId,
-        participantEmail: evaluatee.email,
-      });
-
-      // Atualiza o status no dataSource
-      const index = this.evaluateesDataSource.data.findIndex(
-        (e) => e.id === evaluatee.id
-      );
-      if (index !== -1) {
-        const updatedAssessments =
-          this.evaluateesDataSource.data[index].assessments?.map((id: any) => {
-            if (id === assessmentId) {
-              return id; // O status será atualizado via Firestore listener ou nova chamada
-            }
-            return id;
-          }) || [];
-        this.evaluateesDataSource.data[index].assessments = updatedAssessments;
-        this.evaluateesDataSource.data[index].assessmentStatus =
-          this.updateAssessmentStatus(updatedAssessments); // Atualiza o status, se necessário
-        this.evaluateesDataSource._updateChangeSubscription();
-      }
-
-      this.snackBar.open('Link de avaliação enviado com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Erro ao enviar link de avaliação:', error);
-      this.snackBar.open('Erro ao enviar link de avaliação.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
-
-  private updateAssessmentStatus(assessments: string[]): string {
-    // Simula a atualização do status com base nos assessments
-    const allCompleted = assessments.every((id) => {
-      const data: any = this.getAssessmentDataFromFirestore(id);
-      return data?.status === 'completed';
-    });
-    return allCompleted ? 'Concluído' : 'Pendente';
-  }
-
-  editEvaluateeEvaluators(evaluatee: Evaluatee): void {
-    evaluatee['isEditingEvaluators'] = true;
-  }
-
-  cancelEvaluateeEvaluatorsEdit(evaluatee: Evaluatee): void {
-    evaluatee['isEditingEvaluators'] = false;
-  }
-
-  async saveEvaluateeEvaluators(evaluatee: Evaluatee): Promise<void> {
-    if (!evaluatee.id) {
-      console.error('Erro: O ID do avaliado está indefinido!');
-      this.snackBar.open(
-        'Erro ao atualizar avaliadores: ID não encontrado.',
-        'Fechar',
-        { duration: 3000 }
-      );
-      return;
-    }
-
-    try {
-      const evaluateeDoc = doc(this.firestore, 'participants', evaluatee.id);
-      await updateDoc(evaluateeDoc, {
-        evaluators: evaluatee.evaluators || [],
-      }).then((res) => {
-        console.log(res);
-      });
-
-      evaluatee['isEditingEvaluators'] = false;
-      this.snackBar.open('Avaliadores atualizados com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Erro ao atualizar avaliadores:', error);
-      this.snackBar.open('Erro ao salvar avaliadores.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
-
-  getEvaluatorNames(evaluatorIds: string[] | undefined): string {
-    if (!this.availableEvaluators || this.availableEvaluators.length === 0) {
-      return 'Carregando avaliadores...';
-    }
-
-    return (
-      (evaluatorIds ?? [])
-        .map(
-          (id) =>
-            this.availableEvaluators.find((e) => e.id === id)?.name ||
-            'Não encontrado'
-        )
-        .join(', ') || 'Nenhum avaliador'
-    );
-  }
-
-  getAssessmentNames(assessmentIds: string[] | undefined): string {
-    if (!assessmentIds || assessmentIds.length === 0) {
-      return 'Sem avaliações';
-    }
-    return this.availableAssessments
-      .filter((a) => assessmentIds.includes(a.id))
-      .map((a) => a.name)
-      .join(', ');
-  }
-
-  applyFilter(event: Event, type: 'evaluators' | 'evaluatees'): void {
-    const filterValue = (event.target as HTMLInputElement).value
-      .trim()
-      .toLowerCase();
-    if (type === 'evaluators') {
-      this.evaluatorsDataSource.filter = filterValue;
-    } else {
-      this.evaluateesDataSource.filter = filterValue;
-    }
-  }
-
-  filterTable(type: 'evaluators' | 'evaluatees', filters: any): void {
-    const dataSource =
-      type === 'evaluators'
-        ? this.evaluatorsDataSource
-        : this.evaluateesDataSource;
-    let filteredData = [...dataSource.data];
-
-    if (filters.category) {
-      filteredData = filteredData.filter(
-        (p) => p.category?.toLowerCase() === filters.category.toLowerCase()
-      );
-    }
-    if (filters.status) {
-      filteredData = filteredData.filter(
-        (p) => p.status?.toLowerCase() === filters.status.toLowerCase()
-      );
-    }
-    if (filters.clientId) {
-      filteredData = filteredData.filter(
-        (p) => p.clientId?.toLowerCase() === filters.clientId.toLowerCase()
-      );
-    }
-    if (filters.projectId) {
-      filteredData = filteredData.filter(
-        (p) => p.projectId?.toLowerCase() === filters.projectId.toLowerCase()
-      );
-    }
-
-    dataSource.data = filteredData;
-    dataSource._updateChangeSubscription();
-  }
-
-  selectAll(type: 'evaluators' | 'evaluatees', event: any): void {
-    const dataSource =
-      type === 'evaluators'
-        ? this.evaluatorsDataSource
-        : this.evaluateesDataSource;
-    dataSource.data.forEach((p) => (p.selected = event.checked));
-    dataSource._updateChangeSubscription();
-  }
-
-  toggleSelection(type: 'evaluators' | 'evaluatees', participant: any): void {
-    const dataSource =
-      type === 'evaluators'
-        ? this.evaluatorsDataSource
-        : this.evaluateesDataSource;
-    participant.selected = !participant.selected;
-    dataSource._updateChangeSubscription();
+    return true;
   }
 
   async loadClients(): Promise<void> {
@@ -739,6 +524,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         id: doc.id,
         name: doc.data()['companyName'] || 'Cliente Sem Nome',
       }));
+      console.log('Clientes carregados:', this.clients);
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
@@ -747,7 +533,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  async loadProjectsForEV(): Promise<void> {
+  async loadProjects(): Promise<void> {
     try {
       const projectsCollection = collection(this.firestore, 'projects');
       const snapshot = await getDocs(projectsCollection);
@@ -755,7 +541,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.projects = snapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['name'] || 'Projeto Sem Nome',
+        clientId: doc.data()['clientId'] || '',
       }));
+      this.filteredProjects = [...this.projects];
+      console.log('Projetos carregados:', this.projects);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
       this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
@@ -764,31 +553,518 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  async loadProjects(
-    clientId: string
-  ): Promise<{ id: string; name: string }[]> {
-    if (!clientId) return [];
-
+  async loadParticipants(): Promise<void> {
     try {
-      const projectsCollection = collection(this.firestore, 'projects');
-      const snapshot = await getDocs(projectsCollection);
+      const participantsCollection = collection(this.firestore, 'participants');
+      const participantsSnapshot = await getDocs(participantsCollection);
 
-      return snapshot.docs
-        .filter((doc) => doc.data()['clientId'] === clientId)
-        .map((doc) => ({
-          id: doc.id,
-          name: doc.data()['name'] || 'Projeto Sem Nome',
-        }));
+      console.log(
+        'Snapshot de participantes (todos):',
+        participantsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      );
+
+      if (participantsSnapshot.empty) {
+        console.log('Nenhum participante encontrado no Firestore.');
+        this.dataSource.data = [];
+        return;
+      }
+
+      // Coleta todos os projectIds dos participantes
+      const projectIds = new Set<string>();
+      participantsSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        if (data['projectId']) projectIds.add(data['projectId']);
+      });
+
+      // Carrega os projetos e mapeia projectId para clientId e projectName
+      const projectsMap: { [key: string]: { name: string; clientId: string } } =
+        {};
+      if (projectIds.size > 0) {
+        const projectsPromises = Array.from(projectIds).map(
+          async (projectId) => {
+            const projectDoc = doc(this.firestore, 'projects', projectId);
+            const projectSnapshot = await getDoc(projectDoc);
+            if (projectSnapshot.exists()) {
+              projectsMap[projectId] = {
+                name: projectSnapshot.data()['name'] || 'Projeto Sem Nome',
+                clientId: projectSnapshot.data()['clientId'] || '',
+              };
+            } else {
+              projectsMap[projectId] = { name: 'N/A', clientId: '' };
+            }
+          }
+        );
+        await Promise.all(projectsPromises);
+      }
+
+      // Coleta todos os clientIds (dos projetos e dos participantes que já têm clientId)
+      const clientIds = new Set<string>();
+      participantsSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        if (data['clientId']) clientIds.add(data['clientId']);
+      });
+      Object.values(projectsMap).forEach((project) => {
+        if (project.clientId) clientIds.add(project.clientId);
+      });
+
+      // Carrega os nomes dos clientes
+      const clientsMap: { [key: string]: string } = {};
+      if (clientIds.size > 0) {
+        const clientsPromises = Array.from(clientIds).map(async (clientId) => {
+          const clientDoc = doc(this.firestore, 'clients', clientId);
+          const clientSnapshot = await getDoc(clientDoc);
+          if (clientSnapshot.exists()) {
+            clientsMap[clientId] =
+              clientSnapshot.data()['companyName'] || 'Cliente Sem Nome';
+          } else {
+            clientsMap[clientId] = 'N/A';
+          }
+        });
+        await Promise.all(clientsPromises);
+      }
+
+      const participants: UnifiedParticipant[] = [];
+      for (const doc of participantsSnapshot.docs) {
+        const participantId = doc.id;
+        const participantData = doc.data();
+        const projectId = participantData['projectId'] || '';
+        let clientId = participantData['clientId'] || '';
+
+        // Se o participante não tiver clientId, mas tiver projectId, busca o clientId do projeto
+        if (!clientId && projectId && projectsMap[projectId]) {
+          clientId = projectsMap[projectId].clientId;
+        }
+
+        const email = participantData['email'] || 'Sem e-mail';
+        const type = participantData['type'] as 'avaliado' | 'avaliador';
+        const category = participantData['category'] || 'N/A';
+        const assessments = participantData['assessments'] || [];
+
+        let sentAt: Date | undefined;
+        let completedAt: Date | undefined;
+        let status: string = 'Não Enviado';
+
+        if (type === 'avaliado' && assessments.length > 0) {
+          const assessmentLinksQuery = query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('participantId', '==', participantId),
+            where('assessmentId', 'in', assessments)
+          );
+          const linksSnapshot = await getDocs(assessmentLinksQuery);
+
+          linksSnapshot.docs.forEach((linkDoc) => {
+            const linkData = linkDoc.data();
+            if (linkData['sentAt']) {
+              sentAt = (linkData['sentAt'] as Timestamp).toDate();
+            }
+            if (linkData['status'] === 'completed' && linkData['completedAt']) {
+              completedAt = (linkData['completedAt'] as Timestamp).toDate();
+            }
+          });
+
+          status = this.determineStatus(sentAt, completedAt);
+        } else {
+          status = type === 'avaliado' ? 'Não Enviado' : 'N/A';
+        }
+
+        // Só adiciona o participante se conseguirmos determinar o clientId
+        if (clientId) {
+          participants.push({
+            id: participantId,
+            name: participantData['name'] || 'Desconhecido',
+            email: email,
+            assessmentId: assessments.length > 0 ? assessments[0] : undefined,
+            sentAt: sentAt,
+            completedAt: completedAt,
+            status: status,
+            category: category,
+            type: type,
+            projectId: projectId,
+            projectName: projectsMap[projectId]?.name || 'N/A',
+            clientId: clientId,
+            clientName: clientsMap[clientId] || 'N/A',
+            selected: false,
+          });
+        } else {
+          console.warn(
+            `Participante ${participantId} ignorado: não foi possível determinar o clientId.`,
+            participantData
+          );
+        }
+      }
+
+      this.dataSource.data = participants;
+      console.log('Participantes carregados (todos):', participants);
     } catch (error) {
-      console.error('Erro ao carregar projetos:', error);
-      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
+      console.error('Erro ao carregar participantes:', error);
+      this.snackBar.open('Erro ao carregar participantes.', 'Fechar', {
         duration: 3000,
       });
-      return [];
     }
+  }
+
+  async loadMailTemplates(): Promise<void> {
+    try {
+      if (!this.filterClient) {
+        this.mailTemplates = [];
+        this.templateFormControl.setValue('');
+        return;
+      }
+
+      const templatesCollection = collection(this.firestore, 'mailTemplates');
+      const templatesQuery = query(
+        templatesCollection,
+        where('clientId', '==', this.filterClient)
+      );
+      const snapshot = await getDocs(templatesQuery);
+
+      this.mailTemplates = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Sem Nome',
+        content: doc.data()['content'] || '',
+        emailType: doc.data()['emailType'] || '',
+        subject: doc.data()['subject'] || '',
+        clientId: doc.data()['clientId'] || '',
+      }));
+
+      console.log('Templates carregados:', this.mailTemplates);
+
+      if (this.mailTemplates.length === 0) {
+        this.snackBar.open(
+          'Nenhum template encontrado para este cliente.',
+          'Fechar',
+          { duration: 3000 }
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao carregar Modelos de e-mail:', error);
+      this.snackBar.open('Erro ao carregar Modelos de e-mail.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async loadAssessments(): Promise<void> {
+    try {
+      if (!this.filterClient) {
+        this.assessments = [];
+        this.assessmentFormControl.setValue('');
+        return;
+      }
+
+      const assessmentsCollection = collection(this.firestore, 'assessments');
+      const assessmentsQuery = query(
+        assessmentsCollection,
+        where('clientId', '==', this.filterClient)
+      );
+      const snapshot = await getDocs(assessmentsQuery);
+
+      this.assessments = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Avaliação Sem Nome',
+      }));
+
+      console.log('Avaliações carregadas:', this.assessments);
+
+      if (this.assessments.length === 0) {
+        this.snackBar.open(
+          'Nenhuma avaliação encontrada para este cliente.',
+          'Fechar',
+          { duration: 3000 }
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao carregar avaliações:', error);
+      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  determineStatus(sentAt?: Date, completedAt?: Date): string {
+    if (completedAt) return 'Respondido';
+    if (sentAt) return 'Enviado (Pendente)';
+    return 'Não Enviado';
+  }
+
+  onClientChange(): void {
+    this.filterProject = '';
+    this.templateFormControl.setValue('');
+    this.assessmentFormControl.setValue('');
+    this.mailTemplates = [];
+    this.assessments = [];
+    if (this.filterClient) {
+      this.filteredProjects = this.projects.filter(
+        (project) => project.clientId === this.filterClient
+      );
+      this.loadMailTemplates();
+      this.loadAssessments();
+    } else {
+      this.filteredProjects = [...this.projects];
+    }
+    this.applyFilter();
+  }
+
+  onProjectChange(): void {
+    this.applyFilter();
+  }
+
+  onTemplateChange(): void {
+    this.selectedTemplate =
+      this.mailTemplates.find((t) => t.id === this.templateFormControl.value) ||
+      null;
+    this.applyFilter();
+    this.updateSelection();
+  }
+
+  applyFilter(): void {
+    this.dataSource.filter = 'apply';
+  }
+
+  toggleAll(checked: boolean): void {
+    this.dataSource.data.forEach((participant) => {
+      if (!participant.completedAt && this.applyEmailTypeFilter(participant)) {
+        participant.selected = checked;
+      }
+    });
+    this.updateSelection();
+  }
+
+  updateSelection(): void {
+    this.selectedParticipants = this.dataSource.data.filter(
+      (p) => p.selected && this.applyEmailTypeFilter(p) && !p.completedAt
+    );
+  }
+
+  allSelected(): boolean {
+    const eligibleParticipants = this.dataSource.data.filter(
+      (p) => this.applyEmailTypeFilter(p) && !p.completedAt
+    );
+    return (
+      eligibleParticipants.length > 0 &&
+      eligibleParticipants.every((p) => p.selected)
+    );
+  }
+
+  someSelected(): boolean {
+    const eligibleParticipants = this.dataSource.data.filter(
+      (p) => this.applyEmailTypeFilter(p) && !p.completedAt
+    );
+    return eligibleParticipants.some((p) => p.selected) && !this.allSelected();
+  }
+
+  async resendLinks(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const selectedTemplateId = this.templateFormControl.value;
+      const selectedAssessmentId = this.assessmentFormControl.value;
+      if (!selectedTemplateId) {
+        this.snackBar.open(
+          'Por favor, selecione um template antes de enviar.',
+          'Fechar',
+          { duration: 3000 }
+        );
+        this.isLoading = false;
+        return;
+      }
+
+      if (!selectedAssessmentId) {
+        this.snackBar.open(
+          'Por favor, selecione uma avaliação antes de enviar.',
+          'Fechar',
+          { duration: 3000 }
+        );
+        this.isLoading = false;
+        return;
+      }
+
+      const template = this.mailTemplates.find(
+        (t) => t.id === selectedTemplateId
+      );
+      if (!template) {
+        this.snackBar.open('Template selecionado não encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+        this.isLoading = false;
+        return;
+      }
+
+      const templateRef = doc(
+        this.firestore,
+        'mailTemplates',
+        selectedTemplateId
+      );
+      const templateDoc = await getDoc(templateRef);
+      if (!templateDoc.exists()) {
+        throw new Error('Template não encontrado.');
+      }
+
+      let templateContent = templateDoc.data()['content'] || '';
+      const originalContent = templateContent;
+
+      let contentObj;
+      try {
+        contentObj = JSON.parse(templateContent);
+      } catch (error) {
+        throw new Error('Erro ao parsear o conteúdo do template: ' + error);
+      }
+
+      let projectIdForDeadline = this.filterProject;
+      if (!projectIdForDeadline && this.selectedParticipants.length > 0) {
+        projectIdForDeadline = this.selectedParticipants[0].projectId;
+      }
+
+      let projectDeadline: Date | undefined;
+      if (projectIdForDeadline) {
+        const projectRef = doc(
+          this.firestore,
+          'projects',
+          projectIdForDeadline
+        );
+        const projectDoc = await getDoc(projectRef);
+        if (projectDoc.exists()) {
+          if (projectDoc.data()['deadline'] instanceof Timestamp) {
+            projectDeadline = projectDoc.data()['deadline'].toDate();
+          } else if (projectDoc.data()['deadline'] instanceof Date) {
+            projectDeadline = projectDoc.data()['deadline'];
+          }
+        }
+      }
+      const formattedDeadline = this.formatDate(projectDeadline);
+
+      contentObj = this.replaceDeadlineInContent(contentObj, formattedDeadline);
+      const updatedContent = JSON.stringify(contentObj);
+
+      await updateDoc(templateRef, { content: updatedContent });
+
+      for (const participant of this.selectedParticipants) {
+        const emailRequest = {
+          email: participant.email,
+          templateId: template.id,
+          participantId: participant.id,
+          assessmentId: selectedAssessmentId,
+        };
+
+        const response = await fetch(
+          'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emailRequest),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Erro ao enviar e-mail para ${
+              participant.email
+            }: ${await response.text()}`
+          );
+        }
+
+        const assessmentLinkQuery = query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('participantId', '==', participant.id),
+          where('assessmentId', '==', selectedAssessmentId)
+        );
+        const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
+
+        if (existingLinksSnapshot.empty) {
+          const assessmentLinkDoc = doc(
+            collection(this.firestore, 'assessmentLinks')
+          );
+          await setDoc(assessmentLinkDoc, {
+            assessmentId: selectedAssessmentId,
+            participantId: participant.id,
+            sentAt: new Date(),
+            status: 'pending',
+            emailTemplate: template.id,
+            participantEmail: participant.email,
+          });
+        } else {
+          const existingLinkDoc = existingLinksSnapshot.docs[0];
+          await updateDoc(
+            doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
+            {
+              sentAt: new Date(),
+              emailTemplate: template.id,
+              status:
+                existingLinkDoc.data()['status'] === 'completed'
+                  ? 'completed'
+                  : 'pending',
+            }
+          );
+        }
+      }
+
+      await updateDoc(templateRef, { content: originalContent });
+
+      this.snackBar.open(
+        `Links enviados para ${this.selectedParticipants.length} participantes!`,
+        'Fechar',
+        { duration: 3000 }
+      );
+    } catch (error) {
+      console.error('Erro ao enviar links:', error);
+      this.snackBar.open('Erro ao enviar links.', 'Fechar', {
+        duration: 3000,
+      });
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  private replaceDeadlineInContent(
+    contentObj: any,
+    formattedDeadline: string
+  ): any {
+    if (contentObj.body && contentObj.body.rows) {
+      contentObj.body.rows.forEach((row: any) => {
+        if (row.columns) {
+          row.columns.forEach((column: any) => {
+            if (column.contents) {
+              column.contents.forEach((content: any) => {
+                if (content.values && content.values.text) {
+                  content.values.text = content.values.text.replace(
+                    /\*\$\%DATA DE EXPIRAÇÃO DO PROJETO\$\%/g,
+                    formattedDeadline
+                  );
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+    return contentObj;
+  }
+
+  formatDate(date: Date | undefined): string {
+    if (!date) return 'Não definida';
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+
+  downloadTemplate(): void {
+    const link = document.createElement('a');
+    link.href = 'assets/templates/Modelo_Avaliacao_360.xlsx';
+    link.download = 'Modelo_Avaliacao_360.xlsx';
+    link.click();
   }
 
   async uploadExcel(event: any): Promise<void> {
+    if (!this.filterClient || !this.filterProject) {
+      this.snackBar.open(
+        'Por favor, selecione um cliente e um projeto antes de fazer o upload.',
+        'Fechar',
+        { duration: 3000 }
+      );
+      return;
+    }
+
     const file = event.target.files[0];
     if (!file) return;
 
@@ -822,11 +1098,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         }
 
         const category = row[3]?.toString().trim() || '';
-        const type = ['Gestor', 'Par', 'Subordinado', 'Outros'].includes(
-          category
-        )
-          ? 'avaliador'
-          : 'avaliado';
+        const type = category === 'Avaliado' ? 'avaliado' : 'avaliador';
 
         participants.push({
           name: row[1]?.toString().trim() || '',
@@ -849,10 +1121,16 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           width: '800px',
           data: {
             participants,
-            clients: this.clients,
-            loadProjects: (clientId: string) => this.loadProjects(clientId),
+            clientId: this.filterClient,
+            clientName:
+              this.clients.find((c) => c.id === this.filterClient)?.name ||
+              'Cliente Desconhecido',
+            projectId: this.filterProject,
+            projectName:
+              this.projects.find((p) => p.id === this.filterProject)?.name ||
+              'Projeto Desconhecido',
             loadEvaluation: (projectId: string) =>
-              this.loadEvaluation(projectId), // Nova função
+              this.loadEvaluation(projectId),
           },
         }
       );
@@ -869,7 +1147,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
                   ...participant,
                   clientId: result.client,
                   projectId: result.project,
-                  assessments: result.evaluation ? [result.evaluation] : [], // Usa a avaliação associada ao projeto
+                  assessments: result.evaluation ? [result.evaluation] : [],
                   createdAt: new Date(),
                 }
               );
@@ -884,12 +1162,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             }
           }
 
-          this.updateTable(savedParticipants);
-          await this.updateEvaluateesTable();
-
           this.snackBar.open('Upload e salvamento concluídos!', 'Fechar', {
             duration: 3000,
           });
+          this.loadParticipants();
         }
       });
     };
@@ -903,7 +1179,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     if (!projectId) return null;
 
     try {
-      // Buscar o projeto para obter o assessmentId
       const projectDoc = doc(this.firestore, 'projects', projectId);
       const projectSnapshot = await getDoc(projectDoc);
       if (!projectSnapshot.exists()) {
@@ -917,14 +1192,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         this.snackBar.open(
           'Nenhuma avaliação associada a este projeto.',
           'Fechar',
-          {
-            duration: 3000,
-          }
+          { duration: 3000 }
         );
         return null;
       }
 
-      // Buscar a avaliação associada
       const assessmentDoc = doc(this.firestore, 'assessments', assessmentId);
       const assessmentSnapshot = await getDoc(assessmentDoc);
       if (!assessmentSnapshot.exists()) {
@@ -945,192 +1217,39 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  async updateEvaluateesTable(): Promise<void> {
-    try {
-      const evaluateesQuery = query(
-        collection(this.firestore, 'participants'),
-        where('type', '==', 'avaliado')
-      );
-      const evaluatorsQuery = query(
-        collection(this.firestore, 'participants'),
-        where('type', '==', 'avaliador')
-      );
-      const evaluateesSnapshot = await getDocs(evaluateesQuery);
-      const evaluatorsSnapshot = await getDocs(evaluatorsQuery);
+  openAddParticipantModal(): void {
+    const dialogRef = this.dialog.open(AddParticipantModalComponent, {
+      width: '500px',
+      data: {
+        projectId: this.filterProject,
+      },
+    });
 
-      const allEvaluators = evaluatorsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      const evaluatees = evaluateesSnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          evaluators: [],
-        } as any;
-      });
-
-      for (const evaluatee of evaluatees) {
-        const assessments = evaluatee.assessments ?? [];
-        const evaluatorsForThisEvaluatee = allEvaluators
-          .filter((evaluator: any) =>
-            (evaluator.assessments ?? []).some((assessment: string) =>
-              assessments.includes(assessment)
-            )
-          )
-          .map((e) => e.id);
-
-        evaluatee.evaluators = evaluatorsForThisEvaluatee;
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.loadParticipants();
       }
-
-      this.evaluateesDataSource.data = evaluatees;
-      this.evaluateesDataSource._updateChangeSubscription();
-    } catch (error) {
-      console.error('Erro ao atualizar tabela de avaliados:', error);
-    }
-  }
-
-  openEvaluatorsModal(evaluatee: Evaluatee): void {
-    const evaluators = this.availableEvaluators
-      .filter((evaluator: any) =>
-        (evaluatee.evaluators ?? []).includes(evaluator.id)
-      )
-      .map((evaluator: any) => ({
-        name: evaluator.name,
-        email: evaluator.email || 'Sem e-mail',
-        category: evaluator.category || 'Não informado',
-      }));
-
-    this.dialog.open(EvaluatorsModalComponent, {
-      width: '600px',
-      data: { evaluatee, evaluators },
     });
   }
 
-  async loadEvaluations(
-    clientId: string
-  ): Promise<{ id: string; name: string }[]> {
-    if (!clientId) return [];
-
-    try {
-      const assessmentsCollection = collection(this.firestore, 'assessments');
-      const snapshot = await getDocs(assessmentsCollection);
-
-      return snapshot.docs
-        .filter((doc) => doc.data()['clientId'] === clientId)
-        .map((doc) => ({
-          id: doc.id,
-          name: doc.data()['name'] || 'Avaliação Sem Nome',
-        }));
-    } catch (error) {
-      console.error('Erro ao carregar avaliações:', error);
-      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
-        duration: 3000,
-      });
-      return [];
-    }
-  }
-
-  updateTable(newParticipants: any[]): void {
-    if (!newParticipants || newParticipants.length === 0) return;
-
-    const evaluators = newParticipants.filter((p) => p.type === 'avaliador');
-    const evaluatees = newParticipants.filter((p) => p.type === 'avaliado');
-
-    if (evaluators.length > 0) {
-      this.evaluatorsDataSource.data = [
-        ...this.evaluatorsDataSource.data,
-        ...evaluators.map((p) => ({ ...p, selected: false })),
-      ];
-      this.evaluatorsDataSource._updateChangeSubscription();
-    }
-
-    if (evaluatees.length > 0) {
-      evaluatees.forEach((evaluatee) => {
-        const evaluatorsEmails = evaluatee.evaluators || [];
-        evaluatee.evaluators = this.availableEvaluators
-          .filter((ev: any) => evaluatorsEmails.includes(ev.email))
-          .map((ev) => ev.name);
-      });
-
-      this.evaluateesDataSource.data = [
-        ...this.evaluateesDataSource.data,
-        ...evaluatees.map((p) => ({ ...p, selected: false })),
-      ];
-      this.evaluateesDataSource._updateChangeSubscription();
-    }
-  }
-
-  downloadTemplate(): void {
-    const link = document.createElement('a');
-    link.href = 'assets/templates/Modelo_Avaliacao_360.xlsx';
-    link.download = 'Modelo_Avaliacao_360.xlsx';
-    link.click();
-  }
-
-  async deleteEvaluator(evaluator: Evaluator): Promise<void> {
-    try {
-      const evaluatorsCollection = collection(this.firestore, 'participants');
-      const snapshot = await getDocs(evaluatorsCollection);
-
-      const docToDelete = snapshot.docs.find(
-        (doc) => doc.data()['email'] === evaluator.email
-      );
-
-      if (docToDelete) {
-        await deleteDoc(docToDelete.ref);
-        this.snackBar.open('Avaliador excluído com sucesso!', 'Fechar', {
-          duration: 3000,
-        });
-
-        this.evaluatorsDataSource.data = this.evaluatorsDataSource.data.filter(
-          (e) => e.email !== evaluator.email
-        );
-        this.evaluatorsDataSource._updateChangeSubscription();
-      } else {
-        this.snackBar.open('Avaliador não encontrado.', 'Fechar', {
-          duration: 3000,
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao excluir avaliador:', error);
-      this.snackBar.open('Erro ao excluir avaliador.', 'Fechar', {
-        duration: 3000,
-      });
-    }
-  }
-
-  async deleteEvaluatee(evaluatee: Evaluatee): Promise<void> {
-    try {
-      const evaluateesCollection = collection(this.firestore, 'participants');
-      const snapshot = await getDocs(evaluateesCollection);
-
-      const docToDelete = snapshot.docs.find(
-        (doc) => doc.data()['email'] === evaluatee.email
-      );
-
-      if (docToDelete) {
-        await deleteDoc(docToDelete.ref);
-        this.snackBar.open('Avaliado excluído com sucesso!', 'Fechar', {
-          duration: 3000,
-        });
-
-        this.evaluateesDataSource.data = this.evaluateesDataSource.data.filter(
-          (e) => e.email !== evaluatee.email
-        );
-        this.evaluateesDataSource._updateChangeSubscription();
-      } else {
-        this.snackBar.open('Avaliado não encontrado.', 'Fechar', {
-          duration: 3000,
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao excluir avaliado:', error);
-      this.snackBar.open('Erro ao excluir avaliado.', 'Fechar', {
-        duration: 3000,
-      });
+  getFriendlyEmailType(emailType: string): string {
+    switch (emailType) {
+      case 'conviteAvaliador':
+        return 'Convite Avaliador';
+      case 'conviteRespondente':
+        return 'Convite Avaliado';
+      case 'lembreteAvaliador':
+        return 'Lembrete Avaliador';
+      case 'lembreteRespondente':
+        return 'Lembrete Avaliado';
+      case 'lembrete':
+        return 'Lembrete Avaliado';
+      case 'convite':
+        return 'Convite Avaliado';
+      case 'cadastro':
+        return 'Cadastro';
+      default:
+        return emailType || 'Tipo Desconhecido';
     }
   }
 }

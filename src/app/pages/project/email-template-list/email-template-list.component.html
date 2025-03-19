@@ -11,6 +11,15 @@
   <mat-card>
     <mat-card-title style="margin-bottom: 10px">{{ title }}</mat-card-title>
     <mat-card-content>
+      <div
+        class="mt-3 text-end"
+        style="margin-top: 10px; margin-bottom: 10px; text-align: end"
+      >
+        <button mat-flat-button color="primary" (click)="createTemplate()">
+          Adicionar Modelo de E-mail
+        </button>
+      </div>
+
       <!-- Filtros -->
       <div class="row my-3">
         <!-- Filtro de Tipo de Notificação -->
@@ -106,6 +115,7 @@
             <button
               mat-icon-button
               color="primary"
+              *ngIf="clientId"
               matTooltip="Enviar E-mail"
               (click)="
                 openEmailSelectionModal(
@@ -145,9 +155,9 @@
       ></mat-paginator>
 
       <!-- Botão para criar novo template -->
-      <button mat-flat-button color="primary" (click)="createTemplate()">
-        Novo Template
-      </button>
+      <!-- <button mat-flat-button color="primary" (click)="createTemplate()">
+        Adicionar Modelo de E-mail
+      </button> -->
     </mat-card-content>
   </mat-card>
 </div>

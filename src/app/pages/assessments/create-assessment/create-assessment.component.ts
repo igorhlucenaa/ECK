@@ -5,7 +5,7 @@ import {
   Validators,
   ReactiveFormsModule,
 } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import {
   Firestore,
@@ -57,7 +57,8 @@ export class CreateAssessmentComponent implements OnInit {
     private authService: AuthService,
     private snackBar: MatSnackBar,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private location: Location
   ) {
     // Inicializa o formulário de metadados (Título, Cliente, Descrição)
     this.form = this.fb.group({
@@ -250,5 +251,10 @@ export class CreateAssessmentComponent implements OnInit {
     const clientId = event.value;
     this.form.get('clientId')?.setValue(clientId);
     console.log('Client changed, form status:', this.form.status); // Depuração
+  }
+
+
+  goBack(): void {
+    this.location.back();
   }
 }

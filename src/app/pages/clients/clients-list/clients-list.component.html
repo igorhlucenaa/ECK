@@ -1,22 +1,36 @@
-<h1>Lista de Clientes</h1>
-<mat-card class="client-list-container">
+<div class="container my-4">
+  <h1>Lista de Clientes</h1>
   <!-- Campo de Busca -->
-  <mat-form-field appearance="outline" class="search-field">
-    <mat-label>Buscar</mat-label>
-    <input
-      matInput
-      (keyup)="applyFilter($event)"
-      placeholder="Digite para buscar"
-    />
-    <button
-      mat-icon-button
-      matSuffix
-      *ngIf="searchValue"
-      (click)="searchValue = ''; applyFilter($event)"
-    >
-      <mat-icon>close</mat-icon>
-    </button>
-  </mat-form-field>
+
+  <div class="row">
+    <div class="col-12" style="text-align: end; margin-bottom: 10px">
+      <button mat-flat-button color="primary" (click)="openAddClientDialog()">
+        Adicionar Projeto
+      </button>
+    </div>
+    <div class="col-12">
+      <mat-form-field
+        appearance="outline"
+        class="search-field"
+        style="width: 100%"
+      >
+        <mat-label>Buscar</mat-label>
+        <input
+          matInput
+          (keyup)="applyFilter($event)"
+          placeholder="Digite para buscar"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          *ngIf="searchValue"
+          (click)="searchValue = ''; applyFilter($event)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+    </div>
+  </div>
 
   <!-- Tabela -->
   <table
@@ -51,7 +65,9 @@
 
     <!-- Coluna: Créditos -->
     <ng-container matColumnDef="credits">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Créditos Remanescentes</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>
+        Créditos Remanescentes
+      </th>
       <td mat-cell *matCellDef="let client">
         {{ client.credits }}
       </td>
@@ -86,9 +102,9 @@
     showFirstLastButtons
   >
   </mat-paginator>
-</mat-card>
 
-<!-- Botão flutuante: Adicionar -->
-<a mat-fab color="primary" (click)="openAddClientDialog()" class="add-button">
+  <!-- Botão flutuante: Adicionar -->
+  <!-- <a mat-fab color="primary" (click)="openAddClientDialog()" class="add-button">
   <mat-icon>add</mat-icon>
-</a>
+</a> -->
+</div>

@@ -24,6 +24,12 @@ export const navItems: NavItem[] = [
     role: ['admin_client'],
   },
   {
+    displayName: 'Participantes',
+    iconName: 'solar:user-id-bold-duotone',
+    route: '/assessments/participants', // Caminho correto para a página de clientes,
+    role: ['admin_client'],
+  },
+  {
     displayName: 'Definições',
     iconName: 'solar:document-add-bold-duotone',
     route: '',

@@ -264,8 +264,8 @@ export class SendAssessmentModalComponent implements OnInit {
         );
       }
     } catch (error) {
-      console.error('Erro ao carregar templates de e-mail:', error);
-      this.snackBar.open('Erro ao carregar templates de e-mail.', 'Fechar', {
+      console.error('Erro ao carregar Modelos de e-mail:', error);
+      this.snackBar.open('Erro ao carregar Modelos de e-mail.', 'Fechar', {
         duration: 3000,
       });
     }

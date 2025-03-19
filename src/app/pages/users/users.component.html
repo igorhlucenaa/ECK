@@ -4,7 +4,20 @@
       <!-- Tabela de Usuários -->
       <mat-card>
         <mat-card-title style="margin: 15px">Usuários</mat-card-title>
+
         <mat-card-content>
+          <div
+            class="mt-3 text-end"
+            style="margin-top: 10px; margin-bottom: 10px; text-align: end"
+          >
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="openCreateUserDialog()"
+            >
+              Adicionar Usuário
+            </button>
+          </div>
           <mat-form-field appearance="outline" class="w-100 mb-3">
             <mat-label>Buscar Usuário</mat-label>
             <input
@@ -157,14 +170,14 @@
             #userPaginator
           ></mat-paginator>
 
-          <button
+          <!-- <button
             mat-flat-button
             color="primary"
             (click)="openCreateUserDialog()"
           >
             <mat-icon>person_add</mat-icon>
             Novo Usuário
-          </button>
+          </button> -->
         </mat-card-content>
       </mat-card>
     </mat-tab>
@@ -174,6 +187,19 @@
       <mat-card class="mt-4">
         <mat-card-title style="margin: 15px">Grupos de Usuários</mat-card-title>
         <mat-card-content>
+          <div
+            class="mt-3 text-end"
+            style="margin-top: 10px; margin-bottom: 10px; text-align: end"
+          >
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="openCreateGroupDialog()"
+            >
+              Adicionar Grupo de Usuários
+            </button>
+          </div>
+
           <mat-form-field appearance="outline" class="w-100 mb-3">
             <mat-label>Buscar Grupo</mat-label>
             <input
@@ -253,7 +279,7 @@
             #groupPaginator
           ></mat-paginator>
 
-          <div class="row mb-3">
+          <!-- <div class="row mb-3">
             <div class="col-12 text-end">
               <button
                 mat-flat-button
@@ -261,10 +287,10 @@
                 (click)="openCreateGroupDialog()"
               >
                 <mat-icon>group_add</mat-icon>
-                Novo Grupo de Usuários
+                Adicionar Grupo de Usuários
               </button>
             </div>
-          </div>
+          </div> -->
         </mat-card-content>
       </mat-card>
     </mat-tab>
