@@ -12,8 +12,20 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 
+interface Client {
+  id: string;
+  name: string;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  clientId: string;
+}
+
 interface ModalData {
-  projectId: string;
+  clients: Client[];
+  projects: Project[];
 }
 
 @Component({
@@ -24,6 +36,51 @@ interface ModalData {
     <h2 mat-dialog-title>Adicionar Novo Participante</h2>
     <mat-dialog-content>
       <form [formGroup]="participantForm">
+        <!-- Cliente -->
+        <mat-form-field
+          class="w-100 mb-3"
+          appearance="outline"
+          style="margin-top: 15px"
+        >
+          <mat-label>Cliente</mat-label>
+          <mat-select
+            formControlName="clientId"
+            required
+            (selectionChange)="onClientChange()"
+          >
+            <mat-option *ngFor="let client of data.clients" [value]="client.id">
+              {{ client.name }}
+            </mat-option>
+          </mat-select>
+          <mat-error
+            *ngIf="participantForm.get('clientId')?.hasError('required')"
+          >
+            Cliente é obrigatório.
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Projeto -->
+        <mat-form-field class="w-100 mb-3" appearance="outline">
+          <mat-label>Projeto</mat-label>
+          <mat-select
+            formControlName="projectId"
+            required
+            [disabled]="!participantForm.get('clientId')?.value"
+          >
+            <mat-option
+              *ngFor="let project of filteredProjects"
+              [value]="project.id"
+            >
+              {{ project.name }}
+            </mat-option>
+          </mat-select>
+          <mat-error
+            *ngIf="participantForm.get('projectId')?.hasError('required')"
+          >
+            Projeto é obrigatório.
+          </mat-error>
+        </mat-form-field>
+
         <!-- Nome -->
         <mat-form-field class="w-100 mb-3" appearance="outline">
           <mat-label>Nome</mat-label>
@@ -85,6 +142,7 @@ interface ModalData {
 export class AddParticipantModalComponent {
   participantForm: FormGroup;
   isSaving: boolean = false;
+  filteredProjects: Project[] = [];
 
   constructor(
     public dialogRef: MatDialogRef<AddParticipantModalComponent>,
@@ -94,10 +152,25 @@ export class AddParticipantModalComponent {
     private snackBar: MatSnackBar
   ) {
     this.participantForm = this.fb.group({
+      clientId: ['', Validators.required],
+      projectId: ['', Validators.required],
       name: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       category: ['', Validators.required],
     });
+  }
+
+  onClientChange(): void {
+    const clientId = this.participantForm.get('clientId')?.value;
+    if (clientId) {
+      this.filteredProjects = this.data.projects.filter(
+        (project) => project.clientId === clientId
+      );
+      this.participantForm.get('projectId')?.setValue(''); // Reseta o projeto ao mudar o cliente
+    } else {
+      this.filteredProjects = [];
+      this.participantForm.get('projectId')?.setValue('');
+    }
   }
 
   onCategoryChange(): void {
@@ -116,7 +189,8 @@ export class AddParticipantModalComponent {
       const participantData = {
         name: formValue.name,
         email: formValue.email,
-        projectId: this.data.projectId,
+        clientId: formValue.clientId,
+        projectId: formValue.projectId,
         type: type,
         category: category,
         createdAt: new Date(),

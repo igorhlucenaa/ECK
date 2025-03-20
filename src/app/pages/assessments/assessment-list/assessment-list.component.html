@@ -65,7 +65,9 @@
 
       <!-- Nome -->
       <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>
+          Nome do Formulário
+        </th>
         <td mat-cell *matCellDef="let assessment">{{ assessment.name }}</td>
       </ng-container>
 
@@ -89,17 +91,9 @@
 
       <!-- Respondidas -->
       <ng-container matColumnDef="responses">
-        <th mat-header-cell *matHeaderCellDef>Respondidas</th>
-        <td mat-cell *matCellDef="let assessment">
-          <button
-            mat-icon-button
-            color="primary"
-            matTooltip="Ver participantes que responderam"
-            (click)="showRespondedParticipants(assessment.id)"
-          >
-            <mat-icon>people</mat-icon>
-            {{ assessment.responsesCount || 0 }}
-          </button>
+        <th mat-header-cell *matHeaderCellDef>Respondidos</th>
+        <td mat-cell *matCellDef="let assessment" style="text-aling:center">
+          <strong>{{ assessment.responsesCount || 0 }}</strong>
         </td>
       </ng-container>
 

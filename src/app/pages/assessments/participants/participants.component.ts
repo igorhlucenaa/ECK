@@ -89,7 +89,7 @@ interface Assessment {
           </button>
 
           <!-- Botão Upload -->
-          <button mat-raised-button color="accent">
+          <button mat-raised-button color="accent" style="margin-right: 10px">
             <label for="uploadExcel" class="btn btn-secondary">
               <mat-icon>upload_file</mat-icon> Carregar Arquivo Excel
             </label>
@@ -101,112 +101,19 @@ interface Assessment {
               (change)="uploadExcel($event)"
             />
           </button>
-        </div>
-
-        <!-- Botão Adicionar Novo Participante -->
-        <button
-          mat-flat-button
-          color="primary"
-          (click)="openAddParticipantModal()"
-          [disabled]="!filterProject"
-        >
-          Adicionar Novo Participante
-        </button>
-      </div>
-
-      <!-- Filtros -->
-      <div class="row mb-3" style="margin-top: 40px">
-        <!-- Filtro por Cliente -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Cliente</mat-label>
-            <mat-select
-              [(ngModel)]="filterClient"
-              (ngModelChange)="onClientChange()"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option *ngFor="let client of clients" [value]="client.id">
-                {{ client.name }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Filtro por Projeto -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Projeto</mat-label>
-            <mat-select
-              [(ngModel)]="filterProject"
-              (ngModelChange)="onProjectChange()"
-              [disabled]="!filterClient"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option
-                *ngFor="let project of filteredProjects"
-                [value]="project.id"
-              >
-                {{ project.name }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Filtro por Tipo -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Tipo</mat-label>
-            <mat-select
-              [(ngModel)]="filterType"
-              (ngModelChange)="applyFilter()"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="avaliado">Avaliado</mat-option>
-              <mat-option value="avaliador">Avaliador</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Filtro por Categoria -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Categoria</mat-label>
-            <mat-select
-              [(ngModel)]="filterCategory"
-              (ngModelChange)="applyFilter()"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="Avaliado">Avaliado</mat-option>
-              <mat-option value="Gestor">Gestor</mat-option>
-              <mat-option value="Par">Par</mat-option>
-              <mat-option value="Subordinado">Subordinado</mat-option>
-              <mat-option value="Outros">Outros</mat-option>
-            </mat-select>
-          </mat-form-field>
+          <!-- Botão Adicionar Novo Participante -->
+          <button
+            mat-flat-button
+            color="primary"
+            (click)="openAddParticipantModal()"
+          >
+            Adicionar Novo Participante
+          </button>
         </div>
       </div>
 
-      <div class="row mb-3">
-        <!-- Filtro por Status -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Status</mat-label>
-            <mat-select
-              [(ngModel)]="filterStatus"
-              (ngModelChange)="applyFilter()"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="Não Enviado">Não Enviado</mat-option>
-              <mat-option value="Enviado (Pendente)"
-                >Enviado (Pendente)</mat-option
-              >
-              <mat-option value="Respondido">Respondido</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Campo de Pesquisa -->
-        <div class="col-md-3">
+      <div class="row mb-4" style="margin-top: 40px">
+        <div class="col-md-12">
           <mat-form-field class="w-100" appearance="outline">
             <mat-label>Buscar por Nome ou E-mail</mat-label>
             <input
@@ -224,11 +131,46 @@ interface Assessment {
             </button>
           </mat-form-field>
         </div>
+        <!-- Filtro por Cliente -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Selecione o Cliente</mat-label>
+            <mat-select
+              [(ngModel)]="filterClient"
+              (ngModelChange)="onClientChange()"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option *ngFor="let client of clients" [value]="client.id">
+                {{ client.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Filtro por Projeto -->
+        <div class="col-md-3">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Selecione o Projeto</mat-label>
+            <mat-select
+              [(ngModel)]="filterProject"
+              (ngModelChange)="onProjectChange()"
+              [disabled]="!filterClient"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option
+                *ngFor="let project of filteredProjects"
+                [value]="project.id"
+              >
+                {{ project.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
 
         <!-- Campo de Seleção de Template -->
         <div class="col-md-3">
           <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Escolha um Template de E-mail</mat-label>
+            <mat-label>Selecione um Template de E-mail</mat-label>
             <mat-select
               [formControl]="templateFormControl"
               required
@@ -251,7 +193,7 @@ interface Assessment {
         <!-- Campo de Seleção de Avaliação -->
         <div class="col-md-3">
           <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Escolha uma Avaliação</mat-label>
+            <mat-label>Selecione um Formulário de Avaliação</mat-label>
             <mat-select [formControl]="assessmentFormControl" required>
               <mat-option
                 *ngFor="let assessment of assessments"
@@ -263,6 +205,63 @@ interface Assessment {
             <mat-error *ngIf="assessmentFormControl.hasError('required')">
               Por favor, selecione uma avaliação.
             </mat-error>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <hr style="border: 1px solid #ccc; margin-bottom:40px" />
+
+      <!-- Filtros -->
+      <div class="row mb-4" style="margin-top: 40px">
+        <!-- Campo de Pesquisa -->
+
+        <!-- Filtro por Tipo -->
+        <div class="col-md-4">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Filtrar por Tipo</mat-label>
+            <mat-select
+              [(ngModel)]="filterType"
+              (ngModelChange)="applyFilter()"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="avaliado">Avaliado</mat-option>
+              <mat-option value="avaliador">Avaliador</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Filtro por Categoria -->
+        <div class="col-md-4">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Filtrar por Categoria</mat-label>
+            <mat-select
+              [(ngModel)]="filterCategory"
+              (ngModelChange)="applyFilter()"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="Avaliado">Avaliado</mat-option>
+              <mat-option value="Gestor">Gestor</mat-option>
+              <mat-option value="Par">Par</mat-option>
+              <mat-option value="Subordinado">Subordinado</mat-option>
+              <mat-option value="Outros">Outros</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="col-md-4">
+          <mat-form-field class="w-100" appearance="outline">
+            <mat-label>Filtrar por Status</mat-label>
+            <mat-select
+              [(ngModel)]="filterStatus"
+              (ngModelChange)="applyFilter()"
+            >
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="Não Enviado">Não Enviado</mat-option>
+              <mat-option value="Enviado (Pendente)"
+                >Enviado (Pendente)</mat-option
+              >
+              <mat-option value="Respondido">Respondido</mat-option>
+            </mat-select>
           </mat-form-field>
         </div>
       </div>
@@ -419,12 +418,12 @@ interface Assessment {
 export class ParticipantsComponent implements OnInit {
   displayedColumns: string[] = [
     'select',
+    'clientName',
+    'projectName',
     'name',
     'email',
     'type',
     'category',
-    'projectName',
-    'clientName',
     'status',
     'sentAt',
     'completedAt',
@@ -569,14 +568,12 @@ export class ParticipantsComponent implements OnInit {
         return;
       }
 
-      // Coleta todos os projectIds dos participantes
       const projectIds = new Set<string>();
       participantsSnapshot.docs.forEach((doc) => {
         const data = doc.data();
         if (data['projectId']) projectIds.add(data['projectId']);
       });
 
-      // Carrega os projetos e mapeia projectId para clientId e projectName
       const projectsMap: { [key: string]: { name: string; clientId: string } } =
         {};
       if (projectIds.size > 0) {
@@ -597,7 +594,6 @@ export class ParticipantsComponent implements OnInit {
         await Promise.all(projectsPromises);
       }
 
-      // Coleta todos os clientIds (dos projetos e dos participantes que já têm clientId)
       const clientIds = new Set<string>();
       participantsSnapshot.docs.forEach((doc) => {
         const data = doc.data();
@@ -607,7 +603,6 @@ export class ParticipantsComponent implements OnInit {
         if (project.clientId) clientIds.add(project.clientId);
       });
 
-      // Carrega os nomes dos clientes
       const clientsMap: { [key: string]: string } = {};
       if (clientIds.size > 0) {
         const clientsPromises = Array.from(clientIds).map(async (clientId) => {
@@ -630,7 +625,6 @@ export class ParticipantsComponent implements OnInit {
         const projectId = participantData['projectId'] || '';
         let clientId = participantData['clientId'] || '';
 
-        // Se o participante não tiver clientId, mas tiver projectId, busca o clientId do projeto
         if (!clientId && projectId && projectsMap[projectId]) {
           clientId = projectsMap[projectId].clientId;
         }
@@ -667,7 +661,6 @@ export class ParticipantsComponent implements OnInit {
           status = type === 'avaliado' ? 'Não Enviado' : 'N/A';
         }
 
-        // Só adiciona o participante se conseguirmos determinar o clientId
         if (clientId) {
           participants.push({
             id: participantId,
@@ -1221,7 +1214,8 @@ export class ParticipantsComponent implements OnInit {
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
       width: '500px',
       data: {
-        projectId: this.filterProject,
+        clients: this.clients, // Passa a lista de clientes
+        projects: this.projects, // Passa a lista de projetos
       },
     });
 

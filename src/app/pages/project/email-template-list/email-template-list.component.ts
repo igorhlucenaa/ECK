@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   Firestore,
@@ -12,7 +12,7 @@ import {
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatPaginator } from '@angular/material/paginator';
-import { MatSort } from '@angular/material/sort';
+import { MatSort, Sort } from '@angular/material/sort'; // Importe Sort
 import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
@@ -27,7 +27,7 @@ import { EmailSelectionDialogComponent } from '../projects-list/email-selection-
   templateUrl: './email-template-list.component.html',
   styleUrls: ['./email-template-list.component.scss'],
 })
-export class EmailTemplateListComponent implements OnInit {
+export class EmailTemplateListComponent implements OnInit, AfterViewInit {
   displayedColumns: string[] = [
     'client',
     'name',
@@ -36,16 +36,16 @@ export class EmailTemplateListComponent implements OnInit {
     'actions',
   ];
   dataSource = new MatTableDataSource<any>();
-  clientId: string | null = null; // Mantido como string | null
+  clientId: string | null = null;
   title = 'Modelos de E-mail';
-  emailTypeFilter: string = ''; // Filtro de tipo de notificação
-  searchQuery: string = ''; // Filtro de busca
-  allTemplates: any[] = []; // Armazena todos os templates carregados
-  userRole: string = ''; // Papel do usuário logado
-  userClientId: string | null = null; // ID do cliente logado
+  emailTypeFilter: string = '';
+  searchQuery: string = '';
+  allTemplates: any[] = [];
+  userRole: string = '';
+  userClientId: string | null = null;
 
-  clients: any[] = []; // Lista de clientes para o filtro
-  clientFilter: string = ''; // Filtro por cliente
+  clients: any[] = [];
+  clientFilter: string = '';
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -79,6 +79,45 @@ export class EmailTemplateListComponent implements OnInit {
     await this.loadTemplates();
   }
 
+  ngAfterViewInit(): void {
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
+
+    // Configuração de ordenação personalizada
+    this.dataSource.sortData = (data: any[], sort: MatSort): any[] => {
+      const active = sort.active; // Coluna ativa para ordenação
+      const direction = sort.direction; // Direção (asc ou desc)
+
+      if (!active || direction === '') {
+        return data; // Sem ordenação
+      }
+
+      return data.sort((a, b) => {
+        const valueA = a[active];
+        const valueB = b[active];
+
+        // Tratamento especial para a coluna 'client' (clientName)
+        if (active === 'client') {
+          const clientA = a.clientName || ''; // Evita undefined
+          const clientB = b.clientName || '';
+          return (
+            clientA.localeCompare(clientB) * (direction === 'asc' ? 1 : -1)
+          );
+        }
+
+        // Ordenação padrão para outras colunas
+        if (typeof valueA === 'string' && typeof valueB === 'string') {
+          return valueA.localeCompare(valueB) * (direction === 'asc' ? 1 : -1);
+        } else {
+          return (
+            (valueA < valueB ? -1 : valueA > valueB ? 1 : 0) *
+            (direction === 'asc' ? 1 : -1)
+          );
+        }
+      });
+    };
+  }
+
   private async loadClients(): Promise<void> {
     try {
       const clientsCollection = collection(this.firestore, 'clients');
@@ -99,17 +138,15 @@ export class EmailTemplateListComponent implements OnInit {
 
       if (this.userRole === 'admin_master') {
         if (this.clientId) {
-          // Para admin_master, exibir apenas templates padrão ou do clientId da rota
           queryConstraint = query(
             templatesCollection,
             where('clientId', 'in', [this.clientId, ''])
           );
         } else {
-          queryConstraint = query(templatesCollection); // Todos os templates se não houver clientId
+          queryConstraint = query(templatesCollection);
         }
       } else if (this.userRole === 'admin_client' && this.userClientId) {
         if (this.clientId) {
-          // Para admin_client, exibir apenas templates do clientId da rota ou padrões, se corresponder ao userClientId
           if (this.clientId === this.userClientId) {
             queryConstraint = query(
               templatesCollection,
@@ -119,13 +156,13 @@ export class EmailTemplateListComponent implements OnInit {
             queryConstraint = query(
               templatesCollection,
               where('clientId', '==', '')
-            ); // Apenas templates padrão se o clientId não corresponder
+            );
           }
         } else {
           queryConstraint = query(
             templatesCollection,
             where('clientId', '==', this.userClientId)
-          ); // Sem clientId na rota, usa o userClientId
+          );
         }
       } else {
         this.snackBar.open(
@@ -151,6 +188,7 @@ export class EmailTemplateListComponent implements OnInit {
         };
       });
 
+      this.dataSource.data = this.allTemplates;
       this.applyFilter();
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
@@ -200,12 +238,12 @@ export class EmailTemplateListComponent implements OnInit {
   }
 
   openEmailSelectionModal(
-    clientId: string | null, // Alterado para aceitar string | null
+    clientId: string | null,
     templateId: string,
     emailType: string
   ): void {
     if (!clientId && this.userClientId) {
-      clientId = this.userClientId; // Fallback para userClientId se clientId for null
+      clientId = this.userClientId;
     }
     if (clientId) {
       this.dialog.open(EmailSelectionDialogComponent, {

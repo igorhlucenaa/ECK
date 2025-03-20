@@ -143,7 +143,8 @@ export class EmailTemplateFormComponent implements OnInit {
         emailType === 'conviteAvaliador' ||
         emailType === 'conviteRespondente' ||
         emailType === 'lembreteAvaliador' ||
-        emailType === 'lembreteRespondente'
+        emailType === 'lembreteRespondente' ||
+        emailType === 'relatorioFinalizado' // Adicionado relatório finalizado
       ) {
         this.getDefaultTemplateWithLink(emailType).then((design) => {
           if (this.editorReady) {
@@ -158,7 +159,8 @@ export class EmailTemplateFormComponent implements OnInit {
         newValue === 'conviteAvaliador' ||
         newValue === 'conviteRespondente' ||
         newValue === 'lembreteAvaliador' ||
-        newValue === 'lembreteRespondente'
+        newValue === 'lembreteRespondente' ||
+        newValue === 'relatorioFinalizado' // Adicionado relatório finalizado
       ) {
         const design = await this.getDefaultTemplateWithLink(newValue);
         if (this.editorReady) {
@@ -209,6 +211,8 @@ export class EmailTemplateFormComponent implements OnInit {
       emailType === 'lembreteRespondente'
     ) {
       message = `<p>Este é um lembrete da sua avaliação.\n\n\n Não se esqueça de preenchê-la até <strong>*$%DATA DE EXPIRAÇÃO DO PROJETO$%*!</strong></p>`;
+    } else if (emailType === 'relatorioFinalizado') {
+      message = `<p>Seu relatório foi finalizado!\n\n\n Acesse o relatório clicando no link abaixo:</p>`;
     }
 
     return {
@@ -238,7 +242,11 @@ export class EmailTemplateFormComponent implements OnInit {
                       lineHeight: '140%',
                       hideDesktop: false,
                       text: `Olá, <strong>$%Nome do usuário preenchido dinâmicamente$%</strong>\n\n\n
-                      ${message}<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>`,
+                      ${message}<p><a href="${
+                        emailType === 'relatorioFinalizado'
+                          ? '[LINK_RELATORIO]'
+                          : '[LINK_AVALIACAO]'
+                      }">Clique aqui!</a></p>`,
                     },
                   },
                 ],
@@ -252,6 +260,12 @@ export class EmailTemplateFormComponent implements OnInit {
 
   addLinkToEmailEditor(): void {
     if (!this.emailEditor || !this.editorReady) return;
+
+    const emailType = this.form.get('emailType')?.value;
+    const linkPlaceholder =
+      emailType === 'relatorioFinalizado'
+        ? '<p><a href="[LINK_RELATORIO]">Clique aqui para acessar o relatório!</a></p>'
+        : '<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>';
 
     this.emailEditor.editor.exportHtml((data: any) => {
       if (
@@ -269,9 +283,11 @@ export class EmailTemplateFormComponent implements OnInit {
 
       let design = data.design;
 
-      const linkPlaceholder =
-        '<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>';
-      const linkExists = JSON.stringify(design).includes('[LINK_AVALIACAO]');
+      const linkIdentifier =
+        emailType === 'relatorioFinalizado'
+          ? '[LINK_RELATORIO]'
+          : '[LINK_AVALIACAO]';
+      const linkExists = JSON.stringify(design).includes(linkIdentifier);
 
       if (!linkExists) {
         design.body.rows.push({
@@ -281,7 +297,10 @@ export class EmailTemplateFormComponent implements OnInit {
                 {
                   type: 'text',
                   values: {
-                    text: 'Acesse sua avaliação aqui: ' + linkPlaceholder,
+                    text:
+                      emailType === 'relatorioFinalizado'
+                        ? 'Acesse seu relatório aqui: ' + linkPlaceholder
+                        : 'Acesse sua avaliação aqui: ' + linkPlaceholder,
                   },
                 },
               ],
@@ -307,7 +326,8 @@ export class EmailTemplateFormComponent implements OnInit {
         emailType === 'conviteAvaliador' ||
         emailType === 'conviteRespondente' ||
         emailType === 'lembreteAvaliador' ||
-        emailType === 'lembreteRespondente'
+        emailType === 'lembreteRespondente' ||
+        emailType === 'relatorioFinalizado' // Adicionado relatório finalizado
       ) {
         this.getDefaultTemplateWithLink(emailType).then((design) => {
           if (this.editorReady) {
@@ -320,6 +340,12 @@ export class EmailTemplateFormComponent implements OnInit {
 
   removeLinkFromEmailEditor(): void {
     if (!this.emailEditor || !this.editorReady) return;
+
+    const emailType = this.form.get('emailType')?.value;
+    const linkIdentifier =
+      emailType === 'relatorioFinalizado'
+        ? '[LINK_RELATORIO]'
+        : '[LINK_AVALIACAO]';
 
     this.emailEditor.editor.exportHtml((data: any) => {
       if (
@@ -338,7 +364,7 @@ export class EmailTemplateFormComponent implements OnInit {
       let design = data.design;
 
       design.body.rows = design.body.rows.filter((row: any) => {
-        return !JSON.stringify(row).includes('[LINK_AVALIACAO]');
+        return !JSON.stringify(row).includes(linkIdentifier);
       });
 
       this.emailEditor.editor.loadDesign(design);
@@ -415,16 +441,27 @@ export class EmailTemplateFormComponent implements OnInit {
     this.emailEditor.editor.exportHtml((data: any) => {
       let design = JSON.stringify(data.design);
 
+      const emailType = this.form.value.emailType;
+      const linkIdentifier =
+        emailType === 'relatorioFinalizado'
+          ? '[LINK_RELATORIO]'
+          : '[LINK_AVALIACAO]';
+
       if (
-        (this.form.value.emailType === 'conviteAvaliador' ||
-          this.form.value.emailType === 'conviteRespondente' ||
-          this.form.value.emailType === 'lembreteAvaliador' ||
-          this.form.value.emailType === 'lembreteRespondente') &&
-        !design.includes('[LINK_AVALIACAO]')
+        (emailType === 'conviteAvaliador' ||
+          emailType === 'conviteRespondente' ||
+          emailType === 'lembreteAvaliador' ||
+          emailType === 'lembreteRespondente' ||
+          emailType === 'relatorioFinalizado') &&
+        !design.includes(linkIdentifier)
       ) {
         design = design.replace(
           '</body>',
-          '<p>Acesse sua avaliação clicando aqui: <a href="[LINK_AVALIACAO]">[LINK_AVALIACAO]</a></p></body>'
+          `<p>Acesse ${
+            emailType === 'relatorioFinalizado'
+              ? 'seu relatório'
+              : 'sua avaliação'
+          } clicando aqui: <a href="${linkIdentifier}">${linkIdentifier}</a></p></body>`
         );
       }
 
