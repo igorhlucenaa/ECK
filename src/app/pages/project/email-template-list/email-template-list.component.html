@@ -1,3 +1,4 @@
+<!-- email-template-list.component.html -->
 <div class="container">
   <div class="row" style="margin-bottom: 10px" *ngIf="clientId">
     <div class="col-12">
@@ -118,10 +119,11 @@
               *ngIf="clientId"
               matTooltip="Enviar E-mail"
               (click)="
-                openEmailSelectionModal(
+                openParticipantSelectionModal(
                   clientId,
                   template.id,
-                  template.emailType
+                  template.emailType,
+                  projectId
                 )
               "
             >

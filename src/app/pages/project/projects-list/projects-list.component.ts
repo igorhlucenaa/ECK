@@ -308,8 +308,8 @@ export class ProjectsListComponent implements OnInit {
     this.router.navigate([`/projects/${projectId}/users`]);
   }
 
-  goToProjectTemplates(projectId: string): void {
-    this.router.navigate([`/projects/${projectId}/templates`]);
+  goToProjectTemplates(clientId: string, projectId: string): void {
+    this.router.navigate([`/projects/${clientId}/${projectId}/templates`]);
   }
 
   goToProjectQuestionnaires(projectId: string): void {

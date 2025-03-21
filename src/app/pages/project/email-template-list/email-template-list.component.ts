@@ -1,3 +1,4 @@
+// email-template-list.component.ts
 import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -12,13 +13,13 @@ import {
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatPaginator } from '@angular/material/paginator';
-import { MatSort, Sort } from '@angular/material/sort'; // Importe Sort
+import { MatSort } from '@angular/material/sort';
 import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
-import { EmailSelectionDialogComponent } from '../projects-list/email-selection-dialog/email-selection-dialog.component';
+import { ParticipantsComponent } from '../../assessments/participants/participants.component';
 
 @Component({
   selector: 'app-email-template-list',
@@ -37,6 +38,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
   ];
   dataSource = new MatTableDataSource<any>();
   clientId: string | null = null;
+  projectId: string | any = null;
   title = 'Modelos de E-mail';
   emailTypeFilter: string = '';
   searchQuery: string = '';
@@ -62,6 +64,8 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
 
   async ngOnInit(): Promise<void> {
     this.clientId = this.route.snapshot.paramMap.get('id');
+    this.projectId = this.route.snapshot.paramMap.get('idProject');
+    console.log(this.projectId);
 
     const user = await this.authService.getCurrentUser();
 
@@ -83,29 +87,26 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
 
-    // Configuração de ordenação personalizada
     this.dataSource.sortData = (data: any[], sort: MatSort): any[] => {
-      const active = sort.active; // Coluna ativa para ordenação
-      const direction = sort.direction; // Direção (asc ou desc)
+      const active = sort.active;
+      const direction = sort.direction;
 
       if (!active || direction === '') {
-        return data; // Sem ordenação
+        return data;
       }
 
       return data.sort((a, b) => {
         const valueA = a[active];
         const valueB = b[active];
 
-        // Tratamento especial para a coluna 'client' (clientName)
         if (active === 'client') {
-          const clientA = a.clientName || ''; // Evita undefined
+          const clientA = a.clientName || '';
           const clientB = b.clientName || '';
           return (
             clientA.localeCompare(clientB) * (direction === 'asc' ? 1 : -1)
           );
         }
 
-        // Ordenação padrão para outras colunas
         if (typeof valueA === 'string' && typeof valueB === 'string') {
           return valueA.localeCompare(valueB) * (direction === 'asc' ? 1 : -1);
         } else {
@@ -237,18 +238,19 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     this.applyFilter();
   }
 
-  openEmailSelectionModal(
+  openParticipantSelectionModal(
     clientId: string | null,
     templateId: string,
-    emailType: string
+    emailType: string,
+    projectId: string
   ): void {
     if (!clientId && this.userClientId) {
       clientId = this.userClientId;
     }
     if (clientId) {
-      this.dialog.open(EmailSelectionDialogComponent, {
+      this.dialog.open(ParticipantsComponent, {
         width: '75%',
-        data: { clientId, templateId, emailType },
+        data: { clientId, templateId, emailType, projectId },
       });
     } else {
       this.snackBar.open(

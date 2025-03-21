@@ -33,7 +33,7 @@ export class EmailSelectionDialogComponent implements OnInit {
   assessments: any[] = [];
   projects: any[] = [];
   dataSource = new MatTableDataSource<any>([]);
-  selectedParticipants = new Set<string>();
+  selectedParticipants = new Set<string>(); // Agora armazena identificadores únicos
   isLoading = signal(false);
   searchValue = signal('');
 
@@ -43,7 +43,7 @@ export class EmailSelectionDialogComponent implements OnInit {
     'email',
     'category',
     'status',
-    'deliveryStatus',
+    // 'deliveryStatus',
     'isLinkExpired',
     'linkValidityDate',
   ];
@@ -140,38 +140,105 @@ export class EmailSelectionDialogComponent implements OnInit {
     const snapshot = await getDocs(q);
     const currentDate = new Date('2025-02-20');
 
-    const participants = snapshot.docs.map((doc) => {
-      const data: any = doc.data();
-      const assessmentLink = this.selectedAssessmentId
-        ? data['assessmentLinks']?.find(
-            (link: any) => link.assessmentId === this.selectedAssessmentId
-          )
-        : null;
-      const isExpired = assessmentLink?.validityDate
-        ? new Date(assessmentLink.validityDate.seconds * 1000) < currentDate
-        : false;
-      const deliveryStatus = assessmentLink?.deliveryStatus || 'pending';
+    const participants = await Promise.all(
+      snapshot.docs.map(async (participantDoc) => {
+        const participantId = participantDoc.id;
+        const participantData: any = participantDoc.data();
+        const projectId = participantData['projectId'];
+        const assessments = participantData['assessments'] || [];
 
-      return {
-        id: doc.id,
-        name: data['name'],
-        email: data['email'],
-        category: data['category'] || 'outros',
-        status:
-          this.getAssessmentStatus(
-            data['assessments'],
-            this.selectedAssessmentId
-          ) || 'pending',
-        deliveryStatus: deliveryStatus,
-        isLinkExpired: isExpired,
-        linkValidityDate: assessmentLink?.validityDate
-          ? new Date(
-              assessmentLink.validityDate.seconds * 1000
-            ).toLocaleDateString()
-          : null,
-        selected: false,
-      };
-    });
+        let sentAt: Date | undefined;
+        let completedAt: Date | undefined;
+        let status: string = 'Não Enviado';
+        let deliveryStatus: string = 'pending';
+        let isLinkExpired: boolean = false;
+        let linkValidityDate: string | null = null;
+
+        // Buscar o deadline do projeto
+        let projectDeadline: Date | undefined;
+        if (projectId) {
+          const projectRef = doc(this.firestore, 'projects', projectId);
+          const projectDoc = await getDoc(projectRef);
+          if (projectDoc.exists()) {
+            const projectData = projectDoc.data();
+            if (projectData['deadline'] instanceof Timestamp) {
+              projectDeadline = projectData['deadline'].toDate();
+            } else if (projectData['deadline'] instanceof Date) {
+              projectDeadline = projectData['deadline'];
+            } else if (typeof projectData['deadline'] === 'string') {
+              projectDeadline = new Date(projectData['deadline']);
+            }
+
+            if (projectDeadline) {
+              isLinkExpired = projectDeadline < currentDate;
+              linkValidityDate = this.formatDate(projectDeadline);
+            }
+          }
+        }
+
+        // Se houver um assessmentId selecionado, buscar os assessmentLinks correspondentes
+        const selectedAssessmentId = this.selectedAssessmentId;
+        let assessmentIdsToQuery: string[] = [];
+
+        if (selectedAssessmentId) {
+          assessmentIdsToQuery = [selectedAssessmentId];
+        } else if (assessments.length > 0) {
+          assessmentIdsToQuery = assessments;
+        }
+
+        if (assessmentIdsToQuery.length > 0) {
+          const batchSize = 10;
+          for (let i = 0; i < assessmentIdsToQuery.length; i += batchSize) {
+            const batch = assessmentIdsToQuery.slice(i, i + batchSize);
+            const assessmentLinksQuery = query(
+              collection(this.firestore, 'assessmentLinks'),
+              where('participantId', '==', participantId),
+              where('assessmentId', 'in', batch)
+            );
+            const linksSnapshot = await getDocs(assessmentLinksQuery);
+
+            linksSnapshot.docs.forEach((linkDoc) => {
+              const linkData = linkDoc.data();
+              if (linkData['sentAt']) {
+                const linkSentAt = (linkData['sentAt'] as Timestamp).toDate();
+                if (!sentAt || linkSentAt > sentAt) {
+                  sentAt = linkSentAt;
+                }
+              }
+              if (
+                linkData['status'] === 'completed' &&
+                linkData['completedAt']
+              ) {
+                const linkCompletedAt = (
+                  linkData['completedAt'] as Timestamp
+                ).toDate();
+                if (!completedAt || linkCompletedAt > completedAt) {
+                  completedAt = linkCompletedAt;
+                }
+              }
+              if (linkData['deliveryStatus']) {
+                deliveryStatus = linkData['deliveryStatus'];
+              }
+            });
+          }
+
+          status = this.determineStatus(sentAt, completedAt);
+        }
+
+        return {
+          id: participantId,
+          name: participantData['name'] || 'Desconhecido',
+          email: participantData['email'] || 'Sem e-mail',
+          category: participantData['category'] || 'outros',
+          projectId: projectId, // Adicionando projectId ao objeto
+          status: status,
+          deliveryStatus: deliveryStatus,
+          isLinkExpired: isLinkExpired,
+          linkValidityDate: linkValidityDate,
+          selected: false,
+        };
+      })
+    );
 
     this.originalData = participants;
     this.dataSource.data = participants;
@@ -183,6 +250,59 @@ export class EmailSelectionDialogComponent implements OnInit {
       'selectedProjectId:',
       this.selectedProjectId
     );
+  }
+
+  // Função para gerar um identificador único para cada participante
+  getParticipantKey(participant: any): string {
+    return `${participant.email}|${participant.category}|${participant.projectId}`;
+  }
+
+  // Verificar se o participante está selecionado
+  isSelected(participant: any): boolean {
+    return this.selectedParticipants.has(this.getParticipantKey(participant));
+  }
+
+  determineStatus(sentAt?: Date, completedAt?: Date): string {
+    if (completedAt) {
+      console.log('Status: Respondido (completedAt presente)');
+      return 'Respondido';
+    }
+    if (sentAt) {
+      console.log('Status: Enviado (Pendente) (sentAt presente)');
+      return 'Enviado (Pendente)';
+    }
+    console.log('Status: Não Enviado (nenhum sentAt ou completedAt)');
+    return 'Não Enviado';
+  }
+
+  formatDeliveryStatus(deliveryStatus: string): string {
+    switch (deliveryStatus) {
+      case 'pending':
+        return 'Não Enviado';
+      case 'sent':
+        return 'Enviado';
+      case 'failed':
+        return 'Não Entregue';
+      default:
+        return deliveryStatus;
+    }
+  }
+
+  formatCategory(category: string): string {
+    switch (category.toLowerCase()) {
+      case 'gestor':
+        return 'Gestor';
+      case 'par':
+        return 'Par';
+      case 'subordinado':
+        return 'Subordinado';
+      case 'avaliado':
+        return 'Avaliado';
+      case 'outros':
+        return 'Outros';
+      default:
+        return category;
+    }
   }
 
   onEmailTypeChange(event: any) {
@@ -226,6 +346,9 @@ export class EmailSelectionDialogComponent implements OnInit {
 
   customFilterPredicate(data: any, filter: string): boolean {
     const searchStr = (filter || '').toLowerCase();
+    const formattedDeliveryStatus = this.formatDeliveryStatus(
+      data.deliveryStatus
+    ).toLowerCase();
     return (
       data.name.toLowerCase().includes(searchStr) ||
       data.email.toLowerCase().includes(searchStr) ||
@@ -234,7 +357,7 @@ export class EmailSelectionDialogComponent implements OnInit {
         ? data.relationshipContentType.toLowerCase().includes(searchStr)
         : false) ||
       data.status.toLowerCase().includes(searchStr) ||
-      data.deliveryStatus.toLowerCase().includes(searchStr) ||
+      formattedDeliveryStatus.includes(searchStr) ||
       (data.isLinkExpired ? 'sim' : 'não').toLowerCase().includes(searchStr) ||
       (data.linkValidityDate
         ? data.linkValidityDate.toLowerCase().includes(searchStr)
@@ -259,19 +382,22 @@ export class EmailSelectionDialogComponent implements OnInit {
       this.dataSource.filter = '';
     } else {
       this.dataSource.data = this.originalData.filter(
-        (p) => p.status.toLowerCase() === status.toLowerCase()
+        (p) => p.status === status
       );
     }
   }
 
-  filterByDeliveryStatus(status: string) {
-    if (!status) {
+  filterByDeliveryStatus(deliveryStatus: string) {
+    if (!deliveryStatus) {
       this.dataSource.data = [...this.originalData];
       this.dataSource.filter = '';
     } else {
-      this.dataSource.data = this.originalData.filter(
-        (p) => p.deliveryStatus.toLowerCase() === status.toLowerCase()
-      );
+      this.dataSource.data = this.originalData.filter((p) => {
+        const formattedDeliveryStatus = this.formatDeliveryStatus(
+          p.deliveryStatus
+        );
+        return formattedDeliveryStatus === deliveryStatus;
+      });
     }
   }
 
@@ -288,17 +414,18 @@ export class EmailSelectionDialogComponent implements OnInit {
   }
 
   toggleSelection(participant: any) {
-    if (this.selectedParticipants.has(participant.email)) {
-      this.selectedParticipants.delete(participant.email);
+    const key = this.getParticipantKey(participant);
+    if (this.selectedParticipants.has(key)) {
+      this.selectedParticipants.delete(key);
     } else {
-      this.selectedParticipants.add(participant.email);
+      this.selectedParticipants.add(key);
     }
   }
 
   selectAll(event: any) {
     if (event.checked) {
       this.selectedParticipants = new Set(
-        this.dataSource.data.map((p) => p.email)
+        this.dataSource.data.map((p) => this.getParticipantKey(p))
       );
     } else {
       this.selectedParticipants.clear();
@@ -355,7 +482,7 @@ export class EmailSelectionDialogComponent implements OnInit {
       }
 
       let templateContent = templateDoc.data()['content'] || '';
-      const originalContent = templateContent; // Guardar o conteúdo original com placeholders
+      const originalContent = templateContent;
       let contentObj = JSON.parse(templateContent);
 
       // Obter a data de expiração do projeto
@@ -376,32 +503,28 @@ export class EmailSelectionDialogComponent implements OnInit {
       }
       const formattedDeadline = this.formatDate(projectDeadline);
 
-      // Enviar e-mails para cada participante
-      for (const email of this.selectedParticipants) {
-        const participant = this.dataSource.data.find((p) => p.email === email);
+      // Enviar e-mails para cada participante selecionado
+      for (const key of this.selectedParticipants) {
+        const participant = this.dataSource.data.find(
+          (p) => this.getParticipantKey(p) === key
+        );
         if (participant) {
-          // Criar uma cópia do conteúdo para cada participante
           let participantContent = JSON.parse(JSON.stringify(contentObj));
 
-          // Substituir a data
           participantContent = this.replaceDeadlineInContent(
             participantContent,
             formattedDeadline
           );
 
-          // Substituir o nome do usuário
           participantContent = this.replaceUserNameInContent(
             participantContent,
             participant.name
           );
 
-          // Converter o conteúdo final para string
           const finalContent = JSON.stringify(participantContent);
 
-          // Atualizar o template no Firestore com o conteúdo finalizado temporariamente
           await updateDoc(templateRef, { content: finalContent });
 
-          // Enviar o e-mail
           await this.emailService
             .sendEmail(
               participant.email,
@@ -411,7 +534,6 @@ export class EmailSelectionDialogComponent implements OnInit {
             )
             .toPromise();
 
-          // Atualizar o participante no Firestore
           const participantRef = doc(
             this.firestore,
             'participants',
@@ -431,7 +553,6 @@ export class EmailSelectionDialogComponent implements OnInit {
         }
       }
 
-      // Restaurar o conteúdo original com os placeholders
       await updateDoc(templateRef, { content: originalContent });
       this.dialogRef.close();
     } catch (error) {
@@ -446,7 +567,6 @@ export class EmailSelectionDialogComponent implements OnInit {
     }
   }
 
-  // Nova função para substituir o nome do usuário
   private replaceUserNameInContent(contentObj: any, userName: string): any {
     if (contentObj.body && contentObj.body.rows) {
       contentObj.body.rows.forEach((row: any) => {
@@ -469,33 +589,6 @@ export class EmailSelectionDialogComponent implements OnInit {
     return contentObj;
   }
 
-  // Função ajustada para substituir a data
-  // private replaceDeadlineInContent(
-  //   contentObj: any,
-  //   formattedDeadline: string
-  // ): any {
-  //   if (contentObj.body && contentObj.body.rows) {
-  //     contentObj.body.rows.forEach((row: any) => {
-  //       if (row.columns) {
-  //         row.columns.forEach((column: any) => {
-  //           if (column.contents) {
-  //             column.contents.forEach((content: any) => {
-  //               if (content.values && content.values.text) {
-  //                 content.values.text = content.values.text.replace(
-  //                   /\*\$%DATA DE EXPIRAÇÃO DO PROJETO\$%\*/g,
-  //                   formattedDeadline
-  //                 );
-  //               }
-  //             });
-  //           }
-  //         });
-  //       }
-  //     });
-  //   }
-  //   return contentObj;
-  // }
-
-  // Função para substituir o placeholder no objeto JSON
   private replaceDeadlineInContent(
     contentObj: any,
     formattedDeadline: string
@@ -507,13 +600,12 @@ export class EmailSelectionDialogComponent implements OnInit {
             if (column.contents) {
               column.contents.forEach((content: any) => {
                 if (content.values && content.values.text) {
-                  // Log para depuração
                   console.log(
                     'Texto antes da substituição:',
                     content.values.text
                   );
                   content.values.text = content.values.text.replace(
-                    /\*\$%DATA DE EXPIRA&Ccedil;&Atilde;O DO PROJETO\$%\*/g, // Corrigido para escapar corretamente
+                    /\*\$%DATA DE EXPIRAÇÃO DO PROJETO\$%\*/g,
                     formattedDeadline
                   );
                   console.log(

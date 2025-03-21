@@ -2,7 +2,10 @@
   <h2>Lista de Projetos</h2>
 
   <!-- Botão Adicionar Projeto -->
-  <div class="mt-3 text-end" style="margin-top: 10px; margin-bottom: 10px; text-align: end;">
+  <div
+    class="mt-3 text-end"
+    style="margin-top: 10px; margin-bottom: 10px; text-align: end"
+  >
     <button mat-flat-button color="primary" (click)="openProjectForm()">
       Adicionar Projeto
     </button>
@@ -80,7 +83,7 @@
           mat-icon-button
           color="primary"
           matTooltip="Modelos de e-mail"
-          (click)="goToProjectTemplates(project.clientId)"
+          (click)="goToProjectTemplates(project.clientId, project.id)"
         >
           <mat-icon>mail</mat-icon>
         </button>

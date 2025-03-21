@@ -36,7 +36,7 @@ export const ProjectsRoutes: Routes = [
     data: { role: 'admin_client' },
   },
   {
-    path: ':id/templates',
+    path: ':id/:idProject/templates',
     component: EmailTemplateListComponent,
     canActivate: [AuthGuard],
     data: { role: 'admin_client' },

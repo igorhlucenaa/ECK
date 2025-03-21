@@ -1,3 +1,4 @@
+// participants.component.ts
 import { Component, OnInit, ViewChild, Inject, Optional } from '@angular/core';
 import {
   Firestore,
@@ -30,8 +31,10 @@ import { ParticipantsConfirmationDialogComponent } from './participants-confirma
 import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
 
 interface ModalData {
-  projectId: string;
-  clientId: string;
+  projectId?: string;
+  clientId?: string;
+  templateId?: string;
+  emailType?: string;
 }
 
 interface UnifiedParticipant {
@@ -80,374 +83,18 @@ interface Assessment {
   selector: 'app-participants',
   standalone: true,
   imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
-  template: `
-    <div class="container mt-4">
-      <h2>Lista de Participantes</h2>
-
-      <!-- Botões de Upload/Download e Adicionar Participante -->
-      <div class="d-flex justify-content-between mb-3">
-        <div>
-          <!-- Botão Baixar Planilha -->
-          <button
-            mat-raised-button
-            color="primary"
-            (click)="downloadTemplate()"
-            style="margin-right: 10px"
-          >
-            <mat-icon>download</mat-icon> Baixar Planilha de Modelo
-          </button>
-
-          <!-- Botão Upload -->
-          <button mat-raised-button color="accent" style="margin-right: 10px">
-            <label for="uploadExcel" class="btn btn-secondary">
-              <mat-icon>upload_file</mat-icon> Carregar Arquivo Excel
-            </label>
-            <input
-              id="uploadExcel"
-              type="file"
-              accept=".xlsx, .xls"
-              style="display: none"
-              (change)="uploadExcel($event)"
-            />
-          </button>
-          <!-- Botão Adicionar Novo Participante -->
-          <button
-            mat-flat-button
-            color="primary"
-            (click)="openAddParticipantModal()"
-          >
-            Adicionar Novo Participante
-          </button>
-        </div>
-      </div>
-
-      <div class="row mb-4" style="margin-top: 40px">
-        <div class="col-md-12">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Buscar por Nome ou E-mail</mat-label>
-            <input
-              matInput
-              [(ngModel)]="searchValue"
-              (ngModelChange)="applyFilter()"
-            />
-            <button
-              mat-icon-button
-              matSuffix
-              *ngIf="searchValue"
-              (click)="searchValue = ''; applyFilter()"
-            >
-              <mat-icon>close</mat-icon>
-            </button>
-          </mat-form-field>
-        </div>
-        <!-- Filtro por Cliente -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Selecione o Cliente</mat-label>
-            <mat-select
-              [(ngModel)]="filterClient"
-              (ngModelChange)="onClientChange()"
-              [disabled]="isClientDisabled"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option *ngFor="let client of clients" [value]="client.id">
-                {{ client.name }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Filtro por Projeto -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Selecione o Projeto</mat-label>
-            <mat-select
-              [(ngModel)]="filterProject"
-              (ngModelChange)="onProjectChange()"
-              [disabled]="isProjectDisabled || !filterClient"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option
-                *ngFor="let project of filteredProjects"
-                [value]="project.id"
-              >
-                {{ project.name }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Campo de Seleção de Template -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Selecione um Template de E-mail</mat-label>
-            <mat-select
-              [formControl]="templateFormControl"
-              required
-              (selectionChange)="onTemplateChange()"
-            >
-              <mat-option
-                *ngFor="let template of mailTemplates"
-                [value]="template.id"
-              >
-                {{ template.name }} -
-                <strong>{{ getFriendlyEmailType(template.emailType) }}</strong>
-              </mat-option>
-            </mat-select>
-            <mat-error *ngIf="templateFormControl.hasError('required')">
-              Por favor, selecione um template.
-            </mat-error>
-          </mat-form-field>
-        </div>
-
-        <!-- Campo de Seleção de Avaliação -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Selecione um Formulário de Avaliação</mat-label>
-            <mat-select [formControl]="assessmentFormControl" required>
-              <mat-option
-                *ngFor="let assessment of assessments"
-                [value]="assessment.id"
-              >
-                {{ assessment.name }}
-              </mat-option>
-            </mat-select>
-            <mat-error *ngIf="assessmentFormControl.hasError('required')">
-              Por favor, selecione uma avaliação.
-            </mat-error>
-          </mat-form-field>
-        </div>
-      </div>
-
-      <hr style="border: 1px solid #ccc; margin-bottom:40px" />
-
-      <!-- Filtros -->
-      <div class="row mb-4" style="margin-top: 40px">
-        <!-- Filtro por Tipo -->
-        <div class="col-md-4">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Tipo</mat-label>
-            <mat-select
-              [(ngModel)]="filterType"
-              (ngModelChange)="applyFilter()"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="avaliado">Avaliado</mat-option>
-              <mat-option value="avaliador">Avaliador</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Filtro por Categoria -->
-        <div class="col-md-4">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Categoria</mat-label>
-            <mat-select
-              [(ngModel)]="filterCategory"
-              (ngModelChange)="applyFilter()"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="Avaliado">Avaliado</mat-option>
-              <mat-option value="Gestor">Gestor</mat-option>
-              <mat-option value="Par">Par</mat-option>
-              <mat-option value="Subordinado">Subordinado</mat-option>
-              <mat-option value="Outros">Outros</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div class="col-md-4">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Status</mat-label>
-            <mat-select
-              [(ngModel)]="filterStatus"
-              (ngModelChange)="applyFilter()"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="Não Enviado">Não Enviado</mat-option>
-              <mat-option value="Enviado (Pendente)"
-                >Enviado (Pendente)</mat-option
-              >
-              <mat-option value="Respondido">Respondido</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-      </div>
-
-      <!-- Mensagem quando não há participantes -->
-      <div
-        *ngIf="!isTableLoading && dataSource.data.length === 0"
-        class="text-center my-4"
-      >
-        <p>Nenhum participante encontrado.</p>
-      </div>
-
-      <!-- Indicador de Carregamento -->
-      <div *ngIf="isTableLoading" class="text-center my-4">
-        <mat-spinner [diameter]="50"></mat-spinner>
-        <p>Carregando participantes...</p>
-      </div>
-
-      <!-- Tabela de Participantes -->
-      <div
-        class="table-responsive"
-        *ngIf="!isTableLoading && dataSource.data.length > 0"
-      >
-        <table
-          mat-table
-          [dataSource]="dataSource"
-          matSort
-          class="mat-elevation-z8 w-100"
-        >
-          <!-- Checkbox para Seleção -->
-          <ng-container matColumnDef="select">
-            <th mat-header-cell *matHeaderCellDef>
-              <mat-checkbox
-                (change)="toggleAll($event.checked)"
-                [checked]="allSelected()"
-                [indeterminate]="someSelected() && !allSelected()"
-              ></mat-checkbox>
-            </th>
-            <td mat-cell *matCellDef="let participant">
-              <mat-checkbox
-                [(ngModel)]="participant.selected"
-                (ngModelChange)="updateSelection()"
-                [disabled]="
-                  participant.completedAt != null ||
-                  (selectedTemplate?.emailType === 'conviteAvaliador' ||
-                  selectedTemplate?.emailType === 'lembreteAvaliador'
-                    ? participant.type !== 'avaliador'
-                    : selectedTemplate?.emailType === 'cadastro'
-                    ? false
-                    : participant.type !== 'avaliado')
-                "
-              ></mat-checkbox>
-            </td>
-          </ng-container>
-
-          <!-- Nome -->
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.name }}
-            </td>
-          </ng-container>
-
-          <!-- E-mail -->
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>E-mail</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.email }}
-            </td>
-          </ng-container>
-
-          <!-- Tipo -->
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Tipo</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.type }}
-            </td>
-          </ng-container>
-
-          <!-- Categoria -->
-          <ng-container matColumnDef="category">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoria</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.category }}
-            </td>
-          </ng-container>
-
-          <!-- Projeto -->
-          <ng-container matColumnDef="projectName">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Projeto</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.projectName || 'N/A' }}
-            </td>
-          </ng-container>
-
-          <!-- Cliente -->
-          <ng-container matColumnDef="clientName">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.clientName || 'N/A' }}
-            </td>
-          </ng-container>
-
-          <!-- Status -->
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.status || 'N/A' }}
-            </td>
-          </ng-container>
-
-          <!-- Data de Envio -->
-          <ng-container matColumnDef="sentAt">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Data de Envio
-            </th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.sentAt | date : 'short' }}
-            </td>
-          </ng-container>
-
-          <!-- Data de Resposta -->
-          <ng-container matColumnDef="completedAt">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Data de Resposta
-            </th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.completedAt | date : 'short' }}
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-        </table>
-      </div>
-
-      <!-- Paginação -->
-      <mat-paginator
-        *ngIf="!isTableLoading && dataSource.data.length > 0"
-        [pageSize]="10"
-        [pageSizeOptions]="[5, 10, 20, 50]"
-        showFirstLastButtons
-      ></mat-paginator>
-
-      <!-- Botão Enviar Links -->
-      <div class="mt-3 text-end" *ngIf="dataSource.data.length > 0">
-        <button
-          mat-button
-          (click)="resendLinks()"
-          [disabled]="
-            isLoading ||
-            selectedParticipants.length === 0 ||
-            !templateFormControl.valid ||
-            !assessmentFormControl.valid
-          "
-        >
-          <mat-spinner *ngIf="isLoading" [diameter]="20"></mat-spinner>
-          <span *ngIf="isLoading">Enviando...</span>
-          <span *ngIf="!isLoading">Enviar Links</span>
-        </button>
-        <button mat-button (click)="dialogRef.close()">Fechar</button>
-      </div>
-    </div>
-  `,
+  templateUrl: './participants.component.html',
   styleUrls: ['./participants.component.scss'],
 })
 export class ParticipantsComponent implements OnInit {
   displayedColumns: string[] = [
     'select',
-    'clientName',
-    'projectName',
     'name',
     'email',
     'type',
     'category',
+    'projectName',
     'status',
-    'sentAt',
-    'completedAt',
   ];
 
   dataSource = new MatTableDataSource<UnifiedParticipant>([]);
@@ -467,9 +114,11 @@ export class ParticipantsComponent implements OnInit {
   isTableLoading: boolean = false;
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
-  selectedTemplate: MailTemplate | null = null;
+  selectedTemplate: MailTemplate | any = null;
   isClientDisabled: boolean = false;
   isProjectDisabled: boolean = false;
+  isEmailSendingMode: boolean = false;
+  emailType: string | undefined;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -485,6 +134,13 @@ export class ParticipantsComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.isTableLoading = true;
+
+    console.log(this.data)
+
+    // Determinar se estamos no modo de envio de e-mails
+    this.isEmailSendingMode =
+      !!this.data && !!this.data.templateId && !!this.data.emailType;
+    this.emailType = this.data?.emailType;
 
     await Promise.all([
       this.loadClients(),
@@ -524,7 +180,69 @@ export class ParticipantsComponent implements OnInit {
       );
     };
 
-    if (this.data && this.data.clientId && this.data.projectId) {
+    if (this.isEmailSendingMode) {
+      // Modo de envio de e-mails: cliente, projeto e template fixos
+      this.filterClient = this.data!.clientId!;
+      this.isClientDisabled = true;
+
+      this.filterProject = this.data!.projectId || '';
+      this.isProjectDisabled = true; // Desabilitar a seleção de projeto
+
+      // Carregar o template específico
+      const templateRef = doc(
+        this.firestore,
+        'mailTemplates',
+        this.data!.templateId!
+      );
+      const templateDoc = await getDoc(templateRef);
+      if (templateDoc.exists()) {
+        const templateData = templateDoc.data();
+        this.selectedTemplate = {
+          id: templateDoc.id,
+          name: templateData['name'] || 'Sem Nome',
+          content: templateData['content'] || '',
+          emailType: this.data!.emailType!,
+          subject: templateData['subject'] || '',
+          clientId: this.data!.clientId!,
+        };
+        this.mailTemplates = [this.selectedTemplate];
+        this.templateFormControl.setValue(this.selectedTemplate.id);
+        this.templateFormControl.disable();
+      } else {
+        this.snackBar.open('Template não encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+        this.dialogRef.close();
+        return;
+      }
+
+      await this.loadAssessments();
+
+      this.filteredProjects = this.projects.filter(
+        (project) => project.clientId === this.filterClient
+      );
+
+      // Definir o filtro de tipo com base no emailType
+      if (
+        ['conviteAvaliador', 'lembreteAvaliador'].includes(
+          this.data!.emailType!
+        )
+      ) {
+        this.filterType = 'avaliador';
+      } else if (
+        [
+          'conviteRespondente',
+          'lembreteRespondente',
+          'convite',
+          'lembrete',
+        ].includes(this.data!.emailType!)
+      ) {
+        this.filterType = 'avaliado';
+      }
+
+      this.applyFilter();
+    } else if (this.data && this.data.clientId && this.data.projectId) {
+      // Modo padrão como modal
       this.filterClient = this.data.clientId;
       this.filterProject = this.data.projectId;
       this.isClientDisabled = true;
@@ -537,13 +255,23 @@ export class ParticipantsComponent implements OnInit {
         (project) => project.clientId === this.filterClient
       );
       this.applyFilter();
+    } else {
+      // Modo standalone
+      await this.loadMailTemplates();
+      await this.loadAssessments();
+      this.filteredProjects = [...this.projects];
+      this.applyFilter();
     }
   }
 
   applyEmailTypeFilter(data: UnifiedParticipant): boolean {
-    if (!this.selectedTemplate) return true;
+    if (!this.selectedTemplate && !this.isEmailSendingMode) return true;
 
-    const emailType = this.selectedTemplate.emailType;
+    const emailType = this.isEmailSendingMode
+      ? this.emailType
+      : this.selectedTemplate?.emailType;
+    if (!emailType) return true;
+
     if (emailType === 'cadastro') return true;
     if (['conviteAvaliador', 'lembreteAvaliador'].includes(emailType)) {
       return data.type === 'avaliador';
@@ -570,7 +298,6 @@ export class ParticipantsComponent implements OnInit {
         id: doc.id,
         name: doc.data()['companyName'] || 'Cliente Sem Nome',
       }));
-      console.log('Clientes carregados:', this.clients);
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
@@ -590,7 +317,6 @@ export class ParticipantsComponent implements OnInit {
         clientId: doc.data()['clientId'] || '',
       }));
       this.filteredProjects = [...this.projects];
-      console.log('Projetos carregados:', this.projects);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
       this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
@@ -605,13 +331,7 @@ export class ParticipantsComponent implements OnInit {
       const participantsCollection = collection(this.firestore, 'participants');
       const participantsSnapshot = await getDocs(participantsCollection);
 
-      console.log(
-        'Snapshot de participantes (todos):',
-        participantsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
-
       if (participantsSnapshot.empty) {
-        console.log('Nenhum participante encontrado no Firestore.');
         this.dataSource.data = [];
         return;
       }
@@ -682,16 +402,10 @@ export class ParticipantsComponent implements OnInit {
         const category = participantData['category'] || 'N/A';
         const assessments = participantData['assessments'] || [];
 
-        console.log(
-          `Participante ${participantId} - Assessments:`,
-          assessments
-        );
-
         let sentAt: Date | undefined;
         let completedAt: Date | undefined;
         let status: string = 'Não Enviado';
 
-        // Se houver um assessmentId selecionado no formulário, usá-lo; caso contrário, usar os assessments do participante
         const selectedAssessmentId = this.assessmentFormControl.value;
         let assessmentIdsToQuery: string[] = [];
 
@@ -702,7 +416,6 @@ export class ParticipantsComponent implements OnInit {
         }
 
         if (assessmentIdsToQuery.length > 0) {
-          // Firestore tem um limite de 10 itens para a cláusula 'in', então dividimos em lotes se necessário
           const batchSize = 10;
           for (let i = 0; i < assessmentIdsToQuery.length; i += batchSize) {
             const batch = assessmentIdsToQuery.slice(i, i + batchSize);
@@ -713,25 +426,13 @@ export class ParticipantsComponent implements OnInit {
             );
             const linksSnapshot = await getDocs(assessmentLinksQuery);
 
-            console.log(
-              `AssessmentLinks para participante ${participantId} (batch ${
-                i / batchSize + 1
-              }):`,
-              linksSnapshot.docs.map((linkDoc) => linkDoc.data())
-            );
-
             linksSnapshot.docs.forEach((linkDoc) => {
               const linkData = linkDoc.data();
               if (linkData['sentAt']) {
                 const linkSentAt = (linkData['sentAt'] as Timestamp).toDate();
-                // Usar o sentAt mais recente
                 if (!sentAt || linkSentAt > sentAt) {
                   sentAt = linkSentAt;
                 }
-                console.log(
-                  `Participante ${participantId} - sentAt encontrado:`,
-                  sentAt
-                );
               }
               if (
                 linkData['status'] === 'completed' &&
@@ -740,27 +441,14 @@ export class ParticipantsComponent implements OnInit {
                 const linkCompletedAt = (
                   linkData['completedAt'] as Timestamp
                 ).toDate();
-                // Usar o completedAt mais recente
                 if (!completedAt || linkCompletedAt > completedAt) {
                   completedAt = linkCompletedAt;
                 }
-                console.log(
-                  `Participante ${participantId} - completedAt encontrado:`,
-                  completedAt
-                );
               }
             });
           }
 
           status = this.determineStatus(sentAt, completedAt);
-          console.log(
-            `Participante ${participantId} - Status determinado:`,
-            status
-          );
-        } else {
-          console.log(
-            `Participante ${participantId} - Nenhum assessmentId para consultar. Status padrão: Não Enviado`
-          );
         }
 
         if (clientId) {
@@ -780,16 +468,10 @@ export class ParticipantsComponent implements OnInit {
             clientName: clientsMap[clientId] || 'N/A',
             selected: false,
           });
-        } else {
-          console.warn(
-            `Participante ${participantId} ignorado: não foi possível determinar o clientId.`,
-            participantData
-          );
         }
       }
 
       this.dataSource.data = participants;
-      console.log('Participantes carregados (todos):', participants);
     } catch (error) {
       console.error('Erro ao carregar participantes:', error);
       this.snackBar.open('Erro ao carregar participantes.', 'Fechar', {
@@ -823,8 +505,6 @@ export class ParticipantsComponent implements OnInit {
         subject: doc.data()['subject'] || '',
         clientId: doc.data()['clientId'] || '',
       }));
-
-      console.log('Templates carregados:', this.mailTemplates);
 
       if (this.mailTemplates.length === 0) {
         this.snackBar.open(
@@ -861,8 +541,6 @@ export class ParticipantsComponent implements OnInit {
         name: doc.data()['name'] || 'Avaliação Sem Nome',
       }));
 
-      console.log('Avaliações carregadas:', this.assessments);
-
       if (this.assessments.length === 0) {
         this.snackBar.open(
           'Nenhuma avaliação encontrada para este cliente.',
@@ -880,14 +558,11 @@ export class ParticipantsComponent implements OnInit {
 
   determineStatus(sentAt?: Date, completedAt?: Date): string {
     if (completedAt) {
-      console.log('Status: Respondido (completedAt presente)');
       return 'Respondido';
     }
     if (sentAt) {
-      console.log('Status: Enviado (Pendente) (sentAt presente)');
       return 'Enviado (Pendente)';
     }
-    console.log('Status: Não Enviado (nenhum sentAt ou completedAt)');
     return 'Não Enviado';
   }
 
@@ -901,7 +576,9 @@ export class ParticipantsComponent implements OnInit {
       this.filteredProjects = this.projects.filter(
         (project) => project.clientId === this.filterClient
       );
-      this.loadMailTemplates();
+      if (!this.isEmailSendingMode) {
+        this.loadMailTemplates();
+      }
       this.loadAssessments();
     } else {
       this.filteredProjects = [...this.projects];
@@ -962,33 +639,41 @@ export class ParticipantsComponent implements OnInit {
     this.isLoading = true;
     this.isTableLoading = true;
     try {
-      const selectedTemplateId = this.templateFormControl.value;
-      const selectedAssessmentId = this.assessmentFormControl.value;
-      if (!selectedTemplateId) {
-        this.snackBar.open(
-          'Por favor, selecione um template antes de enviar.',
-          'Fechar',
-          { duration: 3000 }
-        );
-        return;
+      let selectedTemplateId: any;
+      if (this.isEmailSendingMode) {
+        selectedTemplateId = this.data!.templateId!;
+      } else {
+        selectedTemplateId = this.templateFormControl.value;
+        if (!selectedTemplateId) {
+          this.snackBar.open(
+            'Por favor, selecione um template antes de enviar.',
+            'Fechar',
+            { duration: 3000 }
+          );
+          return;
+        }
       }
 
-      if (!selectedAssessmentId) {
+      const selectedAssessmentId = this.assessmentFormControl.value;
+      if (
+        (this.isEmailSendingMode &&
+          this.emailType &&
+          [
+            'conviteAvaliador',
+            'conviteRespondente',
+            'lembreteAvaliador',
+            'lembreteRespondente',
+            'convite',
+            'lembrete',
+          ].includes(this.emailType) &&
+          !selectedAssessmentId) ||
+        (!this.isEmailSendingMode && !selectedAssessmentId)
+      ) {
         this.snackBar.open(
           'Por favor, selecione uma avaliação antes de enviar.',
           'Fechar',
           { duration: 3000 }
         );
-        return;
-      }
-
-      const template = this.mailTemplates.find(
-        (t) => t.id === selectedTemplateId
-      );
-      if (!template) {
-        this.snackBar.open('Template selecionado não encontrado.', 'Fechar', {
-          duration: 3000,
-        });
         return;
       }
 
@@ -1017,6 +702,15 @@ export class ParticipantsComponent implements OnInit {
         projectIdForDeadline = this.selectedParticipants[0].projectId;
       }
 
+      if (!projectIdForDeadline) {
+        this.snackBar.open(
+          'Por favor, selecione um projeto antes de enviar.',
+          'Fechar',
+          { duration: 3000 }
+        );
+        return;
+      }
+
       let projectDeadline: Date | undefined;
       if (projectIdForDeadline) {
         const projectRef = doc(
@@ -1040,17 +734,15 @@ export class ParticipantsComponent implements OnInit {
 
       await updateDoc(templateRef, { content: updatedContent });
 
-      // Enviar e-mails e atualizar assessmentLinks
       const updatePromises = this.selectedParticipants.map(
         async (participant) => {
           const emailRequest = {
             email: participant.email,
-            templateId: template.id,
+            templateId: selectedTemplateId,
             participantId: participant.id,
             assessmentId: selectedAssessmentId,
           };
 
-          // Enviar o e-mail
           const response = await fetch(
             'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
             {
@@ -1068,7 +760,6 @@ export class ParticipantsComponent implements OnInit {
             );
           }
 
-          // Atualizar ou criar o assessmentLink
           const assessmentLinkQuery = query(
             collection(this.firestore, 'assessmentLinks'),
             where('participantId', '==', participant.id),
@@ -1085,31 +776,24 @@ export class ParticipantsComponent implements OnInit {
               participantId: participant.id,
               sentAt: new Date(),
               status: 'pending',
-              emailTemplate: template.id,
+              emailTemplate: selectedTemplateId,
               participantEmail: participant.email,
             });
-            console.log(
-              `Novo assessmentLink criado para participante ${participant.id}`
-            );
           } else {
             const existingLinkDoc = existingLinksSnapshot.docs[0];
             await updateDoc(
               doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
               {
                 sentAt: new Date(),
-                emailTemplate: template.id,
+                emailTemplate: selectedTemplateId,
                 status:
                   existingLinkDoc.data()['status'] === 'completed'
                     ? 'completed'
                     : 'pending',
               }
             );
-            console.log(
-              `assessmentLink atualizado para participante ${participant.id}`
-            );
           }
 
-          // Atualizar o array assessments no documento do participante
           const participantRef = doc(
             this.firestore,
             'participants',
@@ -1124,32 +808,29 @@ export class ParticipantsComponent implements OnInit {
               await updateDoc(participantRef, {
                 assessments: currentAssessments,
               });
-              console.log(
-                `Array assessments atualizado para participante ${participant.id}:`,
-                currentAssessments
-              );
             }
           }
         }
       );
 
-      // Aguardar todas as atualizações
       await Promise.all(updatePromises);
 
-      // Restaurar o conteúdo original do template
       await updateDoc(templateRef, { content: originalContent });
 
       this.snackBar.open(
-        `Links enviados para ${this.selectedParticipants.length} participantes!`,
+        `E-mails enviados para ${this.selectedParticipants.length} participantes!`,
         'Fechar',
         { duration: 3000 }
       );
 
-      // Recarregar os participantes para atualizar os status
-      await this.loadParticipants();
+      if (this.isEmailSendingMode) {
+        this.dialogRef.close(true);
+      } else {
+        await this.loadParticipants();
+      }
     } catch (error) {
-      console.error('Erro ao enviar links:', error);
-      this.snackBar.open('Erro ao enviar links.', 'Fechar', {
+      console.error('Erro ao enviar e-mails:', error);
+      this.snackBar.open('Erro ao enviar e-mails.', 'Fechar', {
         duration: 3000,
       });
     } finally {
@@ -1365,8 +1046,8 @@ export class ParticipantsComponent implements OnInit {
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
       width: '500px',
       data: {
-        clientId: this.filterClient || undefined, // Passar o clientId se estiver definido
-        projectId: this.filterProject || undefined, // Passar o projectId se estiver definido
+        clientId: this.filterClient || undefined,
+        projectId: this.filterProject || undefined,
         clients: this.clients,
         projects: this.projects,
       },
