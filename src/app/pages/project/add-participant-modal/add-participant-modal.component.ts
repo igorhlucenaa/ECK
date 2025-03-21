@@ -206,7 +206,15 @@ export class AddParticipantModalComponent implements OnInit {
     try {
       // Se clientId e projectId foram passados via data, usamos eles e desabilitamos os campos
       if (this.data?.clientId && this.data?.projectId) {
-        await this.loadClientAndProjectNames();
+        // Verificar se data.clients e data.projects foram fornecidos
+        if (this.data.clients && this.data.projects) {
+          this.clients = this.data.clients;
+          this.projects = this.data.projects;
+        } else {
+          // Caso contrário, buscar apenas o cliente e projeto específicos
+          await this.loadClientAndProjectNames();
+        }
+
         this.participantForm.patchValue({
           clientId: this.data.clientId,
           projectId: this.data.projectId,
@@ -218,7 +226,13 @@ export class AddParticipantModalComponent implements OnInit {
         );
       } else {
         // Caso contrário, buscamos os dados do Firestore
-        await Promise.all([this.loadClients(), this.loadProjects()]);
+        if (this.data?.clients && this.data?.projects) {
+          this.clients = this.data.clients;
+          this.projects = this.data.projects;
+        } else {
+          await Promise.all([this.loadClients(), this.loadProjects()]);
+        }
+        this.onClientChange(); // Inicializar filteredProjects com base no clientId selecionado
       }
       this.hasClients = this.clients.length > 0;
     } catch (error) {
@@ -276,6 +290,9 @@ export class AddParticipantModalComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao carregar nomes do cliente e projeto:', error);
+      this.snackBar.open('Erro ao carregar cliente ou projeto.', 'Fechar', {
+        duration: 3000,
+      });
       throw error;
     }
   }
@@ -319,7 +336,10 @@ export class AddParticipantModalComponent implements OnInit {
       this.filteredProjects = this.projects.filter(
         (project) => project.clientId === clientId
       );
-      this.participantForm.get('projectId')?.setValue(''); // Reseta o projeto ao mudar o cliente
+      // Só resetar o projectId se o campo de cliente não estiver desabilitado
+      if (!this.isClientDisabled) {
+        this.participantForm.get('projectId')?.setValue('');
+      }
     } else {
       this.filteredProjects = [];
       this.participantForm.get('projectId')?.setValue('');

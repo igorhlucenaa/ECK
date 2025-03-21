@@ -20,7 +20,6 @@ import {
   setDoc,
   deleteDoc,
   addDoc,
-  getDoc,
   updateDoc,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
@@ -57,6 +56,12 @@ interface MailTemplate {
   content: string;
   emailType: string;
   subject: string;
+  clientId: string;
+}
+
+interface Assessment {
+  id: string;
+  name: string;
   clientId: string;
 }
 
@@ -196,6 +201,22 @@ interface MailTemplate {
         </mat-error>
       </mat-form-field>
 
+      <!-- Campo de Seleção de Avaliação -->
+      <mat-form-field class="w-100 mb-3" appearance="outline">
+        <mat-label>Escolha um Formulário (Avaliação)</mat-label>
+        <mat-select [formControl]="assessmentFormControl" required>
+          <mat-option
+            *ngFor="let assessment of assessments"
+            [value]="assessment.id"
+          >
+            {{ assessment.name }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="assessmentFormControl.hasError('required')">
+          Por favor, selecione uma avaliação.
+        </mat-error>
+      </mat-form-field>
+
       <!-- Tabela de Participantes -->
       <div class="table-responsive">
         <table
@@ -319,7 +340,8 @@ interface MailTemplate {
         [disabled]="
           isLoading ||
           selectedParticipants.length === 0 ||
-          !templateFormControl.valid
+          !templateFormControl.valid ||
+          !assessmentFormControl.valid
         "
       >
         <mat-spinner *ngIf="isLoading" [diameter]="20"></mat-spinner>
@@ -352,7 +374,9 @@ export class ParticipantsModalComponent implements OnInit {
   selectedParticipants: UnifiedParticipant[] = [];
   isLoading: boolean = false;
   mailTemplates: MailTemplate[] = [];
+  assessments: Assessment[] = [];
   templateFormControl = this.fb.control('', Validators.required);
+  assessmentFormControl = this.fb.control('', Validators.required);
 
   @ViewChild('participantsPaginator', { static: false })
   participantsPaginator!: MatPaginator;
@@ -374,6 +398,7 @@ export class ParticipantsModalComponent implements OnInit {
     await Promise.all([
       this.loadParticipants(),
       this.loadMailTemplates(),
+      this.loadAssessmentsForClient(this.data.clientId),
       this.loadClients(),
       this.loadProjects(),
     ]);
@@ -399,7 +424,6 @@ export class ParticipantsModalComponent implements OnInit {
     };
   }
 
-  // Função para formatar o emailType de forma amigável
   getFriendlyEmailType(emailType: string): string {
     switch (emailType) {
       case 'conviteAvaliador':
@@ -421,14 +445,12 @@ export class ParticipantsModalComponent implements OnInit {
 
   async loadParticipants(): Promise<void> {
     try {
-      // Buscar os participantes do projeto
       const participantsQuery = query(
         collection(this.firestore, 'participants'),
         where('projectId', '==', this.data.projectId)
       );
       const participantsSnapshot = await getDocs(participantsQuery);
 
-      // Buscar as avaliações associadas ao projeto
       const assessmentsQuery = query(
         collection(this.firestore, 'assessments'),
         where('projectId', '==', this.data.projectId)
@@ -436,7 +458,6 @@ export class ParticipantsModalComponent implements OnInit {
       const assessmentsSnapshot = await getDocs(assessmentsQuery);
       const assessmentIds = assessmentsSnapshot.docs.map((doc) => doc.id);
 
-      // Buscar os links de avaliação para todas as avaliações do projeto
       let linkDataMap: { [key: string]: any[] } = {};
       if (assessmentIds.length > 0) {
         const assessmentLinksQuery = query(
@@ -445,7 +466,6 @@ export class ParticipantsModalComponent implements OnInit {
         );
         const linksSnapshot = await getDocs(assessmentLinksQuery);
 
-        // Agrupar os links por participantId
         linksSnapshot.docs.forEach((doc) => {
           const data = doc.data();
           const participantId = data['participantId'];
@@ -468,10 +488,8 @@ export class ParticipantsModalComponent implements OnInit {
         let completedAt: Date | undefined;
         let status: string = 'Não Enviado';
 
-        // Verificar todos os links de avaliação associados a este participante
         const participantLinks = linkDataMap[participantId] || [];
         if (participantLinks.length > 0) {
-          // Determinar o status com base nos links
           for (const linkData of participantLinks) {
             const linkSentAt = linkData['sentAt']
               ? (linkData['sentAt'] as Timestamp).toDate()
@@ -481,15 +499,13 @@ export class ParticipantsModalComponent implements OnInit {
                 ? (linkData['completedAt'] as Timestamp).toDate()
                 : undefined;
 
-            // Prioridade: se houver um link completado, o status é "Respondido"
             if (linkCompletedAt) {
               completedAt = linkCompletedAt;
               status = 'Respondido';
-              sentAt = linkSentAt; // Pode ser undefined, mas não importa se já foi completado
-              break; // Não precisa verificar mais links
+              sentAt = linkSentAt;
+              break;
             }
 
-            // Se não houver completado, mas houver enviado, definimos como "Enviado (Pendente)"
             if (linkSentAt && !completedAt) {
               sentAt = linkSentAt;
               status = 'Enviado (Pendente)';
@@ -497,7 +513,6 @@ export class ParticipantsModalComponent implements OnInit {
           }
         }
 
-        // Adicionar o participante à lista apenas uma vez
         participants.push({
           id: participantId,
           name: participantData['name'] || 'Desconhecido',
@@ -560,6 +575,42 @@ export class ParticipantsModalComponent implements OnInit {
     }
   }
 
+  async loadAssessmentsForClient(clientId: string): Promise<void> {
+    try {
+      if (!clientId) {
+        this.snackBar.open('Nenhum clientId fornecido.', 'Fechar', {
+          duration: 3000,
+        });
+        return;
+      }
+
+      const assessmentsQuery = query(
+        collection(this.firestore, 'assessments'),
+        where('clientId', '==', clientId)
+      );
+      const snapshot = await getDocs(assessmentsQuery);
+
+      this.assessments = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Avaliação Sem Nome',
+        clientId: doc.data()['clientId'] || '',
+      }));
+
+      if (this.assessments.length === 0) {
+        this.snackBar.open(
+          'Nenhuma avaliação encontrada para este cliente.',
+          'Fechar',
+          { duration: 3000 }
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao carregar avaliações:', error);
+      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
   async loadClients(): Promise<void> {
     try {
       const clientsCollection = collection(this.firestore, 'clients');
@@ -591,50 +642,6 @@ export class ParticipantsModalComponent implements OnInit {
       this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
         duration: 3000,
       });
-    }
-  }
-
-  async loadEvaluation(
-    projectId: string
-  ): Promise<{ id: string; name: string } | null> {
-    if (!projectId) return null;
-
-    try {
-      const projectDoc = doc(this.firestore, 'projects', projectId);
-      const projectSnapshot = await getDoc(projectDoc);
-      if (!projectSnapshot.exists()) {
-        throw new Error('Projeto não encontrado');
-      }
-
-      const projectData = projectSnapshot.data();
-      const assessmentId = projectData['assessmentId'];
-
-      if (!assessmentId) {
-        this.snackBar.open(
-          'Nenhuma avaliação associada a este projeto.',
-          'Fechar',
-          { duration: 3000 }
-        );
-        return null;
-      }
-
-      const assessmentDoc = doc(this.firestore, 'assessments', assessmentId);
-      const assessmentSnapshot = await getDoc(assessmentDoc);
-      if (!assessmentSnapshot.exists()) {
-        throw new Error('Avaliação não encontrada');
-      }
-
-      const assessmentData = assessmentSnapshot.data();
-      return {
-        id: assessmentId,
-        name: assessmentData['name'] || 'Avaliação Sem Nome',
-      };
-    } catch (error) {
-      console.error('Erro ao carregar avaliação:', error);
-      this.snackBar.open('Erro ao carregar avaliação.', 'Fechar', {
-        duration: 3000,
-      });
-      return null;
     }
   }
 
@@ -684,9 +691,21 @@ export class ParticipantsModalComponent implements OnInit {
     this.isLoading = true;
     try {
       const selectedTemplateId = this.templateFormControl.value;
+      const selectedAssessmentId = this.assessmentFormControl.value;
+
       if (!selectedTemplateId) {
         this.snackBar.open(
           'Por favor, selecione um template antes de enviar.',
+          'Fechar',
+          { duration: 3000 }
+        );
+        this.isLoading = false;
+        return;
+      }
+
+      if (!selectedAssessmentId) {
+        this.snackBar.open(
+          'Por favor, selecione uma avaliação antes de enviar.',
           'Fechar',
           { duration: 3000 }
         );
@@ -705,14 +724,13 @@ export class ParticipantsModalComponent implements OnInit {
         return;
       }
 
-      // Buscar a avaliação associada ao projeto
-      const evaluation = await this.loadEvaluation(this.data.projectId);
-      if (!evaluation) {
-        this.snackBar.open(
-          'Nenhuma avaliação associada ao projeto.',
-          'Fechar',
-          { duration: 3000 }
-        );
+      const assessment = this.assessments.find(
+        (a) => a.id === selectedAssessmentId
+      );
+      if (!assessment) {
+        this.snackBar.open('Avaliação selecionada não encontrada.', 'Fechar', {
+          duration: 3000,
+        });
         this.isLoading = false;
         return;
       }
@@ -722,7 +740,7 @@ export class ParticipantsModalComponent implements OnInit {
           email: participant.email,
           templateId: template.id,
           participantId: participant.id,
-          assessmentId: evaluation.id, // Usar o assessmentId do projeto
+          assessmentId: assessment.id,
         };
 
         const response = await fetch(
@@ -745,7 +763,7 @@ export class ParticipantsModalComponent implements OnInit {
         const assessmentLinkQuery = query(
           collection(this.firestore, 'assessmentLinks'),
           where('participantId', '==', participant.id),
-          where('assessmentId', '==', evaluation.id)
+          where('assessmentId', '==', assessment.id)
         );
         const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
 
@@ -754,7 +772,7 @@ export class ParticipantsModalComponent implements OnInit {
             collection(this.firestore, 'assessmentLinks')
           );
           await setDoc(assessmentLinkDoc, {
-            assessmentId: evaluation.id,
+            assessmentId: assessment.id,
             participantId: participant.id,
             sentAt: new Date(),
             status: 'pending',
@@ -908,8 +926,6 @@ export class ParticipantsModalComponent implements OnInit {
             projectName:
               this.projects.find((p) => p.id === this.data.projectId)?.name ||
               'Projeto Desconhecido',
-            loadEvaluation: (projectId: string) =>
-              this.loadEvaluation(projectId),
           },
         }
       );
@@ -926,7 +942,6 @@ export class ParticipantsModalComponent implements OnInit {
                   ...participant,
                   clientId: result.client,
                   projectId: result.project,
-                  assessments: result.evaluation ? [result.evaluation] : [],
                   createdAt: new Date(),
                 }
               );
@@ -934,7 +949,6 @@ export class ParticipantsModalComponent implements OnInit {
               savedParticipants.push({
                 ...participant,
                 id: docRef.id,
-                assessments: result.evaluation ? [result.evaluation] : [],
               });
             } catch (error) {
               console.error('Erro ao salvar participante:', error);

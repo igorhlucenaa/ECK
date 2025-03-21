@@ -112,15 +112,17 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     // Teste de collections
-    const col = collection(this.firestore, 'users');
+    // const col = collection(this.firestore, 'assessmentLinks');
 
-    const snap = await getDocs(col);
+    // const snap = await getDocs(col);
 
-    
+    // let result = snap.docs.map((res) => res.data());
+    // console.log(result);
+
     const data = await this.fetchDashboardData();
     this.creditOrdersData = await this.fetchCreditOrdersData();
     this.assessmentsData = await this.fetchAssessmentsData();
-    
+
     this.cdr.detectChanges();
     // await this.fetchProjectsByClient();
     // Dados para os gráficos de pizza

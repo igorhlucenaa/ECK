@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, Inject, Optional } from '@angular/core';
 import {
   Firestore,
   collection,
@@ -20,10 +20,19 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Timestamp } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
-import { MatDialog } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MAT_DIALOG_DATA,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { FormBuilder, Validators } from '@angular/forms';
 import { ParticipantsConfirmationDialogComponent } from './participants-confirmation-dialog/participants-confirmation-dialog.component';
 import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
+
+interface ModalData {
+  projectId: string;
+  clientId: string;
+}
 
 interface UnifiedParticipant {
   id: string;
@@ -138,6 +147,7 @@ interface Assessment {
             <mat-select
               [(ngModel)]="filterClient"
               (ngModelChange)="onClientChange()"
+              [disabled]="isClientDisabled"
             >
               <mat-option value="">Todos</mat-option>
               <mat-option *ngFor="let client of clients" [value]="client.id">
@@ -154,7 +164,7 @@ interface Assessment {
             <mat-select
               [(ngModel)]="filterProject"
               (ngModelChange)="onProjectChange()"
-              [disabled]="!filterClient"
+              [disabled]="isProjectDisabled || !filterClient"
             >
               <mat-option value="">Todos</mat-option>
               <mat-option
@@ -265,12 +275,24 @@ interface Assessment {
       </div>
 
       <!-- Mensagem quando não há participantes -->
-      <div *ngIf="dataSource.data.length === 0" class="text-center my-4">
+      <div
+        *ngIf="!isTableLoading && dataSource.data.length === 0"
+        class="text-center my-4"
+      >
         <p>Nenhum participante encontrado.</p>
       </div>
 
+      <!-- Indicador de Carregamento -->
+      <div *ngIf="isTableLoading" class="text-center my-4">
+        <mat-spinner [diameter]="50"></mat-spinner>
+        <p>Carregando participantes...</p>
+      </div>
+
       <!-- Tabela de Participantes -->
-      <div class="table-responsive" *ngIf="dataSource.data.length > 0">
+      <div
+        class="table-responsive"
+        *ngIf="!isTableLoading && dataSource.data.length > 0"
+      >
         <table
           mat-table
           [dataSource]="dataSource"
@@ -386,7 +408,7 @@ interface Assessment {
 
       <!-- Paginação -->
       <mat-paginator
-        *ngIf="dataSource.data.length > 0"
+        *ngIf="!isTableLoading && dataSource.data.length > 0"
         [pageSize]="10"
         [pageSizeOptions]="[5, 10, 20, 50]"
         showFirstLastButtons
@@ -408,6 +430,7 @@ interface Assessment {
           <span *ngIf="isLoading">Enviando...</span>
           <span *ngIf="!isLoading">Enviar Links</span>
         </button>
+        <button mat-button (click)="dialogRef.close()">Fechar</button>
       </div>
     </div>
   `,
@@ -441,9 +464,12 @@ export class ParticipantsComponent implements OnInit {
   assessments: Assessment[] = [];
   selectedParticipants: UnifiedParticipant[] = [];
   isLoading: boolean = false;
+  isTableLoading: boolean = false;
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
   selectedTemplate: MailTemplate | null = null;
+  isClientDisabled: boolean = false;
+  isProjectDisabled: boolean = false;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -452,15 +478,22 @@ export class ParticipantsComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    @Optional() @Inject(MAT_DIALOG_DATA) public data: ModalData | null,
+    @Optional() public dialogRef: MatDialogRef<ParticipantsComponent>
   ) {}
 
   async ngOnInit(): Promise<void> {
+    this.isTableLoading = true;
+
     await Promise.all([
       this.loadClients(),
       this.loadProjects(),
       this.loadParticipants(),
     ]);
+
+    this.isTableLoading = false;
+
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
 
@@ -490,10 +523,26 @@ export class ParticipantsComponent implements OnInit {
         emailTypeMatch
       );
     };
+
+    if (this.data && this.data.clientId && this.data.projectId) {
+      this.filterClient = this.data.clientId;
+      this.filterProject = this.data.projectId;
+      this.isClientDisabled = true;
+      this.isProjectDisabled = true;
+
+      await this.loadMailTemplates();
+      await this.loadAssessments();
+
+      this.filteredProjects = this.projects.filter(
+        (project) => project.clientId === this.filterClient
+      );
+      this.applyFilter();
+    }
   }
 
   applyEmailTypeFilter(data: UnifiedParticipant): boolean {
     if (!this.selectedTemplate) return true;
+
     const emailType = this.selectedTemplate.emailType;
     if (emailType === 'cadastro') return true;
     if (['conviteAvaliador', 'lembreteAvaliador'].includes(emailType)) {
@@ -551,6 +600,7 @@ export class ParticipantsComponent implements OnInit {
   }
 
   async loadParticipants(): Promise<void> {
+    this.isTableLoading = true;
     try {
       const participantsCollection = collection(this.firestore, 'participants');
       const participantsSnapshot = await getDocs(participantsCollection);
@@ -632,30 +682,85 @@ export class ParticipantsComponent implements OnInit {
         const category = participantData['category'] || 'N/A';
         const assessments = participantData['assessments'] || [];
 
+        console.log(
+          `Participante ${participantId} - Assessments:`,
+          assessments
+        );
+
         let sentAt: Date | undefined;
         let completedAt: Date | undefined;
         let status: string = 'Não Enviado';
 
-        // Agora aplicamos a lógica de status para ambos os tipos: avaliado e avaliador
-        if (assessments.length > 0) {
-          const assessmentLinksQuery = query(
-            collection(this.firestore, 'assessmentLinks'),
-            where('participantId', '==', participantId),
-            where('assessmentId', 'in', assessments)
-          );
-          const linksSnapshot = await getDocs(assessmentLinksQuery);
+        // Se houver um assessmentId selecionado no formulário, usá-lo; caso contrário, usar os assessments do participante
+        const selectedAssessmentId = this.assessmentFormControl.value;
+        let assessmentIdsToQuery: string[] = [];
 
-          linksSnapshot.docs.forEach((linkDoc) => {
-            const linkData = linkDoc.data();
-            if (linkData['sentAt']) {
-              sentAt = (linkData['sentAt'] as Timestamp).toDate();
-            }
-            if (linkData['status'] === 'completed' && linkData['completedAt']) {
-              completedAt = (linkData['completedAt'] as Timestamp).toDate();
-            }
-          });
+        if (selectedAssessmentId) {
+          assessmentIdsToQuery = [selectedAssessmentId];
+        } else if (assessments.length > 0) {
+          assessmentIdsToQuery = assessments;
+        }
+
+        if (assessmentIdsToQuery.length > 0) {
+          // Firestore tem um limite de 10 itens para a cláusula 'in', então dividimos em lotes se necessário
+          const batchSize = 10;
+          for (let i = 0; i < assessmentIdsToQuery.length; i += batchSize) {
+            const batch = assessmentIdsToQuery.slice(i, i + batchSize);
+            const assessmentLinksQuery = query(
+              collection(this.firestore, 'assessmentLinks'),
+              where('participantId', '==', participantId),
+              where('assessmentId', 'in', batch)
+            );
+            const linksSnapshot = await getDocs(assessmentLinksQuery);
+
+            console.log(
+              `AssessmentLinks para participante ${participantId} (batch ${
+                i / batchSize + 1
+              }):`,
+              linksSnapshot.docs.map((linkDoc) => linkDoc.data())
+            );
+
+            linksSnapshot.docs.forEach((linkDoc) => {
+              const linkData = linkDoc.data();
+              if (linkData['sentAt']) {
+                const linkSentAt = (linkData['sentAt'] as Timestamp).toDate();
+                // Usar o sentAt mais recente
+                if (!sentAt || linkSentAt > sentAt) {
+                  sentAt = linkSentAt;
+                }
+                console.log(
+                  `Participante ${participantId} - sentAt encontrado:`,
+                  sentAt
+                );
+              }
+              if (
+                linkData['status'] === 'completed' &&
+                linkData['completedAt']
+              ) {
+                const linkCompletedAt = (
+                  linkData['completedAt'] as Timestamp
+                ).toDate();
+                // Usar o completedAt mais recente
+                if (!completedAt || linkCompletedAt > completedAt) {
+                  completedAt = linkCompletedAt;
+                }
+                console.log(
+                  `Participante ${participantId} - completedAt encontrado:`,
+                  completedAt
+                );
+              }
+            });
+          }
 
           status = this.determineStatus(sentAt, completedAt);
+          console.log(
+            `Participante ${participantId} - Status determinado:`,
+            status
+          );
+        } else {
+          console.log(
+            `Participante ${participantId} - Nenhum assessmentId para consultar. Status padrão: Não Enviado`
+          );
         }
 
         if (clientId) {
@@ -690,6 +795,8 @@ export class ParticipantsComponent implements OnInit {
       this.snackBar.open('Erro ao carregar participantes.', 'Fechar', {
         duration: 3000,
       });
+    } finally {
+      this.isTableLoading = false;
     }
   }
 
@@ -772,8 +879,15 @@ export class ParticipantsComponent implements OnInit {
   }
 
   determineStatus(sentAt?: Date, completedAt?: Date): string {
-    if (completedAt) return 'Respondido';
-    if (sentAt) return 'Enviado (Pendente)';
+    if (completedAt) {
+      console.log('Status: Respondido (completedAt presente)');
+      return 'Respondido';
+    }
+    if (sentAt) {
+      console.log('Status: Enviado (Pendente) (sentAt presente)');
+      return 'Enviado (Pendente)';
+    }
+    console.log('Status: Não Enviado (nenhum sentAt ou completedAt)');
     return 'Não Enviado';
   }
 
@@ -809,11 +923,10 @@ export class ParticipantsComponent implements OnInit {
 
   applyFilter(): void {
     this.dataSource.filter = 'apply';
-    this.updateSelection(); // Atualiza a seleção após aplicar o filtro
+    this.updateSelection();
   }
 
   toggleAll(checked: boolean): void {
-    // Aplica a seleção apenas aos participantes visíveis após o filtro
     this.dataSource.filteredData.forEach((participant) => {
       if (!participant.completedAt && this.applyEmailTypeFilter(participant)) {
         participant.selected = checked;
@@ -823,7 +936,6 @@ export class ParticipantsComponent implements OnInit {
   }
 
   updateSelection(): void {
-    // Considera apenas os participantes visíveis após o filtro
     this.selectedParticipants = this.dataSource.filteredData.filter(
       (p) => p.selected && this.applyEmailTypeFilter(p) && !p.completedAt
     );
@@ -848,6 +960,7 @@ export class ParticipantsComponent implements OnInit {
 
   async resendLinks(): Promise<void> {
     this.isLoading = true;
+    this.isTableLoading = true;
     try {
       const selectedTemplateId = this.templateFormControl.value;
       const selectedAssessmentId = this.assessmentFormControl.value;
@@ -857,7 +970,6 @@ export class ParticipantsComponent implements OnInit {
           'Fechar',
           { duration: 3000 }
         );
-        this.isLoading = false;
         return;
       }
 
@@ -867,7 +979,6 @@ export class ParticipantsComponent implements OnInit {
           'Fechar',
           { duration: 3000 }
         );
-        this.isLoading = false;
         return;
       }
 
@@ -878,7 +989,6 @@ export class ParticipantsComponent implements OnInit {
         this.snackBar.open('Template selecionado não encontrado.', 'Fechar', {
           duration: 3000,
         });
-        this.isLoading = false;
         return;
       }
 
@@ -930,66 +1040,103 @@ export class ParticipantsComponent implements OnInit {
 
       await updateDoc(templateRef, { content: updatedContent });
 
-      for (const participant of this.selectedParticipants) {
-        const emailRequest = {
-          email: participant.email,
-          templateId: template.id,
-          participantId: participant.id,
-          assessmentId: selectedAssessmentId,
-        };
-
-        const response = await fetch(
-          'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(emailRequest),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Erro ao enviar e-mail para ${
-              participant.email
-            }: ${await response.text()}`
-          );
-        }
-
-        const assessmentLinkQuery = query(
-          collection(this.firestore, 'assessmentLinks'),
-          where('participantId', '==', participant.id),
-          where('assessmentId', '==', selectedAssessmentId)
-        );
-        const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
-
-        if (existingLinksSnapshot.empty) {
-          const assessmentLinkDoc = doc(
-            collection(this.firestore, 'assessmentLinks')
-          );
-          await setDoc(assessmentLinkDoc, {
-            assessmentId: selectedAssessmentId,
+      // Enviar e-mails e atualizar assessmentLinks
+      const updatePromises = this.selectedParticipants.map(
+        async (participant) => {
+          const emailRequest = {
+            email: participant.email,
+            templateId: template.id,
             participantId: participant.id,
-            sentAt: new Date(),
-            status: 'pending',
-            emailTemplate: template.id,
-            participantEmail: participant.email,
-          });
-        } else {
-          const existingLinkDoc = existingLinksSnapshot.docs[0];
-          await updateDoc(
-            doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
+            assessmentId: selectedAssessmentId,
+          };
+
+          // Enviar o e-mail
+          const response = await fetch(
+            'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
             {
-              sentAt: new Date(),
-              emailTemplate: template.id,
-              status:
-                existingLinkDoc.data()['status'] === 'completed'
-                  ? 'completed'
-                  : 'pending',
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(emailRequest),
             }
           );
-        }
-      }
 
+          if (!response.ok) {
+            throw new Error(
+              `Erro ao enviar e-mail para ${
+                participant.email
+              }: ${await response.text()}`
+            );
+          }
+
+          // Atualizar ou criar o assessmentLink
+          const assessmentLinkQuery = query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('participantId', '==', participant.id),
+            where('assessmentId', '==', selectedAssessmentId)
+          );
+          const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
+
+          if (existingLinksSnapshot.empty) {
+            const assessmentLinkDoc = doc(
+              collection(this.firestore, 'assessmentLinks')
+            );
+            await setDoc(assessmentLinkDoc, {
+              assessmentId: selectedAssessmentId,
+              participantId: participant.id,
+              sentAt: new Date(),
+              status: 'pending',
+              emailTemplate: template.id,
+              participantEmail: participant.email,
+            });
+            console.log(
+              `Novo assessmentLink criado para participante ${participant.id}`
+            );
+          } else {
+            const existingLinkDoc = existingLinksSnapshot.docs[0];
+            await updateDoc(
+              doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
+              {
+                sentAt: new Date(),
+                emailTemplate: template.id,
+                status:
+                  existingLinkDoc.data()['status'] === 'completed'
+                    ? 'completed'
+                    : 'pending',
+              }
+            );
+            console.log(
+              `assessmentLink atualizado para participante ${participant.id}`
+            );
+          }
+
+          // Atualizar o array assessments no documento do participante
+          const participantRef = doc(
+            this.firestore,
+            'participants',
+            participant.id
+          );
+          const participantDoc = await getDoc(participantRef);
+          if (participantDoc.exists()) {
+            const currentAssessments =
+              participantDoc.data()['assessments'] || [];
+            if (!currentAssessments.includes(selectedAssessmentId)) {
+              currentAssessments.push(selectedAssessmentId);
+              await updateDoc(participantRef, {
+                assessments: currentAssessments,
+              });
+              console.log(
+                `Array assessments atualizado para participante ${participant.id}:`,
+                currentAssessments
+              );
+            }
+          }
+        }
+      );
+
+      // Aguardar todas as atualizações
+      await Promise.all(updatePromises);
+
+      // Restaurar o conteúdo original do template
       await updateDoc(templateRef, { content: originalContent });
 
       this.snackBar.open(
@@ -998,7 +1145,7 @@ export class ParticipantsComponent implements OnInit {
         { duration: 3000 }
       );
 
-      // Recarrega os participantes para atualizar os status
+      // Recarregar os participantes para atualizar os status
       await this.loadParticipants();
     } catch (error) {
       console.error('Erro ao enviar links:', error);
@@ -1007,6 +1154,7 @@ export class ParticipantsComponent implements OnInit {
       });
     } finally {
       this.isLoading = false;
+      this.isTableLoading = false;
     }
   }
 
@@ -1161,7 +1309,7 @@ export class ParticipantsComponent implements OnInit {
           this.snackBar.open('Upload e salvamento concluídos!', 'Fechar', {
             duration: 3000,
           });
-          this.loadParticipants();
+          await this.loadParticipants();
         }
       });
     };
@@ -1217,8 +1365,10 @@ export class ParticipantsComponent implements OnInit {
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
       width: '500px',
       data: {
-        clients: this.clients, // Passa a lista de clientes
-        projects: this.projects, // Passa a lista de projetos
+        clientId: this.filterClient || undefined, // Passar o clientId se estiver definido
+        projectId: this.filterProject || undefined, // Passar o projectId se estiver definido
+        clients: this.clients,
+        projects: this.projects,
       },
     });
 

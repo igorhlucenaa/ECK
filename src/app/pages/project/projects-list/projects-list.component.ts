@@ -5,6 +5,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -22,6 +23,7 @@ import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialo
 import { EmailSelectionDialogComponent } from './email-selection-dialog/email-selection-dialog.component';
 import { ResendAssessmentModalComponent } from '../resend-assessment-modal/resend-assessment-modal.component';
 import { ParticipantsModalComponent } from '../participants-modal/participants-modal.component';
+import { ParticipantsComponent } from '../../assessments/participants/participants.component';
 
 @Component({
   selector: 'app-projects-list',
@@ -106,9 +108,8 @@ export class ProjectsListComponent implements OnInit {
               : null;
 
           const projectId = doc.id;
-          const assessmentId = data['assessmentId'];
           const [respondedCount, totalParticipants] =
-            await this.countAssessmentResponses(projectId, assessmentId);
+            await this.countAssessmentResponses(projectId);
 
           return {
             id: doc.id,
@@ -153,47 +154,80 @@ export class ProjectsListComponent implements OnInit {
   }
 
   private async countAssessmentResponses(
-    projectId: string,
-    assessmentId: string
+    projectId: string
   ): Promise<[number, number]> {
     try {
-      if (!projectId || !assessmentId) {
-        console.log('projectId ou assessmentId não fornecidos:', {
-          projectId,
-          assessmentId,
-        });
+      // Passo 1: Obter o clientId do projeto
+      const projectRef = doc(this.firestore, 'projects', projectId);
+      const projectSnapshot = await getDoc(projectRef);
+      if (!projectSnapshot.exists()) {
+        console.warn(`Projeto ${projectId} não encontrado.`);
+        return [0, 0];
+      }
+      const projectData = projectSnapshot.data();
+      const clientId = projectData['clientId'];
+      if (!clientId) {
+        console.warn(`Projeto ${projectId} não tem clientId associado.`);
         return [0, 0];
       }
 
-      // Contar todos os participantes do projeto (independentemente do tipo, mas podemos filtrar se necessário)
+      // Passo 2: Obter todos os assessments associados ao clientId
+      const assessmentsQuery = query(
+        collection(this.firestore, 'assessments'),
+        where('clientId', '==', clientId)
+      );
+      const assessmentsSnapshot = await getDocs(assessmentsQuery);
+      const assessmentIds = assessmentsSnapshot.docs.map((doc) => doc.id);
+      if (assessmentIds.length === 0) {
+        console.warn(
+          `Nenhum assessment encontrado para o clientId ${clientId}.`
+        );
+        return [0, 0];
+      }
+
+      // Passo 3: Contar todos os participantes do projeto
       const participantsQuery = query(
         collection(this.firestore, 'participants'),
         where('projectId', '==', projectId)
-        // Opcional: descomente a linha abaixo se quiser contar apenas participantes do tipo 'avaliado'
-        // , where('type', '==', 'avaliado')
       );
       const participantsSnapshot = await getDocs(participantsQuery);
       const totalParticipants = participantsSnapshot.docs.length;
-
-      // Contar respostas completadas (status === 'completed') em assessmentLinks
-      const assessmentLinksQuery = query(
-        collection(this.firestore, 'assessmentLinks'),
-        where('assessmentId', '==', assessmentId)
-      );
-      const linksSnapshot = await getDocs(assessmentLinksQuery);
-
-      const respondedCount = linksSnapshot.docs.filter(
-        (doc) => doc.data()['status'] === 'completed'
-      ).length;
-
-      // Logs para depuração
       console.log(
-        `[countAssessmentResponses] projectId: ${projectId}, assessmentId: ${assessmentId}`
+        `Projeto ${projectId} - Total de participantes: ${totalParticipants}`
       );
-      console.log(`Total de participantes: ${totalParticipants}`);
-      console.log(`Total de respostas completadas: ${respondedCount}`);
-      console.log(`Total de links encontrados: ${linksSnapshot.docs.length}`);
 
+      // Passo 4: Contar respostas completadas em assessmentLinks
+      let respondedCount = 0;
+      const participantIds = participantsSnapshot.docs.map((doc) => doc.id);
+
+      if (participantIds.length > 0 && assessmentIds.length > 0) {
+        // Dividir os assessmentIds em lotes de 10 (limite do Firestore para cláusula 'in')
+        const batchSize = 10;
+        const completedParticipants = new Set<string>(); // Para evitar contar o mesmo participante mais de uma vez
+
+        for (let i = 0; i < assessmentIds.length; i += batchSize) {
+          const assessmentBatch = assessmentIds.slice(i, i + batchSize);
+          const assessmentLinksQuery = query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('participantId', 'in', participantIds),
+            where('assessmentId', 'in', assessmentBatch)
+          );
+          const linksSnapshot = await getDocs(assessmentLinksQuery);
+
+          linksSnapshot.docs.forEach((doc) => {
+            const linkData = doc.data();
+            if (linkData['status'] === 'completed') {
+              completedParticipants.add(linkData['participantId']);
+            }
+          });
+        }
+
+        respondedCount = completedParticipants.size;
+      }
+
+      console.log(
+        `Projeto ${projectId} - Respostas completadas: ${respondedCount}`
+      );
       return [respondedCount, totalParticipants];
     } catch (error) {
       console.error('Erro ao contar respostas da avaliação:', error);
@@ -294,7 +328,7 @@ export class ProjectsListComponent implements OnInit {
   }
 
   openResendModal(projectId: string, clientId: string): void {
-    const dialogRef = this.dialog.open(ParticipantsModalComponent, {
+    const dialogRef = this.dialog.open(ParticipantsComponent, {
       width: '80%',
       data: {
         projectId: projectId,
