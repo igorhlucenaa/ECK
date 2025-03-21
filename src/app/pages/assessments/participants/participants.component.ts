@@ -1,5 +1,11 @@
-// participants.component.ts
-import { Component, OnInit, ViewChild, Inject, Optional } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  ViewChild,
+  Inject,
+  Optional,
+  AfterViewInit,
+} from '@angular/core';
 import {
   Firestore,
   collection,
@@ -86,7 +92,7 @@ interface Assessment {
   templateUrl: './participants.component.html',
   styleUrls: ['./participants.component.scss'],
 })
-export class ParticipantsComponent implements OnInit {
+export class ParticipantsComponent implements OnInit, AfterViewInit {
   displayedColumns: string[] = [
     'select',
     'name',
@@ -95,6 +101,8 @@ export class ParticipantsComponent implements OnInit {
     'category',
     'projectName',
     'status',
+    'sentAt',
+    'completedAt',
   ];
 
   dataSource = new MatTableDataSource<UnifiedParticipant>([]);
@@ -135,9 +143,6 @@ export class ParticipantsComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.isTableLoading = true;
 
-    console.log(this.data)
-
-    // Determinar se estamos no modo de envio de e-mails
     this.isEmailSendingMode =
       !!this.data && !!this.data.templateId && !!this.data.emailType;
     this.emailType = this.data?.emailType;
@@ -150,9 +155,15 @@ export class ParticipantsComponent implements OnInit {
 
     this.isTableLoading = false;
 
+    this.configureDataSource();
+  }
+
+  ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+  }
 
+  configureDataSource(): void {
     this.dataSource.filterPredicate = (
       data: UnifiedParticipant,
       filter: string
@@ -180,87 +191,118 @@ export class ParticipantsComponent implements OnInit {
       );
     };
 
+    this.dataSource.sortData = (data: any[], sort: MatSort) => {
+      const active = sort.active;
+      const direction = sort.direction;
+      if (!active || direction === '') return data;
+
+      return data.sort((a, b) => {
+        const isAsc = direction === 'asc';
+        switch (active) {
+          case 'name':
+            return this.compare(a.name, b.name, isAsc);
+          case 'email':
+            return this.compare(a.email, b.email, isAsc);
+          case 'type':
+            return this.compare(a.type, b.type, isAsc);
+          case 'category':
+            return this.compare(a.category, b.category, isAsc);
+          case 'projectName':
+            return this.compare(a.projectName, b.projectName, isAsc);
+          case 'status':
+            return this.compare(a.status, b.status, isAsc);
+          case 'sentAt':
+            return this.compareDates(a.sentAt, b.sentAt, isAsc);
+          case 'completedAt':
+            return this.compareDates(a.completedAt, b.completedAt, isAsc);
+          default:
+            return 0;
+        }
+      });
+    };
+
+    if (this.paginator && this.sort) {
+      this.dataSource.paginator = this.paginator;
+      this.dataSource.sort = this.sort;
+    }
+
     if (this.isEmailSendingMode) {
-      // Modo de envio de e-mails: cliente, projeto e template fixos
       this.filterClient = this.data!.clientId!;
       this.isClientDisabled = true;
-
       this.filterProject = this.data!.projectId || '';
-      this.isProjectDisabled = true; // Desabilitar a seleção de projeto
+      this.isProjectDisabled = true;
 
-      // Carregar o template específico
-      const templateRef = doc(
-        this.firestore,
-        'mailTemplates',
-        this.data!.templateId!
-      );
-      const templateDoc = await getDoc(templateRef);
-      if (templateDoc.exists()) {
-        const templateData = templateDoc.data();
-        this.selectedTemplate = {
-          id: templateDoc.id,
-          name: templateData['name'] || 'Sem Nome',
-          content: templateData['content'] || '',
-          emailType: this.data!.emailType!,
-          subject: templateData['subject'] || '',
-          clientId: this.data!.clientId!,
-        };
-        this.mailTemplates = [this.selectedTemplate];
-        this.templateFormControl.setValue(this.selectedTemplate.id);
-        this.templateFormControl.disable();
-      } else {
-        this.snackBar.open('Template não encontrado.', 'Fechar', {
-          duration: 3000,
+      this.loadTemplate(this.data!.templateId!).then(() => {
+        this.loadAssessments().then(() => {
+          this.filteredProjects = this.projects.filter(
+            (project) => project.clientId === this.filterClient
+          );
+
+          if (
+            ['conviteAvaliador', 'lembreteAvaliador'].includes(
+              this.data!.emailType!
+            )
+          ) {
+            this.filterType = 'avaliador';
+          } else if (
+            [
+              'conviteRespondente',
+              'lembreteRespondente',
+              'convite',
+              'lembrete',
+            ].includes(this.data!.emailType!)
+          ) {
+            this.filterType = 'avaliado';
+          }
+
+          this.applyFilter();
         });
-        this.dialogRef.close();
-        return;
-      }
-
-      await this.loadAssessments();
-
-      this.filteredProjects = this.projects.filter(
-        (project) => project.clientId === this.filterClient
-      );
-
-      // Definir o filtro de tipo com base no emailType
-      if (
-        ['conviteAvaliador', 'lembreteAvaliador'].includes(
-          this.data!.emailType!
-        )
-      ) {
-        this.filterType = 'avaliador';
-      } else if (
-        [
-          'conviteRespondente',
-          'lembreteRespondente',
-          'convite',
-          'lembrete',
-        ].includes(this.data!.emailType!)
-      ) {
-        this.filterType = 'avaliado';
-      }
-
-      this.applyFilter();
+      });
     } else if (this.data && this.data.clientId && this.data.projectId) {
-      // Modo padrão como modal
       this.filterClient = this.data.clientId;
       this.filterProject = this.data.projectId;
       this.isClientDisabled = true;
       this.isProjectDisabled = true;
 
-      await this.loadMailTemplates();
-      await this.loadAssessments();
-
-      this.filteredProjects = this.projects.filter(
-        (project) => project.clientId === this.filterClient
+      Promise.all([this.loadMailTemplates(), this.loadAssessments()]).then(
+        () => {
+          this.filteredProjects = this.projects.filter(
+            (project) => project.clientId === this.filterClient
+          );
+          this.applyFilter();
+        }
       );
-      this.applyFilter();
     } else {
-      // Modo standalone
-      await this.loadMailTemplates();
-      await this.loadAssessments();
-      this.filteredProjects = [...this.projects];
-      this.applyFilter();
+      Promise.all([this.loadMailTemplates(), this.loadAssessments()]).then(
+        () => {
+          this.filteredProjects = [...this.projects];
+          this.applyFilter();
+        }
+      );
+    }
+  }
+
+  async loadTemplate(templateId: string): Promise<void> {
+    const templateRef = doc(this.firestore, 'mailTemplates', templateId);
+    const templateDoc = await getDoc(templateRef);
+    if (templateDoc.exists()) {
+      const templateData = templateDoc.data();
+      this.selectedTemplate = {
+        id: templateDoc.id,
+        name: templateData['name'] || 'Sem Nome',
+        content: templateData['content'] || '',
+        emailType: this.data!.emailType!,
+        subject: templateData['subject'] || '',
+        clientId: this.data!.clientId!,
+      };
+      this.mailTemplates = [this.selectedTemplate];
+      this.templateFormControl.setValue(this.selectedTemplate.id);
+      this.templateFormControl.disable();
+    } else {
+      this.snackBar.open('Template não encontrado.', 'Fechar', {
+        duration: 3000,
+      });
+      this.dialogRef.close();
     }
   }
 
@@ -293,7 +335,6 @@ export class ParticipantsComponent implements OnInit {
     try {
       const clientsCollection = collection(this.firestore, 'clients');
       const snapshot = await getDocs(clientsCollection);
-
       this.clients = snapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['companyName'] || 'Cliente Sem Nome',
@@ -310,7 +351,6 @@ export class ParticipantsComponent implements OnInit {
     try {
       const projectsCollection = collection(this.firestore, 'projects');
       const snapshot = await getDocs(projectsCollection);
-
       this.projects = snapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['name'] || 'Projeto Sem Nome',
@@ -430,9 +470,7 @@ export class ParticipantsComponent implements OnInit {
               const linkData = linkDoc.data();
               if (linkData['sentAt']) {
                 const linkSentAt = (linkData['sentAt'] as Timestamp).toDate();
-                if (!sentAt || linkSentAt > sentAt) {
-                  sentAt = linkSentAt;
-                }
+                if (!sentAt || linkSentAt > sentAt) sentAt = linkSentAt;
               }
               if (
                 linkData['status'] === 'completed' &&
@@ -441,13 +479,11 @@ export class ParticipantsComponent implements OnInit {
                 const linkCompletedAt = (
                   linkData['completedAt'] as Timestamp
                 ).toDate();
-                if (!completedAt || linkCompletedAt > completedAt) {
+                if (!completedAt || linkCompletedAt > completedAt)
                   completedAt = linkCompletedAt;
-                }
               }
             });
           }
-
           status = this.determineStatus(sentAt, completedAt);
         }
 
@@ -472,6 +508,7 @@ export class ParticipantsComponent implements OnInit {
       }
 
       this.dataSource.data = participants;
+      this.applyFilter();
     } catch (error) {
       console.error('Erro ao carregar participantes:', error);
       this.snackBar.open('Erro ao carregar participantes.', 'Fechar', {
@@ -479,6 +516,10 @@ export class ParticipantsComponent implements OnInit {
       });
     } finally {
       this.isTableLoading = false;
+      if (this.paginator && this.sort) {
+        this.dataSource.paginator = this.paginator;
+        this.dataSource.sort = this.sort;
+      }
     }
   }
 
@@ -510,7 +551,9 @@ export class ParticipantsComponent implements OnInit {
         this.snackBar.open(
           'Nenhum template encontrado para este cliente.',
           'Fechar',
-          { duration: 3000 }
+          {
+            duration: 3000,
+          }
         );
       }
     } catch (error) {
@@ -545,7 +588,9 @@ export class ParticipantsComponent implements OnInit {
         this.snackBar.open(
           'Nenhuma avaliação encontrada para este cliente.',
           'Fechar',
-          { duration: 3000 }
+          {
+            duration: 3000,
+          }
         );
       }
     } catch (error) {
@@ -557,12 +602,8 @@ export class ParticipantsComponent implements OnInit {
   }
 
   determineStatus(sentAt?: Date, completedAt?: Date): string {
-    if (completedAt) {
-      return 'Respondido';
-    }
-    if (sentAt) {
-      return 'Enviado (Pendente)';
-    }
+    if (completedAt) return 'Respondido';
+    if (sentAt) return 'Enviado (Pendente)';
     return 'Não Enviado';
   }
 
@@ -576,9 +617,7 @@ export class ParticipantsComponent implements OnInit {
       this.filteredProjects = this.projects.filter(
         (project) => project.clientId === this.filterClient
       );
-      if (!this.isEmailSendingMode) {
-        this.loadMailTemplates();
-      }
+      if (!this.isEmailSendingMode) this.loadMailTemplates();
       this.loadAssessments();
     } else {
       this.filteredProjects = [...this.projects];
@@ -599,8 +638,15 @@ export class ParticipantsComponent implements OnInit {
   }
 
   applyFilter(): void {
-    this.dataSource.filter = 'apply';
+    this.dataSource.filter = 'trigger'; // Valor arbitrário para acionar o filtro
     this.updateSelection();
+    if (this.paginator) {
+      this.dataSource.paginator = this.paginator; // Reaplicar paginator após filtro
+      this.dataSource.paginator.firstPage(); // Resetar para a primeira página
+    }
+    if (this.sort) {
+      this.dataSource.sort = this.sort; // Reaplicar sort após filtro
+    }
   }
 
   toggleAll(checked: boolean): void {
@@ -648,7 +694,9 @@ export class ParticipantsComponent implements OnInit {
           this.snackBar.open(
             'Por favor, selecione um template antes de enviar.',
             'Fechar',
-            { duration: 3000 }
+            {
+              duration: 3000,
+            }
           );
           return;
         }
@@ -672,7 +720,9 @@ export class ParticipantsComponent implements OnInit {
         this.snackBar.open(
           'Por favor, selecione uma avaliação antes de enviar.',
           'Fechar',
-          { duration: 3000 }
+          {
+            duration: 3000,
+          }
         );
         return;
       }
@@ -706,7 +756,9 @@ export class ParticipantsComponent implements OnInit {
         this.snackBar.open(
           'Por favor, selecione um projeto antes de enviar.',
           'Fechar',
-          { duration: 3000 }
+          {
+            duration: 3000,
+          }
         );
         return;
       }
@@ -814,7 +866,6 @@ export class ParticipantsComponent implements OnInit {
       );
 
       await Promise.all(updatePromises);
-
       await updateDoc(templateRef, { content: originalContent });
 
       this.snackBar.open(
@@ -898,10 +949,8 @@ export class ParticipantsComponent implements OnInit {
     reader.onload = async (e: any) => {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
-
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-
       const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {
         header: 1,
       });
@@ -911,20 +960,17 @@ export class ParticipantsComponent implements OnInit {
 
       for (let i = startRowIndex; i < jsonData.length; i++) {
         const row = jsonData[i];
-
         if (
           !Array.isArray(row) ||
           row.length < 4 ||
           !row[1] ||
           !row[2] ||
           !row[3]
-        ) {
+        )
           continue;
-        }
 
         const category = row[3]?.toString().trim() || '';
         const type = category === 'Avaliado' ? 'avaliado' : 'avaliador';
-
         participants.push({
           name: row[1]?.toString().trim() || '',
           email: row[2]?.toString().trim() || '',
@@ -963,7 +1009,6 @@ export class ParticipantsComponent implements OnInit {
       dialogRef.afterClosed().subscribe(async (result) => {
         if (result) {
           const savedParticipants = [];
-
           for (const participant of participants) {
             try {
               const docRef = await addDoc(
@@ -976,7 +1021,6 @@ export class ParticipantsComponent implements OnInit {
                   createdAt: new Date(),
                 }
               );
-
               savedParticipants.push({
                 ...participant,
                 id: docRef.id,
@@ -986,7 +1030,6 @@ export class ParticipantsComponent implements OnInit {
               console.error('Erro ao salvar participante:', error);
             }
           }
-
           this.snackBar.open('Upload e salvamento concluídos!', 'Fechar', {
             duration: 3000,
           });
@@ -1006,9 +1049,7 @@ export class ParticipantsComponent implements OnInit {
     try {
       const projectDoc = doc(this.firestore, 'projects', projectId);
       const projectSnapshot = await getDoc(projectDoc);
-      if (!projectSnapshot.exists()) {
-        throw new Error('Projeto não encontrado');
-      }
+      if (!projectSnapshot.exists()) throw new Error('Projeto não encontrado');
 
       const projectData = projectSnapshot.data();
       const assessmentId = projectData['assessmentId'];
@@ -1024,9 +1065,8 @@ export class ParticipantsComponent implements OnInit {
 
       const assessmentDoc = doc(this.firestore, 'assessments', assessmentId);
       const assessmentSnapshot = await getDoc(assessmentDoc);
-      if (!assessmentSnapshot.exists()) {
+      if (!assessmentSnapshot.exists())
         throw new Error('Avaliação não encontrada');
-      }
 
       const assessmentData = assessmentSnapshot.data();
       return {
@@ -1054,9 +1094,7 @@ export class ParticipantsComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        this.loadParticipants();
-      }
+      if (result) this.loadParticipants();
     });
   }
 
@@ -1079,5 +1117,19 @@ export class ParticipantsComponent implements OnInit {
       default:
         return emailType || 'Tipo Desconhecido';
     }
+  }
+
+  private compare(a: string, b: string, isAsc: boolean): number {
+    return (a < b ? -1 : a > b ? 1 : 0) * (isAsc ? 1 : -1);
+  }
+
+  private compareDates(
+    a: Date | undefined,
+    b: Date | undefined,
+    isAsc: boolean
+  ): number {
+    const dateA = a ? a.getTime() : 0;
+    const dateB = b ? b.getTime() : 0;
+    return (dateA - dateB) * (isAsc ? 1 : -1);
   }
 }
