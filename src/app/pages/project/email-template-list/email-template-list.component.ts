@@ -360,4 +360,27 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
   goBack(): void {
     this.location.back();
   }
+
+  getFriendlyEmailType(emailType: string): string {
+    switch (emailType) {
+      case 'cadastro':
+        return 'Cadastro do Usuário';
+      case 'convite':
+        return 'Convite';
+      case 'conviteAvaliador':
+        return 'Convite - Avaliador';
+      case 'conviteRespondente':
+        return 'Convite - Avaliado';
+      case 'lembrete':
+        return 'Lembrete';
+      case 'lembreteAvaliador':
+        return 'Lembrete - Avaliador';
+      case 'lembreteRespondente':
+        return 'Lembrete - Avaliado';
+      case 'relatorioFinalizado':
+        return 'Relatório Finalizado';
+      default:
+        return emailType;
+    }
+  }
 }

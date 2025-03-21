@@ -489,11 +489,14 @@ export class EmailTemplateFormComponent implements OnInit {
     try {
       const templatesCollection = collection(this.firestore, 'mailTemplates');
 
+      // Usar getRawValue() para incluir campos desabilitados (como clientId)
+      const formData = this.form.getRawValue();
+
       if (this.isEditMode && this.templateId) {
         const docRef = doc(this.firestore, `mailTemplates/${this.templateId}`);
-        await setDoc(docRef, this.form.value);
+        await setDoc(docRef, formData);
       } else {
-        await addDoc(templatesCollection, this.form.value);
+        await addDoc(templatesCollection, formData);
       }
 
       this.snackBar.open(
@@ -504,7 +507,7 @@ export class EmailTemplateFormComponent implements OnInit {
         { duration: 3000 }
       );
 
-      this.router.navigate(['/mail-templates']);
+      this.location.back();
     } catch (error) {
       console.error('Erro ao salvar template:', error);
       this.snackBar.open('Erro ao salvar template.', 'Fechar', {
@@ -515,5 +518,28 @@ export class EmailTemplateFormComponent implements OnInit {
 
   goBack(): void {
     this.location.back();
+  }
+
+  getFriendlyEmailType(emailType: string): string {
+    switch (emailType) {
+      case 'cadastro':
+        return 'Cadastro do Usuário';
+      case 'convite':
+        return 'Convite';
+      case 'conviteAvaliador':
+        return 'Convite - Avaliador';
+      case 'conviteRespondente':
+        return 'Convite - Avaliado';
+      case 'lembrete':
+        return 'Lembrete';
+      case 'lembreteAvaliador':
+        return 'Lembrete - Avaliador';
+      case 'lembreteRespondente':
+        return 'Lembrete - Avaliado';
+      case 'relatorioFinalizado':
+        return 'Relatório Finalizado';
+      default:
+        return emailType;
+    }
   }
 }

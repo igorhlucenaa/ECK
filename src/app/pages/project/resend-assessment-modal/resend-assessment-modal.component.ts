@@ -63,7 +63,7 @@ interface MailTemplate {
         appearance="outline"
         style="margin-top: 20px"
       >
-        <mat-label>Escolha um Template de E-mail</mat-label>
+        <mat-label>Escolha um Modelo de e-mail</mat-label>
         <mat-select [formControl]="templateFormControl" required>
           <mat-option
             *ngFor="let template of mailTemplates"

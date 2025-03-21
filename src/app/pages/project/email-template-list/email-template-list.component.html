@@ -106,7 +106,7 @@
             Tipo de Notificação
           </th>
           <td mat-cell *matCellDef="let template">
-            {{ template.emailType | titlecase }}
+            {{ getFriendlyEmailType(template.emailType) }}
           </td>
         </ng-container>
 

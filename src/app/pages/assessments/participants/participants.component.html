@@ -40,10 +40,10 @@
           </mat-form-field>
         </div>
 
-        <!-- Seleção de Template de E-mail (desabilitado) -->
+        <!-- Seleção de Modelo de e-mail (desabilitado) -->
         <div class="col-md-3">
           <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Template de E-mail</mat-label>
+            <mat-label>Modelo de e-mail</mat-label>
             <mat-select [formControl]="templateFormControl" [disabled]="true">
               <mat-option
                 *ngFor="let template of mailTemplates"
@@ -57,7 +57,7 @@
         </div>
 
         <!-- Tipo de E-mail (somente leitura) -->
-        <div class="col-md-3">
+        <!-- <div class="col-md-3">
           <mat-form-field class="w-100" appearance="outline">
             <mat-label>Tipo de E-mail</mat-label>
             <input
@@ -66,10 +66,10 @@
               readonly
             />
           </mat-form-field>
-        </div>
+        </div> -->
 
         <!-- Seleção de Avaliação (quando necessário) -->
-        <!-- <div
+        <div
           class="col-md-3"
           *ngIf="
             emailType &&
@@ -97,7 +97,7 @@
               Por favor, selecione uma avaliação.
             </mat-error>
           </mat-form-field>
-        </div> -->
+        </div>
       </div>
 
       <!-- Filtros Adicionais -->
@@ -388,7 +388,7 @@
       <!-- Campo de Seleção de Template -->
       <div class="col-md-3">
         <mat-form-field class="w-100" appearance="outline">
-          <mat-label>Selecione um Template de E-mail</mat-label>
+          <mat-label>Selecione um Modelo de e-mail</mat-label>
           <mat-select
             [formControl]="templateFormControl"
             required

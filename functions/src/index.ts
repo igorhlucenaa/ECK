@@ -23,13 +23,13 @@ const getTransporter = (emailUser: string, emailPass: string) => {
   });
 };
 
-// Função para obter o template de e-mail pelo ID
+// Função para obter o Modelo de e-mail pelo ID
 const getTemplateById = async (templateId: string) => {
   const templateRef = admin.firestore().collection('mailTemplates');
   const snapshot = await templateRef.doc(templateId).get();
 
   if (!snapshot.exists) {
-    throw new Error('Template de e-mail não encontrado.');
+    throw new Error('Modelo de e-mail não encontrado.');
   }
 
   return snapshot.data();
@@ -156,7 +156,7 @@ export const sendEmail = onRequest((req, res) => {
       const template = await getTemplateById(templateId);
 
       if (!template) {
-        res.status(404).send({ error: 'Template de e-mail não encontrado.' });
+        res.status(404).send({ error: 'Modelo de e-mail não encontrado.' });
         return;
       }
 
@@ -176,7 +176,7 @@ export const sendEmail = onRequest((req, res) => {
       } catch (err) {
         res
           .status(500)
-          .send({ error: 'Erro ao processar o template de e-mail.' });
+          .send({ error: 'Erro ao processar o Modelo de e-mail.' });
         return;
       }
 

@@ -235,7 +235,7 @@ export class EvaluatorsModalComponent implements OnInit {
     try {
       const template = this.data.mailTemplates.find((t) => t.id === templateId);
       if (!template) {
-        this.snackBar.open('Template de e-mail não encontrado.', 'Fechar', {
+        this.snackBar.open('Modelo de e-mail não encontrado.', 'Fechar', {
           duration: 3000,
         });
         return;
