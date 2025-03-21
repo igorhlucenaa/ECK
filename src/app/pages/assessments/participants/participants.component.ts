@@ -174,7 +174,7 @@ interface Assessment {
             <mat-select
               [formControl]="templateFormControl"
               required
-              (ngModelChange)="onTemplateChange()"
+              (selectionChange)="onTemplateChange()"
             >
               <mat-option
                 *ngFor="let template of mailTemplates"
@@ -213,8 +213,6 @@ interface Assessment {
 
       <!-- Filtros -->
       <div class="row mb-4" style="margin-top: 40px">
-        <!-- Campo de Pesquisa -->
-
         <!-- Filtro por Tipo -->
         <div class="col-md-4">
           <mat-form-field class="w-100" appearance="outline">
@@ -638,7 +636,8 @@ export class ParticipantsComponent implements OnInit {
         let completedAt: Date | undefined;
         let status: string = 'Não Enviado';
 
-        if (type === 'avaliado' && assessments.length > 0) {
+        // Agora aplicamos a lógica de status para ambos os tipos: avaliado e avaliador
+        if (assessments.length > 0) {
           const assessmentLinksQuery = query(
             collection(this.firestore, 'assessmentLinks'),
             where('participantId', '==', participantId),
@@ -657,8 +656,6 @@ export class ParticipantsComponent implements OnInit {
           });
 
           status = this.determineStatus(sentAt, completedAt);
-        } else {
-          status = type === 'avaliado' ? 'Não Enviado' : 'N/A';
         }
 
         if (clientId) {
@@ -812,10 +809,12 @@ export class ParticipantsComponent implements OnInit {
 
   applyFilter(): void {
     this.dataSource.filter = 'apply';
+    this.updateSelection(); // Atualiza a seleção após aplicar o filtro
   }
 
   toggleAll(checked: boolean): void {
-    this.dataSource.data.forEach((participant) => {
+    // Aplica a seleção apenas aos participantes visíveis após o filtro
+    this.dataSource.filteredData.forEach((participant) => {
       if (!participant.completedAt && this.applyEmailTypeFilter(participant)) {
         participant.selected = checked;
       }
@@ -824,13 +823,14 @@ export class ParticipantsComponent implements OnInit {
   }
 
   updateSelection(): void {
-    this.selectedParticipants = this.dataSource.data.filter(
+    // Considera apenas os participantes visíveis após o filtro
+    this.selectedParticipants = this.dataSource.filteredData.filter(
       (p) => p.selected && this.applyEmailTypeFilter(p) && !p.completedAt
     );
   }
 
   allSelected(): boolean {
-    const eligibleParticipants = this.dataSource.data.filter(
+    const eligibleParticipants = this.dataSource.filteredData.filter(
       (p) => this.applyEmailTypeFilter(p) && !p.completedAt
     );
     return (
@@ -840,7 +840,7 @@ export class ParticipantsComponent implements OnInit {
   }
 
   someSelected(): boolean {
-    const eligibleParticipants = this.dataSource.data.filter(
+    const eligibleParticipants = this.dataSource.filteredData.filter(
       (p) => this.applyEmailTypeFilter(p) && !p.completedAt
     );
     return eligibleParticipants.some((p) => p.selected) && !this.allSelected();
@@ -997,6 +997,9 @@ export class ParticipantsComponent implements OnInit {
         'Fechar',
         { duration: 3000 }
       );
+
+      // Recarrega os participantes para atualizar os status
+      await this.loadParticipants();
     } catch (error) {
       console.error('Erro ao enviar links:', error);
       this.snackBar.open('Erro ao enviar links.', 'Fechar', {

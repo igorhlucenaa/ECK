@@ -43,7 +43,6 @@ interface UnifiedParticipant {
   id: string;
   name: string;
   email: string;
-  assessmentId?: string;
   sentAt?: Date;
   completedAt?: Date;
   status?: string;
@@ -218,10 +217,7 @@ interface MailTemplate {
               <mat-checkbox
                 [(ngModel)]="participant.selected"
                 (ngModelChange)="updateSelection()"
-                [disabled]="
-                  participant.completedAt != null ||
-                  participant.type === 'avaliador'
-                "
+                [disabled]="participant.completedAt != null"
               ></mat-checkbox>
             </td>
           </ng-container>
@@ -314,23 +310,22 @@ interface MailTemplate {
       ></mat-paginator>
 
       <!-- Botão Enviar Links -->
-      <div class="mt-3 text-end">
-        <button
-          mat-button
-          (click)="resendLinks()"
-          [disabled]="
-            isLoading ||
-            selectedParticipants.length === 0 ||
-            !templateFormControl.valid
-          "
-        >
-          <mat-spinner *ngIf="isLoading" [diameter]="20"></mat-spinner>
-          <span *ngIf="isLoading">Enviando...</span>
-          <span *ngIf="!isLoading">Enviar Links</span>
-        </button>
-      </div>
+      <div class="mt-3 text-end"></div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
+      <button
+        mat-button
+        (click)="resendLinks()"
+        [disabled]="
+          isLoading ||
+          selectedParticipants.length === 0 ||
+          !templateFormControl.valid
+        "
+      >
+        <mat-spinner *ngIf="isLoading" [diameter]="20"></mat-spinner>
+        <span *ngIf="isLoading">Enviando...</span>
+        <span *ngIf="!isLoading">Enviar Links</span>
+      </button>
       <button mat-button mat-dialog-close>Fechar</button>
     </mat-dialog-actions>
   `,
@@ -410,7 +405,7 @@ export class ParticipantsModalComponent implements OnInit {
       case 'conviteAvaliador':
         return 'Convite Avaliador';
       case 'conviteRespondente':
-        return 'Convite Avaliado'; // Conforme solicitado
+        return 'Convite Avaliado';
       case 'lembreteAvaliador':
         return 'Lembrete Avaliador';
       case 'lembreteRespondente':
@@ -426,12 +421,14 @@ export class ParticipantsModalComponent implements OnInit {
 
   async loadParticipants(): Promise<void> {
     try {
+      // Buscar os participantes do projeto
       const participantsQuery = query(
         collection(this.firestore, 'participants'),
         where('projectId', '==', this.data.projectId)
       );
       const participantsSnapshot = await getDocs(participantsQuery);
 
+      // Buscar as avaliações associadas ao projeto
       const assessmentsQuery = query(
         collection(this.firestore, 'assessments'),
         where('projectId', '==', this.data.projectId)
@@ -439,7 +436,8 @@ export class ParticipantsModalComponent implements OnInit {
       const assessmentsSnapshot = await getDocs(assessmentsQuery);
       const assessmentIds = assessmentsSnapshot.docs.map((doc) => doc.id);
 
-      let linkDataMap: { [key: string]: any } = {};
+      // Buscar os links de avaliação para todas as avaliações do projeto
+      let linkDataMap: { [key: string]: any[] } = {};
       if (assessmentIds.length > 0) {
         const assessmentLinksQuery = query(
           collection(this.firestore, 'assessmentLinks'),
@@ -447,10 +445,14 @@ export class ParticipantsModalComponent implements OnInit {
         );
         const linksSnapshot = await getDocs(assessmentLinksQuery);
 
+        // Agrupar os links por participantId
         linksSnapshot.docs.forEach((doc) => {
           const data = doc.data();
-          const key = `${data['participantId']}_${data['assessmentId']}`;
-          linkDataMap[key] = data;
+          const participantId = data['participantId'];
+          if (!linkDataMap[participantId]) {
+            linkDataMap[participantId] = [];
+          }
+          linkDataMap[participantId].push(data);
         });
       }
 
@@ -462,44 +464,51 @@ export class ParticipantsModalComponent implements OnInit {
         const type = participantData['type'] as 'avaliado' | 'avaliador';
         const category = participantData['category'] || 'N/A';
 
-        if (type === 'avaliado' && assessmentIds.length > 0) {
-          for (const assessmentId of assessmentIds) {
-            const key = `${participantId}_${assessmentId}`;
-            const linkData = linkDataMap[key] || {};
+        let sentAt: Date | undefined;
+        let completedAt: Date | undefined;
+        let status: string = 'Não Enviado';
 
-            const sentAt = linkData['sentAt']
+        // Verificar todos os links de avaliação associados a este participante
+        const participantLinks = linkDataMap[participantId] || [];
+        if (participantLinks.length > 0) {
+          // Determinar o status com base nos links
+          for (const linkData of participantLinks) {
+            const linkSentAt = linkData['sentAt']
               ? (linkData['sentAt'] as Timestamp).toDate()
               : undefined;
-            const completedAt =
+            const linkCompletedAt =
               linkData['status'] === 'completed' && linkData['completedAt']
                 ? (linkData['completedAt'] as Timestamp).toDate()
                 : undefined;
-            const status = this.determineStatus(sentAt, completedAt);
 
-            participants.push({
-              id: participantId,
-              name: participantData['name'] || 'Desconhecido',
-              email: email,
-              assessmentId: assessmentId,
-              sentAt: sentAt,
-              completedAt: completedAt,
-              status: status,
-              selected: false,
-              category: category,
-              type: type,
-            });
+            // Prioridade: se houver um link completado, o status é "Respondido"
+            if (linkCompletedAt) {
+              completedAt = linkCompletedAt;
+              status = 'Respondido';
+              sentAt = linkSentAt; // Pode ser undefined, mas não importa se já foi completado
+              break; // Não precisa verificar mais links
+            }
+
+            // Se não houver completado, mas houver enviado, definimos como "Enviado (Pendente)"
+            if (linkSentAt && !completedAt) {
+              sentAt = linkSentAt;
+              status = 'Enviado (Pendente)';
+            }
           }
-        } else {
-          participants.push({
-            id: participantId,
-            name: participantData['name'] || 'Desconhecido',
-            email: email,
-            category: category,
-            type: type,
-            selected: false,
-            status: type === 'avaliado' ? 'Não Enviado' : 'N/A',
-          });
         }
+
+        // Adicionar o participante à lista apenas uma vez
+        participants.push({
+          id: participantId,
+          name: participantData['name'] || 'Desconhecido',
+          email: email,
+          sentAt: sentAt,
+          completedAt: completedAt,
+          status: status,
+          selected: false,
+          category: category,
+          type: type,
+        });
       }
 
       this.dataSource.data = participants;
@@ -641,7 +650,7 @@ export class ParticipantsModalComponent implements OnInit {
 
   toggleAll(checked: boolean): void {
     this.dataSource.data.forEach((participant) => {
-      if (!participant.completedAt && participant.type === 'avaliado') {
+      if (!participant.completedAt) {
         participant.selected = checked;
       }
     });
@@ -650,13 +659,13 @@ export class ParticipantsModalComponent implements OnInit {
 
   updateSelection(): void {
     this.selectedParticipants = this.dataSource.data.filter(
-      (p) => p.selected && p.type === 'avaliado' && !p.completedAt
+      (p) => p.selected && !p.completedAt
     );
   }
 
   allSelected(): boolean {
     const eligibleParticipants = this.dataSource.data.filter(
-      (p) => p.type === 'avaliado' && !p.completedAt
+      (p) => !p.completedAt
     );
     return (
       eligibleParticipants.length > 0 &&
@@ -666,7 +675,7 @@ export class ParticipantsModalComponent implements OnInit {
 
   someSelected(): boolean {
     const eligibleParticipants = this.dataSource.data.filter(
-      (p) => p.type === 'avaliado' && !p.completedAt
+      (p) => !p.completedAt
     );
     return eligibleParticipants.some((p) => p.selected) && !this.allSelected();
   }
@@ -696,12 +705,24 @@ export class ParticipantsModalComponent implements OnInit {
         return;
       }
 
+      // Buscar a avaliação associada ao projeto
+      const evaluation = await this.loadEvaluation(this.data.projectId);
+      if (!evaluation) {
+        this.snackBar.open(
+          'Nenhuma avaliação associada ao projeto.',
+          'Fechar',
+          { duration: 3000 }
+        );
+        this.isLoading = false;
+        return;
+      }
+
       for (const participant of this.selectedParticipants) {
         const emailRequest = {
           email: participant.email,
           templateId: template.id,
           participantId: participant.id,
-          assessmentId: participant.assessmentId,
+          assessmentId: evaluation.id, // Usar o assessmentId do projeto
         };
 
         const response = await fetch(
@@ -724,7 +745,7 @@ export class ParticipantsModalComponent implements OnInit {
         const assessmentLinkQuery = query(
           collection(this.firestore, 'assessmentLinks'),
           where('participantId', '==', participant.id),
-          where('assessmentId', '==', participant.assessmentId)
+          where('assessmentId', '==', evaluation.id)
         );
         const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
 
@@ -733,7 +754,7 @@ export class ParticipantsModalComponent implements OnInit {
             collection(this.firestore, 'assessmentLinks')
           );
           await setDoc(assessmentLinkDoc, {
-            assessmentId: participant.assessmentId,
+            assessmentId: evaluation.id,
             participantId: participant.id,
             sentAt: new Date(),
             status: 'pending',
@@ -757,7 +778,7 @@ export class ParticipantsModalComponent implements OnInit {
       }
 
       this.snackBar.open(
-        `Links enviados para ${this.selectedParticipants.length} avaliados!`,
+        `Links enviados para ${this.selectedParticipants.length} participantes!`,
         'Fechar',
         { duration: 3000 }
       );
@@ -804,6 +825,7 @@ export class ParticipantsModalComponent implements OnInit {
       width: '500px',
       data: {
         projectId: this.data.projectId,
+        clientId: this.data.clientId,
       },
     });
 

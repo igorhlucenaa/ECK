@@ -157,13 +157,20 @@ export class ProjectsListComponent implements OnInit {
     assessmentId: string
   ): Promise<[number, number]> {
     try {
-      if (!projectId || !assessmentId) return [0, 0];
+      if (!projectId || !assessmentId) {
+        console.log('projectId ou assessmentId não fornecidos:', {
+          projectId,
+          assessmentId,
+        });
+        return [0, 0];
+      }
 
-      // Contar todos os participantes avaliados do projeto
+      // Contar todos os participantes do projeto (independentemente do tipo, mas podemos filtrar se necessário)
       const participantsQuery = query(
         collection(this.firestore, 'participants'),
-        where('projectId', '==', projectId),
-        where('type', '==', 'avaliado')
+        where('projectId', '==', projectId)
+        // Opcional: descomente a linha abaixo se quiser contar apenas participantes do tipo 'avaliado'
+        // , where('type', '==', 'avaliado')
       );
       const participantsSnapshot = await getDocs(participantsQuery);
       const totalParticipants = participantsSnapshot.docs.length;
@@ -178,6 +185,14 @@ export class ProjectsListComponent implements OnInit {
       const respondedCount = linksSnapshot.docs.filter(
         (doc) => doc.data()['status'] === 'completed'
       ).length;
+
+      // Logs para depuração
+      console.log(
+        `[countAssessmentResponses] projectId: ${projectId}, assessmentId: ${assessmentId}`
+      );
+      console.log(`Total de participantes: ${totalParticipants}`);
+      console.log(`Total de respostas completadas: ${respondedCount}`);
+      console.log(`Total de links encontrados: ${linksSnapshot.docs.length}`);
 
       return [respondedCount, totalParticipants];
     } catch (error) {

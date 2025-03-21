@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, OnInit } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import {
   FormBuilder,
@@ -7,10 +7,18 @@ import {
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import {
+  Firestore,
+  collection,
+  getDocs,
+  getDoc,
+  doc,
+  addDoc,
+} from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
+import { debounceTime, Subject } from 'rxjs';
 
 interface Client {
   id: string;
@@ -24,8 +32,10 @@ interface Project {
 }
 
 interface ModalData {
-  clients: Client[];
-  projects: Project[];
+  clientId?: string;
+  projectId?: string;
+  clients?: Client[];
+  projects?: Project[];
 }
 
 @Component({
@@ -35,7 +45,19 @@ interface ModalData {
   template: `
     <h2 mat-dialog-title>Adicionar Novo Participante</h2>
     <mat-dialog-content>
-      <form [formGroup]="participantForm">
+      <!-- Exibir estado de carregamento -->
+      <div *ngIf="isLoading" class="text-center my-4">
+        <mat-spinner [diameter]="40"></mat-spinner>
+        <p>Carregando dados...</p>
+      </div>
+
+      <!-- Exibir mensagem de erro se não houver clientes -->
+      <div *ngIf="!isLoading && !hasClients" class="text-center my-4">
+        <p>Nenhum cliente disponível. Por favor, tente novamente mais tarde.</p>
+      </div>
+
+      <!-- Exibir formulário quando os dados estiverem carregados -->
+      <form [formGroup]="participantForm" *ngIf="!isLoading && hasClients">
         <!-- Cliente -->
         <mat-form-field
           class="w-100 mb-3"
@@ -47,8 +69,9 @@ interface ModalData {
             formControlName="clientId"
             required
             (selectionChange)="onClientChange()"
+            [disabled]="isClientDisabled"
           >
-            <mat-option *ngFor="let client of data.clients" [value]="client.id">
+            <mat-option *ngFor="let client of clients" [value]="client.id">
               {{ client.name }}
             </mat-option>
           </mat-select>
@@ -65,7 +88,9 @@ interface ModalData {
           <mat-select
             formControlName="projectId"
             required
-            [disabled]="!participantForm.get('clientId')?.value"
+            [disabled]="
+              isProjectDisabled || !participantForm.get('clientId')?.value
+            "
           >
             <mat-option
               *ngFor="let project of filteredProjects"
@@ -127,8 +152,10 @@ interface ModalData {
     <mat-dialog-actions align="end">
       <button
         mat-button
-        (click)="addParticipant()"
-        [disabled]="!participantForm.valid || isSaving"
+        (click)="onAddParticipantClick()"
+        [disabled]="
+          !participantForm.valid || isSaving || isLoading || !hasClients
+        "
       >
         <mat-spinner *ngIf="isSaving" [diameter]="20"></mat-spinner>
         <span *ngIf="isSaving">Salvando...</span>
@@ -139,10 +166,19 @@ interface ModalData {
   `,
   styleUrls: ['./add-participant-modal.component.scss'],
 })
-export class AddParticipantModalComponent {
+export class AddParticipantModalComponent implements OnInit {
   participantForm: FormGroup;
   isSaving: boolean = false;
+  isLoading: boolean = true;
+  clients: Client[] = [];
+  projects: Project[] = [];
   filteredProjects: Project[] = [];
+  isClientDisabled: boolean = false;
+  isProjectDisabled: boolean = false;
+  hasClients: boolean = false;
+
+  // Subject para debounce do clique
+  private addParticipantSubject = new Subject<void>();
 
   constructor(
     public dialogRef: MatDialogRef<AddParticipantModalComponent>,
@@ -158,12 +194,129 @@ export class AddParticipantModalComponent {
       email: ['', [Validators.required, Validators.email]],
       category: ['', Validators.required],
     });
+
+    // Configurar debounce para o evento de clique
+    this.addParticipantSubject.pipe(debounceTime(300)).subscribe(() => {
+      this.addParticipant();
+    });
+  }
+
+  async ngOnInit(): Promise<void> {
+    this.isLoading = true;
+    try {
+      // Se clientId e projectId foram passados via data, usamos eles e desabilitamos os campos
+      if (this.data?.clientId && this.data?.projectId) {
+        await this.loadClientAndProjectNames();
+        this.participantForm.patchValue({
+          clientId: this.data.clientId,
+          projectId: this.data.projectId,
+        });
+        this.isClientDisabled = true;
+        this.isProjectDisabled = true;
+        this.filteredProjects = this.projects.filter(
+          (project) => project.id === this.data.projectId
+        );
+      } else {
+        // Caso contrário, buscamos os dados do Firestore
+        await Promise.all([this.loadClients(), this.loadProjects()]);
+      }
+      this.hasClients = this.clients.length > 0;
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      this.snackBar.open('Erro ao carregar dados.', 'Fechar', {
+        duration: 3000,
+      });
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  async loadClientAndProjectNames(): Promise<void> {
+    try {
+      // Buscar o nome do cliente
+      const clientDoc = await getDoc(
+        doc(this.firestore, 'clients', this.data.clientId!)
+      );
+      if (clientDoc.exists()) {
+        this.clients = [
+          {
+            id: this.data.clientId!,
+            name: clientDoc.data()['companyName'] || 'Cliente Sem Nome',
+          },
+        ];
+      } else {
+        this.clients = [
+          {
+            id: this.data.clientId!,
+            name: 'Cliente Desconhecido',
+          },
+        ];
+      }
+
+      // Buscar o nome do projeto
+      const projectDoc = await getDoc(
+        doc(this.firestore, 'projects', this.data.projectId!)
+      );
+      if (projectDoc.exists()) {
+        this.projects = [
+          {
+            id: this.data.projectId!,
+            name: projectDoc.data()['name'] || 'Projeto Sem Nome',
+            clientId: this.data.clientId!,
+          },
+        ];
+      } else {
+        this.projects = [
+          {
+            id: this.data.projectId!,
+            name: 'Projeto Desconhecido',
+            clientId: this.data.clientId!,
+          },
+        ];
+      }
+    } catch (error) {
+      console.error('Erro ao carregar nomes do cliente e projeto:', error);
+      throw error;
+    }
+  }
+
+  async loadClients(): Promise<void> {
+    try {
+      const clientsCollection = collection(this.firestore, 'clients');
+      const snapshot = await getDocs(clientsCollection);
+
+      this.clients = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['companyName'] || 'Cliente Sem Nome',
+      }));
+      console.log('Clientes carregados no modal:', this.clients);
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      throw error;
+    }
+  }
+
+  async loadProjects(): Promise<void> {
+    try {
+      const projectsCollection = collection(this.firestore, 'projects');
+      const snapshot = await getDocs(projectsCollection);
+
+      this.projects = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['name'] || 'Projeto Sem Nome',
+        clientId: doc.data()['clientId'] || '',
+      }));
+      console.log('Projetos carregados no modal:', this.projects);
+    } catch (error) {
+      console.error('Erro ao carregar projetos:', error);
+      throw error;
+    }
   }
 
   onClientChange(): void {
     const clientId = this.participantForm.get('clientId')?.value;
     if (clientId) {
-      this.filteredProjects = this.data.projects.filter(
+      this.filteredProjects = this.projects.filter(
         (project) => project.clientId === clientId
       );
       this.participantForm.get('projectId')?.setValue(''); // Reseta o projeto ao mudar o cliente
@@ -177,10 +330,21 @@ export class AddParticipantModalComponent {
     // Não é necessário ajustar validators, apenas determinar o tipo ao salvar
   }
 
+  // Método chamado pelo botão "Adicionar"
+  onAddParticipantClick(): void {
+    console.log('Botão Adicionar clicado');
+    this.addParticipantSubject.next();
+  }
+
   async addParticipant(): Promise<void> {
-    if (this.participantForm.invalid) return;
+    if (this.participantForm.invalid || this.isSaving) {
+      console.log('Formulário inválido ou salvamento em andamento');
+      return;
+    }
 
     this.isSaving = true;
+    console.log('Iniciando salvamento do participante...');
+
     try {
       const formValue = this.participantForm.value;
       const category = formValue.category;
@@ -196,7 +360,13 @@ export class AddParticipantModalComponent {
         createdAt: new Date(),
       };
 
-      await addDoc(collection(this.firestore, 'participants'), participantData);
+      console.log('Dados do participante a serem salvos:', participantData);
+
+      const docRef = await addDoc(
+        collection(this.firestore, 'participants'),
+        participantData
+      );
+      console.log('Participante salvo com ID:', docRef.id);
 
       this.snackBar.open('Participante adicionado com sucesso!', 'Fechar', {
         duration: 3000,
@@ -209,6 +379,7 @@ export class AddParticipantModalComponent {
       });
     } finally {
       this.isSaving = false;
+      console.log('Salvamento concluído');
     }
   }
 }
