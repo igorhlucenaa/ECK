@@ -123,7 +123,7 @@ export class FullComponent implements OnInit {
   ngOnInit(): void {
     this.authService.getCurrentUserRole().then((res) => {
       this.userRole = res;
-      
+
       // Atualizar os itens do menu de acordo com a role
       if (this.userRole === 'admin_master') {
         this.navItems = navItems; // Exibe todas as opções para admin_master
@@ -179,7 +179,10 @@ export class FullComponent implements OnInit {
   }
 
   receiveOptions(options: AppSettings): void {
+    console.log(this.options)
     this.options = options;
+    this.options.horizontal = true;
+    this.options.boxed = false;
     this.toggleDarkTheme(options);
   }
 

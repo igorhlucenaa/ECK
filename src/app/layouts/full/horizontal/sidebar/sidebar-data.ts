@@ -2,136 +2,472 @@ import { NavItem } from '../../vertical/sidebar/nav-item/nav-item';
 
 export const navItems: NavItem[] = [
   {
-    navCap: 'Home',
+    navCap: 'Bem Vindo!',
+    role: 'any', // Visível para todos
+  },
+  {
+    displayName: 'Dashboard',
+    iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando o dashboard
+    route: '/dashboard',
+    role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
   },
   {
     displayName: 'Clientes',
-    iconName: 'people',
+    iconName: 'solar:people-nearby-bold-duotone',
     route: '/clients', // Caminho correto para a página de clientes
+    role: ['admin_master'],
   },
   {
     displayName: 'Projetos',
-    iconName: 'people',
-    route: '/projects', // Caminho correto para a página de clientes
+    iconName: 'solar:bill-list-bold-duotone',
+    route: '/projects', // Caminho correto para a página de clientes,
+    role: ['admin_client'],
   },
+  {
+    displayName: 'Participantes',
+    iconName: 'solar:user-id-bold-duotone',
+    route: '/assessments/participants', // Caminho correto para a página de clientes,
+    role: ['admin_client'],
+  },
+  {
+    displayName: 'Definições',
+    iconName: 'solar:document-add-bold-duotone',
+    route: '',
+    children: [
+      {
+        displayName: 'Pedidos',
+        iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
+        route: '/orders', // Caminho correto para o componente de gestão de pedidos
+        role: ['admin_client'], // Visível apenas para clientes
+      },
+      {
+        displayName: 'Usuários e Grupos',
+        iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
+        route: '/users', // Caminho correto para a página de usuários
+        role: ['admin_client'], // Visível apenas para Administrador Master
+      },
+      {
+        displayName: 'Modelos de E-mail',
+        iconName: 'solar:mailbox-bold-duotone', // Ícone representando transações ou dinheiro
+        route: '/mail-templates', // Caminho correto para o componente de gestão de pedidos
+        role: ['admin_client'], // Visível apenas para clientes
+      },
+      {
+        displayName: 'Formulários',
+        iconName: 'solar:chart-2-bold-duotone', // Ícone representando avaliações ou relatórios
+        route: '/assessments', // Caminho para o componente pai das avaliações
+        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
+      },
+    ],
+  },
+
+  // {
+  //   displayName: 'Projetos',
+  //   iconName: 'solar:bill-list-bold-duotone',
+  //   route: '/projects', // Caminho correto para a página de clientes,
+  //   role: 'admin_client',
+  // },
+  // {
+  //   displayName: 'Personalização',
+  //   iconName: 'solar:paint-roller-bold-duotone',
+  //   route: '/clients/:id/customization', // Caminho correto para o componente de personalização
+  //   role: 'admin_client', // Visível apenas para clientes
+  // },
+  // {
+  //   displayName: 'Pedidos',
+  //   iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
+  //   route: '/orders', // Caminho correto para o componente de gestão de pedidos
+  //   role: 'admin_client', // Visível apenas para clientes
+  // },
+  // {
+  //   displayName: 'Usuários e Grupos',
+  //   iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
+  //   route: '/users', // Caminho correto para a página de usuários
+  //   role: 'admin_master', // Visível apenas para Administrador Master
+  // },
+
+  // {
+  //   displayName: 'E-mails e Notificações',
+  //   iconName: 'solar:dialog-bold-duotone', // Ícone para representação
+  //   route: '/emails-notifications',
+  //   role: 'admin_master', // Visível para admin_master
+  // },
+  // <iconify-icon icon="solar:bill-list-bold-duotone" width="24" height="24"></iconify-icon>
+  // {
+  //   displayName: 'Analytical',
+  //   iconName: 'solar:screencast-2-linear',
+  //   route: '/dashboards/dashboard1',
+  // },
+  // {
+  //   displayName: 'Classic',
+  //   iconName: 'solar:atom-linear',
+  //   route: '/dashboards/dashboard2',
+  // },
+  // {
+  //   displayName: 'Demographical',
+  //   iconName: 'solar:box-minimalistic-linear',
+  //   route: '/dashboards/dashboard3',
+  // },
+  // {
+  //   displayName: 'Minimal',
+  //   iconName: 'solar:buildings-2-linear',
+  //   route: '/dashboards/dashboard4',
+  // },
+  // {
+  //   displayName: 'eCommerce',
+  //   iconName: 'solar:basketball-linear',
+  //   route: '/dashboards/dashboard5',
+  // },
+  // {
+  //   displayName: 'Modern',
+  //   iconName: 'solar:cart-large-2-linear',
+  //   route: '/dashboards/dashboard6',
+  // },
+  // {
+  //   navCap: 'Apps',
+  // },
+  // {
+  //   displayName: 'Chat',
+  //   iconName: 'solar:chat-line-linear',
+  //   route: 'apps/chat',
+  // },
+  // {
+  //   displayName: 'Calendar',
+  //   iconName: 'solar:calendar-linear',
+  //   route: 'apps/calendar',
+  // },
+  // {
+  //   displayName: 'Email',
+  //   iconName: 'solar:letter-unread-linear',
+  //   route: 'apps/email/inbox',
+  // },
+  // {
+  //   displayName: 'Kanban',
+  //   iconName: 'solar:clapperboard-edit-linear',
+  //   route: 'apps/taskboard',
+  // },
+  // {
+  //   displayName: 'Contacts',
+  //   iconName: 'solar:list-check-linear',
+  //   route: 'apps/contacts',
+  // },
+  // {
+  //   displayName: 'ContactsApp',
+  //   iconName: 'solar:phone-rounded-linear',
+  //   route: 'apps/contact-app',
+  //   chip: true,
+  //   chipClass: 'b-1 border-accent text-accent',
+  //   chipContent: 'New',
+  // },
+  // {
+  //   displayName: 'Courses',
+  //   iconName: 'solar:diploma-broken',
+  //   route: 'apps/courses',
+  // },
+  // {
+  //   displayName: 'Employee',
+  //   iconName: 'solar:people-nearby-linear',
+  //   route: 'apps/employee',
+  // },
+  // {
+  //   displayName: 'Notes',
+  //   iconName: 'solar:palette-linear',
+  //   route: 'apps/notes',
+  // },
+  // {
+  //   displayName: 'Tickets',
+  //   iconName: 'solar:ticket-linear',
+  //   route: 'apps/tickets',
+  // },
+  // {
+  //   displayName: 'Invoice',
+  //   iconName: 'solar:bill-list-line-duotone',
+  //   route: '',
   //   children: [
   //     {
-  //       displayName: 'Analytical',
+  //       displayName: 'List',
   //       iconName: 'point',
-  //       route: '/dashboards/dashboard1',
+  //       route: '/apps/invoice',
   //     },
   //     {
-  //       displayName: 'Classic',
+  //       displayName: 'Detail',
   //       iconName: 'point',
-  //       route: '/dashboards/dashboard2',
+  //       route: '/apps/viewInvoice/101',
   //     },
   //     {
-  //       displayName: 'Demographical',
+  //       displayName: 'Create',
   //       iconName: 'point',
-  //       route: '/dashboards/dashboard3',
+  //       route: '/apps/addInvoice',
   //     },
   //     {
-  //       displayName: 'Minimal',
+  //       displayName: 'Edit',
   //       iconName: 'point',
-  //       route: '/dashboards/dashboard4',
-  //     },
-  //     {
-  //       displayName: 'eCommerce',
-  //       iconName: 'point',
-  //       route: '/dashboards/dashboard5',
-  //     },
-  //     {
-  //       displayName: 'Modern',
-  //       iconName: 'point',
-  //       route: '/dashboards/dashboard6',
+  //       route: '/apps/editinvoice/101',
   //     },
   //   ],
   // },
   // {
-  //   displayName: 'Apps',
-  //   iconName: 'apps',
-  //   route: 'apps',
-  //   ddType: '',
+  //   displayName: 'ToDo',
+  //   iconName: 'solar:pen-new-square-linear',
+  //   route: 'apps/todo',
+  // },
+  // {
+  //   displayName: 'Blog',
+  //   iconName: 'solar:widget-4-linear',
+  //   route: 'apps/blog',
   //   children: [
   //     {
-  //       displayName: 'Chat',
+  //       displayName: 'Post',
   //       iconName: 'point',
-  //       route: 'apps/chat',
+  //       route: 'apps/blog/post',
   //     },
   //     {
-  //       displayName: 'Calendar',
+  //       displayName: 'Detail',
   //       iconName: 'point',
-  //       route: 'apps/calendar',
-  //     },
-  //     {
-  //       displayName: 'Email',
-  //       iconName: 'point',
-  //       route: 'apps/email/inbox',
-  //     },
-  //     {
-  //       displayName: 'Contacts',
-  //       iconName: 'point',
-  //       route: 'apps/contacts',
-  //     },
-  //     {
-  //       displayName: 'Courses',
-  //       iconName: 'point',
-  //       route: 'apps/courses',
-  //     },
-  //     {
-  //       displayName: 'Employee',
-  //       iconName: 'point',
-  //       route: 'apps/employee',
-  //     },
-  //     {
-  //       displayName: 'Notes',
-  //       iconName: 'point',
-  //       route: 'apps/notes',
-  //     },
-  //     {
-  //       displayName: 'Tickets',
-  //       iconName: 'point',
-  //       route: 'apps/tickets',
-  //     },
-  //     {
-  //       displayName: 'Invoice',
-  //       iconName: 'point',
-  //       route: 'apps/invoice',
-  //     },
-  //     {
-  //       displayName: 'ToDo',
-  //       iconName: 'point',
-  //       route: 'apps/todo',
-  //     },
-  //     {
-  //       displayName: 'Kanban',
-  //       iconName: 'point',
-  //       route: 'apps/taskboard',
-  //     },
-  //     {
-  //       displayName: 'Blog',
-  //       iconName: 'point',
-  //       route: 'apps/blog',
-  //       children: [
-  //         {
-  //           displayName: 'Post',
-  //           iconName: 'point',
-  //           route: 'apps/blog/post',
-  //         },
-  //         {
-  //           displayName: 'Detail',
-  //           iconName: 'point',
-  //           route: 'apps/blog/detail/Early Black Friday Amazon deals: cheap TVs, headphones, laptops',
-  //         },
-  //       ],
+  //       route: 'apps/blog/detail/Early Black Friday Amazon deals: cheap TVs, headphones',
   //     },
   //   ],
   // },
   // {
-  //   displayName: 'Ui',
-  //   iconName: 'components',
+  //   navCap: 'Pages',
+  // },
+  // {
+  //   displayName: 'Roll Base Access',
+  //   iconName: 'solar:folder-security-linear',
+  //   route: 'apps/permission',
+  // },
+  // {
+  //   displayName: 'Treeview',
+  //   iconName: 'solar:three-squares-linear',
+  //   route: 'theme-pages/treeview',
+  // },
+  // {
+  //   displayName: 'Pricing',
+  //   iconName: 'solar:dollar-minimalistic-linear',
+  //   route: 'theme-pages/pricing',
+  // },
+  // {
+  //   displayName: 'Account Setting',
+  //   iconName: 'solar:user-circle-linear',
+  //   route: 'theme-pages/account-setting',
+  // },
+  // {
+  //   displayName: 'FAQ',
+  //   iconName: 'solar:question-circle-linear',
+  //   route: 'theme-pages/faq',
+  // },
+  // {
+  //   displayName: 'Landingpage',
+  //   iconName: 'solar:layers-linear',
+  //   route: 'landingpage',
+  // },
+  // {
+  //   displayName: 'Widgets',
+  //   iconName: 'solar:widget-4-linear',
+  //   route: 'widgets',
+  //   children: [
+  //     {
+  //       displayName: 'Cards',
+  //       iconName: 'point',
+  //       route: 'widgets/cards',
+  //     },
+  //     {
+  //       displayName: 'Banners',
+  //       iconName: 'point',
+  //       route: 'widgets/banners',
+  //     },
+  //     {
+  //       displayName: 'Charts',
+  //       iconName: 'point',
+  //       route: 'widgets/charts',
+  //     },
+  //   ],
+  // },
+  // {
+  //   navCap: 'Forms',
+  // },
+  // {
+  //   displayName: 'Form elements',
+  //   iconName: 'solar:notification-unread-lines-linear',
+  //   route: 'forms/forms-elements',
+  //   children: [
+  //     {
+  //       displayName: 'Autocomplete',
+  //       iconName: 'point',
+  //       route: 'forms/forms-elements/autocomplete',
+  //     },
+  //     {
+  //       displayName: 'Button',
+  //       iconName: 'point',
+  //       route: 'forms/forms-elements/button',
+  //     },
+  //     {
+  //       displayName: 'Checkbox',
+  //       iconName: 'point',
+  //       route: 'forms/forms-elements/checkbox',
+  //     },
+  //     {
+  //       displayName: 'Radio',
+  //       iconName: 'point',
+  //       route: 'forms/forms-elements/radio',
+  //     },
+  //     {
+  //       displayName: 'Datepicker',
+  //       iconName: 'point',
+  //       route: 'forms/forms-elements/datepicker',
+  //     },
+  //   ],
+  // },
+  // {
+  //   displayName: 'Form Layouts',
+  //   iconName: 'solar:file-text-linear',
+  //   route: '/forms/form-layouts',
+  // },
+  // {
+  //   displayName: 'Form Horizontal',
+  //   iconName: 'solar:file-check-linear',
+  //   route: '/forms/form-horizontal',
+  // },
+  // {
+  //   displayName: 'Form Vertical',
+  //   iconName: 'solar:file-favourite-linear',
+  //   route: '/forms/form-vertical',
+  // },
+  // {
+  //   displayName: 'Form Wizard',
+  //   iconName: 'solar:download-twice-square-linear',
+  //   route: '/forms/form-wizard',
+  // },
+  // {
+  //   navCap: 'Tables',
+  // },
+  // {
+  //   displayName: 'Tables',
+  //   iconName: 'solar:window-frame-linear',
+  //   route: 'tables',
+  //   children: [
+  //     {
+  //       displayName: 'Basic Table',
+  //       iconName: 'point',
+  //       route: 'tables/basic-table',
+  //     },
+  //     {
+  //       displayName: 'Dynamic Table',
+  //       iconName: 'point',
+  //       route: 'tables/dynamic-table',
+  //     },
+  //     {
+  //       displayName: 'Expand Table',
+  //       iconName: 'point',
+  //       route: 'tables/expand-table',
+  //     },
+  //     {
+  //       displayName: 'Filterable Table',
+  //       iconName: 'point',
+  //       route: 'tables/filterable-table',
+  //     },
+  //     {
+  //       displayName: 'Footer Row Table',
+  //       iconName: 'point',
+  //       route: 'tables/footer-row-table',
+  //     },
+  //     {
+  //       displayName: 'HTTP Table',
+  //       iconName: 'point',
+  //       route: 'tables/http-table',
+  //     },
+  //     {
+  //       displayName: 'Mix Table',
+  //       iconName: 'point',
+  //       route: 'tables/mix-table',
+  //     },
+  //     {
+  //       displayName: 'Multi Header Footer',
+  //       iconName: 'point',
+  //       route: 'tables/multi-header-footer-table',
+  //     },
+  //     {
+  //       displayName: 'Pagination Table',
+  //       iconName: 'point',
+  //       route: 'tables/pagination-table',
+  //     },
+  //     {
+  //       displayName: 'Row Context Table',
+  //       iconName: 'point',
+  //       route: 'tables/row-context-table',
+  //     },
+  //     {
+  //       displayName: 'Selection Table',
+  //       iconName: 'point',
+  //       route: 'tables/selection-table',
+  //     },
+  //     {
+  //       displayName: 'Sortable Table',
+  //       iconName: 'point',
+  //       route: 'tables/sortable-table',
+  //     },
+  //     {
+  //       displayName: 'Sticky Column',
+  //       iconName: 'point',
+  //       route: 'tables/sticky-column-table',
+  //     },
+  //     {
+  //       displayName: 'Sticky Header Footer',
+  //       iconName: 'point',
+  //       route: 'tables/sticky-header-footer-table',
+  //     },
+  //   ],
+  // },
+  // {
+  //   displayName: 'Data table',
+  //   iconName: 'solar:sidebar-code-linear',
+  //   route: '/datatable/kichen-sink',
+  // },
+  // {
+  //   navCap: 'Chart',
+  // },
+  // {
+  //   displayName: 'Line',
+  //   iconName: 'solar:chart-2-linear',
+  //   route: '/charts/line',
+  // },
+  // {
+  //   displayName: 'Gredient',
+  //   iconName: 'solar:round-graph-linear',
+  //   route: '/charts/gredient',
+  // },
+  // {
+  //   displayName: 'Area',
+  //   iconName: 'solar:graph-new-up-linear',
+  //   route: '/charts/area',
+  // },
+  // {
+  //   displayName: 'Candlestick',
+  //   iconName: 'solar:tuning-3-linear',
+  //   route: '/charts/candlestick',
+  // },
+  // {
+  //   displayName: 'Column',
+  //   iconName: 'solar:chart-square-linear',
+  //   route: '/charts/column',
+  // },
+  // {
+  //   displayName: 'Doughnut & Pie',
+  //   iconName: 'solar:pie-chart-3-linear',
+  //   route: '/charts/doughnut-pie',
+  // },
+  // {
+  //   displayName: 'Radialbar & Radar',
+  //   iconName: 'solar:radar-2-linear',
+  //   route: '/charts/radial-radar',
+  // },
+  // {
+  //   navCap: 'UI',
+  // },
+  // {
+  //   displayName: 'Ui Components',
+  //   iconName: 'solar:widget-linear',
   //   route: 'ui-components',
-  //   ddType: 'two-column',
   //   children: [
   //     {
   //       displayName: 'Badge',
@@ -221,326 +557,147 @@ export const navItems: NavItem[] = [
   //   ],
   // },
   // {
-  //   displayName: 'Pages',
-  //   iconName: 'clipboard',
-  //   route: 'theme-pages',
+  //   navCap: 'Auth',
+  // },
+  // {
+  //   displayName: 'Login',
+  //   iconName: 'solar:lock-keyhole-minimalistic-linear',
+  //   route: '/authentication',
   //   children: [
   //     {
-  //       displayName: 'Treeview',
+  //       displayName: 'Side Login',
   //       iconName: 'point',
-  //       route: 'theme-pages/treeview',
+  //       route: '/authentication/login',
   //     },
   //     {
-  //       displayName: 'Pricing',
+  //       displayName: 'Boxed Login',
   //       iconName: 'point',
-  //       route: 'theme-pages/pricing',
+  //       route: '/authentication/boxed-login',
+  //     },
+  //   ],
+  // },
+  // {
+  //   displayName: 'Register',
+  //   iconName: 'solar:user-plus-rounded-linear',
+  //   route: '/authentication',
+  //   children: [
+  //     {
+  //       displayName: 'Side Register',
+  //       iconName: 'point',
+  //       route: '/authentication/side-register',
   //     },
   //     {
-  //       displayName: 'Account Setting',
+  //       displayName: 'Boxed Register',
   //       iconName: 'point',
-  //       route: 'theme-pages/account-setting',
+  //       route: '/authentication/boxed-register',
+  //     },
+  //   ],
+  // },
+  // {
+  //   displayName: 'Forgot Password',
+  //   iconName: 'solar:password-minimalistic-input-linear',
+  //   route: '/authentication',
+  //   children: [
+  //     {
+  //       displayName: 'Side Forgot Password',
+  //       iconName: 'point',
+  //       route: '/authentication/side-forgot-pwd',
   //     },
   //     {
-  //       displayName: 'FAQ',
+  //       displayName: 'Boxed Forgot Password',
   //       iconName: 'point',
-  //       route: 'theme-pages/faq',
+  //       route: '/authentication/boxed-forgot-pwd',
+  //     },
+  //   ],
+  // },
+  // {
+  //   displayName: 'Two Steps',
+  //   iconName: 'solar:compass-big-linear',
+  //   route: '/authentication',
+  //   children: [
+  //     {
+  //       displayName: 'Side Two Steps',
+  //       iconName: 'point',
+  //       route: '/authentication/side-two-steps',
   //     },
   //     {
-  //       displayName: 'Landingpage',
+  //       displayName: 'Boxed Two Steps',
   //       iconName: 'point',
-  //       route: 'landingpage',
+  //       route: '/authentication/boxed-two-steps',
   //     },
+  //   ],
+  // },
+  // {
+  //   displayName: 'Error',
+  //   iconName: 'solar:shield-warning-linear',
+  //   route: '/authentication/error',
+  // },
+  // {
+  //   displayName: 'Maintenance',
+  //   iconName: 'solar:calendar-minimalistic-linear',
+  //   route: '/authentication/maintenance',
+  // },
+  // {
+  //   navCap: 'Other',
+  // },
+  // {
+  //   displayName: 'Menu Level',
+  //   iconName: 'solar:layers-minimalistic-line-duotone',
+  //   route: 'menu-level',
+  //   children: [
   //     {
-  //       displayName: 'Widgets',
+  //       displayName: 'Menu 1',
   //       iconName: 'point',
-  //       route: 'widgets',
+  //       route: '/menu-level/menu-1',
   //       children: [
   //         {
-  //           displayName: 'Cards',
+  //           displayName: 'Menu 1',
   //           iconName: 'point',
-  //           route: 'widgets/cards',
+  //           route: '/menu-level/menu-1',
   //         },
+
   //         {
-  //           displayName: 'Banners',
+  //           displayName: 'Menu 2',
   //           iconName: 'point',
-  //           route: 'widgets/banners',
-  //         },
-  //         {
-  //           displayName: 'Charts',
-  //           iconName: 'point',
-  //           route: 'widgets/charts',
+  //           route: '/menu-level/menu-2',
   //         },
   //       ],
   //     },
 
   //     {
-  //       displayName: 'Charts',
+  //       displayName: 'Menu 2',
   //       iconName: 'point',
-  //       route: 'charts',
-  //       children: [
-  //         {
-  //           displayName: 'Line',
-  //           iconName: 'point',
-  //           route: '/charts/line',
-  //         },
-  //         {
-  //           displayName: 'Gredient',
-  //           iconName: 'point',
-  //           route: '/charts/gredient',
-  //         },
-  //         {
-  //           displayName: 'Area',
-  //           iconName: 'point',
-  //           route: '/charts/area',
-  //         },
-  //         {
-  //           displayName: 'Candlestick',
-  //           iconName: 'point',
-  //           route: '/charts/candlestick',
-  //         },
-  //         {
-  //           displayName: 'Column',
-  //           iconName: 'point',
-  //           route: '/charts/column',
-  //         },
-  //         {
-  //           displayName: 'Doughnut & Pie',
-  //           iconName: 'point',
-  //           route: '/charts/doughnut-pie',
-  //         },
-  //         {
-  //           displayName: 'Radialbar & Radar',
-  //           iconName: 'point',
-  //           route: '/charts/radial-radar',
-  //         },
-  //       ],
-  //     },
-  //     {
-  //       displayName: 'Auth',
-  //       iconName: 'point',
-  //       route: '/',
-  //       children: [
-  //         {
-  //           displayName: 'Login',
-  //           iconName: 'point',
-  //           route: '/authentication',
-  //           children: [
-  //             {
-  //               displayName: 'Side Login',
-  //               iconName: 'point',
-  //               route: '/authentication/login',
-  //             },
-  //             {
-  //               displayName: 'Boxed Login',
-  //               iconName: 'point',
-  //               route: '/authentication/boxed-login',
-  //             },
-  //           ],
-  //         },
-  //         {
-  //           displayName: 'Register',
-  //           iconName: 'point',
-  //           route: '/authentication',
-  //           children: [
-  //             {
-  //               displayName: 'Side Login',
-  //               iconName: 'point',
-  //               route: '/authentication/side-register',
-  //             },
-  //             {
-  //               displayName: 'Boxed Login',
-  //               iconName: 'point',
-  //               route: '/authentication/boxed-register',
-  //             },
-  //           ],
-  //         },
-  //         {
-  //           displayName: 'Forgot Password',
-  //           iconName: 'point',
-  //           route: '/authentication',
-  //           children: [
-  //             {
-  //               displayName: 'Side Forgot Password',
-  //               iconName: 'point',
-  //               route: '/authentication/side-forgot-pwd',
-  //             },
-  //             {
-  //               displayName: 'Boxed Forgot Password',
-  //               iconName: 'point',
-  //               route: '/authentication/boxed-forgot-pwd',
-  //             },
-  //           ],
-  //         },
-  //         {
-  //           displayName: 'Two Steps',
-  //           iconName: 'point',
-  //           route: '/authentication',
-  //           children: [
-  //             {
-  //               displayName: 'Side Two Steps',
-  //               iconName: 'point',
-  //               route: '/authentication/side-two-steps',
-  //             },
-  //             {
-  //               displayName: 'Boxed Two Steps',
-  //               iconName: 'point',
-  //               route: '/authentication/boxed-two-steps',
-  //             },
-  //           ],
-  //         },
-  //         {
-  //           displayName: 'Error',
-  //           iconName: 'point',
-  //           route: '/authentication/error',
-  //         },
-  //         {
-  //           displayName: 'Maintenance',
-  //           iconName: 'point',
-  //           route: '/authentication/maintenance',
-  //         },
-  //       ],
+  //       route: '/menu-2',
   //     },
   //   ],
   // },
   // {
-  //   displayName: 'Forms',
-  //   iconName: 'file-description',
-  //   route: 'forms',
-  //   children: [
-  //     {
-  //       displayName: 'Form elements',
-  //       iconName: 'point',
-  //       route: 'forms/forms-elements',
-  //       children: [
-  //         {
-  //           displayName: 'Autocomplete',
-  //           iconName: 'point',
-  //           route: 'forms/forms-elements/autocomplete',
-  //         },
-  //         {
-  //           displayName: 'Button',
-  //           iconName: 'point',
-  //           route: 'forms/forms-elements/button',
-  //         },
-  //         {
-  //           displayName: 'Checkbox',
-  //           iconName: 'point',
-  //           route: 'forms/forms-elements/checkbox',
-  //         },
-  //         {
-  //           displayName: 'Radio',
-  //           iconName: 'point',
-  //           route: 'forms/forms-elements/radio',
-  //         },
-  //         {
-  //           displayName: 'Datepicker',
-  //           iconName: 'point',
-  //           route: 'forms/forms-elements/datepicker',
-  //         },
-  //       ],
-  //     },
-  //     {
-  //       displayName: 'Form Layouts',
-  //       iconName: 'point',
-  //       route: '/forms/form-layouts',
-  //     },
-  //     {
-  //       displayName: 'Form Horizontal',
-  //       iconName: 'point',
-  //       route: '/forms/form-horizontal',
-  //     },
-  //     {
-  //       displayName: 'Form Vertical',
-  //       iconName: 'point',
-  //       route: '/forms/form-vertical',
-  //     },
-  //     {
-  //       displayName: 'Form Wizard',
-  //       iconName: 'point',
-  //       route: '/forms/form-wizard',
-  //     },
-  //   ],
+  //   displayName: 'Disabled',
+  //   iconName: 'solar:forbidden-circle-line-duotone',
+  //   route: '/disabled',
+  //   disabled: true,
   // },
   // {
-  //   displayName: 'Tables',
-  //   iconName: 'layout',
-  //   route: 'tables',
-  //   children: [
-  //     {
-  //       displayName: 'Basic Table',
-  //       iconName: 'point',
-  //       route: 'tables/basic-table',
-  //     },
-  //     {
-  //       displayName: 'Dynamic Table',
-  //       iconName: 'point',
-  //       route: 'tables/dynamic-table',
-  //     },
-  //     {
-  //       displayName: 'Expand Table',
-  //       iconName: 'point',
-  //       route: 'tables/expand-table',
-  //     },
-  //     {
-  //       displayName: 'Filterable Table',
-  //       iconName: 'point',
-  //       route: 'tables/filterable-table',
-  //     },
-  //     {
-  //       displayName: 'Footer Row Table',
-  //       iconName: 'point',
-  //       route: 'tables/footer-row-table',
-  //     },
-  //     {
-  //       displayName: 'HTTP Table',
-  //       iconName: 'point',
-  //       route: 'tables/http-table',
-  //     },
-  //     {
-  //       displayName: 'Mix Table',
-  //       iconName: 'point',
-  //       route: 'tables/mix-table',
-  //     },
-  //     {
-  //       displayName: 'Multi Header Footer',
-  //       iconName: 'point',
-  //       route: 'tables/multi-header-footer-table',
-  //     },
-  //     {
-  //       displayName: 'Pagination Table',
-  //       iconName: 'point',
-  //       route: 'tables/pagination-table',
-  //     },
-  //     {
-  //       displayName: 'Row Context Table',
-  //       iconName: 'point',
-  //       route: 'tables/row-context-table',
-  //     },
-  //     {
-  //       displayName: 'Selection Table',
-  //       iconName: 'point',
-  //       route: 'tables/selection-table',
-  //     },
-  //     {
-  //       displayName: 'Sortable Table',
-  //       iconName: 'point',
-  //       route: 'tables/sortable-table',
-  //     },
-  //     {
-  //       displayName: 'Sticky Column',
-  //       iconName: 'point',
-  //       route: 'tables/sticky-column-table',
-  //     },
-  //     {
-  //       displayName: 'Sticky Header Footer',
-  //       iconName: 'point',
-  //       route: 'tables/sticky-header-footer-table',
-  //     },
-  //     {
-  //       displayName: 'Data table',
-  //       iconName: 'border-outer',
-  //       route: '/datatable/kichen-sink',
-  //     },
-  //   ],
+  //   displayName: 'Chip',
+  //   iconName: 'solar:shield-check-line-duotone',
+  //   route: '/',
+  //   chip: true,
+  //   chipClass: 'bg-primary text-white',
+  //   chipContent: '9',
+  // },
+  // {
+  //   displayName: 'Outlined',
+  //   iconName: 'solar:smile-circle-outline',
+  //   route: '/',
+  //   chip: true,
+  //   chipClass: 'b-1 border-primary text-primary',
+  //   chipContent: 'outlined',
+  // },
+  // {
+  //   displayName: 'External Link',
+  //   iconName: 'solar:link-square-linear',
+  //   route: 'https://www.google.com/',
+  //   external: true,
   // },
 ];
+

@@ -19,16 +19,16 @@
     <!-- --------------------------------------------------------------- -->
     <!--  Search -->
     <!-- --------------------------------------------------------------- -->
-    <button mat-icon-button (click)="openDialog()" class="d-flex">
+    <!-- <button mat-icon-button (click)="openDialog()" class="d-flex">
       <i-tabler name="search" class="icon-20 d-flex"></i-tabler>
-    </button>
+    </button> -->
 
     <!-- --------------------------------------------------------------- -->
     <!-- langugage Dropdown -->
     <!-- --------------------------------------------------------------- -->
-    <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">
+    <!-- <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">
       <img [src]="selectedLanguage.icon" class="rounded object-cover icon-20" />
-    </button>
+    </button> -->
     <mat-menu #flags="matMenu" class="cardWithShadow">
       @for(lang of languages; track lang) {
       <button mat-menu-item (click)="changeLanguage(lang)">
@@ -43,7 +43,7 @@
     <!-- --------------------------------------------------------------- -->
     <!-- Notification Dropdown -->
     <!-- --------------------------------------------------------------- -->
-    <button
+    <!-- <button
       mat-icon-button
       [matMenuTriggerFor]="notificationmenu"
       aria-label="Notifications"
@@ -55,7 +55,7 @@
         class="header-badge"
         >message</mat-icon
       >
-    </button>
+    </button> -->
     <mat-menu
       #notificationmenu="matMenu"
       xPosition="before"
@@ -93,7 +93,7 @@
     <!-- --------------------------------------------------------------- -->
     <!-- Messages Dropdown -->
     <!-- --------------------------------------------------------------- -->
-    <button mat-icon-button [matMenuTriggerFor]="msgmenu" aria-label="Messages">
+    <!-- <button mat-icon-button [matMenuTriggerFor]="msgmenu" aria-label="Messages">
       <mat-icon
         matBadge="2"
         matBadgeOverlap="false"
@@ -101,22 +101,22 @@
         class="header-badge"
         >email</mat-icon
       >
-    </button>
+    </button> -->
     <mat-menu
       #msgmenu="matMenu"
       class="topbar-dd cardWithShadow"
       xPosition="before"
     >
-      <div class="d-flex align-items-center p-x-32 p-y-16">
+      <!-- <div class="d-flex align-items-center p-x-32 p-y-16">
         <h6 class="f-s-16 f-w-600 m-0 mat-subtitle-1">Messages</h6>
         <span class="m-l-auto">
           <span class="bg-primary text-white p-x-8 p-y-4 f-w-500 rounded f-s-12"
             >5 new</span
           >
         </span>
-      </div>
+      </div> -->
       @for(msg of msgs; track msg.title) {
-      <button mat-menu-item class="p-x-32 p-y-16">
+      <!-- <button mat-menu-item class="p-x-32 p-y-16">
         <div class="d-flex align-items-center">
           <img [src]="msg.img" class="rounded-circle" width="48" />
           <div class="m-l-16">
@@ -126,14 +126,14 @@
             <span>{{ msg.subtitle }}</span>
           </div>
         </div>
-      </button>
+      </button> -->
       }
 
-      <div class="p-y-12 p-x-32">
+      <!-- <div class="p-y-12 p-x-32">
         <button mat-stroked-button color="primary" class="w-100">
           See all messages
         </button>
-      </div>
+      </div> -->
     </mat-menu>
 
     <!-- --------------------------------------------------------------- -->
@@ -145,7 +145,7 @@
       aria-label="Notifications"
     >
       <img
-        src="/assets/images/profile/user-1.jpg"
+        src="/assets/images/logos/eck-branco-1.svg"
         class="rounded-circle object-cover icon-35 profile-dd"
         width="35"
       />
@@ -156,25 +156,25 @@
       class="topbar-dd cardWithShadow"
     >
       <div class="p-x-32 p-y-16">
-        <h6 class="f-s-16 f-w-600 m-0 mat-subtitle-1">User Profile</h6>
+        <!-- <h6 class="f-s-16 f-w-600 m-0 mat-subtitle-1">User Profile</h6> -->
 
         <div class="d-flex align-items-center p-b-24 b-b-1 m-t-16">
-          <img
+          <!-- <img
             src="/assets/images/profile/user-1.jpg"
             class="rounded-circle"
             width="95"
-          />
+          /> -->
           <div class="m-l-16">
-            <h6 class="f-s-14 f-w-600 m-0 mat-subtitle-1">Mathew Anderson</h6>
-            <span class="f-s-14 d-block m-b-4">Designer</span>
+            <h6 class="f-s-14 f-w-600 m-0 mat-subtitle-1">nome usuário</h6>
+            <!-- <span class="f-s-14 d-block m-b-4">Designer</span> -->
             <span class="d-flex align-items-center">
               <i-tabler name="mail" class="icon-15 m-r-4"></i-tabler>
-              info&#64;materialpro.com
+              email
             </span>
           </div>
         </div>
       </div>
-      <div class="p-x-32">
+      <!-- <div class="p-x-32">
         @for(profile of profiledd; track profile.img) {
         <a
           class="p-y-16 text-decoration-none d-block text-hover-primary"
@@ -200,7 +200,6 @@
         </a>
         }
 
-        <!-- upgrade -->
         <div
           class="p-24 overflow-hidden bg-light-primary rounded position-relative m-y-16"
         >
@@ -221,7 +220,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </div> -->
 
       <div class="p-y-12 p-x-32">
         <a
@@ -229,7 +228,7 @@
           mat-stroked-button
           color="primary"
           class="w-100"
-          >Logout</a
+          >Sair</a
         >
       </div>
     </mat-menu>
