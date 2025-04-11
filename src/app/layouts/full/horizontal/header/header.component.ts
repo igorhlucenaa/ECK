@@ -14,7 +14,8 @@ import { MaterialModule } from 'src/app/material.module';
 import { BrandingComponent } from '../../vertical/sidebar/branding.component';
 import { NgFor, NgForOf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
- 
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+
 interface notifications {
   id: number;
   img: string;
@@ -44,7 +45,7 @@ interface profiledd {
   templateUrl: './header.component.html',
 })
 export class AppHorizontalHeaderComponent {
-   @Input() showToggle = true;
+  @Input() showToggle = true;
   @Input() toggleChecked = false;
   @Output() toggleMobileNav = new EventEmitter<void>();
   @Output() toggleMobileFilterNav = new EventEmitter<void>();
@@ -86,16 +87,22 @@ export class AppHorizontalHeaderComponent {
   constructor(
     private vsidenav: CoreService,
     public dialog: MatDialog,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private authService: AuthService,
   ) {
     translate.setDefaultLang('en');
   }
 
+  logout() {
+    this.authService.logout().then(() => {
+      console.log("logout success")
+    })
+  }
   openDialog() {
     const dialogRef = this.dialog.open(AppHorizontalSearchDialogComponent);
 
     dialogRef.afterClosed().subscribe((result) => {
-          });
+    });
   }
 
   changeLanguage(lang: any): void {
