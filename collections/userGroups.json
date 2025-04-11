@@ -1,0 +1,105 @@
+[
+  {
+    "id": "5dQ0GK34v2eSm9oBdcNZ",
+    "createdBy": "admin",
+    "name": "LM - Desenvolvimento",
+    "createdAt": {
+      "seconds": 1736775984,
+      "nanoseconds": 534000000
+    },
+    "userIds": [
+      "3vqvKmMu9Vqu1v7moWK0",
+      "EU6QdLZtTIv0dwcUW0M2",
+      "M6rYXnnTqmOifPsX9Ws2",
+      "vAhv4v6inwRGoOiUYHI2R6pAwqu2",
+      "vDNLH1TusmdhPPeEkVJw"
+    ],
+    "clientId": "5QQGnqIRSzHtuxDp6O8W",
+    "createdByEmail": "admin@admin.com",
+    "description": ""
+  },
+  {
+    "id": "VCOR72TXCQPUSzAkjbag",
+    "userIds": [
+      "1uFxzzrVyTMy11aKVqVo",
+      "BAZFXnjd8S8HCV6kAPFT",
+      "qNFQV2cdQSX1AXIMD12S",
+      "vDNLH1TusmdhPPeEkVJw"
+    ],
+    "name": "Pfizer 360",
+    "createdBy": "admin",
+    "description": "",
+    "clientId": "tUI8j26jKwjaBQbnEzoB",
+    "createdAt": {
+      "seconds": 1741633756,
+      "nanoseconds": 779000000
+    },
+    "createdByEmail": "admin@admin.com"
+  },
+  {
+    "id": "iRq7mSdDTaOU5NZ0OiRZ",
+    "createdAt": {
+      "seconds": 1741783802,
+      "nanoseconds": 943000000
+    },
+    "clientId": "q1GDknN98CwZS25EBnfc",
+    "description": "",
+    "createdByEmail": "admin@admin.com",
+    "createdBy": "admin",
+    "name": "Itaú - Gerente",
+    "userIds": [
+      "kbvUv0X9sbR1MFEI8cS3",
+      "vxyWaURDEWJdGcZKL34i"
+    ]
+  },
+  {
+    "id": "mJvDAA3bSXgdXXtTjIVE",
+    "createdByEmail": "admin@admin.com",
+    "createdAt": {
+      "seconds": 1738160343,
+      "nanoseconds": 112000000
+    },
+    "createdBy": "admin",
+    "description": "",
+    "name": "ECK",
+    "userIds": [
+      "kbvUv0X9sbR1MFEI8cS3"
+    ],
+    "clientId": "5QQGnqIRSzHtuxDp6O8W"
+  },
+  {
+    "id": "t49805so67tSUTRqM70a",
+    "userIds": [
+      "M6rYXnnTqmOifPsX9Ws2",
+      "UcqfXTZQb9kxuLGDvu6g",
+      "qNFQV2cdQSX1AXIMD12S"
+    ],
+    "description": "slsjflajf",
+    "clientId": "5QQGnqIRSzHtuxDp6O8W",
+    "createdAt": {
+      "seconds": 1738878051,
+      "nanoseconds": 218000000
+    },
+    "createdBy": "admin",
+    "name": "LM - Seleção",
+    "createdByEmail": "admin@admin.com"
+  },
+  {
+    "id": "vZMNvRzbakf03Ra34PKU",
+    "createdAt": {
+      "seconds": 1739366703,
+      "nanoseconds": 371000000
+    },
+    "createdByEmail": "admin@admin.com",
+    "userIds": [
+      "AR5CeaQft9y46yeGfpai",
+      "BAZFXnjd8S8HCV6kAPFT",
+      "EU6QdLZtTIv0dwcUW0M2",
+      "Q0bcayvuqYG9VI5py4ou"
+    ],
+    "description": "",
+    "name": "Hydro - 360",
+    "clientId": "Olqs7Li4JxDffNn73jjc",
+    "createdBy": "admin"
+  }
+]
