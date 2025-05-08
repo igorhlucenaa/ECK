@@ -1,0 +1,21 @@
+#dashboardContainer {
+  width: 100%;
+  min-height: 400px;
+  margin-top: 20px;
+}
+
+:host ::ng-deep {
+  .sa-question {
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .sa-visualizer__header {
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 15px;
+  }
+}

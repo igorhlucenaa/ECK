@@ -24,6 +24,9 @@ import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 
+// Services
+import { AuthService } from './pages/auth/services/auth.service';
+
 // icons
 import { TablerIconsModule } from 'angular-tabler-icons';
 import * as TablerIcons from 'angular-tabler-icons/icons';
@@ -59,6 +62,7 @@ registerLocaleData(localePt);
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    AuthService,
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(
       routes,

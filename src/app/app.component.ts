@@ -3,6 +3,7 @@ import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { Auth, User } from '@angular/fire/auth';
 import { AuthService } from './services/apps/authentication/auth.service';
 import { filter } from 'rxjs/operators';
+import { collection, Firestore, getDocs, query } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-root',
@@ -14,10 +15,20 @@ export class AppComponent implements OnInit {
   constructor(
     private auth: Auth,
     private router: Router,
-    private authService: AuthService
-  ) {}
+    private authService: AuthService,
+    private firestore: Firestore,
+  ) { }
 
   ngOnInit(): void {
+
+    //CONSULTA DE COLLECTIONS
+    // const usersCollection = collection(this.firestore, 'assessmentLinks');
+    // const userQuery = query(usersCollection);
+    // const querySnapshot = getDocs(userQuery).then(res => console.log(res.docs.map(doc => doc.data())));
+
+    // console.log(querySnapshot);
+
+
     this.auth.onAuthStateChanged(async (user: User | null) => {
       const currentUrl = this.router.url.split('?')[0];
       console.log(
@@ -31,7 +42,7 @@ export class AppComponent implements OnInit {
         try {
           await this.authService.applyUserTheme();
           const role = await this.authService.getCurrentUserRole();
-          
+
           const publicPages = ['/', '/assessment'];
           const isPublicPage = publicPages.includes(currentUrl);
 
@@ -62,7 +73,7 @@ export class AppComponent implements OnInit {
         // Se não houver usuário, permite acesso a páginas públicas e login
         const allowedPages = ['/', '/assessment', '/authentication/login'];
         if (!allowedPages.includes(currentUrl)) {
-                    this.router.navigate(['/authentication/login']);
+          this.router.navigate(['/authentication/login']);
         }
       }
     });
@@ -75,6 +86,6 @@ export class AppComponent implements OnInit {
         )
       )
       .subscribe((event) => {
-              });
+      });
   }
 }

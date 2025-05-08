@@ -54,9 +54,15 @@ export const navItems: NavItem[] = [
       },
       {
         displayName: 'Formulários',
-        iconName: 'solar:chart-2-bold-duotone', // Ícone representando avaliações ou relatórios
-        route: '/assessments', // Caminho para o componente pai das avaliações
-        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
+        iconName: 'solar:chart-2-bold-duotone',
+        route: '/assessments',
+        role: ['admin_master', 'admin_client', 'viewer'],
+      },
+      {
+        displayName: 'Relatórios',
+        iconName: 'solar:file-text-bold-duotone',
+        route: '/reports',
+        role: ['admin_master', 'admin_client', 'viewer'],
       },
     ],
   },

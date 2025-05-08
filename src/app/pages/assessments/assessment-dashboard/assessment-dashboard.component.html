@@ -1,0 +1,37 @@
+<div class="container mt-4">
+  <div class="row" style="margin-bottom: 10px">
+    <div class="col-12">
+      <button mat-button (click)="goBack()" class="mb-3">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+    </div>
+  </div>
+
+  <h2 class="mb-4">Dashboard de Respostas</h2>
+
+  <mat-card>
+    <mat-card-content>
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Selecione o Formulário</mat-label>
+            <mat-select [formControl]="selectedAssessmentId" (selectionChange)="onAssessmentChange($event)">
+              <mat-option value="all">Todos os Formulários</mat-option>
+              <mat-option *ngFor="let assessment of assessments" [value]="assessment.id">
+                {{ assessment.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div *ngIf="isLoading" class="text-center my-4">
+        <mat-spinner diameter="40" class="mx-auto"></mat-spinner>
+        <p class="mt-2">Carregando dados...</p>
+      </div>
+
+      <div id="dashboardContainer" [class.d-none]="isLoading"></div>
+    </mat-card-content>
+  </mat-card>
+</div>

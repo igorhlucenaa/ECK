@@ -7,6 +7,7 @@ import { CreditOrdersComponent } from './pages/credit-orders/credit-orders.compo
 import { NewCreditOrderComponent } from './pages/credit-orders/new-credit-order/new-credit-order.component';
 import { EmailTemplateListComponent } from './pages/project/email-template-list/email-template-list.component';
 import { AssessmentComponent } from './pages/assessments/assessment/assessment.component';
+import { ReportsRoutes } from './pages/reports/reports.routes';
 
 export const routes: Routes = [
   {
@@ -88,10 +89,7 @@ export const routes: Routes = [
       },
       {
         path: 'reports',
-        loadChildren: () =>
-          import('./pages/reports/reports.routes').then((m) => m.ReportsRoutes),
-        canActivate: [AuthGuard],
-        data: { role: 'viewer' },
+        children: ReportsRoutes
       },
       {
         path: 'orders',

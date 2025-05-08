@@ -1,14 +1,18 @@
 import { Routes } from '@angular/router';
-import { ReportListComponent } from './report-list/report-list.component';
-import { ReportDetailComponent } from './report-detail/report-detail.component';
+import { ReportsListComponent } from './reports-list/reports-list.component';
+import { ReportEditorComponent } from './report-editor/report-editor.component';
 
 export const ReportsRoutes: Routes = [
   {
     path: '',
-    component: ReportListComponent,
+    component: ReportsListComponent
   },
   {
-    path: ':id',
-    component: ReportDetailComponent,
+    path: 'new',
+    component: ReportEditorComponent
   },
+  {
+    path: ':id/edit',
+    component: ReportEditorComponent
+  }
 ];

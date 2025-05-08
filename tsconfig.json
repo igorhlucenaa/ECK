@@ -3,7 +3,8 @@
   "compileOnSave": false,
   "compilerOptions": {
     "typeRoots": [
-      "node_modules/@types"
+      "node_modules/@types",
+      "src/app/types"
     ],
     "baseUrl": "./",
     "outDir": "./dist/out-tsc",

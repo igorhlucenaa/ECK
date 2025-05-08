@@ -1,1 +1,101 @@
-<p>export works!</p>
+<div class="container">
+  <h2>Exportar Relatórios</h2>
+
+  <div class="export-form" [formGroup]="reportForm">
+    <div class="section">
+      <h3>Selecionar Avaliação</h3>
+      <mat-form-field appearance="fill" class="w-100">
+        <mat-label>Selecione a Avaliação</mat-label>
+        <mat-select [(ngModel)]="selectedAssessment" [ngModelOptions]="{standalone: true}">
+          <mat-option *ngFor="let assessment of assessments" [value]="assessment.id">
+            {{ assessment.name }} - {{ assessment.clientName }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="section">
+      <h3>Configurações do Relatório</h3>
+
+      <div class="options-grid">
+        <mat-checkbox formControlName="showRadarChart">
+          Gráfico Radar
+        </mat-checkbox>
+
+        <mat-checkbox formControlName="showBarCharts">
+          Gráficos de Barras
+        </mat-checkbox>
+
+        <mat-checkbox formControlName="showSummaryTable">
+          Tabela Resumo
+        </mat-checkbox>
+      </div>
+
+      <h4>Competências</h4>
+      <mat-form-field appearance="fill" class="w-100">
+        <mat-label>Selecione as Competências</mat-label>
+        <mat-select formControlName="selectedCompetencies" multiple>
+          <mat-option *ngFor="let comp of competencias" [value]="comp">
+            {{ comp }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div formGroupName="colors">
+        <h4>Cores dos Gráficos</h4>
+        <div class="colors-grid">
+          <div class="color-picker">
+            <label>Autoavaliação</label>
+            <input type="color" formControlName="autoavaliacao">
+          </div>
+          <div class="color-picker">
+            <label>Gestor</label>
+            <input type="color" formControlName="gestor">
+          </div>
+          <div class="color-picker">
+            <label>Pares</label>
+            <input type="color" formControlName="pares">
+          </div>
+          <div class="color-picker">
+            <label>Liderados</label>
+            <input type="color" formControlName="liderados">
+          </div>
+          <div class="color-picker">
+            <label>Resultado Final</label>
+            <input type="color" formControlName="resultadoFinal">
+          </div>
+        </div>
+        <button mat-button color="primary" (click)="resetColors()">
+          Restaurar Cores Padrão
+        </button>
+      </div>
+    </div>
+
+    <div class="section preview-section">
+      <h3>Preview</h3>
+      <div class="preview-container">
+        <canvas id="previewChart"></canvas>
+      </div>
+    </div>
+
+    <div class="button-container">
+      <mat-form-field appearance="fill">
+        <mat-label>Formato de Exportação</mat-label>
+        <mat-select [(ngModel)]="exportFormat" [ngModelOptions]="{standalone: true}">
+          <mat-option value="pdf">PDF</mat-option>
+          <mat-option value="excel">Excel</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="exportReport()"
+        [disabled]="!selectedAssessment || isLoading"
+      >
+        <mat-spinner *ngIf="isLoading" diameter="20" class="spinner"></mat-spinner>
+        <span *ngIf="!isLoading">Exportar Relatório</span>
+      </button>
+    </div>
+  </div>
+</div>
