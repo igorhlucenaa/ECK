@@ -115,6 +115,7 @@ export class CreateAssessmentComponent implements OnInit {
 
       if (docSnap.exists()) {
         const data = docSnap.data();
+        console.log(data)
         this.form.patchValue({
           clientId: data['clientId'],
           name: data['name'],

@@ -27,9 +27,9 @@
       "ES2022",
       "dom"
     ],
-    "allowSyntheticDefaultImports": true, // Adicionado
-    "esModuleInterop": true, // Adicionado
-    "skipLibCheck": true // Adicionado (opcional)
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

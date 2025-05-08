@@ -58,6 +58,12 @@ export const navItems: NavItem[] = [
         route: '/assessments', // Caminho para o componente pai das avaliações
         role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
       },
+      {
+        displayName: 'Relatórios',
+        iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando gráficos/relatórios
+        route: '/assessments/dashboard', // Caminho para o dashboard de relatórios
+        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
+      },
     ],
   },
 
