@@ -1,0 +1,31 @@
+.report-template-form {
+  max-width: 700px;
+  margin: 32px auto;
+  h2 {
+    margin-bottom: 16px;
+  }
+  .sections {
+    margin-top: 24px;
+    .section-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      mat-chip {
+        margin-right: 8px;
+      }
+      mat-form-field, input[type='file'] {
+        margin-left: 16px;
+        flex: 1;
+      }
+      img {
+        margin-left: 16px;
+      }
+    }
+    .add-section {
+      margin-top: 16px;
+      button {
+        margin-right: 8px;
+      }
+    }
+  }
+}

@@ -1,1 +1,24 @@
-<p>report-list works!</p>
+<div *ngIf="isLoading">Carregando relatórios...</div>
+<table *ngIf="!isLoading && reports.length > 0" class="report-table">
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Data de Criação</th>
+      <th>Cliente</th>
+      <th>Projeto</th>
+      <th>Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let report of reports">
+      <td>{{ report.name }}</td>
+      <td>{{ report.createdAt?.seconds ? (report.createdAt.seconds * 1000 | date:'short') : '-' }}</td>
+      <td>{{ report.clientId }}</td>
+      <td>{{ report.projectId }}</td>
+      <td>
+        <a [routerLink]="['/reports', report.id]">Detalhes</a>
+      </td>
+    </tr>
+  </tbody>
+</table>
+<div *ngIf="!isLoading && reports.length === 0">Nenhum relatório encontrado.</div>

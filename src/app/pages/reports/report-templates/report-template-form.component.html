@@ -1,0 +1,47 @@
+<div class="report-template-form">
+  <h2>{{ template.id ? 'Editar' : 'Novo' }} Modelo de Relatório</h2>
+  <mat-form-field appearance="fill">
+    <mat-label>Nome do Modelo</mat-label>
+    <input matInput [(ngModel)]="template.name">
+  </mat-form-field>
+
+  <div class="sections">
+    <h3>Seções</h3>
+    <div *ngFor="let section of template.sections; let i = index" class="section-item">
+      <mat-chip>{{ section.type }}</mat-chip>
+      <button mat-icon-button (click)="moveSectionUp(i)" [disabled]="i === 0"><mat-icon>arrow_upward</mat-icon></button>
+      <button mat-icon-button (click)="moveSectionDown(i)" [disabled]="i === template.sections.length - 1"><mat-icon>arrow_downward</mat-icon></button>
+      <button mat-icon-button color="warn" (click)="removeSection(i)"><mat-icon>delete</mat-icon></button>
+      <ng-container [ngSwitch]="section.type">
+        <div *ngSwitchCase="'logo'">
+          <input type="file" (change)="onLogoUpload($event, section)">
+          <img *ngIf="section.imageUrl" [src]="section.imageUrl" alt="Logo" style="max-width: 100px; max-height: 100px;">
+        </div>
+        <div *ngSwitchCase="'text'">
+          <mat-form-field appearance="fill">
+            <mat-label>Texto</mat-label>
+            <textarea matInput [(ngModel)]="section.content"></textarea>
+          </mat-form-field>
+        </div>
+        <div *ngSwitchCase="'customText'">
+          <mat-form-field appearance="fill">
+            <mat-label>Texto Personalizado</mat-label>
+            <textarea matInput [(ngModel)]="section.content"></textarea>
+          </mat-form-field>
+        </div>
+        <div *ngSwitchDefault>
+          <mat-form-field appearance="fill">
+            <mat-label>Chave de Dados</mat-label>
+            <input matInput [(ngModel)]="section.dataKey">
+          </mat-form-field>
+        </div>
+      </ng-container>
+    </div>
+    <div class="add-section">
+      <mat-label>Adicionar Seção:</mat-label>
+      <button *ngFor="let type of sectionTypes" mat-stroked-button (click)="addSection(type)">{{ type }}</button>
+    </div>
+  </div>
+
+  <button mat-raised-button color="primary" (click)="saveTemplate()">Salvar Modelo</button>
+</div>

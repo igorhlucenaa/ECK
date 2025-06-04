@@ -1,1 +1,33 @@
-<p>report-detail works!</p>
+<div *ngIf="isLoading">Carregando relatório...</div>
+<div *ngIf="!isLoading && report">
+  <h2>{{ report.name }}</h2>
+  <p><strong>Data de Criação:</strong> {{ report.createdAt?.seconds ? (report.createdAt.seconds * 1000 | date:'short') : '-' }}</p>
+  <p><strong>Cliente:</strong> {{ report.clientId }}</p>
+  <p><strong>Projeto:</strong> {{ report.projectId }}</p>
+  <p *ngIf="report.description"><strong>Descrição:</strong> {{ report.description }}</p>
+
+  <h3>Respostas dos Participantes</h3>
+  <p><strong>Total de respostas:</strong> {{ results.length }}</p>
+
+  <div *ngIf="results.length > 0">
+    <h4>Comentários (se houver):</h4>
+    <ul>
+      <li *ngFor="let r of results">
+        <span *ngIf="r['pergunta3']"><strong>Começar:</strong> {{ r['pergunta3'] }}</span>
+        <span *ngIf="r['pergunta4']"><strong> | Continuar:</strong> {{ r['pergunta4'] }}</span>
+        <span *ngIf="r['pergunta5']"><strong> | Parar:</strong> {{ r['pergunta5'] }}</span>
+      </li>
+    </ul>
+  </div>
+
+  <ng-container *ngIf="report.surveyJSON">
+    <h3>Estrutura do Questionário (debug):</h3>
+    <pre>{{ report.surveyJSON | json }}</pre>
+  </ng-container>
+  <ng-container *ngIf="!report.surveyJSON">
+    <p><em>Este relatório não possui questionário estruturado.</em></p>
+  </ng-container>
+</div>
+<div *ngIf="!isLoading && !report">
+  <p>Relatório não encontrado.</p>
+</div>

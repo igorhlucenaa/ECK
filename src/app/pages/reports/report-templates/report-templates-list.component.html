@@ -1,0 +1,12 @@
+<div class="report-templates-list">
+  <h2>Modelos de Relatório</h2>
+  <button mat-raised-button color="primary" (click)="onCreate()">Novo Modelo</button>
+  <mat-list *ngIf="templates.length > 0">
+    <mat-list-item *ngFor="let template of templates">
+      <span>{{ template.name }}</span>
+      <button mat-icon-button (click)="onEdit(template)"><mat-icon>edit</mat-icon></button>
+      <button mat-icon-button color="warn" (click)="onDelete(template)"><mat-icon>delete</mat-icon></button>
+    </mat-list-item>
+  </mat-list>
+  <div *ngIf="templates.length === 0">Nenhum modelo cadastrado.</div>
+</div>

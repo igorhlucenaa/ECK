@@ -4,9 +4,9 @@ import { MaterialModule } from 'src/app/material.module';
 import { Model, PageModel, QuestionMatrixModel } from 'survey-core';
 import { Firestore, collection, getDocs, doc, getDoc, query, where, documentId } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router, ActivatedRoute, RouterModule } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { MatPaginator } from '@angular/material/paginator';
-import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatTableDataSource } from '@angular/material/table';
 import { MatSort } from '@angular/material/sort';
 import { MatTableExporterModule, MatTableExporterDirective } from 'mat-table-exporter';
 import * as XLSX from 'xlsx';
@@ -21,8 +21,6 @@ import {
   BarHorizontalStackedComponent,
   PolarChartComponent
 } from '@swimlane/ngx-charts';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatSelectModule } from '@angular/material/select';
 
 interface ChartData {
   name: string;
@@ -102,11 +100,7 @@ interface RadarChartData {
     MaterialModule,
     NgxChartsModule,
     MatTableExporterModule,
-    FormsModule,
-    MatMenuModule,
-    MatSelectModule,
-    MatTableModule,
-    RouterModule
+    FormsModule
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'

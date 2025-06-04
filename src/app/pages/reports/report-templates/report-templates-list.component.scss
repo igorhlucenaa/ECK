@@ -1,0 +1,15 @@
+.report-templates-list {
+  max-width: 600px;
+  margin: 32px auto;
+  h2 {
+    margin-bottom: 16px;
+  }
+  button {
+    margin-right: 8px;
+  }
+  mat-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+}

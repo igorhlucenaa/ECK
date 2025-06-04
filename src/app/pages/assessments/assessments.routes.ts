@@ -28,6 +28,20 @@ export const AssessmentsRoutes: Routes = [
           ),
       },
       {
+        path: 'dashboard-builder',
+        loadComponent: () =>
+          import('../../components/dashboard-builder/dashboard-builder.component').then(
+            (m) => m.DashboardBuilderComponent
+          ),
+      },
+      {
+        path: 'dashboard-builder/:id',
+        loadComponent: () =>
+          import('../../components/dashboard-builder/dashboard-builder.component').then(
+            (m) => m.DashboardBuilderComponent
+          ),
+      },
+      {
         path: 'export',
         loadComponent: () =>
           import('./export/export.component').then((m) => m.ExportComponent),
@@ -54,5 +68,12 @@ export const AssessmentsRoutes: Routes = [
           ),
       },
     ],
+  },
+  {
+    path: 'take/:token',
+    loadComponent: () =>
+      import('./assessment/assessment.component').then(
+        (m) => m.AssessmentComponent
+      ),
   },
 ];

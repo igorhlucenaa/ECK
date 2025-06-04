@@ -53,15 +53,33 @@ export const navItems: NavItem[] = [
         role: ['admin_client'], // Visível apenas para clientes
       },
       {
-        displayName: 'Formulários',
+        displayName: 'Criar Avaliação',
+        iconName: 'solar:document-add-bold-duotone', // Ícone representando adição de documento
+        route: '/assessments/new', // Caminho para criar nova avaliação
+        role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
+      },
+      {
+        displayName: 'Avaliações',
         iconName: 'solar:chart-2-bold-duotone', // Ícone representando avaliações ou relatórios
         route: '/assessments', // Caminho para o componente pai das avaliações
         role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
       },
       {
-        displayName: 'Relatórios',
-        iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando gráficos/relatórios
+        displayName: 'Dashboard',
+        iconName: 'solar:widget-4-bold-duotone', // Ícone representando dashboard
         route: '/assessments/dashboard', // Caminho para o dashboard de relatórios
+        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
+      },
+      {
+        displayName: 'Construtor de Dashboard',
+        iconName: 'solar:widget-4-bold-duotone', // Ícone representando construção de dashboard
+        route: '/assessments/dashboard-builder', // Caminho para o construtor de dashboards
+        role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
+      },
+      {
+        displayName: 'Relatórios',
+        iconName: 'solar:document-text-bold-duotone', // Ícone representando relatórios
+        route: '/reports', // Caminho para a lista de relatórios
         role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
       },
     ],

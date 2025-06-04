@@ -18,6 +18,7 @@ import { FormsModule } from '@angular/forms';
 import { NgScrollbarModule } from 'ngx-scrollbar';
 import { BrandingComponent } from '../sidebar/branding.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { MatMenuModule } from '@angular/material/menu';
 
 interface notifications {
   id: number;
@@ -69,6 +70,7 @@ interface quicklinks {
     TablerIconsModule,
     MaterialModule,
     BrandingComponent,
+    MatMenuModule,
   ],
   templateUrl: './header.component.html',
   encapsulation: ViewEncapsulation.None,
@@ -223,7 +225,7 @@ export class HeaderComponent implements OnInit {
       imagePath: 'assets/images/profile/user-4.jpg',
       time: 'days ago',
       title: 'Marry Strokes',
-      subtitle: 'If I don’t like something',
+      subtitle: 'If I dont like something',
     },
     {
       id: 5,
