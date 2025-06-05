@@ -61,7 +61,7 @@ export const navItems: NavItem[] = [
       {
         displayName: 'Relatórios',
         iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando gráficos/relatórios
-        route: '/assessments/dashboard', // Caminho para o dashboard de relatórios
+        route: '/reports', // Alterado para a nova rota de relatórios
         role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
       },
     ],
