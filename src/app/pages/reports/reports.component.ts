@@ -1,6 +1,6 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
-import { Firestore, collection, getDocs, doc, getDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, doc, getDoc, addDoc } from '@angular/fire/firestore';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { ReactiveFormsModule, FormControl, FormGroup, Validators, FormArray } from '@angular/forms';
@@ -179,6 +179,11 @@ export class ReportsComponent implements OnInit {
 
   selectedTabIndex = 0;
 
+  // Salvar/Carregar Relatório
+  nomeRelatorioControl = new FormControl('');
+  savedReports: { id: string, name: string }[] = [];
+  selectedReportId = new FormControl('');
+
   constructor(private firestore: Firestore) {
     this.caracteristicaForm = new FormGroup({
       nome: new FormControl('', Validators.required),
@@ -189,6 +194,7 @@ export class ReportsComponent implements OnInit {
     this.dummyForm = new FormGroup({
       relatorioFormArray: this.relatorioFormArray
     });
+    this.carregarRelatoriosSalvos();
   }
 
   async ngOnInit() {
@@ -217,7 +223,8 @@ export class ReportsComponent implements OnInit {
         caracteristicasIds: new FormControl(secao.caracteristicasIds || []),
         id: new FormControl(secao.id),
         tipo: new FormControl(secao.tipo),
-        ordem: new FormControl(secao.ordem)
+        ordem: new FormControl(secao.ordem),
+        tipoGrafico: new FormControl(secao['tipoGrafico'] || 'barra')
       }));
     });
   }
@@ -810,5 +817,65 @@ export class ReportsComponent implements OnInit {
       }
     }
     return count ? soma / count : null;
+  }
+
+  async salvarRelatorioNoFirebase() {
+    if (!this.nomeRelatorioControl.value) {
+      alert('Por favor, dê um nome ao relatório.');
+      return;
+    }
+    const reportData = {
+      nome: this.nomeRelatorioControl.value,
+      caracteristicas: this.caracteristicas,
+      configuracao: this.relatorioConfiguracao,
+      criadoEm: new Date()
+    };
+    try {
+      const docRef = await addDoc(collection(this.firestore, 'reports'), reportData);
+      alert(`Relatório '${reportData.nome}' salvo com sucesso!`);
+      this.nomeRelatorioControl.reset();
+      this.carregarRelatoriosSalvos(); // Atualiza a lista
+    } catch (e) {
+      console.error("Erro ao salvar relatório: ", e);
+      alert("Ocorreu um erro ao salvar o relatório.");
+    }
+  }
+
+  async carregarRelatoriosSalvos() {
+    const reportsSnap = await getDocs(collection(this.firestore, 'reports'));
+    this.savedReports = reportsSnap.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data()['nome'] || doc.id
+    }));
+  }
+
+  async carregarRelatorioSelecionado() {
+    if (!this.selectedReportId.value) return;
+    const reportRef = doc(this.firestore, 'reports', this.selectedReportId.value);
+    const reportSnap = await getDoc(reportRef);
+    if (reportSnap.exists()) {
+      const reportData = reportSnap.data();
+      this.caracteristicas = reportData['caracteristicas'] || [];
+      this.relatorioConfiguracao = reportData['configuracao'] || [];
+      // Atualizar o form reativo
+      this.atualizarFormArrayComConfiguracao();
+      alert(`Relatório '${reportData['nome']}' carregado!`);
+    }
+  }
+
+  atualizarFormArrayComConfiguracao() {
+    this.relatorioFormArray.clear();
+    this.relatorioConfiguracao.forEach(secao => {
+      this.relatorioFormArray.push(new FormGroup({
+        visivel: new FormControl(secao.visivel),
+        titulo: new FormControl(secao.titulo || ''),
+        texto: new FormControl(secao.texto || ''),
+        caracteristicasIds: new FormControl(secao.caracteristicasIds || []),
+        id: new FormControl(secao.id),
+        tipo: new FormControl(secao.tipo),
+        ordem: new FormControl(secao.ordem),
+        tipoGrafico: new FormControl(secao['tipoGrafico'] || 'barra')
+      }));
+    });
   }
 }
