@@ -191,5 +191,173 @@
     <h4 style="margin-top:32px">Gráfico Radar (Polar)</h4>
     <div echarts [options]="radarOptions" [style.height.px]="350"></div>
   </mat-tab>
+
+  <mat-tab label="Características">
+    <div style="margin-bottom: 16px">
+      <form [formGroup]="caracteristicaForm" (ngSubmit)="salvarCaracteristica()">
+        <mat-form-field appearance="outline">
+          <mat-label>Nome da característica</mat-label>
+          <input matInput formControlName="nome" required />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Descrição</mat-label>
+          <textarea matInput formControlName="descricao" required></textarea>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Perguntas vinculadas</mat-label>
+          <mat-select formControlName="perguntasIds" multiple>
+            <mat-option *ngFor="let q of dynamicColumns" [value]="q">{{ questionMap[q] }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="submit">
+          {{ caracteristicaEditando.id ? 'Salvar' : 'Adicionar' }}
+        </button>
+        <button mat-button type="button" (click)="cancelarEdicaoCaracteristica()" *ngIf="caracteristicaEditando.id">
+          Cancelar
+        </button>
+      </form>
+    </div>
+
+    <mat-list>
+      <mat-list-item *ngFor="let c of caracteristicas">
+        <div style="flex: 1">
+          <b>{{ c.nome }}</b>
+          <p>{{ c.descricao }}</p>
+          <small>Perguntas vinculadas: {{ c.perguntasIds?.length || 0 }}</small>
+        </div>
+        <button mat-icon-button color="primary" (click)="editarCaracteristica(c)">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button color="warn" (click)="removerCaracteristica(c)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </mat-list-item>
+    </mat-list>
+  </mat-tab>
+
+  <mat-tab label="Montar Relatório">
+    <button mat-flat-button color="primary" style="margin-bottom: 16px;" (click)="selectedTabIndex = 5">Visualizar Relatório</button>
+    <form [formGroup]="dummyForm">
+      <div formArrayName="relatorioFormArray">
+        <div *ngFor="let secaoCtrl of relatorioFormGroups; let i = index" [formGroup]="secaoCtrl">
+          <mat-card style="margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <mat-checkbox formControlName="visivel" (change)="atualizarSecaoConfiguracao(i)">
+                  {{ secaoCtrl.get('titulo')?.value || (secaoCtrl.get('tipo')?.value | titlecase) }}
+                </mat-checkbox>
+              </div>
+              <div>
+                <button mat-icon-button (click)="moverSecaoCima(i)" [disabled]="i === 0"><mat-icon>arrow_upward</mat-icon></button>
+                <button mat-icon-button (click)="moverSecaoBaixo(i)" [disabled]="i === relatorioFormGroups.length - 1"><mat-icon>arrow_downward</mat-icon></button>
+              </div>
+            </div>
+            <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
+              <mat-label>Título</mat-label>
+              <input matInput formControlName="titulo" (change)="atualizarSecaoConfiguracao(i)" />
+            </mat-form-field>
+            <div *ngIf="secaoCtrl.get('tipo')?.value === 'introducao' || secaoCtrl.get('tipo')?.value === 'resumo' || secaoCtrl.get('tipo')?.value === 'destaques' || secaoCtrl.get('tipo')?.value === 'custom'">
+              <angular-editor formControlName="texto" (blur)="atualizarSecaoConfiguracao(i)" [config]="editorConfig"></angular-editor>
+            </div>
+            <div *ngIf="secaoCtrl.get('tipo')?.value === 'resumo' || secaoCtrl.get('tipo')?.value === 'graficos' || secaoCtrl.get('tipo')?.value === 'tabela'">
+              <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
+                <mat-label>Características</mat-label>
+                <mat-select formControlName="caracteristicasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                  <mat-option *ngFor="let c of caracteristicas" [value]="c.id">{{ c.nome }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+          </mat-card>
+        </div>
+      </div>
+    </form>
+  </mat-tab>
+
+  <mat-tab label="Visualizar Relatório">
+    <div *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index">
+      <ng-container [ngSwitch]="secao.tipo">
+        <div *ngSwitchCase="'capa'">
+          <h1>{{ secao.titulo }}</h1>
+          <p>{{ secao.texto }}</p>
+          <p><b>Nome do avaliado:</b> {{ selectedAssessmentName }}</p>
+          <p><b>Data:</b> {{ today | date: 'dd/MM/yyyy' }}</p>
+        </div>
+        <div *ngSwitchCase="'introducao'">
+          <h2>{{ secao.titulo }}</h2>
+          <div [innerHTML]="secao.texto"></div>
+        </div>
+        <div *ngSwitchCase="'resumo'">
+          <h2>{{ secao.titulo }}</h2>
+          <div [innerHTML]="secao.texto"></div>
+          <table *ngIf="getResumoMedias().length" class="mat-elevation-z8" style="margin: 16px 0; min-width: 400px;">
+            <thead>
+              <tr>
+                <th>Característica</th>
+                <th>Grupo</th>
+                <th>Média</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let linha of getResumoMedias()">
+                <td>{{ linha.caracteristica }}</td>
+                <td>{{ linha.grupo }}</td>
+                <td>{{ linha.media !== null ? (linha.media | number:'1.2-2') : '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p *ngIf="!getResumoMedias().length"><i>Nenhuma característica selecionada ou sem dados.</i></p>
+        </div>
+        <div *ngSwitchCase="'graficos'">
+          <h2>{{ secao.titulo }}</h2>
+          <div [innerHTML]="secao.texto"></div>
+          <!-- Gráficos dinâmicos reais -->
+          <mat-form-field appearance="outline" style="width: 250px; margin-bottom: 16px;">
+            <mat-label>Tipo de gráfico</mat-label>
+            <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao)">
+              <mat-option value="barra">Barra</mat-option>
+              <mat-option value="radar">Radar</mat-option>
+              <mat-option value="pizza">Pizza</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <ng-container [ngSwitch]="secao['tipoGrafico'] || 'barra'">
+            <ngx-charts-bar-horizontal-stacked
+              *ngSwitchCase="'barra'"
+              [results]="getSecaoStackedData(secao)"
+              [xAxis]="false"
+              [yAxis]="true"
+              [view]="[700, getSecaoStackedData(secao).length * 60]"
+              [style.height.px]="getSecaoStackedData(secao).length * 60"
+            ></ngx-charts-bar-horizontal-stacked>
+            <div *ngSwitchCase="'radar'" echarts [options]="getSecaoRadarOptions(secao)" [style.height.px]="350"></div>
+            <ngx-charts-pie-chart
+              *ngSwitchCase="'pizza'"
+              [results]="getSecaoPieData(secao)"
+              [view]="[400,350]"
+              [legend]="true"
+              [labels]="true"
+              [doughnut]="false"
+            ></ngx-charts-pie-chart>
+          </ng-container>
+        </div>
+        <div *ngSwitchCase="'tabela'">
+          <h2>{{ secao.titulo }}</h2>
+          <div [innerHTML]="secao.texto"></div>
+          <!-- Placeholder para tabela de frequência -->
+          <p><i>[Tabela de frequência das respostas]</i></p>
+        </div>
+        <div *ngSwitchCase="'destaques'">
+          <h2>{{ secao.titulo }}</h2>
+          <div [innerHTML]="secao.texto"></div>
+          <!-- Placeholder para destaques -->
+          <p><i>[Destaques das avaliações mais altas]</i></p>
+        </div>
+        <div *ngSwitchDefault>
+          <h2>{{ secao.titulo }}</h2>
+          <div [innerHTML]="secao.texto"></div>
+        </div>
+      </ng-container>
+      <hr />
+    </div>
+  </mat-tab>
 </mat-tab-group>
 <!-- TAB GROUP END -->

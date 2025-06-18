@@ -3,7 +3,7 @@ import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc } from '@angular/fire/firestore';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
-import { ReactiveFormsModule, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormControl, FormGroup, Validators, FormArray } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { CommonModule } from '@angular/common';
 import { MatOptionModule } from '@angular/material/core';
@@ -21,6 +21,28 @@ import { NgxEchartsModule } from 'ngx-echarts';
 interface AssessmentOption {
   id: string;
   name: string;
+}
+
+interface Caracteristica {
+  id: string;
+  nome: string;
+  descricao: string;
+  perguntasIds: string[];
+}
+
+// Modelo de dados para seções dinâmicas do relatório
+export interface RelatorioSecao {
+  id: string;
+  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom';
+  titulo?: string;
+  texto?: string;
+  visivel: boolean;
+  ordem: number;
+  // Campos para dados dinâmicos
+  caracteristicasIds?: string[];
+  perguntasIds?: string[];
+  // Outros campos customizáveis
+  [key: string]: any;
 }
 
 @Component({
@@ -93,12 +115,81 @@ export class ReportsComponent implements OnInit {
   polarData: any[] = [];
   radarOptions: EChartsOption = {};
 
-  get selectedAssessmentName(): string {
-    const a = this.assessments.find(ax => ax.id === this.selectedAssessmentId);
-    return a ? a.name : '';
-  }
+  caracteristicas: Caracteristica[] = [];
+  caracteristicaEditando: Caracteristica = { id: '', nome: '', descricao: '', perguntasIds: [] };
+  caracteristicaForm: FormGroup;
 
-  constructor(private firestore: Firestore) { }
+  // Exemplo de configuração inicial do relatório
+  relatorioConfiguracao: RelatorioSecao[] = [
+    {
+      id: 'capa',
+      tipo: 'capa',
+      titulo: 'Relatório Feedback 360°',
+      texto: '',
+      visivel: true,
+      ordem: 1
+    },
+    {
+      id: 'introducao',
+      tipo: 'introducao',
+      titulo: 'Introdução',
+      texto: 'Texto introdutório do relatório...',
+      visivel: true,
+      ordem: 2
+    },
+    {
+      id: 'resumo',
+      tipo: 'resumo',
+      titulo: 'Resumo dos Resultados nas Características',
+      texto: '',
+      visivel: true,
+      ordem: 3,
+      caracteristicasIds: [] // pode ser preenchido dinamicamente
+    },
+    {
+      id: 'graficos',
+      tipo: 'graficos',
+      titulo: 'Gráficos',
+      texto: '',
+      visivel: true,
+      ordem: 4,
+      caracteristicasIds: []
+    },
+    {
+      id: 'tabela',
+      tipo: 'tabela',
+      titulo: 'Tabela de Frequência',
+      texto: '',
+      visivel: true,
+      ordem: 5,
+      caracteristicasIds: []
+    },
+    {
+      id: 'destaques',
+      tipo: 'destaques',
+      titulo: 'Avaliações mais altas',
+      texto: '',
+      visivel: true,
+      ordem: 6
+    }
+  ];
+
+  relatorioFormArray: FormArray<any>
+  dummyForm: FormGroup;
+
+  selectedTabIndex = 0;
+
+  constructor(private firestore: Firestore) {
+    this.caracteristicaForm = new FormGroup({
+      nome: new FormControl('', Validators.required),
+      descricao: new FormControl('', Validators.required),
+      perguntasIds: new FormControl([])
+    });
+    this.relatorioFormArray = new FormArray<any>([]);
+    this.dummyForm = new FormGroup({
+      relatorioFormArray: this.relatorioFormArray
+    });
+  }
 
   async ngOnInit() {
     this.isLoading = true;
@@ -114,6 +205,20 @@ export class ReportsComponent implements OnInit {
     this.assessmentControl.valueChanges.subscribe(value => {
       this.selectedAssessmentId = value;
       this.onAssessmentChange();
+    });
+
+    // Inicializar o FormArray das seções do relatório
+    this.relatorioFormArray.clear();
+    this.relatorioConfiguracao.forEach(secao => {
+      this.relatorioFormArray.push(new FormGroup({
+        visivel: new FormControl(secao.visivel),
+        titulo: new FormControl(secao.titulo || ''),
+        texto: new FormControl(secao.texto || ''),
+        caracteristicasIds: new FormControl(secao.caracteristicasIds || []),
+        id: new FormControl(secao.id),
+        tipo: new FormControl(secao.tipo),
+        ordem: new FormControl(secao.ordem)
+      }));
     });
   }
 
@@ -135,6 +240,7 @@ export class ReportsComponent implements OnInit {
       return;
     }
     const assessmentData = assessmentSnap.data();
+    console.log('assessmentData carregado:', assessmentData);
     const surveyJSON = assessmentData['surveyJSON'];
     let dynamicColumns: string[] = [];
     if (surveyJSON && surveyJSON.pages) {
@@ -306,9 +412,13 @@ export class ReportsComponent implements OnInit {
   private parseNumeric(val: any): number | null {
     if (typeof val === 'number') return val;
     if (typeof val === 'string') {
-      if (val.startsWith('Column ')) {
-        const num = parseInt(val.replace('Column ', ''), 10);
-        return isNaN(num) ? null : num;
+      // Converter 'Column 1' a 'Column 5' para 1 a 5
+      const match = val.match(/^Column (\d)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        // 'Column 6' é considerado 'Sem dados', então retorna null
+        if (num >= 1 && num <= 5) return num;
+        return null;
       }
       const n = parseFloat(val);
       return isNaN(n) ? null : n;
@@ -379,7 +489,7 @@ export class ReportsComponent implements OnInit {
       },
       series: [
         {
-          type: 'radar',
+          type: 'radar' as const,
           data: [
             {
               value: radarValues,
@@ -388,7 +498,7 @@ export class ReportsComponent implements OnInit {
           ]
         }
       ]
-    };
+    } as EChartsOption;
   }
 
   onSelectCompetencia(c: { nome: string; perguntas: string[] }) {
@@ -401,5 +511,268 @@ export class ReportsComponent implements OnInit {
       this.selectedCompetencia.perguntas = this.questionsControl.value || [];
       this.updateChart();
     }
+  }
+
+  salvarCaracteristica() {
+    if (this.caracteristicaForm.invalid) return;
+    const formValue = this.caracteristicaForm.value;
+    if (this.caracteristicaEditando.id) {
+      // Editar existente
+      const idx = this.caracteristicas.findIndex(c => c.id === this.caracteristicaEditando.id);
+      if (idx > -1) this.caracteristicas[idx] = { ...this.caracteristicaEditando, ...formValue };
+    } else {
+      // Nova
+      const nova: Caracteristica = {
+        id: Date.now().toString(),
+        ...formValue
+      };
+      this.caracteristicas.push(nova);
+    }
+    this.cancelarEdicaoCaracteristica();
+  }
+
+  editarCaracteristica(c: Caracteristica) {
+    this.caracteristicaEditando = { ...c };
+    this.caracteristicaForm.setValue({
+      nome: c.nome,
+      descricao: c.descricao,
+      perguntasIds: c.perguntasIds || []
+    });
+  }
+
+  removerCaracteristica(c: Caracteristica) {
+    this.caracteristicas = this.caracteristicas.filter(x => x.id !== c.id);
+    this.cancelarEdicaoCaracteristica();
+  }
+
+  cancelarEdicaoCaracteristica() {
+    this.caracteristicaEditando = { id: '', nome: '', descricao: '', perguntasIds: [] };
+    this.caracteristicaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
+  }
+
+  get selectedAssessmentName(): string {
+    const a = this.assessments.find(ax => ax.id === this.selectedAssessmentId);
+    return a ? a.name : '';
+  }
+
+  // Métodos utilitários para manipular as seções do relatório
+  getSecoesVisiveisOrdenadas(): RelatorioSecao[] {
+    return this.relatorioConfiguracao
+      .filter(secao => secao.visivel)
+      .sort((a, b) => a.ordem - b.ordem);
+  }
+
+  mostrarSecao(id: string) {
+    const secao = this.relatorioConfiguracao.find(s => s.id === id);
+    if (secao) secao.visivel = true;
+  }
+
+  ocultarSecao(id: string) {
+    const secao = this.relatorioConfiguracao.find(s => s.id === id);
+    if (secao) secao.visivel = false;
+  }
+
+  atualizarTextoSecao(id: string, texto: string) {
+    const secao = this.relatorioConfiguracao.find(s => s.id === id);
+    if (secao) secao.texto = texto;
+  }
+
+  atualizarTituloSecao(id: string, titulo: string) {
+    const secao = this.relatorioConfiguracao.find(s => s.id === id);
+    if (secao) secao.titulo = titulo;
+  }
+
+  // Adicionar métodos para reordenar as seções do relatório dinâmico
+  moverSecaoCima(index: number) {
+    if (index > 0) {
+      const temp = this.relatorioConfiguracao[index - 1];
+      this.relatorioConfiguracao[index - 1] = this.relatorioConfiguracao[index];
+      this.relatorioConfiguracao[index] = temp;
+      // Atualizar ordem
+      this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
+    }
+  }
+
+  moverSecaoBaixo(index: number) {
+    if (index < this.relatorioConfiguracao.length - 1) {
+      const temp = this.relatorioConfiguracao[index + 1];
+      this.relatorioConfiguracao[index + 1] = this.relatorioConfiguracao[index];
+      this.relatorioConfiguracao[index] = temp;
+      // Atualizar ordem
+      this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
+    }
+  }
+
+  getSecaoFormGroup(index: number): FormGroup {
+    return this.relatorioFormArray.at(index) as FormGroup;
+  }
+
+  atualizarSecaoConfiguracao(index: number) {
+    const formValue = this.relatorioFormArray.at(index).value;
+    const secao = this.relatorioConfiguracao[index];
+    Object.assign(secao, formValue);
+  }
+
+  get relatorioFormGroups(): FormGroup[] {
+    return this.relatorioFormArray.controls as FormGroup[];
+  }
+
+  // Mapeamento de categorias do banco para os grupos do relatório
+  private mapCategoriaToGrupo(categoria: string): string {
+    if (!categoria) return 'Outros';
+    const map: { [key: string]: string } = {
+      'Avaliado': 'Avaliado(a)',
+      'Avaliado(a)': 'Avaliado(a)',
+      'Gestor': 'Gestor(es)',
+      'Gestor(es)': 'Gestor(es)',
+      'Par': 'Pares',
+      'Pares': 'Pares',
+      'Subordinado': 'Subordinados',
+      'Subordinados': 'Subordinados',
+      'Outro': 'Outros',
+      'Outros': 'Outros',
+    };
+    return map[categoria] || categoria;
+  }
+
+  // Retorna as médias por característica e grupo de avaliadores para o bloco de Resumo
+  getResumoMedias() {
+    const grupos = ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
+    const secaoResumo = this.relatorioConfiguracao.find(s => s.tipo === 'resumo');
+    if (!secaoResumo || !secaoResumo.caracteristicasIds?.length) {
+      console.log('[Resumo] Nenhuma característica selecionada na seção de resumo.');
+      return [];
+    }
+    const caracteristicasSelecionadas = this.caracteristicas.filter(c => secaoResumo.caracteristicasIds!.includes(c.id));
+    console.log('[Resumo] Características selecionadas:', caracteristicasSelecionadas.map(c => ({ id: c.id, nome: c.nome, perguntasIds: c.perguntasIds })));
+    // Log para depuração: mostrar as chaves do dataSource
+    if (this.dataSource.length) {
+      console.log('[Resumo] Exemplo de linha do dataSource:', this.dataSource[0]);
+    }
+    const resultado: any[] = [];
+    for (const carac of caracteristicasSelecionadas) {
+      const perguntas = carac.perguntasIds;
+      console.log(`[Resumo] Processando característica: ${carac.nome} (Perguntas: ${perguntas})`);
+      for (const grupo of grupos) {
+        let soma = 0;
+        let count = 0;
+        for (const row of this.dataSource) {
+          const grupoLinha = this.mapCategoriaToGrupo(row['categoria']);
+          if (grupoLinha === grupo) {
+            for (const pid of perguntas) {
+              // Log para depuração: mostrar o valor buscado
+              console.log(`[Resumo] Buscando valor para pid='${pid}' em row:`, row);
+              const val = this.parseNumeric(row[pid]);
+              console.log(`[Resumo] Valor encontrado para pid='${pid}':`, val);
+              if (val !== null) {
+                soma += val;
+                count++;
+              }
+            }
+          }
+        }
+        console.log(`[Resumo] Característica: ${carac.nome}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${count ? soma / count : null}`);
+        resultado.push({
+          caracteristica: carac.nome,
+          grupo,
+          media: count ? soma / count : null
+        });
+      }
+    }
+    return resultado;
+  }
+
+  // Métodos utilitários para gráficos dinâmicos na visualização do relatório
+  getSecaoStackedData(secao: any) {
+    // Retorna dados de barra para as características selecionadas na seção
+    if (!secao.caracteristicasIds?.length) return [];
+    // Buscar as características selecionadas
+    const caracs = this.caracteristicas.filter(c => secao.caracteristicasIds.includes(c.id));
+    return caracs
+      .map(carac => {
+        const dist: any = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        let soma = 0;
+        let count = 0;
+        this.dataSource.forEach(row => {
+          (carac.perguntasIds || []).forEach(q => {
+            const num = this.parseNumeric(row[q]);
+            if (num && num >= 1 && num <= 5) {
+              dist[num] += 1;
+              soma += num;
+              count++;
+            }
+          });
+        });
+        return {
+          name: carac.nome,
+          series: [
+            { name: '1', value: dist[1] },
+            { name: '2', value: dist[2] },
+            { name: '3', value: dist[3] },
+            { name: '4', value: dist[4] },
+            { name: '5', value: dist[5] },
+          ],
+          media: count ? soma / count : 0
+        };
+      });
+  }
+
+  getSecaoRadarOptions(secao: any) {
+    // Retorna opções para gráfico radar das características selecionadas
+    const stackedData = this.getSecaoStackedData(secao);
+    const radarNames = stackedData.map(c => c.name);
+    const radarValues = stackedData.map(c => Number(c.media?.toFixed(2) || 0));
+    return {
+      tooltip: {},
+      radar: {
+        indicator: radarNames.map(name => ({ name, max: 5 })),
+        radius: '70%',
+      },
+      series: [
+        {
+          type: 'radar' as const,
+          data: [
+            {
+              value: radarValues,
+              name: 'Média por competência'
+            }
+          ]
+        }
+      ]
+    } as EChartsOption;
+  }
+
+  getSecaoPieData(secao: any) {
+    // Retorna dados para gráfico de pizza (distribuição total de respostas por característica)
+    if (!secao.caracteristicasIds?.length) return [];
+    const caracs = this.caracteristicas.filter(c => secao.caracteristicasIds.includes(c.id));
+    return caracs
+      .map(carac => {
+        let soma = 0;
+        let count = 0;
+        this.dataSource.forEach(row => {
+          (carac.perguntasIds || []).forEach(q => {
+            const num = this.parseNumeric(row[q]);
+            if (num && num >= 1 && num <= 5) {
+              soma += num;
+              count++;
+            }
+          });
+        });
+        return {
+          name: carac.nome,
+          value: count ? soma / count : 0
+        };
+      });
+  }
+
+  onTipoGraficoChange(secao: any) {
+    // Pode ser usado para lógica futura, como salvar preferências ou atualizar visualização
+    // Por enquanto, não faz nada além de atualizar o tipo de gráfico
+    // console.log('Tipo de gráfico alterado para:', secao.tipoGrafico);
+  }
+
+  getTipoGraficoControl(i: number): FormControl {
+    return this.relatorioFormGroups[i].get('tipoGrafico') as FormControl;
   }
 }
