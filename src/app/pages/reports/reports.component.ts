@@ -766,13 +766,49 @@ export class ReportsComponent implements OnInit {
       });
   }
 
-  onTipoGraficoChange(secao: any) {
-    // Pode ser usado para lógica futura, como salvar preferências ou atualizar visualização
-    // Por enquanto, não faz nada além de atualizar o tipo de gráfico
-    // console.log('Tipo de gráfico alterado para:', secao.tipoGrafico);
+  onTipoGraficoChange(secao: any, i: number) {
+    secao['tipoGrafico'] = this.getTipoGraficoControl(i).value;
   }
 
   getTipoGraficoControl(i: number): FormControl {
     return this.relatorioFormGroups[i].get('tipoGrafico') as FormControl;
+  }
+
+  // Grupos padrão
+  getGrupos() {
+    return ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
+  }
+
+  // Características selecionadas para a seção de tabela
+  getCaracteristicasSelecionadasParaTabela() {
+    const secaoTabela = this.relatorioConfiguracao.find(s => s.tipo === 'tabela');
+    if (!secaoTabela || !Array.isArray(secaoTabela.caracteristicasIds) || !secaoTabela.caracteristicasIds.length) return [];
+    return this.caracteristicas.filter(c => secaoTabela.caracteristicasIds!.includes(c.id));
+  }
+
+  // Lista de respostas para uma pergunta e grupo
+  getRespostasPorPerguntaEGrupo(perguntaId: string, grupo: string) {
+    return this.dataSource
+      .filter(row => this.mapCategoriaToGrupo(row['categoria']) === grupo)
+      .map(row => row[perguntaId])
+      .filter(val => val !== undefined && val !== null && val !== '');
+  }
+
+  // Média para uma característica e grupo
+  getMediaPorPerguntaEGrupo(carac: any, grupo: string) {
+    let soma = 0;
+    let count = 0;
+    for (const pid of carac.perguntasIds || []) {
+      for (const row of this.dataSource) {
+        if (this.mapCategoriaToGrupo(row['categoria']) === grupo) {
+          const val = this.parseNumeric(row[pid]);
+          if (val !== null) {
+            soma += val;
+            count++;
+          }
+        }
+      }
+    }
+    return count ? soma / count : null;
   }
 }

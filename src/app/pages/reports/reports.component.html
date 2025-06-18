@@ -19,179 +19,17 @@
 
 <!-- TAB GROUP START -->
 <mat-tab-group>
+  <!--
   <mat-tab label="Dados">
-    <div style="margin-bottom: 16px">
-      <button mat-stroked-button color="primary" (click)="dadosTextEnabled = !dadosTextEnabled">
-        {{ dadosTextEnabled ? 'Ocultar' : 'Adicionar' }} texto introdutório
-      </button>
-    </div>
-    <div *ngIf="dadosTextEnabled" style="margin-bottom: 24px">
-      <angular-editor [formControl]="dadosTextControl" [config]="editorConfig"></angular-editor>
-    </div>
-
-    <button
-      mat-flat-button
-      color="primary"
-      (click)="exportCSV()"
-      [disabled]="!dataSource.length"
-      style="margin-bottom: 16px"
-    >
-      Exportar para CSV
-    </button>
-
-    <!-- Capa do relatório -->
-    <div
-      id="report-cover"
-      style="text-align: center; padding: 40px 20px"
-      *ngIf="selectedAssessmentId"
-    >
-      <img
-        src="assets/images/logos/eck-consulting.svg"
-        alt="Logo"
-        style="width: 120px; margin-bottom: 32px"
-      />
-      <h2 style="margin: 0">Princípios do Hydro Way</h2>
-      <h3 style="font-style: italic; margin-top: 8px">Relatório 360</h3>
-      <h4 style="margin-top: 40px">{{ selectedAssessmentName }}</h4>
-      <div
-        style="
-          margin-top: 40px;
-          text-align: left;
-          max-width: 400px;
-          margin-left: auto;
-          margin-right: auto;
-        "
-      >
-        <p *ngFor="let cat of summaryCounts | keyvalue">
-          {{ cat.key }}: {{ cat.value }}
-        </p>
-        <p>Data: {{ today | date: 'dd/MM/yyyy' }}</p>
-      </div>
-      <small
-        >Este relatório contém informações confidenciais que não devem ser
-        divulgadas a pessoas não autorizadas.</small
-      >
-    </div>
-    <button
-      mat-stroked-button
-      color="accent"
-      (click)="generatePDFCover()"
-      *ngIf="selectedAssessmentId"
-    >
-      Gerar Capa PDF
-    </button>
-
-    <div class="table-container" *ngIf="dataSource.length">
-      <table mat-table [dataSource]="dataSource" class="mat-elevation-z8">
-        <ng-container *ngFor="let col of displayedColumns" [matColumnDef]="col">
-          <th mat-header-cell *matHeaderCellDef>
-            <span>{{ questionMap[col] || col }}</span>
-          </th>
-          <td mat-cell *matCellDef="let element">
-            <div class="cell-content">{{ element[col] | columnValue }}</div>
-          </td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-      </table>
-    </div>
-    <p *ngIf="selectedAssessmentId && !dataSource.length">
-      Nenhum dado para exibir.
-    </p>
-
-    <!-- Consolidação -->
-    <button
-      mat-stroked-button
-      color="primary"
-      (click)="exportConsolidationCSV()"
-      *ngIf="consolidation.length"
-      style="margin: 16px 0"
-    >
-      Exportar Consolidação CSV
-    </button>
-    <div class="table-container" *ngIf="consolidation.length">
-      <table mat-table [dataSource]="consolidation" class="mat-elevation-z8">
-        <ng-container
-          *ngFor="let col of consolidationColumns"
-          [matColumnDef]="col"
-        >
-          <th mat-header-cell *matHeaderCellDef>
-            <span>{{ col }}</span>
-          </th>
-          <td mat-cell *matCellDef="let element">
-            <div class="cell-content">{{ element[col] }}</div>
-          </td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="consolidationColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: consolidationColumns"></tr>
-      </table>
-    </div>
+    ...
   </mat-tab>
   <mat-tab label="Competências">
-    <div style="margin-bottom: 16px">
-      <button mat-stroked-button color="primary" (click)="competenciasTextEnabled = !competenciasTextEnabled">
-        {{ competenciasTextEnabled ? 'Ocultar' : 'Adicionar' }} texto introdutório
-      </button>
-    </div>
-    <div *ngIf="competenciasTextEnabled" style="margin-bottom: 24px">
-      <angular-editor [formControl]="competenciasTextControl" [config]="editorConfig"></angular-editor>
-    </div>
-    <h3>Gerenciar Competências</h3>
-    <!-- Form Nova Competência -->
-    <mat-form-field appearance="outline">
-      <mat-label>Nova competência</mat-label>
-      <input matInput [formControl]="competenciaControl" />
-    </mat-form-field>
-    <button mat-icon-button color="primary" (click)="addCompetencia()">
-      <mat-icon>add</mat-icon>
-    </button>
-
-    <mat-chip-list>
-      <mat-chip
-        *ngFor="let c of competencias"
-        selectable
-        (click)="onSelectCompetencia(c)"
-      >
-        {{ c.nome }}
-        <mat-icon matChipRemove (click)="removeCompetencia(c)">close</mat-icon>
-      </mat-chip>
-    </mat-chip-list>
-
-    <h4 *ngIf="selectedCompetencia">Perguntas vinculadas</h4>
-    <mat-selection-list
-      *ngIf="selectedCompetencia"
-      [formControl]="questionsControl"
-      (selectionChange)="questionsControlChanged()"
-    >
-      <mat-list-option *ngFor="let q of dynamicColumns" [value]="q">
-        {{ questionMap[q] }}
-      </mat-list-option>
-    </mat-selection-list>
+    ...
   </mat-tab>
-
   <mat-tab label="Gráficos">
-    <div style="margin-bottom: 16px">
-      <button mat-stroked-button color="primary" (click)="graficosTextEnabled = !graficosTextEnabled">
-        {{ graficosTextEnabled ? 'Ocultar' : 'Adicionar' }} texto introdutório
-      </button>
-    </div>
-    <div *ngIf="graficosTextEnabled" style="margin-bottom: 24px">
-      <angular-editor [formControl]="graficosTextControl" [config]="editorConfig"></angular-editor>
-    </div>
-    <ngx-charts-bar-horizontal-stacked
-      *ngIf="stackedData.length"
-      [results]="stackedData"
-      [xAxis]="false"
-      [yAxis]="true"
-      [view]="[700, stackedData.length * 60]"
-      [style.height.px]="stackedData.length * 60"
-    >
-    </ngx-charts-bar-horizontal-stacked>
-
-    <h4 style="margin-top:32px">Gráfico Radar (Polar)</h4>
-    <div echarts [options]="radarOptions" [style.height.px]="350"></div>
+    ...
   </mat-tab>
-
+  -->
   <mat-tab label="Características">
     <div style="margin-bottom: 16px">
       <form [formGroup]="caracteristicaForm" (ngSubmit)="salvarCaracteristica()">
@@ -313,7 +151,7 @@
           <!-- Gráficos dinâmicos reais -->
           <mat-form-field appearance="outline" style="width: 250px; margin-bottom: 16px;">
             <mat-label>Tipo de gráfico</mat-label>
-            <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao)">
+            <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao, i)">
               <mat-option value="barra">Barra</mat-option>
               <mat-option value="radar">Radar</mat-option>
               <mat-option value="pizza">Pizza</mat-option>
@@ -342,8 +180,34 @@
         <div *ngSwitchCase="'tabela'">
           <h2>{{ secao.titulo }}</h2>
           <div [innerHTML]="secao.texto"></div>
-          <!-- Placeholder para tabela de frequência -->
-          <p><i>[Tabela de frequência das respostas]</i></p>
+          <div *ngFor="let carac of getCaracteristicasSelecionadasParaTabela()">
+            <h3>{{ carac.nome }}</h3>
+            <table class="mat-elevation-z8" style="margin: 16px 0; min-width: 400px;">
+              <thead>
+                <tr>
+                  <th>Pergunta</th>
+                  <th *ngFor="let grupo of getGrupos()">{{ grupo }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let pid of carac.perguntasIds">
+                  <td>{{ questionMap[pid] }}</td>
+                  <td *ngFor="let grupo of getGrupos()">
+                    <ng-container *ngIf="getRespostasPorPerguntaEGrupo(pid, grupo).length; else vazio">
+                      <span *ngFor="let resp of getRespostasPorPerguntaEGrupo(pid, grupo); let last = last">{{ resp }}<span *ngIf="!last">, </span></span>
+                    </ng-container>
+                    <ng-template #vazio>-</ng-template>
+                  </td>
+                </tr>
+                <tr>
+                  <td><b>Média</b></td>
+                  <td *ngFor="let grupo of getGrupos()">
+                    <b>{{ getMediaPorPerguntaEGrupo(carac, grupo) !== null ? (getMediaPorPerguntaEGrupo(carac, grupo) | number:'1.2-2') : '-' }}</b>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div *ngSwitchCase="'destaques'">
           <h2>{{ secao.titulo }}</h2>
