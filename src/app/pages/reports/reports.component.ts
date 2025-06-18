@@ -17,6 +17,9 @@ import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { EChartsOption } from 'echarts';
 import { NgxEchartsModule } from 'ngx-echarts';
+import { DragDropModule } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 interface AssessmentOption {
   id: string;
@@ -33,7 +36,7 @@ interface Caracteristica {
 // Modelo de dados para seções dinâmicas do relatório
 export interface RelatorioSecao {
   id: string;
-  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom';
+  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom' | 'texto';
   titulo?: string;
   texto?: string;
   visivel: boolean;
@@ -64,7 +67,9 @@ export interface RelatorioSecao {
     MatListModule,
     NgxChartsModule,
     AngularEditorModule,
-    NgxEchartsModule
+    NgxEchartsModule,
+    DragDropModule,
+    MatSnackBarModule
   ],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.scss',
@@ -184,7 +189,12 @@ export class ReportsComponent implements OnInit {
   savedReports: { id: string, name: string }[] = [];
   selectedReportId = new FormControl('');
 
-  constructor(private firestore: Firestore) {
+  // Templates de relatório
+  nomeTemplateControl = new FormControl('');
+  savedTemplates: { id: string, name: string }[] = [];
+  selectedTemplateId = new FormControl('');
+
+  constructor(private firestore: Firestore, private snackBar: MatSnackBar) {
     this.caracteristicaForm = new FormGroup({
       nome: new FormControl('', Validators.required),
       descricao: new FormControl('', Validators.required),
@@ -195,6 +205,7 @@ export class ReportsComponent implements OnInit {
       relatorioFormArray: this.relatorioFormArray
     });
     this.carregarRelatoriosSalvos();
+    this.carregarTemplatesSalvos();
   }
 
   async ngOnInit() {
@@ -589,25 +600,30 @@ export class ReportsComponent implements OnInit {
     if (secao) secao.titulo = titulo;
   }
 
-  // Adicionar métodos para reordenar as seções do relatório dinâmico
-  moverSecaoCima(index: number) {
-    if (index > 0) {
-      const temp = this.relatorioConfiguracao[index - 1];
-      this.relatorioConfiguracao[index - 1] = this.relatorioConfiguracao[index];
-      this.relatorioConfiguracao[index] = temp;
-      // Atualizar ordem
-      this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
-    }
-  }
-
-  moverSecaoBaixo(index: number) {
-    if (index < this.relatorioConfiguracao.length - 1) {
-      const temp = this.relatorioConfiguracao[index + 1];
-      this.relatorioConfiguracao[index + 1] = this.relatorioConfiguracao[index];
-      this.relatorioConfiguracao[index] = temp;
-      // Atualizar ordem
-      this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
-    }
+  // Adiciona uma nova seção customizada logo abaixo do índice fornecido
+  addSecaoCustomizadaAbaixo(index: number, tipo: 'texto' | 'graficos' | 'tabela' = 'texto') {
+    const id = 'custom_' + Date.now();
+    const novaSecao: RelatorioSecao = {
+      id,
+      tipo,
+      titulo: 'Nova Seção',
+      texto: '',
+      visivel: true,
+      ordem: index + 2
+    };
+    this.relatorioConfiguracao.splice(index + 1, 0, novaSecao);
+    this.relatorioFormArray.insert(index + 1, new FormGroup({
+      visivel: new FormControl(novaSecao.visivel),
+      titulo: new FormControl(novaSecao.titulo),
+      texto: new FormControl(novaSecao.texto),
+      caracteristicasIds: new FormControl([]),
+      id: new FormControl(novaSecao.id),
+      tipo: new FormControl(novaSecao.tipo),
+      ordem: new FormControl(novaSecao.ordem),
+      tipoGrafico: new FormControl('barra')
+    }));
+    this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
+    this.snackBar.open('Seção adicionada!', 'Fechar', { duration: 2000 });
   }
 
   getSecaoFormGroup(index: number): FormGroup {
@@ -819,25 +835,45 @@ export class ReportsComponent implements OnInit {
     return count ? soma / count : null;
   }
 
+  // Validação antes de salvar relatório
+  private validarRelatorio(): string | null {
+    for (const secao of this.relatorioConfiguracao) {
+      if (!secao.titulo || !secao.tipo) {
+        return 'Todas as seções devem ter título e tipo.';
+      }
+    }
+    return null;
+  }
+
+  // Atualizar método de salvar relatório para validar e mostrar snackbar
   async salvarRelatorioNoFirebase() {
-    if (!this.nomeRelatorioControl.value) {
-      alert('Por favor, dê um nome ao relatório.');
+    const erro = this.validarRelatorio();
+    if (erro) {
+      this.snackBar.open(erro, 'Fechar', { duration: 3000 });
       return;
     }
+    if (!this.nomeRelatorioControl.value) {
+      this.snackBar.open('Por favor, dê um nome ao relatório.', 'Fechar', { duration: 3000 });
+      return;
+    }
+    // Buscar nome da avaliação selecionada
+    const assessment = this.assessments.find(a => a.id === this.selectedAssessmentId);
     const reportData = {
       nome: this.nomeRelatorioControl.value,
+      assessmentId: this.selectedAssessmentId,
+      assessmentName: assessment ? assessment.name : '',
       caracteristicas: this.caracteristicas,
       configuracao: this.relatorioConfiguracao,
       criadoEm: new Date()
     };
     try {
       const docRef = await addDoc(collection(this.firestore, 'reports'), reportData);
-      alert(`Relatório '${reportData.nome}' salvo com sucesso!`);
+      this.snackBar.open(`Relatório '${reportData.nome}' salvo com sucesso!`, 'Fechar', { duration: 3000 });
       this.nomeRelatorioControl.reset();
       this.carregarRelatoriosSalvos(); // Atualiza a lista
     } catch (e) {
-      console.error("Erro ao salvar relatório: ", e);
-      alert("Ocorreu um erro ao salvar o relatório.");
+      console.error('Erro ao salvar relatório: ', e);
+      this.snackBar.open('Ocorreu um erro ao salvar o relatório.', 'Fechar', { duration: 3000 });
     }
   }
 
@@ -877,5 +913,124 @@ export class ReportsComponent implements OnInit {
         tipoGrafico: new FormControl(secao['tipoGrafico'] || 'barra')
       }));
     });
+  }
+
+  // Adiciona uma nova seção customizada ao relatório
+  addSecaoCustomizada() {
+    // Gera um id único simples
+    const id = 'custom_' + Date.now();
+    const novaSecao: RelatorioSecao = {
+      id,
+      tipo: 'custom',
+      titulo: 'Nova Seção',
+      texto: '',
+      visivel: true,
+      ordem: this.relatorioConfiguracao.length + 1
+    };
+    this.relatorioConfiguracao.push(novaSecao);
+    this.relatorioFormArray.push(new FormGroup({
+      visivel: new FormControl(novaSecao.visivel),
+      titulo: new FormControl(novaSecao.titulo),
+      texto: new FormControl(novaSecao.texto),
+      caracteristicasIds: new FormControl([]),
+      id: new FormControl(novaSecao.id),
+      tipo: new FormControl(novaSecao.tipo),
+      ordem: new FormControl(novaSecao.ordem),
+      tipoGrafico: new FormControl('barra')
+    }));
+  }
+
+  // Remove uma seção do relatório pelo índice
+  removerSecao(index: number) {
+    const titulo = this.relatorioConfiguracao[index]?.titulo || 'Seção';
+    this.relatorioConfiguracao.splice(index, 1);
+    this.relatorioFormArray.removeAt(index);
+    // Atualiza ordem
+    this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
+    this.snackBar.open(`Seção removida: ${titulo}`, 'Fechar', { duration: 2500 });
+  }
+
+  // Método para drag-and-drop das seções
+  dropSecao(event: CdkDragDrop<any[]>) {
+    moveItemInArray(this.relatorioConfiguracao, event.previousIndex, event.currentIndex);
+    moveItemInArray(this.relatorioFormArray.controls, event.previousIndex, event.currentIndex);
+    // Atualiza ordem
+    this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
+  }
+
+  // Salvar template no Firestore
+  async salvarTemplateNoFirebase() {
+    if (!this.nomeTemplateControl.value) {
+      this.snackBar.open('Por favor, dê um nome ao template.', 'Fechar', { duration: 3000 });
+      return;
+    }
+    const templateData = {
+      nome: this.nomeTemplateControl.value,
+      configuracao: this.relatorioConfiguracao,
+      criadoEm: new Date()
+    };
+    try {
+      const docRef = await addDoc(collection(this.firestore, 'reportTemplates'), templateData);
+      this.snackBar.open(`Template '${templateData.nome}' salvo com sucesso!`, 'Fechar', { duration: 3000 });
+      this.nomeTemplateControl.reset();
+      this.carregarTemplatesSalvos();
+    } catch (e) {
+      console.error('Erro ao salvar template: ', e);
+      this.snackBar.open('Ocorreu um erro ao salvar o template.', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  // Carregar lista de templates salvos
+  async carregarTemplatesSalvos() {
+    const templatesSnap = await getDocs(collection(this.firestore, 'reportTemplates'));
+    this.savedTemplates = templatesSnap.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data()['nome'] || doc.id
+    }));
+  }
+
+  // Aplicar template selecionado ao relatório atual
+  async aplicarTemplateSelecionado() {
+    if (!this.selectedTemplateId.value) return;
+    const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
+    const templateSnap = await getDoc(templateRef);
+    if (templateSnap.exists()) {
+      const templateData = templateSnap.data();
+      this.relatorioConfiguracao = templateData['configuracao'] || [];
+      this.atualizarFormArrayComConfiguracao();
+      this.snackBar.open(`Template '${templateData['nome']}' aplicado!`, 'Fechar', { duration: 2500 });
+    }
+  }
+
+  // Exportar relatório completo como PDF
+  async exportarRelatorioPDF() {
+    const jsPDFmod = await import('jspdf');
+    const { default: html2canvas } = await import('html2canvas');
+    const element = document.getElementById('report-preview');
+    if (!element) {
+      this.snackBar.open('Não foi possível encontrar o preview do relatório.', 'Fechar', { duration: 3000 });
+      return;
+    }
+    const canvas = await html2canvas(element, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDFmod.jsPDF('p', 'mm', 'a4');
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const margin = 15; // margem em mm
+    const imgWidth = pageWidth - 2 * margin;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    let heightLeft = imgHeight;
+    let position = margin;
+
+    pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight - 2 * margin;
+    while (heightLeft > 0) {
+      position = position - (pageHeight - 2 * margin);
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight - 2 * margin;
+    }
+    pdf.save('relatorio-360.pdf');
+    this.snackBar.open('PDF exportado com sucesso!', 'Fechar', { duration: 3000 });
   }
 }
