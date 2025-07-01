@@ -1077,6 +1077,95 @@ export class ReportsComponent implements OnInit {
     this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
   }
 
+  // Métodos auxiliares para UI das seções
+  getTipoSecaoColor(tipo: string): string {
+    const colors: { [key: string]: string } = {
+      'capa': '#1976d2',
+      'introducao': '#388e3c',
+      'resumo': '#f57c00',
+      'graficos': '#7b1fa2',
+      'tabela': '#d32f2f',
+      'destaques': '#0097a7',
+      'texto': '#5d4037',
+      'custom': '#455a64'
+    };
+    return colors[tipo] || '#757575';
+  }
+
+  getTipoSecaoLabel(tipo: string): string {
+    const labels: { [key: string]: string } = {
+      'capa': 'CAPA',
+      'introducao': 'INTRODUÇÃO',
+      'resumo': 'RESUMO',
+      'graficos': 'GRÁFICOS',
+      'tabela': 'TABELA',
+      'destaques': 'DESTAQUES',
+      'texto': 'TEXTO',
+      'custom': 'PERSONALIZADA'
+    };
+    return labels[tipo] || tipo.toUpperCase();
+  }
+
+  // Resetar relatório para configuração padrão
+  resetarRelatorio() {
+    this.relatorioConfiguracao = [
+      {
+        id: 'capa',
+        tipo: 'capa',
+        titulo: 'Relatório Feedback 360°',
+        texto: '',
+        visivel: true,
+        ordem: 1
+      },
+      {
+        id: 'introducao',
+        tipo: 'introducao',
+        titulo: 'Introdução',
+        texto: 'Texto introdutório do relatório...',
+        visivel: true,
+        ordem: 2
+      },
+      {
+        id: 'resumo',
+        tipo: 'resumo',
+        titulo: 'Resumo dos Resultados nas Características',
+        texto: '',
+        visivel: true,
+        ordem: 3,
+        caracteristicasIds: []
+      },
+      {
+        id: 'graficos',
+        tipo: 'graficos',
+        titulo: 'Gráficos',
+        texto: '',
+        visivel: true,
+        ordem: 4,
+        caracteristicasIds: [],
+        'tipoGrafico': 'barra'
+      },
+      {
+        id: 'tabela',
+        tipo: 'tabela',
+        titulo: 'Tabela de Frequência',
+        texto: '',
+        visivel: true,
+        ordem: 5,
+        caracteristicasIds: []
+      },
+      {
+        id: 'destaques',
+        tipo: 'destaques',
+        titulo: 'Avaliações mais altas',
+        texto: '',
+        visivel: true,
+        ordem: 6
+      }
+    ];
+    this.atualizarFormArrayComConfiguracao();
+    this.snackBar.open('Relatório resetado para configuração padrão!', 'Fechar', { duration: 2500 });
+  }
+
   // Salvar template no Firestore
   async salvarTemplateNoFirebase() {
     if (!this.nomeTemplateControl.value) {
