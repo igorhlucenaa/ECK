@@ -13,6 +13,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatListModule } from '@angular/material/list';
+import { MatCardModule } from '@angular/material/card';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { EChartsOption } from 'echarts';
@@ -65,6 +67,8 @@ export interface RelatorioSecao {
     MatIconModule,
     MatChipsModule,
     MatListModule,
+    MatCardModule,
+    MatTooltipModule,
     NgxChartsModule,
     AngularEditorModule,
     NgxEchartsModule,
@@ -158,7 +162,8 @@ export class ReportsComponent implements OnInit {
       texto: '',
       visivel: true,
       ordem: 4,
-      caracteristicasIds: []
+      caracteristicasIds: [],
+      'tipoGrafico': 'barra'
     },
     {
       id: 'tabela',
@@ -609,7 +614,8 @@ export class ReportsComponent implements OnInit {
       titulo: 'Nova Seção',
       texto: '',
       visivel: true,
-      ordem: index + 2
+      ordem: index + 2,
+'tipoGrafico': tipo === 'graficos' ? 'barra' : undefined
     };
     this.relatorioConfiguracao.splice(index + 1, 0, novaSecao);
     this.relatorioFormArray.insert(index + 1, new FormGroup({
@@ -634,6 +640,10 @@ export class ReportsComponent implements OnInit {
     const formValue = this.relatorioFormArray.at(index).value;
     const secao = this.relatorioConfiguracao[index];
     Object.assign(secao, formValue);
+    // Garantir que tipoGrafico está sincronizado
+    if (secao.tipo === 'graficos' && formValue.tipoGrafico) {
+      secao['tipoGrafico'] = formValue.tipoGrafico;
+    }
   }
 
   get relatorioFormGroups(): FormGroup[] {
@@ -697,12 +707,35 @@ export class ReportsComponent implements OnInit {
         console.log(`[Resumo] Característica: ${carac.nome}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${count ? soma / count : null}`);
         resultado.push({
           caracteristica: carac.nome,
+          descricao: carac.descricao,
           grupo,
           media: count ? soma / count : null
         });
       }
     }
     return resultado;
+  }
+
+  // Retorna as médias organizadas por característica para melhor apresentação no relatório
+  getResumoMediasPorCaracteristica() {
+    const resumoMedias = this.getResumoMedias();
+    const caracteristicasAgrupadas: { [key: string]: any } = {};
+
+    for (const linha of resumoMedias) {
+      if (!caracteristicasAgrupadas[linha.caracteristica]) {
+        caracteristicasAgrupadas[linha.caracteristica] = {
+          nome: linha.caracteristica,
+          descricao: linha.descricao,
+          dados: []
+        };
+      }
+      caracteristicasAgrupadas[linha.caracteristica].dados.push({
+        grupo: linha.grupo,
+        media: linha.media
+      });
+    }
+
+    return Object.values(caracteristicasAgrupadas);
   }
 
   // Métodos utilitários para gráficos dinâmicos na visualização do relatório
@@ -789,6 +822,80 @@ export class ReportsComponent implements OnInit {
       });
   }
 
+  // Métodos para gráficos individuais por característica
+  getCaracteristicaStackedData(carac: Caracteristica) {
+    const dist: any = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let soma = 0;
+    let count = 0;
+
+    this.dataSource.forEach(row => {
+      (carac.perguntasIds || []).forEach(q => {
+        const num = this.parseNumeric(row[q]);
+        if (num && num >= 1 && num <= 5) {
+          dist[num] += 1;
+          soma += num;
+          count++;
+        }
+      });
+    });
+
+    return [{
+      name: carac.nome,
+      series: [
+        { name: '1', value: dist[1] },
+        { name: '2', value: dist[2] },
+        { name: '3', value: dist[3] },
+        { name: '4', value: dist[4] },
+        { name: '5', value: dist[5] },
+      ],
+      media: count ? soma / count : 0
+    }];
+  }
+
+  getCaracteristicaRadarOptions(carac: Caracteristica) {
+    const stackedData = this.getCaracteristicaStackedData(carac);
+    const radarValues = [Number(stackedData[0]?.media?.toFixed(2) || 0)];
+
+    return {
+      tooltip: {},
+      radar: {
+        indicator: [{ name: carac.nome, max: 5 }],
+        radius: '70%',
+      },
+      series: [
+        {
+          type: 'radar' as const,
+          data: [
+            {
+              value: radarValues,
+              name: 'Média'
+            }
+          ]
+        }
+      ]
+    } as EChartsOption;
+  }
+
+  getCaracteristicaPieData(carac: Caracteristica) {
+    let soma = 0;
+    let count = 0;
+
+    this.dataSource.forEach(row => {
+      (carac.perguntasIds || []).forEach(q => {
+        const num = this.parseNumeric(row[q]);
+        if (num && num >= 1 && num <= 5) {
+          soma += num;
+          count++;
+        }
+      });
+    });
+
+    return [{
+      name: carac.nome,
+      value: count ? soma / count : 0
+    }];
+  }
+
   onTipoGraficoChange(secao: any, i: number) {
     secao['tipoGrafico'] = this.getTipoGraficoControl(i).value;
   }
@@ -800,6 +907,17 @@ export class ReportsComponent implements OnInit {
   // Grupos padrão
   getGrupos() {
     return ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
+  }
+
+  // Método auxiliar para obter característica por ID
+  getCaracteristicaPorId(id: string): Caracteristica | undefined {
+    return this.caracteristicas.find(c => c.id === id);
+  }
+
+  // Características selecionadas para a seção de gráficos
+  getCaracteristicasSelecionadasParaGraficos(secao: any): Caracteristica[] {
+    if (!secao.caracteristicasIds?.length) return [];
+    return this.caracteristicas.filter(c => secao.caracteristicasIds.includes(c.id));
   }
 
   // Características selecionadas para a seção de tabela
@@ -925,7 +1043,8 @@ export class ReportsComponent implements OnInit {
       titulo: 'Nova Seção',
       texto: '',
       visivel: true,
-      ordem: this.relatorioConfiguracao.length + 1
+      ordem: this.relatorioConfiguracao.length + 1,
+      'tipoGrafico': 'barra'
     };
     this.relatorioConfiguracao.push(novaSecao);
     this.relatorioFormArray.push(new FormGroup({

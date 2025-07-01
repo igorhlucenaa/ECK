@@ -31,46 +31,105 @@
   </mat-tab>
   -->
   <mat-tab label="Características">
-    <div style="margin-bottom: 16px">
-      <form [formGroup]="caracteristicaForm" (ngSubmit)="salvarCaracteristica()">
-        <mat-form-field appearance="outline">
-          <mat-label>Nome da característica</mat-label>
-          <input matInput formControlName="nome" required />
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Descrição</mat-label>
-          <textarea matInput formControlName="descricao" required></textarea>
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Perguntas vinculadas</mat-label>
-          <mat-select formControlName="perguntasIds" multiple>
-            <mat-option *ngFor="let q of dynamicColumns" [value]="q">{{ questionMap[q] }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-        <button mat-flat-button color="primary" type="submit">
-          {{ caracteristicaEditando.id ? 'Salvar' : 'Adicionar' }}
-        </button>
-        <button mat-button type="button" (click)="cancelarEdicaoCaracteristica()" *ngIf="caracteristicaEditando.id">
-          Cancelar
-        </button>
-      </form>
+    <div style="margin-bottom: 24px;">
+      <h3>Cadastro de Características</h3>
+      <p style="color: #666; margin-bottom: 16px;">
+        As características são agrupamentos de perguntas que representam competências ou habilidades específicas a serem avaliadas.
+      </p>
+
+      <mat-card style="padding: 20px; margin-bottom: 20px;">
+        <mat-card-header>
+          <mat-card-title>{{ caracteristicaEditando.id ? 'Editar Característica' : 'Nova Característica' }}</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <form [formGroup]="caracteristicaForm" (ngSubmit)="salvarCaracteristica()">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <mat-form-field appearance="outline" style="width: 100%;">
+                <mat-label>Nome da característica</mat-label>
+                <input matInput formControlName="nome" required placeholder="Ex: Liderança, Comunicação, Trabalho em Equipe" />
+                <mat-hint>Nome que aparecerá nos relatórios e gráficos</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" style="width: 100%;">
+                <mat-label>Descrição detalhada</mat-label>
+                <textarea
+                  matInput
+                  formControlName="descricao"
+                  required
+                  rows="4"
+                  placeholder="Ex: Capacidade de liderar equipes, tomar decisões estratégicas e influenciar positivamente os colaboradores"
+                ></textarea>
+                <mat-hint>Descrição que aparecerá como subtítulo nos relatórios</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" style="width: 100%;">
+                <mat-label>Perguntas vinculadas</mat-label>
+                <mat-select formControlName="perguntasIds" multiple>
+                  <mat-option *ngFor="let q of dynamicColumns" [value]="q">
+                    {{ questionMap[q] }}
+                  </mat-option>
+                </mat-select>
+                <mat-hint>Selecione todas as perguntas que fazem parte desta característica</mat-hint>
+              </mat-form-field>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; gap: 12px;">
+              <button mat-flat-button color="primary" type="submit" [disabled]="!caracteristicaForm.valid">
+                <mat-icon>{{ caracteristicaEditando.id ? 'save' : 'add' }}</mat-icon>
+                {{ caracteristicaEditando.id ? 'Salvar Alterações' : 'Adicionar Característica' }}
+              </button>
+              <button mat-button type="button" (click)="cancelarEdicaoCaracteristica()" *ngIf="caracteristicaEditando.id">
+                <mat-icon>cancel</mat-icon>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
     </div>
 
-    <mat-list>
-      <mat-list-item *ngFor="let c of caracteristicas">
-        <div style="flex: 1">
-          <b>{{ c.nome }}</b>
-          <p>{{ c.descricao }}</p>
-          <small>Perguntas vinculadas: {{ c.perguntasIds?.length || 0 }}</small>
-        </div>
-        <button mat-icon-button color="primary" (click)="editarCaracteristica(c)">
-          <mat-icon>edit</mat-icon>
-        </button>
-        <button mat-icon-button color="warn" (click)="removerCaracteristica(c)">
-          <mat-icon>delete</mat-icon>
-        </button>
-      </mat-list-item>
-    </mat-list>
+    <div *ngIf="caracteristicas.length > 0">
+      <h4>Características Cadastradas ({{ caracteristicas.length }})</h4>
+      <div style="display: grid; gap: 16px; margin-top: 16px;">
+        <mat-card *ngFor="let c of caracteristicas" style="padding: 16px;">
+          <mat-card-header style="padding-bottom: 8px;">
+            <mat-card-title style="font-size: 18px; margin-bottom: 4px;">
+              <mat-icon style="vertical-align: middle; margin-right: 8px;" color="primary">psychology</mat-icon>
+              {{ c.nome }}
+            </mat-card-title>
+            <mat-card-subtitle style="font-size: 14px; color: #666;">
+              {{ c.descricao }}
+            </mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <mat-chip-set>
+                  <mat-chip>
+                    <mat-icon matChipAvatar>quiz</mat-icon>
+                    {{ c.perguntasIds?.length || 0 }} pergunta{{ (c.perguntasIds?.length || 0) !== 1 ? 's' : '' }}
+                  </mat-chip>
+                </mat-chip-set>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button mat-icon-button color="primary" (click)="editarCaracteristica(c)" matTooltip="Editar característica">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button color="warn" (click)="removerCaracteristica(c)" matTooltip="Remover característica">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <div *ngIf="caracteristicas.length === 0" style="text-align: center; padding: 40px; color: #666;">
+      <mat-icon style="font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px;">psychology</mat-icon>
+      <h4>Nenhuma característica cadastrada</h4>
+      <p>Comece criando características para organizar suas perguntas em grupos temáticos.</p>
+    </div>
   </mat-tab>
 
   <mat-tab label="Montar Relatório">
@@ -165,6 +224,14 @@
                     <mat-option *ngFor="let c of caracteristicas" [value]="c.id">{{ c.nome }}</mat-option>
                   </mat-select>
                 </mat-form-field>
+                <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
+                  <mat-label>Tipo de gráfico</mat-label>
+                  <mat-select formControlName="tipoGrafico" (selectionChange)="atualizarSecaoConfiguracao(i)">
+                    <mat-option value="barra">Barra</mat-option>
+                    <mat-option value="radar">Radar</mat-option>
+                    <mat-option value="pizza">Pizza</mat-option>
+                  </mat-select>
+                </mat-form-field>
               </div>
               <div *ngIf="secaoCtrl.get('tipo')?.value === 'tabela'">
                 <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
@@ -201,61 +268,81 @@
           <div *ngSwitchCase="'resumo'">
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
-            <table *ngIf="getResumoMedias().length" class="mat-elevation-z8" style="margin: 16px 0; min-width: 400px;">
-              <thead>
-                <tr>
-                  <th>Característica</th>
-                  <th>Grupo</th>
-                  <th>Média</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let linha of getResumoMedias()">
-                  <td>{{ linha.caracteristica }}</td>
-                  <td>{{ linha.grupo }}</td>
-                  <td>{{ linha.media !== null ? (linha.media | number:'1.2-2') : '-' }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div *ngIf="getResumoMedias().length">
+              <div *ngFor="let caracData of getResumoMediasPorCaracteristica()">
+                <h3>{{ caracData.nome }}</h3>
+                <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ caracData.descricao }}</p>
+                <table class="mat-elevation-z8" style="margin: 16px 0 32px 0; min-width: 400px;">
+                  <thead>
+                    <tr>
+                      <th>Grupo</th>
+                      <th>Média</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let linha of caracData.dados">
+                      <td>{{ linha.grupo }}</td>
+                      <td>{{ linha.media !== null ? (linha.media | number:'1.2-2') : '-' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
             <p *ngIf="!getResumoMedias().length"><i>Nenhuma característica selecionada ou sem dados.</i></p>
           </div>
           <div *ngSwitchCase="'graficos'">
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
-            <!-- Gráficos dinâmicos reais -->
-            <mat-form-field appearance="outline" style="width: 250px; margin-bottom: 16px;">
-              <mat-label>Tipo de gráfico</mat-label>
-              <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao, i)">
-                <mat-option value="barra">Barra</mat-option>
-                <mat-option value="radar">Radar</mat-option>
-                <mat-option value="pizza">Pizza</mat-option>
-              </mat-select>
-            </mat-form-field>
-            <ng-container [ngSwitch]="secao['tipoGrafico'] || 'barra'">
-              <ngx-charts-bar-horizontal-stacked
-                *ngSwitchCase="'barra'"
-                [results]="getSecaoStackedData(secao)"
-                [xAxis]="false"
-                [yAxis]="true"
-                [view]="[700, getSecaoStackedData(secao).length * 60]"
-                [style.height.px]="getSecaoStackedData(secao).length * 60"
-              ></ngx-charts-bar-horizontal-stacked>
-              <div *ngSwitchCase="'radar'" echarts [options]="getSecaoRadarOptions(secao)" [style.height.px]="350"></div>
-              <ngx-charts-pie-chart
-                *ngSwitchCase="'pizza'"
-                [results]="getSecaoPieData(secao)"
-                [view]="[400,350]"
-                [legend]="true"
-                [labels]="true"
-                [doughnut]="false"
-              ></ngx-charts-pie-chart>
-            </ng-container>
+
+            <div *ngIf="getCaracteristicasSelecionadasParaGraficos(secao).length > 0">
+              <!-- Controle de tipo de gráfico -->
+              <mat-form-field appearance="outline" style="width: 250px; margin-bottom: 16px;">
+                <mat-label>Tipo de gráfico</mat-label>
+                <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao, i)">
+                  <mat-option value="barra">Barra</mat-option>
+                  <mat-option value="radar">Radar</mat-option>
+                  <mat-option value="pizza">Pizza</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <!-- Mostrar cada característica com sua descrição e gráfico individual -->
+              <div *ngFor="let carac of getCaracteristicasSelecionadasParaGraficos(secao); let idx = index">
+                <h3>{{ carac.nome }}</h3>
+                <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ carac.descricao }}</p>
+
+                <ng-container [ngSwitch]="getTipoGraficoControl(i).value || 'barra'">
+                  <ngx-charts-bar-horizontal-stacked
+                    *ngSwitchCase="'barra'"
+                    [results]="getCaracteristicaStackedData(carac)"
+                    [xAxis]="false"
+                    [yAxis]="true"
+                    [view]="[700, 80]"
+                    [style.height.px]="80"
+                  ></ngx-charts-bar-horizontal-stacked>
+                  <div *ngSwitchCase="'radar'" echarts [options]="getCaracteristicaRadarOptions(carac)" [style.height.px]="300"></div>
+                  <ngx-charts-pie-chart
+                    *ngSwitchCase="'pizza'"
+                    [results]="getCaracteristicaPieData(carac)"
+                    [view]="[400,300]"
+                    [legend]="true"
+                    [labels]="true"
+                    [doughnut]="false"
+                  ></ngx-charts-pie-chart>
+                </ng-container>
+                <div style="margin-bottom: 32px;"></div>
+              </div>
+            </div>
+
+            <p *ngIf="getCaracteristicasSelecionadasParaGraficos(secao).length === 0">
+              <i>Nenhuma característica selecionada para exibir gráficos.</i>
+            </p>
           </div>
           <div *ngSwitchCase="'tabela'">
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
             <div *ngFor="let carac of getCaracteristicasSelecionadasParaTabela()">
               <h3>{{ carac.nome }}</h3>
+              <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ carac.descricao }}</p>
               <table class="mat-elevation-z8" style="margin: 16px 0; min-width: 400px;">
                 <thead>
                   <tr>
