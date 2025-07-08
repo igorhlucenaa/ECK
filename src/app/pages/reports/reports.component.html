@@ -30,22 +30,22 @@
     ...
   </mat-tab>
   -->
-  <mat-tab label="Características">
+  <mat-tab label="Competências">
     <div style="margin-bottom: 24px;">
-      <h3>Cadastro de Características</h3>
+      <h3>Cadastro de Competências</h3>
       <p style="color: #666; margin-bottom: 16px;">
-        As características são agrupamentos de perguntas que representam competências ou habilidades específicas a serem avaliadas.
+        As competências são agrupamentos de perguntas que representam habilidades específicas a serem avaliadas.
       </p>
 
       <mat-card style="padding: 20px; margin-bottom: 20px;">
         <mat-card-header>
-          <mat-card-title>{{ caracteristicaEditando.id ? 'Editar Característica' : 'Nova Característica' }}</mat-card-title>
+          <mat-card-title>{{ competenciaEditando.id ? 'Editar Competência' : 'Nova Competência' }}</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <form [formGroup]="caracteristicaForm" (ngSubmit)="salvarCaracteristica()">
+          <form [formGroup]="competenciaForm" (ngSubmit)="salvarCompetencia()">
             <div style="display: flex; flex-direction: column; gap: 16px;">
               <mat-form-field appearance="outline" style="width: 100%;">
-                <mat-label>Nome da característica</mat-label>
+                <mat-label>Nome da competência</mat-label>
                 <input matInput formControlName="nome" required placeholder="Ex: Liderança, Comunicação, Trabalho em Equipe" />
                 <mat-hint>Nome que aparecerá nos relatórios e gráficos</mat-hint>
               </mat-form-field>
@@ -65,20 +65,20 @@
               <mat-form-field appearance="outline" style="width: 100%;">
                 <mat-label>Perguntas vinculadas</mat-label>
                 <mat-select formControlName="perguntasIds" multiple>
-                  <mat-option *ngFor="let q of dynamicColumns" [value]="q">
+                  <mat-option *ngFor="let q of dynamicColumns" [value]="q" [disabled]="perguntasBloqueadas.has(q)">
                     {{ questionMap[q] }}
                   </mat-option>
                 </mat-select>
-                <mat-hint>Selecione todas as perguntas que fazem parte desta característica</mat-hint>
+                <mat-hint>Perguntas já utilizadas em outras competências são desabilitadas.</mat-hint>
               </mat-form-field>
             </div>
 
             <div style="margin-top: 20px; display: flex; gap: 12px;">
-              <button mat-flat-button color="primary" type="submit" [disabled]="!caracteristicaForm.valid">
-                <mat-icon>{{ caracteristicaEditando.id ? 'save' : 'add' }}</mat-icon>
-                {{ caracteristicaEditando.id ? 'Salvar Alterações' : 'Adicionar Característica' }}
+              <button mat-flat-button color="primary" type="submit" [disabled]="!competenciaForm.valid">
+                <mat-icon>{{ competenciaEditando.id ? 'save' : 'add' }}</mat-icon>
+                {{ competenciaEditando.id ? 'Salvar Alterações' : 'Adicionar Competência' }}
               </button>
-              <button mat-button type="button" (click)="cancelarEdicaoCaracteristica()" *ngIf="caracteristicaEditando.id">
+              <button mat-button type="button" (click)="cancelarEdicaoCompetencia()" *ngIf="competenciaEditando.id">
                 <mat-icon>cancel</mat-icon>
                 Cancelar
               </button>
@@ -88,47 +88,49 @@
       </mat-card>
     </div>
 
-    <div *ngIf="caracteristicas.length > 0">
-      <h4>Características Cadastradas ({{ caracteristicas.length }})</h4>
-      <div style="display: grid; gap: 16px; margin-top: 16px;">
-        <mat-card *ngFor="let c of caracteristicas" style="padding: 16px;">
-          <mat-card-header style="padding-bottom: 8px;">
-            <mat-card-title style="font-size: 18px; margin-bottom: 4px;">
-              <mat-icon style="vertical-align: middle; margin-right: 8px;" color="primary">psychology</mat-icon>
+    <div *ngIf="competencias.length > 0">
+      <h4>Competências Cadastradas ({{ competencias.length }})</h4>
+      <mat-accordion multi>
+        <mat-expansion-panel *ngFor="let c of competencias; trackBy: trackByCompetencia" style="margin-bottom: 10px;">
+          <mat-expansion-panel-header>
+            <mat-panel-title style="width: 50%; align-items: center;">
+              <mat-icon style="margin-right: 8px;" color="primary">psychology</mat-icon>
               {{ c.nome }}
-            </mat-card-title>
-            <mat-card-subtitle style="font-size: 14px; color: #666;">
-              {{ c.descricao }}
-            </mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div>
-                <mat-chip-set>
-                  <mat-chip>
-                    <mat-icon matChipAvatar>quiz</mat-icon>
-                    {{ c.perguntasIds?.length || 0 }} pergunta{{ (c.perguntasIds?.length || 0) !== 1 ? 's' : '' }}
-                  </mat-chip>
-                </mat-chip-set>
-              </div>
-              <div style="display: flex; gap: 8px;">
-                <button mat-icon-button color="primary" (click)="editarCaracteristica(c)" matTooltip="Editar característica">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button mat-icon-button color="warn" (click)="removerCaracteristica(c)" matTooltip="Remover característica">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
+            </mat-panel-title>
+            <mat-panel-description style="width: 50%; align-items: center; justify-content: space-between;">
+              <span>{{ c.descricao }}</span>
+              <mat-chip-list>
+                <mat-chip>
+                  <mat-icon matChipAvatar>quiz</mat-icon>
+                  {{ c.perguntasIds?.length || 0 }} pergunta{{ (c.perguntasIds?.length || 0) !== 1 ? 's' : '' }}
+                </mat-chip>
+              </mat-chip-list>
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <mat-list dense>
+            <mat-list-item *ngFor="let perguntaId of c.perguntasIds">
+              <mat-icon matListItemIcon>drag_indicator</mat-icon>
+              {{ questionMap[perguntaId] }}
+            </mat-list-item>
+          </mat-list>
+
+          <mat-action-row>
+            <button mat-icon-button color="primary" (click)="editarCompetencia(c); $event.stopPropagation()" matTooltip="Editar competência">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="removerCompetencia(c); $event.stopPropagation()" matTooltip="Remover competência">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </mat-action-row>
+        </mat-expansion-panel>
+      </mat-accordion>
     </div>
 
-    <div *ngIf="caracteristicas.length === 0" style="text-align: center; padding: 40px; color: #666;">
+    <div *ngIf="competencias.length === 0" style="text-align: center; padding: 40px; color: #666;">
       <mat-icon style="font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px;">psychology</mat-icon>
-      <h4>Nenhuma característica cadastrada</h4>
-      <p>Comece criando características para organizar suas perguntas em grupos temáticos.</p>
+      <h4>Nenhuma competência cadastrada</h4>
+      <p>Comece criando competências para organizar suas perguntas em grupos temáticos.</p>
     </div>
   </mat-tab>
 
@@ -136,7 +138,7 @@
     <div style="margin-bottom: 24px;">
       <h3>Configuração de Relatório</h3>
       <p style="color: #666; margin-bottom: 20px;">
-        Monte seu relatório organizando as seções, personalizando textos e selecionando características para análise.
+        Monte seu relatório organizando as seções, personalizando textos e selecionando competências para análise.
       </p>
 
       <!-- Controles superiores organizados -->
@@ -232,14 +234,14 @@
           </mat-chip>
           <mat-chip>
             <mat-icon matChipAvatar>psychology</mat-icon>
-            {{ caracteristicas.length }} característica{{ caracteristicas.length !== 1 ? 's' : '' }}
+            {{ competencias.length }} competência{{ competencias.length !== 1 ? 's' : '' }}
           </mat-chip>
         </mat-chip-set>
       </div>
     </div>
     <form [formGroup]="dummyForm">
       <div formArrayName="relatorioFormArray" cdkDropList (cdkDropListDropped)="dropSecao($event)">
-        <div *ngFor="let secaoCtrl of relatorioFormGroups; let i = index" [formGroup]="secaoCtrl" cdkDrag>
+        <div *ngFor="let secaoCtrl of relatorioFormGroups; let i = index; trackBy: trackBySectionForm" [formGroup]="secaoCtrl" cdkDrag>
           <mat-card style="margin-bottom: 16px;">
             <mat-card-header style="padding-bottom: 8px;">
               <div style="display: flex; align-items: center; width: 100%;">
@@ -248,16 +250,14 @@
                 </button>
                 <div style="flex: 1;">
                   <mat-checkbox formControlName="visivel" (change)="atualizarSecaoConfiguracao(i)" style="margin-bottom: 4px;">
-                    <span style="font-weight: 500;">{{ secaoCtrl.get('titulo')?.value || (secaoCtrl.get('tipo')?.value | titlecase) }}</span>
+                    <span style="font-weight: 500;">{{ secaoCtrl.get('titulo')?.value }}</span>
                   </mat-checkbox>
-                  <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                    <mat-chip [style.background-color]="getTipoSecaoColor(secaoCtrl.get('tipo')?.value)" style="color: white; font-size: 11px;">
-                      {{ getTipoSecaoLabel(secaoCtrl.get('tipo')?.value) }}
-                    </mat-chip>
-                    <mat-chip *ngIf="secaoCtrl.get('caracteristicasIds')?.value?.length" color="accent">
-                      {{ secaoCtrl.get('caracteristicasIds')?.value?.length }} característica{{ secaoCtrl.get('caracteristicasIds')?.value?.length !== 1 ? 's' : '' }}
-                    </mat-chip>
-                  </div>
+                  <mat-chip [style.background]="getTipoSecaoColor(secaoCtrl.get('tipo')?.value)" [style.color]="'white'" style="margin-left: 8px;">
+                    {{ getTipoSecaoLabel(secaoCtrl.get('tipo')?.value) }}
+                  </mat-chip>
+                  <mat-chip *ngIf="secaoCtrl.get('competenciasIds')?.value?.length" color="accent">
+                    {{ secaoCtrl.get('competenciasIds')?.value?.length }} competência{{ secaoCtrl.get('competenciasIds')?.value?.length !== 1 ? 's' : '' }}
+                  </mat-chip>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <mat-form-field appearance="outline" style="width: 120px; margin: 0;">
@@ -280,7 +280,7 @@
             <mat-card-content>
               <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
                 <mat-label>Título da seção</mat-label>
-                <input matInput formControlName="titulo" (change)="atualizarSecaoConfiguracao(i)" />
+                <input matInput formControlName="titulo" (input)="atualizarSecaoConfiguracao(i)">
                 <mat-hint>Este título aparecerá no relatório final</mat-hint>
               </mat-form-field>
 
@@ -290,32 +290,97 @@
               </div>
 
               <div *ngIf="secaoCtrl.get('tipo')?.value === 'graficos'">
-                <div style="display: grid; grid-template-columns: 1fr 200px; gap: 16px;">
+                <div style="display: grid; grid-template-columns: 1fr 200px; gap: 16px; margin-bottom: 16px;">
                   <mat-form-field appearance="outline">
-                    <mat-label>Características para análise</mat-label>
-                    <mat-select formControlName="caracteristicasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
-                      <mat-option *ngFor="let c of caracteristicas" [value]="c.id">{{ c.nome }}</mat-option>
+                    <mat-label>Competências para os gráficos</mat-label>
+                    <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                      <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
                     </mat-select>
-                    <mat-hint>Selecione as características que aparecerão no gráfico</mat-hint>
+                    <mat-hint>Selecione as competências que devem aparecer nesta seção de gráficos.</mat-hint>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Tipo de gráfico</mat-label>
                     <mat-select formControlName="tipoGrafico" (selectionChange)="atualizarSecaoConfiguracao(i)">
                       <mat-option value="barra">Barra Comparativa</mat-option>
                       <mat-option value="radar">Radar Comparativo</mat-option>
-                      <mat-option value="pizza">Pizza Individual</mat-option>
+                      <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
+                      <mat-option value="pizza-individual">Pizza Individual</mat-option>
                     </mat-select>
                   </mat-form-field>
                 </div>
+
+                <!-- Controles de Cores -->
+                <mat-card style="padding: 16px; background-color: #f5f5f5;">
+                  <mat-card-header style="padding-bottom: 8px;">
+                    <mat-card-title style="font-size: 14px; color: #7b1fa2;">
+                      <mat-icon style="vertical-align: middle; margin-right: 8px; font-size: 18px;">palette</mat-icon>
+                      Personalização de Cores
+                    </mat-card-title>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <div style="display: grid; grid-template-columns: 1fr 150px 80px; gap: 16px; align-items: start;">
+                      <mat-form-field appearance="outline">
+                        <mat-label>Paleta de cores</mat-label>
+                        <mat-select formControlName="paletaCor" (selectionChange)="onPaletaCorChange(relatorioConfiguracao[i], i)">
+                          <mat-option *ngFor="let paleta of paletasCores | keyvalue" [value]="paleta.key">
+                            {{ paleta.value.nome }}
+                          </mat-option>
+                        </mat-select>
+                        <mat-hint>Escolha uma paleta pré-definida ou personalize</mat-hint>
+                      </mat-form-field>
+
+                      <!-- Preview das cores da paleta selecionada -->
+                      <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
+                        <div *ngFor="let cor of getColorSchemeParaSecao(relatorioConfiguracao[i]).domain; let idx = index"
+                             [style.background-color]="cor"
+                             style="width: 24px; height: 24px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer;"
+                             [matTooltip]="cor">
+                        </div>
+                      </div>
+
+                      <!-- Botão de debug -->
+                      <button mat-stroked-button color="accent"
+                              (click)="debugCores(relatorioConfiguracao[i], i)"
+                              style="height: 36px; font-size: 11px;"
+                              matTooltip="Debug das cores">
+                        Debug
+                      </button>
+                    </div>
+
+                    <!-- Cores personalizadas (apenas se paleta personalizada estiver selecionada) -->
+                    <div *ngIf="secaoCtrl.get('paletaCor')?.value === 'personalizada' || relatorioConfiguracao[i]['paletaCor'] === 'personalizada'" style="margin-top: 16px;">
+                      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <span style="font-size: 14px; font-weight: 500;">Cores personalizadas:</span>
+                        <button mat-icon-button color="primary" (click)="adicionarCorPersonalizada(relatorioConfiguracao[i], i)" matTooltip="Adicionar cor">
+                          <mat-icon>add</mat-icon>
+                        </button>
+                      </div>
+                      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <div *ngFor="let cor of relatorioConfiguracao[i]['coresPersonalizadas']; let idx = index" style="display: flex; align-items: center; gap: 4px;">
+                                                    <input type="color"
+                                 [value]="cor"
+                                 (change)="atualizarCorPersonalizada(relatorioConfiguracao[i], i, idx, $event)"
+                                 style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer;">
+                          <button mat-icon-button color="warn" (click)="removerCorPersonalizada(relatorioConfiguracao[i], i, idx)" matTooltip="Remover cor">
+                            <mat-icon style="font-size: 18px;">delete_outline</mat-icon>
+                          </button>
+                        </div>
+                      </div>
+                      <mat-hint style="font-size: 12px; color: #666; margin-top: 8px;">
+                        Clique nas cores para editá-las. Adicione pelo menos 3 cores para melhores resultados.
+                      </mat-hint>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
               </div>
 
               <div *ngIf="secaoCtrl.get('tipo')?.value === 'tabela'">
-                <mat-form-field appearance="outline" style="width: 100%;">
-                  <mat-label>Características para tabela</mat-label>
-                  <mat-select formControlName="caracteristicasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
-                    <mat-option *ngFor="let c of caracteristicas" [value]="c.id">{{ c.nome }}</mat-option>
+                <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
+                  <mat-label>Competências para a tabela</mat-label>
+                  <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                    <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
                   </mat-select>
-                  <mat-hint>Selecione as características que aparecerão na tabela detalhada</mat-hint>
+                  <mat-hint>Selecione as competências que devem aparecer na tabela de frequência.</mat-hint>
                 </mat-form-field>
               </div>
             </mat-card-content>
@@ -330,7 +395,7 @@
       <mat-icon>picture_as_pdf</mat-icon> Exportar PDF
     </button>
     <div id="report-preview">
-      <div *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index">
+      <div *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
         <ng-container [ngSwitch]="secao.tipo">
           <div *ngSwitchCase="'capa'">
             <h1>{{ secao.titulo }}</h1>
@@ -346,9 +411,9 @@
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
             <div *ngIf="getResumoMedias().length">
-              <div *ngFor="let caracData of getResumoMediasPorCaracteristica()">
-                <h3>{{ caracData.nome }}</h3>
-                <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ caracData.descricao }}</p>
+              <div *ngFor="let compData of getResumoMediasPorCompetencia()">
+                <h3>{{ compData.nome }}</h3>
+                <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ compData.descricao }}</p>
                 <table class="mat-elevation-z8" style="margin: 16px 0 32px 0; min-width: 400px;">
                   <thead>
                     <tr>
@@ -357,7 +422,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let linha of caracData.dados">
+                    <tr *ngFor="let linha of compData.dados">
                       <td>{{ linha.grupo }}</td>
                       <td>{{ linha.media !== null ? (linha.media | number:'1.2-2') : '-' }}</td>
                     </tr>
@@ -365,31 +430,32 @@
                 </table>
               </div>
             </div>
-            <p *ngIf="!getResumoMedias().length"><i>Nenhuma característica selecionada ou sem dados.</i></p>
+            <p *ngIf="!getResumoMedias().length"><i>Nenhuma competência selecionada ou sem dados.</i></p>
           </div>
-                    <div *ngSwitchCase="'graficos'">
+          <div *ngSwitchCase="'graficos'">
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
 
-            <div *ngIf="getCaracteristicasSelecionadasParaGraficos(secao).length > 0">
+            <div *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length > 0">
               <!-- Controle de tipo de gráfico -->
               <mat-form-field appearance="outline" style="width: 250px; margin-bottom: 16px;">
                 <mat-label>Tipo de gráfico</mat-label>
                 <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao, i)">
                   <mat-option value="barra">Barra Comparativa</mat-option>
                   <mat-option value="radar">Radar Comparativo</mat-option>
-                  <mat-option value="pizza">Pizza Individual</mat-option>
+                  <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
+                  <mat-option value="pizza-individual">Pizza Individual</mat-option>
                 </mat-select>
               </mat-form-field>
 
-              <!-- Lista das características selecionadas -->
+              <!-- Lista das competências selecionadas -->
               <div style="margin-bottom: 16px;">
-                <h4>Características analisadas:</h4>
+                <h4>Competências analisadas:</h4>
                 <mat-chip-set>
-                  <mat-chip *ngFor="let carac of getCaracteristicasSelecionadasParaGraficos(secao)"
-                           [matTooltip]="carac.descricao">
+                  <mat-chip *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)"
+                           [matTooltip]="comp.descricao">
                     <mat-icon matChipAvatar>psychology</mat-icon>
-                    {{ carac.nome }}
+                    {{ comp.nome }}
                   </mat-chip>
                 </mat-chip-set>
               </div>
@@ -406,6 +472,7 @@
                     [style.height.px]="getSecaoStackedData(secao).length * 60 + 50"
                     [legend]="true"
                     [showGridLines]="true"
+                    [scheme]="getColorSchemeParaSecao(secao)"
                   ></ngx-charts-bar-horizontal-stacked>
                 </div>
 
@@ -414,18 +481,31 @@
                   <div echarts [options]="getSecaoRadarOptions(secao)" [style.height.px]="400"></div>
                 </div>
 
+                <!-- Gráfico de pizza comparativo -->
+                <div *ngSwitchCase="'pizza-comparativa'">
+                  <ngx-charts-pie-chart
+                    [results]="getSecaoPieData(secao)"
+                    [view]="[600,400]"
+                    [legend]="true"
+                    [labels]="true"
+                    [doughnut]="false"
+                    [scheme]="getColorSchemeParaSecao(secao)"
+                  ></ngx-charts-pie-chart>
+                </div>
+
                 <!-- Gráficos de pizza individuais -->
-                <div *ngSwitchCase="'pizza'">
+                <div *ngSwitchCase="'pizza-individual'">
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                    <div *ngFor="let carac of getCaracteristicasSelecionadasParaGraficos(secao)">
-                      <h4>{{ carac.nome }}</h4>
-                      <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ carac.descricao }}</p>
+                    <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                      <h4>{{ comp.nome }}</h4>
+                      <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                       <ngx-charts-pie-chart
-                        [results]="getCaracteristicaPieData(carac)"
+                        [results]="getCompetenciaPieData(comp)"
                         [view]="[300,250]"
                         [legend]="true"
                         [labels]="true"
                         [doughnut]="false"
+                        [scheme]="getColorSchemeParaSecao(secao)"
                       ></ngx-charts-pie-chart>
                     </div>
                   </div>
@@ -433,42 +513,39 @@
               </ng-container>
             </div>
 
-            <p *ngIf="getCaracteristicasSelecionadasParaGraficos(secao).length === 0">
-              <i>Nenhuma característica selecionada para exibir gráficos.</i>
+            <p *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length === 0">
+              <i>Nenhuma competência selecionada para exibir gráficos.</i>
             </p>
           </div>
           <div *ngSwitchCase="'tabela'">
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
-            <div *ngFor="let carac of getCaracteristicasSelecionadasParaTabela()">
-              <h3>{{ carac.nome }}</h3>
-              <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ carac.descricao }}</p>
-              <table class="mat-elevation-z8" style="margin: 16px 0; min-width: 400px;">
-                <thead>
-                  <tr>
-                    <th>Pergunta</th>
-                    <th *ngFor="let grupo of getGrupos()">{{ grupo }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let pid of carac.perguntasIds">
-                    <td>{{ questionMap[pid] }}</td>
-                    <td *ngFor="let grupo of getGrupos()">
-                      <ng-container *ngIf="getRespostasPorPerguntaEGrupo(pid, grupo).length; else vazio">
-                        <span *ngFor="let resp of getRespostasPorPerguntaEGrupo(pid, grupo); let last = last">{{ resp }}<span *ngIf="!last">, </span></span>
-                      </ng-container>
-                      <ng-template #vazio>-</ng-template>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td><b>Média</b></td>
-                    <td *ngFor="let grupo of getGrupos()">
-                      <b>{{ getMediaPorPerguntaEGrupo(carac, grupo) !== null ? (getMediaPorPerguntaEGrupo(carac, grupo) | number:'1.2-2') : '-' }}</b>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div *ngIf="getCompetenciasSelecionadasParaTabela().length > 0; else noTabelaData">
+              <div *ngFor="let comp of getCompetenciasSelecionadasParaTabela()">
+                <h4>{{ comp.nome }}</h4>
+                <p>{{ comp.descricao }}</p>
+                <table mat-table [dataSource]="comp.perguntasIds" class="mat-elevation-z2" style="width: 100%; margin-bottom: 20px;">
+                  <!-- Colunas da tabela -->
+                  <ng-container matColumnDef="pergunta">
+                    <th mat-header-cell *matHeaderCellDef> Pergunta </th>
+                    <td mat-cell *matCellDef="let element"> {{questionMap[element]}} </td>
+                  </ng-container>
+
+                  <ng-container *ngFor="let grupo of getGrupos()" [matColumnDef]="grupo">
+                      <th mat-header-cell *matHeaderCellDef> {{grupo}} </th>
+                      <td mat-cell *matCellDef="let element"> {{getMediaPorPerguntaEGrupo(comp, element) | number:'1.2-2'}} </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                </table>
+              </div>
             </div>
+            <ng-template #noTabelaData>
+              <p>
+                Selecione uma ou mais competências na aba "Montar Relatório" para visualizar a tabela.
+              </p>
+            </ng-template>
           </div>
           <div *ngSwitchCase="'destaques'">
             <h2>{{ secao.titulo }}</h2>

@@ -1,11 +1,11 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc } from '@angular/fire/firestore';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { ReactiveFormsModule, FormControl, FormGroup, Validators, FormArray } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { CommonModule } from '@angular/common';
+import { CommonModule, KeyValuePipe } from '@angular/common';
 import { MatOptionModule } from '@angular/material/core';
 import { ColumnValuePipe } from './column-value.pipe';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -22,13 +22,15 @@ import { NgxEchartsModule } from 'ngx-echarts';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { PerformanceMonitorService } from './performance-monitor.service';
+import { MatExpansionModule } from '@angular/material/expansion';
 
 interface AssessmentOption {
   id: string;
   name: string;
 }
 
-interface Caracteristica {
+interface Competencia {
   id: string;
   nome: string;
   descricao: string;
@@ -44,7 +46,7 @@ export interface RelatorioSecao {
   visivel: boolean;
   ordem: number;
   // Campos para dados dinâmicos
-  caracteristicasIds?: string[];
+  competenciasIds?: string[];
   perguntasIds?: string[];
   // Outros campos customizáveis
   [key: string]: any;
@@ -55,6 +57,7 @@ export interface RelatorioSecao {
   standalone: true,
   imports: [
     CommonModule,
+    KeyValuePipe,
     MatTableModule,
     MatButtonModule,
     MatSelectModule,
@@ -73,11 +76,13 @@ export interface RelatorioSecao {
     AngularEditorModule,
     NgxEchartsModule,
     DragDropModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatExpansionModule
   ],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.scss',
-  schemas: [CUSTOM_ELEMENTS_SCHEMA]
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReportsComponent implements OnInit {
   displayedColumns: string[] = [];
@@ -100,12 +105,44 @@ export class ReportsComponent implements OnInit {
   consolidationColumns: string[] = ['pergunta', 'sessao', 'tema', 'resposta', 'respondentes', 'percent', 'score'];
 
   // Competências e gráficos
-  competenciaControl = new FormControl('');
-  competencias: { nome: string; perguntas: string[] }[] = [];
-  selectedCompetencia: { nome: string; perguntas: string[] } | null = null;
-  questionsControl = new FormControl<string[]>([]);
   stackedData: any[] = [];
   colorScheme = { domain: ['#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#424242'] };
+
+  // Sistema de cores customizáveis
+  paletasCores = {
+    'padrao': {
+      nome: 'Padrão (Cinza)',
+      cores: ['#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#424242']
+    },
+    'azul': {
+      nome: 'Azul Profissional',
+      cores: ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#0D47A1']
+    },
+    'verde': {
+      nome: 'Verde Sucesso',
+      cores: ['#E8F5E8', '#A5D6A7', '#66BB6A', '#43A047', '#1B5E20']
+    },
+    'laranja': {
+      nome: 'Laranja Energia',
+      cores: ['#FFF3E0', '#FFCC80', '#FF9800', '#F57C00', '#E65100']
+    },
+    'roxo': {
+      nome: 'Roxo Criativo',
+      cores: ['#F3E5F5', '#CE93D8', '#AB47BC', '#8E24AA', '#4A148C']
+    },
+    'vermelho': {
+      nome: 'Vermelho Impacto',
+      cores: ['#FFEBEE', '#EF9A9A', '#EF5350', '#E53935', '#B71C1C']
+    },
+    'teal': {
+      nome: 'Teal Moderno',
+      cores: ['#E0F2F1', '#80CBC4', '#26A69A', '#00897B', '#004D40']
+    },
+    'personalizada': {
+      nome: 'Personalizada',
+      cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6']
+    }
+  };
   dynamicColumns: string[] = [];
   dadosTextEnabled = false;
   competenciasTextEnabled = false;
@@ -124,9 +161,11 @@ export class ReportsComponent implements OnInit {
   polarData: any[] = [];
   radarOptions: EChartsOption = {};
 
-  caracteristicas: Caracteristica[] = [];
-  caracteristicaEditando: Caracteristica = { id: '', nome: '', descricao: '', perguntasIds: [] };
-  caracteristicaForm: FormGroup;
+  competencias: Competencia[] = [];
+  competenciaEditando: Competencia = { id: '', nome: '', descricao: '', perguntasIds: [] };
+  competenciaForm: FormGroup;
+
+  perguntasBloqueadas = new Set<string>();
 
   // Exemplo de configuração inicial do relatório
   relatorioConfiguracao: RelatorioSecao[] = [
@@ -149,11 +188,11 @@ export class ReportsComponent implements OnInit {
     {
       id: 'resumo',
       tipo: 'resumo',
-      titulo: 'Resumo dos Resultados nas Características',
+      titulo: 'Resumo dos Resultados nas Competências',
       texto: '',
       visivel: true,
       ordem: 3,
-      caracteristicasIds: [] // pode ser preenchido dinamicamente
+      competenciasIds: [] // pode ser preenchido dinamicamente
     },
     {
       id: 'graficos',
@@ -162,8 +201,10 @@ export class ReportsComponent implements OnInit {
       texto: '',
       visivel: true,
       ordem: 4,
-      caracteristicasIds: [],
-      'tipoGrafico': 'barra'
+      competenciasIds: [],
+      'tipoGrafico': 'pizza-comparativa',
+      'paletaCor': 'azul',
+      'coresPersonalizadas': []
     },
     {
       id: 'tabela',
@@ -172,7 +213,7 @@ export class ReportsComponent implements OnInit {
       texto: '',
       visivel: true,
       ordem: 5,
-      caracteristicasIds: []
+      competenciasIds: []
     },
     {
       id: 'destaques',
@@ -199,48 +240,217 @@ export class ReportsComponent implements OnInit {
   savedTemplates: { id: string, name: string }[] = [];
   selectedTemplateId = new FormControl('');
 
-  constructor(private firestore: Firestore, private snackBar: MatSnackBar) {
-    this.caracteristicaForm = new FormGroup({
+  // 🚀 PERFORMANCE: Cache para cálculos pesados
+  private calculosCache = new Map<string, any>();
+  private dataIndexes = {
+    participantsByCategory: new Map<string, any[]>(),
+    responsesByParticipant: new Map<string, any[]>(),
+    questionsByType: new Map<string, any[]>()
+  };
+
+  constructor(
+    private firestore: Firestore,
+    private snackBar: MatSnackBar,
+    private performanceMonitor: PerformanceMonitorService
+  ) {
+    this.dummyForm = new FormGroup({
+      relatorioFormArray: new FormArray<any>([])
+    });
+
+    this.relatorioFormArray = this.dummyForm.get('relatorioFormArray') as FormArray;
+
+    this.competenciaForm = new FormGroup({
       nome: new FormControl('', Validators.required),
       descricao: new FormControl('', Validators.required),
-      perguntasIds: new FormControl([])
+      perguntasIds: new FormControl<string[]>([], Validators.required)
     });
-    this.relatorioFormArray = new FormArray<any>([]);
-    this.dummyForm = new FormGroup({
-      relatorioFormArray: this.relatorioFormArray
+
+    // Monitorar mudanças para invalidação de cache
+    this.competenciaForm.valueChanges.subscribe(() => {
+      this.invalidateCache('secao-'); // Invalida caches que dependem de competências
     });
+
     this.carregarRelatoriosSalvos();
     this.carregarTemplatesSalvos();
   }
 
-  async ngOnInit() {
-    this.isLoading = true;
-    const assessmentsSnap = await getDocs(collection(this.firestore, 'assessments'));
-    this.assessments = assessmentsSnap.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data()['name'] || doc.id
-    }));
-    console.log('Avaliações carregadas:', this.assessments);
-    this.isLoading = false;
+  // 🚀 PERFORMANCE: Sistema de cache
+  private getCachedCalculation<T>(key: string, calculationFn: () => T): T {
+    if (!this.calculosCache.has(key)) {
+      console.log(`📊 Calculando e armazenando no cache: ${key}`);
+      this.calculosCache.set(key, calculationFn());
+    }
+    return this.calculosCache.get(key);
+  }
 
-    // Subscribe to selection changes
-    this.assessmentControl.valueChanges.subscribe(value => {
-      this.selectedAssessmentId = value;
-      this.onAssessmentChange();
+  private invalidateCache(pattern?: string) {
+    if (pattern) {
+      // Invalidar apenas chaves que correspondem ao padrão
+      const keysToDelete = Array.from(this.calculosCache.keys()).filter(key => key.includes(pattern));
+      keysToDelete.forEach(key => this.calculosCache.delete(key));
+      console.log(`🗑️ Cache invalidado para padrão: ${pattern} (${keysToDelete.length} entradas)`);
+    } else {
+      // Invalidar todo o cache
+      this.calculosCache.clear();
+      console.log('🗑️ Cache completamente invalidado');
+    }
+  }
+
+  // 🚀 PERFORMANCE: Indexação de dados
+  private createDataIndexes() {
+    console.log('🔍 Criando índices de dados...');
+
+    this.dataIndexes.participantsByCategory.clear();
+    this.dataIndexes.responsesByParticipant.clear();
+    this.dataIndexes.questionsByType.clear();
+
+    // Indexar participantes por categoria
+    this.dataSource.forEach(row => {
+      if (row.categoria) {
+        const grupo = this.mapCategoriaToGrupo(row.categoria);
+        if (!this.dataIndexes.participantsByCategory.has(grupo)) {
+          this.dataIndexes.participantsByCategory.set(grupo, []);
+        }
+        this.dataIndexes.participantsByCategory.get(grupo)!.push(row);
+      }
     });
 
-    // Inicializar o FormArray das seções do relatório
+    // Indexar respostas por participante
+    this.dataSource.forEach(row => {
+      const participantId = row.participante || row.id;
+      this.dataIndexes.responsesByParticipant.set(participantId, row);
+    });
+
+    console.log(`✅ Índices criados: ${this.dataIndexes.participantsByCategory.size} categorias, ${this.dataIndexes.responsesByParticipant.size} participantes`);
+  }
+
+  // 🚀 PERFORMANCE: TrackBy functions
+  trackBySection(index: number, section: RelatorioSecao): string {
+    return section.id + '-' + section.ordem + '-' + section.visivel;
+  }
+
+  trackBySectionForm(index: number, formGroup: FormGroup): string {
+    return formGroup.get('id')?.value;
+  }
+
+  trackByCompetencia(index: number, comp: Competencia): string {
+    return comp.id;
+  }
+
+  trackByQuestion(index: number, questionId: string): string {
+    return questionId;
+  }
+
+  // 🚀 PERFORMANCE: Método para exibir relatório de performance
+  showPerformanceReport(): void {
+    this.performanceMonitor.logPerformanceReport();
+  }
+
+    debugCores(secao: any, i: number): void {
+    console.group(`🎨 DEBUG CORES - Seção ${i} (${secao.id})`);
+    console.log('Configuração da seção:', secao);
+    console.log('Paleta selecionada:', secao?.paletaCor || secao?.['paletaCor']);
+    console.log('Cores personalizadas:', secao?.coresPersonalizadas || secao?.['coresPersonalizadas']);
+
+    const paletaControl = this.getPaletaCorControl(i);
+    const coresControl = this.getCoresPersonalizadasControl(i);
+
+    console.log('FormControl paleta valor:', paletaControl?.value);
+    console.log('FormControl cores valor:', coresControl?.value);
+    console.log('Esquema de cores atual:', this.getColorSchemeParaSecao(secao));
+
+    console.log('relatorioFormGroups[i]:', this.relatorioFormGroups[i]?.value);
+
+    // Teste: forçar mudança para personalizada
+    if (secao['paletaCor'] !== 'personalizada') {
+      console.log('🔧 Testando mudança para paleta personalizada...');
+      paletaControl.setValue('personalizada');
+      this.onPaletaCorChange(secao, i);
+    } else {
+      console.log('🔧 Testando adição de nova cor...');
+      this.adicionarCorPersonalizada(secao, i);
+    }
+
+    console.groupEnd();
+  }
+
+  async ngOnInit() {
+    this.today = new Date();
+    await this.loadAssessments();
+    await this.carregarRelatoriosSalvos();
+    await this.carregarTemplatesSalvos();
+    this.atualizarPerguntasBloqueadas();
+
+    this.assessmentControl.valueChanges.subscribe(id => {
+      if (id) {
+        this.selectedAssessmentId = id;
+        this.onAssessmentChange();
+      }
+    });
+
+    this.selectedReportId.valueChanges.subscribe(id => {
+      if (id) {
+        this.carregarRelatorioSelecionado();
+      }
+    });
+
+    this.selectedTemplateId.valueChanges.subscribe(id => {
+      if (id) {
+        this.aplicarTemplateSelecionado();
+      }
+    });
+
+    // Invalidação de cache quando seções são adicionadas/removidas/reordenadas
+    this.relatorioFormArray.valueChanges.subscribe(() => {
+      this.invalidateCache();
+    });
+
+    // Configuração inicial do formulário de relatório
+    this.atualizarFormArrayComConfiguracao();
+  }
+
+  async loadAssessments() {
+    this.isLoading = true;
+    try {
+      const assessmentsSnap = await getDocs(collection(this.firestore, 'assessments'));
+      this.assessments = assessmentsSnap.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data()['name'] || doc.id
+      }));
+    } catch (e) {
+      console.error("Erro ao carregar avaliações:", e);
+      this.snackBar.open('Falha ao carregar as avaliações.', 'Fechar', { duration: 3000 });
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  private atualizarPerguntasBloqueadas(): void {
+    this.perguntasBloqueadas.clear();
+    const idCompetenciaEditando = this.competenciaEditando?.id;
+
+    this.competencias.forEach(c => {
+      // Se não estamos editando esta competência, suas perguntas estão bloqueadas
+      if (c.id !== idCompetenciaEditando) {
+        c.perguntasIds.forEach(pId => this.perguntasBloqueadas.add(pId));
+      }
+    });
+  }
+
+  private atualizarFormArrayComConfiguracao() {
     this.relatorioFormArray.clear();
     this.relatorioConfiguracao.forEach(secao => {
       this.relatorioFormArray.push(new FormGroup({
         visivel: new FormControl(secao.visivel),
         titulo: new FormControl(secao.titulo || ''),
         texto: new FormControl(secao.texto || ''),
-        caracteristicasIds: new FormControl(secao.caracteristicasIds || []),
+        competenciasIds: new FormControl(secao.competenciasIds || []),
         id: new FormControl(secao.id),
         tipo: new FormControl(secao.tipo),
         ordem: new FormControl(secao.ordem),
-        tipoGrafico: new FormControl(secao['tipoGrafico'] || 'barra')
+        tipoGrafico: new FormControl(secao['tipoGrafico'] || 'barra'),
+        paletaCor: new FormControl(secao['paletaCor'] || 'padrao'),
+        coresPersonalizadas: new FormControl(secao['coresPersonalizadas'] || [])
       }));
     });
   }
@@ -252,6 +462,9 @@ export class ReportsComponent implements OnInit {
       return;
     }
     console.log('Avaliação selecionada:', this.selectedAssessmentId);
+
+    // 🚀 PERFORMANCE: Monitorar tempo de carregamento
+    this.performanceMonitor.startTimer('onAssessmentChange');
     this.isLoading = true;
     this.dataSource = [];
     this.displayedColumns = [];
@@ -321,7 +534,7 @@ export class ReportsComponent implements OnInit {
     this.dynamicColumns = dynamicColumns;
     this.displayedColumns = [...fixedColumns, ...dynamicColumns];
     this.dataSource = allRows;
-    console.log('Dados carregados para a tabela:', this.dataSource);
+    this.questionMap = dynamicColumns.reduce((acc, key) => ({ ...acc, [key]: this.questionMap[key] }), {});
 
     // gerar contagem de categorias
     const counts: { [cat: string]: number } = {};
@@ -332,7 +545,16 @@ export class ReportsComponent implements OnInit {
     this.summaryCounts = counts;
 
     this.buildConsolidationData(dynamicColumns, allRows);
-    this.updateChart();
+
+    // 🚀 PERFORMANCE: Criar índices após carregamento dos dados
+    this.createDataIndexes();
+
+    // 🚀 PERFORMANCE: Invalidar cache quando dados mudam
+    this.invalidateCache();
+
+    // 🚀 PERFORMANCE: Finalizar monitoramento
+    this.performanceMonitor.endTimer('onAssessmentChange');
+
     this.isLoading = false;
   }
 
@@ -433,149 +655,58 @@ export class ReportsComponent implements OnInit {
   }
 
   private parseNumeric(val: any): number | null {
-    if (typeof val === 'number') return val;
-    if (typeof val === 'string') {
-      // Converter 'Column 1' a 'Column 5' para 1 a 5
-      const match = val.match(/^Column (\d)$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        // 'Column 6' é considerado 'Sem dados', então retorna null
-        if (num >= 1 && num <= 5) return num;
-        return null;
-      }
-      const n = parseFloat(val);
-      return isNaN(n) ? null : n;
+    if (val === null || val === undefined || val === '') {
+      return null;
     }
-    return null;
+    const num = Number(val);
+    return isNaN(num) ? null : num;
   }
 
-  addCompetencia() {
-    const n = (this.competenciaControl.value || '').trim();
-    if (!n) return;
-    const comp = { nome: n, perguntas: [] };
-    this.competencias.push(comp);
-    this.competenciaControl.reset();
-    this.onSelectCompetencia(comp);
-    this.updateChart();
-  }
+  salvarCompetencia() {
+    if (this.competenciaForm.invalid) return;
 
-  removeCompetencia(c: any) {
-    this.competencias = this.competencias.filter(x => x !== c);
-    if (this.selectedCompetencia === c) this.selectedCompetencia = null;
-    this.updateChart();
-  }
+    const formValue = this.competenciaForm.value;
+    const idCompetenciaEditando = this.competenciaEditando.id;
 
-  updateChart() {
-    this.stackedData = this.competencias
-      .filter(c => c.perguntas.length)
-      .map(c => {
-        const dist: any = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-        let soma = 0;
-        let count = 0;
-        this.dataSource.forEach(row => {
-          c.perguntas.forEach(q => {
-            const num = this.parseNumeric(row[q]);
-            if (num && num >= 1 && num <= 5) {
-              dist[num] += 1;
-              soma += num;
-              count++;
-            }
-          });
-        });
-        return {
-          name: c.nome,
-          series: [
-            { name: '1', value: dist[1] },
-            { name: '2', value: dist[2] },
-            { name: '3', value: dist[3] },
-            { name: '4', value: dist[4] },
-            { name: '5', value: dist[5] },
-          ],
-          media: count ? soma / count : 0
-        };
-      });
-
-    // Gerar dados para o gráfico polar
-    this.polarData = this.stackedData.map(c => ({
-      name: c.name,
-      value: c.media
-    }));
-
-    // Gerar dados para o radar chart (ngx-echarts)
-    const radarNames = this.stackedData.map(c => c.name);
-    const radarValues = this.stackedData.map(c => Number(c.media?.toFixed(2) || 0));
-    this.radarOptions = {
-      tooltip: {},
-      radar: {
-        indicator: radarNames.map(name => ({ name, max: 5 })),
-        radius: '70%',
-      },
-      series: [
-        {
-          type: 'radar' as const,
-          data: [
-            {
-              value: radarValues,
-              name: 'Média por competência'
-            }
-          ]
-        }
-      ]
-    } as EChartsOption;
-  }
-
-  onSelectCompetencia(c: { nome: string; perguntas: string[] }) {
-    this.selectedCompetencia = c;
-    this.questionsControl.setValue([...c.perguntas]);
-  }
-
-  questionsControlChanged() {
-    if (this.selectedCompetencia) {
-      this.selectedCompetencia.perguntas = this.questionsControl.value || [];
-      this.updateChart();
-    }
-  }
-
-  salvarCaracteristica() {
-    if (this.caracteristicaForm.invalid) return;
-    const formValue = this.caracteristicaForm.value;
-    if (this.caracteristicaEditando.id) {
-      // Editar existente
-      const idx = this.caracteristicas.findIndex(c => c.id === this.caracteristicaEditando.id);
-      if (idx > -1) this.caracteristicas[idx] = { ...this.caracteristicaEditando, ...formValue };
+    if (idCompetenciaEditando) {
+      // Editando competência existente
+      const idx = this.competencias.findIndex(c => c.id === idCompetenciaEditando);
+      if (idx > -1) this.competencias[idx] = { ...this.competenciaEditando, ...formValue };
+      this.snackBar.open('Competência atualizada com sucesso!', 'Fechar', { duration: 3000 });
     } else {
-      // Nova
-      const nova: Caracteristica = {
-        id: Date.now().toString(),
+      // Adicionando nova competência
+      const nova: Competencia = {
+        id: `comp_${new Date().getTime()}`,
         ...formValue
       };
-      this.caracteristicas.push(nova);
+      this.competencias.push(nova);
+      this.snackBar.open('Competência adicionada com sucesso!', 'Fechar', { duration: 3000 });
     }
-    this.cancelarEdicaoCaracteristica();
+    // Invalida cache de resumos e seções
+    this.invalidateCache('resumo-');
+    this.invalidateCache('secao-');
+    this.cancelarEdicaoCompetencia();
+    this.atualizarPerguntasBloqueadas();
   }
 
-  editarCaracteristica(c: Caracteristica) {
-    this.caracteristicaEditando = { ...c };
-    this.caracteristicaForm.setValue({
+  editarCompetencia(c: Competencia) {
+    this.competenciaEditando = { ...c };
+    this.competenciaForm.setValue({
       nome: c.nome,
       descricao: c.descricao,
-      perguntasIds: c.perguntasIds || []
+      perguntasIds: c.perguntasIds
     });
+    this.atualizarPerguntasBloqueadas();
   }
 
-  removerCaracteristica(c: Caracteristica) {
-    this.caracteristicas = this.caracteristicas.filter(x => x.id !== c.id);
-    this.cancelarEdicaoCaracteristica();
-  }
-
-  cancelarEdicaoCaracteristica() {
-    this.caracteristicaEditando = { id: '', nome: '', descricao: '', perguntasIds: [] };
-    this.caracteristicaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
+  cancelarEdicaoCompetencia() {
+    this.competenciaEditando = { id: '', nome: '', descricao: '', perguntasIds: [] };
+    this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
+    this.atualizarPerguntasBloqueadas();
   }
 
   get selectedAssessmentName(): string {
-    const a = this.assessments.find(ax => ax.id === this.selectedAssessmentId);
-    return a ? a.name : '';
+    return this.assessments.find(a => a.id === this.selectedAssessmentId)?.name || 'Nenhuma';
   }
 
   // Métodos utilitários para manipular as seções do relatório
@@ -622,11 +753,13 @@ export class ReportsComponent implements OnInit {
       visivel: new FormControl(novaSecao.visivel),
       titulo: new FormControl(novaSecao.titulo),
       texto: new FormControl(novaSecao.texto),
-      caracteristicasIds: new FormControl([]),
+      competenciasIds: new FormControl([]),
       id: new FormControl(novaSecao.id),
       tipo: new FormControl(novaSecao.tipo),
       ordem: new FormControl(novaSecao.ordem),
-      tipoGrafico: new FormControl('barra')
+      tipoGrafico: new FormControl('barra'),
+      paletaCor: new FormControl('padrao'),
+      coresPersonalizadas: new FormControl([])
     }));
     this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
     this.snackBar.open('Seção adicionada!', 'Fechar', { duration: 2000 });
@@ -644,6 +777,22 @@ export class ReportsComponent implements OnInit {
     if (secao.tipo === 'graficos' && formValue.tipoGrafico) {
       secao['tipoGrafico'] = formValue.tipoGrafico;
     }
+    // Garantir que cores estão sincronizadas
+    if (secao.tipo === 'graficos') {
+      secao['paletaCor'] = formValue.paletaCor || 'padrao';
+      secao['coresPersonalizadas'] = formValue.coresPersonalizadas || [];
+
+      // Se mudou para personalizada e não tem cores, inicializar
+      if (secao['paletaCor'] === 'personalizada' && (!secao['coresPersonalizadas'] || secao['coresPersonalizadas'].length === 0)) {
+        secao['coresPersonalizadas'] = ['#3498db', '#e74c3c', '#2ecc71'];
+        this.getCoresPersonalizadasControl(index).setValue([...secao['coresPersonalizadas']]);
+      }
+    }
+
+    // 🚀 PERFORMANCE: Invalidar cache quando configuração da seção muda
+    this.invalidateCache(`secao-${secao.id}`);
+
+    console.log(`Seção ${index} atualizada:`, secao);
   }
 
   get relatorioFormGroups(): FormGroup[] {
@@ -668,33 +817,36 @@ export class ReportsComponent implements OnInit {
     return map[categoria] || categoria;
   }
 
-  // Retorna as médias por característica e grupo de avaliadores para o bloco de Resumo
+  // 🚀 PERFORMANCE: Retorna as médias por característica e grupo de avaliadores para o bloco de Resumo
   getResumoMedias() {
-    const grupos = ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
-    const secaoResumo = this.relatorioConfiguracao.find(s => s.tipo === 'resumo');
-    if (!secaoResumo || !secaoResumo.caracteristicasIds?.length) {
-      console.log('[Resumo] Nenhuma característica selecionada na seção de resumo.');
-      return [];
-    }
-    const caracteristicasSelecionadas = this.caracteristicas.filter(c => secaoResumo.caracteristicasIds!.includes(c.id));
-    console.log('[Resumo] Características selecionadas:', caracteristicasSelecionadas.map(c => ({ id: c.id, nome: c.nome, perguntasIds: c.perguntasIds })));
-    // Log para depuração: mostrar as chaves do dataSource
-    if (this.dataSource.length) {
-      console.log('[Resumo] Exemplo de linha do dataSource:', this.dataSource[0]);
-    }
-    const resultado: any[] = [];
-    for (const carac of caracteristicasSelecionadas) {
-      const perguntas = carac.perguntasIds;
-      console.log(`[Resumo] Processando característica: ${carac.nome} (Perguntas: ${perguntas})`);
-      for (const grupo of grupos) {
-        let soma = 0;
-        let count = 0;
-        for (const row of this.dataSource) {
-          const grupoLinha = this.mapCategoriaToGrupo(row['categoria']);
-          if (grupoLinha === grupo) {
+    return this.getCachedCalculation('resumo-medias', () => {
+      const grupos = ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
+      const secaoResumo = this.relatorioConfiguracao.find(s => s.tipo === 'resumo');
+      if (!secaoResumo || !secaoResumo.competenciasIds?.length) {
+        console.log('[Resumo] Nenhuma competência selecionada na seção de resumo.');
+        return [];
+      }
+      const competenciasSelecionadas = this.competencias.filter(c => secaoResumo.competenciasIds!.includes(c.id));
+      console.log('[Resumo] Competências selecionadas:', competenciasSelecionadas.map(c => ({ id: c.id, nome: c.nome, perguntasIds: c.perguntasIds })));
+
+      if (this.dataSource.length) {
+        console.log('[Resumo] Exemplo de linha do dataSource:', this.dataSource[0]);
+      }
+
+      const resultado: any[] = [];
+      for (const comp of competenciasSelecionadas) {
+        const perguntas = comp.perguntasIds;
+        console.log(`[Resumo] Processando competência: ${comp.nome} (Perguntas: ${perguntas})`);
+
+        for (const grupo of grupos) {
+          let soma = 0;
+          let count = 0;
+
+          // 🚀 PERFORMANCE: Usar índice para buscar dados por categoria
+          const dadosGrupo = this.dataIndexes.participantsByCategory.get(grupo) || [];
+
+          for (const row of dadosGrupo) {
             for (const pid of perguntas) {
-              // Log para depuração: mostrar o valor buscado
-              console.log(`[Resumo] Buscando valor para pid='${pid}' em row:`, row);
               const val = this.parseNumeric(row[pid]);
               console.log(`[Resumo] Valor encontrado para pid='${pid}':`, val);
               if (val !== null) {
@@ -703,197 +855,160 @@ export class ReportsComponent implements OnInit {
               }
             }
           }
+
+          console.log(`[Resumo] Competência: ${comp.nome}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${count ? soma / count : null}`);
+          resultado.push({
+            competencia: comp.nome,
+            descricao: comp.descricao,
+            grupo,
+            media: count ? soma / count : null
+          });
         }
-        console.log(`[Resumo] Característica: ${carac.nome}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${count ? soma / count : null}`);
-        resultado.push({
-          caracteristica: carac.nome,
-          descricao: carac.descricao,
-          grupo,
-          media: count ? soma / count : null
+      }
+      return resultado;
+    });
+  }
+
+  // 🚀 PERFORMANCE: Retorna as médias organizadas por característica para melhor apresentação no relatório
+  getResumoMediasPorCompetencia() {
+    return this.getCachedCalculation('resumo-medias-por-competencia', () => {
+      const resumoMedias = this.getResumoMedias();
+      const competenciasAgrupadas: { [key: string]: any } = {};
+
+      for (const linha of resumoMedias) {
+        if (!competenciasAgrupadas[linha.competencia]) {
+          competenciasAgrupadas[linha.competencia] = {
+            nome: linha.competencia,
+            descricao: linha.descricao,
+            dados: []
+          };
+        }
+        competenciasAgrupadas[linha.competencia].dados.push({
+          grupo: linha.grupo,
+          media: linha.media
         });
       }
-    }
-    return resultado;
+
+      return Object.values(competenciasAgrupadas);
+    });
   }
 
-  // Retorna as médias organizadas por característica para melhor apresentação no relatório
-  getResumoMediasPorCaracteristica() {
-    const resumoMedias = this.getResumoMedias();
-    const caracteristicasAgrupadas: { [key: string]: any } = {};
-
-    for (const linha of resumoMedias) {
-      if (!caracteristicasAgrupadas[linha.caracteristica]) {
-        caracteristicasAgrupadas[linha.caracteristica] = {
-          nome: linha.caracteristica,
-          descricao: linha.descricao,
-          dados: []
-        };
-      }
-      caracteristicasAgrupadas[linha.caracteristica].dados.push({
-        grupo: linha.grupo,
-        media: linha.media
-      });
-    }
-
-    return Object.values(caracteristicasAgrupadas);
-  }
-
-  // Métodos utilitários para gráficos dinâmicos na visualização do relatório
+  // 🚀 PERFORMANCE: Métodos utilitários para gráficos dinâmicos na visualização do relatório
   getSecaoStackedData(secao: any) {
-    // Retorna dados de barra para as características selecionadas na seção
-    if (!secao.caracteristicasIds?.length) return [];
-    // Buscar as características selecionadas
-    const caracs = this.caracteristicas.filter(c => secao.caracteristicasIds.includes(c.id));
-    return caracs
-      .map(carac => {
-        const dist: any = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-        let soma = 0;
-        let count = 0;
-        this.dataSource.forEach(row => {
-          (carac.perguntasIds || []).forEach(q => {
-            const num = this.parseNumeric(row[q]);
-            if (num && num >= 1 && num <= 5) {
-              dist[num] += 1;
-              soma += num;
-              count++;
-            }
-          });
+    const cacheKey = `secao-stacked-${secao.id}-${(secao.competenciasIds || []).join(',')}`;
+    return this.getCachedCalculation(cacheKey, () => {
+      console.log(`%c[Cache Miss] Calculando Stacked Data para seção: ${secao.id}`, 'color: orange;');
+      if (!secao.competenciasIds?.length) return [];
+
+      const grupos = this.getGrupos();
+      const comps = this.competencias.filter(c => secao.competenciasIds.includes(c.id));
+
+      const data = comps.map(comp => {
+        const series = grupos.map(grupo => {
+          const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
+          return {
+            name: grupo,
+            value: media,
+          };
         });
         return {
-          name: carac.nome,
-          series: [
-            { name: '1', value: dist[1] },
-            { name: '2', value: dist[2] },
-            { name: '3', value: dist[3] },
-            { name: '4', value: dist[4] },
-            { name: '5', value: dist[5] },
-          ],
-          media: count ? soma / count : 0
+          name: comp.nome,
+          series: series
         };
       });
+
+      return data;
+    });
   }
 
-  getSecaoRadarOptions(secao: any) {
-    // Retorna opções para gráfico radar das características selecionadas
-    const stackedData = this.getSecaoStackedData(secao);
-    const radarNames = stackedData.map(c => c.name);
-    const radarValues = stackedData.map(c => Number(c.media?.toFixed(2) || 0));
-    return {
-      tooltip: {},
-      radar: {
-        indicator: radarNames.map(name => ({ name, max: 5 })),
-        radius: '70%',
-      },
-      series: [
-        {
-          type: 'radar' as const,
-          data: [
-            {
-              value: radarValues,
-              name: 'Média por competência'
-            }
-          ]
-        }
-      ]
-    } as EChartsOption;
+  getSecaoRadarOptions(secao: any): EChartsOption {
+    const cacheKey = `secao-radar-${secao.id}-${(secao.competenciasIds || []).join(',')}`;
+    return this.getCachedCalculation(cacheKey, () => {
+      const stackedData = this.getSecaoStackedData(secao);
+      if (!stackedData.length) return {};
+      // ... (lógica de transformação para radar chart)
+      const indicator = stackedData.map((d: any) => ({ name: d.name, max: 5 }));
+      const seriesData = stackedData[0].series.map((s: any) => ({
+        name: s.name,
+        value: stackedData.map((d: any) => d.series.find((ds: any) => ds.name === s.name)?.value || 0)
+      }));
+
+      return {
+        legend: { top: 'bottom' },
+        radar: { indicator },
+        series: [{ type: 'radar', data: seriesData }]
+      };
+    });
   }
 
   getSecaoPieData(secao: any) {
-    // Retorna dados para gráfico de pizza (distribuição total de respostas por característica)
-    if (!secao.caracteristicasIds?.length) return [];
-    const caracs = this.caracteristicas.filter(c => secao.caracteristicasIds.includes(c.id));
-    return caracs
-      .map(carac => {
-        let soma = 0;
-        let count = 0;
-        this.dataSource.forEach(row => {
-          (carac.perguntasIds || []).forEach(q => {
-            const num = this.parseNumeric(row[q]);
-            if (num && num >= 1 && num <= 5) {
-              soma += num;
-              count++;
-            }
-          });
-        });
+    const cacheKey = `secao-pie-${secao.id}-${(secao.competenciasIds || []).join(',')}`;
+    return this.getCachedCalculation(cacheKey, () => {
+      console.log(`%c[Cache Miss] Calculando Pie Data para seção: ${secao.id}`, 'color: orange;');
+      if (!secao.competenciasIds?.length) return [];
+      const comps = this.competencias.filter(c => secao.competenciasIds.includes(c.id));
+
+      const medias = comps.map(comp => {
+        const perguntasIds = comp.perguntasIds;
+        if (!perguntasIds || perguntasIds.length === 0) return { name: comp.nome, value: 0 };
+        const totalMedia = perguntasIds.reduce((acc, pId) => {
+          const media = this.getMediaPorPerguntaEGrupo(comp, 'Todos'); // Média geral
+          return acc + (media ?? 0);
+        }, 0);
         return {
-          name: carac.nome,
-          value: count ? soma / count : 0
+          name: comp.nome,
+          value: (totalMedia / perguntasIds.length).toFixed(2)
         };
       });
+      return medias;
+    });
   }
 
   // Métodos para gráficos individuais por característica
-  getCaracteristicaStackedData(carac: Caracteristica) {
-    const dist: any = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    let soma = 0;
-    let count = 0;
-
-    this.dataSource.forEach(row => {
-      (carac.perguntasIds || []).forEach(q => {
-        const num = this.parseNumeric(row[q]);
-        if (num && num >= 1 && num <= 5) {
-          dist[num] += 1;
-          soma += num;
-          count++;
-        }
+  getCompetenciaStackedData(comp: Competencia) {
+    return this.getCachedCalculation(`comp-stacked-${comp.id}`, () => {
+      const grupos = this.getGrupos();
+      const series = grupos.map(grupo => {
+        const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
+        return {
+          name: grupo,
+          value: media,
+        };
       });
+      return [{
+        name: comp.nome,
+        series: series
+      }];
     });
-
-    return [{
-      name: carac.nome,
-      series: [
-        { name: '1', value: dist[1] },
-        { name: '2', value: dist[2] },
-        { name: '3', value: dist[3] },
-        { name: '4', value: dist[4] },
-        { name: '5', value: dist[5] },
-      ],
-      media: count ? soma / count : 0
-    }];
   }
 
-  getCaracteristicaRadarOptions(carac: Caracteristica) {
-    const stackedData = this.getCaracteristicaStackedData(carac);
-    const radarValues = [Number(stackedData[0]?.media?.toFixed(2) || 0)];
+  getCompetenciaRadarOptions(comp: Competencia) {
+    const stackedData = this.getCompetenciaStackedData(comp);
+    if (!stackedData.length) return {};
+
+    const indicator = stackedData.map((d: any) => ({ name: d.name, max: 5 }));
+    const seriesData = stackedData[0].series.map((s: any) => ({
+      name: s.name,
+      value: stackedData.map((d: any) => d.series.find((ds: any) => ds.name === s.name)?.value || 0)
+    }));
 
     return {
-      tooltip: {},
-      radar: {
-        indicator: [{ name: carac.nome, max: 5 }],
-        radius: '70%',
-      },
-      series: [
-        {
-          type: 'radar' as const,
-          data: [
-            {
-              value: radarValues,
-              name: 'Média'
-            }
-          ]
-        }
-      ]
-    } as EChartsOption;
+      legend: { top: 'bottom' },
+      radar: { indicator },
+      series: [{ type: 'radar', data: seriesData }]
+    };
   }
 
-  getCaracteristicaPieData(carac: Caracteristica) {
-    let soma = 0;
-    let count = 0;
-
-    this.dataSource.forEach(row => {
-      (carac.perguntasIds || []).forEach(q => {
-        const num = this.parseNumeric(row[q]);
-        if (num && num >= 1 && num <= 5) {
-          soma += num;
-          count++;
-        }
-      });
+  getCompetenciaPieData(comp: Competencia) {
+    return this.getCachedCalculation(`comp-pie-${comp.id}`, () => {
+      const perguntasIds = comp.perguntasIds;
+      if (!perguntasIds || perguntasIds.length === 0) return [];
+      const mediaGeral = this.getMediaPorPerguntaEGrupo(comp, 'Todos');
+      return [{
+        name: comp.nome,
+        value: (mediaGeral ?? 0).toFixed(2)
+      }];
     });
-
-    return [{
-      name: carac.nome,
-      value: count ? soma / count : 0
-    }];
   }
 
   onTipoGraficoChange(secao: any, i: number) {
@@ -904,27 +1019,135 @@ export class ReportsComponent implements OnInit {
     return this.relatorioFormGroups[i].get('tipoGrafico') as FormControl;
   }
 
+  getPaletaCorControl(i: number): FormControl {
+    const control = this.relatorioFormGroups[i]?.get('paletaCor') as FormControl;
+    if (!control) {
+      console.error(`FormControl 'paletaCor' não encontrado no índice ${i}`);
+    }
+    return control;
+  }
+
+  getCoresPersonalizadasControl(i: number): FormControl {
+    const control = this.relatorioFormGroups[i]?.get('coresPersonalizadas') as FormControl;
+    if (!control) {
+      console.error(`FormControl 'coresPersonalizadas' não encontrado no índice ${i}`);
+    }
+    return control;
+  }
+
+      getColorSchemeParaSecao(secao: any): any {
+    const paletaSelecionada = secao?.paletaCor || secao?.['paletaCor'] || 'padrao';
+
+    console.log('getColorSchemeParaSecao chamado:', { secao, paletaSelecionada });
+
+    if (paletaSelecionada === 'personalizada') {
+      const coresPersonalizadas = secao?.coresPersonalizadas || secao?.['coresPersonalizadas'] || [];
+      if (coresPersonalizadas.length > 0) {
+        console.log('Usando cores personalizadas:', coresPersonalizadas);
+        return { domain: coresPersonalizadas };
+      } else {
+        // Se não tem cores personalizadas, usar cores padrão da paleta personalizada
+        console.log('Usando cores padrão da paleta personalizada');
+        return { domain: this.paletasCores['personalizada'].cores };
+      }
+    }
+
+    const paletas = this.paletasCores as any;
+    const cores = paletas[paletaSelecionada]?.cores || this.paletasCores['padrao'].cores;
+    console.log('Usando paleta pré-definida:', paletaSelecionada, cores);
+    return { domain: cores };
+  }
+
+  onPaletaCorChange(secao: any, i: number) {
+    const paletaValue = this.getPaletaCorControl(i).value;
+    secao['paletaCor'] = paletaValue;
+
+    // Se mudou para personalizada e não tem cores, inicializar com algumas cores padrão
+    if (paletaValue === 'personalizada' && (!secao['coresPersonalizadas'] || secao['coresPersonalizadas'].length === 0)) {
+      secao['coresPersonalizadas'] = ['#3498db', '#e74c3c', '#2ecc71'];
+      this.getCoresPersonalizadasControl(i).setValue([...secao['coresPersonalizadas']]);
+    }
+
+    this.invalidateCache(`secao-${secao.id}`);
+    console.log(`Paleta alterada para: ${paletaValue}`, secao);
+  }
+
+  adicionarCorPersonalizada(secao: any, i: number) {
+    console.log('Adicionando nova cor personalizada', secao);
+
+    if (!secao['coresPersonalizadas']) {
+      secao['coresPersonalizadas'] = [];
+    }
+
+    // Adicionar uma cor aleatória para facilitar a visualização
+    const coresDefault = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22'];
+    const corDefault = coresDefault[secao['coresPersonalizadas'].length % coresDefault.length];
+
+    secao['coresPersonalizadas'].push(corDefault);
+    this.getCoresPersonalizadasControl(i).setValue([...secao['coresPersonalizadas']]);
+    this.invalidateCache(`secao-${secao.id}`);
+
+    console.log('Cor adicionada:', corDefault, 'Array atual:', secao['coresPersonalizadas']);
+  }
+
+  removerCorPersonalizada(secao: any, i: number, index: number) {
+    console.log(`Removendo cor no índice ${index}`, secao);
+
+    if (secao['coresPersonalizadas'] && secao['coresPersonalizadas'][index] !== undefined) {
+      secao['coresPersonalizadas'].splice(index, 1);
+      this.getCoresPersonalizadasControl(i).setValue([...secao['coresPersonalizadas']]);
+      this.invalidateCache(`secao-${secao.id}`);
+      console.log('Cores após remoção:', secao['coresPersonalizadas']);
+    }
+  }
+
+  atualizarCorPersonalizada(secao: any, i: number, index: number, event: any) {
+    const novaCor = event.target ? event.target.value : event;
+    console.log(`Atualizando cor ${index} para: ${novaCor}`, secao);
+
+    // Garantir que o array existe
+    if (!secao['coresPersonalizadas']) {
+      secao['coresPersonalizadas'] = [];
+    }
+
+    // Expandir o array se necessário
+    while (secao['coresPersonalizadas'].length <= index) {
+      secao['coresPersonalizadas'].push('#3498db');
+    }
+
+    // Atualizar a cor
+    secao['coresPersonalizadas'][index] = novaCor;
+
+    // Sincronizar com FormControl
+    this.getCoresPersonalizadasControl(i).setValue([...secao['coresPersonalizadas']]);
+
+    // Invalidar cache
+    this.invalidateCache(`secao-${secao.id}`);
+
+    console.log('Cores após atualização:', secao['coresPersonalizadas']);
+  }
+
   // Grupos padrão
   getGrupos() {
-    return ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
+    return Array.from(this.dataIndexes.participantsByCategory.keys());
   }
 
   // Método auxiliar para obter característica por ID
-  getCaracteristicaPorId(id: string): Caracteristica | undefined {
-    return this.caracteristicas.find(c => c.id === id);
+  getCompetenciaPorId(id: string): Competencia | undefined {
+    return this.competencias.find(c => c.id === id);
   }
 
   // Características selecionadas para a seção de gráficos
-  getCaracteristicasSelecionadasParaGraficos(secao: any): Caracteristica[] {
-    if (!secao.caracteristicasIds?.length) return [];
-    return this.caracteristicas.filter(c => secao.caracteristicasIds.includes(c.id));
+  getCompetenciasSelecionadasParaGraficos(secao: any): Competencia[] {
+    if (!secao.competenciasIds?.length) return [];
+    return this.competencias.filter(c => secao.competenciasIds.includes(c.id));
   }
 
   // Características selecionadas para a seção de tabela
-  getCaracteristicasSelecionadasParaTabela() {
+  getCompetenciasSelecionadasParaTabela() {
     const secaoTabela = this.relatorioConfiguracao.find(s => s.tipo === 'tabela');
-    if (!secaoTabela || !Array.isArray(secaoTabela.caracteristicasIds) || !secaoTabela.caracteristicasIds.length) return [];
-    return this.caracteristicas.filter(c => secaoTabela.caracteristicasIds!.includes(c.id));
+    if (!secaoTabela || !Array.isArray(secaoTabela.competenciasIds) || !secaoTabela.competenciasIds.length) return [];
+    return this.competencias.filter(c => secaoTabela.competenciasIds!.includes(c.id));
   }
 
   // Lista de respostas para uma pergunta e grupo
@@ -955,11 +1178,9 @@ export class ReportsComponent implements OnInit {
 
   // Validação antes de salvar relatório
   private validarRelatorio(): string | null {
-    for (const secao of this.relatorioConfiguracao) {
-      if (!secao.titulo || !secao.tipo) {
-        return 'Todas as seções devem ter título e tipo.';
-      }
-    }
+    if (!this.selectedAssessmentId) return "Nenhuma avaliação foi selecionada.";
+    if (this.relatorioFormArray.length === 0) return "O relatório não tem seções.";
+    if (this.competencias.length === 0) return "Nenhuma competência foi cadastrada.";
     return null;
   }
 
@@ -980,7 +1201,7 @@ export class ReportsComponent implements OnInit {
       nome: this.nomeRelatorioControl.value,
       assessmentId: this.selectedAssessmentId,
       assessmentName: assessment ? assessment.name : '',
-      caracteristicas: this.caracteristicas,
+      competencias: this.competencias,
       configuracao: this.relatorioConfiguracao,
       criadoEm: new Date()
     };
@@ -1009,28 +1230,12 @@ export class ReportsComponent implements OnInit {
     const reportSnap = await getDoc(reportRef);
     if (reportSnap.exists()) {
       const reportData = reportSnap.data();
-      this.caracteristicas = reportData['caracteristicas'] || [];
+      this.competencias = reportData['competencias'] || [];
       this.relatorioConfiguracao = reportData['configuracao'] || [];
       // Atualizar o form reativo
       this.atualizarFormArrayComConfiguracao();
       alert(`Relatório '${reportData['nome']}' carregado!`);
     }
-  }
-
-  atualizarFormArrayComConfiguracao() {
-    this.relatorioFormArray.clear();
-    this.relatorioConfiguracao.forEach(secao => {
-      this.relatorioFormArray.push(new FormGroup({
-        visivel: new FormControl(secao.visivel),
-        titulo: new FormControl(secao.titulo || ''),
-        texto: new FormControl(secao.texto || ''),
-        caracteristicasIds: new FormControl(secao.caracteristicasIds || []),
-        id: new FormControl(secao.id),
-        tipo: new FormControl(secao.tipo),
-        ordem: new FormControl(secao.ordem),
-        tipoGrafico: new FormControl(secao['tipoGrafico'] || 'barra')
-      }));
-    });
   }
 
   // Adiciona uma nova seção customizada ao relatório
@@ -1039,23 +1244,25 @@ export class ReportsComponent implements OnInit {
     const id = 'custom_' + Date.now();
     const novaSecao: RelatorioSecao = {
       id,
-      tipo: 'custom',
-      titulo: 'Nova Seção',
+      tipo: 'texto',
+      titulo: 'Nova Seção de Texto',
       texto: '',
       visivel: true,
       ordem: this.relatorioConfiguracao.length + 1,
-      'tipoGrafico': 'barra'
+      competenciasIds: []
     };
     this.relatorioConfiguracao.push(novaSecao);
     this.relatorioFormArray.push(new FormGroup({
       visivel: new FormControl(novaSecao.visivel),
       titulo: new FormControl(novaSecao.titulo),
       texto: new FormControl(novaSecao.texto),
-      caracteristicasIds: new FormControl([]),
+      competenciasIds: new FormControl([]),
       id: new FormControl(novaSecao.id),
       tipo: new FormControl(novaSecao.tipo),
       ordem: new FormControl(novaSecao.ordem),
-      tipoGrafico: new FormControl('barra')
+      tipoGrafico: new FormControl('barra'),
+      paletaCor: new FormControl('padrao'),
+      coresPersonalizadas: new FormControl([])
     }));
   }
 
@@ -1128,11 +1335,11 @@ export class ReportsComponent implements OnInit {
       {
         id: 'resumo',
         tipo: 'resumo',
-        titulo: 'Resumo dos Resultados nas Características',
+        titulo: 'Resumo dos Resultados nas Competências',
         texto: '',
         visivel: true,
         ordem: 3,
-        caracteristicasIds: []
+        competenciasIds: []
       },
       {
         id: 'graficos',
@@ -1141,8 +1348,10 @@ export class ReportsComponent implements OnInit {
         texto: '',
         visivel: true,
         ordem: 4,
-        caracteristicasIds: [],
-        'tipoGrafico': 'barra'
+        competenciasIds: [],
+        'tipoGrafico': 'pizza-comparativa',
+        'paletaCor': 'azul',
+        'coresPersonalizadas': []
       },
       {
         id: 'tabela',
@@ -1151,7 +1360,7 @@ export class ReportsComponent implements OnInit {
         texto: '',
         visivel: true,
         ordem: 5,
-        caracteristicasIds: []
+        competenciasIds: []
       },
       {
         id: 'destaques',
@@ -1240,5 +1449,15 @@ export class ReportsComponent implements OnInit {
     }
     pdf.save('relatorio-360.pdf');
     this.snackBar.open('PDF exportado com sucesso!', 'Fechar', { duration: 3000 });
+  }
+
+  removerCompetencia(c: Competencia) {
+    this.competencias = this.competencias.filter(x => x.id !== c.id);
+    this.snackBar.open('Competência removida.', 'Fechar', { duration: 3000 });
+    // Invalida cache de resumos e seções
+    this.invalidateCache('resumo-');
+    this.invalidateCache('secao-');
+    this.cancelarEdicaoCompetencia();
+    this.atualizarPerguntasBloqueadas();
   }
 }
