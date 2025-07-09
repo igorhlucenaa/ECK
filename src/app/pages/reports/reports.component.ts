@@ -227,7 +227,7 @@ export class ReportsComponent implements OnInit {
       visivel: true,
       ordem: 4,
       competenciasIds: [],
-      'tipoGrafico': 'pizza-comparativa',
+      'tipoGrafico': 'barra',
       'paletaCor': 'azul',
       'coresPersonalizadas': []
     },
@@ -962,13 +962,26 @@ export class ReportsComponent implements OnInit {
 
   getSecaoPieData(secao: any) {
     const competenciasSelecionadas = this.getCompetenciasSelecionadasParaGraficos(secao);
+    const grupos = this.getGrupos();
 
     const result = competenciasSelecionadas.map(comp => {
-      const media = this.getMediaPorPerguntaEGrupo(comp, 'Todos');
-      const valor = (media !== null && !isNaN(media)) ? media : 0;
+      // Calcular média geral de todas as categorias para a competência
+      let somaTotal = 0;
+      let contadorTotal = 0;
+
+      grupos.forEach(grupo => {
+        const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
+        if (media !== null && !isNaN(media)) {
+          somaTotal += media;
+          contadorTotal++;
+        }
+      });
+
+      const mediaGeral = contadorTotal > 0 ? somaTotal / contadorTotal : 0;
+
       return {
         name: comp.nome,
-        value: valor
+        value: mediaGeral
       };
     });
 
@@ -1245,9 +1258,25 @@ export class ReportsComponent implements OnInit {
     for (const pid of carac.perguntasIds || []) {
       for (const row of this.dataSource) {
         if (this.mapCategoriaToGrupo(row['categoria']) === grupo) {
-          const val = this.parseNumeric(row[pid]);
-          if (val !== null) {
-            soma += val;
+          let valor = row[pid];
+
+          // Aplicar o mesmo processamento usado em getRespostasParaPerguntaEGrupo
+          if (typeof valor === 'string') {
+            if (valor.includes('Column')) {
+              // Formato: "Column 1" → 1
+              const match = valor.match(/Column (\d+)/);
+              if (match) {
+                valor = parseInt(match[1]);
+              }
+            } else {
+              // Tentar converter string diretamente para número
+              valor = parseFloat(valor);
+            }
+          }
+
+          const valorNumerico = Number(valor);
+          if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
+            soma += valorNumerico;
             count++;
           }
         }
@@ -1435,7 +1464,7 @@ export class ReportsComponent implements OnInit {
         visivel: true,
         ordem: 4,
         competenciasIds: [],
-        'tipoGrafico': 'pizza-comparativa',
+        'tipoGrafico': 'barra',
         'paletaCor': 'azul',
         'coresPersonalizadas': []
       },
@@ -1591,23 +1620,56 @@ export class ReportsComponent implements OnInit {
     domain: ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5']
   };
 
+  // Método de debug específico para gráficos
   debugGraficos(): void {
-    console.clear();
-    console.log('🔍 DEBUG SIMPLES - Verificando gráficos...');
+    console.group('�� DEBUG GRÁFICOS');
 
-    // Dados de teste estáticos
-    const testData = this.getTestStackedData();
-    console.log('Dados de teste:', testData);
-
-    // Dados reais
+    // Verificar seção de gráficos
     const secaoGraficos = this.relatorioConfiguracao.find(s => s.tipo === 'graficos');
+    console.log('Seção de gráficos encontrada:', secaoGraficos);
+
     if (secaoGraficos) {
-      const dadosReais = this.getSecaoStackedData(secaoGraficos);
-      console.log('Dados reais:', dadosReais);
-      console.log('Estrutura de dados válida para ngx-charts:', dadosReais.length > 0 && dadosReais[0].series);
-      if (dadosReais.length > 0) {
-        console.log('Exemplo do primeiro item:', dadosReais[0]);
+      console.log('Competências selecionadas:', secaoGraficos.competenciasIds);
+      console.log('Tipo de gráfico:', secaoGraficos['tipoGrafico']);
+
+      // Verificar dados para diferentes tipos de gráficos
+      const dadosBarras = this.getSecaoStackedData(secaoGraficos);
+      console.log('Dados para gráfico de barras:', dadosBarras);
+
+      const dadosPizza = this.getSecaoPieData(secaoGraficos);
+      console.log('Dados para gráfico de pizza:', dadosPizza);
+
+      // Verificar se há dados válidos para barras
+      if (dadosBarras.length > 0) {
+        console.log('Primeiro item dos dados de barras:', dadosBarras[0]);
+        if (dadosBarras[0].series) {
+          console.log('Série do primeiro item:', dadosBarras[0].series);
+        }
       }
+
+      // Verificar se há dados válidos para pizza
+      if (dadosPizza.length > 0) {
+        console.log('Primeiro item dos dados de pizza:', dadosPizza[0]);
+      }
+
+      // Verificar esquema de cores
+      const esquemaCores = this.getColorSchemeParaSecao(secaoGraficos);
+      console.log('Esquema de cores:', esquemaCores);
+    }
+
+    // Verificar competências individuais
+    if (this.competencias.length > 0) {
+      console.log('Testando primeira competência:', this.competencias[0].nome);
+
+      const dadosCompetencia = this.getCompetenciaPieData(this.competencias[0]);
+      console.log('Dados da competência:', dadosCompetencia);
+
+      // Verificar médias por grupo
+      const grupos = this.getGrupos();
+      grupos.forEach(grupo => {
+        const media = this.getMediaPorPerguntaEGrupo(this.competencias[0], grupo);
+        console.log(`Média para ${grupo}:`, media);
+      });
     }
 
     console.groupEnd();
