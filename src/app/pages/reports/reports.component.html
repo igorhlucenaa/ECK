@@ -17,6 +17,18 @@
   </mat-select>
 </mat-form-field>
 
+<!-- Botão de debug temporário -->
+<div *ngIf="selectedAssessmentId && dataSource.length > 0" style="margin-bottom: 16px;">
+  <button mat-stroked-button color="accent" (click)="debugTabelaDetalhada()" style="margin-right: 8px;">
+    <mat-icon>bug_report</mat-icon>
+    Debug Tabela Detalhada
+  </button>
+  <button mat-stroked-button color="primary" (click)="testarDados()">
+    <mat-icon>science</mat-icon>
+    Teste Simples
+  </button>
+</div>
+
 <!-- TAB GROUP START -->
 <mat-tab-group>
   <!--
@@ -214,11 +226,14 @@
 
       <!-- Botões de ação -->
       <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-        <button mat-flat-button color="primary" (click)="selectedTabIndex = 5">
+        <button mat-flat-button color="primary" (click)="selectedTabIndex = 2">
           <mat-icon>visibility</mat-icon> Visualizar Relatório
         </button>
         <button mat-stroked-button color="accent" (click)="addSecaoCustomizada()">
-          <mat-icon>add</mat-icon> Nova Seção
+          <mat-icon>add</mat-icon> Nova Seção de Texto
+        </button>
+        <button mat-stroked-button color="accent" (click)="addSecaoCustomizada('competencia_detalhada')">
+          <mat-icon>view_quilt</mat-icon> Nova Seção Detalhada
         </button>
         <button mat-stroked-button (click)="resetarRelatorio()" matTooltip="Voltar ao modelo padrão">
           <mat-icon>refresh</mat-icon> Resetar
@@ -260,11 +275,18 @@
                   </mat-chip>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <mat-form-field appearance="outline" style="width: 120px; margin: 0;">
-                    <mat-select placeholder="Tipo" formControlName="tipo" (selectionChange)="atualizarSecaoConfiguracao(i)">
-                      <mat-option value="texto">Texto</mat-option>
+                  <mat-form-field appearance="outline" style="width: 180px; margin: 0; font-size: 12px;">
+                    <mat-label>Tipo</mat-label>
+                    <mat-select formControlName="tipo" (selectionChange)="atualizarSecaoConfiguracao(i)">
+                      <mat-option value="capa">Capa</mat-option>
+                      <mat-option value="introducao">Introdução</mat-option>
+                      <mat-option value="resumo">Resumo de Competências</mat-option>
                       <mat-option value="graficos">Gráficos</mat-option>
-                      <mat-option value="tabela">Tabela</mat-option>
+                      <mat-option value="tabela">Tabela de Frequência</mat-option>
+                      <mat-option value="tabela_detalhada">Tabela de Distribuição</mat-option>
+                      <mat-option value="competencia_detalhada">Análise Detalhada</mat-option>
+                      <mat-option value="destaques">Destaques</mat-option>
+                      <mat-option value="texto">Texto Livre</mat-option>
                     </mat-select>
                   </mat-form-field>
                   <button mat-icon-button color="accent" (click)="addSecaoCustomizadaAbaixo(i, secaoCtrl.get('tipo')?.value)" matTooltip="Adicionar seção abaixo">
@@ -383,6 +405,30 @@
                   <mat-hint>Selecione as competências que devem aparecer na tabela de frequência.</mat-hint>
                 </mat-form-field>
               </div>
+
+              <div *ngIf="secaoCtrl.get('tipo')?.value === 'tabela_detalhada'">
+                <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
+                  <mat-label>Competências para tabela detalhada</mat-label>
+                  <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                    <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
+                  </mat-select>
+                  <mat-hint>Selecione as competências para exibir na tabela de distribuição de notas (1-5).</mat-hint>
+                </mat-form-field>
+
+                <mat-card style="margin-top: 16px; padding: 16px; background-color: #e8f5e8;">
+                  <mat-card-content>
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                      <mat-icon style="color: #4CAF50; margin-right: 8px;">info</mat-icon>
+                      <span style="font-weight: 500;">Sobre a Tabela de Distribuição</span>
+                    </div>
+                    <p style="margin: 0; font-size: 14px; color: #555;">
+                      Esta tabela mostra a contagem de respostas para cada nota (1-5) por categoria de avaliador,
+                      similar ao formato de frequência mostrado na imagem de exemplo. Cada competência selecionada
+                      gerará uma tabela completa com todas as suas perguntas.
+                    </p>
+                  </mat-card-content>
+                </mat-card>
+              </div>
             </mat-card-content>
           </mat-card>
         </div>
@@ -436,6 +482,8 @@
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
 
+
+
             <div *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length > 0">
               <!-- Controle de tipo de gráfico -->
               <mat-form-field appearance="outline" style="width: 250px; margin-bottom: 16px;">
@@ -464,16 +512,18 @@
               <ng-container [ngSwitch]="getTipoGraficoControl(i).value || 'barra'">
                 <!-- Gráfico de barras comparativo -->
                 <div *ngSwitchCase="'barra'">
-                  <ngx-charts-bar-horizontal-stacked
-                    [results]="getSecaoStackedData(secao)"
-                    [xAxis]="false"
-                    [yAxis]="true"
-                    [view]="[700, getSecaoStackedData(secao).length * 60 + 50]"
-                    [style.height.px]="getSecaoStackedData(secao).length * 60 + 50"
-                    [legend]="true"
-                    [showGridLines]="true"
-                    [scheme]="getColorSchemeParaSecao(secao)"
-                  ></ngx-charts-bar-horizontal-stacked>
+                  <ng-container *ngIf="getSecaoStackedData(secao) as dadosGrafico">
+                    <ngx-charts-bar-horizontal-stacked
+                      [results]="dadosGrafico"
+                      [xAxis]="false"
+                      [yAxis]="true"
+                      [view]="[700, (dadosGrafico.length * 60 + 50) < 200 ? 200 : (dadosGrafico.length * 60 + 50)]"
+                      [style.height.px]="(dadosGrafico.length * 60 + 50) < 200 ? 200 : (dadosGrafico.length * 60 + 50)"
+                      [legend]="true"
+                      [showGridLines]="true"
+                      [scheme]="getColorSchemeParaSecao(secao)"
+                    ></ngx-charts-bar-horizontal-stacked>
+                  </ng-container>
                 </div>
 
                 <!-- Gráfico radar comparativo -->
@@ -483,14 +533,16 @@
 
                 <!-- Gráfico de pizza comparativo -->
                 <div *ngSwitchCase="'pizza-comparativa'">
-                  <ngx-charts-pie-chart
-                    [results]="getSecaoPieData(secao)"
-                    [view]="[600,400]"
-                    [legend]="true"
-                    [labels]="true"
-                    [doughnut]="false"
-                    [scheme]="getColorSchemeParaSecao(secao)"
-                  ></ngx-charts-pie-chart>
+                  <ng-container *ngIf="getSecaoPieData(secao) as dadosPizza">
+                    <ngx-charts-pie-chart
+                      [results]="dadosPizza"
+                      [view]="[600,400]"
+                      [legend]="true"
+                      [labels]="true"
+                      [doughnut]="false"
+                      [scheme]="getColorSchemeParaSecao(secao)"
+                    ></ngx-charts-pie-chart>
+                  </ng-container>
                 </div>
 
                 <!-- Gráficos de pizza individuais -->
@@ -524,16 +576,16 @@
               <div *ngFor="let comp of getCompetenciasSelecionadasParaTabela()">
                 <h4>{{ comp.nome }}</h4>
                 <p>{{ comp.descricao }}</p>
-                <table mat-table [dataSource]="comp.perguntasIds" class="mat-elevation-z2" style="width: 100%; margin-bottom: 20px;">
+                <table mat-table [dataSource]="getPerguntasDataSource(comp.perguntasIds)" class="mat-elevation-z2" style="width: 100%; margin-bottom: 20px;">
                   <!-- Colunas da tabela -->
                   <ng-container matColumnDef="pergunta">
                     <th mat-header-cell *matHeaderCellDef> Pergunta </th>
-                    <td mat-cell *matCellDef="let element"> {{questionMap[element]}} </td>
+                    <td mat-cell *matCellDef="let element"> {{questionMap[element.id]}} </td>
                   </ng-container>
 
                   <ng-container *ngFor="let grupo of getGrupos()" [matColumnDef]="grupo">
                       <th mat-header-cell *matHeaderCellDef> {{grupo}} </th>
-                      <td mat-cell *matCellDef="let element"> {{getMediaPorPerguntaEGrupo(comp, element) | number:'1.2-2'}} </td>
+                      <td mat-cell *matCellDef="let element"> {{getMediaPorPerguntaEGrupo(comp, grupo) | number:'1.2-2'}} </td>
                   </ng-container>
 
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
@@ -547,11 +599,145 @@
               </p>
             </ng-template>
           </div>
+                    <div *ngSwitchCase="'tabela_detalhada'">
+            <h2>{{ secao.titulo }}</h2>
+            <div [innerHTML]="secao.texto"></div>
+
+            <!-- DEBUG: Botão temporário para debugar tabela detalhada -->
+            <button mat-raised-button color="warn" (click)="debugTabelaDetalhada()" style="margin-bottom: 16px;">
+              🔍 Debug Tabela Detalhada
+            </button>
+
+            <!-- Seleção de competências para tabela detalhada -->
+            <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0">
+              <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let compIndex = index">
+                <div style="margin-bottom: 30px;">
+                  <!-- Texto editável para a competência -->
+                  <div style="margin-bottom: 20px;">
+                    <h3>{{ comp.nome }}</h3>
+                    <p style="color: #666; font-style: italic;">{{ comp.descricao }}</p>
+
+                                        <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
+                      <mat-label>Texto introdutório para {{ comp.nome }}</mat-label>
+                      <textarea matInput
+                                placeholder="Digite um texto explicativo para esta competência..."
+                                rows="3"
+                                [value]="getOrInitTextoCompetencia(secao, comp)"
+                                (input)="atualizarTextoCompetencia(secao, comp.id, $event)">
+                      </textarea>
+                    </mat-form-field>
+                  </div>
+
+                  <!-- Tabela de distribuição de notas -->
+                  <div style="overflow-x: auto;">
+                    <ng-container *ngIf="gerarTabelaCompetencia(comp) as tabelaData">
+                      <table class="tabela-distribuicao-notas" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <!-- Cabeçalho da tabela -->
+                        <thead>
+                          <tr style="background-color: #4CAF50; color: white;">
+                            <th rowspan="2" style="border: 1px solid #ddd; padding: 8px; text-align: left;">{{ comp.nome.toUpperCase() }}</th>
+                                                         <th *ngFor="let categoria of tabelaData.mediasGerais"
+                                 [attr.colspan]="5"
+                                 style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+                               {{ getAbreviacaoCategoria(categoria.categoria) }}
+                             </th>
+                          </tr>
+                          <tr style="background-color: #66BB6A; color: white;">
+                            <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                              <th *ngFor="let nota of [1,2,3,4,5]"
+                                  style="border: 1px solid #ddd; padding: 4px; text-align: center; min-width: 30px;">
+                                {{ nota }}
+                              </th>
+                            </ng-container>
+                          </tr>
+                        </thead>
+
+                        <!-- Corpo da tabela -->
+                        <tbody>
+                          <tr *ngFor="let linha of tabelaData.linhas; let isEven = even"
+                              [style.background-color]="isEven ? '#f9f9f9' : 'white'">
+                            <td style="border: 1px solid #ddd; padding: 8px; font-size: 11px;">
+                              {{ linha.pergunta }}
+                            </td>
+                            <ng-container *ngFor="let categoria of linha.categorias">
+                              <td *ngFor="let dist of categoria.distribuicao"
+                                  style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 12px;">
+                                {{ dist.quantidade > 0 ? dist.quantidade : '' }}
+                              </td>
+                            </ng-container>
+                          </tr>
+
+                          <!-- Linha de médias -->
+                          <tr style="background-color: #81C784; color: white; font-weight: bold;">
+                            <td style="border: 1px solid #ddd; padding: 8px;">Média</td>
+                            <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                              <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+                                {{ categoria.media | number:'1.1-2' }}
+                              </td>
+                            </ng-container>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      <!-- Legenda -->
+                      <div style="margin-top: 16px; padding: 12px; background-color: #f5f5f5; border-radius: 4px;">
+                        <p style="margin: 0; font-size: 12px; color: #666;">
+                          <strong>Importante:</strong> A opção "Sem dados" não é exibida no resumo.
+                        </p>
+                                                 <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
+                           <strong>Categorias da tabela:</strong><br>
+                           <ng-container *ngFor="let categoria of tabelaData.mediasGerais; let last = last">
+                             <strong>{{ getAbreviacaoCategoria(categoria.categoria) }}:</strong> {{ categoria.categoria }}{{ !last ? ', ' : '' }}
+                           </ng-container>
+                         </p>
+                      </div>
+                    </ng-container>
+                  </div>
+
+                  <mat-divider *ngIf="compIndex < getCompetenciasSelecionadasParaSecao(secao).length - 1" style="margin: 30px 0;"></mat-divider>
+                </div>
+              </div>
+            </div>
+
+            <p *ngIf="getCompetenciasSelecionadasParaSecao(secao).length === 0">
+              <i>Selecione uma ou mais competências na aba "Montar Relatório" para visualizar as tabelas detalhadas.</i>
+            </p>
+          </div>
           <div *ngSwitchCase="'destaques'">
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
             <!-- Placeholder para destaques -->
             <p><i>[Destaques das avaliações mais altas]</i></p>
+          </div>
+          <div *ngSwitchCase="'competencia_detalhada'">
+            <h2>{{ secao.titulo }}</h2>
+            <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let i = index">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; margin-bottom: 20px;">
+                <!-- Coluna da Esquerda: Textos Editáveis -->
+                <div *ngIf="getOrInitTextoCompetencia(secao, comp)">
+                  <h3 style="margin-bottom: 4px;">{{ comp.nome }}</h3>
+                  <p style="color: #666; font-style: italic; margin-top: 0;">{{ comp.descricao }}</p>
+                  <angular-editor
+                    [(ngModel)]="secao.textosPorCompetencia![comp.id]"
+                    [config]="editorConfig">
+                  </angular-editor>
+                </div>
+
+                <!-- Coluna da Direita: Gráfico -->
+                <div style="height: 250px;">
+                  <ngx-charts-bar-horizontal
+                    [scheme]="getColorSchemeParaSecao(secao)"
+                    [results]="getDadosGraficoPorCompetencia(comp)"
+                    [xAxis]="true"
+                    [yAxis]="true"
+                    [showDataLabel]="true"
+                    [barPadding]="8"
+                    [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
+                  </ngx-charts-bar-horizontal>
+                </div>
+              </div>
+               <mat-divider *ngIf="i < getCompetenciasSelecionadasParaSecao(secao).length - 1"></mat-divider>
+            </div>
           </div>
           <div *ngSwitchDefault>
             <h2>{{ secao.titulo }}</h2>
