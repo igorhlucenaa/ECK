@@ -77,6 +77,22 @@ export interface RelatorioSecao {
   [key: string]: any;
 }
 
+// Interfaces para avaliações mais altas
+interface ItemAvaliacao {
+  classificacao: number;
+  comportamento: string;
+  pontuacaoMediaAvaliado: number;
+  pontuacaoMediaSemAutoavaliacao: number;
+  caracteristicaLider: string;
+  perguntaId: string;
+  competenciaId: string;
+}
+
+interface TabelaAvaliacoesAltas {
+  items: ItemAvaliacao[];
+  totalItems: number;
+}
+
 @Component({
   selector: 'app-reports',
   standalone: true,
@@ -244,9 +260,15 @@ export class ReportsComponent implements OnInit {
       id: 'destaques',
       tipo: 'destaques',
       titulo: 'Avaliações mais altas',
-      texto: '',
+      texto: `
+        <p>Esta seção apresenta os comportamentos em que você obteve as maiores pontuações, destacando seus pontos fortes segundo a perspectiva dos avaliadores.</p>
+      `,
       visivel: true,
-      ordem: 6
+      ordem: 5,
+      numeroItems: 5,
+      avaliadoSelecionado: '',
+      mostrarCaracteristica: true,
+      mostrarPontuacaoSemAuto: true
     }
   ];
 
@@ -475,7 +497,12 @@ export class ReportsComponent implements OnInit {
         ordem: new FormControl(secao.ordem),
         tipoGrafico: new FormControl(secao['tipoGrafico'] || 'barra'),
         paletaCor: new FormControl(secao['paletaCor'] || 'padrao'),
-        coresPersonalizadas: new FormControl(secao['coresPersonalizadas'] || [])
+        coresPersonalizadas: new FormControl(secao['coresPersonalizadas'] || []),
+        // Controles para seção de destaques
+        numeroItems: new FormControl(secao['numeroItems'] || 5),
+        avaliadoSelecionado: new FormControl(secao['avaliadoSelecionado'] || ''),
+        mostrarCaracteristica: new FormControl(secao['mostrarCaracteristica'] !== false),
+        mostrarPontuacaoSemAuto: new FormControl(secao['mostrarPontuacaoSemAuto'] !== false)
       }));
     });
   }
@@ -1481,9 +1508,15 @@ export class ReportsComponent implements OnInit {
         id: 'destaques',
         tipo: 'destaques',
         titulo: 'Avaliações mais altas',
-        texto: '',
+        texto: `
+          <p>Esta seção apresenta os comportamentos em que você obteve as maiores pontuações, destacando seus pontos fortes segundo a perspectiva dos avaliadores.</p>
+        `,
         visivel: true,
-        ordem: 6
+        ordem: 5,
+        numeroItems: 5,
+        avaliadoSelecionado: '',
+        mostrarCaracteristica: true,
+        mostrarPontuacaoSemAuto: true
       }
     ];
     this.atualizarFormArrayComConfiguracao();
@@ -1598,9 +1631,7 @@ export class ReportsComponent implements OnInit {
     return dadosGrafico;
   }
 
-  getPerguntasDataSource(perguntasIds: string[]): { id: string }[] {
-    return perguntasIds.map(id => ({ id: id }));
-  }
+
 
   // Teste com dados estáticos para verificar se o gráfico funciona
   getTestStackedData() {
@@ -1638,6 +1669,16 @@ export class ReportsComponent implements OnInit {
 
       const dadosPizza = this.getSecaoPieData(secaoGraficos);
       console.log('Dados para gráfico de pizza:', dadosPizza);
+
+      // Verificar dados para barras individuais
+      if (secaoGraficos['tipoGrafico'] === 'barras-individuais') {
+        const competenciasSelecionadas = this.getCompetenciasSelecionadasParaGraficos(secaoGraficos);
+        console.log('Dados para barras individuais:');
+        competenciasSelecionadas.forEach(comp => {
+          const dadosIndividuais = this.getCompetenciaStackedData(comp);
+          console.log(`- ${comp.nome}:`, dadosIndividuais);
+        });
+      }
 
       // Verificar se há dados válidos para barras
       if (dadosBarras.length > 0) {
@@ -1742,36 +1783,67 @@ export class ReportsComponent implements OnInit {
 
   // Método auxiliar para obter respostas de uma pergunta específica para um grupo
   private getRespostasParaPerguntaEGrupo(perguntaId: string, grupo: string): number[] {
-    const participantesGrupo = this.dataIndexes.participantsByCategory.get(grupo) || [];
     const respostas: number[] = [];
 
-    participantesGrupo.forEach(participantIndex => {
-      const participant = this.dataSource[participantIndex];
-      // As respostas estão diretamente no objeto participant, não em participant.responses
-      if (participant && participant[perguntaId] !== undefined) {
-        let valor = participant[perguntaId];
+    // Se o grupo for 'Todos', processar todos os dados
+    if (grupo === 'Todos') {
+      this.dataSource.forEach(participant => {
+        if (participant && participant[perguntaId] !== undefined) {
+          let valor = participant[perguntaId];
 
-        // Tratar diferentes formatos de dados
-        if (typeof valor === 'string') {
-          // Se for string, tentar extrair número
-          if (valor.includes('Column')) {
-            // Formato: "Column 1" → 1
-            const match = valor.match(/Column (\d+)/);
-            if (match) {
-              valor = parseInt(match[1]);
+          // Tratar diferentes formatos de dados
+          if (typeof valor === 'string') {
+            // Se for string, tentar extrair número
+            if (valor.includes('Column')) {
+              // Formato: "Column 1" → 1
+              const match = valor.match(/Column (\d+)/);
+              if (match) {
+                valor = parseInt(match[1]);
+              }
+            } else {
+              // Tentar converter string diretamente para número
+              valor = parseFloat(valor);
             }
-          } else {
-            // Tentar converter string diretamente para número
-            valor = parseFloat(valor);
+          }
+
+          const valorNumerico = Number(valor);
+          if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
+            respostas.push(valorNumerico);
           }
         }
+      });
+    } else {
+      // Processar grupo específico usando índices
+      const participantesGrupo = this.dataIndexes.participantsByCategory.get(grupo) || [];
 
-        const valorNumerico = Number(valor);
-        if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
-          respostas.push(valorNumerico);
+      participantesGrupo.forEach(participantIndex => {
+        const participant = this.dataSource[participantIndex];
+        // As respostas estão diretamente no objeto participant, não em participant.responses
+        if (participant && participant[perguntaId] !== undefined) {
+          let valor = participant[perguntaId];
+
+          // Tratar diferentes formatos de dados
+          if (typeof valor === 'string') {
+            // Se for string, tentar extrair número
+            if (valor.includes('Column')) {
+              // Formato: "Column 1" → 1
+              const match = valor.match(/Column (\d+)/);
+              if (match) {
+                valor = parseInt(match[1]);
+              }
+            } else {
+              // Tentar converter string diretamente para número
+              valor = parseFloat(valor);
+            }
+          }
+
+          const valorNumerico = Number(valor);
+          if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
+            respostas.push(valorNumerico);
+          }
         }
-      }
-    });
+      });
+    }
 
     return respostas;
   }
@@ -1815,6 +1887,44 @@ export class ReportsComponent implements OnInit {
       secao.textosPorCompetencia = {};
     }
     secao.textosPorCompetencia[competenciaId] = valor;
+  }
+
+  // Debug method for avaliações mais altas
+  debugAvaliacoesAltasSimples(): void {
+    console.group('🔍 DEBUG AVALIAÇÕES MAIS ALTAS');
+
+    console.log('📊 Dados básicos:');
+    console.log('- Total de registros:', this.dataSource.length);
+    console.log('- Competências:', this.competencias.length);
+
+    if (this.competencias.length > 0) {
+      const primeiraComp = this.competencias[0];
+      console.log('🧪 Testando primeira competência:', primeiraComp.nome);
+      console.log('- Perguntas:', primeiraComp.perguntasIds);
+
+      if (primeiraComp.perguntasIds.length > 0) {
+        const primeiraPergunta = primeiraComp.perguntasIds[0];
+        console.log(`- Testando pergunta: ${primeiraPergunta}`);
+
+        // Testar respostas para 'Todos'
+        const respostasTodos = this.getRespostasParaPerguntaEGrupo(primeiraPergunta, 'Todos');
+        console.log(`- Respostas para 'Todos': ${respostasTodos.length} items - [${respostasTodos.slice(0, 10).join(', ')}]`);
+
+        if (respostasTodos.length > 0) {
+          const media = respostasTodos.reduce((sum, val) => sum + val, 0) / respostasTodos.length;
+          console.log(`- Média calculada: ${media.toFixed(2)}`);
+        }
+      }
+    }
+
+    // Testar método completo
+    const tabelaAltas = this.gerarTabelaAvaliacoesAltas(5);
+    console.log('📋 Resultado da tabela de avaliações altas:');
+    console.log('- Total de items:', tabelaAltas.totalItems);
+    console.log('- Items retornados:', tabelaAltas.items.length);
+    console.log('- Primeiros 3 items:', tabelaAltas.items.slice(0, 3));
+
+    console.groupEnd();
   }
 
   // Debug method for detailed table
@@ -1946,4 +2056,249 @@ export class ReportsComponent implements OnInit {
 
     console.groupEnd();
   }
+
+  // Método para gerar tabela de avaliações mais altas
+  gerarTabelaAvaliacoesAltas(numeroItems: number = 5, avaliadoSelecionado?: string): TabelaAvaliacoesAltas {
+    const items: ItemAvaliacao[] = [];
+
+    // Percorrer todas as competências e suas perguntas
+    this.competencias.forEach(competencia => {
+      competencia.perguntasIds.forEach(perguntaId => {
+        const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
+
+        // Calcular média geral da pergunta (todas as categorias)
+        const respostasGerais = this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
+        const mediaGeral = respostasGerais.length > 0 ?
+          respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length : 0;
+
+        // Calcular média por categoria
+        const grupos = this.getGrupos();
+        let somaPorCategoria = 0;
+        let contadorCategorias = 0;
+
+        grupos.forEach(grupo => {
+          const respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+          if (respostasGrupo.length > 0) {
+            const mediaGrupo = respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
+            somaPorCategoria += mediaGrupo;
+            contadorCategorias++;
+          }
+        });
+
+        const mediaPorCategoria = contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : 0;
+
+        // Só adicionar se tiver dados válidos
+        if (mediaGeral > 0 && !isNaN(mediaGeral)) {
+          items.push({
+            classificacao: 0, // Será definido depois da ordenação
+            comportamento: perguntaTexto,
+            pontuacaoMediaAvaliado: mediaGeral,
+            pontuacaoMediaSemAutoavaliacao: mediaPorCategoria,
+            caracteristicaLider: this.mapearCaracteristicaLider(mediaPorCategoria),
+            perguntaId: perguntaId,
+            competenciaId: competencia.id
+          });
+        }
+      });
+    });
+
+    // Ordenar por pontuação média geral (decrescente)
+    items.sort((a, b) => b.pontuacaoMediaAvaliado - a.pontuacaoMediaAvaliado);
+
+    // Adicionar classificação
+    items.forEach((item, index) => {
+      item.classificacao = index + 1;
+    });
+
+    // Retornar apenas os primeiros N items ou todas as competências
+    const itemsSelecionados = items.slice(0, Math.min(numeroItems, this.competencias.length));
+
+    return {
+      items: itemsSelecionados,
+      totalItems: items.length
+    };
+  }
+
+  // Método para gerar tabela de avaliações mais baixas
+  gerarTabelaAvaliacoesBaixas(numeroItems: number = 5, avaliadoSelecionado?: string): TabelaAvaliacoesAltas {
+    const items: ItemAvaliacao[] = [];
+
+    // Percorrer todas as competências e suas perguntas
+    this.competencias.forEach(competencia => {
+      competencia.perguntasIds.forEach(perguntaId => {
+        const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
+
+        // Calcular média geral da pergunta (todas as categorias)
+        const respostasGerais = this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
+        const mediaGeral = respostasGerais.length > 0 ?
+          respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length : 0;
+
+        // Calcular média por categoria
+        const grupos = this.getGrupos();
+        let somaPorCategoria = 0;
+        let contadorCategorias = 0;
+
+        grupos.forEach(grupo => {
+          const respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+          if (respostasGrupo.length > 0) {
+            const mediaGrupo = respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
+            somaPorCategoria += mediaGrupo;
+            contadorCategorias++;
+          }
+        });
+
+        const mediaPorCategoria = contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : 0;
+
+        // Só adicionar se tiver dados válidos
+        if (mediaGeral > 0 && !isNaN(mediaGeral)) {
+          items.push({
+            classificacao: 0, // Será definido depois da ordenação
+            comportamento: perguntaTexto,
+            pontuacaoMediaAvaliado: mediaGeral,
+            pontuacaoMediaSemAutoavaliacao: mediaPorCategoria,
+            caracteristicaLider: this.mapearCaracteristicaLider(mediaPorCategoria),
+            perguntaId: perguntaId,
+            competenciaId: competencia.id
+          });
+        }
+      });
+    });
+
+    // Ordenar por pontuação média geral (crescente - menores primeiro)
+    items.sort((a, b) => a.pontuacaoMediaAvaliado - b.pontuacaoMediaAvaliado);
+
+    // Adicionar classificação
+    items.forEach((item, index) => {
+      item.classificacao = index + 1;
+    });
+
+    // Retornar apenas os primeiros N items ou todas as competências
+    const itemsSelecionados = items.slice(0, Math.min(numeroItems, this.competencias.length));
+
+    return {
+      items: itemsSelecionados,
+      totalItems: items.length
+    };
+  }
+
+  // Método para obter média por pergunta e avaliado específico
+  private getMediaPorPerguntaEAvaliadoEspecifico(competencia: Competencia, grupo: string, avaliadoSelecionado: string): number | null {
+    const perguntasIds = competencia.perguntasIds;
+    let soma = 0;
+    let count = 0;
+
+    perguntasIds.forEach(perguntaId => {
+      const respostasGrupo = this.dataSource.filter(row => {
+        const grupoMapeado = this.mapCategoriaToGrupo(row['categoria']);
+        const avaliado = row['avaliado'];
+        return grupoMapeado === grupo && avaliado === avaliadoSelecionado;
+      });
+
+      respostasGrupo.forEach(row => {
+        const valor = this.parseNumeric(row[perguntaId]);
+        if (valor !== null) {
+          soma += valor;
+          count++;
+        }
+      });
+    });
+
+    return count > 0 ? soma / count : null;
+  }
+
+  // Método para obter lista de avaliados disponíveis
+  getAvaliadosDisponiveis(): string[] {
+    const avaliados = new Set<string>();
+
+    this.dataSource.forEach(row => {
+      const avaliado = row['avaliado'];
+      if (avaliado && avaliado.trim()) {
+        avaliados.add(avaliado.trim());
+      }
+    });
+
+    return Array.from(avaliados).sort();
+  }
+
+  // Método para obter cor da característica
+  getCorCaracteristica(caracteristica: string): string {
+    switch (caracteristica) {
+      case 'IMPACTANTE': return '#4CAF50';
+      case 'INTERDEPENDENTE': return '#8BC34A';
+      case 'ABERTO': return '#FFC107';
+      case 'DEPENDENTE': return '#FF9800';
+      case 'LIMITADO': return '#F44336';
+      default: return '#666';
+    }
+  }
+
+  // Método para mapear pontuação para característica de liderança
+  private mapearCaracteristicaLider(pontuacao: number): string {
+    if (pontuacao >= 4.5) return 'IMPACTANTE';
+    if (pontuacao >= 4.0) return 'INTERDEPENDENTE';
+    if (pontuacao >= 3.5) return 'ABERTO';
+    if (pontuacao >= 3.0) return 'DEPENDENTE';
+    return 'LIMITADO';
+  }
+
+  // Método para obter configuração da seção de destaques
+  getConfiguracaoDestaques(): any {
+    const secaoDestaques = this.relatorioConfiguracao.find(s => s.tipo === 'destaques');
+    return {
+      numeroItems: secaoDestaques?.['numeroItems'] || 5,
+      avaliadoSelecionado: secaoDestaques?.['avaliadoSelecionado'] || '',
+      mostrarCaracteristica: secaoDestaques?.['mostrarCaracteristica'] !== false,
+      mostrarPontuacaoSemAuto: secaoDestaques?.['mostrarPontuacaoSemAuto'] !== false
+    };
+  }
+
+  // Método de debug para avaliações mais altas
+  debugAvaliacoesAltas(): void {
+    console.group('🏆 DEBUG AVALIAÇÕES MAIS ALTAS E BAIXAS');
+
+    // Verificar configuração
+    const config = this.getConfiguracaoDestaques();
+    console.log('Configuração de destaques:', config);
+
+    // Verificar avaliados disponíveis
+    const avaliadosDisponiveis = this.getAvaliadosDisponiveis();
+    console.log('Avaliados disponíveis:', avaliadosDisponiveis);
+
+    // Testar com primeiro avaliado disponível se não há selecionado
+    const avaliadoTeste = config.avaliadoSelecionado || avaliadosDisponiveis[0];
+    console.log('Testando com avaliado:', avaliadoTeste);
+
+    if (avaliadoTeste) {
+      // Testar avaliações mais altas
+      const tabelaAltas = this.gerarTabelaAvaliacoesAltas(10, avaliadoTeste);
+      console.log('Tabela de avaliações mais altas:', tabelaAltas);
+
+      // Testar avaliações mais baixas
+      const tabelaBaixas = this.gerarTabelaAvaliacoesBaixas(10, avaliadoTeste);
+      console.log('Tabela de avaliações mais baixas:', tabelaBaixas);
+
+      if (tabelaAltas.items.length > 0) {
+        console.log('Primeira avaliação alta:', tabelaAltas.items[0]);
+        console.log('Última avaliação alta:', tabelaAltas.items[tabelaAltas.items.length - 1]);
+      }
+
+      if (tabelaBaixas.items.length > 0) {
+        console.log('Primeira avaliação baixa:', tabelaBaixas.items[0]);
+        console.log('Última avaliação baixa:', tabelaBaixas.items[tabelaBaixas.items.length - 1]);
+      }
+    }
+
+    // Verificar dados básicos
+    console.log('Total de competências:', this.competencias.length);
+    console.log('Total de perguntas mapeadas:', Object.keys(this.questionMap).length);
+    console.log('Total de registros de dados:', this.dataSource.length);
+
+    console.groupEnd();
+  }
+
+  // Método temporário para resolver erro de compilação
+  getPerguntasDataSource(perguntasIds: string[]): { id: string }[] {
+    return perguntasIds.map(id => ({ id }));
+  }
+
 }
