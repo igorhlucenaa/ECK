@@ -84,6 +84,37 @@
               </mat-form-field>
 
               <mat-form-field appearance="outline" style="width: 100%;">
+                <mat-label>Característica ADEO</mat-label>
+                <mat-select formControlName="caracteristicaADEO" required>
+                  <mat-option value="EXEMPLARIDADE">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #1976D2;"></div>
+                      EXEMPLARIDADE
+                    </div>
+                  </mat-option>
+                  <mat-option value="CUIDADO_COM_PESSOAS">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #4CAF50;"></div>
+                      CUIDADO COM AS PESSOAS
+                    </div>
+                  </mat-option>
+                  <mat-option value="RESPONSABILIDADE_PELO_TODO">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #FF9800;"></div>
+                      RESPONSABILIDADE PELO TODO
+                    </div>
+                  </mat-option>
+                  <mat-option value="ESPIRITO_EMPREENDEDOR">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #9C27B0;"></div>
+                      ESPÍRITO EMPREENDEDOR
+                    </div>
+                  </mat-option>
+                </mat-select>
+                <mat-hint>Selecione a característica ADEO que melhor representa esta competência</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" style="width: 100%;">
                 <mat-label>Perguntas vinculadas</mat-label>
                 <mat-select formControlName="perguntasIds" multiple>
                   <mat-option *ngFor="let q of dynamicColumns" [value]="q" [disabled]="perguntasBloqueadas.has(q)">
@@ -120,12 +151,15 @@
             </mat-panel-title>
             <mat-panel-description style="width: 50%; align-items: center; justify-content: space-between;">
               <span>{{ c.descricao }}</span>
-              <mat-chip-list>
+              <div style="display: flex; gap: 8px;">
+                <mat-chip *ngIf="c.caracteristicaADEO" [style.background]="getCorCaracteristica(c.caracteristicaADEO)" style="color: white; font-weight: bold; font-size: 11px;">
+                  {{ getNomeCaracteristicaADEO(c.caracteristicaADEO) }}
+                </mat-chip>
                 <mat-chip>
                   <mat-icon matChipAvatar>quiz</mat-icon>
                   {{ c.perguntasIds?.length || 0 }} pergunta{{ (c.perguntasIds?.length || 0) !== 1 ? 's' : '' }}
                 </mat-chip>
-              </mat-chip-list>
+              </div>
             </mat-panel-description>
           </mat-expansion-panel-header>
 
@@ -234,19 +268,21 @@
       </div>
 
       <!-- Botões de ação -->
-      <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-        <button mat-flat-button color="primary" (click)="selectedTabIndex = 2">
-          <mat-icon>visibility</mat-icon> Visualizar Relatório
-        </button>
-        <button mat-stroked-button color="accent" (click)="addSecaoCustomizada()">
-          <mat-icon>add</mat-icon> Nova Seção de Texto
-        </button>
-        <button mat-stroked-button color="accent" (click)="addSecaoCustomizada('competencia_detalhada')">
-          <mat-icon>view_quilt</mat-icon> Nova Seção Detalhada
-        </button>
-        <button mat-stroked-button (click)="resetarRelatorio()" matTooltip="Voltar ao modelo padrão">
-          <mat-icon>refresh</mat-icon> Resetar
-        </button>
+      <div style="margin-bottom: 16px;">
+        <mat-chip-listbox>
+          <mat-chip-option (click)="addSecaoCustomizada('texto')">
+            <mat-icon>text_fields</mat-icon> Bloco de Texto
+          </mat-chip-option>
+          <mat-chip-option (click)="addSecaoCustomizada('graficos')">
+            <mat-icon>bar_chart</mat-icon> Gráficos
+          </mat-chip-option>
+          <mat-chip-option (click)="addSecaoCustomizada('competencia_detalhada')">
+            <mat-icon>table_view</mat-icon> Tabela Detalhada
+          </mat-chip-option>
+          <mat-chip-option (click)="addSecaoCustomizada('grafico_defasagem')">
+            <mat-icon>waterfall_chart</mat-icon> Gráfico de Defasagem
+          </mat-chip-option>
+        </mat-chip-listbox>
       </div>
 
       <!-- Contador de seções -->
@@ -296,6 +332,7 @@
                       <mat-option value="competencia_detalhada">Análise Detalhada</mat-option>
                       <mat-option value="destaques">Destaques</mat-option>
                       <mat-option value="texto">Texto Livre</mat-option>
+                      <mat-option value="grafico_defasagem">Gráfico de Defasagem</mat-option>
                     </mat-select>
                   </mat-form-field>
                   <button mat-icon-button color="accent" (click)="addSecaoCustomizadaAbaixo(i, secaoCtrl.get('tipo')?.value)" matTooltip="Adicionar seção abaixo">
@@ -438,6 +475,25 @@
                     </p>
                   </mat-card-content>
                 </mat-card>
+              </div>
+
+              <div *ngIf="secaoCtrl.get('tipo')?.value === 'grafico_defasagem'">
+                <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
+                  <mat-label>Competências para o Gráfico de Defasagem</mat-label>
+                  <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                    <mat-option *ngFor="let comp of competencias" [value]="comp.id">{{ comp.nome }}</mat-option>
+                  </mat-select>
+                  <mat-hint>Selecione as competências que devem aparecer no gráfico.</mat-hint>
+                </mat-form-field>
+                <div *ngIf="getCompetenciasSelecionadasParaSecao(secaoCtrl.value).length > 0; else noDataDefasagem" style="min-height: 400px; margin-top: 20px;">
+                  <div echarts [options]="getGapChartOptions(secaoCtrl.value)" style="height: 100%; width: 100%;"></div>
+                </div>
+                <ng-template #noDataDefasagem>
+                  <div class="no-data-placeholder" style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
+                    <mat-icon style="font-size: 48px; width: 48px; height: 48px;">waterfall_chart</mat-icon>
+                    <p>Selecione uma ou mais competências para gerar o gráfico.</p>
+                  </div>
+                </ng-template>
               </div>
 
               <div *ngIf="secaoCtrl.get('tipo')?.value === 'destaques'">
@@ -912,6 +968,28 @@
               </div>
                <mat-divider *ngIf="i < getCompetenciasSelecionadasParaSecao(secao).length - 1"></mat-divider>
             </div>
+          </div>
+          <div *ngSwitchCase="'grafico_defasagem'">
+            <h2>{{ secao.titulo }}</h2>
+            <div [innerHTML]="secao.texto"></div>
+
+            <mat-form-field appearance="outline" style="width: 100%;">
+              <mat-label>Competências para o Gráfico de Defasagem</mat-label>
+              <mat-select formControlName="competenciasIds" multiple>
+                 <mat-option *ngFor="let comp of competencias" [value]="comp.id">{{ comp.nome }}</mat-option>
+              </mat-select>
+              <mat-hint>Selecione as competências que devem aparecer no gráfico.</mat-hint>
+            </mat-form-field>
+
+            <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataDefasagem" style="height: 400px; margin-top: 20px;">
+              <div echarts [options]="getGapChartOptions(secao)" style="height: 100%;"></div>
+            </div>
+            <ng-template #noDataDefasagem>
+              <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
+                <mat-icon style="font-size: 48px; width: 48px; height: 48px;">waterfall_chart</mat-icon>
+                <p>Selecione uma ou mais competências para gerar o gráfico.</p>
+              </div>
+            </ng-template>
           </div>
           <div *ngSwitchDefault>
             <h2>{{ secao.titulo }}</h2>

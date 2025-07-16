@@ -24,6 +24,7 @@ import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 interface AssessmentOption {
   id: string;
@@ -35,6 +36,7 @@ interface Competencia {
   nome: string;
   descricao: string;
   perguntasIds: string[];
+  caracteristicaADEO: string;
 }
 
 interface DistribuicaoNota {
@@ -64,7 +66,7 @@ interface TabelaCompetencia {
 // Modelo de dados para seções dinâmicas do relatório
 export interface RelatorioSecao {
   id: string;
-  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada';
+  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem';
   titulo?: string;
   texto?: string;
   visivel: boolean;
@@ -118,7 +120,8 @@ interface TabelaAvaliacoesAltas {
     NgxEchartsModule,
     DragDropModule,
     MatSnackBarModule,
-    MatExpansionModule
+    MatExpansionModule,
+    MatCheckboxModule
   ],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.scss',
@@ -203,7 +206,7 @@ export class ReportsComponent implements OnInit {
   radarOptions: EChartsOption = {};
 
   competencias: Competencia[] = [];
-  competenciaEditando: Competencia = { id: '', nome: '', descricao: '', perguntasIds: [] };
+  competenciaEditando: Competencia = { id: '', nome: '', descricao: '', perguntasIds: [], caracteristicaADEO: '' };
   competenciaForm: FormGroup;
 
   perguntasBloqueadas = new Set<string>();
@@ -309,7 +312,8 @@ export class ReportsComponent implements OnInit {
     this.competenciaForm = new FormGroup({
       nome: new FormControl('', Validators.required),
       descricao: new FormControl('', Validators.required),
-      perguntasIds: new FormControl<string[]>([], Validators.required)
+      perguntasIds: new FormControl<string[]>([], Validators.required),
+      caracteristicaADEO: new FormControl('', Validators.required)
     });
 
     // Monitorar mudanças para invalidação de cache
@@ -746,14 +750,15 @@ export class ReportsComponent implements OnInit {
     this.competenciaForm.setValue({
       nome: c.nome,
       descricao: c.descricao,
-      perguntasIds: c.perguntasIds
+      perguntasIds: c.perguntasIds,
+      caracteristicaADEO: c.caracteristicaADEO || ''
     });
     this.atualizarPerguntasBloqueadas();
   }
 
   cancelarEdicaoCompetencia() {
-    this.competenciaEditando = { id: '', nome: '', descricao: '', perguntasIds: [] };
-    this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
+    this.competenciaEditando = { id: '', nome: '', descricao: '', perguntasIds: [], caracteristicaADEO: '' };
+    this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [], caracteristicaADEO: '' });
     this.atualizarPerguntasBloqueadas();
   }
 
@@ -1375,35 +1380,43 @@ export class ReportsComponent implements OnInit {
   }
 
   // Adiciona uma nova seção customizada ao relatório
-  addSecaoCustomizada(tipo: 'texto' | 'graficos' | 'tabela' | 'competencia_detalhada' = 'texto') {
-    let novaSecao: RelatorioSecao;
+  addSecaoCustomizada(tipo: 'texto' | 'graficos' | 'tabela' | 'competencia_detalhada' | 'grafico_defasagem' = 'texto') {
+    const novaSecao: RelatorioSecao = {
+      id: `custom_${new Date().getTime()}`,
+      tipo: tipo,
+      titulo: '',
+      texto: '',
+      visivel: true,
+      ordem: this.relatorioConfiguracao.length + 1
+    };
 
     switch (tipo) {
-      case 'competencia_detalhada':
-        novaSecao = {
-          id: `comp_detalhada_${new Date().getTime()}`,
-          tipo: 'competencia_detalhada',
-          titulo: 'Análise Detalhada por Competência',
-          texto: 'Esta seção apresenta uma análise aprofundada de cada competência, incluindo textos descritivos e um gráfico comparativo das avaliações por grupo.',
-          visivel: true,
-          ordem: this.relatorioConfiguracao.length + 1,
-          competenciasIds: [],
-          textosPorCompetencia: {}
-        };
+      case 'texto':
+        novaSecao.titulo = 'Nova Seção de Texto';
+        novaSecao.texto = 'Escreva seu conteúdo aqui...';
         break;
-      default:
-        novaSecao = {
-          id: `custom_${new Date().getTime()}`,
-          tipo: 'texto',
-          titulo: 'Nova Seção de Texto',
-          texto: '',
-          visivel: true,
-          ordem: this.relatorioConfiguracao.length + 1,
-          competenciasIds: []
-        };
+      case 'graficos':
+        novaSecao.titulo = 'Nova Seção de Gráficos';
+        novaSecao.competenciasIds = [];
+        (novaSecao as any)['tipoGrafico'] = 'barra';
+        (novaSecao as any)['paletaCor'] = 'padrao';
+        (novaSecao as any)['coresPersonalizadas'] = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
+        break;
+      case 'tabela':
+        novaSecao.titulo = 'Nova Tabela Detalhada';
+        novaSecao.competenciasIds = [];
+        break;
+      case 'competencia_detalhada':
+        novaSecao.titulo = 'Tabela Detalhada por Competência';
+        novaSecao.competenciasIds = [];
+        break;
+       case 'grafico_defasagem':
+        novaSecao.titulo = 'Gráfico de Defasagem (Gap Analysis)';
+        novaSecao.competenciasIds = [];
         break;
     }
 
+    // Adiciona a nova seção à configuração
     this.relatorioConfiguracao.push(novaSecao);
     this.atualizarFormArrayComConfiguracao();
   }
@@ -1428,31 +1441,35 @@ export class ReportsComponent implements OnInit {
 
   // Métodos auxiliares para UI das seções
   getTipoSecaoColor(tipo: string): string {
-    const colors: { [key: string]: string } = {
-      'capa': '#1976d2',
-      'introducao': '#388e3c',
-      'resumo': '#f57c00',
-      'graficos': '#7b1fa2',
-      'tabela': '#d32f2f',
-      'destaques': '#0097a7',
-      'texto': '#5d4037',
-      'custom': '#455a64'
-    };
-    return colors[tipo] || '#757575';
+    switch (tipo) {
+      case 'capa': return '#42A5F5';
+      case 'introducao': return '#66BB6A';
+      case 'resumo': return '#AB47BC';
+      case 'graficos': return '#FFA726';
+      case 'grafico_defasagem': return '#FF7043';
+      case 'tabela': return '#EF5350';
+      case 'competencia_detalhada': return '#EF5350';
+      case 'destaques': return '#FFCA28';
+      case 'custom': return '#8D6E63';
+      case 'texto': return '#78909C';
+      default: return '#BDBDBD';
+    }
   }
 
   getTipoSecaoLabel(tipo: string): string {
-    const labels: { [key: string]: string } = {
-      'capa': 'CAPA',
-      'introducao': 'INTRODUÇÃO',
-      'resumo': 'RESUMO',
-      'graficos': 'GRÁFICOS',
-      'tabela': 'TABELA',
-      'destaques': 'DESTAQUES',
-      'texto': 'TEXTO',
-      'custom': 'PERSONALIZADA'
-    };
-    return labels[tipo] || tipo.toUpperCase();
+    switch (tipo) {
+      case 'capa': return 'Capa';
+      case 'introducao': return 'Introdução';
+      case 'resumo': return 'Resumo de Competências';
+      case 'graficos': return 'Gráficos Customizados';
+      case 'grafico_defasagem': return 'Gráfico de Defasagem (Gap)';
+      case 'tabela': return 'Tabela de Consolidação';
+      case 'competencia_detalhada': return 'Tabela por Competência';
+      case 'destaques': return 'Pontos de Destaque';
+      case 'custom': return 'Customizado';
+      case 'texto': return 'Bloco de Texto';
+      default: return 'Desconhecido';
+    }
   }
 
   // Resetar relatório para configuração padrão
@@ -1869,24 +1886,147 @@ export class ReportsComponent implements OnInit {
 
   // Método para calcular média ponderada da distribuição
   private calcularMediaDistribuicao(distribuicao: DistribuicaoNota[]): number {
-    let somaTotal = 0;
-    let quantidadeTotal = 0;
-
-    distribuicao.forEach(item => {
-      somaTotal += item.nota * item.quantidade;
-      quantidadeTotal += item.quantidade;
-    });
-
-    return quantidadeTotal > 0 ? Number((somaTotal / quantidadeTotal).toFixed(2)) : 0;
+    const totalRespostas = distribuicao.reduce((sum, d) => sum + d.quantidade, 0);
+    if (totalRespostas === 0) return 0;
+    const somaPonderada = distribuicao.reduce((sum, d) => sum + d.nota * d.quantidade, 0);
+    return somaPonderada / totalRespostas;
   }
 
-  // Método para atualizar texto da competência
+  private getMediaRespostasCompetencia(competencia: Competencia, grupos: string[]): number {
+    const cacheKey = `media-competencia-${competencia.id}-${grupos.join('-')}`;
+    return this.getCachedCalculation(cacheKey, () => {
+        let todasRespostas: number[] = [];
+        for (const perguntaId of competencia.perguntasIds) {
+            for (const grupo of grupos) {
+                const respostasPergunta = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+                todasRespostas = todasRespostas.concat(respostasPergunta);
+            }
+        }
+
+        if (todasRespostas.length === 0) {
+            return 0;
+        }
+
+        const soma = todasRespostas.reduce((acc, val) => acc + val, 0);
+        return soma / todasRespostas.length;
+    });
+  }
+
+  public getGapChartOptions(secao: RelatorioSecao): EChartsOption {
+    const cacheKey = `gap-chart-${secao.id}-${JSON.stringify(secao.competenciasIds)}`;
+    return this.getCachedCalculation(cacheKey, () => {
+      const competenciasSelecionadas = this.getCompetenciasSelecionadasParaSecao(secao);
+      if (competenciasSelecionadas.length === 0) {
+        return { series: [] };
+      }
+
+      const labels = competenciasSelecionadas.map(c => c.nome);
+      const selfData: number[] = [];
+      const othersData: number[] = [];
+
+      for (const competencia of competenciasSelecionadas) {
+        const mediaSelf = this.getMediaRespostasCompetencia(competencia, ['Avaliado(a)']);
+        const mediaOthers = this.getMediaRespostasCompetencia(competencia, ['Gestor(es)', 'Pares', 'Subordinados', 'Outros']);
+
+        selfData.push(mediaSelf > 0 ? -mediaSelf : 0); // Usar negativo para divergir
+        othersData.push(mediaOthers > 0 ? mediaOthers : 0);
+      }
+
+      return {
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          },
+          formatter: (params: any) => {
+            const selfParam = params.find((p: any) => p.seriesName === 'Autoavaliação');
+            const othersParam = params.find((p: any) => p.seriesName === 'Avaliação dos Outros');
+            const competencia = selfParam.axisValue;
+
+            let tooltipText = `${competencia}<br/>`;
+            if (selfParam && typeof selfParam.value === 'number') {
+              tooltipText += `${selfParam.marker} ${selfParam.seriesName}: ${Math.abs(selfParam.value).toFixed(2)}<br/>`;
+            }
+            if (othersParam && typeof othersParam.value === 'number') {
+              tooltipText += `${othersParam.marker} ${othersParam.seriesName}: ${Math.abs(othersParam.value).toFixed(2)}`;
+            }
+            return tooltipText;
+          }
+        },
+        legend: {
+          data: ['Autoavaliação', 'Avaliação dos Outros'],
+          bottom: 10
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: 30,
+          containLabel: true
+        },
+        xAxis: [
+          {
+            type: 'value',
+            axisLabel: {
+              formatter: (value: number) => `${Math.abs(value)}`
+            }
+          }
+        ],
+        yAxis: [
+          {
+            type: 'category',
+            axisTick: { show: false },
+            data: labels
+          }
+        ],
+        series: [
+          {
+            name: 'Autoavaliação',
+            type: 'bar',
+            stack: 'total',
+            label: {
+              show: true,
+              position: 'left',
+              formatter: (params: any) => {
+                return (typeof params.value === 'number') ? Math.abs(params.value).toFixed(2) : '';
+              }
+            },
+            emphasis: {
+              focus: 'series'
+            },
+            data: selfData,
+            itemStyle: {
+              color: '#d32f2f' // Vermelho
+            }
+          },
+          {
+            name: 'Avaliação dos Outros',
+            type: 'bar',
+            stack: 'total',
+            label: {
+              show: true,
+              position: 'right',
+               formatter: (params: any) => {
+                return (typeof params.value === 'number') ? Math.abs(params.value).toFixed(2) : '';
+              }
+            },
+            emphasis: {
+              focus: 'series'
+            },
+            data: othersData,
+            itemStyle: {
+              color: '#1976d2' // Azul
+            }
+          }
+        ]
+      };
+    });
+  }
+
   atualizarTextoCompetencia(secao: any, competenciaId: string, event: any): void {
-    const valor = event.target.value;
     if (!secao.textosPorCompetencia) {
       secao.textosPorCompetencia = {};
     }
-    secao.textosPorCompetencia[competenciaId] = valor;
+    secao.textosPorCompetencia[competenciaId] = event.target.value;
   }
 
   // Debug method for avaliações mais altas
@@ -2223,81 +2363,126 @@ export class ReportsComponent implements OnInit {
   // Método para obter cor da característica
   getCorCaracteristica(caracteristica: string): string {
     switch (caracteristica) {
-      case 'IMPACTANTE': return '#4CAF50';
-      case 'INTERDEPENDENTE': return '#8BC34A';
-      case 'ABERTO': return '#FFC107';
-      case 'DEPENDENTE': return '#FF9800';
-      case 'LIMITADO': return '#F44336';
+      case 'EXEMPLARIDADE': return '#1976D2';
+      case 'CUIDADO_COM_PESSOAS': return '#4CAF50';
+      case 'RESPONSABILIDADE_PELO_TODO': return '#FF9800';
+      case 'ESPIRITO_EMPREENDEDOR': return '#9C27B0';
       default: return '#666';
     }
   }
 
-  // Método para mapear pontuação para característica de liderança
+  // Método para mapear pontuação para característica de liderança ADEO
   private mapearCaracteristicaLider(pontuacao: number): string {
-    if (pontuacao >= 4.5) return 'IMPACTANTE';
-    if (pontuacao >= 4.0) return 'INTERDEPENDENTE';
-    if (pontuacao >= 3.5) return 'ABERTO';
-    if (pontuacao >= 3.0) return 'DEPENDENTE';
-    return 'LIMITADO';
+    if (pontuacao >= 4.5) return 'EXEMPLARIDADE';
+    if (pontuacao >= 4.0) return 'ESPIRITO_EMPREENDEDOR';
+    if (pontuacao >= 3.5) return 'RESPONSABILIDADE_PELO_TODO';
+    if (pontuacao >= 3.0) return 'CUIDADO_COM_PESSOAS';
+    return 'EM_DESENVOLVIMENTO';
   }
 
-  // Método para obter configuração da seção de destaques
-  getConfiguracaoDestaques(): any {
-    const secaoDestaques = this.relatorioConfiguracao.find(s => s.tipo === 'destaques');
-    return {
-      numeroItems: secaoDestaques?.['numeroItems'] || 5,
-      avaliadoSelecionado: secaoDestaques?.['avaliadoSelecionado'] || '',
-      mostrarCaracteristica: secaoDestaques?.['mostrarCaracteristica'] !== false,
-      mostrarPontuacaoSemAuto: secaoDestaques?.['mostrarPontuacaoSemAuto'] !== false
+  // Método para obter nome formatado da característica ADEO
+  getNomeCaracteristicaADEO(caracteristica: string): string {
+    switch (caracteristica) {
+      case 'EXEMPLARIDADE': return 'Exemplaridade';
+      case 'CUIDADO_COM_PESSOAS': return 'Cuidado com as Pessoas';
+      case 'RESPONSABILIDADE_PELO_TODO': return 'Responsabilidade pelo Todo';
+      case 'ESPIRITO_EMPREENDEDOR': return 'Espírito Empreendedor';
+      default: return caracteristica;
+    }
+  }
+
+  // Método para obter descrição detalhada das características ADEO
+  getDescricaoCaracteristicaADEO(caracteristica: string): string {
+    const map: {[key: string]: string} = {
+      'EXEMPLARIDADE': 'O líder ADEO lidera pelo exemplo, adotando comportamentos coerentes com os valores da empresa. Ele é íntegro, inspira confiança e serve como referência para sua equipe.',
+      'CUIDADO_COM_PESSOAS': 'Ele valoriza, escuta e desenvolve as pessoas. Promove um ambiente seguro, justo e motivador, colocando o ser humano no centro das decisões.',
+      'RESPONSABILIDADE_PELO_TODO': 'O líder ADEO assume a responsabilidade coletiva, pensa além de sua área e age em prol da empresa como um todo. Ele contribui com a visão global, trabalha em colaboração e busca o bem comum.',
+      'ESPIRITO_EMPREENDEDOR': 'Pessoa com grande capacidade de inovar, de se adaptar a diferentes cenários e de realizar projetos com autonomia e proatividade.'
     };
+    return map[caracteristica] || 'Característica não definida.';
   }
 
-  // Método de debug para avaliações mais altas
-  debugAvaliacoesAltas(): void {
-    console.group('🏆 DEBUG AVALIAÇÕES MAIS ALTAS E BAIXAS');
+  // Método para obter todas as características ADEO
+  getCaracteristicasADEO(): Array<{codigo: string, nome: string, descricao: string, cor: string}> {
+    return [
+      { codigo: 'EXEMPLARIDADE', nome: this.getNomeCaracteristicaADEO('EXEMPLARIDADE'), descricao: this.getDescricaoCaracteristicaADEO('EXEMPLARIDADE'), cor: this.getCorCaracteristica('EXEMPLARIDADE') },
+      { codigo: 'CUIDADO_COM_PESSOAS', nome: this.getNomeCaracteristicaADEO('CUIDADO_COM_PESSOAS'), descricao: this.getDescricaoCaracteristicaADEO('CUIDADO_COM_PESSOAS'), cor: this.getCorCaracteristica('CUIDADO_COM_PESSOAS') },
+      { codigo: 'RESPONSABILIDADE_PELO_TODO', nome: this.getNomeCaracteristicaADEO('RESPONSABILIDADE_PELO_TODO'), descricao: this.getDescricaoCaracteristicaADEO('RESPONSABILIDADE_PELO_TODO'), cor: this.getCorCaracteristica('RESPONSABILIDADE_PELO_TODO') },
+      { codigo: 'ESPIRITO_EMPREENDEDOR', nome: this.getNomeCaracteristicaADEO('ESPIRITO_EMPREENDEDOR'), descricao: this.getDescricaoCaracteristicaADEO('ESPIRITO_EMPREENDEDOR'), cor: this.getCorCaracteristica('ESPIRITO_EMPREENDEDOR') }
+    ];
+  }
 
-    // Verificar configuração
-    const config = this.getConfiguracaoDestaques();
-    console.log('Configuração de destaques:', config);
+  // Método para obter relatório de competências por característica ADEO
+  getRelatorioCompetenciasPorCaracteristicaADEO(): {[key: string]: {competencias: Competencia[], mediaGeral: number, respostas: number[]}} {
+    const resultado: {[key: string]: {competencias: Competencia[], mediaGeral: number, respostas: number[]}} = {};
 
-    // Verificar avaliados disponíveis
-    const avaliadosDisponiveis = this.getAvaliadosDisponiveis();
-    console.log('Avaliados disponíveis:', avaliadosDisponiveis);
+    // Inicializa a estrutura
+    this.getCaracteristicasADEO().forEach(carac => {
+      resultado[carac.codigo] = { competencias: [], mediaGeral: 0, respostas: [] };
+    });
 
-    // Testar com primeiro avaliado disponível se não há selecionado
-    const avaliadoTeste = config.avaliadoSelecionado || avaliadosDisponiveis[0];
-    console.log('Testando com avaliado:', avaliadoTeste);
-
-    if (avaliadoTeste) {
-      // Testar avaliações mais altas
-      const tabelaAltas = this.gerarTabelaAvaliacoesAltas(10, avaliadoTeste);
-      console.log('Tabela de avaliações mais altas:', tabelaAltas);
-
-      // Testar avaliações mais baixas
-      const tabelaBaixas = this.gerarTabelaAvaliacoesBaixas(10, avaliadoTeste);
-      console.log('Tabela de avaliações mais baixas:', tabelaBaixas);
-
-      if (tabelaAltas.items.length > 0) {
-        console.log('Primeira avaliação alta:', tabelaAltas.items[0]);
-        console.log('Última avaliação alta:', tabelaAltas.items[tabelaAltas.items.length - 1]);
+    // Agrupa competências e coleta respostas
+    this.competencias.forEach(comp => {
+      if (comp.caracteristicaADEO && resultado[comp.caracteristicaADEO]) {
+        resultado[comp.caracteristicaADEO].competencias.push(comp);
+        comp.perguntasIds.forEach(perguntaId => {
+          // Coleta respostas de todos os grupos exceto autoavaliação
+          const grupos = ['Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
+          grupos.forEach(grupo => {
+            const respostas = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+            resultado[comp.caracteristicaADEO].respostas.push(...respostas);
+          });
+        });
       }
+    });
 
-      if (tabelaBaixas.items.length > 0) {
-        console.log('Primeira avaliação baixa:', tabelaBaixas.items[0]);
-        console.log('Última avaliação baixa:', tabelaBaixas.items[tabelaBaixas.items.length - 1]);
+    // Calcula a média para cada característica
+    for (const caracCodigo in resultado) {
+      const data = resultado[caracCodigo];
+      if (data.respostas.length > 0) {
+        const soma = data.respostas.reduce((acc, val) => acc + val, 0);
+        data.mediaGeral = soma / data.respostas.length;
       }
     }
 
-    // Verificar dados básicos
-    console.log('Total de competências:', this.competencias.length);
-    console.log('Total de perguntas mapeadas:', Object.keys(this.questionMap).length);
-    console.log('Total de registros de dados:', this.dataSource.length);
-
-    console.groupEnd();
+    return resultado;
   }
 
-  // Método temporário para resolver erro de compilação
+  getConfiguracaoDestaques(): any {
+    const secaoDestaques = this.relatorioConfiguracao.find(s => s.tipo === 'destaques');
+    if (secaoDestaques) {
+      return {
+        numeroItens: (secaoDestaques as any).numeroItens || 5,
+        avaliadoSelecionado: (secaoDestaques as any).avaliadoSelecionado || null
+      };
+    }
+    return { numeroItens: 5, avaliadoSelecionado: null };
+  }
+
+  debugAvaliacoesAltas(): void {
+    const config = this.getConfiguracaoDestaques();
+    const tabelaAltas = this.gerarTabelaAvaliacoesAltas(config.numeroItens, config.avaliadoSelecionado);
+    const tabelaBaixas = this.gerarTabelaAvaliacoesBaixas(config.numeroItens, config.avaliadoSelecionado);
+
+    console.group("Debug - Pontos de Destaque");
+    console.log("Configuração usada:", config);
+
+    console.group("Avaliações Mais Altas");
+    console.table(tabelaAltas.items);
+    console.groupEnd();
+
+    console.group("Avaliações Mais Baixas");
+    console.table(tabelaBaixas.items);
+    console.groupEnd();
+
+    console.log("Avaliados disponíveis:", this.getAvaliadosDisponiveis());
+    console.groupEnd();
+
+    this.snackBar.open('Dados de Destaques enviados para o console.', 'Fechar', { duration: 3000 });
+  }
+
   getPerguntasDataSource(perguntasIds: string[]): { id: string }[] {
+    if (!perguntasIds) return [];
     return perguntasIds.map(id => ({ id }));
   }
 
