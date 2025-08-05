@@ -13,6 +13,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { FormsModule } from '@angular/forms';
+import { LoadingService } from '../../../services/loading.service';
 
 // NGX-Charts
 import {
@@ -202,7 +203,8 @@ export class DashboardComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private loadingService: LoadingService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -223,7 +225,7 @@ export class DashboardComponent implements OnInit {
 
   async loadAssessments(): Promise<void> {
     try {
-      this.isLoading = true;
+      this.loadingService.show('Carregando avaliações...');
       const assessmentsCollection = collection(this.firestore, 'assessments');
       const assessmentsSnapshot = await getDocs(assessmentsCollection);
       this.assessments = assessmentsSnapshot.docs.map(doc => ({
@@ -234,7 +236,7 @@ export class DashboardComponent implements OnInit {
       console.error('Erro ao carregar avaliações:', error);
       this.snackBar.open('Erro ao carregar lista de avaliações', 'Fechar', { duration: 3000 });
     } finally {
-      this.isLoading = false;
+      this.loadingService.hide();
     }
   }
 
@@ -250,7 +252,7 @@ export class DashboardComponent implements OnInit {
 
   async loadAndProcessAssessmentData(assessmentId: string): Promise<void> {
     console.log(`Iniciando carregamento para assessmentId: ${assessmentId}`);
-    this.isLoading = true;
+    this.loadingService.show('Processando dados da avaliação...');
     this.clearReportData();
 
     try {
@@ -279,7 +281,7 @@ export class DashboardComponent implements OnInit {
 
       if (this.surveyResults.length === 0) {
         this.snackBar.open('Não há resultados para esta avaliação.', 'Fechar', { duration: 3000 });
-        this.isLoading = false;
+        this.loadingService.hide();
         return;
       }
 
@@ -313,7 +315,7 @@ export class DashboardComponent implements OnInit {
       this.snackBar.open('Erro ao processar dados. Tente novamente.', 'Fechar', { duration: 3000 });
       this.clearReportData();
     } finally {
-      this.isLoading = false;
+      this.loadingService.hide();
       console.log('Carregamento finalizado.');
     }
   }

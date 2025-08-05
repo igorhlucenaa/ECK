@@ -8,6 +8,8 @@ import {
   provideHttpClient,
   withInterceptorsFromDi,
 } from '@angular/common/http';
+import { LoadingInterceptor } from './interceptors/loading.interceptor';
+import { FirestoreLoadingInterceptor } from './interceptors/firestore-loading.interceptor';
 import { routes } from './app.routes';
 import {
   provideRouter,
@@ -69,6 +71,8 @@ export const appConfig: ApplicationConfig = {
       withComponentInputBinding()
     ),
     provideHttpClient(withInterceptorsFromDi()),
+    { provide: LoadingInterceptor, useClass: LoadingInterceptor },
+    { provide: FirestoreLoadingInterceptor, useClass: FirestoreLoadingInterceptor },
     provideClientHydration(),
     provideNativeDateAdapter(),
     provideAnimationsAsync(),

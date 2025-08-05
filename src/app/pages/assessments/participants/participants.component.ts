@@ -35,6 +35,8 @@ import {
 import { FormBuilder, Validators } from '@angular/forms';
 import { ParticipantsConfirmationDialogComponent } from './participants-confirmation-dialog/participants-confirmation-dialog.component';
 import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
+import { RelatorioPreviewDialogComponent } from '../../project/participants-modal/relatorio-preview-dialog.component';
+import { Router } from '@angular/router';
 
 interface ModalData {
   projectId?: string;
@@ -103,6 +105,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'status',
     'sentAt',
     'completedAt',
+    'relatorio', // nova coluna
   ];
 
   dataSource = new MatTableDataSource<UnifiedParticipant>([]);
@@ -127,6 +130,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   isProjectDisabled: boolean = false;
   isEmailSendingMode: boolean = false;
   emailType: string | undefined;
+  reportTemplates: any[] = [];
+  selectedReportTemplate: any = null;
+  reportTemplateFormControl = this.fb.control('', Validators.required);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -136,12 +142,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private fb: FormBuilder,
+    private router: Router,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: ModalData | null,
     @Optional() public dialogRef: MatDialogRef<ParticipantsComponent>
   ) {}
 
   async ngOnInit(): Promise<void> {
     this.isTableLoading = true;
+    await this.loadReportTemplates();
 
     this.isEmailSendingMode =
       !!this.data && !!this.data.templateId && !!this.data.emailType;
@@ -601,6 +609,15 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
+  async loadReportTemplates(): Promise<void> {
+    const templatesCollection = collection(this.firestore, 'reportTemplates');
+    const snapshot = await getDocs(templatesCollection);
+    this.reportTemplates = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  }
+
   determineStatus(sentAt?: Date, completedAt?: Date): string {
     if (completedAt) return 'Respondido';
     if (sentAt) return 'Enviado (Pendente)';
@@ -635,6 +652,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       null;
     this.applyFilter();
     this.updateSelection();
+  }
+
+  onReportTemplateChange() {
+    this.selectedReportTemplate = this.reportTemplates.find(
+      template => template.id === this.reportTemplateFormControl.value
+    );
   }
 
   applyFilter(): void {
@@ -1131,5 +1154,24 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const dateA = a ? a.getTime() : 0;
     const dateB = b ? b.getTime() : 0;
     return (dateA - dateB) * (isAsc ? 1 : -1);
+  }
+
+  generateReportForParticipant(participant: UnifiedParticipant) {
+    if (!this.selectedReportTemplate) {
+      this.snackBar.open('Selecione um template de relatório antes de gerar o PDF.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    // Navegar para o componente reports com os dados do participante
+    this.router.navigate(['/reports'], {
+      queryParams: {
+        assessmentId: participant.assessmentId,
+        participantId: participant.id,
+        participantName: participant.name,
+        templateId: this.selectedReportTemplate.id,
+        templateName: this.selectedReportTemplate.name || this.selectedReportTemplate.nome,
+        mode: 'individual'
+      }
+    });
   }
 }

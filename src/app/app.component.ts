@@ -3,11 +3,12 @@ import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { Auth, User } from '@angular/fire/auth';
 import { AuthService } from './services/apps/authentication/auth.service';
 import { filter } from 'rxjs/operators';
+import { GlobalLoadingComponent } from './components/global-loading/global-loading.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, GlobalLoadingComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnInit {
@@ -31,7 +32,7 @@ export class AppComponent implements OnInit {
         try {
           await this.authService.applyUserTheme();
           const role = await this.authService.getCurrentUserRole();
-          
+
           const publicPages = ['/', '/assessment'];
           const isPublicPage = publicPages.includes(currentUrl);
 

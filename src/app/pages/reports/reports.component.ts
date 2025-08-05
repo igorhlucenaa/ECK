@@ -1,6 +1,6 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
-import { Firestore, collection, getDocs, doc, getDoc, addDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc } from '@angular/fire/firestore';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { ReactiveFormsModule, FormControl, FormGroup, Validators, FormArray } from '@angular/forms';
@@ -25,6 +25,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { ActivatedRoute } from '@angular/router';
+import { Router } from '@angular/router';
+import { LoadingService } from '../../services/loading.service';
+import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
 
 interface AssessmentOption {
   id: string;
@@ -36,7 +40,6 @@ interface Competencia {
   nome: string;
   descricao: string;
   perguntasIds: string[];
-  caracteristicaADEO: string;
 }
 
 interface DistribuicaoNota {
@@ -206,7 +209,7 @@ export class ReportsComponent implements OnInit {
   radarOptions: EChartsOption = {};
 
   competencias: Competencia[] = [];
-  competenciaEditando: Competencia = { id: '', nome: '', descricao: '', perguntasIds: [], caracteristicaADEO: '' };
+  competenciaEditando: Competencia = { id: '', nome: '', descricao: '', perguntasIds: [] };
   competenciaForm: FormGroup;
 
   perguntasBloqueadas = new Set<string>();
@@ -298,10 +301,22 @@ export class ReportsComponent implements OnInit {
     questionsByType: new Map<string, any[]>()
   };
 
+  // Modo individual para relatórios de participantes específicos
+  isIndividualMode = false;
+  individualParticipantId: string | null = null;
+  individualParticipantName: string | null = null;
+  individualTemplateId: string | null = null;
+  individualTemplateName: string | null = null;
+
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private performanceMonitor: PerformanceMonitorService
+    private route: ActivatedRoute,
+    private performanceMonitor: PerformanceMonitorService,
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+    private loadingService: LoadingService,
+    private firestoreInterceptor: FirestoreLoadingInterceptor
   ) {
     this.dummyForm = new FormGroup({
       relatorioFormArray: new FormArray<any>([])
@@ -312,8 +327,7 @@ export class ReportsComponent implements OnInit {
     this.competenciaForm = new FormGroup({
       nome: new FormControl('', Validators.required),
       descricao: new FormControl('', Validators.required),
-      perguntasIds: new FormControl<string[]>([], Validators.required),
-      caracteristicaADEO: new FormControl('', Validators.required)
+      perguntasIds: new FormControl<string[]>([], Validators.required)
     });
 
     // Monitorar mudanças para invalidação de cache
@@ -427,9 +441,48 @@ export class ReportsComponent implements OnInit {
 
   async ngOnInit() {
     this.today = new Date();
+
+    // Carregar avaliações e templates primeiro
     await this.loadAssessments();
     await this.carregarRelatoriosSalvos();
-    await this.carregarTemplatesSalvos();
+    await this.carregarTemplatesSalvos(); // <-- Carrega os templates
+
+    // Só depois de carregar os templates, processar os queryParams
+    this.route.queryParams.subscribe(async params => {
+      console.log('Query params recebidos:', params);
+      if (params['mode'] === 'individual') {
+        console.log('Modo individual ativado');
+        this.isIndividualMode = true;
+        this.individualParticipantId = params['participantId'];
+        this.individualParticipantName = params['participantName'];
+        this.individualTemplateId = params['templateId'];
+        this.individualTemplateName = params['templateName'];
+
+        console.log('Dados do participante:', {
+          id: this.individualParticipantId,
+          name: this.individualParticipantName,
+          templateId: this.individualTemplateId,
+          templateName: this.individualTemplateName
+        });
+
+        if (params['assessmentId']) {
+          console.log('AssessmentId encontrado:', params['assessmentId']);
+          this.selectedAssessmentId = params['assessmentId'];
+          this.assessmentControl.setValue(params['assessmentId']);
+
+          // Só agora, com os templates carregados, aplicar o template
+          if (params['templateId']) {
+            this.selectedTemplateId.setValue(params['templateId']);
+            await this.aplicarTemplateSelecionado();
+          }
+          await this.onAssessmentChange();
+        }
+        setTimeout(() => {
+          this.selectedTabIndex = 2;
+        }, 100);
+      }
+    });
+
     this.atualizarPerguntasBloqueadas();
 
     this.assessmentControl.valueChanges.subscribe(id => {
@@ -461,7 +514,7 @@ export class ReportsComponent implements OnInit {
   }
 
   async loadAssessments() {
-    this.isLoading = true;
+    this.loadingService.show('Carregando avaliações...');
     try {
       const assessmentsSnap = await getDocs(collection(this.firestore, 'assessments'));
       this.assessments = assessmentsSnap.docs.map(doc => ({
@@ -472,7 +525,7 @@ export class ReportsComponent implements OnInit {
       console.error("Erro ao carregar avaliações:", e);
       this.snackBar.open('Falha ao carregar as avaliações.', 'Fechar', { duration: 3000 });
     } finally {
-      this.isLoading = false;
+      this.loadingService.hide();
     }
   }
 
@@ -515,13 +568,22 @@ export class ReportsComponent implements OnInit {
     if (!this.selectedAssessmentId) {
       this.dataSource = [];
       this.displayedColumns = [];
+      this.dynamicColumns = [];
+      this.questionMap = {};
+      console.log('❌ Nenhuma avaliação selecionada');
       return;
     }
-    console.log('Avaliação selecionada:', this.selectedAssessmentId);
+
+    // Limpar questionMap antes de recarregar
+    this.questionMap = {};
+    console.log('🧹 QuestionMap limpo');
+    console.log('✅ Avaliação selecionada:', this.selectedAssessmentId);
+    console.log('✅ Modo individual:', this.isIndividualMode);
+    console.log('✅ Participante ID:', this.individualParticipantId);
 
     // 🚀 PERFORMANCE: Monitorar tempo de carregamento
     this.performanceMonitor.startTimer('onAssessmentChange');
-    this.isLoading = true;
+    this.loadingService.show('Carregando dados da avaliação...');
     this.dataSource = [];
     this.displayedColumns = [];
     this.questionMap = {};
@@ -532,86 +594,244 @@ export class ReportsComponent implements OnInit {
       return;
     }
     const assessmentData = assessmentSnap.data();
-    console.log('assessmentData carregado:', assessmentData);
+    console.log('📊 AssessmentData:', assessmentData);
+
     const surveyJSON = assessmentData['surveyJSON'];
-    let dynamicColumns: string[] = [];
-    if (surveyJSON && surveyJSON.pages) {
-      surveyJSON.pages.forEach((page: any) => {
-        if (page.elements) {
-          page.elements.forEach((el: any) => {
-            if (el.type === 'matrix' && el.rows) {
-              el.rows.forEach((row: any) => {
-                const key = `${el.name}_${row.value}`;
-                this.questionMap[key] = row.text?.pt || row.text || key;
-                if (!dynamicColumns.includes(key)) dynamicColumns.push(key);
-              });
-            } else {
-              this.questionMap[el.name] = el.title?.pt || el.title || el.name;
-              if (!dynamicColumns.includes(el.name)) dynamicColumns.push(el.name);
-            }
-          });
-        }
-      });
+    console.log('📊 SurveyJSON encontrado:', !!surveyJSON);
+    console.log('📊 SurveyJSON:', surveyJSON);
+
+    if (!surveyJSON || !surveyJSON.pages) {
+      console.log('❌ SurveyJSON não encontrado ou sem páginas');
+      this.isLoading = false;
+      return;
     }
+
+    // Extrair questões (rows) das perguntas do surveyJSON
+    const questions: any[] = [];
+    console.log('🔍 Extraindo questões do surveyJSON:', surveyJSON);
+    console.log('🔍 Páginas encontradas:', surveyJSON.pages?.length || 0);
+
+    surveyJSON.pages.forEach((page: any, pageIndex: number) => {
+      console.log(`🔍 Processando página ${pageIndex}:`, page);
+      if (page.elements) {
+        console.log(`🔍 Elementos na página ${pageIndex}:`, page.elements.length);
+        page.elements.forEach((element: any, elementIndex: number) => {
+          console.log(`🔍 Elemento ${elementIndex}:`, element);
+
+          // Para elementos do tipo matrix, extrair as rows (questões)
+          if (element.type === 'matrix' && element.rows && Array.isArray(element.rows)) {
+            console.log(`✅ Matriz encontrada: ${element.name} com ${element.rows.length} questões`);
+
+            element.rows.forEach((row: any, rowIndex: number) => {
+              if (row.value && row.text) {
+                // Extrair o texto da questão
+                let questionText = '';
+                if (row.text && typeof row.text === 'object' && row.text.pt) {
+                  questionText = row.text.pt.trim();
+                } else if (row.text && typeof row.text === 'string') {
+                  questionText = row.text.trim();
+                } else {
+                  questionText = `Questão ${rowIndex + 1}`;
+                }
+
+                // Criar ID único para a questão
+                const questionId = `${element.name}_${row.value}`;
+
+                questions.push({
+                  id: questionId,
+                  title: questionText,
+                  type: 'question',
+                  parentQuestion: element.name,
+                  rowValue: row.value
+                });
+
+                this.questionMap[questionId] = questionText;
+                console.log(`📝 Questão extraída: ${questionId} = "${questionText}"`);
+              }
+            });
+          }
+          // Para outros tipos de perguntas, manter como estava
+          else if ((element.type === 'rating' || element.type === 'dropdown' || element.type === 'radiogroup' || element.type === 'comment') && element.name) {
+            console.log(`✅ Pergunta encontrada: ${element.name} - ${JSON.stringify(element.title)} (tipo: ${element.type})`);
+
+            // Garantir que o título seja uma string válida
+            let questionTitle = '';
+            if (element.title && typeof element.title === 'object' && element.title.pt) {
+              // Se title é um objeto com propriedades de idioma
+              questionTitle = element.title.pt.trim();
+            } else if (element.title && typeof element.title === 'string') {
+              // Se title é uma string simples
+              questionTitle = element.title.trim();
+            } else if (element.name && typeof element.name === 'string') {
+              questionTitle = element.name.trim();
+            } else {
+              questionTitle = 'Pergunta sem título';
+            }
+
+            questions.push({
+              id: element.name,
+              title: questionTitle,
+              type: element.type
+            });
+
+            this.questionMap[element.name] = questionTitle;
+            console.log(`📝 QuestionMap[${element.name}] = "${questionTitle}" (tipo: ${typeof questionTitle})`);
+            console.log(`   └─ Extraído de: ${JSON.stringify(element.title)}`);
+          }
+        });
+      }
+    });
+
+    console.log('📊 Questões extraídas:', questions);
+    console.log('📊 QuestionMap:', this.questionMap);
+
+    // Definir colunas da tabela e popular dynamicColumns
+    this.displayedColumns = ['data', 'categoria', 'avaliado', 'dataAvaliacao', ...questions.map(q => q.id)];
+    this.dynamicColumns = questions.map(q => q.id);
+
+    console.log('📊 DynamicColumns populado:', this.dynamicColumns);
+    console.log('📊 DisplayedColumns:', this.displayedColumns);
+
+    // Carregar resultados
     const resultsSnap = await getDocs(collection(this.firestore, `assessments/${this.selectedAssessmentId}/results`));
-    const allRows: any[] = [];
-    const fixedColumns = ['data', 'categoria', 'avaliado', 'dataAvaliacao'];
+    console.log('Resultados encontrados:', resultsSnap.docs.length);
+
+    const results: any[] = [];
     for (const resultDoc of resultsSnap.docs) {
       const resultData = resultDoc.data();
-      let participanteNome = '';
-      let categoria = '';
-      let dataAvaliacao = '';
-      if (resultData['participantId']) {
-        const participantRef = doc(this.firestore, 'participants', resultData['participantId']);
-        const participantSnap = await getDoc(participantRef);
-        if (participantSnap.exists()) {
-          const pData = participantSnap.data();
-          participanteNome = pData['name'] || '';
-          categoria = pData['category'] || '';
+      console.log('Resultado individual:', resultData);
+
+      // Buscar dados do participante
+      const participantRef = doc(this.firestore, 'participants', resultData['participantId']);
+      const participantSnap = await getDoc(participantRef);
+
+      if (participantSnap.exists()) {
+        const participantData = participantSnap.data();
+        console.log('Dados do participante:', participantData);
+
+        // No modo individual, incluir todos os dados da avaliação
+        // mas marcar os dados do avaliado específico para destaque
+        let shouldInclude = true;
+        let isTargetParticipant = false;
+
+        if (this.isIndividualMode && this.individualParticipantId) {
+          // Marcar se é o participante alvo
+          if (resultData['participantId'] === this.individualParticipantId) {
+            isTargetParticipant = true;
+          }
+
+          // Incluir todos os dados da avaliação para ter contexto completo
+          shouldInclude = true;
+        } else {
+          // Modo normal: incluir todos
+          shouldInclude = true;
+        }
+
+        if (shouldInclude) {
+          const row: any = {
+            data: '',
+            categoria: participantData['category'] || 'N/A',
+            avaliado: participantData['name'] || 'N/A',
+            dataAvaliacao: resultData['completedAt'] ?
+              new Date(resultData['completedAt'].toDate()).toLocaleDateString('pt-BR') : 'N/A',
+            isTargetParticipant: isTargetParticipant // Marcar se é o participante alvo
+          };
+
+          // Adicionar respostas às perguntas
+          if (resultData['surveyData']) {
+            questions.forEach(question => {
+              row[question.id] = resultData['surveyData'][question.id] || null;
+            });
+          }
+
+          console.log('Incluindo linha:', {
+            participante: participantData['name'],
+            tipo: participantData['type'],
+            categoria: participantData['category'],
+            isIndividualMode: this.isIndividualMode
+          });
+
+          results.push(row);
+        } else {
+          console.log('Excluindo linha:', {
+            participante: participantData['name'],
+            tipo: participantData['type'],
+            categoria: participantData['category'],
+            isIndividualMode: this.isIndividualMode
+          });
         }
       }
-      if (resultData['completedAt']) {
-        const d = new Date(resultData['completedAt'].seconds ? resultData['completedAt'].seconds * 1000 : resultData['completedAt']);
-        dataAvaliacao = d.toLocaleDateString('pt-BR');
-      }
-      const row: any = { data: '', categoria, avaliado: participanteNome, dataAvaliacao };
-      for (const qKey of dynamicColumns) {
-        let cellValue: any = '';
-        if (qKey.includes('_') && resultData['surveyData'] && resultData['surveyData'][qKey.split('_')[0]]) {
-          cellValue = resultData['surveyData'][qKey.split('_')[0]][qKey.split('_')[1]] ?? '';
-        } else if (resultData['surveyData']) {
-          cellValue = resultData['surveyData'][qKey] ?? '';
-        }
-        const parsed = this.parseNumeric(cellValue);
-        row[qKey] = parsed !== null ? parsed : cellValue;
-      }
-      allRows.push(row);
     }
-    this.dynamicColumns = dynamicColumns;
-    this.displayedColumns = [...fixedColumns, ...dynamicColumns];
-    this.dataSource = allRows;
-    this.questionMap = dynamicColumns.reduce((acc, key) => ({ ...acc, [key]: this.questionMap[key] }), {});
 
-    // gerar contagem de categorias
-    const counts: { [cat: string]: number } = {};
-    for (const row of allRows) {
-      const cat = row['categoria'] || 'Outros';
-      counts[cat] = (counts[cat] || 0) + 1;
-    }
-    this.summaryCounts = counts;
-
-    this.buildConsolidationData(dynamicColumns, allRows);
-
-    // 🚀 PERFORMANCE: Criar índices após carregamento dos dados
-    this.createDataIndexes();
-
-    // 🚀 PERFORMANCE: Invalidar cache quando dados mudam
-    this.invalidateCache();
-
-    // 🚀 PERFORMANCE: Finalizar monitoramento
+    console.log('Resultados processados:', results);
+    this.dataSource = results;
+    this.loadingService.hide();
     this.performanceMonitor.endTimer('onAssessmentChange');
 
-    this.isLoading = false;
+    // Mensagem informativa para modo individual
+    if (this.isIndividualMode && this.individualParticipantName) {
+      const targetParticipantCount = results.filter(r => r.isTargetParticipant).length;
+      const totalParticipants = results.length;
+
+      console.log(`Modo individual: ${targetParticipantCount} registros do avaliado alvo, ${totalParticipants} total de participantes`);
+
+      this.snackBar.open(
+        `Relatório individual para ${this.individualParticipantName} carregado. ` +
+        `(${targetParticipantCount} auto-avaliação, ${totalParticipants} total de participantes na avaliação)`,
+        'Fechar',
+        { duration: 4000 }
+      );
+    }
+
+        // Atualizar perguntas bloqueadas após carregar os dados
+    this.atualizarPerguntasBloqueadas();
+
+    // Criar índices de dados para performance
+    this.createDataIndexes();
+
+          // Debug: Verificar dados no modo individual
+      if (this.isIndividualMode) {
+        console.log('🔍 DEBUG MODO INDIVIDUAL:');
+        console.log('  - Total de participantes:', this.dataSource.length);
+        console.log('  - Participantes por categoria:');
+        const categorias: { [key: string]: any[] } = {};
+        this.dataSource.forEach((participant, index) => {
+          const categoria = this.mapCategoriaToGrupo(participant.categoria);
+          if (!categorias[categoria]) categorias[categoria] = [];
+          categorias[categoria].push({
+            index,
+            name: participant.avaliado,
+            isTarget: participant.isTargetParticipant
+          });
+        });
+        console.log('  - Categorias encontradas:', categorias);
+
+      // Verificar se há dados de respostas
+      if (this.dataSource.length > 0) {
+        const primeiroParticipante = this.dataSource[0];
+        const perguntasComDados = Object.keys(primeiroParticipante).filter(key =>
+          key !== 'data' && key !== 'categoria' && key !== 'avaliado' &&
+          key !== 'dataAvaliacao' && key !== 'isTargetParticipant' &&
+          primeiroParticipante[key] !== undefined && primeiroParticipante[key] !== null
+        );
+        console.log('  - Perguntas com dados:', perguntasComDados);
+        console.log('  - Exemplo de dados do primeiro participante:', primeiroParticipante);
+      }
+    }
+
+    // Forçar detecção de mudanças
+    console.log('🔄 Forçando detecção de mudanças...');
+    console.log('🔄 DynamicColumns final:', this.dynamicColumns);
+    console.log('🔄 QuestionMap final:', this.questionMap);
+
+    // Forçar detecção de mudanças do Angular
+    this.cdr.detectChanges();
+
+    // Verificação final
+    console.log('✅ Verificação final:');
+    console.log('  - DynamicColumns length:', this.dynamicColumns.length);
+    console.log('  - QuestionMap keys:', Object.keys(this.questionMap).length);
+    console.log('  - QuestionMap values:', Object.values(this.questionMap));
   }
 
   exportCSV() {
@@ -750,15 +970,14 @@ export class ReportsComponent implements OnInit {
     this.competenciaForm.setValue({
       nome: c.nome,
       descricao: c.descricao,
-      perguntasIds: c.perguntasIds,
-      caracteristicaADEO: c.caracteristicaADEO || ''
+      perguntasIds: c.perguntasIds
     });
     this.atualizarPerguntasBloqueadas();
   }
 
   cancelarEdicaoCompetencia() {
-    this.competenciaEditando = { id: '', nome: '', descricao: '', perguntasIds: [], caracteristicaADEO: '' };
-    this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [], caracteristicaADEO: '' });
+    this.competenciaEditando = { id: '', nome: '', descricao: '', perguntasIds: [] };
+    this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
     this.atualizarPerguntasBloqueadas();
   }
 
@@ -1317,6 +1536,43 @@ export class ReportsComponent implements OnInit {
     return count ? soma / count : null;
   }
 
+  // Média específica do participante alvo (modo individual)
+  getMediaParticipanteAlvo(carac: any) {
+    if (!this.isIndividualMode || !this.individualParticipantId) {
+      return null;
+    }
+
+    let soma = 0;
+    let count = 0;
+
+    for (const pid of carac.perguntasIds || []) {
+      for (const row of this.dataSource) {
+        if (row.isTargetParticipant) {
+          let valor = row[pid];
+
+          if (typeof valor === 'string') {
+            if (valor.includes('Column')) {
+              const match = valor.match(/Column (\d+)/);
+              if (match) {
+                valor = parseInt(match[1]);
+              }
+            } else {
+              valor = parseFloat(valor);
+            }
+          }
+
+          const valorNumerico = Number(valor);
+          if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
+            soma += valorNumerico;
+            count++;
+          }
+        }
+      }
+    }
+
+    return count ? soma / count : null;
+  }
+
   // Validação antes de salvar relatório
   private validarRelatorio(): string | null {
     if (!this.selectedAssessmentId) return "Nenhuma avaliação foi selecionada.";
@@ -1371,22 +1627,24 @@ export class ReportsComponent implements OnInit {
     const reportSnap = await getDoc(reportRef);
     if (reportSnap.exists()) {
       const reportData = reportSnap.data();
-      this.relatorioConfiguracao = reportData['config'] || [];
+      this.relatorioConfiguracao = reportData['configuracao'] || [];
       this.competencias = reportData['competencias'] || [];
       // Atualizar o form reativo
       this.atualizarFormArrayComConfiguracao();
-      alert(`Relatório '${reportData['nome']}' carregado!`);
+      // Atualizar perguntas bloqueadas após carregar competências
+      this.atualizarPerguntasBloqueadas();
+      this.snackBar.open(`Relatório '${reportData['nome']}' carregado!`, 'Fechar', { duration: 3000 });
     }
   }
 
   // Adiciona uma nova seção customizada ao relatório
   addSecaoCustomizada(tipo: 'texto' | 'graficos' | 'tabela' | 'competencia_detalhada' | 'grafico_defasagem' = 'texto') {
     const novaSecao: RelatorioSecao = {
-      id: `custom_${new Date().getTime()}`,
+          id: `custom_${new Date().getTime()}`,
       tipo: tipo,
       titulo: '',
-      texto: '',
-      visivel: true,
+          texto: '',
+          visivel: true,
       ordem: this.relatorioConfiguracao.length + 1
     };
 
@@ -1549,6 +1807,7 @@ export class ReportsComponent implements OnInit {
     const templateData = {
       nome: this.nomeTemplateControl.value,
       configuracao: this.relatorioConfiguracao,
+      competencias: this.competencias,
       criadoEm: new Date()
     };
     try {
@@ -1579,7 +1838,10 @@ export class ReportsComponent implements OnInit {
     if (templateSnap.exists()) {
       const templateData = templateSnap.data();
       this.relatorioConfiguracao = templateData['configuracao'] || [];
+      this.competencias = templateData['competencias'] || [];
       this.atualizarFormArrayComConfiguracao();
+      // Atualizar perguntas bloqueadas após carregar competências
+      this.atualizarPerguntasBloqueadas();
       this.snackBar.open(`Template '${templateData['nome']}' aplicado!`, 'Fechar', { duration: 2500 });
     }
   }
@@ -1612,7 +1874,15 @@ export class ReportsComponent implements OnInit {
       pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
       heightLeft -= pageHeight - 2 * margin;
     }
-    pdf.save('relatorio-360.pdf');
+
+    // Nome do arquivo baseado no modo
+    let fileName = 'relatorio-360.pdf';
+    if (this.isIndividualMode && this.individualParticipantName) {
+      const sanitizedName = this.individualParticipantName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+      fileName = `relatorio-${sanitizedName}.pdf`;
+    }
+
+    pdf.save(fileName);
     this.snackBar.open('PDF exportado com sucesso!', 'Fechar', { duration: 3000 });
   }
 
@@ -1830,13 +2100,11 @@ export class ReportsComponent implements OnInit {
         }
       });
     } else {
-      // Processar grupo específico usando índices
-      const participantesGrupo = this.dataIndexes.participantsByCategory.get(grupo) || [];
-
-      participantesGrupo.forEach(participantIndex => {
-        const participant = this.dataSource[participantIndex];
-        // As respostas estão diretamente no objeto participant, não em participant.responses
-        if (participant && participant[perguntaId] !== undefined) {
+      // Processar grupo específico - usar filtro direto no dataSource
+      this.dataSource.forEach(participant => {
+        // Verificar se o participante pertence ao grupo especificado
+        const categoriaParticipante = this.mapCategoriaToGrupo(participant.categoria);
+        if (categoriaParticipante === grupo && participant[perguntaId] !== undefined) {
           let valor = participant[perguntaId];
 
           // Tratar diferentes formatos de dados
@@ -2380,78 +2648,10 @@ export class ReportsComponent implements OnInit {
     return 'EM_DESENVOLVIMENTO';
   }
 
-  // Método para obter nome formatado da característica ADEO
-  getNomeCaracteristicaADEO(caracteristica: string): string {
-    switch (caracteristica) {
-      case 'EXEMPLARIDADE': return 'Exemplaridade';
-      case 'CUIDADO_COM_PESSOAS': return 'Cuidado com as Pessoas';
-      case 'RESPONSABILIDADE_PELO_TODO': return 'Responsabilidade pelo Todo';
-      case 'ESPIRITO_EMPREENDEDOR': return 'Espírito Empreendedor';
-      default: return caracteristica;
-    }
-  }
-
-  // Método para obter descrição detalhada das características ADEO
-  getDescricaoCaracteristicaADEO(caracteristica: string): string {
-    const map: {[key: string]: string} = {
-      'EXEMPLARIDADE': 'O líder ADEO lidera pelo exemplo, adotando comportamentos coerentes com os valores da empresa. Ele é íntegro, inspira confiança e serve como referência para sua equipe.',
-      'CUIDADO_COM_PESSOAS': 'Ele valoriza, escuta e desenvolve as pessoas. Promove um ambiente seguro, justo e motivador, colocando o ser humano no centro das decisões.',
-      'RESPONSABILIDADE_PELO_TODO': 'O líder ADEO assume a responsabilidade coletiva, pensa além de sua área e age em prol da empresa como um todo. Ele contribui com a visão global, trabalha em colaboração e busca o bem comum.',
-      'ESPIRITO_EMPREENDEDOR': 'Pessoa com grande capacidade de inovar, de se adaptar a diferentes cenários e de realizar projetos com autonomia e proatividade.'
-    };
-    return map[caracteristica] || 'Característica não definida.';
-  }
-
-  // Método para obter todas as características ADEO
-  getCaracteristicasADEO(): Array<{codigo: string, nome: string, descricao: string, cor: string}> {
-    return [
-      { codigo: 'EXEMPLARIDADE', nome: this.getNomeCaracteristicaADEO('EXEMPLARIDADE'), descricao: this.getDescricaoCaracteristicaADEO('EXEMPLARIDADE'), cor: this.getCorCaracteristica('EXEMPLARIDADE') },
-      { codigo: 'CUIDADO_COM_PESSOAS', nome: this.getNomeCaracteristicaADEO('CUIDADO_COM_PESSOAS'), descricao: this.getDescricaoCaracteristicaADEO('CUIDADO_COM_PESSOAS'), cor: this.getCorCaracteristica('CUIDADO_COM_PESSOAS') },
-      { codigo: 'RESPONSABILIDADE_PELO_TODO', nome: this.getNomeCaracteristicaADEO('RESPONSABILIDADE_PELO_TODO'), descricao: this.getDescricaoCaracteristicaADEO('RESPONSABILIDADE_PELO_TODO'), cor: this.getCorCaracteristica('RESPONSABILIDADE_PELO_TODO') },
-      { codigo: 'ESPIRITO_EMPREENDEDOR', nome: this.getNomeCaracteristicaADEO('ESPIRITO_EMPREENDEDOR'), descricao: this.getDescricaoCaracteristicaADEO('ESPIRITO_EMPREENDEDOR'), cor: this.getCorCaracteristica('ESPIRITO_EMPREENDEDOR') }
-    ];
-  }
-
-  // Método para obter relatório de competências por característica ADEO
-  getRelatorioCompetenciasPorCaracteristicaADEO(): {[key: string]: {competencias: Competencia[], mediaGeral: number, respostas: number[]}} {
-    const resultado: {[key: string]: {competencias: Competencia[], mediaGeral: number, respostas: number[]}} = {};
-
-    // Inicializa a estrutura
-    this.getCaracteristicasADEO().forEach(carac => {
-      resultado[carac.codigo] = { competencias: [], mediaGeral: 0, respostas: [] };
-    });
-
-    // Agrupa competências e coleta respostas
-    this.competencias.forEach(comp => {
-      if (comp.caracteristicaADEO && resultado[comp.caracteristicaADEO]) {
-        resultado[comp.caracteristicaADEO].competencias.push(comp);
-        comp.perguntasIds.forEach(perguntaId => {
-          // Coleta respostas de todos os grupos exceto autoavaliação
-          const grupos = ['Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
-          grupos.forEach(grupo => {
-            const respostas = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
-            resultado[comp.caracteristicaADEO].respostas.push(...respostas);
-          });
-        });
-      }
-    });
-
-    // Calcula a média para cada característica
-    for (const caracCodigo in resultado) {
-      const data = resultado[caracCodigo];
-      if (data.respostas.length > 0) {
-        const soma = data.respostas.reduce((acc, val) => acc + val, 0);
-        data.mediaGeral = soma / data.respostas.length;
-      }
-    }
-
-    return resultado;
-  }
-
   getConfiguracaoDestaques(): any {
     const secaoDestaques = this.relatorioConfiguracao.find(s => s.tipo === 'destaques');
     if (secaoDestaques) {
-      return {
+    return {
         numeroItens: (secaoDestaques as any).numeroItens || 5,
         avaliadoSelecionado: (secaoDestaques as any).avaliadoSelecionado || null
       };
@@ -2486,4 +2686,59 @@ export class ReportsComponent implements OnInit {
     return perguntasIds.map(id => ({ id }));
   }
 
+  // Adiciona método para atualizar template existente
+  async atualizarTemplateNoFirebase() {
+    if (!this.selectedTemplateId.value) {
+      this.snackBar.open('Selecione um template para editar.', 'Fechar', { duration: 3000 });
+      return;
+    }
+    if (!this.nomeTemplateControl.value) {
+      this.snackBar.open('Por favor, dê um nome ao template.', 'Fechar', { duration: 3000 });
+      return;
+    }
+    const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
+    const templateData = {
+      nome: this.nomeTemplateControl.value,
+      configuracao: this.relatorioConfiguracao,
+      competencias: this.competencias,
+      atualizadoEm: new Date()
+    };
+    try {
+      await setDoc(templateRef, templateData, { merge: true });
+      this.snackBar.open(`Template '${templateData.nome}' atualizado com sucesso!`, 'Fechar', { duration: 3000 });
+      this.carregarTemplatesSalvos();
+    } catch (e) {
+      console.error('Erro ao atualizar template: ', e);
+      this.snackBar.open('Ocorreu um erro ao atualizar o template.', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  voltarParaLista() {
+    // Voltar para a página anterior ou para a lista de participantes
+    this.router.navigate(['/assessments/participants']);
+  }
+
+  // Método de debug para testar extração de questões
+  debugPerguntas() {
+    console.group('🔍 DEBUG QUESTÕES');
+    console.log('DynamicColumns:', this.dynamicColumns);
+    console.log('QuestionMap:', this.questionMap);
+    console.log('SelectedAssessmentId:', this.selectedAssessmentId);
+    console.log('Assessments:', this.assessments);
+
+    // Debug detalhado do questionMap
+    console.log('🔍 QuestionMap detalhado:');
+    Object.keys(this.questionMap).forEach(key => {
+      console.log(`  ${key}: "${this.questionMap[key]}" (tipo: ${typeof this.questionMap[key]})`);
+    });
+
+    // Debug das opções do dropdown
+    console.log('🔍 Opções do dropdown:');
+    this.dynamicColumns.forEach(q => {
+      const title = this.questionMap[q];
+      console.log(`  ${q}: "${title}" (tipo: ${typeof title})`);
+    });
+
+    console.groupEnd();
+  }
 }

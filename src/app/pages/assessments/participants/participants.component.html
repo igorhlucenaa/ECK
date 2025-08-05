@@ -221,6 +221,20 @@
               {{ participant.completedAt | date : "short" }}
             </td>
           </ng-container>
+          <ng-container matColumnDef="relatorio">
+            <th mat-header-cell *matHeaderCellDef>Relatório</th>
+            <td mat-cell *matCellDef="let participant">
+              <button
+                mat-icon-button
+                color="primary"
+                (click)="generateReportForParticipant(participant)"
+                matTooltip="Gerar Relatório"
+                *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
+              >
+                <mat-icon>description</mat-icon>
+              </button>
+            </td>
+          </ng-container>
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
         </table>
@@ -392,6 +406,22 @@
       </div>
     </div>
 
+    <div class="row mb-4" style="margin-top: 40px">
+      <div class="col-md-3">
+        <mat-form-field class="w-100" appearance="outline">
+          <mat-label>Selecione um Template de Relatório</mat-label>
+          <mat-select [formControl]="reportTemplateFormControl" (selectionChange)="onReportTemplateChange()">
+            <mat-option *ngFor="let template of reportTemplates" [value]="template.id">
+              {{ template.nome || template.name || template.id }}
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="reportTemplateFormControl.hasError('required')">
+            Por favor, selecione um template de relatório.
+          </mat-error>
+        </mat-form-field>
+      </div>
+    </div>
+
     <hr style="border: 1px solid #ccc; margin-bottom: 40px" />
 
     <div class="row mb-4" style="margin-top: 40px">
@@ -531,6 +561,20 @@
           </th>
           <td mat-cell *matCellDef="let participant">
             {{ participant.completedAt | date : "short" }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="relatorio">
+          <th mat-header-cell *matHeaderCellDef>Relatório</th>
+          <td mat-cell *matCellDef="let participant">
+            <button
+              mat-icon-button
+              color="primary"
+              (click)="generateReportForParticipant(participant)"
+              matTooltip="Gerar Relatório"
+              *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
+            >
+              <mat-icon>description</mat-icon>
+            </button>
           </td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>

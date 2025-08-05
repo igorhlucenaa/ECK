@@ -32,6 +32,7 @@ import { Timestamp } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
 import { AddParticipantModalComponent } from '../add-participant-modal/add-participant-modal.component';
 import { ParticipantsConfirmationDialogComponent } from '../../assessments/participants/participants-confirmation-dialog/participants-confirmation-dialog.component';
+import { Router } from '@angular/router';
 
 interface ModalData {
   projectId: string;
@@ -303,6 +304,22 @@ interface Assessment {
             </td>
           </ng-container>
 
+          <!-- Relatório -->
+          <ng-container matColumnDef="relatorio">
+            <th mat-header-cell *matHeaderCellDef>Relatório</th>
+            <td mat-cell *matCellDef="let participant">
+              <button
+                mat-icon-button
+                color="primary"
+                (click)="generateReportForParticipant(participant)"
+                matTooltip="Gerar Relatório"
+                *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
+              >
+                <mat-icon>description</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
           <!-- Ações (Excluir) -->
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Ações</th>
@@ -363,6 +380,7 @@ export class ParticipantsModalComponent implements OnInit {
     'status',
     'sentAt',
     'completedAt',
+    'relatorio', // nova coluna
     'actions',
   ];
 
@@ -391,7 +409,8 @@ export class ParticipantsModalComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private fb: FormBuilder,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private router: Router
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -988,5 +1007,20 @@ export class ParticipantsModalComponent implements OnInit {
       });
       return [];
     }
+  }
+
+  generateReportForParticipant(participant: UnifiedParticipant) {
+    // Navegar para o componente reports com os dados do participante
+    this.router.navigate(['/reports'], {
+      queryParams: {
+        assessmentId: this.data.projectId, // Usar o projectId como assessmentId
+        participantId: participant.id,
+        participantName: participant.name,
+        mode: 'individual'
+      }
+    });
+
+    // Fechar o modal após navegar
+    this.dialogRef.close();
   }
 }
