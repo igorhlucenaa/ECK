@@ -30,6 +30,8 @@ import { Router } from '@angular/router';
 import { CompetencyService, Competency } from '../../services/competency.service';
 import { LoadingService } from '../../services/loading.service';
 import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
+import * as ExcelJS from 'exceljs';
+import jsPDF from 'jspdf';
 
 interface AssessmentOption {
   id: string;
@@ -169,14 +171,21 @@ export class ReportsComponent implements OnInit {
 
   // Método para calcular a altura do gráfico baseada no número de dados
   getChartHeight(dadosGrafico: any[]): number {
+    if (!dadosGrafico || dadosGrafico.length === 0) {
+      return 200; // Altura mínima quando não há dados
+    }
     const calculatedHeight = dadosGrafico.length * 60 + 50;
     return calculatedHeight < 200 ? 200 : calculatedHeight;
   }
 
   // Método para buscar a média de uma competência por grupo
   getMediaPorCompetenciaEGrupo(compData: any, grupo: string): string {
-    const media = compData.dados.find((d: any) => d.grupo === grupo)?.media;
-    return media ? media.toFixed(1).toString() : '-';
+    if (!compData || !compData.dados || !Array.isArray(compData.dados)) {
+      return '-';
+    }
+    const dataItem = compData.dados.find((d: any) => d && d.grupo === grupo);
+    const media = dataItem?.media;
+    return (media !== null && media !== undefined && !isNaN(media)) ? media.toFixed(1).toString() : '-';
   }
   paletasCores = {
     'padrao': {
@@ -238,7 +247,7 @@ export class ReportsComponent implements OnInit {
     return this.competencias.some(c => c.id === competencyId);
   }
 
-  toggleCompetencySelection(competencyId: string): void {
+      toggleCompetencySelection(competencyId: string): void {
     const isSelected = this.isCompetencySelected(competencyId);
     if (isSelected) {
       // Remove a competência
@@ -250,9 +259,12 @@ export class ReportsComponent implements OnInit {
         this.competencias.push(competencyToAdd);
       }
     }
+
+    // Invalidar cache
+    this.calculosCache.clear();
+
     // Sincroniza as seções com a nova seleção de competências
     this.sincronizarSecoesComCompetencias();
-    this.cdr.detectChanges();
   }
 
   // Garante que as seções reflitam as competências selecionadas
@@ -288,29 +300,11 @@ export class ReportsComponent implements OnInit {
     this.sincronizarSecoesComCompetencias();
   }
 
-  // Controle do Wizard
-  currentStep: 'selection' | 'competencies' | 'configure' | 'preview' = 'selection';
-  steps: string[] = ['selection', 'competencies', 'configure', 'preview'];
+  // Sistema de abas
+  selectedTabIndex = 0;
 
-  navigateToStep(step: 'selection' | 'competencies' | 'configure' | 'preview'): void {
-    const currentIndex = this.steps.indexOf(this.currentStep);
-    const targetIndex = this.steps.indexOf(step);
-
-    // Permite navegar para trás a qualquer momento
-    if (targetIndex < currentIndex) {
-      this.currentStep = step;
-      return;
-    }
-
-    // Validações para avançar
-    if (this.currentStep === 'selection' && this.selectedAssessmentId) {
-      this.currentStep = step;
-    } else if (this.currentStep === 'competencies' && this.competencias.length > 0) {
-      this.currentStep = step;
-    } else if (this.currentStep === 'configure') {
-      this.currentStep = step;
-    }
-  }
+  // Flag para desabilitar gráficos durante operações
+  chartsDisabled = false;
 
   competencySearchControl = new FormControl('');
   filteredCompetencies: Competency[] = [];
@@ -382,8 +376,6 @@ export class ReportsComponent implements OnInit {
   relatorioFormArray: FormArray<any>
   dummyForm: FormGroup;
 
-  selectedTabIndex = 0;
-
   // Salvar/Carregar Relatório
   nomeRelatorioControl = new FormControl('');
   savedReports: { id: string, name: string }[] = [];
@@ -397,9 +389,9 @@ export class ReportsComponent implements OnInit {
   // 🚀 PERFORMANCE: Cache para cálculos pesados
   private calculosCache = new Map<string, any>();
   private dataIndexes = {
-    participantsByCategory: new Map<string, any[]>(),
-    responsesByParticipant: new Map<string, any[]>(),
-    questionsByType: new Map<string, any[]>()
+    participantes: new Map(),
+    competencias: new Map(),
+    resultados: new Map()
   };
 
   // Modo individual para relatórios de participantes específicos
@@ -408,6 +400,9 @@ export class ReportsComponent implements OnInit {
   individualParticipantName: string | null = null;
   individualTemplateId: string | null = null;
   individualTemplateName: string | null = null;
+
+  // Propriedades para exportação individual
+  selectedParticipantControl = new FormControl('');
 
   constructor(
     private firestore: Firestore,
@@ -487,28 +482,28 @@ export class ReportsComponent implements OnInit {
   private createDataIndexes() {
     console.log('🔍 Criando índices de dados...');
 
-    this.dataIndexes.participantsByCategory.clear();
-    this.dataIndexes.responsesByParticipant.clear();
-    this.dataIndexes.questionsByType.clear();
+    this.dataIndexes.participantes.clear();
+    this.dataIndexes.competencias.clear();
+    this.dataIndexes.resultados.clear();
 
     // Indexar participantes por categoria (armazenar índices numéricos)
     this.dataSource.forEach((row, index) => {
       if (row.categoria) {
         const grupo = this.mapCategoriaToGrupo(row.categoria);
-        if (!this.dataIndexes.participantsByCategory.has(grupo)) {
-          this.dataIndexes.participantsByCategory.set(grupo, []);
+        if (!this.dataIndexes.participantes.has(grupo)) {
+          this.dataIndexes.participantes.set(grupo, []);
         }
-        this.dataIndexes.participantsByCategory.get(grupo)!.push(index);
+        this.dataIndexes.participantes.get(grupo)!.push(index);
       }
     });
 
     // Indexar respostas por participante
     this.dataSource.forEach((row, index) => {
       const participantId = row.participante || row.id || index;
-      this.dataIndexes.responsesByParticipant.set(participantId, row);
+      this.dataIndexes.resultados.set(participantId, row);
     });
 
-    console.log(`✅ Índices criados: ${this.dataIndexes.participantsByCategory.size} categorias, ${this.dataIndexes.responsesByParticipant.size} participantes`);
+    console.log(`✅ Índices criados: ${this.dataIndexes.participantes.size} categorias, ${this.dataIndexes.resultados.size} participantes`);
   }
 
   // 🚀 PERFORMANCE: TrackBy functions
@@ -938,7 +933,7 @@ export class ReportsComponent implements OnInit {
     this.cdr.detectChanges();
 
     // Avança para o próximo passo do wizard
-    this.currentStep = 'competencies';
+            this.selectedTabIndex = 1; // Vai para a aba Competências
 
     // Verificação final
     console.log('✅ Verificação final:');
@@ -1202,7 +1197,7 @@ export class ReportsComponent implements OnInit {
           let count = 0;
 
           // 🚀 PERFORMANCE: Usar índice para buscar dados por categoria
-          const indicesGrupo = this.dataIndexes.participantsByCategory.get(grupo) || [];
+          const indicesGrupo = this.dataIndexes.participantes.get(grupo) || [];
 
           for (const index of indicesGrupo) {
             const row = this.dataSource[index];
@@ -1216,12 +1211,13 @@ export class ReportsComponent implements OnInit {
             }
           }
 
-          console.log(`[Resumo] Competência: ${comp.name}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${count ? soma / count : null}`);
+          const media = count ? soma / count : 0;
+          console.log(`[Resumo] Competência: ${comp.name}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${media}`);
           resultado.push({
             competencia: comp.name,
             description: comp.description,
             grupo,
-            media: count ? soma / count : null
+            media: media
           });
         }
       }
@@ -1233,19 +1229,33 @@ export class ReportsComponent implements OnInit {
   getResumoMediasPorCompetencia() {
     return this.getCachedCalculation('resumo-medias-por-competencia', () => {
       const resumoMedias = this.getResumoMedias();
+
+      // Verificar se há dados válidos
+      if (!resumoMedias || resumoMedias.length === 0) {
+        return [];
+      }
+
       const competenciasAgrupadas: { [key: string]: any } = {};
 
       for (const linha of resumoMedias) {
+        // Verificar se a linha tem dados válidos
+        if (!linha || !linha.competencia) {
+          continue;
+        }
+
         if (!competenciasAgrupadas[linha.competencia]) {
           competenciasAgrupadas[linha.competencia] = {
             name: linha.competencia,
-            description: linha.description,
+            description: linha.description || '',
             dados: []
           };
         }
+
+        // Garantir que sempre temos um valor numérico válido
+        const mediaValida = (linha.media !== null && !isNaN(linha.media)) ? linha.media : 0;
         competenciasAgrupadas[linha.competencia].dados.push({
-          grupo: linha.grupo,
-          media: linha.media
+          grupo: linha.grupo || 'Sem grupo',
+          media: mediaValida
         });
       }
 
@@ -1261,9 +1271,11 @@ export class ReportsComponent implements OnInit {
     return competenciasSelecionadas.map(comp => {
       const series = this.getGrupos().map(grupo => {
         const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
+        // Garantir que sempre retornamos um valor numérico válido
+        const valor = (media !== null && !isNaN(media) && media >= 0) ? media : 0;
         return {
           name: grupo,
-          value: (media !== null && !isNaN(media)) ? media : 0
+          value: valor
         };
       });
 
@@ -1521,7 +1533,7 @@ export class ReportsComponent implements OnInit {
     const gruposPadrao = ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
 
     // Grupos encontrados nos dados
-    const gruposEncontrados = Array.from(this.dataIndexes.participantsByCategory.keys());
+    const gruposEncontrados = Array.from(this.dataIndexes.participantes.keys());
 
     // Combinar grupos padrão com grupos encontrados, removendo duplicatas
     const todosGrupos = [...new Set([...gruposPadrao, ...gruposEncontrados])];
@@ -1711,7 +1723,7 @@ export class ReportsComponent implements OnInit {
 
         // 4. Atualizar o formulário e avançar no wizard
         this.atualizarFormArrayComConfiguracao();
-        this.currentStep = 'configure'; // Leva o usuário direto para a configuração
+        this.selectedTabIndex = 2; // Vai para a aba Configurar Relatório
 
         this.snackBar.open(`Relatório '${reportData['nome']}' carregado!`, 'Fechar', { duration: 3000 });
       }
@@ -1952,7 +1964,7 @@ export class ReportsComponent implements OnInit {
 
         // 4. Atualizar o form
         this.atualizarFormArrayComConfiguracao();
-        this.currentStep = 'configure';
+        this.selectedTabIndex = 2; // Vai para a aba Configurar Relatório
 
         this.snackBar.open(`Template '${templateData['nome']}' aplicado!`, 'Fechar', { duration: 2500 });
       }
@@ -2453,9 +2465,9 @@ export class ReportsComponent implements OnInit {
 
     // Índices criados
     console.log('📇 Índices criados:');
-    console.log('- Participantes por categoria:', this.dataIndexes.participantsByCategory);
+    console.log('- Participantes por categoria:', this.dataIndexes.participantes);
     grupos.forEach(grupo => {
-      const indices = this.dataIndexes.participantsByCategory.get(grupo) || [];
+      const indices = this.dataIndexes.participantes.get(grupo) || [];
       console.log(`  - Grupo "${grupo}": ${indices.length} participantes (índices: ${indices.slice(0, 3).join(', ')}${indices.length > 3 ? '...' : ''})`);
 
       // Verificar se os índices estão corretos
@@ -2826,5 +2838,305 @@ export class ReportsComponent implements OnInit {
     });
 
     console.groupEnd();
+  }
+
+  // Método para calcular taxa de conclusão
+  getCompletionRate(): number {
+    if (!this.dataSource || this.dataSource.length === 0) return 0;
+
+    const totalParticipants = this.dataSource.length;
+    const completedParticipants = this.dataSource.filter((row: any) => {
+      // Verificar se há pelo menos uma resposta válida
+      return this.displayedColumns.some(col => {
+        if (['data', 'categoria', 'avaliado', 'dataAvaliacao'].includes(col)) return false;
+        return row[col] !== null && row[col] !== undefined && row[col] !== '';
+      });
+    }).length;
+
+    return Math.round((completedParticipants / totalParticipants) * 100);
+  }
+
+  // Método para obter ícone do tipo de seção
+  getTipoSecaoIcon(tipo: string): string {
+    const iconMap: { [key: string]: string } = {
+      'capa': 'description',
+      'introducao': 'info',
+      'resumo': 'assessment',
+      'graficos': 'bar_chart',
+      'tabela': 'table_chart',
+      'competencia_detalhada': 'psychology',
+      'destaques': 'star',
+      'texto': 'text_fields',
+      'grafico_defasagem': 'trending_up',
+      'grafico_radar': 'radar',
+      'custom': 'settings'
+    };
+    return iconMap[tipo] || 'article';
+  }
+
+      // Método para verificar se há dados válidos para gráficos
+  hasValidChartData(): boolean {
+    if (this.chartsDisabled) return false;
+
+    const dados = this.getResumoMediasPorCompetencia();
+    if (!dados || dados.length === 0) return false;
+
+    // Verificar se pelo menos um item tem dados válidos
+    return dados.some(item =>
+      item && item.dados &&
+      item.dados.length > 0 &&
+      item.dados.some((d: any) => d.media > 0)
+    );
+  }
+
+  // Métodos seguros para dados de gráficos
+  safeGetSecaoStackedData(secao: any): any[] {
+    try {
+      const data = this.getSecaoStackedData(secao);
+      if (!data || data.length === 0) return [];
+
+      // Verificar se todos os valores são válidos
+      return data.filter(item =>
+        item &&
+        item.series &&
+        item.series.length > 0 &&
+        item.series.every((s: any) => s.value !== null && s.value !== undefined && !isNaN(s.value))
+      );
+    } catch (error) {
+      console.warn('Erro ao obter dados do gráfico stacked:', error);
+      return [];
+    }
+  }
+
+  safeGetSecaoPieData(secao: any): any[] {
+    try {
+      const data = this.getSecaoPieData(secao);
+      if (!data || data.length === 0) return [];
+
+      // Verificar se todos os valores são válidos
+      return data.filter(item =>
+        item &&
+        item.value !== null &&
+        item.value !== undefined &&
+        !isNaN(item.value) &&
+        item.value > 0
+      );
+    } catch (error) {
+      console.warn('Erro ao obter dados do gráfico pie:', error);
+      return [];
+    }
+  }
+
+  safeGetCompetenciaStackedData(comp: Competency): any[] {
+    try {
+      const data = this.getCompetenciaStackedData(comp);
+      if (!data || data.length === 0) return [];
+
+      // Verificar se todos os valores são válidos
+      return data.filter(item =>
+        item &&
+        item.value !== null &&
+        item.value !== undefined &&
+        !isNaN(item.value)
+      );
+    } catch (error) {
+      console.warn('Erro ao obter dados da competência stacked:', error);
+      return [];
+    }
+  }
+
+  hasValidStackedData(secao: any): boolean {
+    if (this.chartsDisabled) return false;
+    const data = this.safeGetSecaoStackedData(secao);
+    return data.length > 0;
+  }
+
+  hasValidPieData(secao: any): boolean {
+    if (this.chartsDisabled) return false;
+    const data = this.safeGetSecaoPieData(secao);
+    return data.length > 0;
+  }
+
+  hasValidCompetencyData(comp: Competency): boolean {
+    if (this.chartsDisabled) return false;
+    const data = this.safeGetCompetenciaStackedData(comp);
+    return data.length > 0;
+  }
+
+  // Método para mudança de participante selecionado
+  onParticipantChange(): void {
+    const selectedParticipant = this.selectedParticipantControl.value;
+    if (selectedParticipant) {
+      console.log(`🎯 Participante selecionado para exportação: ${selectedParticipant}`);
+      // Aqui você pode adicionar lógica adicional se necessário
+    }
+  }
+
+  // Método para exportar PDF individual
+  async exportarRelatorioIndividualPDF(): Promise<void> {
+    const selectedParticipant = this.selectedParticipantControl.value;
+    if (!selectedParticipant) {
+      this.snackBar.open('Selecione um participante primeiro.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    try {
+      this.loadingService.show('Gerando PDF individual...');
+
+      // Filtrar dados apenas do participante selecionado
+      const dadosParticipante = this.dataSource.filter(row =>
+        row.avaliado === selectedParticipant || row.participante === selectedParticipant
+      );
+
+      if (dadosParticipante.length === 0) {
+        this.snackBar.open('Nenhum dado encontrado para este participante.', 'Fechar', { duration: 3000 });
+        return;
+      }
+
+      // Criar relatório individual
+      const relatorioIndividual = {
+        participante: selectedParticipant,
+        avaliacao: this.selectedAssessmentName,
+        data: new Date(),
+        secoes: this.getSecoesVisiveisOrdenadas(),
+        dados: dadosParticipante
+      };
+
+      // Gerar PDF
+      const pdfBlob = await this.gerarPDFIndividual(relatorioIndividual);
+
+      // Download do arquivo
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Relatorio_${selectedParticipant}_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      this.snackBar.open(`PDF individual gerado com sucesso!`, 'Fechar', { duration: 3000 });
+
+    } catch (error) {
+      console.error('Erro ao gerar PDF individual:', error);
+      this.snackBar.open('Erro ao gerar PDF individual.', 'Fechar', { duration: 3000 });
+    } finally {
+      this.loadingService.hide();
+    }
+  }
+
+  // Método para exportar Excel individual
+  async exportarRelatorioIndividualExcel(): Promise<void> {
+    const selectedParticipant = this.selectedParticipantControl.value;
+    if (!selectedParticipant) {
+      this.snackBar.open('Selecione um participante primeiro.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    try {
+      this.loadingService.show('Gerando Excel individual...');
+
+      // Filtrar dados apenas do participante selecionado
+      const dadosParticipante = this.dataSource.filter(row =>
+        row.avaliado === selectedParticipant || row.participante === selectedParticipant
+      );
+
+      if (dadosParticipante.length === 0) {
+        this.snackBar.open('Nenhum dado encontrado para este participante.', 'Fechar', { duration: 3000 });
+        return;
+      }
+
+      // Gerar Excel
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Relatório Individual');
+
+      // Adicionar cabeçalho
+      worksheet.addRow(['Relatório Individual - ' + selectedParticipant]);
+      worksheet.addRow(['Avaliação: ' + this.selectedAssessmentName]);
+      worksheet.addRow(['Data: ' + new Date().toLocaleDateString('pt-BR')]);
+      worksheet.addRow([]);
+
+      // Adicionar colunas
+      const headers = this.displayedColumns;
+      worksheet.addRow(headers);
+
+      // Adicionar dados
+      dadosParticipante.forEach(row => {
+        const rowData = headers.map(header => row[header] || '');
+        worksheet.addRow(rowData);
+      });
+
+      // Estilizar
+      worksheet.getRow(1).font = { bold: true, size: 14 };
+      worksheet.getRow(2).font = { bold: true };
+      worksheet.getRow(3).font = { bold: true };
+      worksheet.getRow(5).font = { bold: true };
+
+      // Download do arquivo
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Relatorio_${selectedParticipant}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      this.snackBar.open(`Excel individual gerado com sucesso!`, 'Fechar', { duration: 3000 });
+
+    } catch (error) {
+      console.error('Erro ao gerar Excel individual:', error);
+      this.snackBar.open('Erro ao gerar Excel individual.', 'Fechar', { duration: 3000 });
+    } finally {
+      this.loadingService.hide();
+    }
+  }
+
+  // Método para gerar PDF individual
+  private async gerarPDFIndividual(relatorio: any): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      try {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+
+        // Configurar fonte
+        pdf.setFont('helvetica');
+        pdf.setFontSize(16);
+
+        // Título
+        pdf.text('Relatório Individual', 105, 20, { align: 'center' });
+        pdf.setFontSize(12);
+        pdf.text(`Participante: ${relatorio.participante}`, 20, 35);
+        pdf.text(`Avaliação: ${relatorio.avaliacao}`, 20, 45);
+        pdf.text(`Data: ${relatorio.data.toLocaleDateString('pt-BR')}`, 20, 55);
+
+        // Adicionar seções
+        let yPosition = 80;
+        relatorio.secoes.forEach((secao: any, index: number) => {
+          if (secao.visivel && yPosition < 250) {
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(secao.titulo || `Seção ${index + 1}`, 20, yPosition);
+
+            yPosition += 10;
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+
+            if (secao.texto) {
+              const texto = pdf.splitTextToSize(secao.texto, 170);
+              pdf.text(texto, 20, yPosition);
+              yPosition += texto.length * 5 + 10;
+            }
+
+            // Adicionar quebra de página se necessário
+            if (yPosition > 250) {
+              pdf.addPage();
+              yPosition = 20;
+            }
+          }
+        });
+
+        resolve(pdf.output('blob'));
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 }

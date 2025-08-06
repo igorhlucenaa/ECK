@@ -20,6 +20,7 @@ export interface Competency {
   description: string;
   questionIds: string[];
   clientId?: string;
+  assessmentId?: string;
   isDefault?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -34,12 +35,22 @@ export class CompetencyService {
   constructor(private firestore: Firestore) {}
 
   // Buscar competências por cliente
-  getCompetencies(clientId: string): Observable<Competency[]> {
-    const q = query(
-      this.competenciesCollection,
-      where('clientId', '==', clientId),
-      orderBy('name', 'asc')
-    );
+  getCompetencies(clientId: string, assessmentId?: string): Observable<Competency[]> {
+    let q;
+    if (assessmentId) {
+      q = query(
+        this.competenciesCollection,
+        where('clientId', '==', clientId),
+        where('assessmentId', '==', assessmentId),
+        orderBy('name', 'asc')
+      );
+    } else {
+      q = query(
+        this.competenciesCollection,
+        where('clientId', '==', clientId),
+        orderBy('name', 'asc')
+      );
+    }
     return from(
       getDocs(q).then(
         (snapshot) =>

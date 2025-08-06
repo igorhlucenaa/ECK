@@ -4,8 +4,40 @@
     <mat-card-subtitle>Crie, edite e gerencie as competências usadas nos relatórios.</mat-card-subtitle>
   </mat-card-header>
   <mat-card-content>
+
+    <!-- Seletores de Cliente e Avaliação -->
+    <div class="selectors-container" style="margin-bottom: 24px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <!-- Seletor de Cliente -->
+        <mat-form-field appearance="outline">
+          <mat-label>Selecione o Cliente</mat-label>
+          <mat-select [formControl]="clientControl" (selectionChange)="onClientChange($event.value)">
+            <mat-option *ngFor="let client of clients" [value]="client.id">
+              {{ client.companyName }}
+            </mat-option>
+            <mat-option *ngIf="clients.length === 0" disabled>Nenhum cliente encontrado</mat-option>
+          </mat-select>
+          <mat-error *ngIf="clientControl.hasError('required')">Selecione um cliente.</mat-error>
+        </mat-form-field>
+
+        <!-- Seletor de Avaliação -->
+        <mat-form-field appearance="outline">
+          <mat-label>Selecione a Avaliação</mat-label>
+          <mat-select [formControl]="assessmentControl" (selectionChange)="onAssessmentChange($event.value)" [disabled]="!selectedClientId">
+            <mat-option *ngFor="let assessment of assessments" [value]="assessment.id">
+              {{ assessment.name }}
+            </mat-option>
+            <mat-option *ngIf="assessments.length === 0" disabled>
+              {{ selectedClientId ? 'Nenhuma avaliação encontrada' : 'Selecione um cliente primeiro' }}
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="assessmentControl.hasError('required')">Selecione uma avaliação.</mat-error>
+        </mat-form-field>
+      </div>
+    </div>
+
     <!-- Formulário de Criação/Edição -->
-    <div class="form-container" *ngIf="isEditing || competencies.length === 0">
+    <div class="form-container" *ngIf="(isEditing || competencies.length === 0) && selectedAssessmentId">
       <h3>{{ isEditing ? 'Editar Competência' : 'Nova Competência' }}</h3>
       <form [formGroup]="competencyForm" (ngSubmit)="saveCompetency()" class="competency-form">
         <mat-form-field appearance="outline">
@@ -23,13 +55,38 @@
         <mat-form-field appearance="outline">
           <mat-label>Perguntas Associadas</mat-label>
           <mat-select formControlName="questionIds" multiple required>
-            <mat-option *ngFor="let question of questions" [value]="question.id">
+            <mat-option *ngFor="let question of getAllAvailableQuestions()" [value]="question.id">
               {{ question.title }}
             </mat-option>
           </mat-select>
-                       <mat-hint>{{questions.length}} perguntas encontradas em todas as avaliações.</mat-hint>
+          <mat-hint>
+            {{ getAvailableQuestions().length }} perguntas disponíveis de {{ questions.length }} total.
+            {{ getSelectedQuestions().length }} selecionadas.
+          </mat-hint>
           <mat-error *ngIf="competencyForm.get('questionIds')?.hasError('required')">Selecione ao menos uma pergunta.</mat-error>
         </mat-form-field>
+
+        <!-- Informações sobre perguntas utilizadas -->
+        <div *ngIf="getUsedQuestions().length > 0" class="used-questions-info">
+          <mat-card style="background-color: #fff3e0; border-left: 4px solid #ff9800;">
+            <mat-card-content>
+              <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <mat-icon style="color: #ff9800; margin-right: 8px;">info</mat-icon>
+                <span style="font-weight: 500; color: #e65100;">Perguntas já utilizadas em outras competências</span>
+              </div>
+              <p style="margin: 0; font-size: 14px; color: #666;">
+                As seguintes perguntas já estão associadas a outras competências e não podem ser selecionadas:
+              </p>
+              <div style="margin-top: 8px;">
+                <div class="used-questions-chips">
+                  <span *ngFor="let question of getUsedQuestions()" class="question-chip">
+                    {{ question.title }}
+                  </span>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
 
         <div class="form-actions">
           <button mat-flat-button color="primary" type="submit" [disabled]="competencyForm.invalid">
@@ -42,11 +99,18 @@
       </form>
     </div>
 
+    <!-- Mensagem quando não há avaliação selecionada -->
+    <div *ngIf="!selectedAssessmentId" class="no-assessment-selected">
+      <mat-icon style="font-size: 48px; color: #ccc; margin-bottom: 16px;">assessment</mat-icon>
+      <h3>Selecione uma Avaliação</h3>
+      <p>Escolha um cliente e uma avaliação para gerenciar as competências.</p>
+    </div>
+
     <!-- Tabela de Competências -->
-    <div class="table-container" *ngIf="!isLoading && competencies.length > 0">
-       <button mat-flat-button color="primary" (click)="isEditing = true; editingId = null; competencyForm.reset();" *ngIf="!isEditing" class="add-button">
-          <mat-icon>add</mat-icon> Adicionar Nova Competência
-        </button>
+    <div class="table-container" *ngIf="!isLoading && competencies.length > 0 && selectedAssessmentId">
+      <button mat-flat-button color="primary" (click)="isEditing = true; editingId = null; competencyForm.reset();" *ngIf="!isEditing" class="add-button">
+        <mat-icon>add</mat-icon> Adicionar Nova Competência
+      </button>
 
       <mat-table [dataSource]="competencies" class="mat-elevation-z8">
         <!-- Coluna Nome -->
@@ -85,10 +149,10 @@
       </mat-table>
     </div>
 
-     <!-- Indicador de Loading -->
+    <!-- Indicador de Loading -->
     <div *ngIf="isLoading" class="loading-shade">
-        <mat-spinner></mat-spinner>
-        <p>Carregando competências...</p>
+      <mat-spinner></mat-spinner>
+      <p>Carregando competências...</p>
     </div>
 
   </mat-card-content>

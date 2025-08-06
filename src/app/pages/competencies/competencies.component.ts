@@ -79,6 +79,10 @@ export class CompetenciesComponent implements OnInit {
   ];
   competencyForm: FormGroup;
 
+  // FormControls para seleção de cliente e avaliação
+  clientControl = new FormControl('', [Validators.required]);
+  assessmentControl = new FormControl('', [Validators.required]);
+
   constructor(
     private competencyService: CompetencyService,
     private clientService: ClientService,
@@ -121,6 +125,7 @@ export class CompetenciesComponent implements OnInit {
   onClientChange(clientId: string): void {
     this.selectedClientId = clientId;
     this.selectedAssessmentId = null; // Reset assessment selection
+    this.assessmentControl.reset(); // Reset assessment form control
     this.assessments = [];
     this.questions = [];
     this.competencies = [];
@@ -155,11 +160,12 @@ export class CompetenciesComponent implements OnInit {
   onAssessmentChange(assessmentId: string): void {
     this.selectedAssessmentId = assessmentId;
     this.loadQuestions(assessmentId);
+    this.loadCompetencies(this.selectedClientId!); // Recarregar competências para a avaliação selecionada
   }
 
   loadCompetencies(clientId: string): void {
     this.isLoading = true;
-    this.competencyService.getCompetencies(clientId).subscribe({
+    this.competencyService.getCompetencies(clientId, this.selectedAssessmentId || undefined).subscribe({
       next: (data) => {
         this.competencies = data;
         this.isLoading = false;
@@ -262,6 +268,12 @@ export class CompetenciesComponent implements OnInit {
       });
       return;
     }
+    if (!this.selectedAssessmentId) {
+      this.snackBar.open('Selecione uma avaliação primeiro.', 'Fechar', {
+        duration: 3000,
+      });
+      return;
+    }
     if (this.competencyForm.invalid) {
       this.snackBar.open(
         'Por favor, preencha todos os campos obrigatórios.',
@@ -271,9 +283,36 @@ export class CompetenciesComponent implements OnInit {
       return;
     }
 
+    // Verificar se há perguntas duplicadas
+    const selectedQuestionIds = this.competencyForm.get('questionIds')?.value || [];
+    const usedQuestionIds = new Set<string>();
+
+    this.competencies.forEach(competency => {
+      if (competency.id !== this.editingId) {
+        competency.questionIds?.forEach(questionId => {
+          usedQuestionIds.add(questionId);
+        });
+      }
+    });
+
+    const duplicateQuestions = selectedQuestionIds.filter((id: string) => usedQuestionIds.has(id));
+    if (duplicateQuestions.length > 0) {
+      const duplicateQuestionTitles = duplicateQuestions
+        .map((id: string) => this.questions.find(q => q.id === id)?.title || id)
+        .join(', ');
+
+      this.snackBar.open(
+        `As seguintes perguntas já estão sendo utilizadas em outras competências: ${duplicateQuestionTitles}`,
+        'Fechar',
+        { duration: 5000 }
+      );
+      return;
+    }
+
     const formValue = {
       ...this.competencyForm.value,
       clientId: this.selectedClientId,
+      assessmentId: this.selectedAssessmentId,
     };
 
     if (this.editingId) {
@@ -311,5 +350,64 @@ export class CompetenciesComponent implements OnInit {
   getQuestionText(questionId: string): string {
     const question = this.questions.find((q) => q.id === questionId);
     return question ? question.title : questionId;
+  }
+
+  // Método para obter perguntas disponíveis (não utilizadas em outras competências)
+  getAvailableQuestions(): Question[] {
+    // Obter todas as perguntas já utilizadas em outras competências
+    const usedQuestionIds = new Set<string>();
+
+    this.competencies.forEach(competency => {
+      // Não incluir a competência atual sendo editada
+      if (competency.id !== this.editingId) {
+        competency.questionIds?.forEach(questionId => {
+          usedQuestionIds.add(questionId);
+        });
+      }
+    });
+
+    // Filtrar perguntas disponíveis
+    return this.questions.filter(question => !usedQuestionIds.has(question.id));
+  }
+
+  // Método para obter perguntas já selecionadas na competência atual
+  getSelectedQuestions(): Question[] {
+    const selectedIds = this.competencyForm.get('questionIds')?.value || [];
+    return this.questions.filter(question => selectedIds.includes(question.id));
+  }
+
+  // Método para obter todas as perguntas (disponíveis + selecionadas)
+  getAllAvailableQuestions(): Question[] {
+    const availableQuestions = this.getAvailableQuestions();
+    const selectedQuestions = this.getSelectedQuestions();
+
+    // Combinar perguntas disponíveis com as já selecionadas
+    const allQuestions = [...availableQuestions, ...selectedQuestions];
+
+    // Remover duplicatas e ordenar
+    const uniqueQuestions = allQuestions.filter((question, index, self) =>
+      index === self.findIndex(q => q.id === question.id)
+    );
+
+    return uniqueQuestions.sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  // Método para obter perguntas já utilizadas em outras competências
+  getUsedQuestions(): Question[] {
+    const usedQuestionIds = new Set<string>();
+
+    this.competencies.forEach(competency => {
+      // Não incluir a competência atual sendo editada
+      if (competency.id !== this.editingId) {
+        competency.questionIds?.forEach(questionId => {
+          usedQuestionIds.add(questionId);
+        });
+      }
+    });
+
+    // Retornar perguntas utilizadas que existem na lista de perguntas
+    return this.questions
+      .filter(question => usedQuestionIds.has(question.id))
+      .sort((a, b) => a.title.localeCompare(b.title));
   }
 }

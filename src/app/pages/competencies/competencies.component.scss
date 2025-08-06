@@ -1,52 +1,145 @@
-.form-container {
-  margin-bottom: 24px;
-  padding: 24px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-}
-
-.competency-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.table-container {
+// Estilos para perguntas utilizadas
+.used-questions-info {
   margin-top: 16px;
+
+  mat-card {
+    border-radius: 8px;
+
+    mat-card-content {
+      padding: 16px;
+
+      .used-questions-chips {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        .question-chip {
+          background-color: #ffebee;
+          color: #c62828;
+          border: 1px solid #ef5350;
+          border-radius: 16px;
+          padding: 4px 12px;
+          font-size: 12px;
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 200px;
+          display: inline-block;
+        }
+      }
+    }
+  }
 }
 
-.add-button {
-    margin-bottom: 16px;
+// Estilos para os seletores
+.selectors-container {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+
+  .mat-form-field {
+    width: 100%;
+  }
 }
 
-.mat-table {
-  width: 100%;
+// Estilos para a mensagem de seleção
+.no-assessment-selected {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+
+  h3 {
+    margin: 16px 0 8px 0;
+    color: #333;
+  }
+
+  p {
+    margin: 0;
+    font-size: 16px;
+  }
 }
 
-.description-cell {
-  max-width: 400px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+// Estilos para o formulário
+.form-container {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 24px;
 
-.loading-shade {
+  h3 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 18px;
+  }
+
+  .competency-form {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    background-color: rgba(255, 255, 255, 0.7);
+    gap: 16px;
+
+    .mat-form-field {
+      width: 100%;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+  }
 }
 
-mat-spinner {
+// Estilos para a tabela
+.table-container {
+  .add-button {
     margin-bottom: 16px;
+  }
+
+  .mat-table {
+    width: 100%;
+
+    .description-cell {
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+// Estilos para loading
+.loading-shade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #666;
+
+  p {
+    margin-top: 16px;
+    font-size: 14px;
+  }
+}
+
+// Responsividade
+@media (max-width: 768px) {
+  .selectors-container {
+    div {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .form-container {
+    padding: 16px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
 }
 
