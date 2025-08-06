@@ -1,0 +1,77 @@
+<h2 mat-dialog-title>Gerenciar Modelos de Escala</h2>
+
+<mat-dialog-content>
+  <!-- Formulário para Adicionar/Editar Escala -->
+  <form [formGroup]="scaleForm" class="scale-form">
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Nome da Escala</mat-label>
+      <input matInput formControlName="name" placeholder="Ex: Escala 5 Pontos Padrão">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-100">
+      <mat-label>Descrição</mat-label>
+      <textarea matInput formControlName="description" placeholder="Descreva o propósito desta escala"></textarea>
+    </mat-form-field>
+
+    <h3>Opções da Escala</h3>
+    <div formArrayName="options">
+      <div *ngFor="let option of options.controls; let i=index" [formGroupName]="i" class="option-row">
+        <mat-form-field appearance="outline" class="option-value">
+          <mat-label>Valor</mat-label>
+          <input matInput formControlName="value" type="number">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="option-text">
+          <mat-label>Texto da Legenda</mat-label>
+          <input matInput formControlName="text">
+        </mat-form-field>
+        <button mat-icon-button color="warn" (click)="removeOption(i)" type="button">
+          <mat-icon>remove_circle_outline</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <button mat-stroked-button color="primary" (click)="addOption()" type="button" class="mb-3">
+      <mat-icon>add_circle_outline</mat-icon> Adicionar Opção
+    </button>
+
+    <div class="text-end">
+        <button mat-flat-button color="primary" (click)="saveScale()" [disabled]="scaleForm.invalid" type="submit">
+            <mat-icon>save</mat-icon> {{ isEditing ? 'Atualizar' : 'Salvar Nova Escala' }}
+        </button>
+    </div>
+  </form>
+
+  <mat-divider class="my-4"></mat-divider>
+
+  <!-- Tabela de Escalas Existentes -->
+  <h3>Escalas Salvas</h3>
+  <div class="table-responsive">
+    <table mat-table [dataSource]="scales" class="w-100">
+      <!-- Coluna Nome -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef> Nome </th>
+        <td mat-cell *matCellDef="let element"> {{element.name}} </td>
+      </ng-container>
+
+      <!-- Coluna Ações -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef> Ações </th>
+        <td mat-cell *matCellDef="let element">
+          <button mat-icon-button (click)="editScale(element)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="deleteScale(element.id)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Fechar</button>
+</mat-dialog-actions>

@@ -1,0 +1,95 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Gerenciamento de Competências</mat-card-title>
+    <mat-card-subtitle>Crie, edite e gerencie as competências usadas nos relatórios.</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content>
+    <!-- Formulário de Criação/Edição -->
+    <div class="form-container" *ngIf="isEditing || competencies.length === 0">
+      <h3>{{ isEditing ? 'Editar Competência' : 'Nova Competência' }}</h3>
+      <form [formGroup]="competencyForm" (ngSubmit)="saveCompetency()" class="competency-form">
+        <mat-form-field appearance="outline">
+          <mat-label>Nome da Competência</mat-label>
+          <input matInput formControlName="name" placeholder="Ex: Liderança Inspiradora" required>
+          <mat-error *ngIf="competencyForm.get('name')?.hasError('required')">O nome é obrigatório.</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Descrição</mat-label>
+          <textarea matInput formControlName="description" placeholder="Descreva o que esta competência avalia." required></textarea>
+          <mat-error *ngIf="competencyForm.get('description')?.hasError('required')">A descrição é obrigatória.</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Perguntas Associadas</mat-label>
+          <mat-select formControlName="questionIds" multiple required>
+            <mat-option *ngFor="let question of questions" [value]="question.id">
+              {{ question.title }}
+            </mat-option>
+          </mat-select>
+                       <mat-hint>{{questions.length}} perguntas encontradas em todas as avaliações.</mat-hint>
+          <mat-error *ngIf="competencyForm.get('questionIds')?.hasError('required')">Selecione ao menos uma pergunta.</mat-error>
+        </mat-form-field>
+
+        <div class="form-actions">
+          <button mat-flat-button color="primary" type="submit" [disabled]="competencyForm.invalid">
+            <mat-icon>save</mat-icon> Salvar
+          </button>
+          <button mat-button type="button" (click)="cancelEdit()" *ngIf="isEditing">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tabela de Competências -->
+    <div class="table-container" *ngIf="!isLoading && competencies.length > 0">
+       <button mat-flat-button color="primary" (click)="isEditing = true; editingId = null; competencyForm.reset();" *ngIf="!isEditing" class="add-button">
+          <mat-icon>add</mat-icon> Adicionar Nova Competência
+        </button>
+
+      <mat-table [dataSource]="competencies" class="mat-elevation-z8">
+        <!-- Coluna Nome -->
+        <ng-container matColumnDef="name">
+          <mat-header-cell *matHeaderCellDef> Nome </mat-header-cell>
+          <mat-cell *matCellDef="let element"> <strong>{{element.name}}</strong> </mat-cell>
+        </ng-container>
+
+        <!-- Coluna Descrição -->
+        <ng-container matColumnDef="description">
+          <mat-header-cell *matHeaderCellDef> Descrição </mat-header-cell>
+          <mat-cell *matCellDef="let element" class="description-cell"> {{element.description}} </mat-cell>
+        </ng-container>
+
+        <!-- Coluna Contagem de Perguntas -->
+        <ng-container matColumnDef="questionCount">
+          <mat-header-cell *matHeaderCellDef> Perguntas </mat-header-cell>
+          <mat-cell *matCellDef="let element"> {{element.questionIds?.length || 0}} </mat-cell>
+        </ng-container>
+
+        <!-- Coluna Ações -->
+        <ng-container matColumnDef="actions">
+          <mat-header-cell *matHeaderCellDef> Ações </mat-header-cell>
+          <mat-cell *matCellDef="let element">
+            <button mat-icon-button color="primary" (click)="startEdit(element)" matTooltip="Editar">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deleteCompetency(element.id!)" matTooltip="Excluir">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </mat-cell>
+        </ng-container>
+
+        <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+        <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+      </mat-table>
+    </div>
+
+     <!-- Indicador de Loading -->
+    <div *ngIf="isLoading" class="loading-shade">
+        <mat-spinner></mat-spinner>
+        <p>Carregando competências...</p>
+    </div>
+
+  </mat-card-content>
+</mat-card>

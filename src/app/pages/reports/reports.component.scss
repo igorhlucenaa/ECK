@@ -1,38 +1,40 @@
-.table-container {
-  overflow-x: auto;
-  width: 100%;
+.report-cover {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 80vh; /* Ocupa a maior parte da altura da página */
+  padding: 20px;
+  border-bottom: 1px solid #eee;
 }
 
-mat-table {
-  min-width: 800px; /* largura mínima para habilitar scroll em telas pequenas */
+.cover-content {
+  max-width: 600px;
 }
 
-/* Destacar cabeçalho */
-.mat-header-cell {
-  background-color: #e0e0e0; /* cinza mais forte */
+.cover-main-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.cover-subtitle {
+  font-size: 22px;
+  font-weight: 400;
+  color: #555;
+  margin-bottom: 25px;
+}
+
+.cover-participant-name {
+  font-size: 24px;
   font-weight: 700;
-  border-bottom: 2px solid #bdbdbd;
-  padding: 8px;
-  max-width: 220px;
+  color: #333;
+  margin-bottom: 40px;
 }
 
-/* Conteúdo do cabeçalho com rolagem se muito largo */
-.mat-header-cell {
-  max-width: 220px; /* largura máxima para cabeçalhos longos */
-  white-space: normal;
-  padding: 8px;
-}
-
-.mat-header-cell span {
-  display: block;
-  max-height: 100px;
-  overflow: auto;
-  white-space: normal;
-}
-
-.cell-content {
-  max-width: 220px;
-  max-height: 120px;
-  overflow: auto;
-  white-space: pre-line;
+.cover-footer {
+  margin-top: 50px;
+  font-size: 14px;
+  color: #888;
 }

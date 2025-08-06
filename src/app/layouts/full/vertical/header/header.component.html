@@ -115,6 +115,40 @@
   <span class="flex-1-auto"></span>
 
   <!-- --------------------------------------------------------------- -->
+  <!-- Definições Menu -->
+  <!-- --------------------------------------------------------------- -->
+  <button mat-button [matMenuTriggerFor]="definicoesMenu" class="m-r-5">
+    <i class="iconify icon-20 d-flex" data-icon="solar:document-add-bold-duotone"></i>
+    Definições
+  </button>
+  <mat-menu #definicoesMenu="matMenu" class="cardWithShadow">
+    <button mat-menu-item routerLink="/orders">
+      <i class="iconify icon-20 d-flex" data-icon="solar:wallet-money-bold-duotone"></i>
+      <span>Pedidos</span>
+    </button>
+    <button mat-menu-item routerLink="/users">
+      <i class="iconify icon-20 d-flex" data-icon="solar:users-group-two-rounded-bold-duotone"></i>
+      <span>Usuários e Grupos</span>
+    </button>
+    <button mat-menu-item routerLink="/mail-templates">
+      <i class="iconify icon-20 d-flex" data-icon="solar:mailbox-bold-duotone"></i>
+      <span>Modelos de E-mail</span>
+    </button>
+    <button mat-menu-item routerLink="/assessments">
+      <i class="iconify icon-20 d-flex" data-icon="solar:chart-2-bold-duotone"></i>
+      <span>Formulários</span>
+    </button>
+    <button mat-menu-item routerLink="/reports">
+      <i class="iconify icon-20 d-flex" data-icon="solar:pie-chart-2-bold-duotone"></i>
+      <span>Relatórios</span>
+    </button>
+    <button mat-menu-item routerLink="/competencies">
+      <i class="iconify icon-20 d-flex" data-icon="solar:notebook-bold-duotone"></i>
+      <span>Competências</span>
+    </button>
+  </mat-menu>
+
+  <!-- --------------------------------------------------------------- -->
   <!-- langugage Dropdown -->
   <!-- --------------------------------------------------------------- -->
   <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">

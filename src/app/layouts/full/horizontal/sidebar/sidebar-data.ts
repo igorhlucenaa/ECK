@@ -64,6 +64,12 @@ export const navItems: NavItem[] = [
         route: '/reports', // Alterado para a nova rota de relatórios
         role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
       },
+      {
+        displayName: 'Competências',
+        iconName: 'solar:notebook-bold-duotone',
+        route: '/competencies',
+        role: ['admin_master', 'admin_client', 'viewer'],
+      },
     ],
   },
 

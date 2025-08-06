@@ -30,6 +30,12 @@ export const navItems: NavItem[] = [
     role: ['admin_client'],
   },
   {
+    displayName: 'Competências',
+    iconName: 'solar:notebook-bold-duotone',
+    route: '/competencies',
+    role: ['admin_master', 'admin_client', 'viewer'],
+  },
+  {
     displayName: 'Definições',
     iconName: 'solar:document-add-bold-duotone',
     route: '',
@@ -63,6 +69,12 @@ export const navItems: NavItem[] = [
         iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando gráficos/relatórios
         route: '/reports', // Alterado para a nova rota de relatórios
         role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
+      },
+      {
+        displayName: 'Competências',
+        iconName: 'solar:notebook-bold-duotone',
+        route: '/competencies',
+        role: ['admin_master', 'admin_client', 'viewer'],
       },
     ],
   },

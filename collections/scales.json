@@ -1,0 +1,17 @@
+[
+  {
+    "id": "escala_padrao_5_pontos",
+    "name": "Escala Padrão (5 Pontos)",
+    "description": "Escala de avaliação padrão com 5 níveis, de 'Improvável que seja um ponto forte' a 'Muito provável que seja um ponto forte'.",
+    "options": [
+      { "value": 1, "text": "Improvável que seja um ponto forte" },
+      { "value": 2, "text": "Pouco provável que seja um ponto forte" },
+      { "value": 3, "text": "Razoavelmente provável que seja um ponto forte" },
+      { "value": 4, "text": "Provável que seja um ponto forte" },
+      { "value": 5, "text": "Muito provável que seja um ponto forte" },
+      { "value": "?", "text": "Sem dados" }
+    ],
+    "clientId": "5QQGnqIRSzHtuxDp6O8W",
+    "isDefault": true
+  }
+]

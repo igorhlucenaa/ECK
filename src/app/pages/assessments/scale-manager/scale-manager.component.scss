@@ -1,0 +1,23 @@
+.scale-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.option-value {
+  flex: 1;
+}
+
+.option-text {
+  flex: 4;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}

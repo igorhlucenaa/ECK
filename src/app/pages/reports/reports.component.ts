@@ -27,6 +27,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { ActivatedRoute } from '@angular/router';
 import { Router } from '@angular/router';
+import { CompetencyService, Competency } from '../../services/competency.service';
 import { LoadingService } from '../../services/loading.service';
 import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
 
@@ -35,12 +36,6 @@ interface AssessmentOption {
   name: string;
 }
 
-interface Competencia {
-  id: string;
-  nome: string;
-  descricao: string;
-  perguntasIds: string[];
-}
 
 interface DistribuicaoNota {
   nota: number;
@@ -61,7 +56,7 @@ interface LinhaTabela {
 }
 
 interface TabelaCompetencia {
-  competencia: Competencia;
+  competencia: Competency;
   linhas: LinhaTabela[];
   mediasGerais: DadosCategoria[];
 }
@@ -69,7 +64,7 @@ interface TabelaCompetencia {
 // Modelo de dados para seções dinâmicas do relatório
 export interface RelatorioSecao {
   id: string;
-  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem';
+  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'grafico_radar';
   titulo?: string;
   texto?: string;
   visivel: boolean;
@@ -137,6 +132,7 @@ export class ReportsComponent implements OnInit {
   isLoading = false;
   assessments: AssessmentOption[] = [];
   selectedAssessmentId: string | null = null;
+  selectedClientId: string | null = null; // Nova propriedade
   questionMap: { [key: string]: string } = {};
   summaryCounts: any = {};
 
@@ -155,7 +151,33 @@ export class ReportsComponent implements OnInit {
   stackedData: any[] = [];
   colorScheme = { domain: ['#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#424242'] };
 
-  // Sistema de cores customizáveis
+  // Esquema de cores fixo por categoria para consistência
+  categoryColorScheme: any = {
+    domain: ['#00C853', '#D32F2F', '#FFC107', '#7B1FA2', '#1976D2', '#607D8B'] // Verde, Vermelho, Amarelo, Roxo, Azul, Cinza
+  };
+
+  categoryColorMap: { [key: string]: string } = {
+    'Avaliado(a)': this.categoryColorScheme.domain[0],
+    'Gestor(es)': this.categoryColorScheme.domain[1],
+    'Pares': this.categoryColorScheme.domain[2],
+    'Subordinados': this.categoryColorScheme.domain[3],
+    'Resultado final': this.categoryColorScheme.domain[4], // Usando a cor azul para o resultado final
+    'Outros': this.categoryColorScheme.domain[5]
+  };
+
+  // Sistema de cores customizáveis (pode ser mantido para outras seções, se necessário)
+
+  // Método para calcular a altura do gráfico baseada no número de dados
+  getChartHeight(dadosGrafico: any[]): number {
+    const calculatedHeight = dadosGrafico.length * 60 + 50;
+    return calculatedHeight < 200 ? 200 : calculatedHeight;
+  }
+
+  // Método para buscar a média de uma competência por grupo
+  getMediaPorCompetenciaEGrupo(compData: any, grupo: string): string {
+    const media = compData.dados.find((d: any) => d.grupo === grupo)?.media;
+    return media ? media.toFixed(1).toString() : '-';
+  }
   paletasCores = {
     'padrao': {
       nome: 'Padrão (Cinza)',
@@ -208,11 +230,90 @@ export class ReportsComponent implements OnInit {
   polarData: any[] = [];
   radarOptions: EChartsOption = {};
 
-  competencias: Competencia[] = [];
-  competenciaEditando: Competencia = { id: '', nome: '', descricao: '', perguntasIds: [] };
-  competenciaForm: FormGroup;
+  allCompetencies: Competency[] = []; // Todas as competências do cliente
+  competencias: Competency[] = []; // Competências selecionadas para o relatório
 
-  perguntasBloqueadas = new Set<string>();
+  // Controla a seleção de competências na nova aba
+  isCompetencySelected(competencyId: string): boolean {
+    return this.competencias.some(c => c.id === competencyId);
+  }
+
+  toggleCompetencySelection(competencyId: string): void {
+    const isSelected = this.isCompetencySelected(competencyId);
+    if (isSelected) {
+      // Remove a competência
+      this.competencias = this.competencias.filter(c => c.id !== competencyId);
+    } else {
+      // Adiciona a competência
+      const competencyToAdd = this.allCompetencies.find(c => c.id === competencyId);
+      if (competencyToAdd) {
+        this.competencias.push(competencyToAdd);
+      }
+    }
+    // Sincroniza as seções com a nova seleção de competências
+    this.sincronizarSecoesComCompetencias();
+    this.cdr.detectChanges();
+  }
+
+  // Garante que as seções reflitam as competências selecionadas
+  sincronizarSecoesComCompetencias(): void {
+    const selectedIds = this.competencias.map(c => c.id!);
+    this.relatorioConfiguracao.forEach(secao => {
+      if (secao.competenciasIds) {
+        secao.competenciasIds = selectedIds;
+      }
+    });
+    this.atualizarFormArrayComConfiguracao();
+  }
+
+  // Seleciona ou deseleciona todas as competências visíveis
+  toggleSelectAllCompetencies(): void {
+    // Verifica se todas as competências filtradas já estão selecionadas
+    const allFilteredSelected = this.filteredCompetencies.every(filteredComp =>
+      this.competencias.some(selectedComp => selectedComp.id === filteredComp.id)
+    );
+
+    if (allFilteredSelected) {
+      // Se todas estão selecionadas, remove elas
+      const filteredIds = this.filteredCompetencies.map(c => c.id);
+      this.competencias = this.competencias.filter(c => !filteredIds.includes(c.id));
+    } else {
+      // Se não, adiciona as que não estão selecionadas
+      this.filteredCompetencies.forEach(filteredComp => {
+        if (!this.competencias.some(selectedComp => selectedComp.id === filteredComp.id)) {
+          this.competencias.push(filteredComp);
+        }
+      });
+    }
+    this.sincronizarSecoesComCompetencias();
+  }
+
+  // Controle do Wizard
+  currentStep: 'selection' | 'competencies' | 'configure' | 'preview' = 'selection';
+  steps: string[] = ['selection', 'competencies', 'configure', 'preview'];
+
+  navigateToStep(step: 'selection' | 'competencies' | 'configure' | 'preview'): void {
+    const currentIndex = this.steps.indexOf(this.currentStep);
+    const targetIndex = this.steps.indexOf(step);
+
+    // Permite navegar para trás a qualquer momento
+    if (targetIndex < currentIndex) {
+      this.currentStep = step;
+      return;
+    }
+
+    // Validações para avançar
+    if (this.currentStep === 'selection' && this.selectedAssessmentId) {
+      this.currentStep = step;
+    } else if (this.currentStep === 'competencies' && this.competencias.length > 0) {
+      this.currentStep = step;
+    } else if (this.currentStep === 'configure') {
+      this.currentStep = step;
+    }
+  }
+
+  competencySearchControl = new FormControl('');
+  filteredCompetencies: Competency[] = [];
 
   // Exemplo de configuração inicial do relatório
   relatorioConfiguracao: RelatorioSecao[] = [
@@ -314,29 +415,50 @@ export class ReportsComponent implements OnInit {
     private route: ActivatedRoute,
     private performanceMonitor: PerformanceMonitorService,
     private router: Router,
-    private cdr: ChangeDetectorRef,
+    private competencyService: CompetencyService,
     private loadingService: LoadingService,
-    private firestoreInterceptor: FirestoreLoadingInterceptor
+    private firestoreInterceptor: FirestoreLoadingInterceptor,
+    private cdr: ChangeDetectorRef
   ) {
     this.dummyForm = new FormGroup({
       relatorioFormArray: new FormArray<any>([])
     });
 
     this.relatorioFormArray = this.dummyForm.get('relatorioFormArray') as FormArray;
+  }
 
-    this.competenciaForm = new FormGroup({
-      nome: new FormControl('', Validators.required),
-      descricao: new FormControl('', Validators.required),
-      perguntasIds: new FormControl<string[]>([], Validators.required)
-    });
+  async loadAllCompetencies() {
+    if (!this.selectedClientId) {
+      console.warn('ClientId não selecionado, não é possível carregar competências.');
+      this.allCompetencies = [];
+      this.cdr.detectChanges();
+      return;
+    }
 
-    // Monitorar mudanças para invalidação de cache
-    this.competenciaForm.valueChanges.subscribe(() => {
-      this.invalidateCache('secao-'); // Invalida caches que dependem de competências
-    });
+    this.loadingService.show('Carregando competências...');
+    try {
+      this.competencyService.getCompetencies(this.selectedClientId).subscribe(competencies => {
+        this.allCompetencies = competencies;
+        this.filteredCompetencies = [...this.allCompetencies]; // Inicializa a lista filtrada
+        this.cdr.detectChanges();
+        console.log(`Competências carregadas para o cliente ${this.selectedClientId}:`, competencies);
 
-    this.carregarRelatoriosSalvos();
-    this.carregarTemplatesSalvos();
+        // Lógica de filtro ao digitar na busca
+        this.competencySearchControl.valueChanges.subscribe(term => {
+          const lowerTerm = term?.toLowerCase() || '';
+          this.filteredCompetencies = this.allCompetencies.filter(c =>
+            c.name.toLowerCase().includes(lowerTerm) ||
+            c.description.toLowerCase().includes(lowerTerm)
+          );
+          this.cdr.detectChanges();
+        });
+      });
+    } catch (e) {
+      console.error("Erro ao carregar competências:", e);
+      this.snackBar.open('Falha ao carregar as competências.', 'Fechar', { duration: 3000 });
+    } finally {
+      this.loadingService.hide();
+    }
   }
 
   // 🚀 PERFORMANCE: Sistema de cache
@@ -398,8 +520,8 @@ export class ReportsComponent implements OnInit {
     return formGroup.get('id')?.value;
   }
 
-  trackByCompetencia(index: number, comp: Competencia): string {
-    return comp.id;
+  trackByCompetencia(index: number, comp: Competency): string {
+    return comp.id!;
   }
 
   trackByQuestion(index: number, questionId: string): string {
@@ -483,8 +605,6 @@ export class ReportsComponent implements OnInit {
       }
     });
 
-    this.atualizarPerguntasBloqueadas();
-
     this.assessmentControl.valueChanges.subscribe(id => {
       if (id) {
         this.selectedAssessmentId = id;
@@ -527,18 +647,6 @@ export class ReportsComponent implements OnInit {
     } finally {
       this.loadingService.hide();
     }
-  }
-
-  private atualizarPerguntasBloqueadas(): void {
-    this.perguntasBloqueadas.clear();
-    const idCompetenciaEditando = this.competenciaEditando?.id;
-
-    this.competencias.forEach(c => {
-      // Se não estamos editando esta competência, suas perguntas estão bloqueadas
-      if (c.id !== idCompetenciaEditando) {
-        c.perguntasIds.forEach(pId => this.perguntasBloqueadas.add(pId));
-      }
-    });
   }
 
   private atualizarFormArrayComConfiguracao() {
@@ -594,7 +702,12 @@ export class ReportsComponent implements OnInit {
       return;
     }
     const assessmentData = assessmentSnap.data();
+    this.selectedClientId = assessmentData['clientId'] || null; // Armazena o clientId
     console.log('📊 AssessmentData:', assessmentData);
+    console.log(`🔒 ClientId definido como: ${this.selectedClientId}`);
+
+    // Agora que temos o clientId, podemos carregar as competências
+    await this.loadAllCompetencies();
 
     const surveyJSON = assessmentData['surveyJSON'];
     console.log('📊 SurveyJSON encontrado:', !!surveyJSON);
@@ -783,9 +896,6 @@ export class ReportsComponent implements OnInit {
       );
     }
 
-        // Atualizar perguntas bloqueadas após carregar os dados
-    this.atualizarPerguntasBloqueadas();
-
     // Criar índices de dados para performance
     this.createDataIndexes();
 
@@ -826,6 +936,9 @@ export class ReportsComponent implements OnInit {
 
     // Forçar detecção de mudanças do Angular
     this.cdr.detectChanges();
+
+    // Avança para o próximo passo do wizard
+    this.currentStep = 'competencies';
 
     // Verificação final
     console.log('✅ Verificação final:');
@@ -938,49 +1051,6 @@ export class ReportsComponent implements OnInit {
     return isNaN(num) ? null : num;
   }
 
-  salvarCompetencia() {
-    if (this.competenciaForm.invalid) return;
-
-    const formValue = this.competenciaForm.value;
-    const idCompetenciaEditando = this.competenciaEditando.id;
-
-    if (idCompetenciaEditando) {
-      // Editando competência existente
-      const idx = this.competencias.findIndex(c => c.id === idCompetenciaEditando);
-      if (idx > -1) this.competencias[idx] = { ...this.competenciaEditando, ...formValue };
-      this.snackBar.open('Competência atualizada com sucesso!', 'Fechar', { duration: 3000 });
-    } else {
-      // Adicionando nova competência
-      const nova: Competencia = {
-        id: `comp_${new Date().getTime()}`,
-        ...formValue
-      };
-      this.competencias.push(nova);
-      this.snackBar.open('Competência adicionada com sucesso!', 'Fechar', { duration: 3000 });
-    }
-    // Invalida cache de resumos e seções
-    this.invalidateCache('resumo-');
-    this.invalidateCache('secao-');
-    this.cancelarEdicaoCompetencia();
-    this.atualizarPerguntasBloqueadas();
-  }
-
-  editarCompetencia(c: Competencia) {
-    this.competenciaEditando = { ...c };
-    this.competenciaForm.setValue({
-      nome: c.nome,
-      descricao: c.descricao,
-      perguntasIds: c.perguntasIds
-    });
-    this.atualizarPerguntasBloqueadas();
-  }
-
-  cancelarEdicaoCompetencia() {
-    this.competenciaEditando = { id: '', nome: '', descricao: '', perguntasIds: [] };
-    this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
-    this.atualizarPerguntasBloqueadas();
-  }
-
   get selectedAssessmentName(): string {
     return this.assessments.find(a => a.id === this.selectedAssessmentId)?.name || 'Nenhuma';
   }
@@ -1075,17 +1145,17 @@ export class ReportsComponent implements OnInit {
     return this.relatorioFormArray.controls as FormGroup[];
   }
 
-  getOrInitTextoCompetencia(secao: RelatorioSecao, comp: Competencia): string {
+  getOrInitTextoCompetencia(secao: RelatorioSecao, comp: Competency): string {
     if (!secao.textosPorCompetencia) {
       secao.textosPorCompetencia = {};
     }
-    if (!secao.textosPorCompetencia[comp.id]) {
+    if (!secao.textosPorCompetencia[comp.id!]) {
       // Cria o texto padrão a partir das perguntas
-      secao.textosPorCompetencia[comp.id] = comp.perguntasIds
+      secao.textosPorCompetencia[comp.id!] = comp.questionIds
         .map(pId => this.questionMap[pId] || '')
         .join('. ');
     }
-    return secao.textosPorCompetencia[comp.id];
+    return secao.textosPorCompetencia[comp.id!];
   }
 
   // Mapeamento de categorias do banco para os grupos do relatório
@@ -1115,8 +1185,8 @@ export class ReportsComponent implements OnInit {
         console.log('[Resumo] Nenhuma competência selecionada na seção de resumo.');
         return [];
       }
-      const competenciasSelecionadas = this.competencias.filter(c => secaoResumo.competenciasIds!.includes(c.id));
-      console.log('[Resumo] Competências selecionadas:', competenciasSelecionadas.map(c => ({ id: c.id, nome: c.nome, perguntasIds: c.perguntasIds })));
+      const competenciasSelecionadas = this.competencias.filter(c => secaoResumo.competenciasIds!.includes(c.id!));
+      console.log('[Resumo] Competências selecionadas:', competenciasSelecionadas.map(c => ({ id: c.id, name: c.name, questionIds: c.questionIds })));
 
       if (this.dataSource.length) {
         console.log('[Resumo] Exemplo de linha do dataSource:', this.dataSource[0]);
@@ -1124,8 +1194,8 @@ export class ReportsComponent implements OnInit {
 
       const resultado: any[] = [];
       for (const comp of competenciasSelecionadas) {
-        const perguntas = comp.perguntasIds;
-        console.log(`[Resumo] Processando competência: ${comp.nome} (Perguntas: ${perguntas})`);
+        const perguntas = comp.questionIds;
+        console.log(`[Resumo] Processando competência: ${comp.name} (Perguntas: ${perguntas})`);
 
         for (const grupo of grupos) {
           let soma = 0;
@@ -1146,10 +1216,10 @@ export class ReportsComponent implements OnInit {
             }
           }
 
-          console.log(`[Resumo] Competência: ${comp.nome}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${count ? soma / count : null}`);
+          console.log(`[Resumo] Competência: ${comp.name}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${count ? soma / count : null}`);
           resultado.push({
-            competencia: comp.nome,
-            descricao: comp.descricao,
+            competencia: comp.name,
+            description: comp.description,
             grupo,
             media: count ? soma / count : null
           });
@@ -1168,8 +1238,8 @@ export class ReportsComponent implements OnInit {
       for (const linha of resumoMedias) {
         if (!competenciasAgrupadas[linha.competencia]) {
           competenciasAgrupadas[linha.competencia] = {
-            nome: linha.competencia,
-            descricao: linha.descricao,
+            name: linha.competencia,
+            description: linha.description,
             dados: []
           };
         }
@@ -1186,29 +1256,22 @@ export class ReportsComponent implements OnInit {
   // 🚀 PERFORMANCE: Métodos utilitários para gráficos dinâmicos na visualização do relatório
   getSecaoStackedData(secao: any) {
     const competenciasSelecionadas = this.getCompetenciasSelecionadasParaGraficos(secao);
-    const grupos = this.getGrupos();
+    if (competenciasSelecionadas.length === 0) return [];
 
-    if (competenciasSelecionadas.length === 0 || grupos.length === 0) {
-      return [];
-    }
-
-    const result = competenciasSelecionadas.map(comp => {
-      const series = grupos.map(grupo => {
+    return competenciasSelecionadas.map(comp => {
+      const series = this.getGrupos().map(grupo => {
         const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-        const valor = (media !== null && !isNaN(media)) ? media : 0;
         return {
           name: grupo,
-          value: valor
+          value: (media !== null && !isNaN(media)) ? media : 0
         };
       });
 
       return {
-        name: comp.nome,
+        name: comp.name,
         series: series
       };
     });
-
-    return result;
   }
 
   getSecaoPieData(secao: any) {
@@ -1231,7 +1294,7 @@ export class ReportsComponent implements OnInit {
       const mediaGeral = contadorTotal > 0 ? somaTotal / contadorTotal : 0;
 
       return {
-        name: comp.nome,
+        name: comp.name,
         value: mediaGeral
       };
     });
@@ -1240,7 +1303,7 @@ export class ReportsComponent implements OnInit {
   }
 
   // Métodos para gráficos individuais por característica
-  getCompetenciaStackedData(comp: Competencia) {
+  getCompetenciaStackedData(comp: Competency) {
     const grupos = this.getGrupos();
     return grupos.map(grupo => {
       const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
@@ -1253,13 +1316,13 @@ export class ReportsComponent implements OnInit {
     });
   }
 
-  getCompetenciaRadarOptions(comp: Competencia): EChartsOption {
+  getCompetenciaRadarOptions(comp: Competency): EChartsOption {
     const stackedData = this.getCompetenciaStackedData(comp);
     if (!stackedData.length) return {};
 
     const indicator = stackedData.map((d: any) => ({ name: d.name, max: 5 }));
     const seriesData = [{
-      name: comp.nome,
+      name: comp.name,
       value: stackedData.map((d: any) => d.value)
     }];
 
@@ -1292,7 +1355,7 @@ export class ReportsComponent implements OnInit {
       });
 
       return {
-        name: comp.nome,
+        name: comp.name,
         value: values
       };
     });
@@ -1300,7 +1363,7 @@ export class ReportsComponent implements OnInit {
     return {
       legend: {
         top: 'bottom',
-        data: competenciasSelecionadas.map(comp => comp.nome)
+        data: competenciasSelecionadas.map(comp => comp.name)
       },
       radar: { indicator },
       series: [{
@@ -1310,7 +1373,7 @@ export class ReportsComponent implements OnInit {
     };
   }
 
-  getCompetenciaPieData(comp: Competencia) {
+  getCompetenciaPieData(comp: Competency) {
     const grupos = this.getGrupos();
     return grupos.map(grupo => {
       const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
@@ -1467,23 +1530,23 @@ export class ReportsComponent implements OnInit {
   }
 
   // Método auxiliar para obter característica por ID
-  getCompetenciaPorId(id: string): Competencia | undefined {
+  getCompetenciaPorId(id: string): Competency | undefined {
     return this.competencias.find(c => c.id === id);
   }
 
   // Características selecionadas para a seção de gráficos
-  getCompetenciasSelecionadasParaGraficos(secao: any): Competencia[] {
-    const result = (!secao || !secao.competenciasIds) ? [] : this.competencias.filter(c => secao.competenciasIds.includes(c.id));
+  getCompetenciasSelecionadasParaGraficos(secao: any): Competency[] {
+    const result = (!secao || !secao.competenciasIds) ? [] : this.competencias.filter(c => secao.competenciasIds.includes(c.id!));
     // console.log('🔍 getCompetenciasSelecionadasParaGraficos() - secao:', secao);
     // console.log('🔍 getCompetenciasSelecionadasParaGraficos() - result:', result);
     return result;
   }
 
-  getCompetenciasSelecionadasParaSecao(secao: RelatorioSecao): Competencia[] {
+  getCompetenciasSelecionadasParaSecao(secao: RelatorioSecao): Competency[] {
     if (!secao || !secao.competenciasIds) {
       return [];
     }
-    return this.competencias.filter(c => secao.competenciasIds!.includes(c.id));
+    return this.competencias.filter(c => secao.competenciasIds!.includes(c.id!));
   }
 
   getCompetenciasSelecionadasParaTabela() {
@@ -1491,7 +1554,7 @@ export class ReportsComponent implements OnInit {
     if (!secaoTabela || !secaoTabela.competenciasIds) {
       return [];
     }
-    return this.competencias.filter(c => secaoTabela.competenciasIds!.includes(c.id));
+    return this.competencias.filter(c => secaoTabela.competenciasIds!.includes(c.id!));
   }
 
   // Lista de respostas para uma pergunta e grupo
@@ -1506,7 +1569,7 @@ export class ReportsComponent implements OnInit {
   getMediaPorPerguntaEGrupo(carac: any, grupo: string) {
     let soma = 0;
     let count = 0;
-    for (const pid of carac.perguntasIds || []) {
+    for (const pid of carac.questionIds || []) {
       for (const row of this.dataSource) {
         if (this.mapCategoriaToGrupo(row['categoria']) === grupo) {
           let valor = row[pid];
@@ -1545,7 +1608,7 @@ export class ReportsComponent implements OnInit {
     let soma = 0;
     let count = 0;
 
-    for (const pid of carac.perguntasIds || []) {
+    for (const pid of carac.questionIds || []) {
       for (const row of this.dataSource) {
         if (row.isTargetParticipant) {
           let valor = row[pid];
@@ -1598,7 +1661,7 @@ export class ReportsComponent implements OnInit {
       nome: this.nomeRelatorioControl.value,
       assessmentId: this.selectedAssessmentId,
       assessmentName: assessment ? assessment.name : '',
-      competencias: this.competencias,
+      competenciasIds: this.competencias.map(c => c.id), // Salvar apenas os IDs
       configuracao: this.relatorioConfiguracao,
       criadoEm: new Date()
     };
@@ -1623,22 +1686,46 @@ export class ReportsComponent implements OnInit {
 
   async carregarRelatorioSelecionado() {
     if (!this.selectedReportId.value) return;
-    const reportRef = doc(this.firestore, 'reports', this.selectedReportId.value);
-    const reportSnap = await getDoc(reportRef);
-    if (reportSnap.exists()) {
-      const reportData = reportSnap.data();
-      this.relatorioConfiguracao = reportData['configuracao'] || [];
-      this.competencias = reportData['competencias'] || [];
-      // Atualizar o form reativo
-      this.atualizarFormArrayComConfiguracao();
-      // Atualizar perguntas bloqueadas após carregar competências
-      this.atualizarPerguntasBloqueadas();
-      this.snackBar.open(`Relatório '${reportData['nome']}' carregado!`, 'Fechar', { duration: 3000 });
+
+    this.loadingService.show('Carregando relatório...');
+    try {
+      const reportRef = doc(this.firestore, 'reports', this.selectedReportId.value);
+      const reportSnap = await getDoc(reportRef);
+
+      if (reportSnap.exists()) {
+        const reportData = reportSnap.data();
+
+        // 1. Restaurar o assessmentId e carregar seus dados
+        if (reportData['assessmentId']) {
+          this.assessmentControl.setValue(reportData['assessmentId'], { emitEvent: false });
+          this.selectedAssessmentId = reportData['assessmentId'];
+          await this.onAssessmentChange(); // Recarrega todos os dados da avaliação
+        }
+
+        // 2. Restaurar a configuração das seções
+        this.relatorioConfiguracao = reportData['configuracao'] || [];
+
+        // 3. Restaurar as competências selecionadas
+        const competenciasIds = reportData['competenciasIds'] || [];
+        this.competencias = this.allCompetencies.filter(c => competenciasIds.includes(c.id));
+
+        // 4. Atualizar o formulário e avançar no wizard
+        this.atualizarFormArrayComConfiguracao();
+        this.currentStep = 'configure'; // Leva o usuário direto para a configuração
+
+        this.snackBar.open(`Relatório '${reportData['nome']}' carregado!`, 'Fechar', { duration: 3000 });
+      }
+    } catch (error) {
+      console.error("Erro ao carregar relatório:", error);
+      this.snackBar.open('Falha ao carregar o relatório.', 'Fechar', { duration: 3000 });
+    } finally {
+      this.loadingService.hide();
+      this.cdr.detectChanges();
     }
   }
 
   // Adiciona uma nova seção customizada ao relatório
-  addSecaoCustomizada(tipo: 'texto' | 'graficos' | 'tabela' | 'competencia_detalhada' | 'grafico_defasagem' = 'texto') {
+  addSecaoCustomizada(tipo: 'texto' | 'graficos' | 'tabela' | 'competencia_detalhada' | 'grafico_defasagem' | 'grafico_radar' = 'texto') {
     const novaSecao: RelatorioSecao = {
           id: `custom_${new Date().getTime()}`,
       tipo: tipo,
@@ -1671,6 +1758,10 @@ export class ReportsComponent implements OnInit {
        case 'grafico_defasagem':
         novaSecao.titulo = 'Gráfico de Defasagem (Gap Analysis)';
         novaSecao.competenciasIds = [];
+        break;
+      case 'grafico_radar':
+        novaSecao.titulo = 'Gráfico de Radar Comparativo';
+        novaSecao.competenciasIds = this.competencias.map(c => c.id!);
         break;
     }
 
@@ -1720,7 +1811,8 @@ export class ReportsComponent implements OnInit {
       case 'introducao': return 'Introdução';
       case 'resumo': return 'Resumo de Competências';
       case 'graficos': return 'Gráficos Customizados';
-      case 'grafico_defasagem': return 'Gráfico de Defasagem (Gap)';
+              case 'grafico_defasagem': return 'Gráfico de Defasagem (Gap)';
+        case 'grafico_radar': return 'Gráfico de Radar';
       case 'tabela': return 'Tabela de Consolidação';
       case 'competencia_detalhada': return 'Tabela por Competência';
       case 'destaques': return 'Pontos de Destaque';
@@ -1806,8 +1898,9 @@ export class ReportsComponent implements OnInit {
     }
     const templateData = {
       nome: this.nomeTemplateControl.value,
+      assessmentId: this.selectedAssessmentId, // Adicionado para contexto
       configuracao: this.relatorioConfiguracao,
-      competencias: this.competencias,
+      competenciasIds: this.competencias.map(c => c.id), // Salvar apenas os IDs
       criadoEm: new Date()
     };
     try {
@@ -1833,16 +1926,42 @@ export class ReportsComponent implements OnInit {
   // Aplicar template selecionado ao relatório atual
   async aplicarTemplateSelecionado() {
     if (!this.selectedTemplateId.value) return;
-    const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
-    const templateSnap = await getDoc(templateRef);
-    if (templateSnap.exists()) {
-      const templateData = templateSnap.data();
-      this.relatorioConfiguracao = templateData['configuracao'] || [];
-      this.competencias = templateData['competencias'] || [];
-      this.atualizarFormArrayComConfiguracao();
-      // Atualizar perguntas bloqueadas após carregar competências
-      this.atualizarPerguntasBloqueadas();
-      this.snackBar.open(`Template '${templateData['nome']}' aplicado!`, 'Fechar', { duration: 2500 });
+
+    this.loadingService.show('Aplicando template...');
+    try {
+      const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
+      const templateSnap = await getDoc(templateRef);
+
+      if (templateSnap.exists()) {
+        const templateData = templateSnap.data();
+
+        // 1. Verificar se o template tem um assessmentId e se ele é diferente do atual
+        if (templateData['assessmentId'] && templateData['assessmentId'] !== this.selectedAssessmentId) {
+          // Se for diferente, o usuário deve ser avisado. Por enquanto, vamos carregar
+          this.assessmentControl.setValue(templateData['assessmentId'], { emitEvent: false });
+          this.selectedAssessmentId = templateData['assessmentId'];
+          await this.onAssessmentChange();
+        }
+
+        // 2. Restaurar configuração das seções
+        this.relatorioConfiguracao = templateData['configuracao'] || [];
+
+        // 3. Restaurar competências
+        const competenciasIds = templateData['competenciasIds'] || [];
+        this.competencias = this.allCompetencies.filter(c => competenciasIds.includes(c.id));
+
+        // 4. Atualizar o form
+        this.atualizarFormArrayComConfiguracao();
+        this.currentStep = 'configure';
+
+        this.snackBar.open(`Template '${templateData['nome']}' aplicado!`, 'Fechar', { duration: 2500 });
+      }
+    } catch (error) {
+       console.error("Erro ao aplicar template:", error);
+      this.snackBar.open('Falha ao aplicar o template.', 'Fechar', { duration: 3000 });
+    } finally {
+      this.loadingService.hide();
+      this.cdr.detectChanges();
     }
   }
 
@@ -1886,40 +2005,6 @@ export class ReportsComponent implements OnInit {
     this.snackBar.open('PDF exportado com sucesso!', 'Fechar', { duration: 3000 });
   }
 
-  removerCompetencia(c: Competencia) {
-    this.competencias = this.competencias.filter(x => x.id !== c.id);
-    this.snackBar.open('Competência removida.', 'Fechar', { duration: 3000 });
-    // Invalida cache de resumos e seções
-    this.invalidateCache('resumo-');
-    this.invalidateCache('secao-');
-    this.cancelarEdicaoCompetencia();
-    this.atualizarPerguntasBloqueadas();
-  }
-
-  getDadosGraficoPorCompetencia(competencia: Competencia): { name: string, value: number }[] {
-    // Busca dados para uma competência específica
-    const grupos = this.getGrupos();
-    const dadosGrafico: { name: string, value: number }[] = [];
-
-    console.log('getDadosGraficoPorCompetencia - competencia:', competencia);
-    console.log('getDadosGraficoPorCompetencia - grupos:', grupos);
-
-    grupos.forEach(grupo => {
-      const media = this.getMediaPorPerguntaEGrupo(competencia, grupo);
-      // Garantir que apenas valores válidos sejam adicionados
-      const valor = (media !== null && !isNaN(media)) ? media : 0;
-      dadosGrafico.push({
-        name: grupo,
-        value: valor
-      });
-    });
-
-    console.log('getDadosGraficoPorCompetencia - result:', dadosGrafico);
-    return dadosGrafico;
-  }
-
-
-
   // Teste com dados estáticos para verificar se o gráfico funciona
   getTestStackedData() {
     return [
@@ -1940,7 +2025,7 @@ export class ReportsComponent implements OnInit {
 
   // Método de debug específico para gráficos
   debugGraficos(): void {
-    console.group('�� DEBUG GRÁFICOS');
+    console.group(' DEBUG GRÁFICOS');
 
     // Verificar seção de gráficos
     const secaoGraficos = this.relatorioConfiguracao.find(s => s.tipo === 'graficos');
@@ -1963,7 +2048,7 @@ export class ReportsComponent implements OnInit {
         console.log('Dados para barras individuais:');
         competenciasSelecionadas.forEach(comp => {
           const dadosIndividuais = this.getCompetenciaStackedData(comp);
-          console.log(`- ${comp.nome}:`, dadosIndividuais);
+          console.log(`- ${comp.name}:`, dadosIndividuais);
         });
       }
 
@@ -1987,7 +2072,7 @@ export class ReportsComponent implements OnInit {
 
     // Verificar competências individuais
     if (this.competencias.length > 0) {
-      console.log('Testando primeira competência:', this.competencias[0].nome);
+      console.log('Testando primeira competência:', this.competencias[0].name);
 
       const dadosCompetencia = this.getCompetenciaPieData(this.competencias[0]);
       console.log('Dados da competência:', dadosCompetencia);
@@ -2004,7 +2089,7 @@ export class ReportsComponent implements OnInit {
   }
 
   // Método para gerar tabela detalhada de competência com distribuição de notas
-  gerarTabelaCompetencia(competencia: Competencia): TabelaCompetencia {
+  gerarTabelaCompetencia(competencia: Competency): TabelaCompetencia {
     if (!this.selectedAssessmentId || !this.dataSource.length) {
       return {
         competencia,
@@ -2017,7 +2102,7 @@ export class ReportsComponent implements OnInit {
     const linhas: LinhaTabela[] = [];
 
     // Para cada pergunta da competência, calcular distribuição de notas
-    competencia.perguntasIds.forEach(perguntaId => {
+    competencia.questionIds.forEach((perguntaId: string) => {
       const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
       const categorias: DadosCategoria[] = [];
 
@@ -2045,7 +2130,7 @@ export class ReportsComponent implements OnInit {
     const mediasGerais: DadosCategoria[] = grupos.map(grupo => {
       const todasRespostasGrupo: number[] = [];
 
-      competencia.perguntasIds.forEach(perguntaId => {
+      competencia.questionIds.forEach((perguntaId: string) => {
         const respostas = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
         todasRespostasGrupo.push(...respostas);
       });
@@ -2160,11 +2245,11 @@ export class ReportsComponent implements OnInit {
     return somaPonderada / totalRespostas;
   }
 
-  private getMediaRespostasCompetencia(competencia: Competencia, grupos: string[]): number {
+  private getMediaRespostasCompetencia(competencia: Competency, grupos: string[]): number {
     const cacheKey = `media-competencia-${competencia.id}-${grupos.join('-')}`;
     return this.getCachedCalculation(cacheKey, () => {
         let todasRespostas: number[] = [];
-        for (const perguntaId of competencia.perguntasIds) {
+        for (const perguntaId of competencia.questionIds) {
             for (const grupo of grupos) {
                 const respostasPergunta = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
                 todasRespostas = todasRespostas.concat(respostasPergunta);
@@ -2188,7 +2273,7 @@ export class ReportsComponent implements OnInit {
         return { series: [] };
       }
 
-      const labels = competenciasSelecionadas.map(c => c.nome);
+      const labels = competenciasSelecionadas.map(c => c.name);
       const selfData: number[] = [];
       const othersData: number[] = [];
 
@@ -2307,11 +2392,11 @@ export class ReportsComponent implements OnInit {
 
     if (this.competencias.length > 0) {
       const primeiraComp = this.competencias[0];
-      console.log('🧪 Testando primeira competência:', primeiraComp.nome);
-      console.log('- Perguntas:', primeiraComp.perguntasIds);
+      console.log('🧪 Testando primeira competência:', primeiraComp.name);
+      console.log('- Perguntas:', primeiraComp.questionIds);
 
-      if (primeiraComp.perguntasIds.length > 0) {
-        const primeiraPergunta = primeiraComp.perguntasIds[0];
+      if (primeiraComp.questionIds.length > 0) {
+        const primeiraPergunta = primeiraComp.questionIds[0];
         console.log(`- Testando pergunta: ${primeiraPergunta}`);
 
         // Testar respostas para 'Todos'
@@ -2384,12 +2469,12 @@ export class ReportsComponent implements OnInit {
     // Teste com primeira competência
     if (this.competencias.length > 0) {
       const comp = this.competencias[0];
-      console.log('🧪 Teste com primeira competência:', comp.nome);
-      console.log('- Perguntas da competência:', comp.perguntasIds);
+      console.log('🧪 Teste com primeira competência:', comp.name);
+      console.log('- Perguntas da competência:', comp.questionIds);
 
       // Teste de respostas para primeira pergunta
-      if (comp.perguntasIds.length > 0) {
-        const primeiraPergunta = comp.perguntasIds[0];
+      if (comp.questionIds.length > 0) {
+        const primeiraPergunta = comp.questionIds[0];
         console.log(`- Testando pergunta: ${primeiraPergunta}`);
 
         grupos.forEach(grupo => {
@@ -2407,7 +2492,7 @@ export class ReportsComponent implements OnInit {
   }
 
   // Método para obter competências que têm tabelas configuradas
-  getCompetenciasComTabela(): Competencia[] {
+  getCompetenciasComTabela(): Competency[] {
     // Por enquanto, retorna todas as competências
     // Futuramente pode ser filtrado por configuração específica
     return this.competencias;
@@ -2471,7 +2556,7 @@ export class ReportsComponent implements OnInit {
 
     // Percorrer todas as competências e suas perguntas
     this.competencias.forEach(competencia => {
-      competencia.perguntasIds.forEach(perguntaId => {
+      competencia.questionIds.forEach((perguntaId: string) => {
         const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
 
         // Calcular média geral da pergunta (todas as categorias)
@@ -2504,7 +2589,7 @@ export class ReportsComponent implements OnInit {
             pontuacaoMediaSemAutoavaliacao: mediaPorCategoria,
             caracteristicaLider: this.mapearCaracteristicaLider(mediaPorCategoria),
             perguntaId: perguntaId,
-            competenciaId: competencia.id
+            competenciaId: competencia.id!
           });
         }
       });
@@ -2533,7 +2618,7 @@ export class ReportsComponent implements OnInit {
 
     // Percorrer todas as competências e suas perguntas
     this.competencias.forEach(competencia => {
-      competencia.perguntasIds.forEach(perguntaId => {
+      competencia.questionIds.forEach((perguntaId: string) => {
         const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
 
         // Calcular média geral da pergunta (todas as categorias)
@@ -2566,7 +2651,7 @@ export class ReportsComponent implements OnInit {
             pontuacaoMediaSemAutoavaliacao: mediaPorCategoria,
             caracteristicaLider: this.mapearCaracteristicaLider(mediaPorCategoria),
             perguntaId: perguntaId,
-            competenciaId: competencia.id
+            competenciaId: competencia.id!
           });
         }
       });
@@ -2590,12 +2675,12 @@ export class ReportsComponent implements OnInit {
   }
 
   // Método para obter média por pergunta e avaliado específico
-  private getMediaPorPerguntaEAvaliadoEspecifico(competencia: Competencia, grupo: string, avaliadoSelecionado: string): number | null {
-    const perguntasIds = competencia.perguntasIds;
+  private getMediaPorPerguntaEAvaliadoEspecifico(competencia: Competency, grupo: string, avaliadoSelecionado: string): number | null {
+    const questionIds = competencia.questionIds;
     let soma = 0;
     let count = 0;
 
-    perguntasIds.forEach(perguntaId => {
+    questionIds.forEach((perguntaId: string) => {
       const respostasGrupo = this.dataSource.filter(row => {
         const grupoMapeado = this.mapCategoriaToGrupo(row['categoria']);
         const avaliado = row['avaliado'];
@@ -2699,8 +2784,9 @@ export class ReportsComponent implements OnInit {
     const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
     const templateData = {
       nome: this.nomeTemplateControl.value,
+      assessmentId: this.selectedAssessmentId, // Adicionado para contexto
       configuracao: this.relatorioConfiguracao,
-      competencias: this.competencias,
+      competenciasIds: this.competencias.map(c => c.id), // Salvar apenas os IDs
       atualizadoEm: new Date()
     };
     try {

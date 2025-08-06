@@ -66,7 +66,12 @@
     </mat-card>
 
     <mat-card class="mt-4">
-      <mat-card-title>Construtor de Formulários</mat-card-title>
+      <mat-card-title class="d-flex justify-content-between align-items-center">
+        <span>Construtor de Formulários</span>
+        <button mat-stroked-button color="primary" (click)="openScaleManager()" [disabled]="!form.get('clientId')?.value">
+            <mat-icon>settings</mat-icon> Gerenciar Escalas
+        </button>
+      </mat-card-title>
       <mat-card-content *ngIf="creatorModel">
         <!-- SurveyJS Form Builder -->
         <survey-creator [model]="creatorModel"></survey-creator>

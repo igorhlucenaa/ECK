@@ -121,6 +121,15 @@ export const routes: Routes = [
         canActivate: [AuthGuard],
         data: { role: ['admin_master', 'admin_client'] },
       },
+      {
+        path: 'competencies',
+        loadChildren: () =>
+          import('./pages/competencies/competencies.routes').then(
+            (m) => m.COMPETENCIES_ROUTES
+          ),
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
+      },
     ],
   },
   {

@@ -384,5 +384,10 @@ export class AppSearchDialogComponent {
   searchText: string = '';
   navItems = navItems;
 
-  navItemsData = navItems.filter((navitem) => navitem.displayName);
+  navItemsData = navItems.filter((navitem) => navitem.displayName).concat(
+    navItems
+      .filter((navitem) => navitem.children)
+      .flatMap((navitem) => navitem.children || [])
+      .filter((child) => child.displayName)
+  );
 }

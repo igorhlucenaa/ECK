@@ -23,10 +23,15 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SurveyCreatorModel } from 'survey-creator-core';
 import { SurveyCreatorModule } from 'survey-creator-angular';
-import { SurveyModel, ITheme } from 'survey-core';
+import { SurveyModel, ITheme, settings } from 'survey-core';
 import 'survey-core/survey.i18n.js';
 import 'survey-creator-core/survey-creator-core.i18n.js';
 import { editorLocalization } from 'survey-creator-core';
+import { ScaleService } from 'src/app/services/scale.service';
+import { Scale } from 'src/app/models/scale.model';
+
+import { MatDialog } from '@angular/material/dialog';
+import { ScaleManagerComponent } from '../scale-manager/scale-manager.component';
 
 // Sobrescrevendo traduções
 const ptBRLocale = editorLocalization.getLocale('pt');
@@ -50,6 +55,7 @@ export class CreateAssessmentComponent implements OnInit {
   clients: { id: string; name: string }[] = [];
   userRole: string | null = null;
   creatorModel: SurveyCreatorModel;
+  scales: Scale[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -58,7 +64,9 @@ export class CreateAssessmentComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router,
     private route: ActivatedRoute,
-    private location: Location
+    private location: Location,
+    private scaleService: ScaleService,
+    private dialog: MatDialog
   ) {
     // Inicializa o formulário de metadados (Título, Cliente, Descrição)
     this.form = this.fb.group({
@@ -106,6 +114,44 @@ export class CreateAssessmentComponent implements OnInit {
         await this.loadAssessment(assessmentId);
       }
     });
+
+    this.setupSurveyJSProperties();
+  }
+
+  async loadScales(clientId: string): Promise<void> {
+    if (!clientId) return;
+    this.scales = await this.scaleService.getScalesByClient(clientId);
+    // Atualiza as opções da propriedade customizada no SurveyJS
+    this.setupSurveyJSProperties();
+  }
+
+  setupSurveyJSProperties(): void {
+    // Adiciona propriedade customizada para questões do tipo matriz
+    if (this.creatorModel && this.creatorModel.survey) {
+      // Registra a propriedade customizada 'scaleId' para questões matriz
+      (this.creatorModel.survey as any)['addProperty']('matrix', {
+        name: 'scaleId',
+        title: 'Modelo de Escala',
+        type: 'dropdown',
+        choices: this.scales.map(s => ({ value: s.id, text: s.name })),
+        category: 'general',
+        onSetValue: (obj: any, value: any) => {
+          const selectedScale = this.scales.find(s => s.id === value);
+          if (selectedScale) {
+            obj.columns = selectedScale.options;
+            console.log('Escala aplicada:', selectedScale.name);
+          }
+        }
+      });
+
+      // Listener para quando uma nova questão é adicionada
+      this.creatorModel.survey.onQuestionAdded.add((sender, options) => {
+        if (options.question.getType() === 'matrix') {
+          console.log('Nova questão matriz adicionada');
+          // Aqui podemos adicionar lógica adicional se necessário
+        }
+      });
+    }
   }
 
   async loadAssessment(assessmentId: string): Promise<void> {
@@ -251,11 +297,29 @@ export class CreateAssessmentComponent implements OnInit {
   onClientChange(event: any): void {
     const clientId = event.value;
     this.form.get('clientId')?.setValue(clientId);
-    console.log('Client changed, form status:', this.form.status); // Depuração
+    this.loadScales(clientId); // Carrega as escalas para o cliente selecionado
   }
 
 
   goBack(): void {
     this.location.back();
+  }
+
+  openScaleManager(): void {
+    const clientId = this.form.get('clientId')?.value;
+    if (!clientId) {
+      this.snackBar.open('Por favor, selecione um cliente primeiro.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ScaleManagerComponent, {
+      width: '800px',
+      data: { clientId: clientId }
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      // Recarrega as escalas para atualizar o dropdown no SurveyJS
+      this.loadScales(clientId);
+    });
   }
 }
