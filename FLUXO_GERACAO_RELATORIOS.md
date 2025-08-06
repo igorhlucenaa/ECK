@@ -1,581 +1,260 @@
-# 📊 **FLUXO COMPLETO DE GERAÇÃO DE RELATÓRIOS - ECK**
+# 📊 **GUIA COMPLETO: Como Gerar Relatórios no Sistema ECK**
 
-## 🎯 **Visão Geral do Sistema**
+## 🎯 **O que é o Sistema ECK?**
 
-O sistema ECK (Evaluation Competency Kit) implementa um fluxo completo de geração de relatórios de avaliação 360°, permitindo que usuários criem, configurem e exportem relatórios personalizados para participantes específicos.
-
----
-
-## 🚀 **Fluxo Principal: Geração de Relatórios Individuais**
-
-### **1. Acesso Inicial**
-```
-URL: /projects
-Ação: Usuário navega para a página de projetos
-```
-
-### **2. Seleção do Projeto**
-```
-Ação: Usuário clica no projeto desejado
-Resultado: Acesso às opções do projeto (participantes, configurações, etc.)
-```
-
-### **3. Acesso aos Participantes**
-```
-Ação: Usuário clica no ícone "👥 Participantes"
-Resultado: Abertura do modal de participantes do projeto
-```
-
-### **4. Identificação do Participante**
-```
-Condição: Participante deve ter status "Respondido" (avaliação concluída)
-Interface: Lista de participantes com informações:
-- Nome
-- Email  
-- Categoria (avaliado/avaliador)
-- Status da avaliação
-```
-
-### **5. Início da Geração de Relatório**
-```
-Ação: Usuário clica no botão "📄 Gerar Relatório"
-Condição: Botão só aparece para participantes com status "Respondido"
-Resultado: Abertura do modal de configuração de relatório
-```
+O ECK (Evaluation Competency Kit) é uma plataforma que permite gerar relatórios personalizados de avaliação 360°. Com ela, você pode criar relatórios detalhados sobre o desempenho de colaboradores, baseados em feedback de gestores, colegas e autoavaliação.
 
 ---
 
-## 🔧 **Modal de Configuração de Relatório**
+## 🚀 **Como Gerar um Relatório - Passo a Passo**
 
-### **Componente:** `ReportGenerationModalComponent`
-**Arquivo:** `src/app/pages/project/report-generation-modal/report-generation-modal.component.ts`
+### **Passo 1: Acessar os Projetos**
+1. Faça login no sistema ECK
+2. Na página inicial, clique em **"Projetos"** no menu lateral
+3. Você verá uma lista de todos os projetos disponíveis
 
-### **6. Informações do Participante**
-```typescript
-interface UnifiedParticipant {
-  id: string;
-  name: string;
-  email: string;
-  type: 'avaliado' | 'avaliador';
-  category: string;
-  status: string;
-}
-```
+### **Passo 2: Selecionar um Projeto**
+1. Encontre o projeto que contém a avaliação que você quer analisar
+2. Clique no **nome do projeto** para acessá-lo
+3. Você será direcionado para a página de detalhes do projeto
 
-**Exibição:**
-- 🧑 **Nome do participante**
-- 📧 **Email**
-- 🏷️ **Categoria**
-- ✅ **Status da avaliação**
+### **Passo 3: Acessar os Participantes**
+1. Na página do projeto, procure pelo ícone **"👥 Participantes"**
+2. Clique neste ícone para ver a lista de todos os participantes
+3. Uma janela (modal) será aberta mostrando todos os participantes
 
-### **7. Seleção de Template de Relatório**
+### **Passo 4: Identificar o Participante**
+Na lista de participantes, você verá informações como:
+- **Nome** do participante
+- **Email** de contato
+- **Categoria** (avaliado ou avaliador)
+- **Status** da avaliação
 
-#### **7.1 Carregamento de Templates**
-```typescript
-async loadReportTemplates(): Promise<void> {
-  const templatesCollection = collection(this.firestore, 'reportTemplates');
-  const templatesSnapshot = await getDocs(templatesCollection);
-  
-  this.reportTemplates = templatesSnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as ReportTemplate));
-}
-```
+**Importante:** Só é possível gerar relatórios para participantes com status **"Respondido"** (que já completaram a avaliação).
 
-#### **7.2 Templates Disponíveis**
-**Arquivo:** `collections/reportTemplates.json`
-
-1. **📋 Avaliação 360° - Completo**
-   - Template completo com todas as seções
-   - Inclui: capa, introdução, resumo, gráficos, análise detalhada, tabelas, destaques
-
-2. **📊 Relatório Simples**
-   - Template simplificado
-   - Inclui: capa, resumo, gráficos básicos
-
-3. **👔 Relatório Executivo**
-   - Foco em liderança e insights estratégicos
-   - Inclui: contexto executivo, dashboard, insights estratégicos, recomendações
-
-#### **7.3 Interface de Seleção**
-```html
-<mat-select [formControl]="templateControl">
-  <mat-option *ngFor="let template of reportTemplates" [value]="template">
-    <span>{{ template.name }}</span>
-    <span>{{ template.description }}</span>
-  </mat-option>
-</mat-select>
-```
-
-### **8. Seleção de Competências**
-
-#### **8.1 Carregamento de Competências**
-```typescript
-async loadCompetencies(): Promise<void> {
-  const competenciesCollection = collection(this.firestore, 'competencies');
-  
-  // Filtro por assessmentId
-  if (this.data.assessmentId) {
-    const competenciesQuery = query(
-      competenciesCollection, 
-      where('assessmentId', '==', this.data.assessmentId)
-    );
-    competenciesSnapshot = await getDocs(competenciesQuery);
-  }
-  
-  this.competencies = competenciesSnapshot.docs.map(doc => ({
-    id: doc.id,
-    name: doc.data()['name'],
-    description: doc.data()['description'],
-    perguntasIds: doc.data()['perguntasIds'] || []
-  } as Competency));
-}
-```
-
-#### **8.2 Interface de Seleção Múltipla**
-```html
-<mat-select [formControl]="competenciesControl" multiple>
-  <mat-option *ngFor="let competency of competencies" [value]="competency">
-    <span>{{ competency.name }}</span>
-    <span>{{ competency.description }}</span>
-    <span>{{ competency.perguntasIds?.length || 0 }} questões</span>
-  </mat-option>
-</mat-select>
-```
-
-#### **8.3 Filtro de Tipos de Perguntas**
-```typescript
-// Perguntas Fechadas (incluídas por padrão):
-// - Escalas (rating)
-// - Múltipla escolha (radiogroup)
-// - Dropdown (dropdown)
-// - Matriz (matrix)
-
-// Perguntas Abertas (opcionais):
-// - Texto livre (text, comment)
-// - Uploads (file)
-```
-
-### **9. Resumo da Configuração**
-
-#### **9.1 Validação**
-```typescript
-isSelectionValid(): boolean {
-  return !!(
-    this.templateControl.value && 
-    this.competenciesControl.value && 
-    this.competenciesControl.value.length > 0
-  );
-}
-```
-
-#### **9.2 Exibição do Resumo**
-- 📋 **Template selecionado**
-- 🧠 **Número de competências**
-- ❓ **Total de questões**
-- 📊 **Seções configuradas**
-
-### **10. Geração do Relatório**
-
-#### **10.1 Validação Final**
-```typescript
-async generateReport(): Promise<void> {
-  if (this.templateControl.invalid || this.competenciesControl.invalid) {
-    this.snackBar.open('Por favor, selecione um template e pelo menos uma competência.', 'Fechar', { duration: 3000 });
-    return;
-  }
-}
-```
-
-#### **10.2 Navegação com Parâmetros**
-```typescript
-const navigationParams = {
-  queryParams: {
-    assessmentId: this.data.assessmentId,
-    participantId: this.data.participant.id,
-    participantName: this.data.participant.name,
-    templateId: this.templateControl.value?.id || '',
-    competencyIds: JSON.stringify((this.competenciesControl.value || []).map(c => c.id)),
-    mode: 'individual',
-    autoGenerate: 'true'
-  }
-};
-
-this.router.navigate(['/reports'], navigationParams);
-```
+### **Passo 5: Iniciar a Geração do Relatório**
+1. Localize o participante desejado na lista
+2. Para participantes com status "Respondido", você verá um botão **"📄 Gerar Relatório"**
+3. Clique neste botão para abrir a tela de configuração
 
 ---
 
-## 📄 **Página de Relatórios (Reports)**
+## ⚙️ **Configurando o Relatório**
 
-### **Componente:** `ReportsComponent`
-**Arquivo:** `src/app/pages/reports/reports.component.ts`
+### **Informações do Participante**
+A primeira seção mostra os dados do participante selecionado:
+- **Nome completo**
+- **Email**
+- **Categoria** (avaliado/avaliador)
+- **Status** da avaliação
 
-### **11. Processamento de Parâmetros**
+### **Escolhendo o Template do Relatório**
 
-#### **11.1 Recebimento de Query Params**
-```typescript
-ngOnInit() {
-  this.route.queryParams.subscribe(params => {
-    if (params['mode'] === 'individual') {
-      // Modo individual - relatório específico
-      this.processIndividualReport(params);
-    }
-  });
-}
-```
+O sistema oferece 3 tipos de templates:
 
-#### **11.2 Processamento Individual**
-```typescript
-private processIndividualReport(params: any): void {
-  const participantId = params['participantId'];
-  const participantName = params['participantName'];
-  const templateId = params['templateId'];
-  const competencyIds = JSON.parse(params['competencyIds']);
-  const autoGenerate = params['autoGenerate'] === 'true';
-  
-  // Aplicar filtros
-  this.competencias = this.allCompetencies.filter(comp => 
-    competencyIds.includes(comp.id)
-  );
-  
-  // Auto-geração se solicitado
-  if (autoGenerate) {
-    setTimeout(() => {
-      this.exportarRelatorioPDF();
-    }, 2000);
-  }
-}
-```
+#### **📋 Avaliação 360° - Completo**
+- **Para que serve:** Relatórios detalhados e completos
+- **Inclui:** Capa, introdução, resumo executivo, gráficos, análise detalhada, tabelas e destaques
+- **Ideal para:** Avaliações formais e apresentações importantes
 
-### **12. Interface de Relatórios**
+#### **📊 Relatório Simples**
+- **Para que serve:** Relatórios rápidos e objetivos
+- **Inclui:** Capa, resumo e gráficos básicos
+- **Ideal para:** Consultas rápidas e análises preliminares
 
-#### **12.1 Abas Disponíveis**
-1. **📊 Visão Geral** - Resumo executivo
-2. **🧠 Competências** - Análise por competência
-3. **⚙️ Configurar Relatório** - Personalização
-4. **👁️ Visualizar** - Preview do relatório
-5. **📋 Dados Brutos** - Dados não processados
+#### **👔 Relatório Executivo**
+- **Para que serve:** Foco em liderança e insights estratégicos
+- **Inclui:** Contexto executivo, dashboard, insights estratégicos e recomendações
+- **Ideal para:** Avaliações de líderes e tomadores de decisão
 
-#### **12.2 Funcionalidades por Aba**
+**Como escolher:**
+1. Clique na seta do campo "Template de Relatório"
+2. Leia a descrição de cada opção
+3. Selecione o template que melhor atende sua necessidade
 
-##### **Aba: Visão Geral**
-- Gráficos de resumo
-- Médias por competência
-- Ranking de desempenho
-- Estatísticas gerais
+### **Selecionando as Competências**
 
-##### **Aba: Competências**
-- Lista de competências selecionadas
-- Gráficos individuais por competência
-- Análise detalhada de cada competência
-- Comparação entre grupos
+As competências são as áreas de conhecimento ou habilidades que foram avaliadas. Você pode:
 
-##### **Aba: Configurar Relatório**
-- Seleção de seções do template
-- Configuração de gráficos
-- Personalização de cores
-- Definição de filtros
+#### **Ver Todas as Competências Disponíveis**
+- O sistema mostra todas as competências da avaliação
+- Cada competência tem:
+  - **Nome** da competência
+  - **Descrição** do que ela avalia
+  - **Número de questões** incluídas
 
-##### **Aba: Visualizar**
-- Preview do relatório final
-- Botões de exportação:
-  - 📄 **Exportar PDF**
-  - 📊 **Exportar Excel**
-  - 📄 **Exportar Relatório Individual**
+#### **Escolher Competências Específicas**
+1. Clique no campo "Competências"
+2. Marque as competências que você quer incluir no relatório
+3. Você pode selecionar uma ou várias competências
+4. O sistema mostra quantas competências você selecionou
 
-##### **Aba: Dados Brutos**
-- Dados não processados
-- Tabelas de frequência
-- Respostas originais
-- Metadados da avaliação
+#### **Filtro de Tipos de Perguntas**
+- **Perguntas Fechadas** (incluídas por padrão):
+  - Escalas de avaliação
+  - Múltipla escolha
+  - Dropdown
+  - Matriz de avaliação
 
-### **13. Exportação de Relatórios**
+- **Perguntas Abertas** (opcionais):
+  - Texto livre
+  - Comentários
+  - Uploads de arquivos
 
-#### **13.1 Exportação PDF**
-```typescript
-async exportarRelatorioPDF(): Promise<void> {
-  // 1. Preparar dados
-  const reportData = this.prepareReportData();
-  
-  // 2. Gerar HTML
-  const htmlContent = this.generateReportHTML(reportData);
-  
-  // 3. Converter para PDF
-  const pdf = new jsPDF();
-  const canvas = await html2canvas(element);
-  const imgData = canvas.toDataURL('image/png');
-  
-  // 4. Adicionar ao PDF
-  pdf.addImage(imgData, 'PNG', 0, 0);
-  
-  // 5. Salvar arquivo
-  pdf.save(`relatorio_${this.participantName}_${Date.now()}.pdf`);
-}
-```
+**Dica:** Desmarque a opção "Incluir perguntas abertas" se quiser focar apenas nas avaliações numéricas.
 
-#### **13.2 Exportação Excel**
-```typescript
-async exportarRelatorioExcel(): Promise<void> {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Relatório');
-  
-  // Adicionar dados
-  this.addReportDataToWorksheet(worksheet);
-  
-  // Salvar arquivo
-  const buffer = await workbook.xlsx.writeBuffer();
-  this.downloadFile(buffer, `relatorio_${this.participantName}.xlsx`);
-}
-```
+### **Resumo da Configuração**
 
-#### **13.3 Exportação Individual**
-```typescript
-async exportarRelatorioIndividualPDF(participant: any): Promise<void> {
-  // Filtrar dados para participante específico
-  const participantData = this.filterDataForParticipant(participant);
-  
-  // Gerar PDF individual
-  await this.generateIndividualPDF(participantData, participant.name);
-}
-```
+Após selecionar template e competências, o sistema mostra um resumo:
+- **Template** escolhido
+- **Número de competências** selecionadas
+- **Total de questões** incluídas
+- **Seções** que serão geradas
+
+### **Gerando o Relatório**
+
+1. Verifique se todas as informações estão corretas
+2. Clique no botão **"Gerar Relatório PDF"**
+3. O sistema navegará automaticamente para a página de relatórios
+4. Aguarde alguns segundos para o processamento
+5. O PDF será gerado e baixado automaticamente
 
 ---
 
-## 🔄 **Fluxo Completo em Sequência**
+## 📄 **Página de Relatórios - O que você pode fazer**
 
-### **Passo a Passo:**
+Após gerar o relatório, você será direcionado para uma página com 5 abas:
 
-1. **🏠 Acesso:** Usuário acessa `/projects`
-2. **📋 Seleção:** Clica no projeto desejado
-3. **👥 Participantes:** Abre modal de participantes
-4. **🔍 Identificação:** Localiza participante com status "Respondido"
-5. **📄 Geração:** Clica em "Gerar Relatório"
-6. **⚙️ Configuração:** Modal de configuração abre
-7. **📋 Template:** Seleciona template de relatório
-8. **🧠 Competências:** Escolhe competências específicas
-9. **✅ Validação:** Sistema valida seleções
-10. **🚀 Geração:** Clica "Gerar Relatório PDF"
-11. **🔄 Navegação:** Sistema navega para `/reports` com parâmetros
-12. **📊 Processamento:** Página de reports processa dados
-13. **⏱️ Auto-geração:** PDF é gerado automaticamente após 2s
-14. **📄 Download:** Arquivo PDF é baixado automaticamente
+### **📊 Visão Geral**
+- **Resumo executivo** dos resultados
+- **Gráficos** de desempenho geral
+- **Ranking** das competências
+- **Estatísticas** gerais da avaliação
 
-### **Parâmetros Passados:**
-```typescript
-{
-  assessmentId: "id_da_avaliacao",
-  participantId: "id_do_participante", 
-  participantName: "Nome do Participante",
-  templateId: "id_do_template",
-  competencyIds: "['comp1', 'comp2', 'comp3']",
-  mode: "individual",
-  autoGenerate: "true"
-}
-```
+### **🧠 Competências**
+- **Análise detalhada** de cada competência
+- **Gráficos individuais** por competência
+- **Comparação** entre diferentes grupos
+- **Insights** específicos por área
 
----
+### **⚙️ Configurar Relatório**
+- **Personalizar** seções do relatório
+- **Ajustar** tipos de gráficos
+- **Escolher** cores e temas
+- **Definir** filtros específicos
 
-## 🛠️ **Componentes Técnicos**
+### **👁️ Visualizar**
+- **Preview** do relatório final
+- **Botões de exportação:**
+  - 📄 **Exportar PDF** (formato mais comum)
+  - 📊 **Exportar Excel** (para análises em planilhas)
+  - 📄 **Exportar Relatório Individual** (para um participante específico)
 
-### **Arquivos Principais:**
-
-1. **Modal de Geração:**
-   - `src/app/pages/project/report-generation-modal/report-generation-modal.component.ts`
-
-2. **Página de Relatórios:**
-   - `src/app/pages/reports/reports.component.ts`
-   - `src/app/pages/reports/reports.component.html`
-
-3. **Modal de Participantes:**
-   - `src/app/pages/project/participants-modal/participants-modal.component.ts`
-
-4. **Templates de Relatório:**
-   - `collections/reportTemplates.json`
-
-### **Serviços Utilizados:**
-
-1. **Firestore:** Armazenamento de dados
-2. **Router:** Navegação entre páginas
-3. **MatDialog:** Modais de interface
-4. **MatSnackBar:** Notificações
-5. **jsPDF:** Geração de PDFs
-6. **ExcelJS:** Exportação Excel
-7. **html2canvas:** Conversão HTML para imagem
-
-### **Interfaces TypeScript:**
-
-```typescript
-interface ReportTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  sections: any[];
-  clientId: string;
-  assessmentId?: string;
-}
-
-interface Competency {
-  id: string;
-  name: string;
-  description: string;
-  perguntasIds: string[];
-  assessmentId?: string;
-}
-
-interface UnifiedParticipant {
-  id: string;
-  name: string;
-  email: string;
-  type: 'avaliado' | 'avaliador';
-  category: string;
-  status: string;
-}
-```
+### **📋 Dados Brutos**
+- **Dados não processados** da avaliação
+- **Tabelas de frequência** das respostas
+- **Respostas originais** dos participantes
+- **Metadados** da avaliação
 
 ---
 
-## 🎯 **Funcionalidades Especiais**
+## 📤 **Exportando Relatórios**
 
-### **1. Filtro de Tipos de Perguntas**
-- **Perguntas Fechadas:** Incluídas por padrão (escalas, múltipla escolha)
-- **Perguntas Abertas:** Opcionais (texto livre, comentários)
-- **Interface:** Checkbox para incluir/excluir perguntas abertas
+### **Exportação PDF**
+- **Formato:** PDF (Portable Document Format)
+- **Vantagens:** Mantém formatação, fácil de compartilhar
+- **Uso:** Apresentações, arquivamento, compartilhamento
 
-### **2. Validação Inteligente**
-- **Template:** Obrigatório
-- **Competências:** Mínimo 1 selecionada
-- **Participante:** Deve ter status "Respondido"
-- **Assessment:** Deve existir e ter dados
+### **Exportação Excel**
+- **Formato:** Planilha Excel (.xlsx)
+- **Vantagens:** Permite análises adicionais, gráficos customizáveis
+- **Uso:** Análises detalhadas, cruzamento de dados
 
-### **3. Auto-geração**
-- **Trigger:** Parâmetro `autoGenerate: 'true'`
-- **Delay:** 2 segundos para processamento
-- **Resultado:** PDF gerado automaticamente
-
-### **4. Templates Personalizáveis**
-- **Seções:** Configuráveis por template
-- **Cores:** Paletas personalizáveis
-- **Gráficos:** Tipos variados (radar, barras, pizza)
-- **Conteúdo:** Textos e layouts customizáveis
+### **Relatório Individual**
+- **Para que serve:** Relatório focado em um participante específico
+- **Conteúdo:** Dados detalhados de apenas uma pessoa
+- **Uso:** Feedback individual, desenvolvimento pessoal
 
 ---
 
-## 📈 **Métricas e Performance**
+## 🎯 **Dicas para Melhor Uso**
 
-### **Tempo de Processamento:**
-- **Carregamento de dados:** ~1-2 segundos
-- **Geração de PDF:** ~3-5 segundos
-- **Exportação Excel:** ~1-2 segundos
+### **Escolhendo o Template Certo**
+- **Avaliação 360° - Completo:** Para relatórios formais e apresentações importantes
+- **Relatório Simples:** Para consultas rápidas e análises preliminares
+- **Relatório Executivo:** Para avaliações de líderes e tomadores de decisão
 
-### **Tamanho de Arquivos:**
-- **PDF Individual:** 100KB - 2MB
+### **Selecionando Competências**
+- **Selecione todas** se quiser uma visão completa
+- **Escolha específicas** se quiser focar em áreas particulares
+- **Considere o público** que vai receber o relatório
+
+### **Filtros de Perguntas**
+- **Mantenha perguntas fechadas** para análises objetivas
+- **Inclua perguntas abertas** para insights qualitativos
+- **Use com moderação** para não sobrecarregar o relatório
+
+### **Exportação**
+- **PDF** para apresentações e compartilhamento
+- **Excel** para análises detalhadas
+- **Individual** para feedback personalizado
+
+---
+
+## ⚠️ **Limitações e Considerações**
+
+### **Tempo de Processamento**
+- **Carregamento de dados:** 1-2 segundos
+- **Geração de PDF:** 3-5 segundos
+- **Exportação Excel:** 1-2 segundos
+
+### **Tamanho dos Arquivos**
+- **PDF:** 100KB - 2MB (depende do conteúdo)
 - **Excel:** 50KB - 500KB
-- **Dados em memória:** ~5-10MB por relatório
+- **Limite máximo:** 10MB por arquivo
 
-### **Limitações:**
-- **Participantes por relatório:** 1 (individual)
-- **Competências por relatório:** Ilimitado
-- **Tamanho máximo de PDF:** 10MB
-- **Tempo de timeout:** 30 segundos
-
----
-
-## 🔧 **Configurações e Customizações**
-
-### **1. Templates de Relatório**
-```json
-{
-  "id": "template_avaliacao_360_completo",
-  "name": "Avaliação 360° - Completo",
-  "sections": [
-    {"tipo": "capa", "titulo": "Relatório de Avaliação 360°"},
-    {"tipo": "resumo", "titulo": "Resumo Executivo"},
-    {"tipo": "graficos", "titulo": "Análise Gráfica"},
-    {"tipo": "competencia_detalhada", "titulo": "Análise por Competência"}
-  ]
-}
-```
-
-### **2. Configurações de Gráficos**
-```typescript
-const chartConfig = {
-  tipoGrafico: 'radar' | 'barras' | 'pizza',
-  incluirMedias: boolean,
-  compararComMedia: boolean,
-  paletaCor: 'azul' | 'verde' | 'personalizada'
-};
-```
-
-### **3. Filtros de Competências**
-```typescript
-const competencyFilter = {
-  assessmentId: string,
-  includeOpenQuestions: boolean,
-  selectedCompetencyIds: string[]
-};
-```
+### **Restrições**
+- **Um participante por vez** (relatórios individuais)
+- **Competências ilimitadas** (pode selecionar quantas quiser)
+- **Timeout:** 30 segundos máximo de processamento
 
 ---
 
-## 🚀 **Próximas Melhorias**
+## 🔧 **Solução de Problemas**
 
-### **1. Funcionalidades Planejadas:**
-- ✅ **Relatórios em lote** (múltiplos participantes)
-- ✅ **Templates dinâmicos** (criação pelo usuário)
-- ✅ **Agendamento de relatórios** (geração automática)
-- ✅ **Compartilhamento** (links para visualização)
+### **Botão "Gerar Relatório" não aparece**
+- **Causa:** Participante não completou a avaliação
+- **Solução:** Aguarde o participante responder ou verifique o status
 
-### **2. Otimizações Técnicas:**
-- ✅ **Cache de dados** (melhor performance)
-- ✅ **Compressão de PDFs** (arquivos menores)
-- ✅ **Background processing** (não bloqueia interface)
-- ✅ **Progress indicators** (feedback visual)
+### **Erro ao gerar PDF**
+- **Causa:** Dados insuficientes ou problema técnico
+- **Solução:** Tente novamente ou selecione menos competências
 
-### **3. Integrações:**
-- ✅ **Email automático** (envio de relatórios)
-- ✅ **API externa** (integração com outros sistemas)
-- ✅ **Webhooks** (notificações de conclusão)
-- ✅ **Cloud storage** (armazenamento em nuvem)
+### **Relatório muito grande**
+- **Causa:** Muitas competências ou perguntas selecionadas
+- **Solução:** Selecione apenas as competências mais importantes
+
+### **Erro de carregamento**
+- **Causa:** Problema de conexão ou dados corrompidos
+- **Solução:** Recarregue a página ou tente novamente
 
 ---
 
-## 📋 **Checklist de Testes**
+## 📞 **Suporte**
 
-### **Fluxo Principal:**
-- [ ] Acesso à página `/projects`
-- [ ] Seleção de projeto
-- [ ] Abertura do modal de participantes
-- [ ] Identificação de participante "Respondido"
-- [ ] Clique em "Gerar Relatório"
-- [ ] Seleção de template
-- [ ] Seleção de competências
-- [ ] Validação de formulário
-- [ ] Navegação para `/reports`
-- [ ] Processamento de parâmetros
-- [ ] Geração automática de PDF
-- [ ] Download do arquivo
+Se você encontrar problemas:
 
-### **Funcionalidades Específicas:**
-- [ ] Filtro de tipos de perguntas
-- [ ] Validação de competências
-- [ ] Templates personalizáveis
-- [ ] Exportação em diferentes formatos
-- [ ] Interface responsiva
-- [ ] Tratamento de erros
+1. **Verifique** se todos os campos obrigatórios estão preenchidos
+2. **Tente novamente** após alguns segundos
+3. **Recarregue** a página se necessário
+4. **Entre em contato** com o suporte técnico se o problema persistir
 
 ---
 
 ## 🎉 **Conclusão**
 
-O sistema ECK implementa um fluxo completo e robusto de geração de relatórios, oferecendo:
+O sistema ECK oferece uma experiência completa e intuitiva para geração de relatórios de avaliação 360°. Com as opções de templates, filtros de competências e múltiplos formatos de exportação, você pode criar relatórios personalizados que atendem às suas necessidades específicas.
 
-1. **Interface intuitiva** para seleção de parâmetros
-2. **Validação inteligente** de dados
-3. **Templates personalizáveis** para diferentes necessidades
-4. **Exportação em múltiplos formatos** (PDF, Excel)
-5. **Processamento automático** com feedback visual
-6. **Arquitetura escalável** para futuras melhorias
+**Lembre-se:** A qualidade do relatório depende da qualidade dos dados coletados. Certifique-se de que os participantes completaram suas avaliações antes de gerar relatórios.
 
-O fluxo está **100% funcional** e pronto para uso em produção, proporcionando uma experiência completa de geração de relatórios de avaliação 360°. 
+O sistema está **100% funcional** e pronto para uso! 🚀
