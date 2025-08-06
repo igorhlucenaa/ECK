@@ -29,6 +29,8 @@ import { ActivatedRoute } from '@angular/router';
 import { Router } from '@angular/router';
 import { LoadingService } from '../../services/loading.service';
 import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
+import { AuthService } from '../../services/apps/authentication/auth.service';
+import { query, where } from '@angular/fire/firestore';
 
 interface AssessmentOption {
   id: string;
@@ -142,6 +144,19 @@ export class ReportsComponent implements OnInit {
 
   assessmentControl = new FormControl('');
 
+  // Controles para cliente e grupos de competências
+  clientControl = new FormControl('');
+  clients: any[] = [];
+  selectedClientId: string | null = null;
+  competencyGroups: any[] = [];
+  competencyGroupControl = new FormControl('');
+  groupNameControl = new FormControl('');
+
+  // Controles para filtrar tipos de perguntas
+  includeOpenQuestions = new FormControl(false);
+  allQuestions: { id: string; title: string; type: string }[] = [];
+  filteredQuestions: { id: string; title: string; type: string }[] = [];
+
   today: Date = new Date();
 
   competencyAverages: { title: string; avg: number }[] = [];
@@ -209,6 +224,7 @@ export class ReportsComponent implements OnInit {
   radarOptions: EChartsOption = {};
 
   competencias: Competencia[] = [];
+  allCompetencies: Competencia[] = []; // Lista completa de competências disponíveis
   competenciaEditando: Competencia = { id: '', nome: '', descricao: '', perguntasIds: [] };
   competenciaForm: FormGroup;
 
@@ -316,7 +332,8 @@ export class ReportsComponent implements OnInit {
     private router: Router,
     private cdr: ChangeDetectorRef,
     private loadingService: LoadingService,
-    private firestoreInterceptor: FirestoreLoadingInterceptor
+    private firestoreInterceptor: FirestoreLoadingInterceptor,
+    private authService: AuthService
   ) {
     this.dummyForm = new FormGroup({
       relatorioFormArray: new FormArray<any>([])
@@ -442,7 +459,13 @@ export class ReportsComponent implements OnInit {
   async ngOnInit() {
     this.today = new Date();
 
-    // Carregar avaliações e templates primeiro
+    // Configurar o listener para mudanças no filtro de perguntas
+    this.includeOpenQuestions.valueChanges.subscribe(() => {
+      this.onQuestionFilterChange();
+    });
+
+    // Carregar clientes, avaliações e templates primeiro
+    await this.loadClients();
     await this.loadAssessments();
     await this.carregarRelatoriosSalvos();
     await this.carregarTemplatesSalvos(); // <-- Carrega os templates
@@ -470,15 +493,44 @@ export class ReportsComponent implements OnInit {
           this.selectedAssessmentId = params['assessmentId'];
           this.assessmentControl.setValue(params['assessmentId']);
 
-          // Só agora, com os templates carregados, aplicar o template
+          // Aguardar carregamento da assessment
+          await this.onAssessmentChange();
+
+          // Processar competências selecionadas
+          if (params['competencyIds']) {
+            try {
+              const competencyIds = JSON.parse(params['competencyIds']);
+              console.log('Competências selecionadas do modal:', competencyIds);
+
+              // Selecionar as competências específicas
+              this.competencias = this.allCompetencies.filter((comp: Competencia) =>
+                competencyIds.includes(comp.id)
+              );
+              console.log('Competências aplicadas:', this.competencias);
+
+              // TODO: Implementar sincronização de seções com competências
+              // this.sincronizarSecoesComCompetencias();
+            } catch (error) {
+              console.error('Erro ao processar competencyIds:', error);
+            }
+          }
+
+          // Aplicar template depois de ter as competências
           if (params['templateId']) {
             this.selectedTemplateId.setValue(params['templateId']);
             await this.aplicarTemplateSelecionado();
           }
-          await this.onAssessmentChange();
+
+          // Auto-gerar relatório se solicitado
+          if (params['autoGenerate'] === 'true') {
+            console.log('Auto-geração de relatório solicitada');
+            setTimeout(async () => {
+              await this.exportarRelatorioPDF();
+            }, 2000); // Aguardar 2 segundos para tudo carregar
+          }
         }
         setTimeout(() => {
-          this.selectedTabIndex = 2;
+          this.selectedTabIndex = 3; // Ir direto para a aba "Visualizar"
         }, 100);
       }
     });
@@ -576,6 +628,9 @@ export class ReportsComponent implements OnInit {
 
     // Limpar questionMap antes de recarregar
     this.questionMap = {};
+
+    // Carregar todas as competências disponíveis
+    await this.loadAllCompetencies();
     console.log('🧹 QuestionMap limpo');
     console.log('✅ Avaliação selecionada:', this.selectedAssessmentId);
     console.log('✅ Modo individual:', this.isIndividualMode);
@@ -650,8 +705,8 @@ export class ReportsComponent implements OnInit {
               }
             });
           }
-          // Para outros tipos de perguntas, manter como estava
-          else if ((element.type === 'rating' || element.type === 'dropdown' || element.type === 'radiogroup' || element.type === 'comment') && element.name) {
+          // Para outros tipos de perguntas, capturar TODOS os tipos agora
+          else if (element.name) {
             console.log(`✅ Pergunta encontrada: ${element.name} - ${JSON.stringify(element.title)} (tipo: ${element.type})`);
 
             // Garantir que o título seja uma string válida
@@ -675,7 +730,7 @@ export class ReportsComponent implements OnInit {
             });
 
             this.questionMap[element.name] = questionTitle;
-            console.log(`📝 QuestionMap[${element.name}] = "${questionTitle}" (tipo: ${typeof questionTitle})`);
+            console.log(`📝 QuestionMap[${element.name}] = "${questionTitle}" (tipo: ${element.type})`);
             console.log(`   └─ Extraído de: ${JSON.stringify(element.title)}`);
           }
         });
@@ -685,9 +740,15 @@ export class ReportsComponent implements OnInit {
     console.log('📊 Questões extraídas:', questions);
     console.log('📊 QuestionMap:', this.questionMap);
 
+    // Armazenar todas as perguntas
+    this.allQuestions = questions;
+
+    // Aplicar filtro de tipos de perguntas
+    this.applyQuestionFilter();
+
     // Definir colunas da tabela e popular dynamicColumns
-    this.displayedColumns = ['data', 'categoria', 'avaliado', 'dataAvaliacao', ...questions.map(q => q.id)];
-    this.dynamicColumns = questions.map(q => q.id);
+    this.displayedColumns = ['data', 'categoria', 'avaliado', 'dataAvaliacao', ...this.filteredQuestions.map(q => q.id)];
+    this.dynamicColumns = this.filteredQuestions.map(q => q.id);
 
     console.log('📊 DynamicColumns populado:', this.dynamicColumns);
     console.log('📊 DisplayedColumns:', this.displayedColumns);
@@ -1623,17 +1684,17 @@ export class ReportsComponent implements OnInit {
 
   async carregarRelatorioSelecionado() {
     if (!this.selectedReportId.value) return;
-    const reportRef = doc(this.firestore, 'reports', this.selectedReportId.value);
-    const reportSnap = await getDoc(reportRef);
-    if (reportSnap.exists()) {
-      const reportData = reportSnap.data();
-      this.relatorioConfiguracao = reportData['configuracao'] || [];
+      const reportRef = doc(this.firestore, 'reports', this.selectedReportId.value);
+      const reportSnap = await getDoc(reportRef);
+      if (reportSnap.exists()) {
+        const reportData = reportSnap.data();
+        this.relatorioConfiguracao = reportData['configuracao'] || [];
       this.competencias = reportData['competencias'] || [];
       // Atualizar o form reativo
-      this.atualizarFormArrayComConfiguracao();
+        this.atualizarFormArrayComConfiguracao();
       // Atualizar perguntas bloqueadas após carregar competências
       this.atualizarPerguntasBloqueadas();
-      this.snackBar.open(`Relatório '${reportData['nome']}' carregado!`, 'Fechar', { duration: 3000 });
+        this.snackBar.open(`Relatório '${reportData['nome']}' carregado!`, 'Fechar', { duration: 3000 });
     }
   }
 
@@ -1833,16 +1894,16 @@ export class ReportsComponent implements OnInit {
   // Aplicar template selecionado ao relatório atual
   async aplicarTemplateSelecionado() {
     if (!this.selectedTemplateId.value) return;
-    const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
-    const templateSnap = await getDoc(templateRef);
-    if (templateSnap.exists()) {
-      const templateData = templateSnap.data();
-      this.relatorioConfiguracao = templateData['configuracao'] || [];
+      const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
+      const templateSnap = await getDoc(templateRef);
+      if (templateSnap.exists()) {
+        const templateData = templateSnap.data();
+        this.relatorioConfiguracao = templateData['configuracao'] || [];
       this.competencias = templateData['competencias'] || [];
-      this.atualizarFormArrayComConfiguracao();
+        this.atualizarFormArrayComConfiguracao();
       // Atualizar perguntas bloqueadas após carregar competências
       this.atualizarPerguntasBloqueadas();
-      this.snackBar.open(`Template '${templateData['nome']}' aplicado!`, 'Fechar', { duration: 2500 });
+        this.snackBar.open(`Template '${templateData['nome']}' aplicado!`, 'Fechar', { duration: 2500 });
     }
   }
 
@@ -2740,5 +2801,378 @@ export class ReportsComponent implements OnInit {
     });
 
     console.groupEnd();
+  }
+
+  // =============================================
+  // MÉTODOS PARA GERENCIAMENTO DE CLIENTES E GRUPOS DE COMPETÊNCIAS
+  // =============================================
+
+  async loadClients(): Promise<void> {
+    try {
+      const userRole = await this.authService.getCurrentUserRole();
+      const clientId = await this.authService.getCurrentClientId();
+
+      const clientsCollection = collection(this.firestore, 'clients');
+      let clientsSnapshot;
+
+      if (userRole === 'admin_client' && clientId) {
+        // Admin de cliente específico - só carrega seu cliente
+        clientsSnapshot = await getDocs(
+          query(clientsCollection, where('__name__', '==', clientId))
+        );
+        // Se for admin_client, já seleciona automaticamente o cliente
+        this.selectedClientId = clientId;
+        this.clientControl.setValue(clientId);
+        await this.loadCompetencyGroups(clientId);
+      } else if (userRole === 'admin_master') {
+        // Admin master - carrega todos os clientes
+        clientsSnapshot = await getDocs(clientsCollection);
+      } else {
+        console.warn('Usuário não tem permissão para acessar clientes.');
+        this.clients = [];
+        return;
+      }
+
+      this.clients = clientsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data()['companyName'] || 'Cliente sem nome',
+      }));
+
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async onClientChange(): Promise<void> {
+    this.selectedClientId = this.clientControl.value;
+    if (this.selectedClientId) {
+      await this.loadCompetencyGroups(this.selectedClientId);
+      this.competencyGroupControl.reset();
+      this.cdr.detectChanges();
+    }
+  }
+
+  async loadCompetencyGroups(clientId: string): Promise<void> {
+    try {
+      const groupsCollection = collection(this.firestore, 'competencyGroups');
+      const groupsSnapshot = await getDocs(
+        query(groupsCollection, where('clientId', '==', clientId))
+      );
+
+      this.competencyGroups = groupsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+    } catch (error) {
+      console.error('Erro ao carregar grupos de competências:', error);
+      this.snackBar.open('Erro ao carregar grupos de competências.', 'Fechar', {
+        duration: 3000,
+      });
+    }
+  }
+
+  async saveCompetencyGroup(): Promise<void> {
+    if (!this.selectedClientId) {
+      this.snackBar.open('Selecione um cliente primeiro.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    if (!this.groupNameControl.value) {
+      this.snackBar.open('Digite um nome para o grupo de competências.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    if (this.competencias.length === 0) {
+      this.snackBar.open('Adicione pelo menos uma competência antes de salvar o grupo.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    try {
+      const groupData = {
+        name: this.groupNameControl.value,
+        clientId: this.selectedClientId,
+        competencias: this.competencias,
+        createdAt: new Date(),
+        assessmentId: this.selectedAssessmentId
+      };
+
+      const docRef = await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
+
+      this.snackBar.open(`Grupo "${groupData.name}" salvo com sucesso!`, 'Fechar', { duration: 3000 });
+      this.groupNameControl.reset();
+
+      // Atualizar lista de grupos
+      await this.loadCompetencyGroups(this.selectedClientId);
+
+    } catch (error) {
+      console.error('Erro ao salvar grupo de competências:', error);
+      this.snackBar.open('Erro ao salvar grupo de competências.', 'Fechar', { duration: 3000 });
+    }
+  }
+
+    async loadCompetencyGroup(): Promise<void> {
+    const selectedGroupId = this.competencyGroupControl.value;
+    if (!selectedGroupId) return;
+
+    try {
+      const groupDoc = await getDoc(doc(this.firestore, 'competencyGroups', selectedGroupId));
+
+      if (groupDoc.exists()) {
+        const groupData = groupDoc.data();
+
+        // Carregar competências do grupo
+        this.competencias = groupData['competencias'] || [];
+
+        // Se o grupo tem assessmentId associado, selecionar a avaliação
+        if (groupData['assessmentId']) {
+          this.selectedAssessmentId = groupData['assessmentId'];
+          this.assessmentControl.setValue(groupData['assessmentId']);
+          await this.onAssessmentChange();
+        }
+
+        this.snackBar.open(`Grupo "${groupData['name']}" carregado com sucesso!`, 'Fechar', { duration: 3000 });
+        this.atualizarPerguntasBloqueadas();
+        this.cdr.detectChanges();
+
+      } else {
+        this.snackBar.open('Grupo não encontrado.', 'Fechar', { duration: 3000 });
+      }
+
+    } catch (error) {
+      console.error('Erro ao carregar grupo de competências:', error);
+      this.snackBar.open('Erro ao carregar grupo de competências.', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  // Métodos auxiliares para simplificar expressões no template
+  getClientName(): string {
+    const client = this.clients.find(c => c.id === this.selectedClientId);
+    return client ? client.name : '';
+  }
+
+  getCompetenciaText(): string {
+    const count = this.competencias.length;
+    return `${count} competência${count !== 1 ? 's' : ''} ativa${count !== 1 ? 's' : ''}`;
+  }
+
+  getGrupoText(): string {
+    const count = this.competencyGroups.length;
+    return `${count} grupo${count !== 1 ? 's' : ''} salvo${count !== 1 ? 's' : ''}`;
+  }
+
+  getQuestaoText(count: number): string {
+    return `${count} questão${count !== 1 ? 'ões' : ''}`;
+  }
+
+  getSecaoText(): string {
+    const count = this.getSecoesVisiveisOrdenadas().length;
+    return `${count} seção${count !== 1 ? 'ões' : ''} ativa${count !== 1 ? 's' : ''}`;
+  }
+
+  getCompetenciaCountText(competenciasIds: string[]): string {
+    const count = competenciasIds?.length || 0;
+    return `${count} competência${count !== 1 ? 's' : ''}`;
+  }
+
+  // Métodos para verificar condições de paleta personalizada
+  isPaletaPersonalizada(secaoCtrl: any, i: number): boolean {
+    return secaoCtrl.get('paletaCor')?.value === 'personalizada' ||
+           this.relatorioConfiguracao[i]['paletaCor'] === 'personalizada';
+  }
+
+  // Métodos para tipos de seção
+  isSecaoTipo(secaoCtrl: any, tipo: string): boolean {
+    return secaoCtrl.get('tipo')?.value === tipo;
+  }
+
+  // Métodos para obter valores seguros
+  getSecaoTipoValue(secaoCtrl: any): string {
+    return secaoCtrl.get('tipo')?.value || '';
+  }
+
+  getPaletaCorValue(secaoCtrl: any): string {
+    return secaoCtrl.get('paletaCor')?.value || '';
+  }
+
+  getCompetenciasIdsValue(secaoCtrl: any): string[] {
+    return secaoCtrl.get('competenciasIds')?.value || [];
+  }
+
+  // Método para verificar se tem competências selecionadas
+  hasCompetenciasSelecionadas(secaoCtrl: any): boolean {
+    const competenciasIds = this.getCompetenciasIdsValue(secaoCtrl);
+    return competenciasIds.length > 0;
+  }
+
+  // =============================================
+  // MÉTODOS PARA FILTRAGEM DE TIPOS DE PERGUNTAS
+  // =============================================
+
+  applyQuestionFilter(): void {
+    if (!this.allQuestions.length) {
+      this.filteredQuestions = [];
+      return;
+    }
+
+    const includeOpen = this.includeOpenQuestions.value;
+
+    // Tipos de perguntas que são consideradas "fechadas" (múltipla escolha/rating)
+    const closedQuestionTypes = [
+      'rating',
+      'dropdown',
+      'radiogroup',
+      'matrix',
+      'checkbox',
+      'boolean',
+      'ranking'
+    ];
+
+    // Tipos de perguntas que são consideradas "abertas" (texto livre)
+    const openQuestionTypes = [
+      'text',
+      'comment',
+      'multipletext',
+      'file',
+      'signaturepad'
+    ];
+
+    this.filteredQuestions = this.allQuestions.filter(question => {
+      const isClosedQuestion = closedQuestionTypes.includes(question.type) || question.type === 'question'; // matrix rows
+      const isOpenQuestion = openQuestionTypes.includes(question.type);
+
+      if (includeOpen) {
+        // Se incluir abertas, mostrar todas
+        return true;
+      } else {
+        // Se NÃO incluir abertas, mostrar apenas fechadas
+        return isClosedQuestion;
+      }
+    });
+
+    console.log(`🔍 Filtro aplicado - Incluir abertas: ${includeOpen}`);
+    console.log(`📊 Perguntas totais: ${this.allQuestions.length}`);
+    console.log(`📊 Perguntas filtradas: ${this.filteredQuestions.length}`);
+    console.log('📊 Perguntas por tipo:', this.getQuestionTypeStats());
+  }
+
+  getQuestionTypeStats(): any {
+    const stats: any = {};
+    this.allQuestions.forEach(q => {
+      stats[q.type] = (stats[q.type] || 0) + 1;
+    });
+    return stats;
+  }
+
+  onQuestionFilterChange(): void {
+    this.applyQuestionFilter();
+
+    // Atualizar dynamicColumns com as perguntas filtradas
+    this.dynamicColumns = this.filteredQuestions.map(q => q.id);
+
+    // Forçar detecção de mudanças
+    this.cdr.detectChanges();
+
+    console.log('📊 Filtro alterado - Perguntas disponíveis:', this.dynamicColumns.length);
+  }
+
+  getQuestionTypeLabel(type: string): string {
+    const typeLabels: { [key: string]: string } = {
+      'rating': 'Escala/Rating',
+      'dropdown': 'Lista Suspensa',
+      'radiogroup': 'Múltipla Escolha',
+      'matrix': 'Matriz',
+      'checkbox': 'Caixas de Seleção',
+      'boolean': 'Sim/Não',
+      'ranking': 'Ranking',
+      'text': 'Texto Livre',
+      'comment': 'Comentário',
+      'multipletext': 'Múltiplos Textos',
+      'file': 'Upload de Arquivo',
+      'signaturepad': 'Assinatura',
+      'question': 'Pergunta de Matriz'
+    };
+    return typeLabels[type] || type;
+  }
+
+  getQuestionTypeByIdSafe(questionId: string): string {
+    const question = this.allQuestions.find(q => q.id === questionId);
+    return question ? this.getQuestionTypeLabel(question.type) : '';
+  }
+
+  getAvailableQuestionCount(): string {
+    const total = this.allQuestions.length;
+    const filtered = this.filteredQuestions.length;
+    const includeOpen = this.includeOpenQuestions.value;
+
+    if (includeOpen) {
+      return `${filtered} questões disponíveis (todas)`;
+    } else {
+      const excluded = total - filtered;
+      return `${filtered} questões disponíveis (${excluded} questões abertas excluídas)`;
+    }
+  }
+
+    debugTiposPerguntas(): void {
+    console.group('🔍 DEBUG: Tipos de Perguntas');
+
+    console.log('📊 Total de perguntas:', this.allQuestions.length);
+    console.log('📊 Perguntas filtradas:', this.filteredQuestions.length);
+    console.log('📊 Incluir abertas:', this.includeOpenQuestions.value);
+
+    console.log('\n📈 Estatísticas por tipo:');
+    const stats = this.getQuestionTypeStats();
+    Object.entries(stats).forEach(([type, count]) => {
+      console.log(`  ${type}: ${count} perguntas - ${this.getQuestionTypeLabel(type)}`);
+    });
+
+    console.log('\n📝 Perguntas por tipo:');
+    const grouped = this.allQuestions.reduce((acc: any, q) => {
+      if (!acc[q.type]) acc[q.type] = [];
+      acc[q.type].push(q);
+      return acc;
+    }, {});
+
+    Object.entries(grouped).forEach(([type, questions]: [string, any]) => {
+      console.log(`\n${type} (${questions.length}):`);
+      questions.forEach((q: any) => {
+        const isFiltered = this.filteredQuestions.some(fq => fq.id === q.id);
+        console.log(`  ${isFiltered ? '✅' : '❌'} ${q.id}: ${q.title}`);
+      });
+    });
+
+    console.groupEnd();
+
+    this.snackBar.open(`Debug executado! ${this.allQuestions.length} perguntas analisadas. Veja o console.`, 'Fechar', { duration: 5000 });
+  }
+
+  async loadAllCompetencies(): Promise<void> {
+    try {
+      const competenciesCollection = collection(this.firestore, 'competencies');
+      let competenciesSnapshot;
+
+      // Se temos assessmentId, filtrar por ele
+      if (this.selectedAssessmentId) {
+        const competenciesQuery = query(competenciesCollection, where('assessmentId', '==', this.selectedAssessmentId));
+        competenciesSnapshot = await getDocs(competenciesQuery);
+      } else {
+        competenciesSnapshot = await getDocs(competenciesCollection);
+      }
+
+      this.allCompetencies = competenciesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        nome: doc.data()['name'] || doc.data()['nome'] || 'Competência sem nome',
+        descricao: doc.data()['description'] || doc.data()['descricao'] || '',
+        perguntasIds: doc.data()['perguntasIds'] || doc.data()['questionIds'] || []
+      } as Competencia));
+
+      console.log('🎯 Competências carregadas:', this.allCompetencies.length);
+    } catch (error) {
+      console.error('Erro ao carregar competências:', error);
+      this.allCompetencies = [];
+    }
   }
 }

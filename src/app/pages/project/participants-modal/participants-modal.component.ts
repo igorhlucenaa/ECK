@@ -28,6 +28,7 @@ import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
+import { ReportGenerationModalComponent } from '../report-generation-modal/report-generation-modal.component';
 import { Timestamp } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
 import { AddParticipantModalComponent } from '../add-participant-modal/add-participant-modal.component';
@@ -1010,17 +1011,25 @@ export class ParticipantsModalComponent implements OnInit {
   }
 
   generateReportForParticipant(participant: UnifiedParticipant) {
-    // Navegar para o componente reports com os dados do participante
-    this.router.navigate(['/reports'], {
-      queryParams: {
-        assessmentId: this.data.projectId, // Usar o projectId como assessmentId
-        participantId: participant.id,
-        participantName: participant.name,
-        mode: 'individual'
-      }
+    // Abrir o modal de seleção de template e competências
+    const dialogRef = this.dialog.open(ReportGenerationModalComponent, {
+      width: '700px',
+      maxWidth: '90vw',
+      data: {
+        participant: participant,
+        projectId: this.data.projectId,
+        assessmentId: this.data.projectId // Usar o projectId como assessmentId
+      },
+      disableClose: false
     });
 
-    // Fechar o modal após navegar
-    this.dialogRef.close();
+    dialogRef.afterClosed().subscribe(result => {
+      if (result && result.success) {
+        console.log('Relatório configurado:', result);
+        // O modal já navegou para a página de reports
+        // Fechar este modal também
+        this.dialogRef.close();
+      }
+    });
   }
 }

@@ -1,0 +1,214 @@
+[
+  {
+    "id": "template_avaliacao_360_completo",
+    "name": "Avaliação 360° - Completo",
+    "description": "Template completo com todas as seções de análise, incluindo gráficos, tabelas e análise detalhada por competência",
+    "clientId": "5QQGnqIRSzHtuxDp6O8W",
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-01-15T10:00:00Z",
+    "sections": [
+      {
+        "id": "capa_1",
+        "tipo": "capa",
+        "titulo": "Relatório de Avaliação 360°",
+        "visivel": true,
+        "ordem": 1,
+        "configuracoes": {
+          "incluirLogo": true,
+          "incluirDataGeracao": true,
+          "incluirNomeParticipante": true,
+          "corTema": "#6366f1"
+        }
+      },
+      {
+        "id": "introducao_1",
+        "tipo": "introducao",
+        "titulo": "Introdução",
+        "texto": "Este relatório apresenta os resultados da sua avaliação 360°, baseado nas percepções de gestores, pares, subordinados e autoavaliação.",
+        "visivel": true,
+        "ordem": 2
+      },
+      {
+        "id": "resumo_1",
+        "tipo": "resumo",
+        "titulo": "Resumo Executivo",
+        "visivel": true,
+        "ordem": 3,
+        "configuracoes": {
+          "incluirMediaGeral": true,
+          "incluirRankingCompetencias": true,
+          "incluirResumoNumericos": true
+        }
+      },
+      {
+        "id": "graficos_1",
+        "tipo": "graficos",
+        "titulo": "Análise Gráfica por Competências",
+        "visivel": true,
+        "ordem": 4,
+        "competenciasIds": [],
+        "configuracoes": {
+          "tipoGrafico": "radar",
+          "incluirMedias": true,
+          "compararComMedia": true,
+          "paletaCor": "azul"
+        }
+      },
+      {
+        "id": "competencia_detalhada_1",
+        "tipo": "competencia_detalhada",
+        "titulo": "Análise Detalhada por Competência",
+        "visivel": true,
+        "ordem": 5,
+        "competenciasIds": [],
+        "configuracoes": {
+          "incluirDescricaoCompetencia": true,
+          "incluirGraficoIndividual": true,
+          "incluirComentarios": true,
+          "incluirSugestoesMelhoria": true
+        }
+      },
+      {
+        "id": "tabela_1",
+        "tipo": "tabela",
+        "titulo": "Tabela de Frequência das Respostas",
+        "visivel": true,
+        "ordem": 6,
+        "competenciasIds": [],
+        "configuracoes": {
+          "incluirPercentuais": true,
+          "agruparPorCategoria": true,
+          "destacarMaiores": true
+        }
+      },
+      {
+        "id": "destaques_1",
+        "tipo": "destaques",
+        "titulo": "Pontos Fortes e Oportunidades",
+        "visivel": true,
+        "ordem": 7,
+        "configuracoes": {
+          "numeroTopCompetencias": 3,
+          "numeroBottomCompetencias": 3,
+          "incluirSugestoes": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "template_relatorio_simples",
+    "name": "Relatório Simples",
+    "description": "Template simplificado com apenas as informações essenciais - gráficos e resumo",
+    "clientId": "5QQGnqIRSzHtuxDp6O8W",
+    "createdAt": "2024-01-15T11:00:00Z",
+    "updatedAt": "2024-01-15T11:00:00Z",
+    "sections": [
+      {
+        "id": "capa_2",
+        "tipo": "capa",
+        "titulo": "Relatório de Competências",
+        "visivel": true,
+        "ordem": 1,
+        "configuracoes": {
+          "incluirLogo": true,
+          "incluirDataGeracao": true,
+          "incluirNomeParticipante": true,
+          "corTema": "#059669"
+        }
+      },
+      {
+        "id": "resumo_2",
+        "tipo": "resumo",
+        "titulo": "Resumo dos Resultados",
+        "visivel": true,
+        "ordem": 2,
+        "configuracoes": {
+          "incluirMediaGeral": true,
+          "incluirRankingCompetencias": true,
+          "incluirResumoNumericos": false
+        }
+      },
+      {
+        "id": "graficos_2",
+        "tipo": "graficos",
+        "titulo": "Análise Gráfica",
+        "visivel": true,
+        "ordem": 3,
+        "competenciasIds": [],
+        "configuracoes": {
+          "tipoGrafico": "barras",
+          "incluirMedias": true,
+          "compararComMedia": false,
+          "paletaCor": "verde"
+        }
+      }
+    ]
+  },
+  {
+    "id": "template_executivo",
+    "name": "Relatório Executivo",
+    "description": "Template focado em executives com análise estratégica e insights de liderança",
+    "clientId": "5QQGnqIRSzHtuxDp6O8W",
+    "createdAt": "2024-01-15T12:00:00Z",
+    "updatedAt": "2024-01-15T12:00:00Z",
+    "sections": [
+      {
+        "id": "capa_3",
+        "tipo": "capa",
+        "titulo": "Relatório Executivo de Liderança",
+        "visivel": true,
+        "ordem": 1,
+        "configuracoes": {
+          "incluirLogo": true,
+          "incluirDataGeracao": true,
+          "incluirNomeParticipante": true,
+          "corTema": "#dc2626"
+        }
+      },
+      {
+        "id": "introducao_3",
+        "tipo": "introducao",
+        "titulo": "Contexto Executivo",
+        "texto": "Este relatório oferece uma visão estratégica do seu perfil de liderança, baseado em feedback 360° de stakeholders-chave.",
+        "visivel": true,
+        "ordem": 2
+      },
+      {
+        "id": "graficos_3",
+        "tipo": "graficos",
+        "titulo": "Dashboard Executivo",
+        "visivel": true,
+        "ordem": 3,
+        "competenciasIds": [],
+        "configuracoes": {
+          "tipoGrafico": "radar",
+          "incluirMedias": true,
+          "compararComMedia": true,
+          "paletaCor": "personalizada",
+          "coresPersonalizadas": ["#dc2626", "#f59e0b", "#10b981"]
+        }
+      },
+      {
+        "id": "destaques_3",
+        "tipo": "destaques",
+        "titulo": "Insights Estratégicos",
+        "visivel": true,
+        "ordem": 4,
+        "configuracoes": {
+          "numeroTopCompetencias": 5,
+          "numeroBottomCompetencias": 3,
+          "incluirSugestoes": true,
+          "focoLideranca": true
+        }
+      },
+      {
+        "id": "texto_3",
+        "tipo": "texto",
+        "titulo": "Recomendações de Desenvolvimento",
+        "texto": "Com base nos resultados, recomendamos foco em...",
+        "visivel": true,
+        "ordem": 5
+      }
+    ]
+  }
+]
