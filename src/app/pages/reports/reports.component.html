@@ -45,6 +45,49 @@
   </mat-select>
 </mat-form-field>
 
+<!-- Seleção do avaliado -->
+<mat-form-field
+  appearance="fill"
+  style="min-width: 300px; margin-bottom: 16px; display: block"
+  *ngIf="avaliadosDisponiveis.length > 0"
+>
+  <mat-label>Selecione o avaliado</mat-label>
+  <mat-select [formControl]="avaliadoControl" (selectionChange)="onAvaliadoChange()">
+    <mat-option value="">Todos os avaliados</mat-option>
+    <mat-option *ngFor="let avaliado of avaliadosDisponiveis" [value]="avaliado">
+      {{ avaliado }}
+    </mat-option>
+  </mat-select>
+  <mat-hint>Selecione um avaliado específico para visualizar dados individuais</mat-hint>
+</mat-form-field>
+
+<!-- Indicador de avaliado selecionado -->
+<div
+  *ngIf="selectedAvaliado"
+  style="background-color: #e8f5e8; border-left: 4px solid #4caf50; padding: 12px; margin-bottom: 16px; border-radius: 4px;"
+>
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center;">
+      <mat-icon style="color: #4caf50; margin-right: 8px;">person</mat-icon>
+      <div>
+        <strong style="color: #2e7d32;">Visualizando dados individuais</strong>
+        <p style="margin: 4px 0 0 0; color: #388e3c; font-size: 14px;">
+          Avaliado selecionado: <strong>{{ selectedAvaliado }}</strong>
+        </p>
+      </div>
+    </div>
+    <button
+      mat-icon-button
+      color="warn"
+      size="small"
+      (click)="limparSelecaoAvaliado()"
+      matTooltip="Limpar seleção de avaliado"
+    >
+      <mat-icon>clear</mat-icon>
+    </button>
+  </div>
+</div>
+
 <!-- Botão de debug temporário -->
 <div *ngIf="selectedAssessmentId && dataSource.length > 0" style="margin-bottom: 16px;">
   <button mat-stroked-button color="accent" (click)="debugTabelaDetalhada()" style="margin-right: 8px;">
@@ -54,6 +97,10 @@
   <button mat-stroked-button color="primary" (click)="testarDados()" style="margin-right: 8px;">
     <mat-icon>science</mat-icon>
     Teste Simples
+  </button>
+  <button mat-stroked-button color="warn" (click)="debugEstruturaDados()" style="margin-right: 8px;">
+    <mat-icon>storage</mat-icon>
+    Debug Estrutura
   </button>
   <button mat-stroked-button color="warn" (click)="debugGraficos()" style="margin-right: 8px;">
     <mat-icon>bar_chart</mat-icon>
@@ -469,8 +516,44 @@
                 <mat-hint>Este título aparecerá no relatório final</mat-hint>
               </mat-form-field>
 
-                              <div *ngIf="isSecaoTipo(secaoCtrl, 'texto') || isSecaoTipo(secaoCtrl, 'custom')">
+                              <div *ngIf="isSecaoTipo(secaoCtrl, 'texto') || isSecaoTipo(secaoCtrl, 'custom') || isSecaoTipo(secaoCtrl, 'capa') || isSecaoTipo(secaoCtrl, 'introducao')">
                 <label style="font-weight: 500; margin-bottom: 8px; display: block;">Conteúdo:</label>
+
+                <!-- Dicas específicas para cada tipo de seção -->
+                <div *ngIf="isSecaoTipo(secaoCtrl, 'capa')" style="background-color: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center;">
+                      <mat-icon style="color: #2196f3; margin-right: 8px;">info</mat-icon>
+                      <strong style="color: #1976d2;">Dica para Capa:</strong>
+                    </div>
+                    <button mat-stroked-button color="primary" size="small" (click)="aplicarTemplateRico(i, 'capa')" style="font-size: 12px;">
+                      <mat-icon style="font-size: 16px; margin-right: 4px;">auto_awesome</mat-icon>
+                      Aplicar Template
+                    </button>
+                  </div>
+                  <p style="margin: 0; color: #1565c0; font-size: 14px;">
+                    Use o editor de texto rico para criar uma capa profissional. Você pode adicionar títulos, subtítulos,
+                    imagens, cores e formatação para destacar informações importantes. Clique em "Aplicar Template" para usar um modelo pré-formatado.
+                  </p>
+                </div>
+
+                <div *ngIf="isSecaoTipo(secaoCtrl, 'introducao')" style="background-color: #f3e5f5; border-left: 4px solid #9c27b0; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center;">
+                      <mat-icon style="color: #9c27b0; margin-right: 8px;">lightbulb</mat-icon>
+                      <strong style="color: #7b1fa2;">Dica para Introdução:</strong>
+                    </div>
+                    <button mat-stroked-button color="accent" size="small" (click)="aplicarTemplateRico(i, 'introducao')" style="font-size: 12px;">
+                      <mat-icon style="font-size: 16px; margin-right: 4px;">auto_awesome</mat-icon>
+                      Aplicar Template
+                    </button>
+                  </div>
+                  <p style="margin: 0; color: #6a1b9a; font-size: 14px;">
+                    Crie uma introdução atrativa usando formatação rica. Adicione títulos, listas,
+                    destaques e imagens para explicar o propósito e contexto do relatório. Clique em "Aplicar Template" para usar um modelo pré-formatado.
+                  </p>
+                </div>
+
                 <angular-editor formControlName="texto" (blur)="atualizarSecaoConfiguracao(i)" [config]="editorConfig"></angular-editor>
               </div>
 
@@ -615,9 +698,7 @@
 
               <div *ngIf="secaoCtrl.get('tipo')?.value === 'destaques'">
                 <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px;">
-                  <mat-checkbox formControlName="mostrarCaracteristica" (change)="atualizarSecaoConfiguracao(i)">
-                    Mostrar característica do líder ADEO
-                  </mat-checkbox>
+                  <!-- Removido: controle de Característica do líder ADEO -->
                   <mat-checkbox formControlName="mostrarPontuacaoSemAuto" (change)="atualizarSecaoConfiguracao(i)">
                     Mostrar pontuação sem autoavaliação
                   </mat-checkbox>
@@ -631,7 +712,7 @@
                     </div>
                     <p style="margin: 0; font-size: 14px; color: #555;">
                       Esta seção lista os comportamentos/perguntas com maior e menor pontuação média geral.
-                      Inclui todas as competências automaticamente. A característica do líder é baseada na pontuação média por categoria.
+                    Inclui todas as competências automaticamente.
                     </p>
                   </mat-card-content>
                 </mat-card>
@@ -650,12 +731,12 @@
     <div id="report-preview">
       <div *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
         <ng-container [ngSwitch]="secao.tipo">
-          <div *ngSwitchCase="'capa'">
-            <h1>{{ secao.titulo }}</h1>
-            <p>{{ secao.texto }}</p>
-            <p><b>Nome do avaliado:</b> {{ selectedAssessmentName }}</p>
-            <p><b>Data:</b> {{ today | date: 'dd/MM/yyyy' }}</p>
-          </div>
+                      <div *ngSwitchCase="'capa'">
+              <h1>{{ secao.titulo }}</h1>
+              <div [innerHTML]="secao.texto"></div>
+              <p><b>Nome do avaliado:</b> {{ selectedAvaliadoName }}</p>
+              <p><b>Data:</b> {{ today | date: 'dd/MM/yyyy' }}</p>
+            </div>
           <div *ngSwitchCase="'introducao'">
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
@@ -812,7 +893,7 @@
 
                 <!-- Tabela de frequência similar ao print -->
                 <div style="overflow-x: auto;">
-                  <ng-container *ngIf="gerarTabelaCompetencia(comp) as tabelaData">
+                  <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
                     <table class="tabela-frequencia" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                       <!-- Cabeçalho da tabela -->
                       <thead>
@@ -849,7 +930,10 @@
                           </ng-container>
                         </tr>
 
-                        <!-- Linha de médias -->
+                        <!-- Linha de médias movida para o rodapé para evitar duplicidade -->
+                      </tbody>
+                      <tfoot>
+                        <!-- Linha Média total (igual já exibida) -->
                         <tr style="background-color: #8BC34A; color: white; font-weight: bold;">
                           <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px;">Média</td>
                           <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
@@ -858,7 +942,15 @@
                             </td>
                           </ng-container>
                         </tr>
-                      </tbody>
+
+                        <!-- Linha Média sem autoavaliação (ponderada) -->
+                        <tr>
+                          <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px; font-weight: bold;">Média sem autoavaliação</td>
+                          <td [attr.colspan]="tabelaData.mediasGerais.length * 5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">
+                            {{ getMediaSemAutoavaliacao(tabelaData) | number:'1.1-1' }}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </ng-container>
                 </div>
@@ -902,7 +994,7 @@
 
                   <!-- Tabela de distribuição de notas -->
                   <div style="overflow-x: auto;">
-                    <ng-container *ngIf="gerarTabelaCompetencia(comp) as tabelaData">
+                    <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
                       <table class="tabela-distribuicao-notas" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                         <!-- Cabeçalho da tabela -->
                         <thead>
@@ -1000,7 +1092,7 @@
                       <th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">Comportamento</th>
                       <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média geral</th>
                       <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média por categoria</th>
-                      <th *ngIf="secao['mostrarCaracteristica']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Característica do Líder ADEO</th>
+
                     </tr>
                   </thead>
                   <tbody>
@@ -1010,7 +1102,7 @@
                       <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ item.comportamento }}</td>
                       <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
                       <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
-                      <td *ngIf="secao['mostrarCaracteristica']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.caracteristicaLider }}</td>
+
                     </tr>
                   </tbody>
                 </table>
@@ -1033,7 +1125,7 @@
                       <th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">Comportamento</th>
                       <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média do(a) avaliado(a)</th>
                       <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média sem autoavaliação</th>
-                      <th *ngIf="secao['mostrarCaracteristica']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Característica do Líder ADEO</th>
+
                     </tr>
                   </thead>
                   <tbody>
@@ -1043,7 +1135,7 @@
                       <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ item.comportamento }}</td>
                       <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
                       <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
-                      <td *ngIf="secao['mostrarCaracteristica']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.caracteristicaLider }}</td>
+
                     </tr>
                   </tbody>
                 </table>

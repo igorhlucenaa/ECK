@@ -90,7 +90,6 @@ interface ItemAvaliacao {
   comportamento: string;
   pontuacaoMediaAvaliado: number;
   pontuacaoMediaSemAutoavaliacao: number;
-  caracteristicaLider: string;
   perguntaId: string;
   competenciaId: string;
 }
@@ -134,6 +133,52 @@ interface TabelaAvaliacoesAltas {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReportsComponent implements OnInit {
+  // Habilite para logs detalhados (impacta performance). Mantenha false em produção.
+  private debugMode = false;
+  // Cache de participantes para evitar múltiplas idas ao Firestore
+  private participantsCache: Map<string, any> = new Map<string, any>();
+
+  private debugLog(...args: any[]): void {
+    if (this.debugMode) {
+      // eslint-disable-next-line no-console
+      console.log(...args);
+    }
+  }
+
+  // Converte respostas tipo "Column N" para número (1..5)
+  private parseLikertAnswer(answer: unknown): number | null {
+    if (typeof answer === 'number') {
+      return answer >= 1 && answer <= 5 ? answer : null;
+    }
+    if (typeof answer === 'string') {
+      const match = answer.match(/Column\s*(\d+)/);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        return n >= 1 && n <= 5 ? n : null;
+      }
+      const parsed = parseFloat(answer);
+      return parsed >= 1 && parsed <= 5 ? parsed : null;
+    }
+    return null;
+  }
+
+  // Calcula a "Média sem autoavaliação" a partir das médias por categoria da tabela
+  getMediaSemAutoavaliacao(tabela: TabelaCompetencia | null): number | null {
+    if (!tabela || !tabela.mediasGerais || tabela.mediasGerais.length === 0) {
+      return null;
+    }
+
+    // Considerar todas as categorias exceto Avaliado(a)
+    const categoriasSemAuto = tabela.mediasGerais.filter(c => this.getAbreviacaoCategoria(c.categoria) !== 'A' && c.totalRespostas > 0);
+    if (categoriasSemAuto.length === 0) {
+      return null;
+    }
+
+    // Média ponderada pelo total de respostas por categoria
+    const somaPonderada = categoriasSemAuto.reduce((acc, c) => acc + (c.media * c.totalRespostas), 0);
+    const totalRespostas = categoriasSemAuto.reduce((acc, c) => acc + c.totalRespostas, 0);
+    return totalRespostas > 0 ? somaPonderada / totalRespostas : null;
+  }
   displayedColumns: string[] = [];
   dataSource: any[] = [];
   isLoading = false;
@@ -144,8 +189,14 @@ export class ReportsComponent implements OnInit {
 
   assessmentControl = new FormControl('');
 
-  // Controles para cliente e grupos de competências
+  // Controle para seleção do avaliado
+  avaliadoControl = new FormControl('');
+  avaliadosDisponiveis: string[] = [];
+  selectedAvaliado: string | null = null;
+
   clientControl = new FormControl('');
+
+  // Controles para cliente e grupos de competências
   clients: any[] = [];
   selectedClientId: string | null = null;
   competencyGroups: any[] = [];
@@ -215,9 +266,18 @@ export class ReportsComponent implements OnInit {
   editorConfig: AngularEditorConfig = {
     editable: true,
     spellcheck: true,
-    height: '200px',
-    minHeight: '0',
-    placeholder: 'Escreva seu texto...'
+    height: '300px',
+    minHeight: '200px',
+    placeholder: 'Escreva seu texto... Use as ferramentas de formatação para criar títulos, adicionar imagens, listas e muito mais...',
+    toolbarPosition: 'top',
+    showToolbar: true,
+    toolbarHiddenButtons: [
+      ['subscript', 'superscript'],
+      ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'],
+      ['indent', 'outdent'],
+      ['insertUnorderedList', 'insertOrderedList'],
+      ['fontName']
+    ]
   };
 
   polarData: any[] = [];
@@ -236,7 +296,7 @@ export class ReportsComponent implements OnInit {
       id: 'capa',
       tipo: 'capa',
       titulo: 'Relatório Feedback 360°',
-      texto: '',
+      texto: '<h1 style="text-align: center; color: #1976d2; margin-bottom: 20px;">Relatório Feedback 360°</h1><p style="text-align: center; font-size: 18px; color: #666; margin-bottom: 30px;">Avaliação de Competências e Desenvolvimento</p><div style="text-align: center; margin: 40px 0;"><div style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);"><h2 style="margin: 0; font-size: 24px;">Avaliação Completa</h2><p style="margin: 10px 0 0 0; opacity: 0.9;">Feedback 360° Profissional</p></div></div>',
       visivel: true,
       ordem: 1
     },
@@ -244,7 +304,7 @@ export class ReportsComponent implements OnInit {
       id: 'introducao',
       tipo: 'introducao',
       titulo: 'Introdução',
-      texto: 'Texto introdutório do relatório...',
+      texto: '<h2 style="color: #7b1fa2; border-bottom: 2px solid #e1bee7; padding-bottom: 10px;">Introdução ao Relatório</h2><p style="font-size: 16px; line-height: 1.6; color: #333;">Este relatório apresenta os resultados da avaliação 360° realizada com o objetivo de identificar pontos fortes e áreas de desenvolvimento.</p><div style="background-color: #f3e5f5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #9c27b0;"><h3 style="margin: 0 0 10px 0; color: #7b1fa2;">Objetivos da Avaliação:</h3><ul style="margin: 0; padding-left: 20px;"><li>Identificar competências desenvolvidas</li><li>Reconhecer pontos fortes</li><li>Mapear oportunidades de melhoria</li><li>Fornecer base para desenvolvimento profissional</li></ul></div>',
       visivel: true,
       ordem: 2
     },
@@ -289,7 +349,7 @@ export class ReportsComponent implements OnInit {
       ordem: 5,
       numeroItems: 5,
       avaliadoSelecionado: '',
-      mostrarCaracteristica: true,
+        mostrarCaracteristica: false,
       mostrarPontuacaoSemAuto: true
     }
   ];
@@ -642,6 +702,11 @@ export class ReportsComponent implements OnInit {
     this.dataSource = [];
     this.displayedColumns = [];
     this.questionMap = {};
+
+    // Limpar avaliados e resetar seleção
+    this.avaliadosDisponiveis = [];
+    this.selectedAvaliado = null;
+    this.avaliadoControl.setValue('');
     const assessmentRef = doc(this.firestore, 'assessments', this.selectedAssessmentId);
     const assessmentSnap = await getDoc(assessmentRef);
     if (!assessmentSnap.exists()) {
@@ -750,25 +815,42 @@ export class ReportsComponent implements OnInit {
     this.displayedColumns = ['data', 'categoria', 'avaliado', 'dataAvaliacao', ...this.filteredQuestions.map(q => q.id)];
     this.dynamicColumns = this.filteredQuestions.map(q => q.id);
 
-    console.log('📊 DynamicColumns populado:', this.dynamicColumns);
-    console.log('📊 DisplayedColumns:', this.displayedColumns);
+    this.debugLog('📊 DynamicColumns populado:', this.dynamicColumns);
+    this.debugLog('📊 DisplayedColumns:', this.displayedColumns);
 
     // Carregar resultados
     const resultsSnap = await getDocs(collection(this.firestore, `assessments/${this.selectedAssessmentId}/results`));
-    console.log('Resultados encontrados:', resultsSnap.docs.length);
+    this.debugLog('Resultados encontrados:', resultsSnap.docs.length);
 
     const results: any[] = [];
     for (const resultDoc of resultsSnap.docs) {
       const resultData = resultDoc.data();
-      console.log('Resultado individual:', resultData);
+      this.debugLog('Resultado individual:', resultData);
+      this.debugLog('🔍 Estrutura completa do resultData:', {
+        keys: Object.keys(resultData),
+        hasSurveyData: 'surveyData' in resultData,
+        surveyDataType: resultData['surveyData'] ? typeof resultData['surveyData'] : 'undefined',
+        surveyDataKeys: resultData['surveyData'] ? Object.keys(resultData['surveyData']) : [],
+        participantId: resultData['participantId'],
+        completedAt: resultData['completedAt']
+      });
 
-      // Buscar dados do participante
-      const participantRef = doc(this.firestore, 'participants', resultData['participantId']);
-      const participantSnap = await getDoc(participantRef);
+      // Buscar dados do participante com cache local para reduzir leituras
+      let participantData: any | null = null;
+      const participantId: string = resultData['participantId'];
+      if (this.participantsCache.has(participantId)) {
+        participantData = this.participantsCache.get(participantId);
+      } else {
+        const participantRef = doc(this.firestore, 'participants', participantId);
+        const participantSnap = await getDoc(participantRef);
+        if (participantSnap.exists()) {
+          participantData = participantSnap.data();
+          this.participantsCache.set(participantId, participantData);
+        }
+      }
 
-      if (participantSnap.exists()) {
-        const participantData = participantSnap.data();
-        console.log('Dados do participante:', participantData);
+      if (participantData) {
+        this.debugLog('Dados do participante:', participantData);
 
         // No modo individual, incluir todos os dados da avaliação
         // mas marcar os dados do avaliado específico para destaque
@@ -800,12 +882,48 @@ export class ReportsComponent implements OnInit {
 
           // Adicionar respostas às perguntas
           if (resultData['surveyData']) {
+            this.debugLog(`🔍 Processando surveyData para participante ${participantData['name']}:`, {
+              surveyDataKeys: Object.keys(resultData['surveyData']),
+              surveyDataValues: resultData['surveyData'],
+              questionsToProcess: questions.map(q => q.id)
+            });
+
             questions.forEach(question => {
-              row[question.id] = resultData['surveyData'][question.id] || null;
+              let resposta: any = null;
+
+              // Suporte a estrutura aninhada: perguntaX -> Row N -> "Column M"
+              // Ex.: question.id = "pergunta4_Row 1" → baseId = "pergunta4", rowKey = "Row 1"
+              const matrixMatch = question.id.match(/^(pergunta\d+)_Row\s*(\d+)$/);
+              if (matrixMatch) {
+                const baseId = matrixMatch[1];
+                const rowKey = `Row ${matrixMatch[2]}`;
+                const grupoPergunta = resultData['surveyData'][baseId];
+                if (grupoPergunta && typeof grupoPergunta === 'object') {
+                  resposta = grupoPergunta[rowKey] ?? null;
+                }
+              }
+
+              // Fallback: tentar acesso direto (para perguntas não-matriz ou quando já vem "perguntaX_Row N")
+              if (resposta === null || resposta === undefined) {
+                resposta = resultData['surveyData'][question.id] ?? null;
+              }
+
+              row[question.id] = resposta ?? null;
+
+              this.debugLog(`  📝 Pergunta ${question.id}:`, {
+                resposta,
+                tipo: typeof resposta,
+                valorFinal: row[question.id]
+              });
+            });
+          } else {
+            this.debugLog(`❌ Sem surveyData para participante ${participantData['name']}:`, {
+              resultDataKeys: Object.keys(resultData),
+              hasSurveyData: 'surveyData' in resultData
             });
           }
 
-          console.log('Incluindo linha:', {
+          this.debugLog('Incluindo linha:', {
             participante: participantData['name'],
             tipo: participantData['type'],
             categoria: participantData['category'],
@@ -814,7 +932,7 @@ export class ReportsComponent implements OnInit {
 
           results.push(row);
         } else {
-          console.log('Excluindo linha:', {
+          this.debugLog('Excluindo linha:', {
             participante: participantData['name'],
             tipo: participantData['type'],
             categoria: participantData['category'],
@@ -824,8 +942,13 @@ export class ReportsComponent implements OnInit {
       }
     }
 
-    console.log('Resultados processados:', results);
+    this.debugLog('Resultados processados:', results);
     this.dataSource = results;
+
+    // Carregar avaliados disponíveis após processar os dados
+    this.avaliadosDisponiveis = this.getAvaliadosDisponiveis();
+    console.log('Avaliados disponíveis:', this.avaliadosDisponiveis);
+
     this.loadingService.hide();
     this.performanceMonitor.endTimer('onAssessmentChange');
 
@@ -1043,7 +1166,19 @@ export class ReportsComponent implements OnInit {
   }
 
   get selectedAssessmentName(): string {
-    return this.assessments.find(a => a.id === this.selectedAssessmentId)?.name || 'Nenhuma';
+    const assessmentName = this.assessments.find(a => a.id === this.selectedAssessmentId)?.name || 'Nenhuma';
+
+    // Se há um avaliado selecionado, incluir no nome
+    if (this.selectedAvaliado) {
+      return `${assessmentName} - ${this.selectedAvaliado}`;
+    }
+
+    return assessmentName;
+  }
+
+  // Getter para obter apenas o nome do avaliado selecionado
+  get selectedAvaliadoName(): string {
+    return this.selectedAvaliado || 'Nenhum avaliado selecionado';
   }
 
   // Métodos utilitários para manipular as seções do relatório
@@ -1167,7 +1302,7 @@ export class ReportsComponent implements OnInit {
     return map[categoria] || categoria;
   }
 
-  // 🚀 PERFORMANCE: Retorna as médias por característica e grupo de avaliadores para o bloco de Resumo
+  // Retorna as médias por competência e grupo de avaliadores para o bloco de Resumo
   getResumoMedias() {
     return this.getCachedCalculation('resumo-medias', () => {
       const grupos = ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
@@ -1220,7 +1355,7 @@ export class ReportsComponent implements OnInit {
     });
   }
 
-  // 🚀 PERFORMANCE: Retorna as médias organizadas por característica para melhor apresentação no relatório
+  // Retorna as médias organizadas por competência para melhor apresentação no relatório
   getResumoMediasPorCompetencia() {
     return this.getCachedCalculation('resumo-medias-por-competencia', () => {
       const resumoMedias = this.getResumoMedias();
@@ -1851,10 +1986,15 @@ export class ReportsComponent implements OnInit {
         ordem: 5,
         numeroItems: 5,
         avaliadoSelecionado: '',
-        mostrarCaracteristica: true,
+        mostrarCaracteristica: false,
         mostrarPontuacaoSemAuto: true
       }
     ];
+
+    // Limpar seleção de avaliado ao resetar
+    this.selectedAvaliado = null;
+    this.avaliadoControl.setValue('');
+
     this.atualizarFormArrayComConfiguracao();
     this.snackBar.open('Relatório resetado para configuração padrão!', 'Fechar', { duration: 2500 });
   }
@@ -2066,7 +2206,21 @@ export class ReportsComponent implements OnInit {
 
   // Método para gerar tabela detalhada de competência com distribuição de notas
   gerarTabelaCompetencia(competencia: Competencia): TabelaCompetencia {
+    console.log(`🔍 gerarTabelaCompetencia:`, {
+      competencia: competencia.nome,
+      selectedAssessmentId: this.selectedAssessmentId,
+      selectedAvaliado: this.selectedAvaliado,
+      dataSourceLength: this.dataSource.length,
+      perguntasIds: competencia.perguntasIds
+    });
+
+    // Debug específico quando há avaliado selecionado
+    if (this.selectedAvaliado) {
+      this.debugTabelaCompetencia(competencia);
+    }
+
     if (!this.selectedAssessmentId || !this.dataSource.length) {
+      console.log(`❌ Dados insuficientes: assessmentId=${this.selectedAssessmentId}, dataSource=${this.dataSource.length}`);
       return {
         competencia,
         linhas: [],
@@ -2075,17 +2229,30 @@ export class ReportsComponent implements OnInit {
     }
 
     const grupos = this.getGrupos();
+    console.log(`📊 Grupos disponíveis:`, grupos);
     const linhas: LinhaTabela[] = [];
 
     // Para cada pergunta da competência, calcular distribuição de notas
     competencia.perguntasIds.forEach(perguntaId => {
       const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
+      console.log(`\n📝 Processando pergunta: ${perguntaId} - "${perguntaTexto}"`);
       const categorias: DadosCategoria[] = [];
 
       grupos.forEach(grupo => {
-        const respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+        // Se um avaliado específico foi selecionado, usar dados filtrados
+        let respostasGrupo: number[];
+        if (this.selectedAvaliado) {
+          console.log(`  🎯 Usando filtro para avaliado específico: ${this.selectedAvaliado}`);
+          respostasGrupo = this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, this.selectedAvaliado);
+        } else {
+          console.log(`  🌐 Usando dados de todos os avaliados`);
+          respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+        }
+
         const distribuicao = this.calcularDistribuicaoNotas(respostasGrupo);
         const media = this.calcularMediaDistribuicao(distribuicao);
+
+        console.log(`  📊 Grupo "${grupo}": ${respostasGrupo.length} respostas, média: ${media.toFixed(2)}`);
 
         categorias.push({
           categoria: grupo,
@@ -2107,12 +2274,20 @@ export class ReportsComponent implements OnInit {
       const todasRespostasGrupo: number[] = [];
 
       competencia.perguntasIds.forEach(perguntaId => {
-        const respostas = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+        // Se um avaliado específico foi selecionado, usar dados filtrados
+        let respostas: number[];
+        if (this.selectedAvaliado) {
+          respostas = this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, this.selectedAvaliado);
+        } else {
+          respostas = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+        }
         todasRespostasGrupo.push(...respostas);
       });
 
       const distribuicao = this.calcularDistribuicaoNotas(todasRespostasGrupo);
       const media = this.calcularMediaDistribuicao(distribuicao);
+
+      console.log(`📊 Média geral grupo "${grupo}": ${media.toFixed(2)} (${todasRespostasGrupo.length} respostas)`);
 
       return {
         categoria: grupo,
@@ -2122,20 +2297,41 @@ export class ReportsComponent implements OnInit {
       };
     });
 
-    return {
+    const resultado = {
       competencia,
       linhas,
       mediasGerais
     };
+
+    console.log(`✅ Tabela gerada com sucesso:`, {
+      totalLinhas: resultado.linhas.length,
+      totalMediasGerais: resultado.mediasGerais.length
+    });
+
+    return resultado;
   }
 
   // Método auxiliar para obter respostas de uma pergunta específica para um grupo
   private getRespostasParaPerguntaEGrupo(perguntaId: string, grupo: string): number[] {
     const respostas: number[] = [];
 
+    this.debugLog(`🔍 getRespostasParaPerguntaEGrupo:`, {
+      perguntaId,
+      grupo,
+      totalDataSource: this.dataSource.length
+    });
+
     // Se o grupo for 'Todos', processar todos os dados
     if (grupo === 'Todos') {
-      this.dataSource.forEach(participant => {
+      this.debugLog(`  🌐 Processando grupo 'Todos'`);
+      this.dataSource.forEach((participant, index) => {
+        this.debugLog(`  📋 Participante ${index}:`, {
+          categoria: participant?.categoria,
+          avaliado: participant?.avaliado,
+          temPergunta: participant && participant[perguntaId] !== undefined,
+          valor: participant ? participant[perguntaId] : 'undefined'
+        });
+
         if (participant && participant[perguntaId] !== undefined) {
           let valor = participant[perguntaId];
 
@@ -2147,26 +2343,101 @@ export class ReportsComponent implements OnInit {
               const match = valor.match(/Column (\d+)/);
               if (match) {
                 valor = parseInt(match[1]);
+                this.debugLog(`    🔄 String "Column" convertida para: ${valor}`);
               }
             } else {
               // Tentar converter string diretamente para número
               valor = parseFloat(valor);
+              this.debugLog(`    🔄 String convertida para: ${valor}`);
             }
           }
 
           const valorNumerico = Number(valor);
           if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
             respostas.push(valorNumerico);
+            this.debugLog(`    ➕ Valor válido adicionado: ${valorNumerico}`);
+          } else {
+            this.debugLog(`    ❌ Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
           }
+        } else {
+          this.debugLog(`    ❌ Participante ${index}: sem pergunta ou participante inválido`);
         }
       });
     } else {
       // Processar grupo específico - usar filtro direto no dataSource
-      this.dataSource.forEach(participant => {
+      this.debugLog(`  🎯 Processando grupo específico: "${grupo}"`);
+      this.dataSource.forEach((participant, index) => {
         // Verificar se o participante pertence ao grupo especificado
         const categoriaParticipante = this.mapCategoriaToGrupo(participant.categoria);
+        this.debugLog(`  📋 Participante ${index}:`, {
+          categoria: participant?.categoria,
+          categoriaMapeada: categoriaParticipante,
+          avaliado: participant?.avaliado,
+          pertenceAoGrupo: categoriaParticipante === grupo,
+          temPergunta: participant && participant[perguntaId] !== undefined,
+          valor: participant ? participant[perguntaId] : 'undefined'
+        });
+
         if (categoriaParticipante === grupo && participant[perguntaId] !== undefined) {
           let valor = participant[perguntaId];
+
+          // Tratar diferentes formatos de dados
+          if (typeof valor === 'string') {
+            // Se for string, tentar extrair número
+            if (valor.includes('Column')) {
+              // Formato: "Column 1" → 1
+              const match = valor.match(/Column (\d+)/);
+              if (match) {
+                valor = parseInt(match[1]);
+                this.debugLog(`    🔄 String "Column" convertida para: ${valor}`);
+              }
+            } else {
+              // Tentar converter string diretamente para número
+              valor = parseFloat(valor);
+              this.debugLog(`    🔄 String convertida para: ${valor}`);
+            }
+          }
+
+          const valorNumerico = Number(valor);
+          if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
+            respostas.push(valorNumerico);
+            this.debugLog(`    ➕ Valor válido adicionado: ${valorNumerico}`);
+          } else {
+            this.debugLog(`    ❌ Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
+          }
+        } else {
+          if (categoriaParticipante !== grupo) {
+            this.debugLog(`    ❌ Participante ${index}: não pertence ao grupo "${grupo}" (é "${categoriaParticipante}")`);
+          } else {
+            this.debugLog(`    ❌ Participante ${index}: sem pergunta "${perguntaId}"`);
+          }
+        }
+      });
+    }
+
+    this.debugLog(`📊 Total de respostas encontradas para "${perguntaId}" no grupo "${grupo}": ${respostas.length} - [${respostas.join(', ')}]`);
+    return respostas;
+  }
+
+  // Método auxiliar para obter respostas de uma pergunta específica para um grupo e avaliado específico
+  private getRespostasParaPerguntaEGrupoEAvaliado(perguntaId: string, grupo: string, avaliadoSelecionado: string): number[] {
+    const respostas: number[] = [];
+
+    console.log(`🔍 getRespostasParaPerguntaEGrupoEAvaliado:`, {
+      perguntaId,
+      grupo,
+      avaliadoSelecionado,
+      totalDataSource: this.dataSource.length
+    });
+
+    // Se o grupo for 'Todos', processar todos os dados do avaliado específico
+    if (grupo === 'Todos') {
+      this.dataSource.forEach((participant, index) => {
+        // Verificar se o participante é o avaliado selecionado
+        if (participant && participant['avaliado'] === avaliadoSelecionado && participant[perguntaId] !== undefined) {
+          let valor = participant[perguntaId];
+
+          console.log(`  ✅ Participante ${index}: avaliado="${participant['avaliado']}", pergunta=${perguntaId}, valor="${valor}"`);
 
           // Tratar diferentes formatos de dados
           if (typeof valor === 'string') {
@@ -2186,11 +2457,59 @@ export class ReportsComponent implements OnInit {
           const valorNumerico = Number(valor);
           if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
             respostas.push(valorNumerico);
+            console.log(`    ➕ Valor válido adicionado: ${valorNumerico}`);
+          } else {
+            console.log(`    ❌ Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
+          }
+        } else {
+          if (participant) {
+            console.log(`  ❌ Participante ${index}: avaliado="${participant['avaliado']}", temPergunta=${participant[perguntaId] !== undefined}`);
+          }
+        }
+      });
+    } else {
+      // Processar grupo específico para o avaliado selecionado
+      this.dataSource.forEach((participant, index) => {
+        // Verificar se o participante pertence ao grupo especificado E é o avaliado selecionado
+        const categoriaParticipante = this.mapCategoriaToGrupo(participant.categoria);
+        if (categoriaParticipante === grupo &&
+            participant['avaliado'] === avaliadoSelecionado &&
+            participant[perguntaId] !== undefined) {
+          let valor = participant[perguntaId];
+
+          console.log(`  ✅ Participante ${index}: grupo="${categoriaParticipante}", avaliado="${participant['avaliado']}", pergunta=${perguntaId}, valor="${valor}"`);
+
+          // Tratar diferentes formatos de dados
+          if (typeof valor === 'string') {
+            // Se for string, tentar extrair número
+            if (valor.includes('Column')) {
+              // Formato: "Column 1" → 1
+              const match = valor.match(/Column (\d+)/);
+              if (match) {
+                valor = parseInt(match[1]);
+              }
+            } else {
+              // Tentar converter string diretamente para número
+              valor = parseFloat(valor);
+            }
+          }
+
+          const valorNumerico = Number(valor);
+          if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
+            respostas.push(valorNumerico);
+            console.log(`    ➕ Valor válido adicionado: ${valorNumerico}`);
+          } else {
+            console.log(`    ❌ Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
+          }
+        } else {
+          if (participant) {
+            console.log(`  ❌ Participante ${index}: grupo="${categoriaParticipante}", avaliado="${participant['avaliado']}", temPergunta=${participant[perguntaId] !== undefined}`);
           }
         }
       });
     }
 
+    console.log(`📊 Total de respostas encontradas: ${respostas.length} - [${respostas.join(', ')}]`);
     return respostas;
   }
 
@@ -2530,31 +2849,47 @@ export class ReportsComponent implements OnInit {
   gerarTabelaAvaliacoesAltas(numeroItems: number = 5, avaliadoSelecionado?: string): TabelaAvaliacoesAltas {
     const items: ItemAvaliacao[] = [];
 
+    // Usar o avaliado selecionado se não foi passado como parâmetro
+    const avaliado = avaliadoSelecionado || this.selectedAvaliado;
+
     // Percorrer todas as competências e suas perguntas
     this.competencias.forEach(competencia => {
       competencia.perguntasIds.forEach(perguntaId => {
         const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
 
-        // Calcular média geral da pergunta (todas as categorias)
-        const respostasGerais = this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
-        const mediaGeral = respostasGerais.length > 0 ?
-          respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length : 0;
+        // Se há um avaliado específico selecionado, usar dados dele
+        let mediaGeral = 0;
+        let mediaPorCategoria = 0;
 
-        // Calcular média por categoria
-        const grupos = this.getGrupos();
-        let somaPorCategoria = 0;
-        let contadorCategorias = 0;
-
-        grupos.forEach(grupo => {
-          const respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
-          if (respostasGrupo.length > 0) {
-            const mediaGrupo = respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
-            somaPorCategoria += mediaGrupo;
-            contadorCategorias++;
+        if (avaliado) {
+          // Buscar dados específicos do avaliado
+          const mediaAvaliado = this.getMediaPorPerguntaEAvaliadoEspecifico(competencia, 'Todos', avaliado);
+          if (mediaAvaliado !== null) {
+            mediaGeral = mediaAvaliado;
+            mediaPorCategoria = mediaAvaliado;
           }
-        });
+        } else {
+          // Calcular média geral da pergunta (todas as categorias)
+          const respostasGerais = this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
+          mediaGeral = respostasGerais.length > 0 ?
+            respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length : 0;
 
-        const mediaPorCategoria = contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : 0;
+          // Calcular média por categoria
+          const grupos = this.getGrupos();
+          let somaPorCategoria = 0;
+          let contadorCategorias = 0;
+
+          grupos.forEach(grupo => {
+            const respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+            if (respostasGrupo.length > 0) {
+              const mediaGrupo = respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
+              somaPorCategoria += mediaGrupo;
+              contadorCategorias++;
+            }
+          });
+
+          mediaPorCategoria = contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : 0;
+        }
 
         // Só adicionar se tiver dados válidos
         if (mediaGeral > 0 && !isNaN(mediaGeral)) {
@@ -2563,7 +2898,6 @@ export class ReportsComponent implements OnInit {
             comportamento: perguntaTexto,
             pontuacaoMediaAvaliado: mediaGeral,
             pontuacaoMediaSemAutoavaliacao: mediaPorCategoria,
-            caracteristicaLider: this.mapearCaracteristicaLider(mediaPorCategoria),
             perguntaId: perguntaId,
             competenciaId: competencia.id
           });
@@ -2592,31 +2926,47 @@ export class ReportsComponent implements OnInit {
   gerarTabelaAvaliacoesBaixas(numeroItems: number = 5, avaliadoSelecionado?: string): TabelaAvaliacoesAltas {
     const items: ItemAvaliacao[] = [];
 
+    // Usar o avaliado selecionado se não foi passado como parâmetro
+    const avaliado = avaliadoSelecionado || this.selectedAvaliado;
+
     // Percorrer todas as competências e suas perguntas
     this.competencias.forEach(competencia => {
       competencia.perguntasIds.forEach(perguntaId => {
         const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
 
-        // Calcular média geral da pergunta (todas as categorias)
-        const respostasGerais = this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
-        const mediaGeral = respostasGerais.length > 0 ?
-          respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length : 0;
+        // Se há um avaliado específico selecionado, usar dados dele
+        let mediaGeral = 0;
+        let mediaPorCategoria = 0;
 
-        // Calcular média por categoria
-        const grupos = this.getGrupos();
-        let somaPorCategoria = 0;
-        let contadorCategorias = 0;
-
-        grupos.forEach(grupo => {
-          const respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
-          if (respostasGrupo.length > 0) {
-            const mediaGrupo = respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
-            somaPorCategoria += mediaGrupo;
-            contadorCategorias++;
+        if (avaliado) {
+          // Buscar dados específicos do avaliado
+          const mediaAvaliado = this.getMediaPorPerguntaEAvaliadoEspecifico(competencia, 'Todos', avaliado);
+          if (mediaAvaliado !== null) {
+            mediaGeral = mediaAvaliado;
+            mediaPorCategoria = mediaAvaliado;
           }
-        });
+        } else {
+          // Calcular média geral da pergunta (todas as categorias)
+          const respostasGerais = this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
+          mediaGeral = respostasGerais.length > 0 ?
+            respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length : 0;
 
-        const mediaPorCategoria = contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : 0;
+          // Calcular média por categoria
+          const grupos = this.getGrupos();
+          let somaPorCategoria = 0;
+          let contadorCategorias = 0;
+
+          grupos.forEach(grupo => {
+            const respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+            if (respostasGrupo.length > 0) {
+              const mediaGrupo = respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
+              somaPorCategoria += mediaGrupo;
+              contadorCategorias++;
+            }
+          });
+
+          mediaPorCategoria = contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : 0;
+        }
 
         // Só adicionar se tiver dados válidos
         if (mediaGeral > 0 && !isNaN(mediaGeral)) {
@@ -2625,7 +2975,6 @@ export class ReportsComponent implements OnInit {
             comportamento: perguntaTexto,
             pontuacaoMediaAvaliado: mediaGeral,
             pontuacaoMediaSemAutoavaliacao: mediaPorCategoria,
-            caracteristicaLider: this.mapearCaracteristicaLider(mediaPorCategoria),
             perguntaId: perguntaId,
             competenciaId: competencia.id
           });
@@ -2689,25 +3038,7 @@ export class ReportsComponent implements OnInit {
     return Array.from(avaliados).sort();
   }
 
-  // Método para obter cor da característica
-  getCorCaracteristica(caracteristica: string): string {
-    switch (caracteristica) {
-      case 'EXEMPLARIDADE': return '#1976D2';
-      case 'CUIDADO_COM_PESSOAS': return '#4CAF50';
-      case 'RESPONSABILIDADE_PELO_TODO': return '#FF9800';
-      case 'ESPIRITO_EMPREENDEDOR': return '#9C27B0';
-      default: return '#666';
-    }
-  }
-
-  // Método para mapear pontuação para característica de liderança ADEO
-  private mapearCaracteristicaLider(pontuacao: number): string {
-    if (pontuacao >= 4.5) return 'EXEMPLARIDADE';
-    if (pontuacao >= 4.0) return 'ESPIRITO_EMPREENDEDOR';
-    if (pontuacao >= 3.5) return 'RESPONSABILIDADE_PELO_TODO';
-    if (pontuacao >= 3.0) return 'CUIDADO_COM_PESSOAS';
-    return 'EM_DESENVOLVIMENTO';
-  }
+  // Removido: funções relacionadas a características ADEO
 
   getConfiguracaoDestaques(): any {
     const secaoDestaques = this.relatorioConfiguracao.find(s => s.tipo === 'destaques');
@@ -2989,6 +3320,83 @@ export class ReportsComponent implements OnInit {
     return secaoCtrl.get('tipo')?.value === tipo;
   }
 
+  // Método para aplicar template rico à seção
+  aplicarTemplateRico(secaoIndex: number, tipo: 'capa' | 'introducao'): void {
+    const secao = this.relatorioConfiguracao[secaoIndex];
+    if (!secao) return;
+
+    if (tipo === 'capa') {
+      secao.texto = `
+        <div style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+          <h1 style="color: #1976d2; font-size: 36px; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
+            Relatório Feedback 360°
+          </h1>
+          <p style="font-size: 20px; color: #666; margin-bottom: 30px; font-weight: 300;">
+            Avaliação de Competências e Desenvolvimento Profissional
+          </p>
+          <div style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px 50px; border-radius: 15px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); margin: 20px 0;">
+            <h2 style="margin: 0; font-size: 28px; font-weight: 600;">
+              Avaliação Completa
+            </h2>
+            <p style="margin: 15px 0 0 0; opacity: 0.9; font-size: 18px;">
+              Feedback 360° Profissional
+            </p>
+          </div>
+          <div style="margin-top: 30px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
+            <div style="background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+              <strong style="color: #1976d2;">Data:</strong> ${new Date().toLocaleDateString('pt-BR')}
+            </div>
+            <div style="background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+              <strong style="color: #1976d2;">Tipo:</strong> Avaliação 360°
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (tipo === 'introducao') {
+      secao.texto = `
+        <div style="max-width: 800px; margin: 0 auto;">
+          <h2 style="color: #7b1fa2; border-bottom: 3px solid #e1bee7; padding-bottom: 15px; margin-bottom: 25px; font-size: 28px;">
+            Introdução ao Relatório
+          </h2>
+
+          <p style="font-size: 18px; line-height: 1.8; color: #333; margin-bottom: 25px; text-align: justify;">
+            Este relatório apresenta os resultados da avaliação 360° realizada com o objetivo de identificar pontos fortes
+            e áreas de desenvolvimento profissional. A metodologia 360° permite uma visão abrangente das competências
+            através de múltiplas perspectivas.
+          </p>
+
+          <div style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); padding: 25px; border-radius: 12px; margin: 30px 0; border-left: 5px solid #9c27b0; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 20px 0; color: #7b1fa2; font-size: 22px; display: flex; align-items: center;">
+              <span style="background: #9c27b0; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 16px;">🎯</span>
+              Objetivos da Avaliação
+            </h3>
+            <ul style="margin: 0; padding-left: 25px; font-size: 16px; line-height: 1.8;">
+              <li style="margin-bottom: 10px;"><strong>Identificar competências desenvolvidas</strong> e pontos de excelência</li>
+              <li style="margin-bottom: 10px;"><strong>Reconhecer pontos fortes</strong> para potencializar resultados</li>
+              <li style="margin-bottom: 10px;"><strong>Mapear oportunidades de melhoria</strong> para desenvolvimento contínuo</li>
+              <li style="margin-bottom: 10px;"><strong>Fornecer base sólida</strong> para planejamento de carreira</li>
+            </ul>
+          </div>
+
+          <div style="background-color: #e8f5e8; padding: 20px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #4caf50;">
+            <h4 style="margin: 0 0 15px 0; color: #2e7d32; font-size: 18px;">
+              <mat-icon style="vertical-align: middle; margin-right: 8px; color: #4caf50;">info</mat-icon>
+              Metodologia
+            </h4>
+            <p style="margin: 0; color: #2e7d32; font-size: 16px;">
+              A avaliação foi conduzida através de questionários estruturados, aplicados a diferentes grupos de
+              stakeholders, garantindo uma visão holística e imparcial das competências avaliadas.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    // Atualizar o formulário
+    this.atualizarFormArrayComConfiguracao();
+    this.cdr.detectChanges();
+  }
+
   // Métodos para obter valores seguros
   getSecaoTipoValue(secaoCtrl: any): string {
     return secaoCtrl.get('tipo')?.value || '';
@@ -3173,6 +3581,168 @@ export class ReportsComponent implements OnInit {
     } catch (error) {
       console.error('Erro ao carregar competências:', error);
       this.allCompetencies = [];
+    }
+  }
+
+  // Método para lidar com mudança de avaliado selecionado
+  onAvaliadoChange(): void {
+    this.selectedAvaliado = this.avaliadoControl.value;
+    console.log('Avaliado selecionado:', this.selectedAvaliado);
+
+    // Invalidar cache relacionado a cálculos de competências
+    this.invalidateCache('media-competencia');
+    this.invalidateCache('tabela-competencia');
+
+    // Forçar atualização da view para refletir mudanças
+    this.cdr.detectChanges();
+  }
+
+  // Método para limpar a seleção de avaliado
+  limparSelecaoAvaliado(): void {
+    this.selectedAvaliado = null;
+    this.avaliadoControl.setValue('');
+    console.log('Seleção de avaliado limpa');
+
+    // Forçar atualização da view
+    this.cdr.detectChanges();
+
+    this.snackBar.open('Seleção de avaliado limpa. Visualizando dados de todos os avaliados.', 'Fechar', { duration: 3000 });
+  }
+
+  // Método de debug específico para investigar dados da tabela de competência
+  debugTabelaCompetencia(competencia: Competencia): void {
+    console.group(`🔍 DEBUG TABELA COMPETÊNCIA: ${competencia.nome}`);
+
+    console.log('📊 Dados básicos:', {
+      competencia: competencia.nome,
+      perguntasIds: competencia.perguntasIds,
+      selectedAssessmentId: this.selectedAssessmentId,
+      selectedAvaliado: this.selectedAvaliado,
+      dataSourceLength: this.dataSource.length
+    });
+
+    if (!this.dataSource.length) {
+      console.log('❌ DataSource vazio!');
+      console.groupEnd();
+      return;
+    }
+
+    // Mostrar estrutura dos primeiros participantes
+    console.log('📋 Estrutura dos primeiros 3 participantes:');
+    this.dataSource.slice(0, 3).forEach((participant, index) => {
+      console.log(`  Participante ${index}:`, {
+        avaliado: participant['avaliado'],
+        categoria: participant['categoria'],
+        categoriaMapeada: this.mapCategoriaToGrupo(participant['categoria']),
+        perguntasComDados: Object.keys(participant).filter(key =>
+          key !== 'data' && key !== 'categoria' && key !== 'avaliado' &&
+          key !== 'dataAvaliacao' && key !== 'isTargetParticipant'
+        ).slice(0, 5) // Mostrar apenas as primeiras 5 perguntas
+      });
+    });
+
+    // Verificar dados específicos para a competência
+    const grupos = this.getGrupos();
+    console.log('🏷️ Grupos disponíveis:', grupos);
+
+    competencia.perguntasIds.forEach(perguntaId => {
+      console.group(`📝 Pergunta: ${perguntaId}`);
+
+      // Verificar dados para cada grupo
+      grupos.forEach(grupo => {
+        if (this.selectedAvaliado) {
+          const respostas = this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, this.selectedAvaliado);
+          console.log(`  🎯 Grupo "${grupo}" + Avaliado "${this.selectedAvaliado}": ${respostas.length} respostas - [${respostas.join(', ')}]`);
+        } else {
+          const respostas = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+          console.log(`  🌐 Grupo "${grupo}" (todos): ${respostas.length} respostas - [${respostas.join(', ')}]`);
+        }
+      });
+
+      console.groupEnd();
+    });
+
+    // Verificar se há dados para o avaliado selecionado
+    if (this.selectedAvaliado) {
+      console.group(`🎯 VERIFICAÇÃO ESPECÍFICA PARA AVALIADO: ${this.selectedAvaliado}`);
+
+      const participantesDoAvaliado = this.dataSource.filter(p => p['avaliado'] === this.selectedAvaliado);
+      console.log(`  Total de participantes com este nome: ${participantesDoAvaliado.length}`);
+
+      if (participantesDoAvaliado.length > 0) {
+        const primeiro = participantesDoAvaliado[0];
+        console.log('  Primeiro participante encontrado:', {
+          avaliado: primeiro['avaliado'],
+          categoria: primeiro['categoria'],
+          categoriaMapeada: this.mapCategoriaToGrupo(primeiro['categoria']),
+          perguntasComValores: competencia.perguntasIds.map(perguntaId => ({
+            perguntaId,
+            valor: primeiro[perguntaId],
+            valorNumerico: this.parseNumeric(primeiro[perguntaId])
+          }))
+        });
+      }
+
+      console.groupEnd();
+    }
+
+    console.groupEnd();
+  }
+
+  // Getter para tabela de competência com cache otimizado
+  getTabelaCompetencia(competencia: Competencia): TabelaCompetencia | null {
+    const cacheKey = `tabela-competencia-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}`;
+
+    return this.getCachedCalculation(cacheKey, () => {
+      console.log(`🔄 Gerando tabela para competência: ${competencia.nome} (cache: ${cacheKey})`);
+      return this.gerarTabelaCompetencia(competencia);
+    });
+  }
+
+  // Método de debug para verificar estrutura dos dados
+  debugEstruturaDados(): void {
+    console.log('🔍 DEBUG ESTRUTURA DOS DADOS');
+    console.log('📊 Total de registros:', this.dataSource.length);
+
+    if (this.dataSource.length > 0) {
+      const primeiroRegistro = this.dataSource[0];
+      console.log('📋 Primeiro registro completo:', primeiroRegistro);
+
+      // Listar todas as chaves disponíveis
+      const todasChaves = Object.keys(primeiroRegistro);
+      console.log('🔑 Todas as chaves disponíveis:', todasChaves);
+
+      // Filtrar chaves que parecem ser perguntas
+      const chavesPerguntas = todasChaves.filter(chave =>
+        chave.startsWith('pergunta') || chave.includes('Row') || chave.includes('Column')
+      );
+      console.log('❓ Chaves que parecem ser perguntas:', chavesPerguntas);
+
+      // Verificar valores das primeiras perguntas
+      chavesPerguntas.slice(0, 5).forEach(chave => {
+        const valor = primeiroRegistro[chave];
+        console.log(`  ${chave}: "${valor}" (tipo: ${typeof valor})`);
+      });
+
+      // Verificar se as perguntas da competência existem
+      if (this.competencias.length > 0) {
+        const primeiraComp = this.competencias[0];
+        console.log('🏆 Primeira competência:', primeiraComp);
+        console.log('📝 IDs das perguntas:', primeiraComp.perguntasIds);
+
+        // Verificar se cada pergunta existe nos dados
+        primeiraComp.perguntasIds.forEach(perguntaId => {
+          const existe = this.dataSource.some(registro =>
+            registro[perguntaId] !== undefined
+          );
+          console.log(`  ${perguntaId}: ${existe ? '✅ EXISTE' : '❌ NÃO EXISTE'}`);
+
+          if (existe) {
+            const valores = this.dataSource.map(registro => registro[perguntaId]).filter(v => v !== undefined);
+            console.log(`    Valores encontrados: [${valores.join(', ')}]`);
+          }
+        });
+      }
     }
   }
 }
