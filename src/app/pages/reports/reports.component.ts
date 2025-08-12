@@ -1,6 +1,7 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc } from '@angular/fire/firestore';
+import * as XLSX from 'xlsx';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { ReactiveFormsModule, FormControl, FormGroup, Validators, FormArray } from '@angular/forms';
@@ -160,6 +161,53 @@ export class ReportsComponent implements OnInit {
       return parsed >= 1 && parsed <= 5 ? parsed : null;
     }
     return null;
+  }
+
+  // Exporta base de dados plana (uma linha por resposta por pergunta)
+  exportarBaseExcel(): void {
+    if (!this.dataSource || this.dataSource.length === 0) {
+      this.snackBar.open('Sem dados para exportar.', 'Fechar', { duration: 2500 });
+      return;
+    }
+
+    // Coletar perguntas visíveis (ou todas)
+    const perguntasIds: string[] = this.allQuestions?.map(q => q.id) || Object.keys(this.questionMap || {});
+
+    const linhas: any[] = [];
+    for (const row of this.dataSource) {
+      for (const perguntaId of perguntasIds) {
+        if (!(perguntaId in row)) continue;
+        const valorOriginal = row[perguntaId];
+        const valor = this.parseLikertAnswer(valorOriginal);
+        if (valor === null) continue;
+
+        linhas.push({
+          AssessmentId: this.selectedAssessmentId || '',
+          Data: row['dataAvaliacao'] || '',
+          Categoria: row['categoria'] || '',
+          Avaliado: row['avaliado'] || '',
+          PerguntaId: perguntaId,
+          Pergunta: this.questionMap[perguntaId] || perguntaId,
+          Resposta: valor,
+        });
+      }
+    }
+
+    if (linhas.length === 0) {
+      this.snackBar.open('Sem respostas válidas para exportar.', 'Fechar', { duration: 2500 });
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(linhas);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Base');
+
+    const fileName = this.isIndividualMode && this.individualParticipantName
+      ? `base_${this.individualParticipantName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.xlsx`
+      : 'base_respostas.xlsx';
+
+    XLSX.writeFile(workbook, fileName);
+    this.snackBar.open('Base exportada com sucesso!', 'Fechar', { duration: 2500 });
   }
 
   // Calcula a "Média sem autoavaliação" a partir das médias por categoria da tabela

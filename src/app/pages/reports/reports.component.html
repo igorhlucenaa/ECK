@@ -728,6 +728,9 @@
     <button mat-flat-button color="accent" style="margin-bottom: 16px;" (click)="exportarRelatorioPDF()">
       <mat-icon>picture_as_pdf</mat-icon> Exportar PDF
     </button>
+    <button mat-flat-button color="primary" style="margin-left: 8px; margin-bottom: 16px;" (click)="exportarBaseExcel()">
+      <mat-icon>grid_on</mat-icon> Exportar base (Excel)
+    </button>
     <div id="report-preview">
       <div *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
         <ng-container [ngSwitch]="secao.tipo">
