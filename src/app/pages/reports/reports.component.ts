@@ -27,6 +27,7 @@ import { PerformanceMonitorService } from './performance-monitor.service';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { ActivatedRoute } from '@angular/router';
+import { Input } from '@angular/core';
 import { Router } from '@angular/router';
 import { LoadingService } from '../../services/loading.service';
 import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
@@ -139,6 +140,16 @@ export class ReportsComponent implements OnInit {
   // Cache de participantes para evitar múltiplas idas ao Firestore
   private participantsCache: Map<string, any> = new Map<string, any>();
 
+  // Configuração externa para uso embarcado (geração programática de PDF)
+  @Input() externalConfig?: {
+    assessmentId: string;
+    participantId: string;
+    participantName?: string;
+    templateId?: string;
+    competencyIds?: string[];
+    autoGenerate?: boolean;
+  };
+
   private debugLog(...args: any[]): void {
     if (this.debugMode) {
       // eslint-disable-next-line no-console
@@ -226,6 +237,56 @@ export class ReportsComponent implements OnInit {
     const somaPonderada = categoriasSemAuto.reduce((acc, c) => acc + (c.media * c.totalRespostas), 0);
     const totalRespostas = categoriasSemAuto.reduce((acc, c) => acc + c.totalRespostas, 0);
     return totalRespostas > 0 ? somaPonderada / totalRespostas : null;
+  }
+
+  // Inicializa via configuração externa e exporta PDF sem precisar navegar para a rota de relatórios
+  public async initializeAndExportFromExternalConfig(cfg: {
+    assessmentId: string;
+    participantId: string;
+    participantName?: string;
+    templateId?: string;
+    competencyIds?: string[];
+    autoGenerate?: boolean;
+  }): Promise<void> {
+    // Guardar config
+    this.externalConfig = cfg;
+
+    // Fluxo equivalente ao dos query params (modo individual)
+    this.isIndividualMode = true;
+    this.individualParticipantId = cfg.participantId;
+    this.individualParticipantName = cfg.participantName || '';
+    this.individualTemplateId = cfg.templateId || '';
+
+    // Garantir dados base carregados
+    await this.loadClients();
+    await this.loadAssessments();
+    await this.carregarRelatoriosSalvos();
+    await this.carregarTemplatesSalvos();
+
+    if (cfg.assessmentId) {
+      this.selectedAssessmentId = cfg.assessmentId;
+      this.assessmentControl.setValue(cfg.assessmentId);
+      await this.onAssessmentChange();
+    }
+
+    // Aplicar competências, se fornecidas
+    if (cfg.competencyIds && cfg.competencyIds.length) {
+      this.competencias = this.allCompetencies.filter((c: Competencia) => cfg.competencyIds!.includes(c.id));
+    }
+
+    // Aplicar template, se fornecido
+    if (cfg.templateId) {
+      this.selectedTemplateId.setValue(cfg.templateId);
+      await this.aplicarTemplateSelecionado();
+    }
+
+    // Ir para aba de Visualização e exportar
+    this.selectedTabIndex = 3;
+
+    // Pequeno delay para garantir renderização do preview
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    await this.exportarRelatorioPDF();
   }
   displayedColumns: string[] = [];
   dataSource: any[] = [];

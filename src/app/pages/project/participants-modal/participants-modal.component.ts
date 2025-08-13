@@ -315,6 +315,7 @@ interface Assessment {
                 (click)="generateReportForParticipant(participant)"
                 matTooltip="Gerar Relatório"
                 *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
+                [disabled]="assessmentFormControl.invalid"
               >
                 <mat-icon>description</mat-icon>
               </button>
@@ -1011,6 +1012,13 @@ export class ParticipantsModalComponent implements OnInit {
   }
 
   generateReportForParticipant(participant: UnifiedParticipant) {
+    // Validar seleção de avaliação antes de prosseguir
+    const selectedAssessmentId = this.assessmentFormControl.value;
+    if (!selectedAssessmentId) {
+      this.snackBar.open('Selecione um Formulário (Avaliação) para gerar o relatório.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
     // Abrir o modal de seleção de template e competências
     const dialogRef = this.dialog.open(ReportGenerationModalComponent, {
       width: '700px',
@@ -1018,7 +1026,7 @@ export class ParticipantsModalComponent implements OnInit {
       data: {
         participant: participant,
         projectId: this.data.projectId,
-        assessmentId: this.data.projectId // Usar o projectId como assessmentId
+        assessmentId: selectedAssessmentId
       },
       disableClose: false
     });
