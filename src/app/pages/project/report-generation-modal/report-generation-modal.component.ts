@@ -5,6 +5,9 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { ReportHeadlessDialogComponent } from './report-headless-dialog.component';
+import { firstValueFrom } from 'rxjs';
 import { MaterialModule } from '../../../material.module';
 
 interface UnifiedParticipant {
@@ -256,7 +259,8 @@ export class ReportGenerationModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: ReportGenerationData,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private dialog: MatDialog
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -279,10 +283,17 @@ export class ReportGenerationModalComponent implements OnInit {
       const templatesCollection = collection(this.firestore, 'reportTemplates');
       const templatesSnapshot = await getDocs(templatesCollection);
 
-      this.reportTemplates = templatesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as ReportTemplate));
+      this.reportTemplates = templatesSnapshot.docs.map(doc => {
+        const data: any = doc.data();
+        return {
+          id: doc.id,
+          name: data['name'] || data['nome'] || 'Template sem nome',
+          description: data['description'] || data['descricao'] || '',
+          sections: data['sections'] || data['configuracao'] || [],
+          clientId: data['clientId'] || '',
+          assessmentId: data['assessmentId'] || data['avaliacaoId'] || undefined
+        } as ReportTemplate;
+      });
 
       console.log('Templates carregados:', this.reportTemplates.length);
     } catch (error) {
@@ -304,10 +315,16 @@ export class ReportGenerationModalComponent implements OnInit {
         competenciesSnapshot = await getDocs(competenciesCollection);
       }
 
-      this.competencies = competenciesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Competency));
+      this.competencies = competenciesSnapshot.docs.map(doc => {
+        const data: any = doc.data();
+        return {
+          id: doc.id,
+          name: data['name'] || data['nome'] || 'Competência sem nome',
+          description: data['description'] || data['descricao'] || '',
+          perguntasIds: data['perguntasIds'] || data['questionIds'] || [],
+          assessmentId: data['assessmentId'] || undefined
+        } as Competency;
+      });
 
       console.log('Competências carregadas:', this.competencies.length);
     } catch (error) {
@@ -335,36 +352,25 @@ export class ReportGenerationModalComponent implements OnInit {
     this.isGenerating = true;
 
     try {
-      // Gerar PDF sem abrir a página de relatórios, carregando o componente de forma dinâmica em offscreen
-      const { ReportsComponent } = await import('../../reports/reports.component');
-      const host = document.createElement('div');
-      host.style.position = 'fixed';
-      host.style.left = '-20000px';
-      host.style.top = '-20000px';
-      document.body.appendChild(host);
+      // Gerar PDF em background (sem navegação) usando o ReportsComponent embutido e invisível
+      const headlessRef = this.dialog.open(ReportHeadlessDialogComponent, {
+        width: '1px',
+        height: '1px',
+        panelClass: 'invisible-dialog',
+        data: {
+          assessmentId: this.data.assessmentId,
+          participantId: this.data.participant.id,
+          participantName: this.data.participant.name,
+          templateId: this.templateControl.value?.id || '',
+          competencyIds: (this.competenciesControl.value || []).map(c => c.id)
+        },
+        disableClose: true
+      });
 
-      // Criar uma instância do componente via Angular appRef (mais robusto seria via ViewContainerRef; simplificado aqui)
-      // Como fallback, vamos navegar se algo falhar
-      try {
-        // Em ambientes reais, deveríamos injetar ComponentFactoryResolver e ApplicationRef.
-        // Para manter simples, use a navegação existente caso a criação dinâmica não seja suportada neste contexto.
-        throw new Error('dynamic-render-not-implemented');
-      } catch (_) {
-        // Fallback: usar a navegação automática existente
-        const navigationParams = {
-          queryParams: {
-            assessmentId: this.data.assessmentId,
-            participantId: this.data.participant.id,
-            participantName: this.data.participant.name,
-            templateId: this.templateControl.value?.id || '',
-            competencyIds: JSON.stringify((this.competenciesControl.value || []).map(c => c.id)),
-            mode: 'individual',
-            autoGenerate: 'true'
-          }
-        };
-        this.dialogRef.close({ success: true });
-        this.router.navigate(['/reports'], navigationParams);
-      }
+      await firstValueFrom(headlessRef.afterClosed());
+
+      this.dialogRef.close({ success: true });
+      this.snackBar.open('Relatório gerado com sucesso!', 'Fechar', { duration: 3000 });
 
     } catch (error) {
       console.error('Erro ao gerar relatório:', error);

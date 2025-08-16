@@ -2,3 +2,21 @@
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+/* Invisible dialog styles for headless report generation */
+.invisible-dialog .mat-dialog-container {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+.invisible-dialog .mat-dialog-content {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.invisible-dialog .mat-dialog-actions {
+  display: none !important;
+}

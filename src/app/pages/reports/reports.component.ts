@@ -280,13 +280,35 @@ export class ReportsComponent implements OnInit {
       await this.aplicarTemplateSelecionado();
     }
 
+    // Preencher competências nas seções que dependem delas, se fornecidas
+    if (cfg.competencyIds && cfg.competencyIds.length) {
+      const compIds = cfg.competencyIds;
+      this.relatorioConfiguracao.forEach(sec => {
+        if (['resumo', 'graficos', 'tabela', 'tabela_detalhada', 'grafico_defasagem', 'competencia_detalhada'].includes(sec.tipo)) {
+          sec.competenciasIds = [...compIds];
+        }
+      });
+      this.atualizarFormArrayComConfiguracao();
+    }
+
     // Ir para aba de Visualização e exportar
     this.selectedTabIndex = 3;
 
-    // Pequeno delay para garantir renderização do preview
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Aguardar até que o preview esteja pronto (elemento presente e dados carregados)
+    await this.waitForReportReady(8000);
 
     await this.exportarRelatorioPDF();
+  }
+
+  private async waitForReportReady(timeoutMs: number = 5000): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const el = document.getElementById('report-preview');
+      const ready = !!el && this.dataSource && this.dataSource.length > 0 && this.dynamicColumns && this.dynamicColumns.length > 0;
+      if (ready) return true;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return false;
   }
   displayedColumns: string[] = [];
   dataSource: any[] = [];
@@ -2157,13 +2179,13 @@ export class ReportsComponent implements OnInit {
   }
 
   // Exportar relatório completo como PDF
-  async exportarRelatorioPDF() {
+  async exportarRelatorioPDF(): Promise<boolean> {
     const jsPDFmod = await import('jspdf');
     const { default: html2canvas } = await import('html2canvas');
     const element = document.getElementById('report-preview');
     if (!element) {
       this.snackBar.open('Não foi possível encontrar o preview do relatório.', 'Fechar', { duration: 3000 });
-      return;
+      return false;
     }
     const canvas = await html2canvas(element, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
@@ -2194,6 +2216,7 @@ export class ReportsComponent implements OnInit {
 
     pdf.save(fileName);
     this.snackBar.open('PDF exportado com sucesso!', 'Fechar', { duration: 3000 });
+    return true;
   }
 
   removerCompetencia(c: Competencia) {

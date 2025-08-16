@@ -36,6 +36,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { ParticipantsConfirmationDialogComponent } from './participants-confirmation-dialog/participants-confirmation-dialog.component';
 import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
 import { RelatorioPreviewDialogComponent } from '../../project/participants-modal/relatorio-preview-dialog.component';
+import { ReportGenerationModalComponent } from '../../project/report-generation-modal/report-generation-modal.component';
 import { Router } from '@angular/router';
 
 interface ModalData {
@@ -131,7 +132,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   isEmailSendingMode: boolean = false;
   emailType: string | undefined;
   reportTemplates: any[] = [];
-  selectedReportTemplate: any = null;
+  // Removido: seleção de template fora do modal
   reportTemplateFormControl = this.fb.control('', Validators.required);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -654,11 +655,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.updateSelection();
   }
 
-  onReportTemplateChange() {
-    this.selectedReportTemplate = this.reportTemplates.find(
-      template => template.id === this.reportTemplateFormControl.value
-    );
-  }
+  // Removido: seleção de template fora do modal
 
   applyFilter(): void {
     this.dataSource.filter = 'trigger'; // Valor arbitrário para acionar o filtro
@@ -1157,20 +1154,21 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   generateReportForParticipant(participant: UnifiedParticipant) {
-    if (!this.selectedReportTemplate) {
-      this.snackBar.open('Selecione um template de relatório antes de gerar o PDF.', 'Fechar', { duration: 3000 });
-      return;
-    }
+    // Abrir o modal de geração para escolher competências e gerar PDF em background (sem navegação)
+    const dialogRef = this.dialog.open(ReportGenerationModalComponent, {
+      width: '700px',
+      maxWidth: '90vw',
+      data: {
+        participant: participant,
+        projectId: participant.projectId,
+        assessmentId: participant.assessmentId
+      },
+      disableClose: false
+    });
 
-    // Navegar para o componente reports com os dados do participante
-    this.router.navigate(['/reports'], {
-      queryParams: {
-        assessmentId: participant.assessmentId,
-        participantId: participant.id,
-        participantName: participant.name,
-        templateId: this.selectedReportTemplate.id,
-        templateName: this.selectedReportTemplate.name || this.selectedReportTemplate.nome,
-        mode: 'individual'
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result && result.success) {
+        this.snackBar.open('Relatório gerado com sucesso!', 'Fechar', { duration: 3000 });
       }
     });
   }

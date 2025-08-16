@@ -1185,14 +1185,6 @@
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
 
-            <mat-form-field appearance="outline" style="width: 100%;">
-              <mat-label>Competências para o Gráfico de Defasagem</mat-label>
-              <mat-select formControlName="competenciasIds" multiple>
-                 <mat-option *ngFor="let comp of competencias" [value]="comp.id">{{ comp.nome }}</mat-option>
-              </mat-select>
-              <mat-hint>Selecione as competências que devem aparecer no gráfico.</mat-hint>
-            </mat-form-field>
-
             <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataDefasagem" style="height: 400px; margin-top: 20px;">
               <div echarts [options]="getGapChartOptions(secao)" style="height: 100%;"></div>
             </div>
