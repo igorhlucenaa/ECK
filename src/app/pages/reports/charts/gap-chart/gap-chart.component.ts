@@ -5,7 +5,7 @@ export interface GapChartDataItem {
   competencyName: string;
   selfScore: number | null;
   othersScore: number | null;
-  gap: number | null;
+  gap: number | null; // Defasagem: selfScore - othersScore
 }
 
 @Component({
@@ -46,28 +46,39 @@ export class GapChartComponent implements OnInit, OnDestroy, OnChanges {
     // Cleanup se necessário
   }
 
+  // gap > 0 => selfScore > othersScore => ponto-cego (verde, direita)
+  // gap < 0 => selfScore < othersScore => ponto-forte (cinza, esquerda)
   getGapType(item: GapChartDataItem): 'ponto-forte' | 'ponto-cego' | 'alinhado' {
     if (item.gap === null) return 'alinhado';
 
     if (item.gap > 0) {
-      return 'ponto-cego'; // Verde - pessoa se avalia mais alto (selfScore > othersScore)
+      return 'ponto-cego';
     } else if (item.gap < 0) {
-      return 'ponto-forte'; // Cinza - outros avaliam mais alto (selfScore < othersScore)
+      return 'ponto-forte';
     } else {
       return 'alinhado';
     }
   }
 
-  getMarkerColor(item: GapChartDataItem): string {
-    const gapType = this.getGapType(item);
-    switch (gapType) {
-      case 'ponto-cego':
-        return '#28a745'; // Verde
-      case 'ponto-forte':
-        return '#6c757d'; // Cinza
-      default:
-        return '#17a2b8'; // Azul para alinhado
-    }
+  // Largura da barra baseada no valor absoluto do gap.
+  // Como a barra ocupa apenas um lado (do centro até a borda),
+  // 5 pontos de gap equivalem a 50% da largura total (ou seja, 10% por ponto).
+  // Limitamos entre 0% e 50%.
+  getBarWidth(gap: number | null): number {
+    if (gap === null) return 0;
+    const width = Math.min(Math.abs(gap), 5) * 10; // 10% por ponto (lado = 50%)
+    return Math.max(0, Math.min(50, width));
+  }
+
+  // Posição inicial (left) da barra:
+  // - gap > 0: começa no centro (50%) e cresce para direita
+  // - gap < 0: começa em (50% - width) e cresce até o centro
+  // Garante que o valor fique no intervalo [0, 100]
+  getBarLeft(gap: number | null): number {
+    if (gap === null) return 50;
+    const width = this.getBarWidth(gap);
+    const left = gap < 0 ? 50 - width : 50;
+    return Math.max(0, Math.min(100, left));
   }
 
   trackByIndex(index: number): number {

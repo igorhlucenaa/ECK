@@ -9,11 +9,23 @@
           <span class="ponto-cego-title">Ponto cego</span>
         </div>
         <div class="grid-scale">
-          <span>1</span>
-          <span>2</span>
-          <span>3</span>
-          <span>4</span>
-          <span>5</span>
+          <div class="scale-left">
+            <span>-5</span>
+            <span>-4</span>
+            <span>-3</span>
+            <span>-2</span>
+            <span>-1</span>
+          </div>
+          <div class="scale-center">
+            <span>0</span>
+          </div>
+          <div class="scale-right">
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+            <span>5</span>
+          </div>
         </div>
       </div>
       <div class="score-header">Próprio(a)</div>
@@ -26,11 +38,25 @@
       <div class="competency-name">{{ item.competencyName }}</div>
 
       <div class="grid-container">
-        <div class="grid-bar"
-             *ngIf="item.gap !== null"
-             [style.background-color]="getMarkerColor(item)"
-             [style.width.%]="Math.abs(item.gap) * 20"
-             [style.margin-left.%]="item.gap < 0 ? (50 - Math.abs(item.gap) * 20) : 50">
+        <!-- Barra cinza = ponto forte (gap < 0) -->
+        <div class="grid-bar forte-bar"
+             *ngIf="item.gap !== null && item.gap < 0"
+             [style.width.%]="getBarWidth(item.gap)"
+             [style.left.%]="getBarLeft(item.gap)">
+        </div>
+
+        <!-- Barra verde = ponto cego (gap > 0) -->
+        <div class="grid-bar cego-bar"
+             *ngIf="item.gap !== null && item.gap > 0"
+             [style.width.%]="getBarWidth(item.gap)"
+             [style.left.%]="getBarLeft(item.gap)">
+        </div>
+
+        <!-- Linhas de grid verticais (cada 20%) -->
+        <div class="grid-lines">
+          <span *ngFor="let i of [0,1,2,3,4,5,6,7,8,9,10]; trackBy: trackByIndex"
+                class="grid-line"
+                [style.left.%]="i * 10"></span>
         </div>
       </div>
 
