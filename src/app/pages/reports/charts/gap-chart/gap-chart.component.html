@@ -1,0 +1,44 @@
+<div class="gap-chart-container">
+  <div class="gap-chart-table">
+    <!-- Cabeçalho -->
+    <div class="table-header">
+      <div class="competency-header">Competência</div>
+      <div class="grid-header">
+        <div class="grid-title">
+          <span class="ponto-forte-title">Ponto forte oculto</span>
+          <span class="ponto-cego-title">Ponto cego</span>
+        </div>
+        <div class="grid-scale">
+          <span>1</span>
+          <span>2</span>
+          <span>3</span>
+          <span>4</span>
+          <span>5</span>
+        </div>
+      </div>
+      <div class="score-header">Próprio(a)</div>
+      <div class="score-header">Outros</div>
+      <div class="score-header">Análise de defasagem</div>
+    </div>
+
+    <!-- Linhas de dados -->
+    <div class="table-row" *ngFor="let item of data; trackBy: trackByIndex">
+      <div class="competency-name">{{ item.competencyName }}</div>
+
+      <div class="grid-container">
+        <div class="grid-bar"
+             *ngIf="item.gap !== null"
+             [style.background-color]="getMarkerColor(item)"
+             [style.width.%]="Math.abs(item.gap) * 20"
+             [style.margin-left.%]="item.gap < 0 ? (50 - Math.abs(item.gap) * 20) : 50">
+        </div>
+      </div>
+
+      <div class="score-value">{{ item.selfScore?.toFixed(2) || '-' }}</div>
+      <div class="score-value">{{ item.othersScore?.toFixed(2) || '-' }}</div>
+      <div class="gap-value" [class]="'gap-' + getGapType(item)">
+        {{ item.gap?.toFixed(2) || '-' }}
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,93 @@
+.competency-dialog {
+  max-width: 100%;
+}
+
+/* Layout geral */
+mat-dialog-content {
+  max-height: 72vh;
+  overflow-y: auto;
+  padding: 8px 16px;
+}
+
+/* Título */
+h2[mat-dialog-title] {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef1f4;
+}
+
+/* Container de cada pergunta */
+.question-item-container {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.question-item-container:hover {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Header da pergunta */
+.question-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.drag-handle {
+  cursor: move;
+  color: #a1a1aa;
+  display: flex;
+  align-items: center;
+}
+
+.question-number {
+  background-color: #6366f1;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* Corpo da pergunta */
+.question-body {
+  padding-left: 52px; /* Alinha com o campo de texto da pergunta */
+}
+
+/* Seção de opções */
+.options-section {
+  padding-top: 12px;
+}
+
+.option-item {
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #eef1f4;
+}
+
+/* Preview */
+.question-preview {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  color: #374151;
+}
+
+/* Ações do diálogo */
+mat-dialog-actions {
+  padding: 16px 24px;
+  border-top: 1px solid #eef1f4;
+}
+
+/* Remove margem inferior padrão dos form-fields para controlar espaçamento */
+mat-form-field {
+  margin-bottom: 0;
+}

@@ -1,0 +1,185 @@
+<div class="container mt-4">
+  <div class="row" style="margin-bottom: 20px">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">
+          <mat-icon class="me-2" style="color: #6366f1;">psychology</mat-icon>
+          Gerenciar Competências
+        </h2>
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="openCompetencyDialog()"
+          [disabled]="!selectedClientId || !canEdit()"
+        >
+          <mat-icon>add</mat-icon>
+          Nova Competência
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seletor de Cliente -->
+  <mat-card class="mb-4">
+    <mat-card-content>
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Cliente</mat-label>
+            <mat-select
+              [(value)]="selectedClientId"
+              (selectionChange)="onClientChange()"
+              [disabled]="userRole === 'admin_client'"
+            >
+              <mat-option
+                *ngFor="let client of clients"
+                [value]="client.id"
+              >
+                {{ client.companyName }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="text-center py-5">
+    <mat-spinner [diameter]="50"></mat-spinner>
+    <p class="mt-3 text-muted">Carregando competências...</p>
+  </div>
+
+  <!-- Lista de Competências -->
+  <div *ngIf="!isLoading">
+    <!-- Mensagem quando não há cliente selecionado -->
+    <div *ngIf="!selectedClientId" class="text-center py-5">
+      <mat-icon class="text-muted" style="font-size: 48px; width: 48px; height: 48px;">
+        business
+      </mat-icon>
+      <h4 class="text-muted mt-3">Selecione um cliente para visualizar as competências</h4>
+    </div>
+
+    <!-- Mensagem quando não há competências -->
+    <div *ngIf="selectedClientId && (!competencies || competencies.length === 0)" class="text-center py-5">
+      <mat-icon class="text-muted" style="font-size: 48px; width: 48px; height: 48px;">
+        psychology
+      </mat-icon>
+      <h4 class="text-muted mt-3">Nenhuma competência encontrada</h4>
+      <p class="text-muted">Clique em "Nova Competência" para criar a primeira competência</p>
+    </div>
+
+    <!-- Lista de Competências -->
+    <div *ngIf="competencies && competencies.length > 0" class="row">
+      <div *ngFor="let competency of competencies" class="col-12 mb-4">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title class="d-flex align-items-center">
+              <mat-icon class="me-2" style="color: #6366f1;">psychology</mat-icon>
+              {{ competency.name }}
+            </mat-card-title>
+            <mat-card-subtitle>
+              {{ competency.description }}
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <!-- Estatísticas -->
+            <div class="row mb-3">
+              <div class="col-md-3">
+                <div class="text-center">
+                  <div class="h4 mb-0 text-primary">{{ getSafeQuestionsCount(competency) }}</div>
+                  <small class="text-muted">Perguntas</small>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="text-center">
+                  <div class="h4 mb-0 text-success">
+                    {{ getRequiredQuestionsCount(competency.questions) }}
+                  </div>
+                  <small class="text-muted">Obrigatórias</small>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="text-center">
+                  <div class="h4 mb-0 text-info">
+                    {{ getLikertQuestionsCount(competency.questions) }}
+                  </div>
+                  <small class="text-muted">Escala Likert</small>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="text-center">
+                  <div class="h4 mb-0 text-warning">
+                    {{ getMultipleChoiceQuestionsCount(competency.questions) }}
+                  </div>
+                  <small class="text-muted">Múltipla Escolha</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lista de Perguntas -->
+            <div class="questions-list" *ngIf="isValidCompetency(competency) && competency.questions && competency.questions.length > 0">
+              <h6 class="mb-3">
+                <mat-icon class="me-2" style="font-size: 18px;">quiz</mat-icon>
+                Perguntas ({{ getSafeQuestionsCount(competency) }})
+              </h6>
+
+              <div *ngFor="let question of competency.questions; let i = index" class="question-item">
+                <div class="d-flex align-items-start">
+                  <div class="question-number me-3">
+                    <span class="badge bg-primary rounded-pill">{{ getQuestionNumber(i) }}</span>
+                  </div>
+                  <div class="question-content flex-grow-1">
+                    <div class="d-flex align-items-center mb-2">
+                      <strong class="me-2">{{ getQuestionText(question) }}</strong>
+                      <span class="badge bg-secondary me-2">{{ getQuestionTypeLabel(question) }}</span>
+                      <span *ngIf="isQuestionRequired(question)" class="badge bg-danger">Obrigatória</span>
+                    </div>
+
+                    <!-- Opções para múltipla escolha -->
+                    <div *ngIf="isMultipleChoiceQuestion(question)" class="ms-4">
+                      <div *ngFor="let option of getQuestionOptions(question)" class="text-muted">
+                        • {{ option }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mensagem quando não há perguntas -->
+            <div *ngIf="!isValidCompetency(competency) || !competency.questions || competency.questions.length === 0" class="text-center py-3">
+              <mat-icon class="text-muted" style="font-size: 24px; width: 24px; height: 24px;">
+                quiz
+              </mat-icon>
+              <p class="text-muted mb-0">Nenhuma pergunta cadastrada para esta competência</p>
+            </div>
+          </mat-card-content>
+
+          <!-- Ações -->
+          <mat-card-actions class="d-flex justify-content-end">
+            <button
+              mat-button
+              color="primary"
+              (click)="openCompetencyDialog(competency)"
+              [disabled]="!canEdit()"
+            >
+              <mat-icon>edit</mat-icon>
+              Editar
+            </button>
+            <button
+              mat-button
+              color="warn"
+              (click)="deleteCompetency(competency)"
+              [disabled]="!canEdit()"
+            >
+              <mat-icon>delete</mat-icon>
+              Excluir
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+    </div>
+  </div>
+</div>

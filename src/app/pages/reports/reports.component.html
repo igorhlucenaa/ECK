@@ -446,6 +446,9 @@
           <mat-chip-option (click)="addSecaoCustomizada('grafico_defasagem')">
             <mat-icon>waterfall_chart</mat-icon> Gráfico de Defasagem
           </mat-chip-option>
+          <mat-chip-option (click)="addSecaoCustomizada('janela_johari')">
+            <mat-icon>view_quilt</mat-icon> Janela de Johari
+          </mat-chip-option>
         </mat-chip-listbox>
       </div>
 
@@ -574,6 +577,7 @@
                       <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
                       <mat-option value="pizza-individual">Pizza Individual</mat-option>
                       <mat-option value="barras-individuais">Barras Individuais</mat-option>
+                      <mat-option value="janela_johari">Janela de Johari</mat-option>
                     </mat-select>
                   </mat-form-field>
                 </div>
@@ -643,6 +647,21 @@
                 </mat-card>
               </div>
 
+              <div *ngIf="isSecaoTipo(secaoCtrl, 'janela_johari')">
+                <mat-card style="margin-top: 16px; padding: 16px; background-color: #e3f2fd;">
+                  <mat-card-content>
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                      <mat-icon style="color: #2196F3; margin-right: 8px;">info</mat-icon>
+                      <span style="font-weight: 500;">Configuração da Janela de Johari</span>
+                    </div>
+                    <p style="margin: 0; font-size: 14px; color: #555;">
+                      A Janela de Johari classifica as competências em quatro quadrantes com base na autoavaliação e na avaliação dos outros.
+                      Selecione as competências que você deseja incluir nesta análise. O gráfico será gerado automaticamente.
+                    </p>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+
               <div *ngIf="isSecaoTipo(secaoCtrl, 'tabela')">
                 <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
                   <mat-label>Competências para a tabela</mat-label>
@@ -685,9 +704,17 @@
                   </mat-select>
                   <mat-hint>Selecione as competências que devem aparecer no gráfico.</mat-hint>
                 </mat-form-field>
-                <div *ngIf="getCompetenciasSelecionadasParaSecao(secaoCtrl.value).length > 0; else noDataDefasagem" style="min-height: 400px; margin-top: 20px;">
-                  <div echarts [options]="getGapChartOptions(secaoCtrl.value)" style="height: 100%; width: 100%;"></div>
+
+                <!-- Gráficos de defasagem por grupo de competências -->
+                <div *ngIf="getCompetenciasSelecionadasParaSecao(secaoCtrl.value).length > 0; else noDataDefasagem" style="margin-top: 20px;">
+                  <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secaoCtrl.value)" style="margin-bottom: 30px;">
+                    <h4 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">
+                      {{ comp.nome }}
+                    </h4>
+                    <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
+                  </div>
                 </div>
+
                 <ng-template #noDataDefasagem>
                   <div class="no-data-placeholder" style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
                     <mat-icon style="font-size: 48px; width: 48px; height: 48px;">waterfall_chart</mat-icon>
@@ -785,8 +812,14 @@
                   <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
                   <mat-option value="pizza-individual">Pizza Individual</mat-option>
                   <mat-option value="barras-individuais">Barras Individuais</mat-option>
+                  <mat-option value="janela_johari">Janela de Johari</mat-option>
                 </mat-select>
               </mat-form-field>
+
+              <!-- Gráfico Janela de Johari -->
+              <div *ngSwitchCase="'janela_johari'">
+                <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+              </div>
 
               <!-- Lista das competências selecionadas -->
               <div style="margin-bottom: 16px;">
@@ -1185,9 +1218,16 @@
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
 
-            <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataDefasagem" style="height: 400px; margin-top: 20px;">
-              <div echarts [options]="getGapChartOptions(secao)" style="height: 100%;"></div>
+            <!-- Gráficos de defasagem por grupo de competências -->
+            <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataDefasagem" style="margin-top: 20px;">
+              <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao)" style="margin-bottom: 30px;">
+                <h3 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">
+                  {{ comp.nome }}
+                </h3>
+                <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
+              </div>
             </div>
+
             <ng-template #noDataDefasagem>
               <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
                 <mat-icon style="font-size: 48px; width: 48px; height: 48px;">waterfall_chart</mat-icon>

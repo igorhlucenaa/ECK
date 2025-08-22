@@ -64,6 +64,12 @@ export const navItems: NavItem[] = [
         route: '/reports', // Alterado para a nova rota de relatórios
         role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
       },
+      {
+        displayName: 'Competências',
+        iconName: 'solar:psychology-bold-duotone', // Ícone representando competências/psicologia
+        route: '/competencies', // Nova rota para competências
+        role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
+      },
     ],
   },
 

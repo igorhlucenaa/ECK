@@ -62,6 +62,19 @@
           </div>
           <!-- Campo de projeto removido -->
         </div>
+        <div class="row" *ngIf="form.get('clientId')?.value && competencies.length > 0">
+          <div class="col-md-12">
+            <mat-form-field class="w-100" appearance="outline">
+              <mat-label>Competências</mat-label>
+              <mat-select formControlName="competencyIds" multiple>
+                <mat-option *ngFor="let competency of competencies" [value]="competency.id">
+                  {{ competency.name }}
+                </mat-option>
+              </mat-select>
+              <mat-hint>Selecione uma ou mais competências para gerar o formulário.</mat-hint>
+            </mat-form-field>
+          </div>
+        </div>
       </mat-card-content>
     </mat-card>
 

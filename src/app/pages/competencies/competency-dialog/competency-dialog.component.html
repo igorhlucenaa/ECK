@@ -1,0 +1,196 @@
+<div class="competency-dialog">
+  <h2 mat-dialog-title class="d-flex align-items-center">
+    <mat-icon class="me-2" style="color: #6366f1;">psychology</mat-icon>
+    {{ isEditing ? 'Editar Competência' : 'Nova Competência' }}
+  </h2>
+
+  <form [formGroup]="competencyForm" (ngSubmit)="saveCompetency()">
+    <mat-dialog-content>
+      <!-- Informações Básicas -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Nome da Competência</mat-label>
+            <input matInput formControlName="name" placeholder="Ex: Liderança, Comunicação, etc.">
+            <mat-error *ngIf="competencyForm.get('name')?.hasError('required')">
+              O nome é obrigatório
+            </mat-error>
+            <mat-error *ngIf="competencyForm.get('name')?.hasError('minlength')">
+              O nome deve ter pelo menos 3 caracteres
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Cliente</mat-label>
+            <mat-select formControlName="clientId" [disabled]="isEditing">
+              <mat-option *ngFor="let client of data.clients" [value]="client.id">
+                {{ client.companyName }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="competencyForm.get('clientId')?.hasError('required')">
+              O cliente é obrigatório
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-12">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Descrição</mat-label>
+            <textarea matInput formControlName="description" rows="3"
+                      placeholder="Descreva o que esta competência avalia..."></textarea>
+            <mat-error *ngIf="competencyForm.get('description')?.hasError('required')">
+              A descrição é obrigatória
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Seção de Perguntas -->
+      <div class="questions-section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0 d-flex align-items-center gap-2">
+            <mat-icon class="me-1">quiz</mat-icon>
+            Perguntas da Competência
+          </h5>
+          <button type="button" mat-mini-fab color="primary" (click)="addQuestion()" aria-label="Adicionar pergunta">
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+
+        <div formArrayName="questions">
+          <div cdkDropList (cdkDropListDropped)="onDrop($event)" class="questions-list">
+            <div *ngFor="let question of questionsArray.controls; let i = index; trackBy: trackByIndex"
+                 cdkDrag class="question-item-container" [formGroupName]="i">
+
+              <div class="question-item">
+                <div class="question-header">
+                  <div class="drag-handle" cdkDragHandle>
+                    <mat-icon>drag_indicator</mat-icon>
+                  </div>
+                  <span class="question-number">P{{ i + 1 }}</span>
+                  <mat-form-field appearance="outline" class="question-text-field flex-grow-1">
+                    <mat-label>Pergunta</mat-label>
+                    <input matInput formControlName="text" placeholder="Digite a pergunta...">
+                    <mat-error *ngIf="questionsArray.at(i)?.get('text')?.hasError('required')">
+                      A pergunta é obrigatória
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+
+                <div class="question-body">
+                  <div class="row align-items-center g-3">
+                    <!-- Tipo de Pergunta -->
+                    <div class="col-md-5">
+                      <mat-form-field appearance="outline" class="w-100">
+                        <mat-label>Tipo</mat-label>
+                        <mat-select formControlName="type" (selectionChange)="onQuestionTypeChange(i, $event.value)">
+                          <mat-option *ngFor="let type of questionTypes" [value]="type.value">
+                            <div class="d-flex align-items-center">
+                              <mat-icon class="me-2">{{ type.icon }}</mat-icon>
+                              {{ type.label }}
+                            </div>
+                          </mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                    </div>
+
+                    <!-- Obrigatória e Remover -->
+                    <div class="col-md-7 d-flex align-items-center justify-content-start gap-3">
+                      <mat-checkbox formControlName="required">Pergunta obrigatória</mat-checkbox>
+                      <button type="button" mat-icon-button color="warn" (click)="removeQuestion(i)" [disabled]="!canRemoveQuestion()" aria-label="Remover pergunta">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Opções para Múltipla Escolha -->
+                  <div *ngIf="questionsArray.at(i)?.get('type')?.value === 'multiple_choice'" class="options-section mt-3">
+                    <mat-divider class="my-3"></mat-divider>
+                    <h6 class="mb-3 d-flex align-items-center gap-2">
+                      <mat-icon style="font-size: 16px;">list</mat-icon>
+                      Opções de Resposta
+                    </h6>
+                    <div formArrayName="options" class="options-list">
+                      <div *ngFor="let option of getQuestionOptionsArray(i).controls; let j = index; trackBy: trackByOptionIndex" class="option-item d-flex align-items-center mb-2">
+                        <mat-form-field appearance="outline" class="flex-grow-1 me-2">
+                          <mat-label>Opção {{ j + 1 }}</mat-label>
+                          <input matInput [formControlName]="j" placeholder="Digite a opção...">
+                          <mat-error *ngIf="option.hasError('required')">A opção é obrigatória</mat-error>
+                        </mat-form-field>
+                        <button type="button" mat-icon-button color="warn" (click)="removeOption(i, j)" [disabled]="getQuestionOptionsArray(i).controls.length <= 1" aria-label="Remover opção">
+                          <mat-icon>remove_circle</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                    <button type="button" mat-stroked-button color="primary" (click)="addOption(i)" class="mt-2">
+                      <mat-icon>add</mat-icon>
+                      Adicionar Opção
+                    </button>
+                  </div>
+
+                  <mat-divider class="my-3"></mat-divider>
+
+                  <!-- Preview da Pergunta -->
+                  <div class="question-preview p-3">
+                    <h6 class="mb-2 d-flex align-items-center gap-2">
+                      <mat-icon style="font-size: 16px;">visibility</mat-icon>
+                      Preview
+                    </h6>
+                    <div class="preview-content">
+                      <strong>{{ questionsArray.at(i)?.get('text')?.value || 'Pergunta...' }}</strong>
+                      <span *ngIf="questionsArray.at(i)?.get('required')?.value" class="badge bg-danger ms-2">Obrigatória</span>
+                      <!-- Preview baseado no tipo -->
+                      <div class="mt-2">
+                        <div *ngIf="questionsArray.at(i)?.get('type')?.value === 'likert'" class="likert-preview">
+                          <div class="d-flex justify-content-between">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                            <span>5</span>
+                          </div>
+                          <div class="d-flex justify-content-between">
+                            <span class="text-muted">Discordo Totalmente</span>
+                            <span class="text-muted">Concordo Totalmente</span>
+                          </div>
+                        </div>
+                        <div *ngIf="questionsArray.at(i)?.get('type')?.value === 'multiple_choice'" class="choice-preview">
+                          <div *ngFor="let option of getQuestionOptionsArray(i).controls" class="form-check">
+                            <input class="form-check-input" type="radio" disabled>
+                            <label class="form-check-label">{{ option.value || 'Opção...' }}</label>
+                          </div>
+                        </div>
+                        <div *ngIf="questionsArray.at(i)?.get('type')?.value === 'text'" class="text-preview">
+                          <textarea class="form-control" rows="3" placeholder="Resposta em texto..." disabled></textarea>
+                        </div>
+                        <div *ngIf="questionsArray.at(i)?.get('type')?.value === 'number'" class="number-preview">
+                          <input type="number" class="form-control" placeholder="Digite um número..." disabled>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-dialog-content>
+
+    <!-- Ações -->
+    <mat-dialog-actions class="d-flex justify-content-end">
+      <button type="button" mat-button (click)="cancel()" [disabled]="isLoading">Cancelar</button>
+      <button type="submit" mat-flat-button color="primary" [disabled]="competencyForm.invalid || isLoading">
+        <mat-icon *ngIf="isLoading" class="me-2">
+          <mat-spinner diameter="16"></mat-spinner>
+        </mat-icon>
+        <mat-icon *ngIf="!isLoading" class="me-2">save</mat-icon>
+        {{ isEditing ? 'Atualizar' : 'Criar' }} Competência
+      </button>
+    </mat-dialog-actions>
+  </form>
+</div>

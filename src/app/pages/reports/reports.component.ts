@@ -1,10 +1,10 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
-import { ReactiveFormsModule, FormControl, FormGroup, Validators, FormArray } from '@angular/forms';
+import { ReactiveFormsModule, FormControl, FormGroup, Validators, FormArray, FormBuilder } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { CommonModule, KeyValuePipe } from '@angular/common';
 import { MatOptionModule } from '@angular/material/core';
@@ -33,6 +33,10 @@ import { LoadingService } from '../../services/loading.service';
 import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
 import { AuthService } from '../../services/apps/authentication/auth.service';
 import { query, where } from '@angular/fire/firestore';
+import { JohariWindowChartComponent, JohariWindowData } from './charts/johari-window-chart/johari-window-chart.component';
+import { MatRadioModule } from '@angular/material/radio';
+import { GapChartComponent, GapChartDataItem } from './charts/gap-chart/gap-chart.component';
+import { Subject, from, of, takeUntil, tap, debounceTime, switchMap } from 'rxjs';
 
 interface AssessmentOption {
   id: string;
@@ -73,7 +77,7 @@ interface TabelaCompetencia {
 // Modelo de dados para seções dinâmicas do relatório
 export interface RelatorioSecao {
   id: string;
-  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem';
+  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari';
   titulo?: string;
   texto?: string;
   visivel: boolean;
@@ -127,14 +131,17 @@ interface TabelaAvaliacoesAltas {
     DragDropModule,
     MatSnackBarModule,
     MatExpansionModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatRadioModule,
+    GapChartComponent,
+    JohariWindowChartComponent
   ],
   templateUrl: './reports.component.html',
-  styleUrl: './reports.component.scss',
+  styleUrls: ['./reports.component.scss'],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ReportsComponent implements OnInit {
+export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Habilite para logs detalhados (impacta performance). Mantenha false em produção.
   private debugMode = false;
   // Cache de participantes para evitar múltiplas idas ao Firestore
@@ -515,6 +522,11 @@ export class ReportsComponent implements OnInit {
   individualTemplateId: string | null = null;
   individualTemplateName: string | null = null;
 
+  mediasPorCompetencia: { competenciaId: string; nome: string; medias: { grupo: string; media: number | null }[] }[] = [];
+  gapChartData: GapChartDataItem[] = [];
+
+  private destroy$ = new Subject<void>();
+
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
@@ -524,18 +536,19 @@ export class ReportsComponent implements OnInit {
     private cdr: ChangeDetectorRef,
     private loadingService: LoadingService,
     private firestoreInterceptor: FirestoreLoadingInterceptor,
-    private authService: AuthService
+    private authService: AuthService,
+    private fb: FormBuilder
   ) {
-    this.dummyForm = new FormGroup({
-      relatorioFormArray: new FormArray<any>([])
+    this.dummyForm = this.fb.group({
+      relatorioFormArray: this.fb.array([])
     });
 
     this.relatorioFormArray = this.dummyForm.get('relatorioFormArray') as FormArray;
 
-    this.competenciaForm = new FormGroup({
-      nome: new FormControl('', Validators.required),
-      descricao: new FormControl('', Validators.required),
-      perguntasIds: new FormControl<string[]>([], Validators.required)
+    this.competenciaForm = this.fb.group({
+      nome: ['', Validators.required],
+      descricao: ['', Validators.required],
+      perguntasIds: [[] as string[], Validators.required]
     });
 
     // Monitorar mudanças para invalidação de cache
@@ -545,6 +558,35 @@ export class ReportsComponent implements OnInit {
 
     this.carregarRelatoriosSalvos();
     this.carregarTemplatesSalvos();
+
+
+    this.assessmentControl.valueChanges
+      .pipe(
+        tap((id: string | null) => this.onAssessmentChange()),
+        debounceTime(300),
+        switchMap((id: string | null) => {
+          if (id) {
+            return from(this.calcularMediasPorCompetencia());
+          }
+          return of(null);
+        }),
+        takeUntil(this.destroy$)
+      ).subscribe();
+    this.avaliadoControl.valueChanges
+      .pipe(
+        debounceTime(300),
+        switchMap(() => {
+          return from(this.calcularMediasPorCompetencia());
+        }),
+        takeUntil(this.destroy$)
+      ).subscribe();
+
+    this.dummyForm.get('relatorioFormArray')?.valueChanges.pipe(
+      debounceTime(400),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.prepareGapChartData();
+    });
   }
 
   // 🚀 PERFORMANCE: Sistema de cache
@@ -729,10 +771,18 @@ export class ReportsComponent implements OnInit {
     this.atualizarPerguntasBloqueadas();
 
     this.assessmentControl.valueChanges.subscribe(id => {
+      this.selectedAssessmentId = id;
       if (id) {
-        this.selectedAssessmentId = id;
         this.onAssessmentChange();
+        // Após carregar os dados, calculamos as médias
+        this.calcularMediasPorCompetencia();
+      } else {
+        // Limpa os dados se nenhuma avaliação for selecionada
+        this.dataSource = [];
+        this.competencias = [];
+        this.mediasPorCompetencia = [];
       }
+      this.cdr.detectChanges(); // Garante a atualização da view
     });
 
     this.selectedReportId.valueChanges.subscribe(id => {
@@ -754,6 +804,11 @@ export class ReportsComponent implements OnInit {
 
     // Configuração inicial do formulário de relatório
     this.atualizarFormArrayComConfiguracao();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   async loadAssessments() {
@@ -787,22 +842,22 @@ export class ReportsComponent implements OnInit {
   private atualizarFormArrayComConfiguracao() {
     this.relatorioFormArray.clear();
     this.relatorioConfiguracao.forEach(secao => {
-      this.relatorioFormArray.push(new FormGroup({
-        visivel: new FormControl(secao.visivel),
-        titulo: new FormControl(secao.titulo || ''),
-        texto: new FormControl(secao.texto || ''),
-        competenciasIds: new FormControl(secao.competenciasIds || []),
-        id: new FormControl(secao.id),
-        tipo: new FormControl(secao.tipo),
-        ordem: new FormControl(secao.ordem),
-        tipoGrafico: new FormControl(secao['tipoGrafico'] || 'barra'),
-        paletaCor: new FormControl(secao['paletaCor'] || 'padrao'),
-        coresPersonalizadas: new FormControl(secao['coresPersonalizadas'] || []),
+      this.relatorioFormArray.push(this.fb.group({
+        visivel: [secao.visivel],
+        titulo: [secao.titulo || ''],
+        texto: [secao.texto || ''],
+        competenciasIds: [secao.competenciasIds || []],
+        id: [secao.id],
+        tipo: [secao.tipo],
+        ordem: [secao.ordem],
+        tipoGrafico: [secao['tipoGrafico'] || 'barra'],
+        paletaCor: [secao['paletaCor'] || 'padrao'],
+        coresPersonalizadas: [secao['coresPersonalizadas'] || []],
         // Controles para seção de destaques
-        numeroItems: new FormControl(secao['numeroItems'] || 5),
-        avaliadoSelecionado: new FormControl(secao['avaliadoSelecionado'] || ''),
-        mostrarCaracteristica: new FormControl(secao['mostrarCaracteristica'] !== false),
-        mostrarPontuacaoSemAuto: new FormControl(secao['mostrarPontuacaoSemAuto'] !== false)
+        numeroItems: [secao['numeroItems'] || 5],
+        avaliadoSelecionado: [secao['avaliadoSelecionado'] || ''],
+        mostrarCaracteristica: [secao['mostrarCaracteristica'] !== false],
+        mostrarPontuacaoSemAuto: [secao['mostrarPontuacaoSemAuto'] !== false]
       }));
     });
   }
@@ -1352,17 +1407,17 @@ export class ReportsComponent implements OnInit {
 'tipoGrafico': tipo === 'graficos' ? 'barra' : undefined
     };
     this.relatorioConfiguracao.splice(index + 1, 0, novaSecao);
-    this.relatorioFormArray.insert(index + 1, new FormGroup({
-      visivel: new FormControl(novaSecao.visivel),
-      titulo: new FormControl(novaSecao.titulo),
-      texto: new FormControl(novaSecao.texto),
-      competenciasIds: new FormControl([]),
-      id: new FormControl(novaSecao.id),
-      tipo: new FormControl(novaSecao.tipo),
-      ordem: new FormControl(novaSecao.ordem),
-      tipoGrafico: new FormControl('barra'),
-      paletaCor: new FormControl('padrao'),
-      coresPersonalizadas: new FormControl([])
+    this.relatorioFormArray.insert(index + 1, this.fb.group({
+      visivel: [novaSecao.visivel],
+      titulo: [novaSecao.titulo],
+      texto: [novaSecao.texto],
+      competenciasIds: [[]],
+      id: [novaSecao.id],
+      tipo: [novaSecao.tipo],
+      ordem: [novaSecao.ordem],
+      tipoGrafico: ['barra'],
+      paletaCor: ['padrao'],
+      coresPersonalizadas: [[]]
     }));
     this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
     this.snackBar.open('Seção adicionada!', 'Fechar', { duration: 2000 });
@@ -1965,13 +2020,16 @@ export class ReportsComponent implements OnInit {
   }
 
   // Adiciona uma nova seção customizada ao relatório
-  addSecaoCustomizada(tipo: 'texto' | 'graficos' | 'tabela' | 'competencia_detalhada' | 'grafico_defasagem' = 'texto') {
+  addSecaoCustomizada(
+    tipo: 'texto' | 'graficos' | 'tabela' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari',
+    indice?: number
+  ) {
     const novaSecao: RelatorioSecao = {
-          id: `custom_${new Date().getTime()}`,
-      tipo: tipo,
+      id: `custom_${new Date().getTime()}`,
+      tipo,
       titulo: '',
-          texto: '',
-          visivel: true,
+      texto: '',
+      visivel: true,
       ordem: this.relatorioConfiguracao.length + 1
     };
 
@@ -1997,6 +2055,10 @@ export class ReportsComponent implements OnInit {
         break;
        case 'grafico_defasagem':
         novaSecao.titulo = 'Gráfico de Defasagem (Gap Analysis)';
+        novaSecao.competenciasIds = [];
+        break;
+      case 'janela_johari':
+        novaSecao.titulo = 'Janela de Johari';
         novaSecao.competenciasIds = [];
         break;
     }
@@ -3877,4 +3939,238 @@ export class ReportsComponent implements OnInit {
       }
     }
   }
+
+  /**
+   * Calcula os dados para a Janela de Johari.
+   * @param secao A configuração da seção do relatório.
+   * @returns Um objeto `JohariWindowData` com as competências distribuídas.
+   */
+  getJohariWindowData(secao: any): JohariWindowData {
+    const competenciasSelecionadas = this.getCompetenciasSelecionadasParaSecao(secao);
+    const pontoCorte = 3.5; // Ponto de corte pode ser configurável no futuro
+    const dadosJohari: JohariWindowData = {
+      arena: [],
+      pontoCego: [],
+      fachada: [],
+      desconhecido: [],
+    };
+
+    if (!this.mediasPorCompetencia || this.mediasPorCompetencia.length === 0) {
+      return dadosJohari;
+    }
+
+    for (const competencia of competenciasSelecionadas) {
+      const dadosCompetencia = this.mediasPorCompetencia.find(m => m.competenciaId === competencia.id);
+      if (!dadosCompetencia) continue;
+
+      const mediaAuto = dadosCompetencia.medias.find(m => m.grupo === 'Autoavaliação')?.media ?? 0;
+      const mediaOutros = this.getMediaPonderadaOutros(dadosCompetencia.medias);
+
+      if (mediaAuto >= pontoCorte && mediaOutros >= pontoCorte) {
+        dadosJohari.arena.push(competencia.nome);
+      } else if (mediaAuto < pontoCorte && mediaOutros >= pontoCorte) {
+        dadosJohari.pontoCego.push(competencia.nome);
+      } else if (mediaAuto >= pontoCorte && mediaOutros < pontoCorte) {
+        dadosJohari.fachada.push(competencia.nome);
+      } else {
+        dadosJohari.desconhecido.push(competencia.nome);
+      }
+    }
+
+    return dadosJohari;
+  }
+
+  /**
+   * Calcula a média ponderada das avaliações de todos os grupos, exceto 'Autoavaliação'.
+   */
+  private getMediaPonderadaOutros(medias: { grupo: string; media: number | null }[]): number {
+    const mediasOutros = medias.filter(m => m.grupo !== 'Autoavaliação' && m.media !== null);
+    if (mediasOutros.length === 0) return 0;
+
+    const soma = mediasOutros.reduce((acc, curr) => acc + (curr.media ?? 0), 0);
+    return soma / mediasOutros.length;
+  }
+
+  /**
+   * Calcula as médias para cada competência com base nos dados filtrados da avaliação.
+   * Agrupa os resultados por competência e, dentro de cada uma, por grupo de avaliador.
+   */
+  async calcularMediasPorCompetencia(): Promise<void> {
+    if (!this.selectedAssessmentId) {
+      this.mediasPorCompetencia = [];
+      this.prepareGapChartData(); // Chamar para limpar/atualizar
+      return;
+    }
+
+    const mediasCalculadas = this.competencias.map(competencia => {
+      const mediasPorGrupo = this.calcularMediasParaCompetencia(competencia);
+      return {
+        competenciaId: competencia.id,
+        nome: competencia.nome,
+        medias: mediasPorGrupo,
+      };
+    });
+
+    this.mediasPorCompetencia = mediasCalculadas;
+    this.prepareGapChartData(); // Chamar para limpar/atualizar
+  }
+
+  /**
+   * Função auxiliar que calcula a média para uma única competência,
+   * agrupando por categoria de avaliador.
+   * @param competencia A competência para a qual as médias serão calculadas.
+   * @returns Um array com as médias por grupo.
+   */
+  private calcularMediasParaCompetencia(competencia: any): { grupo: string; media: number | null }[] {
+    const todosOsGrupos = ['Autoavaliação', 'Líder', 'Par', 'Liderado', 'Outros'];
+    const mediasFinais = todosOsGrupos.map(grupo => {
+      let soma = 0;
+      let contagem = 0;
+
+      competencia.perguntasIds.forEach((perguntaId: string) => {
+        this.dataSource.forEach(linha => {
+          if (linha.categoria === grupo && linha[perguntaId] !== undefined && linha[perguntaId] !== null) {
+            soma += Number(linha[perguntaId]);
+            contagem++;
+          }
+        });
+      });
+
+      return {
+        grupo: grupo,
+        media: contagem > 0 ? soma / contagem : null,
+      };
+    });
+
+    return mediasFinais;
+  }
+
+  public prepareGapChartData(): void {
+    const secaoDefasagem = this.relatorioFormGroups.find(g => g.value.tipo === 'grafico_defasagem');
+    const competenciasSelecionadasIds = new Set(secaoDefasagem?.value.competenciasIds || []);
+
+    if (competenciasSelecionadasIds.size === 0) {
+      this.gapChartData = [];
+      return;
+    }
+
+    const competenciasSelecionadas = this.competencias.filter(c => competenciasSelecionadasIds.has(c.id));
+
+    // Para cada competência, criar dados para cada pergunta individual
+    const dadosPorPergunta: GapChartDataItem[] = [];
+
+    competenciasSelecionadas.forEach(comp => {
+      // Buscar as perguntas desta competência
+      const perguntasIds = comp.perguntasIds || [];
+
+      perguntasIds.forEach(perguntaId => {
+        const perguntaTexto = this.questionMap[perguntaId] || perguntaId;
+
+        // Buscar dados de resposta para esta pergunta específica
+        const dadosPergunta = this.getDadosPerguntaDefasagem(perguntaId);
+
+        if (dadosPergunta) {
+          dadosPorPergunta.push({
+            competencyName: perguntaTexto,
+            selfScore: dadosPergunta.selfScore,
+            othersScore: dadosPergunta.othersScore,
+            gap: dadosPergunta.gap
+          });
+        }
+      });
+    });
+
+    this.gapChartData = dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
+  }
+
+    private getDadosPerguntaDefasagem(perguntaId: string): { selfScore: number | null; othersScore: number | null; gap: number | null } | null {
+    console.log(`🔍 Buscando dados para pergunta: ${perguntaId}`);
+
+    if (!this.dataSource || this.dataSource.length === 0) {
+      console.log('❌ dataSource vazio ou nulo');
+      return null;
+    }
+
+    console.log(`📊 dataSource tem ${this.dataSource.length} linhas`);
+
+    // Coletar todas as respostas para esta pergunta específica
+    const respostasSelf: number[] = [];
+    const respostasOutros: number[] = [];
+
+    this.dataSource.forEach((row, index) => {
+      if (row[perguntaId] !== undefined) {
+        const valor = this.parseLikertAnswer(row[perguntaId]);
+        console.log(`📝 Linha ${index}: categoria=${row.categoria}, perguntaId=${perguntaId}, valor=${row[perguntaId]}, parseado=${valor}`);
+
+        if (valor !== null) {
+          if (row.categoria === 'Avaliado') {
+            respostasSelf.push(valor);
+            console.log(`✅ Adicionado à autoavaliação: ${valor}`);
+          } else {
+            respostasOutros.push(valor);
+            console.log(`✅ Adicionado aos outros: ${valor}`);
+          }
+        }
+      } else {
+        console.log(`❌ Linha ${index}: perguntaId ${perguntaId} não encontrada`);
+      }
+    });
+
+    console.log(`📊 Respostas coletadas - Self: ${respostasSelf.length}, Outros: ${respostasOutros.length}`);
+
+    // Calcular médias
+    const selfScore = respostasSelf.length > 0 ? respostasSelf.reduce((a, b) => a + b, 0) / respostasSelf.length : null;
+    const othersScore = respostasOutros.length > 0 ? respostasOutros.reduce((a, b) => a + b, 0) / respostasOutros.length : null;
+
+    const gap = (selfScore !== null && othersScore !== null) ? (selfScore - othersScore) : null;
+
+    console.log(`🎯 Resultado final - Self: ${selfScore}, Outros: ${othersScore}, Gap: ${gap}`);
+
+    return { selfScore, othersScore, gap };
+  }
+
+    public getGapChartDataForCompetency(competencyId: string): GapChartDataItem[] {
+    console.log(`🔍 getGapChartDataForCompetency chamado para competência: ${competencyId}`);
+
+    const competencia = this.competencias.find(c => c.id === competencyId);
+    if (!competencia || !competencia.perguntasIds) {
+      console.log('❌ Competência não encontrada ou sem perguntas');
+      return [];
+    }
+
+    console.log(`✅ Competência encontrada: ${competencia.nome} com ${competencia.perguntasIds.length} perguntas`);
+
+    const dadosPorPergunta: GapChartDataItem[] = [];
+
+    competencia.perguntasIds.forEach((perguntaId, index) => {
+      console.log(`📝 Processando pergunta ${index + 1}/${competencia.perguntasIds.length}: ${perguntaId}`);
+
+      const perguntaTexto = this.questionMap[perguntaId] || perguntaId;
+      console.log(`📋 Texto da pergunta: ${perguntaTexto}`);
+
+      const dadosPergunta = this.getDadosPerguntaDefasagem(perguntaId);
+
+      if (dadosPergunta) {
+        const item = {
+          competencyName: perguntaTexto,
+          selfScore: dadosPergunta.selfScore,
+          othersScore: dadosPergunta.othersScore,
+          gap: dadosPergunta.gap
+        };
+
+        console.log(`✅ Item criado:`, item);
+        dadosPorPergunta.push(item);
+      } else {
+        console.log(`❌ Dados não encontrados para pergunta ${perguntaId}`);
+      }
+    });
+
+    console.log(`📊 Total de itens criados: ${dadosPorPergunta.length}`);
+    const resultado = dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
+
+    console.log(`🎯 Resultado final ordenado:`, resultado);
+    return resultado;
+  }
+
+  ngAfterViewInit(): void { }
 }

@@ -48,6 +48,7 @@ ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
 export class CreateAssessmentComponent implements OnInit {
   form: FormGroup;
   clients: { id: string; name: string }[] = [];
+  competencies: { id: string; name: string }[] = [];
   userRole: string | null = null;
   creatorModel: SurveyCreatorModel;
 
@@ -60,11 +61,12 @@ export class CreateAssessmentComponent implements OnInit {
     private route: ActivatedRoute,
     private location: Location
   ) {
-    // Inicializa o formulário de metadados (Título, Cliente, Descrição)
+    // Inicializa o formulário de metadados
     this.form = this.fb.group({
       clientId: ['', Validators.required],
       name: ['', Validators.required],
       description: [''],
+      competencyIds: [[]], // Alterado para FormControl para multi-select
     });
   }
 
@@ -106,6 +108,112 @@ export class CreateAssessmentComponent implements OnInit {
         await this.loadAssessment(assessmentId);
       }
     });
+
+    // Observa mudanças no clientId para carregar competências
+    this.form.get('clientId')?.valueChanges.subscribe(clientId => {
+      if (clientId) {
+        this.loadCompetencies(clientId);
+      } else {
+        this.competencies = []; // Limpa as competências se nenhum cliente for selecionado
+      }
+    });
+
+    // Observa mudanças nas competências selecionadas para gerar o formulário
+    this.form.get('competencyIds')?.valueChanges.subscribe(async (competencyIds) => {
+      await this.generateSurveyFromCompetencies(competencyIds);
+    });
+  }
+
+  async loadCompetencies(clientId: string): Promise<void> {
+    try {
+      const competenciesCollection = collection(this.firestore, 'competencies');
+      const q = query(competenciesCollection, where('clientId', '==', clientId));
+      const snapshot = await getDocs(q);
+      this.competencies = snapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data()['name']
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar competências:', error);
+    }
+  }
+
+  async generateSurveyFromCompetencies(competencyIds: string[]): Promise<void> {
+    if (!competencyIds || competencyIds.length === 0) {
+      this.creatorModel.JSON = { pages: [] }; // Limpa o formulário
+      return;
+    }
+
+    try {
+      const pages = [];
+      let questionCounter = 0; // Garante nomes de perguntas únicos
+
+      for (const id of competencyIds) {
+        const docRef = doc(this.firestore, 'competencies', id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const competencyData = docSnap.data();
+          if (competencyData && competencyData['questions']) {
+
+            const questions = (competencyData['questions'] || []).map((q: any) => {
+              const questionName = q.id || `q_${questionCounter++}`;
+
+              let surveyQuestion: any = {
+                name: questionName,
+                title: q.text,
+                isRequired: q.required,
+              };
+
+              // Mapeia os tipos de pergunta da competência para os tipos do SurveyJS
+              switch (q.type) {
+                case 'likert':
+                  surveyQuestion.type = 'rating';
+                  surveyQuestion.rateMin = 1;
+                  surveyQuestion.rateMax = 5;
+                  surveyQuestion.minRateDescription = 'Discordo Totalmente';
+                  surveyQuestion.maxRateDescription = 'Concordo Totalmente';
+                  break;
+                case 'multiple_choice':
+                  surveyQuestion.type = 'radiogroup';
+                  surveyQuestion.choices = q.options || [];
+                  break;
+                case 'text':
+                  surveyQuestion.type = 'comment'; // Campo de texto de múltiplas linhas
+                  break;
+                case 'number':
+                  surveyQuestion.type = 'text';
+                  surveyQuestion.inputType = 'number';
+                  break;
+                default:
+                  surveyQuestion.type = 'text';
+              }
+              return surveyQuestion;
+            });
+
+            // Cria uma página para a competência
+            const page = {
+              name: `page_${id}`,
+              title: competencyData['name'],
+              description: competencyData['description'],
+              elements: questions,
+            };
+            pages.push(page);
+          }
+        }
+      }
+
+      const surveyJSON = {
+        title: this.form.get('name')?.value || 'Avaliação de Competências',
+        description: this.form.get('description')?.value || '',
+        showProgressBar: 'top', // Melhora a navegação entre páginas
+        pages: pages,
+      };
+
+      this.creatorModel.JSON = surveyJSON;
+    } catch (error) {
+      console.error('Erro ao gerar formulário a partir de competências:', error);
+    }
   }
 
   async loadAssessment(assessmentId: string): Promise<void> {

@@ -94,6 +94,13 @@ export const routes: Routes = [
         data: { role: 'viewer' },
       },
       {
+        path: 'competencies',
+        loadChildren: () =>
+          import('./pages/competencies/competencies.routes').then((m) => m.CompetenciesRoutes),
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master', 'admin_client'] },
+      },
+      {
         path: 'orders',
         component: CreditOrdersComponent,
         canActivate: [AuthGuard],

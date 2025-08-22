@@ -1,0 +1,80 @@
+<div class="johari-container">
+  <!-- Eixo Vertical -->
+  <div class="axis-label vertical-label-left">
+    <div class="vertical-text">EU SEI</div>
+  </div>
+  <div class="axis-label vertical-label-right">
+    <div class="vertical-text">EU NÃO SEI</div>
+  </div>
+
+  <!-- Eixo Horizontal -->
+  <div class="axis-label horizontal-label-top">OUTROS SABEM</div>
+  <div class="axis-label horizontal-label-bottom">OUTROS NÃO SABEM</div>
+
+  <!-- Grid da Janela de Johari -->
+  <div class="johari-grid">
+    <!-- Quadrante 1: ARENA (Aberto) -->
+    <div class="quadrant arena" [style.background-color]="quadrantColors.arena">
+      <div class="quadrant-title">
+        <mat-icon>visibility</mat-icon>
+        <span>ARENA (Aberto)</span>
+      </div>
+      <div class="quadrant-content">
+        <p *ngIf="data.arena.length === 0" class="empty-text">Nenhuma competência nesta área.</p>
+        <mat-chip-set>
+          <mat-chip *ngFor="let item of data.arena">{{ item }}</mat-chip>
+        </mat-chip-set>
+      </div>
+    </div>
+
+    <!-- Quadrante 2: PONTO CEGO (Cego) -->
+    <div class="quadrant ponto-cego" [style.background-color]="quadrantColors.pontoCego">
+      <div class="quadrant-title">
+        <mat-icon>help_outline</mat-icon>
+        <span>PONTO CEGO (Cego)</span>
+      </div>
+      <div class="quadrant-content">
+        <p *ngIf="data.pontoCego.length === 0" class="empty-text">Nenhuma competência nesta área.</p>
+        <mat-chip-set>
+          <mat-chip *ngFor="let item of data.pontoCego">{{ item }}</mat-chip>
+        </mat-chip-set>
+      </div>
+    </div>
+
+    <!-- Quadrante 3: FACHADA (Oculto) -->
+    <div class="quadrant fachada" [style.background-color]="quadrantColors.fachada">
+      <div class="quadrant-title">
+        <mat-icon>security</mat-icon>
+        <span>FACHADA (Oculto)</span>
+      </div>
+      <div class="quadrant-content">
+        <p *ngIf="data.fachada.length === 0" class="empty-text">Nenhuma competência nesta área.</p>
+        <mat-chip-set>
+          <mat-chip *ngFor="let item of data.fachada">{{ item }}</mat-chip>
+        </mat-chip-set>
+      </div>
+    </div>
+
+    <!-- Quadrante 4: DESCONHECIDO -->
+    <div class="quadrant desconhecido" [style.background-color]="quadrantColors.desconhecido">
+      <div class="quadrant-title">
+        <mat-icon>blur_on</mat-icon>
+        <span>DESCONHECIDO</span>
+      </div>
+      <div class="quadrant-content">
+        <p *ngIf="data.desconhecido.length === 0" class="empty-text">Nenhuma competência nesta área.</p>
+        <mat-chip-set>
+          <mat-chip *ngFor="let item of data.desconhecido">{{ item }}</mat-chip>
+        </mat-chip-set>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mensagem de dados vazios -->
+  <div *ngIf="allCompetenciesEmpty" class="no-data-overlay">
+    <mat-icon>info</mat-icon>
+    <p>Não há dados suficientes para gerar a Janela de Johari.</p>
+    <p>Certifique-se de que a autoavaliação e as avaliações de outros foram concluídas.</p>
+  </div>
+</div>
+
