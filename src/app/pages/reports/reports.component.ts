@@ -392,6 +392,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     'personalizada': {
       nome: 'Personalizada',
       cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6']
+    },
+    'categorias': {
+      nome: 'Categorias Distintas',
+      cores: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F']
     }
   };
   dynamicColumns: string[] = [];
@@ -423,6 +427,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   competencias: Competencia[] = [];
   allCompetencies: Competencia[] = []; // Lista completa de competências disponíveis
+  pendingCompetencyIds: string[] = []; // IDs de competências pendentes para aplicar
   competenciaEditando: Competencia = { id: '', nome: '', descricao: '', perguntasIds: [] };
   competenciaForm: FormGroup;
 
@@ -735,14 +740,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
               const competencyIds = JSON.parse(params['competencyIds']);
               console.log('Competências selecionadas do modal:', competencyIds);
 
-              // Selecionar as competências específicas
-              this.competencias = this.allCompetencies.filter((comp: Competencia) =>
-                competencyIds.includes(comp.id)
-              );
-              console.log('Competências aplicadas:', this.competencias);
-
-              // TODO: Implementar sincronização de seções com competências
-              // this.sincronizarSecoesComCompetencias();
+              // Armazenar os IDs para aplicar depois que as competências forem carregadas
+              this.pendingCompetencyIds = competencyIds;
             } catch (error) {
               console.error('Erro ao processar competencyIds:', error);
             }
@@ -754,13 +753,40 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             await this.aplicarTemplateSelecionado();
           }
 
-          // Auto-gerar relatório se solicitado
-          if (params['autoGenerate'] === 'true') {
-            console.log('Auto-geração de relatório solicitada');
-            setTimeout(async () => {
-              await this.exportarRelatorioPDF();
-            }, 2000); // Aguardar 2 segundos para tudo carregar
-          }
+                   // Auto-gerar relatório se solicitado
+         if (params['autoGenerate'] === 'true') {
+           console.log('Auto-geração de relatório solicitada');
+
+           // Ir direto para a aba "Visualizar Relatório" se solicitado
+           if (params['aba'] === 'visualizar') {
+             this.selectedTabIndex = 3; // Tab "Visualizar Relatório"
+             console.log('Mudando para aba Visualizar Relatório');
+           }
+
+           // Aguardar mais tempo para garantir que tudo carregue
+           setTimeout(async () => {
+             try {
+               console.log('Tentando gerar PDF automaticamente...');
+               // Verificar se os dados estão carregados
+               if (this.isDataReady()) {
+                 await this.exportarRelatorioPDF();
+                 console.log('PDF gerado com sucesso!');
+               } else {
+                 console.log('Dados ainda não estão prontos, aguardando mais...');
+                 // Tentar novamente após mais 3 segundos
+                 setTimeout(async () => {
+                   if (this.isDataReady()) {
+                     await this.exportarRelatorioPDF();
+                     console.log('PDF gerado com sucesso na segunda tentativa!');
+                                       }
+                 }, 3000);
+               }
+             } catch (error) {
+               console.error('Erro ao gerar PDF automaticamente:', error);
+               this.snackBar.open('Erro ao gerar PDF automaticamente. Tente gerar manualmente.', 'Fechar', { duration: 5000 });
+             }
+           }, 5000); // Aguardar 5 segundos para tudo carregar
+         }
         }
         setTimeout(() => {
           this.selectedTabIndex = 3; // Ir direto para a aba "Visualizar"
@@ -809,6 +835,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  // Verificar se os dados estão prontos para gerar o PDF
+  private isDataReady(): boolean {
+    return (
+      this.selectedAssessmentId !== null &&
+      this.competencias.length > 0 &&
+      this.relatorioConfiguracao.length > 0 &&
+      this.allCompetencies.length > 0
+    );
   }
 
   async loadAssessments() {
@@ -1593,6 +1629,135 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return result;
   }
 
+  // Novo método para gráfico de barras comparativo por categoria
+  getSecaoBarraComparativaData(secao: any) {
+    const competenciasSelecionadas = this.getCompetenciasSelecionadasParaGraficos(secao);
+    const grupos = this.getGrupos();
+
+    if (competenciasSelecionadas.length === 0 || grupos.length === 0) {
+      return [];
+    }
+
+    // Para cada competência, criar uma série de dados
+    const result: any[] = [];
+
+    competenciasSelecionadas.forEach(comp => {
+      // Adicionar dados para cada grupo/categoria
+      grupos.forEach(grupo => {
+        const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
+        const valor = (media !== null && !isNaN(media)) ? media : 0;
+
+        result.push({
+          name: `${comp.nome} - ${grupo}`,
+          value: valor,
+          competencia: comp.nome,
+          grupo: grupo
+        });
+      });
+
+      // Adicionar "Resultado final" (média ponderada de todos os grupos)
+      let somaTotal = 0;
+      let contadorTotal = 0;
+
+      grupos.forEach(grupo => {
+        const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
+        if (media !== null && !isNaN(media)) {
+          somaTotal += media;
+          contadorTotal++;
+        }
+      });
+
+      if (contadorTotal > 0) {
+        const mediaFinal = somaTotal / contadorTotal;
+        result.push({
+          name: `${comp.nome} - Resultado Final`,
+          value: mediaFinal,
+          competencia: comp.nome,
+          grupo: 'Resultado Final'
+        });
+      }
+    });
+
+    return result;
+  }
+
+  // Método para obter dados de gráfico de barras comparativo para uma competência específica
+  getCompetenciaBarraComparativaData(competencia: Competencia): any[] {
+    const grupos = this.getGrupos();
+    const data: any[] = [];
+
+    grupos.forEach(grupo => {
+      const media = this.getMediaPorPerguntaEGrupo(competencia, grupo);
+      if (media !== null && !isNaN(media)) {
+        data.push({
+          name: grupo,
+          value: media
+        });
+      }
+    });
+
+    // Adicionar resultado final (média geral) para a competência
+    let somaTotal = 0;
+    let contadorTotal = 0;
+
+    grupos.forEach(grupo => {
+      const media = this.getMediaPorPerguntaEGrupo(competencia, grupo);
+      if (media !== null && !isNaN(media)) {
+        somaTotal += media;
+        contadorTotal++;
+      }
+    });
+
+    if (contadorTotal > 0) {
+      const mediaFinal = somaTotal / contadorTotal;
+      data.push({
+        name: 'Resultado Final',
+        value: mediaFinal
+      });
+    }
+
+    return data;
+  }
+
+  // Método para obter esquema de cores específico para gráfico de barras comparativo
+  getSecaoBarraComparativaColorScheme(secao: any) {
+    const grupos = this.getGrupos();
+    const coresCategorias = this.paletasCores.categorias.cores;
+    const corResultadoFinal = '#FF6B35'; // Cor especial para resultado final
+
+    const domain: string[] = [];
+
+    // Cores para cada categoria
+    grupos.forEach((grupo, index) => {
+      domain.push(coresCategorias[index % coresCategorias.length]);
+    });
+
+    // Cor para resultado final
+    domain.push(corResultadoFinal);
+
+    return { domain };
+  }
+
+  // Método para gerar tooltip informativo para cada cor
+  getCorTooltip(secao: any, index: number): string {
+    const paletaSelecionada = secao?.paletaCor || secao?.['paletaCor'] || 'padrao';
+
+    if (paletaSelecionada === 'categorias') {
+      const grupos = this.getGrupos();
+      const coresCategorias = this.paletasCores.categorias.cores;
+
+      if (index < grupos.length) {
+        return `${grupos[index]}: ${coresCategorias[index % coresCategorias.length]}`;
+      } else if (index === grupos.length) {
+        return `Resultado Final: #FF6B35`;
+      }
+    }
+
+    // Para outras paletas, retornar apenas a cor
+    const cores = this.getColorSchemeParaSecao(secao).domain;
+    return cores[index] || '';
+  }
+
   getSecaoPieData(secao: any) {
     const competenciasSelecionadas = this.getCompetenciasSelecionadasParaGraficos(secao);
     const grupos = this.getGrupos();
@@ -1706,7 +1871,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onTipoGraficoChange(secao: any, i: number) {
-    secao['tipoGrafico'] = this.getTipoGraficoControl(i).value;
+    const novoTipo = this.getTipoGraficoControl(i).value;
+    secao['tipoGrafico'] = novoTipo;
+
+    // Se mudou para "Barra Comparativa", automaticamente selecionar paleta "Categorias Distintas"
+    if (novoTipo === 'barra') {
+      const paletaControl = this.getPaletaCorControl(i);
+      if (paletaControl && paletaControl.value !== 'categorias') {
+        paletaControl.setValue('categorias');
+        secao['paletaCor'] = 'categorias';
+        console.log('Paleta automaticamente alterada para "Categorias Distintas" para gráfico de barras comparativo');
+      }
+    }
+
+    this.invalidateCache(`secao-${secao.id}`);
   }
 
   getTipoGraficoControl(i: number): FormControl {
@@ -1757,6 +1935,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log('Usando cores padrão da paleta personalizada');
         return { domain: this.paletasCores['personalizada'].cores };
       }
+    }
+
+    // Para paleta "Categorias Distintas", usar cores específicas para cada categoria
+    if (paletaSelecionada === 'categorias') {
+      return this.getSecaoBarraComparativaColorScheme(secao);
     }
 
     const paletas = this.paletasCores as any;
@@ -2232,10 +2415,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (templateSnap.exists()) {
         const templateData = templateSnap.data();
         this.relatorioConfiguracao = templateData['configuracao'] || [];
-      this.competencias = templateData['competencias'] || [];
+
+        // Aplicar competências do template apenas se não houver competências específicas selecionadas
+        if (this.competencias.length === 0) {
+          this.competencias = templateData['competencias'] || [];
+        }
+
         this.atualizarFormArrayComConfiguracao();
-      // Atualizar perguntas bloqueadas após carregar competências
-      this.atualizarPerguntasBloqueadas();
+        // Atualizar perguntas bloqueadas após carregar competências
+        this.atualizarPerguntasBloqueadas();
         this.snackBar.open(`Template '${templateData['nome']}' aplicado!`, 'Fechar', { duration: 2500 });
     }
   }
@@ -3772,6 +3960,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       } as Competencia));
 
       console.log('🎯 Competências carregadas:', this.allCompetencies.length);
+
+      // Aplicar competências pendentes se houver
+      if (this.pendingCompetencyIds.length > 0) {
+        console.log('🎯 Aplicando competências pendentes:', this.pendingCompetencyIds);
+        this.competencias = this.allCompetencies.filter((comp: Competencia) =>
+          this.pendingCompetencyIds.includes(comp.id)
+        );
+        console.log('🎯 Competências aplicadas:', this.competencias);
+
+        // Limpar IDs pendentes após aplicar
+        this.pendingCompetencyIds = [];
+      }
     } catch (error) {
       console.error('Erro ao carregar competências:', error);
       this.allCompetencies = [];
@@ -3941,43 +4141,37 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Calcula os dados para a Janela de Johari.
-   * @param secao A configuração da seção do relatório.
-   * @returns Um objeto `JohariWindowData` com as competências distribuídas.
+   * Calcula os dados para a Janela de Johari (pontos Auto x Outros).
    */
   getJohariWindowData(secao: any): JohariWindowData {
     const competenciasSelecionadas = this.getCompetenciasSelecionadasParaSecao(secao);
-    const pontoCorte = 3.5; // Ponto de corte pode ser configurável no futuro
-    const dadosJohari: JohariWindowData = {
-      arena: [],
-      pontoCego: [],
-      fachada: [],
-      desconhecido: [],
-    };
+    const threshold = 3.5; // linha de corte
+    const palette = [
+      '#5C6BC0', // A
+      '#43A047', // B
+      '#E53935', // C
+      '#FB8C00', // D
+      '#8D6E63', // E (marrom/oliva)
+      '#546E7A', // F (cinza azulado)
+      '#7E57C2', '#00897B', '#EF6C00', '#26A69A', '#9CCC65', '#FF7043'
+    ];
 
+    const points = [] as JohariWindowData['points'];
     if (!this.mediasPorCompetencia || this.mediasPorCompetencia.length === 0) {
-      return dadosJohari;
+      return { points, threshold };
     }
 
-    for (const competencia of competenciasSelecionadas) {
+    competenciasSelecionadas.forEach((competencia, idx) => {
       const dadosCompetencia = this.mediasPorCompetencia.find(m => m.competenciaId === competencia.id);
-      if (!dadosCompetencia) continue;
+      if (!dadosCompetencia) return;
+      const self = dadosCompetencia.medias.find(m => m.grupo === 'Autoavaliação')?.media ?? 0;
+      const others = this.getMediaPonderadaOutros(dadosCompetencia.medias);
+      const label = String.fromCharCode(65 + (idx % 26)); // A..Z
+      const color = palette[idx % palette.length];
+      points.push({ label, name: competencia.nome, self: self || 0, others: others || 0, color });
+    });
 
-      const mediaAuto = dadosCompetencia.medias.find(m => m.grupo === 'Autoavaliação')?.media ?? 0;
-      const mediaOutros = this.getMediaPonderadaOutros(dadosCompetencia.medias);
-
-      if (mediaAuto >= pontoCorte && mediaOutros >= pontoCorte) {
-        dadosJohari.arena.push(competencia.nome);
-      } else if (mediaAuto < pontoCorte && mediaOutros >= pontoCorte) {
-        dadosJohari.pontoCego.push(competencia.nome);
-      } else if (mediaAuto >= pontoCorte && mediaOutros < pontoCorte) {
-        dadosJohari.fachada.push(competencia.nome);
-      } else {
-        dadosJohari.desconhecido.push(competencia.nome);
-      }
-    }
-
-    return dadosJohari;
+    return { points, threshold };
   }
 
   /**

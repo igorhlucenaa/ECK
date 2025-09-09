@@ -6,8 +6,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import { ReportHeadlessDialogComponent } from './report-headless-dialog.component';
-import { firstValueFrom } from 'rxjs';
+
+
 import { MaterialModule } from '../../../material.module';
 
 interface UnifiedParticipant {
@@ -40,6 +40,7 @@ interface ReportGenerationData {
   participant: UnifiedParticipant;
   projectId: string;
   assessmentId: string;
+  clientId: string;
 }
 
 @Component({
@@ -121,7 +122,7 @@ interface ReportGenerationData {
               <mat-chip-listbox>
                 <mat-chip>
                   <mat-icon matChipAvatar>layers</mat-icon>
-                  {{ templateControl.value.sections?.length || 0 }} seções configuradas
+                  {{ templateControl.value.sections.length || 0 }} seções configuradas
                 </mat-chip>
               </mat-chip-listbox>
             </div>
@@ -147,7 +148,7 @@ interface ReportGenerationData {
                       {{ competency.description }}
                     </span>
                     <span style="font-size: 11px; color: #888;">
-                      {{ competency.perguntasIds?.length || 0 }} questões
+                      {{ competency.perguntasIds.length || 0 }} questões
                     </span>
                   </div>
                 </mat-option>
@@ -304,29 +305,55 @@ export class ReportGenerationModalComponent implements OnInit {
 
   async loadCompetencies(): Promise<void> {
     try {
-      const competenciesCollection = collection(this.firestore, 'competencies');
-      let competenciesSnapshot;
+      // Buscar grupos de competências do cliente
+      const groupsCollection = collection(this.firestore, 'competencyGroups');
+      let groupsSnapshot;
 
-      // Se temos assessmentId, filtrar por ele
-      if (this.data.assessmentId) {
-        const competenciesQuery = query(competenciesCollection, where('assessmentId', '==', this.data.assessmentId));
-        competenciesSnapshot = await getDocs(competenciesQuery);
+      if (this.data.clientId) {
+        const groupsQuery = query(groupsCollection, where('clientId', '==', this.data.clientId));
+        groupsSnapshot = await getDocs(groupsQuery);
       } else {
-        competenciesSnapshot = await getDocs(competenciesCollection);
+        // Fallback: buscar todas as competências se não tiver clientId
+        const competenciesCollection = collection(this.firestore, 'competencies');
+        let competenciesSnapshot;
+
+        if (this.data.assessmentId) {
+          const competenciesQuery = query(competenciesCollection, where('assessmentId', '==', this.data.assessmentId));
+          competenciesSnapshot = await getDocs(competenciesQuery);
+        } else {
+          competenciesSnapshot = await getDocs(competenciesCollection);
+        }
+
+        this.competencies = competenciesSnapshot.docs.map(doc => {
+          const data: any = doc.data();
+          return {
+            id: doc.id,
+            name: data['name'] || data['nome'] || 'Competência sem nome',
+            description: data['description'] || data['descricao'] || '',
+            perguntasIds: data['perguntasIds'] || data['questionIds'] || [],
+            assessmentId: data['assessmentId'] || undefined
+          } as Competency;
+        });
+        return;
       }
 
-      this.competencies = competenciesSnapshot.docs.map(doc => {
-        const data: any = doc.data();
-        return {
+      // Processar grupos de competências
+      this.competencies = [];
+      groupsSnapshot.docs.forEach(doc => {
+        const groupData = doc.data();
+        const groupName = groupData['name'] || 'Grupo sem nome';
+
+        // Adicionar o grupo como uma competência
+        this.competencies.push({
           id: doc.id,
-          name: data['name'] || data['nome'] || 'Competência sem nome',
-          description: data['description'] || data['descricao'] || '',
-          perguntasIds: data['perguntasIds'] || data['questionIds'] || [],
-          assessmentId: data['assessmentId'] || undefined
-        } as Competency;
+          name: groupName,
+          description: `Grupo de competências: ${groupData['competencias']?.length || 0} competências`,
+          perguntasIds: groupData['competencias'] || [],
+          assessmentId: groupData['assessmentId'] || undefined
+        } as Competency);
       });
 
-      console.log('Competências carregadas:', this.competencies.length);
+      console.log('Grupos de competências carregados:', this.competencies.length);
     } catch (error) {
       console.error('Erro ao carregar competências:', error);
       this.competencies = [];
@@ -343,7 +370,7 @@ export class ReportGenerationModalComponent implements OnInit {
       total + (comp.perguntasIds?.length || 0), 0);
   }
 
-  async generateReport(): Promise<void> {
+    async generateReport(): Promise<void> {
     if (this.templateControl.invalid || this.competenciesControl.invalid) {
       this.snackBar.open('Por favor, selecione um template e pelo menos uma competência.', 'Fechar', { duration: 3000 });
       return;
@@ -352,25 +379,31 @@ export class ReportGenerationModalComponent implements OnInit {
     this.isGenerating = true;
 
     try {
-      // Gerar PDF em background (sem navegação) usando o ReportsComponent embutido e invisível
-      const headlessRef = this.dialog.open(ReportHeadlessDialogComponent, {
-        width: '1px',
-        height: '1px',
-        panelClass: 'invisible-dialog',
-        data: {
-          assessmentId: this.data.assessmentId,
-          participantId: this.data.participant.id,
-          participantName: this.data.participant.name,
-          templateId: this.templateControl.value?.id || '',
-          competencyIds: (this.competenciesControl.value || []).map(c => c.id)
-        },
-        disableClose: true
+      // Navegar para a página de relatórios com configuração automática
+      const selectedTemplate = this.templateControl.value!;
+      const selectedCompetencies = this.competenciesControl.value || [];
+
+                   // Preparar parâmetros para navegação
+             const queryParams = {
+               mode: 'individual',
+               assessmentId: this.data.assessmentId,
+               participantId: this.data.participant.id,
+               participantName: this.data.participant.name,
+               templateId: selectedTemplate.id,
+               competencyIds: JSON.stringify(selectedCompetencies.map(c => c.id)),
+               autoGenerate: 'true',
+               aba: 'visualizar'
+             };
+
+      // Fechar este modal
+      this.dialogRef.close({ success: true });
+
+            // Navegar para a página de relatórios
+      this.router.navigate(['/reports'], {
+        queryParams: queryParams
       });
 
-      await firstValueFrom(headlessRef.afterClosed());
-
-      this.dialogRef.close({ success: true });
-      this.snackBar.open('Relatório gerado com sucesso!', 'Fechar', { duration: 3000 });
+      this.snackBar.open('Redirecionando para geração do relatório...', 'Fechar', { duration: 3000 });
 
     } catch (error) {
       console.error('Erro ao gerar relatório:', error);
@@ -379,4 +412,6 @@ export class ReportGenerationModalComponent implements OnInit {
       this.isGenerating = false;
     }
   }
+
+
 }

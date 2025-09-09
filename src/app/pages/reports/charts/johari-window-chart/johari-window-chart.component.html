@@ -1,80 +1,63 @@
-<div class="johari-container">
-  <!-- Eixo Vertical -->
-  <div class="axis-label vertical-label-left">
-    <div class="vertical-text">EU SEI</div>
-  </div>
-  <div class="axis-label vertical-label-right">
-    <div class="vertical-text">EU NÃO SEI</div>
-  </div>
+<div class="johari-wrapper">
+  <!-- Título dos eixos -->
+  <div class="y-title"><span>Pontuação média sem autoavaliações</span></div>
+  <div class="x-title">Próprio(a)</div>
 
-  <!-- Eixo Horizontal -->
-  <div class="axis-label horizontal-label-top">OUTROS SABEM</div>
-  <div class="axis-label horizontal-label-bottom">OUTROS NÃO SABEM</div>
+  <!-- Área do gráfico -->
+  <div class="plot-area">
+    <!-- Linhas de grade 1..5 -->
+    <div class="grid"></div>
 
-  <!-- Grid da Janela de Johari -->
-  <div class="johari-grid">
-    <!-- Quadrante 1: ARENA (Aberto) -->
-    <div class="quadrant arena" [style.background-color]="quadrantColors.arena">
-      <div class="quadrant-title">
-        <mat-icon>visibility</mat-icon>
-        <span>ARENA (Aberto)</span>
-      </div>
-      <div class="quadrant-content">
-        <p *ngIf="data.arena.length === 0" class="empty-text">Nenhuma competência nesta área.</p>
-        <mat-chip-set>
-          <mat-chip *ngFor="let item of data.arena">{{ item }}</mat-chip>
-        </mat-chip-set>
-      </div>
+    <!-- Linha de corte vertical -->
+    <div class="threshold-v" [style.left.%]="thresholdPercent"></div>
+    <!-- Linha de corte horizontal (mesmo valor do threshold) -->
+    <div class="threshold-h" [style.top.%]="toPercentY(data.threshold)"></div>
+
+    <!-- Ticks X (1..5) -->
+    <div class="x-ticks">
+      <span *ngFor="let v of [1,2,3,4,5]" [style.left.%]="toPercentX(v)">{{ v }}</span>
+    </div>
+    <!-- Ticks Y (1..5) -->
+    <div class="y-ticks">
+      <span *ngFor="let v of [1,2,3,4,5]" [style.top.%]="toPercentY(v)">{{ v }}</span>
     </div>
 
-    <!-- Quadrante 2: PONTO CEGO (Cego) -->
-    <div class="quadrant ponto-cego" [style.background-color]="quadrantColors.pontoCego">
-      <div class="quadrant-title">
-        <mat-icon>help_outline</mat-icon>
-        <span>PONTO CEGO (Cego)</span>
-      </div>
-      <div class="quadrant-content">
-        <p *ngIf="data.pontoCego.length === 0" class="empty-text">Nenhuma competência nesta área.</p>
-        <mat-chip-set>
-          <mat-chip *ngFor="let item of data.pontoCego">{{ item }}</mat-chip>
-        </mat-chip-set>
-      </div>
+    <!-- Pontos -->
+    <div *ngFor="let p of data.points" class="point" [style.left.%]="toPercentX(p.self)" [style.top.%]="toPercentY(p.others)" [style.background-color]="p.color" [matTooltip]="p.name + ' — ' + analysisLabel(p)">
+      {{ p.label }}
     </div>
 
-    <!-- Quadrante 3: FACHADA (Oculto) -->
-    <div class="quadrant fachada" [style.background-color]="quadrantColors.fachada">
-      <div class="quadrant-title">
-        <mat-icon>security</mat-icon>
-        <span>FACHADA (Oculto)</span>
-      </div>
-      <div class="quadrant-content">
-        <p *ngIf="data.fachada.length === 0" class="empty-text">Nenhuma competência nesta área.</p>
-        <mat-chip-set>
-          <mat-chip *ngFor="let item of data.fachada">{{ item }}</mat-chip>
-        </mat-chip-set>
-      </div>
-    </div>
-
-    <!-- Quadrante 4: DESCONHECIDO -->
-    <div class="quadrant desconhecido" [style.background-color]="quadrantColors.desconhecido">
-      <div class="quadrant-title">
-        <mat-icon>blur_on</mat-icon>
-        <span>DESCONHECIDO</span>
-      </div>
-      <div class="quadrant-content">
-        <p *ngIf="data.desconhecido.length === 0" class="empty-text">Nenhuma competência nesta área.</p>
-        <mat-chip-set>
-          <mat-chip *ngFor="let item of data.desconhecido">{{ item }}</mat-chip>
-        </mat-chip-set>
-      </div>
-    </div>
+    <!-- Rótulos de quadrantes (opcional) -->
+    <div class="quad-label top-left">Área de desenvolvimento conhecida</div>
+    <div class="quad-label top-right">Ponto cego</div>
+    <div class="quad-label bottom-left">Ponto forte oculto</div>
+    <div class="quad-label bottom-right">Ponto forte conhecido</div>
   </div>
 
-  <!-- Mensagem de dados vazios -->
-  <div *ngIf="allCompetenciesEmpty" class="no-data-overlay">
-    <mat-icon>info</mat-icon>
-    <p>Não há dados suficientes para gerar a Janela de Johari.</p>
-    <p>Certifique-se de que a autoavaliação e as avaliações de outros foram concluídas.</p>
+  <!-- Tabela/legenda -->
+  <div class="legend-table" *ngIf="data.points.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:56px">ID</th>
+          <th>Comportamentos</th>
+          <th>Próprio(a)</th>
+          <th>Outros</th>
+          <th>Análise de defasagem</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of data.points">
+          <td>
+            <span class="chip" [style.background-color]="p.color">{{ p.label }}</span>
+          </td>
+          <td>{{ p.name }}</td>
+          <td>{{ p.self | number:'1.2-2' }}</td>
+          <td>{{ p.others | number:'1.2-2' }}</td>
+          <td>{{ analysisLabel(p) }}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>
 

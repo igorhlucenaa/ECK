@@ -63,7 +63,7 @@
           <!-- Campo de projeto removido -->
         </div>
         <div class="row" *ngIf="form.get('clientId')?.value && competencies.length > 0">
-          <div class="col-md-12">
+          <div class="col-md-8">
             <mat-form-field class="w-100" appearance="outline">
               <mat-label>Competências</mat-label>
               <mat-select formControlName="competencyIds" multiple>
@@ -73,6 +73,36 @@
               </mat-select>
               <mat-hint>Selecione uma ou mais competências para gerar o formulário.</mat-hint>
             </mat-form-field>
+          </div>
+
+          <div class="col-md-4 d-flex align-items-center">
+            <mat-slide-toggle color="primary" formControlName="mixQuestions">
+              Misturar perguntas
+            </mat-slide-toggle>
+          </div>
+        </div>
+
+        <!-- Listas de competências salvas por cliente -->
+        <div class="row" *ngIf="form.get('clientId')?.value && competencyLists.length > 0">
+          <div class="col-md-6">
+            <mat-form-field class="w-100" appearance="outline">
+              <mat-label>Listas de competências salvas</mat-label>
+              <mat-select (selectionChange)="onCompetencyListChange($event.value)">
+                <mat-option *ngFor="let list of competencyLists" [value]="list.id">
+                  {{ list.name }}
+                </mat-option>
+              </mat-select>
+              <mat-hint>Carregue rapidamente uma seleção pré-salva.</mat-hint>
+            </mat-form-field>
+          </div>
+          <div class="col-md-6 d-flex align-items-end">
+            <mat-form-field class="me-2 flex-grow-1" appearance="outline">
+              <mat-label>Nome da nova lista</mat-label>
+              <input matInput #listName placeholder="Ex.: Liderança + Comunicação" />
+            </mat-form-field>
+            <button mat-stroked-button color="primary" type="button" (click)="saveCurrentSelectionAsList(listName.value)">
+              Salvar seleção como lista
+            </button>
           </div>
         </div>
       </mat-card-content>

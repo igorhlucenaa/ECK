@@ -1161,7 +1161,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       data: {
         participant: participant,
         projectId: participant.projectId,
-        assessmentId: participant.assessmentId
+        assessmentId: participant.assessmentId,
+        clientId: participant.clientId
       },
       disableClose: false
     });

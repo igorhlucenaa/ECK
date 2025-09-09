@@ -89,7 +89,7 @@
 </div>
 
 <!-- Botão de debug temporário -->
-<div *ngIf="selectedAssessmentId && dataSource.length > 0" style="margin-bottom: 16px;">
+<!-- <div *ngIf="selectedAssessmentId && dataSource.length > 0" style="margin-bottom: 16px;">
   <button mat-stroked-button color="accent" (click)="debugTabelaDetalhada()" style="margin-right: 8px;">
     <mat-icon>bug_report</mat-icon>
     Debug Tabela Detalhada
@@ -111,10 +111,10 @@
     Debug Avaliações Altas
   </button>
 
-</div>
+</div> -->
 
 <!-- TAB GROUP START -->
-<mat-tab-group>
+<mat-tab-group [selectedIndex]="selectedTabIndex">
   <!--
   <mat-tab label="Dados">
     ...
@@ -591,6 +591,18 @@
                     </mat-card-title>
                   </mat-card-header>
                   <mat-card-content>
+                    <!-- Mensagem especial para gráfico de barras comparativo -->
+                    <div *ngIf="secaoCtrl.get('tipoGrafico')?.value === 'barra'"
+                         style="background-color: #e8f5e8; border-left: 4px solid #4caf50; padding: 12px; margin-bottom: 16px; border-radius: 4px;">
+                      <div style="display: flex; align-items: center;">
+                        <mat-icon style="color: #4caf50; margin-right: 8px;">info</mat-icon>
+                        <span style="color: #2e7d32; font-size: 14px;">
+                          <strong>Gráfico de Barras Comparativo:</strong> Cada categoria terá uma cor distinta para melhor visualização.
+                          A paleta "Categorias Distintas" é recomendada para este tipo de gráfico.
+                        </span>
+                      </div>
+                    </div>
+
                     <div style="display: grid; grid-template-columns: 1fr 150px 80px; gap: 16px; align-items: start;">
                       <mat-form-field appearance="outline">
                         <mat-label>Paleta de cores</mat-label>
@@ -607,7 +619,7 @@
                         <div *ngFor="let cor of getColorSchemeParaSecao(relatorioConfiguracao[i]).domain; let idx = index"
                              [style.background-color]="cor"
                              style="width: 24px; height: 24px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer;"
-                             [matTooltip]="cor">
+                             [matTooltip]="getCorTooltip(relatorioConfiguracao[i], idx)">
                         </div>
                       </div>
 
@@ -816,11 +828,6 @@
                 </mat-select>
               </mat-form-field>
 
-              <!-- Gráfico Janela de Johari -->
-              <div *ngSwitchCase="'janela_johari'">
-                <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
-              </div>
-
               <!-- Lista das competências selecionadas -->
               <div style="margin-bottom: 16px;">
                 <h4>Competências analisadas:</h4>
@@ -835,20 +842,34 @@
 
               <!-- Gráfico único comparativo -->
               <ng-container [ngSwitch]="getTipoGraficoControl(i).value || 'barra'">
+                <!-- Janela de Johari -->
+                <div *ngSwitchCase="'janela_johari'">
+                  <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+                </div>
                 <!-- Gráfico de barras comparativo -->
                 <div *ngSwitchCase="'barra'">
-                  <ng-container *ngIf="getSecaoStackedData(secao) as dadosGrafico">
-                    <ngx-charts-bar-horizontal-stacked
-                      [results]="dadosGrafico"
-                      [xAxis]="false"
-                      [yAxis]="true"
-                      [view]="[700, (dadosGrafico.length * 60 + 50) < 200 ? 200 : (dadosGrafico.length * 60 + 50)]"
-                      [style.height.px]="(dadosGrafico.length * 60 + 50) < 200 ? 200 : (dadosGrafico.length * 60 + 50)"
-                      [legend]="true"
-                      [showGridLines]="true"
-                      [scheme]="getColorSchemeParaSecao(secao)"
-                    ></ngx-charts-bar-horizontal-stacked>
-                  </ng-container>
+                  <div style="display: flex; flex-direction: column; gap: 30px;">
+                    <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                      <h4>{{ comp.nome }}</h4>
+                      <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
+                      <ng-container *ngIf="getCompetenciaBarraComparativaData(comp) as dadosGrafico">
+                        <ngx-charts-bar-horizontal
+                          [results]="dadosGrafico"
+                          [xAxis]="true"
+                          [yAxis]="true"
+                          [view]="[800, (dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)]"
+                          [style.height.px]="(dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)"
+                          [legend]="true"
+                          [showGridLines]="true"
+                          [showDataLabel]="true"
+                          [barPadding]="8"
+                          [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
+                          [xAxisLabel]="'Pontuação (0-5)'"
+                          [yAxisLabel]="'Categorias'"
+                        ></ngx-charts-bar-horizontal>
+                      </ng-container>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Gráfico radar comparativo -->
@@ -1108,9 +1129,9 @@
             <div [innerHTML]="secao.texto"></div>
 
             <!-- Botão de debug temporário -->
-            <button mat-raised-button color="accent" (click)="debugAvaliacoesAltasSimples()" style="margin-bottom: 16px;">
+            <!-- <button mat-raised-button color="accent" (click)="debugAvaliacoesAltasSimples()" style="margin-bottom: 16px;">
               🔍 Debug Avaliações Altas
-            </button>
+            </button> -->
 
             <!-- Avaliações mais altas -->
             <ng-container *ngIf="gerarTabelaAvaliacoesAltas(competencias.length) as tabelaAltas">

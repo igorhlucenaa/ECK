@@ -49,6 +49,7 @@ export class CreateAssessmentComponent implements OnInit {
   form: FormGroup;
   clients: { id: string; name: string }[] = [];
   competencies: { id: string; name: string }[] = [];
+  competencyLists: { id: string; name: string; competencyIds: string[] }[] = [];
   userRole: string | null = null;
   creatorModel: SurveyCreatorModel;
 
@@ -67,6 +68,7 @@ export class CreateAssessmentComponent implements OnInit {
       name: ['', Validators.required],
       description: [''],
       competencyIds: [[]], // Alterado para FormControl para multi-select
+      mixQuestions: [true],
     });
   }
 
@@ -113,13 +115,20 @@ export class CreateAssessmentComponent implements OnInit {
     this.form.get('clientId')?.valueChanges.subscribe(clientId => {
       if (clientId) {
         this.loadCompetencies(clientId);
+        this.loadCompetencyLists(clientId);
       } else {
         this.competencies = []; // Limpa as competências se nenhum cliente for selecionado
+        this.competencyLists = [];
       }
     });
 
     // Observa mudanças nas competências selecionadas para gerar o formulário
     this.form.get('competencyIds')?.valueChanges.subscribe(async (competencyIds) => {
+      await this.generateSurveyFromCompetencies(competencyIds);
+    });
+
+    this.form.get('mixQuestions')?.valueChanges.subscribe(async () => {
+      const competencyIds = this.form.get('competencyIds')?.value as string[];
       await this.generateSurveyFromCompetencies(competencyIds);
     });
   }
@@ -145,8 +154,10 @@ export class CreateAssessmentComponent implements OnInit {
     }
 
     try {
-      const pages = [];
+      const pages: any[] = [];
       let questionCounter = 0; // Garante nomes de perguntas únicos
+      const mixQuestions = !!this.form.get('mixQuestions')?.value;
+      const allQuestions: any[] = [];
 
       for (const id of competencyIds) {
         const docRef = doc(this.firestore, 'competencies', id);
@@ -191,16 +202,31 @@ export class CreateAssessmentComponent implements OnInit {
               return surveyQuestion;
             });
 
-            // Cria uma página para a competência
-            const page = {
-              name: `page_${id}`,
-              title: competencyData['name'],
-              description: competencyData['description'],
-              elements: questions,
-            };
-            pages.push(page);
+            if (mixQuestions) {
+              allQuestions.push(...questions);
+            } else {
+              // Cria uma página para a competência (sem descrição, conforme solicitação)
+              const page = {
+                name: `page_${id}`,
+                title: competencyData['name'],
+                description: '',
+                elements: questions,
+              };
+              pages.push(page);
+            }
           }
         }
+      }
+
+      if (mixQuestions) {
+        // Embaralha perguntas de todas as competências e cria uma única página
+        this.shuffleArray(allQuestions);
+        pages.push({
+          name: 'page_global',
+          title: this.form.get('name')?.value || 'Avaliação',
+          description: '',
+          elements: allQuestions,
+        });
       }
 
       const surveyJSON = {
@@ -213,6 +239,57 @@ export class CreateAssessmentComponent implements OnInit {
       this.creatorModel.JSON = surveyJSON;
     } catch (error) {
       console.error('Erro ao gerar formulário a partir de competências:', error);
+    }
+  }
+
+  private shuffleArray<T>(array: T[]): void {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+  async loadCompetencyLists(clientId: string): Promise<void> {
+    try {
+      const listsCollection = collection(this.firestore, 'competencyLists');
+      const qy = query(listsCollection, where('clientId', '==', clientId));
+      const snapshot = await getDocs(qy);
+      this.competencyLists = snapshot.docs.map((d) => ({
+        id: d.id,
+        name: (d.data() as any)['name'],
+        competencyIds: ((d.data() as any)['competencyIds'] as string[]) || [],
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar listas de competências:', error);
+    }
+  }
+
+  onCompetencyListChange(listId: string): void {
+    const list = this.competencyLists.find((l) => l.id === listId);
+    if (!list) return;
+    this.form.get('competencyIds')?.setValue(list.competencyIds);
+  }
+
+  async saveCurrentSelectionAsList(name: string): Promise<void> {
+    const clientId = this.form.get('clientId')?.value as string;
+    const competencyIds = (this.form.get('competencyIds')?.value as string[]) || [];
+    if (!clientId || !name || competencyIds.length === 0) {
+      this.snackBar.open('Informe um nome e selecione ao menos uma competência.', 'Fechar', { duration: 3000 });
+      return;
+    }
+    try {
+      const listsCollection = collection(this.firestore, 'competencyLists');
+      await addDoc(listsCollection, {
+        clientId,
+        name,
+        competencyIds,
+        createdAt: new Date(),
+      });
+      this.snackBar.open('Lista salva com sucesso!', 'Fechar', { duration: 3000 });
+      await this.loadCompetencyLists(clientId);
+    } catch (error) {
+      console.error('Erro ao salvar lista de competências:', error);
+      this.snackBar.open('Erro ao salvar lista.', 'Fechar', { duration: 3000 });
     }
   }
 

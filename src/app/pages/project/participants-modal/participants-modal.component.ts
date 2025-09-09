@@ -50,6 +50,7 @@ interface UnifiedParticipant {
   selected?: boolean;
   category: string;
   type: 'avaliado' | 'avaliador';
+  clientId: string;
 }
 
 interface MailTemplate {
@@ -544,6 +545,7 @@ export class ParticipantsModalComponent implements OnInit {
           selected: false,
           category: category,
           type: type,
+          clientId: this.data.clientId,
         });
       }
 
@@ -1026,7 +1028,8 @@ export class ParticipantsModalComponent implements OnInit {
       data: {
         participant: participant,
         projectId: this.data.projectId,
-        assessmentId: selectedAssessmentId
+        assessmentId: selectedAssessmentId,
+        clientId: participant.clientId
       },
       disableClose: false
     });
