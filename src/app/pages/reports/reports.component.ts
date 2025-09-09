@@ -2437,7 +2437,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open('Não foi possível encontrar o preview do relatório.', 'Fechar', { duration: 3000 });
       return false;
     }
-    const canvas = await html2canvas(element, { scale: 2 });
+    // Ativar modo exportação (oculta UI visível) e capturar o próprio preview em tela
+    const root = document.body;
+    root.classList.add('export-mode');
+    await new Promise(r => setTimeout(r, 50)); // pequeno delay para aplicar estilos
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+    root.classList.remove('export-mode');
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDFmod.jsPDF('p', 'mm', 'a4');
     const pageWidth = 210;
@@ -2448,13 +2453,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     let heightLeft = imgHeight;
     let position = margin;
 
-    pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight - 2 * margin;
-    while (heightLeft > 0) {
-      position = position - (pageHeight - 2 * margin);
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight - 2 * margin;
+    // Fatiar a imagem verticalmente para evitar cortes de seções
+    const sliceHeight = (pageHeight - 2 * margin) * (canvas.width / imgWidth);
+    let y = 0;
+    let firstPage = true;
+    while (y < canvas.height) {
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = Math.min(sliceHeight, canvas.height - y);
+      const ctx = sliceCanvas.getContext('2d');
+      if (ctx) ctx.drawImage(canvas, 0, y, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
+      const sliceImg = sliceCanvas.toDataURL('image/png');
+      if (!firstPage) pdf.addPage();
+      pdf.addImage(sliceImg, 'PNG', margin, margin, imgWidth, sliceCanvas.height * imgWidth / canvas.width);
+      y += sliceHeight;
+      firstPage = false;
     }
 
     // Nome do arquivo baseado no modo
@@ -2467,6 +2480,56 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     pdf.save(fileName);
     this.snackBar.open('PDF exportado com sucesso!', 'Fechar', { duration: 3000 });
     return true;
+  }
+
+  // Exportar relatório como DOCX
+  async exportarRelatorioDOCX(): Promise<void> {
+    let docxMod: any;
+    try {
+      docxMod = await import('docx');
+    } catch (e) {
+      this.snackBar.open('Pacote docx não encontrado. Instale com: npm i docx', 'Fechar', { duration: 4000 });
+      return;
+    }
+    const { Document, Packer, Paragraph, ImageRun } = docxMod;
+    const element = document.getElementById('report-preview');
+    if (!element) return;
+
+    // Rasteriza o preview como imagem (ocultando UI) e insere no DOCX
+    const { default: html2canvas } = await import('html2canvas');
+    const root = document.body;
+    root.classList.add('export-mode');
+    await new Promise(r => setTimeout(r, 50));
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+    root.classList.remove('export-mode');
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const base64 = dataUrl.split(',')[1];
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const uint8Array = new Uint8Array(byteNumbers);
+
+    const image = new ImageRun({
+      data: uint8Array,
+      transformation: { width: 600, height: Math.round(600 * (canvas.height / canvas.width)) }
+    });
+
+    const doc = new Document({
+      sections: [
+        {
+          properties: {},
+          children: [new Paragraph({ children: [image] })]
+        }
+      ]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'relatorio-360.docx';
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   removerCompetencia(c: Competencia) {

@@ -764,14 +764,17 @@
   </mat-tab>
 
   <mat-tab label="Visualizar Relatório">
-    <button mat-flat-button color="accent" style="margin-bottom: 16px;" (click)="exportarRelatorioPDF()">
+    <button mat-flat-button color="accent" class="ui-only" style="margin-bottom: 16px;" (click)="exportarRelatorioPDF()">
       <mat-icon>picture_as_pdf</mat-icon> Exportar PDF
     </button>
-    <button mat-flat-button color="primary" style="margin-left: 8px; margin-bottom: 16px;" (click)="exportarBaseExcel()">
+    <button mat-flat-button color="primary" class="ui-only" style="margin-left: 8px; margin-bottom: 16px;" (click)="exportarBaseExcel()">
       <mat-icon>grid_on</mat-icon> Exportar base (Excel)
     </button>
+    <button mat-flat-button color="primary" class="ui-only" style="margin-left: 8px; margin-bottom: 16px;" (click)="exportarRelatorioDOCX()">
+      <mat-icon>description</mat-icon> Exportar DOCX
+    </button>
     <div id="report-preview">
-      <div *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
+      <div class="report-section" *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
         <ng-container [ngSwitch]="secao.tipo">
                       <div *ngSwitchCase="'capa'">
               <h1>{{ secao.titulo }}</h1>
@@ -815,8 +818,8 @@
 
 
             <div *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length > 0">
-              <!-- Controle de tipo de gráfico -->
-              <mat-form-field appearance="outline" style="width: 250px; margin-bottom: 16px;">
+              <!-- Controle de tipo de gráfico (somente UI; oculto na exportação) -->
+              <mat-form-field appearance="outline" class="ui-only" style="width: 250px; margin-bottom: 16px;">
                 <mat-label>Tipo de gráfico</mat-label>
                 <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao, i)">
                   <mat-option value="barra">Barra Comparativa</mat-option>
@@ -1261,7 +1264,7 @@
             <div [innerHTML]="secao.texto"></div>
           </div>
         </ng-container>
-        <hr />
+        <hr class="ui-only" />
       </div>
     </div>
   </mat-tab>

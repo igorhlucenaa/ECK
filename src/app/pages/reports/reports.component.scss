@@ -1,3 +1,54 @@
+.ui-only {
+  print-color-adjust: exact;
+}
+
+@media print {
+  .ui-only,
+  .mat-tab-header,
+  .mat-mdc-form-field,
+  .mat-mdc-select,
+  .mat-mdc-select-arrow,
+  .mat-mdc-text-field-wrapper,
+  button,
+  .mat-mdc-checkbox,
+  .mat-mdc-card .mat-mdc-card-actions,
+  .mat-mdc-chip-set,
+  .mat-mdc-tooltip-trigger {
+    display: none !important;
+  }
+
+  #report-preview {
+    padding: 0 !important;
+  }
+}
+.report-section {
+  page-break-inside: avoid; /* evita cortar a seção no meio */
+  margin-bottom: 16px;
+}
+
+/* Quebras seguras entre seções apenas quando for necessário */
+@media print {
+  .report-section {
+    break-inside: avoid;
+  }
+}
+
+/* Oculta elementos de UI durante exportação na tela (não só em print) */
+.export-mode {
+  .ui-only,
+  .mat-tab-header,
+  .mat-mdc-form-field,
+  .mat-mdc-select,
+  .mat-mdc-select-arrow,
+  .mat-mdc-text-field-wrapper,
+  button,
+  .mat-mdc-checkbox,
+  .mat-mdc-card .mat-mdc-card-actions,
+  .mat-mdc-chip-set,
+  .mat-mdc-tooltip-trigger {
+    display: none !important;
+  }
+}
 .table-container {
   overflow-x: auto;
   width: 100%;
