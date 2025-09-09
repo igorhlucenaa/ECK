@@ -4157,18 +4157,27 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     ];
 
     const points = [] as JohariWindowData['points'];
-    if (!this.mediasPorCompetencia || this.mediasPorCompetencia.length === 0) {
-      return { points, threshold };
-    }
 
+    // Basear o cálculo na mesma fonte do gráfico de defasagem (dataSource por pergunta)
     competenciasSelecionadas.forEach((competencia, idx) => {
-      const dadosCompetencia = this.mediasPorCompetencia.find(m => m.competenciaId === competencia.id);
-      if (!dadosCompetencia) return;
-      const self = dadosCompetencia.medias.find(m => m.grupo === 'Autoavaliação')?.media ?? 0;
-      const others = this.getMediaPonderadaOutros(dadosCompetencia.medias);
-      const label = String.fromCharCode(65 + (idx % 26)); // A..Z
+      const perguntas = competencia.perguntasIds || [];
+      const selfVals: number[] = [];
+      const othersVals: number[] = [];
+
+      perguntas.forEach((perguntaId: string) => {
+        const dados = this.getDadosPerguntaDefasagem(perguntaId);
+        if (!dados) return;
+        if (dados.selfScore !== null) selfVals.push(dados.selfScore);
+        if (dados.othersScore !== null) othersVals.push(dados.othersScore);
+      });
+
+      const avg = (arr: number[]) => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+      const self = avg(selfVals);
+      const others = avg(othersVals);
+
+      const label = String.fromCharCode(65 + (idx % 26));
       const color = palette[idx % palette.length];
-      points.push({ label, name: competencia.nome, self: self || 0, others: others || 0, color });
+      points.push({ label, name: competencia.nome, self, others, color });
     });
 
     return { points, threshold };
