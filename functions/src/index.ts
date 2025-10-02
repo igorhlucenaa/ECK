@@ -133,7 +133,7 @@ export const sendEmail = onRequest((req, res) => {
     const emailPass =
       EMAIL_PASS_PARAM.value() ||
       process.env.EMAIL_PASS ||
-      'nkik bvji wshf xzpg';
+      'catt vkem hnzg gwns';
 
     const transporter = getTransporter(emailUser, emailPass);
 
