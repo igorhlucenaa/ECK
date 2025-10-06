@@ -91,7 +91,7 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./pages/reports/reports.routes').then((m) => m.ReportsRoutes),
         canActivate: [AuthGuard],
-        data: { role: 'viewer' },
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
       },
       {
         path: 'competencies',

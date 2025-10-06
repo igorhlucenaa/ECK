@@ -168,6 +168,15 @@
           </div>
         </mat-button-toggle>
       </mat-button-toggle-group>
+
+      <h6 class="f-s-16 f-w-600 mat-subtitle-1 f-s-16 m-b-16 m-t-24 p-t-16">
+        Language
+      </h6>
+      <div class="d-flex gap-8 m-b-16">
+        <button mat-stroked-button (click)="setLang('pt-BR')">Português</button>
+        <button mat-stroked-button (click)="setLang('es')">Español</button>
+        <button mat-stroked-button (click)="setLang('en')">English</button>
+      </div>
     </div>
   </ng-scrollbar>
 </div>

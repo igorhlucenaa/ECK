@@ -1,4 +1,5 @@
 import { Component, Inject, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialogModule } from '@angular/material/dialog';
@@ -11,6 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
   selector: 'app-relatorio-preview-dialog',
   standalone: true,
   imports: [
+    CommonModule,
     MatIconModule,
     MatDialogModule,
     MatButtonModule,

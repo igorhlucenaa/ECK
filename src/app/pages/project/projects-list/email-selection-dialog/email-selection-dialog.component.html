@@ -1,14 +1,14 @@
-<h2 mat-dialog-title>Selecionar Destinatários</h2>
+<h2 mat-dialog-title>{{ 'Selecionar Destinatários' | translate }}</h2>
 <div mat-dialog-content class="container">
   <div class="row">
     <!-- Campo de Busca -->
     <div class="col-md-12" style="padding: 10px">
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Buscar Participante</mat-label>
+        <mat-label>{{ 'Buscar Participante' | translate }}</mat-label>
         <input
           matInput
           (keyup)="applyFilter($event)"
-          placeholder="Digite para buscar"
+          [placeholder]="('Digite para buscar' | translate)"
         />
         <button
           mat-icon-button
@@ -26,36 +26,36 @@
   <div class="row mb-3">
     <div class="col-md-6" style="padding: 10px">
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Filtrar por Categoria</mat-label>
+        <mat-label>{{ 'Filtrar por Categoria' | translate }}</mat-label>
         <mat-select (selectionChange)="filterByCategory($event.value)">
-          <mat-option value="">Todos</mat-option>
-          <mat-option value="gestor">Gestor</mat-option>
-          <mat-option value="par">Par</mat-option>
-          <mat-option value="subordinado">Subordinado</mat-option>
-          <mat-option value="avaliado">Avaliado</mat-option>
-          <mat-option value="outros">Outros</mat-option>
+          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option value="gestor">{{ 'Gestor' | translate }}</mat-option>
+          <mat-option value="par">{{ 'Par' | translate }}</mat-option>
+          <mat-option value="subordinado">{{ 'Subordinado' | translate }}</mat-option>
+          <mat-option value="avaliado">{{ 'Avaliado' | translate }}</mat-option>
+          <mat-option value="outros">{{ 'Outros' | translate }}</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
     <div class="col-md-6" style="padding: 10px">
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Filtrar por Status</mat-label>
+        <mat-label>{{ 'Filtrar por Status' | translate }}</mat-label>
         <mat-select (selectionChange)="filterByStatus($event.value)">
-          <mat-option value="">Todos</mat-option>
-          <mat-option value="Não Enviado">Não Enviado</mat-option>
-          <mat-option value="Enviado (Pendente)">Enviado (Pendente)</mat-option>
-          <mat-option value="Respondido">Respondido</mat-option>
+          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option value="Não Enviado">{{ 'Não Enviado' | translate }}</mat-option>
+          <mat-option value="Enviado (Pendente)">{{ 'Enviado (Pendente)' | translate }}</mat-option>
+          <mat-option value="Respondido">{{ 'Respondido' | translate }}</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
     <div class="col-md-6" style="padding: 10px">
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Filtrar por Status de Entrega</mat-label>
+        <mat-label>{{ 'Filtrar por Status de Entrega' | translate }}</mat-label>
         <mat-select (selectionChange)="filterByDeliveryStatus($event.value)">
-          <mat-option value="">Todos</mat-option>
-          <mat-option value="Não Enviado">Não Enviado</mat-option>
-          <mat-option value="Enviado">Enviado</mat-option>
-          <mat-option value="Não Entregue">Não Entregue</mat-option>
+          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option value="Não Enviado">{{ 'Não Enviado' | translate }}</mat-option>
+          <mat-option value="Enviado">{{ 'Enviado' | translate }}</mat-option>
+          <mat-option value="Não Entregue">{{ 'Não Entregue' | translate }}</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -75,14 +75,14 @@
 
   <!-- Seleção de Projeto -->
   <div class="col-md-12">
-    <mat-form-field appearance="outline" class="w-100">
-      <mat-label>Selecione o Projeto</mat-label>
+      <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'Selecione o Projeto' | translate }}</mat-label>
       <mat-select
         [(ngModel)]="selectedProjectId"
         (ngModelChange)="onProjectChange()"
       >
         <mat-option *ngFor="let project of projects" [value]="project.id">
-          {{ project.name }} - expira em: {{ formatDate(project.deadline) }}
+          {{ project.name }} - {{ 'expira em' | translate }}: {{ formatDate(project.deadline) }}
         </mat-option>
       </mat-select>
     </mat-form-field>
@@ -90,17 +90,17 @@
 
   <!-- Tipo de E-mail -->
   <div class="col-md-12">
-    <mat-form-field appearance="outline" class="w-100">
-      <mat-label>Tipo de E-mail</mat-label>
+      <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'Tipo de E-mail' | translate }}</mat-label>
       <mat-select
         [(ngModel)]="emailType"
         (selectionChange)="onEmailTypeChange($event)"
       >
-        <mat-option value="cadastro">Cadastro do Usuário</mat-option>
-        <mat-option value="conviteAvaliador">Convite - Avaliador</mat-option>
-        <mat-option value="conviteRespondente">Convite - Avaliado</mat-option>
-        <mat-option value="lembreteAvaliador">Lembrete - Avaliador</mat-option>
-        <mat-option value="lembreteRespondente">Lembrete - Avaliado</mat-option>
+        <mat-option value="cadastro">{{ 'Cadastro do Usuário' | translate }}</mat-option>
+        <mat-option value="conviteAvaliador">{{ 'Convite - Avaliador' | translate }}</mat-option>
+        <mat-option value="conviteRespondente">{{ 'Convite - Avaliado' | translate }}</mat-option>
+        <mat-option value="lembreteAvaliador">{{ 'Lembrete - Avaliador' | translate }}</mat-option>
+        <mat-option value="lembreteRespondente">{{ 'Lembrete - Avaliado' | translate }}</mat-option>
       </mat-select>
     </mat-form-field>
   </div>
@@ -119,7 +119,7 @@
       "
     >
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Selecione a avaliação</mat-label>
+        <mat-label>{{ 'Selecione a avaliação' | translate }}</mat-label>
         <mat-select
           [(ngModel)]="selectedAssessmentId"
           (ngModelChange)="onAssessmentChange()"
@@ -166,7 +166,7 @@
 
           <!-- Nome -->
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Nome</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Nome' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.name }}
             </td>
@@ -174,7 +174,7 @@
 
           <!-- E-mail -->
           <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef>E-mail</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'E-mail' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.email }}
             </td>
@@ -182,7 +182,7 @@
 
           <!-- Categoria -->
           <ng-container matColumnDef="category">
-            <th mat-header-cell *matHeaderCellDef>Categoria</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Categoria' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ formatCategory(participant.category) }}
             </td>
@@ -190,7 +190,7 @@
 
           <!-- Status -->
           <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Status' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.status }}
             </td>
@@ -206,7 +206,7 @@
 
           <!-- Link Expirado -->
           <ng-container matColumnDef="isLinkExpired">
-            <th mat-header-cell *matHeaderCellDef>Link Expirado</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Link Expirado' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.isLinkExpired ? "Sim" : "Não" }}
             </td>
@@ -214,7 +214,7 @@
 
           <!-- Data de Validade -->
           <ng-container matColumnDef="linkValidityDate">
-            <th mat-header-cell *matHeaderCellDef>Data de Validade</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Data de Validade' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.linkValidityDate || "Não definida" }}
             </td>
@@ -239,14 +239,14 @@
 <!-- Ações -->
 <div mat-dialog-actions class="row mt-3">
   <div class="col-12 text-end" style="text-align: end">
-    <button mat-button (click)="close()">Cancelar</button>
+    <button mat-button (click)="close()">{{ 'Cancelar' | translate }}</button>
     <button
       mat-flat-button
       color="primary"
       (click)="sendEmails()"
       [disabled]="selectedParticipants.size === 0"
     >
-      Enviar E-mails
+      {{ 'Enviar E-mails' | translate }}
     </button>
   </div>
 </div>

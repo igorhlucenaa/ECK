@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { Auth, User } from '@angular/fire/auth';
 import { AuthService } from './services/apps/authentication/auth.service';
@@ -15,10 +16,20 @@ export class AppComponent implements OnInit {
   constructor(
     private auth: Auth,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
+    // i18n: inicialização de idioma
+    const supportedLangs = ['pt-BR', 'es', 'en'];
+    this.translate.addLangs(supportedLangs);
+    const storedLang = localStorage.getItem('lang');
+    const browserLang = this.translate.getBrowserLang();
+    const initialLang = storedLang || (browserLang === 'pt' ? 'pt-BR' : (supportedLangs.includes(browserLang || '') ? (browserLang as string) : 'pt-BR'));
+    this.translate.setDefaultLang('pt-BR');
+    this.translate.use(initialLang);
+
     this.auth.onAuthStateChanged(async (user: User | null) => {
       const currentUrl = this.router.url.split('?')[0];
       console.log(

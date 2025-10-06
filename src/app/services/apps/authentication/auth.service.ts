@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   Auth,
   signInWithEmailAndPassword,
@@ -26,7 +27,7 @@ import { firstValueFrom } from 'rxjs';
   providedIn: 'root',
 })
 export class AuthService {
-  constructor(private auth: Auth, private firestore: Firestore) {}
+  constructor(private auth: Auth, private firestore: Firestore, private router: Router) {}
 
   async login(
     email: string,
@@ -46,9 +47,9 @@ export class AuthService {
 
         // Redirecionar com base no papel do usuário
         if (userRole === 'admin_master') {
-          location.assign('/projects'); // Redireciona para 'products' diretamente
+          this.router.navigate(['/projects']);
         } else {
-          location.assign('/users'); // Ou outra rota padrão para outros papéis
+          this.router.navigate(['/users']);
         }
       });
     } catch (error) {

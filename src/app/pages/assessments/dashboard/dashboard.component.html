@@ -9,7 +9,7 @@
       <!-- Seletor de Avaliação -->
       <div class="filter-container mb-15 mt-10">
         <mat-form-field appearance="outline" class="w-100">
-          <mat-label>Selecione uma avaliação</mat-label>
+          <mat-label>{{ 'Selecione uma avaliação' | translate }}</mat-label>
           <mat-select [value]="selectedAssessment" (selectionChange)="onAssessmentChange($event)">
             <mat-option *ngFor="let assessment of assessments" [value]="assessment.id">
               {{ assessment.name }}
@@ -21,13 +21,13 @@
       <!-- Loading Spinner -->
       <div *ngIf="isLoading" class="loading-container">
         <mat-spinner diameter="50"></mat-spinner>
-        <p>Carregando resultados...</p>
+        <p>{{ 'Carregando resultados...' | translate }}</p>
       </div>
 
       <!-- Mensagem quando nenhuma avaliação selecionada -->
       <div *ngIf="!isLoading && !selectedAssessment" class="no-selection-message">
         <mat-icon>info</mat-icon>
-        <p>Selecione uma avaliação para visualizar os resultados</p>
+        <p>{{ 'Selecione uma avaliação para visualizar os resultados' | translate }}</p>
       </div>
     </mat-card-content>
   </mat-card>
@@ -42,7 +42,7 @@
             <mat-icon>people</mat-icon>
           </div>
           <div class="stat-info">
-            <h3>Total de Respostas</h3>
+            <h3>{{ 'Total de Respostas' | translate }}</h3>
             <p class="stat-value">{{ statistics.totalResponses }}</p>
           </div>
         </mat-card-content>
@@ -54,7 +54,7 @@
             <mat-icon>date_range</mat-icon>
           </div>
           <div class="stat-info">
-            <h3>Última Resposta</h3>
+            <h3>{{ 'Última Resposta' | translate }}</h3>
             <p class="stat-value">{{ statistics.lastResponse | date:'dd/MM/yyyy' }}</p>
           </div>
         </mat-card-content>
@@ -66,7 +66,7 @@
             <mat-icon>assessment</mat-icon>
           </div>
           <div class="stat-info">
-            <h3>Taxa de Conclusão</h3>
+            <h3>{{ 'Taxa de Conclusão' | translate }}</h3>
             <p class="stat-value">{{ statistics.completionRate }}%</p>
           </div>
         </mat-card-content>
@@ -136,7 +136,7 @@
             </ngx-charts-polar-chart>
 
             <!-- Medidor (Gauge) -->
-            <ngx-charts-gauge *ngSwitchCase="'gauge'" [results]="questionChart.data" [scheme]="'cool'" [min]="0" [max]="questionChart.statistics?.max || 10" [units]="''" [angleSpan]="240" [startAngle]="-120" [animations]="true" [showAxis]="true">
+            <ngx-charts-gauge *ngSwitchCase="'gauge'" [results]="questionChart.data" [scheme]="'cool'" [min]="0" [max]="(questionChart.statistics?.max || 10)" [units]="''" [angleSpan]="240" [startAngle]="-120" [animations]="true" [showAxis]="true">
             </ngx-charts-gauge>
           </div>
           <div *ngIf="questionChart.question.type === 'matrix'" class="matrix-placeholder">
@@ -207,20 +207,20 @@
     <!-- Tabela de Dados -->
     <mat-card class="mb-15">
       <mat-card-header>
-        <mat-card-title>Dados Detalhados</mat-card-title>
+        <mat-card-title>{{ 'Dados Detalhados' | translate }}</mat-card-title>
         <div class="table-actions">
           <!-- Botões de Exportação -->
-          <button mat-raised-button color="primary" (click)="exportExcel()" matTooltip="Exportar para Excel">
+          <button mat-raised-button color="primary" (click)="exportExcel()" matTooltip="{{ 'Exportar para Excel' | translate }}">
             <mat-icon>description</mat-icon>
-            Excel
+            {{ 'Excel' | translate }}
           </button>
-          <button mat-raised-button color="accent" (click)="exportPDF()" matTooltip="Exportar para PDF">
+          <button mat-raised-button color="accent" (click)="exportPDF()" matTooltip="{{ 'Exportar para PDF' | translate }}">
             <mat-icon>picture_as_pdf</mat-icon>
-            PDF
+            {{ 'PDF' | translate }}
           </button>
-          <button mat-raised-button color="warn" (click)="exportCSV()" matTooltip="Exportar para CSV">
+          <button mat-raised-button color="warn" (click)="exportCSV()" matTooltip="{{ 'Exportar para CSV' | translate }}">
             <mat-icon>table_chart</mat-icon>
-            CSV
+            {{ 'CSV' | translate }}
           </button>
         </div>
       </mat-card-header>
@@ -228,8 +228,8 @@
       <mat-card-content>
         <!-- Campo de Busca -->
         <mat-form-field appearance="outline" class="w-100 mb-15">
-          <mat-label>Buscar</mat-label>
-          <input matInput (keyup)="applyFilter($event)" placeholder="Digite para filtrar..." #input>
+          <mat-label>{{ 'Buscar' | translate }}</mat-label>
+          <input matInput (keyup)="applyFilter($event)" [placeholder]="('Digite para filtrar...' | translate)" #input>
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
 

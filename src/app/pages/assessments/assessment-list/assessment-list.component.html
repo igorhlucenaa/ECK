@@ -4,16 +4,16 @@
     <div class="col-12">
       <button mat-button (click)="goBack()" class="mb-3">
         <mat-icon>arrow_back</mat-icon>
-        Voltar
+        {{ 'Voltar' | translate }}
       </button>
     </div>
   </div>
 
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Formulários de Avaliação</h2>
+    <h2>{{ 'Formulários de Avaliação' | translate }}</h2>
     <button mat-flat-button color="primary" (click)="createNewAssessment()">
       <mat-icon>add</mat-icon>
-      Criar Novo Formulário de Avaliação
+      {{ 'Criar Novo Formulário de Avaliação' | translate }}
     </button>
   </div>
 
@@ -21,10 +21,10 @@
   <div class="d-flex gap-3 mb-3">
     <!-- Campo de Busca por Texto (somente nome) -->
     <mat-form-field class="w-100" appearance="outline">
-      <mat-label>Buscar por Nome</mat-label>
+      <mat-label>{{ 'Buscar por Nome' | translate }}</mat-label>
       <input
         matInput
-        placeholder="Digite o nome da avaliação"
+        [placeholder]="('Digite o nome da avaliação' | translate)"
         [(ngModel)]="searchValue"
         (ngModelChange)="applyFilter($event)"
       />
@@ -49,7 +49,7 @@
     >
       <!-- Cliente -->
       <ng-container matColumnDef="clientName">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Cliente' | translate }}</th>
         <td mat-cell *matCellDef="let assessment">
           {{ assessment.clientName || "Sem Cliente" }}
         </td>
@@ -66,14 +66,14 @@
       <!-- Nome -->
       <ng-container matColumnDef="name">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>
-          Nome do Formulário
+          {{ 'Nome do Formulário' | translate }}
         </th>
         <td mat-cell *matCellDef="let assessment">{{ assessment.name }}</td>
       </ng-container>
 
       <!-- Criado Por -->
       <ng-container matColumnDef="createdBy">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Criado Por</th>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Criado Por' | translate }}</th>
         <td mat-cell *matCellDef="let assessment">
           {{ assessment.createdBy.name || "Desconhecido" }}
         </td>
@@ -82,7 +82,7 @@
       <!-- Criado Em -->
       <ng-container matColumnDef="createdAt">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>
-          Data de Criação
+          {{ 'Data de Criação' | translate }}
         </th>
         <td mat-cell *matCellDef="let assessment">
           {{ assessment.createdAt | date : "short" }}
@@ -91,7 +91,7 @@
 
       <!-- Respondidas -->
       <ng-container matColumnDef="responses">
-        <th mat-header-cell *matHeaderCellDef>Respondidos</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'Respondidos' | translate }}</th>
         <td mat-cell *matCellDef="let assessment" style="text-aling:center">
           <strong>{{ assessment.responsesCount || 0 }}</strong>
         </td>
@@ -99,7 +99,7 @@
 
       <!-- Ações -->
       <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Ações</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
         <td mat-cell *matCellDef="let assessment">
           <!-- <button
             mat-icon-button
@@ -112,7 +112,7 @@
           <button
             mat-icon-button
             color="primary"
-            matTooltip="Pré-visualizar"
+            [matTooltip]="'Pré-visualizar' | translate"
             (click)="previewAssessment(assessment)"
           >
             <mat-icon>visibility</mat-icon>
@@ -120,7 +120,7 @@
           <button
             mat-icon-button
             color="primary"
-            matTooltip="Editar"
+            [matTooltip]="'Editar' | translate"
             (click)="editAssessment(assessment.id)"
           >
             <mat-icon>edit</mat-icon>
@@ -128,7 +128,7 @@
           <button
             mat-icon-button
             color="warn"
-            matTooltip="Excluir"
+            [matTooltip]="'Excluir' | translate"
             (click)="deleteAssessment(assessment.id)"
           >
             <mat-icon>delete</mat-icon>

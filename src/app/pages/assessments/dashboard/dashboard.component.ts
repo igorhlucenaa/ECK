@@ -1,5 +1,6 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { MaterialModule } from 'src/app/material.module';
 import { Model, PageModel, QuestionMatrixModel } from 'survey-core';
 import { Firestore, collection, getDocs, doc, getDoc, query, where, documentId } from '@angular/fire/firestore';
@@ -101,7 +102,8 @@ interface RadarChartData {
     MaterialModule,
     NgxChartsModule,
     MatTableExporterModule,
-    FormsModule
+    FormsModule,
+    TranslateModule
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'

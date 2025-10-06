@@ -24,11 +24,12 @@ import { EmailSelectionDialogComponent } from './email-selection-dialog/email-se
 import { ResendAssessmentModalComponent } from '../resend-assessment-modal/resend-assessment-modal.component';
 import { ParticipantsModalComponent } from '../participants-modal/participants-modal.component';
 import { ParticipantsComponent } from '../../assessments/participants/participants.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-projects-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, TranslateModule],
   templateUrl: './projects-list.component.html',
   styleUrls: ['./projects-list.component.scss'],
 })

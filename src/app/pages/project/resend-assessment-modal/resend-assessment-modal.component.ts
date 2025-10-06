@@ -442,8 +442,8 @@ export class ResendAssessmentModalComponent implements OnInit {
           assessmentId: participant.assessmentId,
         };
 
-        const response = await fetch(
-          'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
+      const response = await fetch(
+        (await import('src/enviroments/environment')).environment.functions.sendEmailUrl,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

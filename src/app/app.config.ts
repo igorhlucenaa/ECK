@@ -7,6 +7,7 @@ import {
   HttpClient,
   provideHttpClient,
   withInterceptorsFromDi,
+  HTTP_INTERCEPTORS,
 } from '@angular/common/http';
 import { LoadingInterceptor } from './interceptors/loading.interceptor';
 import { FirestoreLoadingInterceptor } from './interceptors/firestore-loading.interceptor';
@@ -51,13 +52,30 @@ export function HttpLoaderFactory(http: HttpClient): any {
 
 import { NgxEchartsModule } from 'ngx-echarts';
 import { environment } from 'src/enviroments/environment';
-import { provideNativeDateAdapter } from '@angular/material/core';
+import { provideNativeDateAdapter, MAT_DATE_LOCALE } from '@angular/material/core';
 import { LOCALE_ID } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
+import localeEs from '@angular/common/locales/es';
+import localeEn from '@angular/common/locales/en';
 import { EmailEditorModule } from 'angular-email-editor';
 
 registerLocaleData(localePt);
+registerLocaleData(localeEs);
+registerLocaleData(localeEn);
+
+function getInitialLocale(): string {
+  try {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('lang') : null;
+    if (stored) return stored;
+    const nav = typeof navigator !== 'undefined' ? (navigator.language || (navigator as any).userLanguage) : '';
+    if (nav?.toLowerCase().startsWith('es')) return 'es';
+    if (nav?.toLowerCase().startsWith('en')) return 'en';
+    return 'pt-BR';
+  } catch {
+    return 'pt-BR';
+  }
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -71,12 +89,13 @@ export const appConfig: ApplicationConfig = {
       withComponentInputBinding()
     ),
     provideHttpClient(withInterceptorsFromDi()),
-    { provide: LoadingInterceptor, useClass: LoadingInterceptor },
+    { provide: HTTP_INTERCEPTORS, useClass: LoadingInterceptor, multi: true },
     { provide: FirestoreLoadingInterceptor, useClass: FirestoreLoadingInterceptor },
     provideClientHydration(),
     provideNativeDateAdapter(),
     provideAnimationsAsync(),
-    { provide: LOCALE_ID, useValue: 'pt-BR' },
+    { provide: LOCALE_ID, useFactory: getInitialLocale },
+    { provide: MAT_DATE_LOCALE, useFactory: getInitialLocale },
     // Firebase Providers
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAuth()),

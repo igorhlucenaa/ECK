@@ -1,4 +1,5 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
+import { parseNumeric, exportToCSV, filterQuestionsByType, computeConsolidation, getQuestionTypeStats } from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
@@ -7,8 +8,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { ReactiveFormsModule, FormControl, FormGroup, Validators, FormArray, FormBuilder } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { CommonModule, KeyValuePipe } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { MatOptionModule } from '@angular/material/core';
-import { ColumnValuePipe } from './column-value.pipe';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,10 +20,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { EChartsOption } from 'echarts';
+import { ReportsPdfService } from './reports-pdf.service';
 import { NgxEchartsModule } from 'ngx-echarts';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslateService } from '@ngx-translate/core';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -111,13 +114,13 @@ interface TabelaAvaliacoesAltas {
   imports: [
     CommonModule,
     KeyValuePipe,
+    TranslateModule,
     MatTableModule,
     MatButtonModule,
     MatSelectModule,
     MatOptionModule,
     MatFormFieldModule,
     ReactiveFormsModule,
-    ColumnValuePipe,
     MatTabsModule,
     MatInputModule,
     MatIconModule,
@@ -184,7 +187,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Exporta base de dados plana (uma linha por resposta por pergunta)
   exportarBaseExcel(): void {
     if (!this.dataSource || this.dataSource.length === 0) {
-      this.snackBar.open('Sem dados para exportar.', 'Fechar', { duration: 2500 });
+      this.snackBar.open(this.translate.instant('Sem dados para exportar.'), this.translate.instant('Fechar'), { duration: 2500 });
       return;
     }
 
@@ -212,7 +215,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (linhas.length === 0) {
-      this.snackBar.open('Sem respostas válidas para exportar.', 'Fechar', { duration: 2500 });
+      this.snackBar.open(this.translate.instant('Sem respostas válidas para exportar.'), this.translate.instant('Fechar'), { duration: 2500 });
       return;
     }
 
@@ -225,7 +228,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       : 'base_respostas.xlsx';
 
     XLSX.writeFile(workbook, fileName);
-    this.snackBar.open('Base exportada com sucesso!', 'Fechar', { duration: 2500 });
+    this.snackBar.open(this.translate.instant('Base exportada com sucesso!'), this.translate.instant('Fechar'), { duration: 2500 });
   }
 
   // Calcula a "Média sem autoavaliação" a partir das médias por categoria da tabela
@@ -535,6 +538,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
+    private translate: TranslateService,
     private route: ActivatedRoute,
     private performanceMonitor: PerformanceMonitorService,
     private router: Router,
@@ -542,7 +546,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     private loadingService: LoadingService,
     private firestoreInterceptor: FirestoreLoadingInterceptor,
     private authService: AuthService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private reportsPdf: ReportsPdfService
   ) {
     this.dummyForm = this.fb.group({
       relatorioFormArray: this.fb.array([])
@@ -592,6 +597,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     ).subscribe(() => {
       this.prepareGapChartData();
     });
+  }
+
+  private t(key: string): string {
+    return (this as any)['translate'] ? (this as any)['translate'].instant(key) : key;
   }
 
   // 🚀 PERFORMANCE: Sistema de cache
@@ -783,7 +792,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
                }
              } catch (error) {
                console.error('Erro ao gerar PDF automaticamente:', error);
-               this.snackBar.open('Erro ao gerar PDF automaticamente. Tente gerar manualmente.', 'Fechar', { duration: 5000 });
+      this.snackBar.open(this.t('Erro ao gerar PDF automaticamente. Tente gerar manualmente.'), this.t('Fechar'), { duration: 5000 });
              }
            }, 5000); // Aguardar 5 segundos para tudo carregar
          }
@@ -857,7 +866,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }));
     } catch (e) {
       console.error("Erro ao carregar avaliações:", e);
-      this.snackBar.open('Falha ao carregar as avaliações.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Falha ao carregar as avaliações.'), this.t('Fechar'), { duration: 3000 });
     } finally {
       this.loadingService.hide();
     }
@@ -1242,81 +1251,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   exportCSV() {
     if (!this.dataSource.length) return;
-    const csvRows = [];
-    const header = this.displayedColumns.map(col => this.questionMap[col] || col);
-    csvRows.push(header.join(','));
-    for (const row of this.dataSource) {
-      const values = this.displayedColumns.map(col => '"' + (row[col] ?? '').toString().replace(/"/g, '""') + '"');
-      csvRows.push(values.join(','));
-    }
-    const csvContent = csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'relatorio_avaliacao.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToCSV(
+      'relatorio_avaliacao.csv',
+      this.displayedColumns,
+      this.dataSource,
+      (row, col) => row[col]
+    );
   }
 
-  async generatePDFCover() {
-    const jsPDFmod = await import('jspdf');
-    const { default: html2canvas } = await import('html2canvas');
-    const element = document.getElementById('report-cover');
-    if (!element) return;
-    const canvas = await html2canvas(element, { scale: 2 });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDFmod.jsPDF('p', 'mm', 'a4');
-    const imgWidth = 210;
-    const imgHeight = canvas.height * imgWidth / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-    pdf.save('capa-relatorio.pdf');
-  }
+  async generatePDFCover() { await this.reportsPdf.generateCoverPDF('report-cover'); }
 
-  async generatePDFSummary() {
-    const jsPDFmod = await import('jspdf');
-    const autoTable = (await import('jspdf-autotable')).default;
-    const pdf = new jsPDFmod.jsPDF('p', 'mm', 'a4');
-
-    pdf.setFontSize(14);
-    pdf.text('Resumo do seu feedback do 360', 14, 20);
-
-    autoTable(pdf, {
-      startY: 30,
-      head: [['Competência', 'Média']],
-      body: this.competencyAverages.map(c => [c.title, c.avg.toFixed(2)]).slice(0, 10)
-    });
-    pdf.addPage();
-    autoTable(pdf, { head: [['Mais Altas', 'Média']], body: this.topItems.map(i => [i.title, i.avg.toFixed(2)]) });
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const finalY = (pdf as any).lastAutoTable?.finalY || 40;
-    autoTable(pdf, { startY: finalY + 10, head: [['Mais Baixas', 'Média']], body: this.lowItems.map(i => [i.title, i.avg.toFixed(2)]) });
-    pdf.save('resumo.pdf');
-  }
+  async generatePDFSummary() { await this.reportsPdf.generateSummaryPDF(this.competencyAverages, this.topItems, this.lowItems); }
 
   private buildConsolidationData(dynamicCols: string[], rows: any[]) {
-    const map: { [k: string]: { sum: number; count: number } } = {};
-    dynamicCols.forEach(k => map[k] = { sum: 0, count: 0 });
-    rows.forEach(r => {
-      dynamicCols.forEach(k => {
-        const num = this.parseNumeric(r[k]);
-        if (num !== null) { map[k].sum += num; map[k].count++; }
-      });
-    });
-    const invited = rows.length;
-    this.consolidation = dynamicCols.map(k => {
-      const avg = map[k].count ? map[k].sum / map[k].count : 0;
-      return {
-        pergunta: this.questionMap[k] || k,
-        sessao: '',
-        tema: '',
-        resposta: avg.toFixed(2),
-        respondentes: map[k].count,
-        percent: invited ? ((map[k].count / invited) * 100).toFixed(2) + '%' : '0%',
-        score: (avg * 20).toFixed(0)
-      };
-    });
+    this.consolidation = computeConsolidation(dynamicCols, rows, this.questionMap as any) as any;
   }
 
   exportConsolidationCSV() {
@@ -1336,13 +1284,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     document.body.removeChild(link);
   }
 
-  private parseNumeric(val: any): number | null {
-    if (val === null || val === undefined || val === '') {
-      return null;
-    }
-    const num = Number(val);
-    return isNaN(num) ? null : num;
-  }
+  // parseNumeric movido para reports-utils.ts
 
   salvarCompetencia() {
     if (this.competenciaForm.invalid) return;
@@ -1354,7 +1296,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // Editando competência existente
       const idx = this.competencias.findIndex(c => c.id === idCompetenciaEditando);
       if (idx > -1) this.competencias[idx] = { ...this.competenciaEditando, ...formValue };
-      this.snackBar.open('Competência atualizada com sucesso!', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Competência atualizada com sucesso!'), this.t('Fechar'), { duration: 3000 });
     } else {
       // Adicionando nova competência
       const nova: Competencia = {
@@ -1362,7 +1304,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         ...formValue
       };
       this.competencias.push(nova);
-      this.snackBar.open('Competência adicionada com sucesso!', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Competência adicionada com sucesso!'), this.t('Fechar'), { duration: 3000 });
     }
     // Invalida cache de resumos e seções
     this.invalidateCache('resumo-');
@@ -1456,7 +1398,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       coresPersonalizadas: [[]]
     }));
     this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
-    this.snackBar.open('Seção adicionada!', 'Fechar', { duration: 2000 });
+    this.snackBar.open(this.t('Seção adicionada!'), this.t('Fechar'), { duration: 2000 });
   }
 
   getSecaoFormGroup(index: number): FormGroup {
@@ -1555,7 +1497,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           for (const index of indicesGrupo) {
             const row = this.dataSource[index];
             for (const pid of perguntas) {
-              const val = this.parseNumeric(row[pid]);
+              const val = parseNumeric(row[pid]);
               console.log(`[Resumo] Valor encontrado para pid='${pid}':`, val);
               if (val !== null) {
                 soma += val;
@@ -2150,11 +2092,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   async salvarRelatorioNoFirebase() {
     const erro = this.validarRelatorio();
     if (erro) {
-      this.snackBar.open(erro, 'Fechar', { duration: 3000 });
+      this.snackBar.open(erro, this.t('Fechar'), { duration: 3000 });
       return;
     }
     if (!this.nomeRelatorioControl.value) {
-      this.snackBar.open('Por favor, dê um nome ao relatório.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Por favor, dê um nome ao relatório.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
     // Buscar nome da avaliação selecionada
@@ -2169,12 +2111,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     };
     try {
       const docRef = await addDoc(collection(this.firestore, 'reports'), reportData);
-      this.snackBar.open(`Relatório '${reportData.nome}' salvo com sucesso!`, 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Relatório salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
       this.nomeRelatorioControl.reset();
       this.carregarRelatoriosSalvos(); // Atualiza a lista
     } catch (e) {
       console.error('Erro ao salvar relatório: ', e);
-      this.snackBar.open('Ocorreu um erro ao salvar o relatório.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Ocorreu um erro ao salvar o relatório.'), this.t('Fechar'), { duration: 3000 });
     }
   }
 
@@ -2198,7 +2140,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.atualizarFormArrayComConfiguracao();
       // Atualizar perguntas bloqueadas após carregar competências
       this.atualizarPerguntasBloqueadas();
-        this.snackBar.open(`Relatório '${reportData['nome']}' carregado!`, 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.t('Relatório carregado!'), this.t('Fechar'), { duration: 3000 });
     }
   }
 
@@ -2258,7 +2200,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.relatorioFormArray.removeAt(index);
     // Atualiza ordem
     this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
-    this.snackBar.open(`Seção removida: ${titulo}`, 'Fechar', { duration: 2500 });
+    this.snackBar.open(this.t('Seção removida!'), this.t('Fechar'), { duration: 2500 });
   }
 
   // Método para drag-and-drop das seções
@@ -2372,13 +2314,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.avaliadoControl.setValue('');
 
     this.atualizarFormArrayComConfiguracao();
-    this.snackBar.open('Relatório resetado para configuração padrão!', 'Fechar', { duration: 2500 });
+    this.snackBar.open(this.t('Relatório resetado para configuração padrão!'), this.t('Fechar'), { duration: 2500 });
   }
 
   // Salvar template no Firestore
   async salvarTemplateNoFirebase() {
     if (!this.nomeTemplateControl.value) {
-      this.snackBar.open('Por favor, dê um nome ao template.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
     const templateData = {
@@ -2389,12 +2331,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     };
     try {
       const docRef = await addDoc(collection(this.firestore, 'reportTemplates'), templateData);
-      this.snackBar.open(`Template '${templateData.nome}' salvo com sucesso!`, 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Template salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
       this.nomeTemplateControl.reset();
       this.carregarTemplatesSalvos();
     } catch (e) {
       console.error('Erro ao salvar template: ', e);
-      this.snackBar.open('Ocorreu um erro ao salvar o template.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Ocorreu um erro ao salvar o template.'), this.t('Fechar'), { duration: 3000 });
     }
   }
 
@@ -2424,7 +2366,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.atualizarFormArrayComConfiguracao();
         // Atualizar perguntas bloqueadas após carregar competências
         this.atualizarPerguntasBloqueadas();
-        this.snackBar.open(`Template '${templateData['nome']}' aplicado!`, 'Fechar', { duration: 2500 });
+        this.snackBar.open(this.t('Template aplicado!'), this.t('Fechar'), { duration: 2500 });
     }
   }
 
@@ -2434,7 +2376,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const { default: html2canvas } = await import('html2canvas');
     const element = document.getElementById('report-preview');
     if (!element) {
-      this.snackBar.open('Não foi possível encontrar o preview do relatório.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Não foi possível encontrar o preview do relatório.'), this.t('Fechar'), { duration: 3000 });
       return false;
     }
     // Ativar modo exportação (oculta UI visível) e capturar o próprio preview em tela
@@ -2478,7 +2420,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     pdf.save(fileName);
-    this.snackBar.open('PDF exportado com sucesso!', 'Fechar', { duration: 3000 });
+    this.snackBar.open(this.t('PDF exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
     return true;
   }
 
@@ -2488,7 +2430,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       docxMod = await import('docx');
     } catch (e) {
-      this.snackBar.open('Pacote docx não encontrado. Instale com: npm i docx', 'Fechar', { duration: 4000 });
+      this.snackBar.open(this.t('Pacote docx não encontrado. Instale com: npm i docx'), this.t('Fechar'), { duration: 4000 });
       return;
     }
     const { Document, Packer, Paragraph, ImageRun } = docxMod;
@@ -2534,7 +2476,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   removerCompetencia(c: Competencia) {
     this.competencias = this.competencias.filter(x => x.id !== c.id);
-    this.snackBar.open('Competência removida.', 'Fechar', { duration: 3000 });
+    this.snackBar.open(this.t('Competência removida.'), this.t('Fechar'), { duration: 3000 });
     // Invalida cache de resumos e seções
     this.invalidateCache('resumo-');
     this.invalidateCache('secao-');
@@ -3458,7 +3400,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       });
 
       respostasGrupo.forEach(row => {
-        const valor = this.parseNumeric(row[perguntaId]);
+        const valor = parseNumeric(row[perguntaId]);
         if (valor !== null) {
           soma += valor;
           count++;
@@ -3515,7 +3457,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log("Avaliados disponíveis:", this.getAvaliadosDisponiveis());
     console.groupEnd();
 
-    this.snackBar.open('Dados de Destaques enviados para o console.', 'Fechar', { duration: 3000 });
+    this.snackBar.open(this.t('Dados de Destaques enviados para o console.'), this.t('Fechar'), { duration: 3000 });
   }
 
   getPerguntasDataSource(perguntasIds: string[]): { id: string }[] {
@@ -3526,11 +3468,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Adiciona método para atualizar template existente
   async atualizarTemplateNoFirebase() {
     if (!this.selectedTemplateId.value) {
-      this.snackBar.open('Selecione um template para editar.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Selecione um template para editar.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
     if (!this.nomeTemplateControl.value) {
-      this.snackBar.open('Por favor, dê um nome ao template.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
     const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
@@ -3542,11 +3484,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     };
     try {
       await setDoc(templateRef, templateData, { merge: true });
-      this.snackBar.open(`Template '${templateData.nome}' atualizado com sucesso!`, 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Template atualizado com sucesso!'), this.t('Fechar'), { duration: 3000 });
       this.carregarTemplatesSalvos();
     } catch (e) {
       console.error('Erro ao atualizar template: ', e);
-      this.snackBar.open('Ocorreu um erro ao atualizar o template.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Ocorreu um erro ao atualizar o template.'), this.t('Fechar'), { duration: 3000 });
     }
   }
 
@@ -3616,7 +3558,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+      this.snackBar.open(this.t('Erro ao carregar clientes.'), this.t('Fechar'), {
         duration: 3000,
       });
     }
@@ -3645,7 +3587,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     } catch (error) {
       console.error('Erro ao carregar grupos de competências:', error);
-      this.snackBar.open('Erro ao carregar grupos de competências.', 'Fechar', {
+      this.snackBar.open(this.t('Erro ao carregar grupos de competências.'), this.t('Fechar'), {
         duration: 3000,
       });
     }
@@ -3653,17 +3595,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async saveCompetencyGroup(): Promise<void> {
     if (!this.selectedClientId) {
-      this.snackBar.open('Selecione um cliente primeiro.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Selecione um cliente primeiro.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
 
     if (!this.groupNameControl.value) {
-      this.snackBar.open('Digite um nome para o grupo de competências.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Digite um nome para o grupo de competências.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
 
     if (this.competencias.length === 0) {
-      this.snackBar.open('Adicione pelo menos uma competência antes de salvar o grupo.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Adicione pelo menos uma competência antes de salvar o grupo.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
 
@@ -3678,7 +3620,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       const docRef = await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
 
-      this.snackBar.open(`Grupo "${groupData.name}" salvo com sucesso!`, 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Grupo salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
       this.groupNameControl.reset();
 
       // Atualizar lista de grupos
@@ -3686,7 +3628,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     } catch (error) {
       console.error('Erro ao salvar grupo de competências:', error);
-      this.snackBar.open('Erro ao salvar grupo de competências.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Erro ao salvar grupo de competências.'), this.t('Fechar'), { duration: 3000 });
     }
   }
 
@@ -3710,17 +3652,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           await this.onAssessmentChange();
         }
 
-        this.snackBar.open(`Grupo "${groupData['name']}" carregado com sucesso!`, 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.t('Grupo carregado com sucesso!'), this.t('Fechar'), { duration: 3000 });
         this.atualizarPerguntasBloqueadas();
         this.cdr.detectChanges();
 
       } else {
-        this.snackBar.open('Grupo não encontrado.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.t('Grupo não encontrado.'), this.t('Fechar'), { duration: 3000 });
       }
 
     } catch (error) {
       console.error('Erro ao carregar grupo de competências:', error);
-      this.snackBar.open('Erro ao carregar grupo de competências.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.t('Erro ao carregar grupo de competências.'), this.t('Fechar'), { duration: 3000 });
     }
   }
 
@@ -3871,40 +3813,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const includeOpen = this.includeOpenQuestions.value;
-
-    // Tipos de perguntas que são consideradas "fechadas" (múltipla escolha/rating)
-    const closedQuestionTypes = [
-      'rating',
-      'dropdown',
-      'radiogroup',
-      'matrix',
-      'checkbox',
-      'boolean',
-      'ranking'
-    ];
-
-    // Tipos de perguntas que são consideradas "abertas" (texto livre)
-    const openQuestionTypes = [
-      'text',
-      'comment',
-      'multipletext',
-      'file',
-      'signaturepad'
-    ];
-
-    this.filteredQuestions = this.allQuestions.filter(question => {
-      const isClosedQuestion = closedQuestionTypes.includes(question.type) || question.type === 'question'; // matrix rows
-      const isOpenQuestion = openQuestionTypes.includes(question.type);
-
-      if (includeOpen) {
-        // Se incluir abertas, mostrar todas
-        return true;
-      } else {
-        // Se NÃO incluir abertas, mostrar apenas fechadas
-        return isClosedQuestion;
-      }
-    });
+    const includeOpen = !!this.includeOpenQuestions.value;
+    this.filteredQuestions = filterQuestionsByType(this.allQuestions as any, includeOpen) as any;
 
     console.log(`🔍 Filtro aplicado - Incluir abertas: ${includeOpen}`);
     console.log(`📊 Perguntas totais: ${this.allQuestions.length}`);
@@ -3912,13 +3822,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('📊 Perguntas por tipo:', this.getQuestionTypeStats());
   }
 
-  getQuestionTypeStats(): any {
-    const stats: any = {};
-    this.allQuestions.forEach(q => {
-      stats[q.type] = (stats[q.type] || 0) + 1;
-    });
-    return stats;
-  }
+  getQuestionTypeStats(): any { return getQuestionTypeStats(this.allQuestions as any); }
 
   onQuestionFilterChange(): void {
     this.applyQuestionFilter();
@@ -3999,7 +3903,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     console.groupEnd();
 
-    this.snackBar.open(`Debug executado! ${this.allQuestions.length} perguntas analisadas. Veja o console.`, 'Fechar', { duration: 5000 });
+    this.snackBar.open(this.t('Debug executado! Veja o console.'), this.t('Fechar'), { duration: 5000 });
   }
 
   async loadAllCompetencies(): Promise<void> {
@@ -4063,7 +3967,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Forçar atualização da view
     this.cdr.detectChanges();
 
-    this.snackBar.open('Seleção de avaliado limpa. Visualizando dados de todos os avaliados.', 'Fechar', { duration: 3000 });
+    this.snackBar.open(this.t('Seleção de avaliado limpa. Visualizando dados de todos os avaliados.'), this.t('Fechar'), { duration: 3000 });
   }
 
   // Método de debug específico para investigar dados da tabela de competência
@@ -4135,7 +4039,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           perguntasComValores: competencia.perguntasIds.map(perguntaId => ({
             perguntaId,
             valor: primeiro[perguntaId],
-            valorNumerico: this.parseNumeric(primeiro[perguntaId])
+            valorNumerico: parseNumeric(primeiro[perguntaId])
           }))
         });
       }

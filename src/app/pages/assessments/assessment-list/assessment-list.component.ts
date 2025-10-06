@@ -27,6 +27,8 @@ import { CommonModule, Location } from '@angular/common';
 import { ParticipantResponsesModalComponent } from './participant-responses-modal/participant-responses-modal.component';
 import { SendAssessmentModalComponent } from './send-assessment-modal/send-assessment-modal.component';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
+import { TranslateService } from '@ngx-translate/core';
 
 interface Assessment {
   id: string;
@@ -70,7 +72,7 @@ interface MailTemplate {
 @Component({
   selector: 'app-assessment-list',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule],
   templateUrl: './assessment-list.component.html',
   styleUrls: ['./assessment-list.component.scss'],
 })
@@ -101,7 +103,8 @@ export class AssessmentListComponent implements OnInit {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private route: ActivatedRoute,
-    private location: Location
+    private location: Location,
+    private translate: TranslateService
   ) {
     this.clientFilter.setValue('');
   }
@@ -345,8 +348,8 @@ export class AssessmentListComponent implements OnInit {
           assessmentId: assessmentId,
         };
 
-        const response = await fetch(
-          'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
+      const response = await fetch(
+        (await import('src/enviroments/environment')).environment.functions.sendEmailUrl,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -493,7 +496,7 @@ export class AssessmentListComponent implements OnInit {
   async deleteAssessment(id: string): Promise<void> {
     try {
       const confirmDelete = confirm(
-        'Tem certeza de que deseja excluir esta avaliação?'
+        this.translate.instant('Tem certeza de que deseja excluir esta avaliação?')
       );
       if (!confirmDelete) return;
 

@@ -14,6 +14,7 @@ import {
 } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule } from '@ngx-translate/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { EmailService } from './email.service';
 import { FormsModule } from '@angular/forms';
@@ -22,7 +23,7 @@ import { serverTimestamp, Timestamp } from '@angular/fire/firestore';
 @Component({
   selector: 'app-email-selection-dialog',
   standalone: true,
-  imports: [CommonModule, MaterialModule, FormsModule],
+  imports: [CommonModule, MaterialModule, FormsModule, TranslateModule],
   templateUrl: './email-selection-dialog.component.html',
   styleUrls: ['./email-selection-dialog.component.scss'],
 })

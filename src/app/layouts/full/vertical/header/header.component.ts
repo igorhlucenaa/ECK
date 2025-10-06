@@ -85,7 +85,7 @@ export class HeaderComponent implements OnInit {
 
   public selectedLanguage: any = {
     language: 'Português',
-    code: 'pt-br',
+    code: 'pt-BR',
     type: 'PT-BR',
     icon: '/assets/images/flag/icon-flag-pt-br.jpg',
   };
@@ -93,20 +93,20 @@ export class HeaderComponent implements OnInit {
   public languages: any[] = [
     {
       language: 'Português',
-      code: 'pt-br',
+      code: 'pt-BR',
       type: 'PT-BR',
       icon: '/assets/images/flag/icon-flag-pt-br.jpg',
+    },
+    {
+      language: 'Español',
+      code: 'es',
+      icon: '/assets/images/flag/icon-flag-es.svg',
     },
     {
       language: 'English',
       code: 'en',
       type: 'US',
       icon: '/assets/images/flag/icon-flag-en.svg',
-    },
-    {
-      language: 'Español',
-      code: 'es',
-      icon: '/assets/images/flag/icon-flag-es.svg',
     },
   ];
   userName: string | null = null;
@@ -119,10 +119,18 @@ export class HeaderComponent implements OnInit {
     private translate: TranslateService,
     private authService: AuthService
   ) {
-    translate.setDefaultLang('en');
+    translate.setDefaultLang('pt-BR');
   }
 
   ngOnInit(): void {
+    // Sincronizar seleção com idioma atual
+    const storedLang = localStorage.getItem('lang');
+    const current = storedLang || this.translate.currentLang || 'pt-BR';
+    const found = this.languages.find((l) => l.code === current);
+    if (found) {
+      this.selectedLanguage = found;
+      this.translate.use(found.code);
+    }
     this.authService.getCurrentUserName().then((name) => {
       this.userName = name;
     });
@@ -146,6 +154,7 @@ export class HeaderComponent implements OnInit {
 
   changeLanguage(lang: any): void {
     this.translate.use(lang.code);
+    localStorage.setItem('lang', lang.code);
     this.selectedLanguage = lang;
   }
 

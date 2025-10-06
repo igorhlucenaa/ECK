@@ -1,5 +1,5 @@
 <div class="container my-4">
-  <h2>Lista de Projetos</h2>
+  <h2>{{ 'Lista de Projetos' | translate }}</h2>
 
   <!-- Botão Adicionar Projeto -->
   <div
@@ -7,17 +7,17 @@
     style="margin-top: 10px; margin-bottom: 10px; text-align: end"
   >
     <button mat-flat-button color="primary" (click)="openProjectForm()">
-      Adicionar Projeto
+      {{ 'Adicionar Projeto' | translate }}
     </button>
   </div>
 
   <!-- Campo de Busca -->
   <mat-form-field appearance="outline" class="w-100 my-3">
-    <mat-label>Buscar</mat-label>
+    <mat-label>{{ 'Buscar' | translate }}</mat-label>
     <input
       matInput
       (keyup)="applyFilter($event)"
-      placeholder="Digite para buscar"
+      [placeholder]="('Digite para buscar' | translate)"
     />
     <button
       mat-icon-button
@@ -38,14 +38,14 @@
   >
     <!-- Nome -->
     <ng-container matColumnDef="name">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome' | translate }}</th>
       <td mat-cell *matCellDef="let project">{{ project.name }}</td>
     </ng-container>
 
     <!-- Prazo -->
     <ng-container matColumnDef="deadline">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>
-        Prazo de Preenchimento
+        {{ 'Prazo de Preenchimento' | translate }}
       </th>
       <td mat-cell *matCellDef="let project">
         {{ project.deadline | date : "shortDate" }}
@@ -54,35 +54,35 @@
 
     <!-- Cliente -->
     <ng-container matColumnDef="client">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Cliente' | translate }}</th>
       <td mat-cell *matCellDef="let project">{{ project.clientName }}</td>
     </ng-container>
 
     <!-- Respostas -->
     <ng-container matColumnDef="responses">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Respostas</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Respostas' | translate }}</th>
       <td mat-cell *matCellDef="let project">
-        {{ project.respondedCount }}/{{ project.totalParticipants }} (Faltam:
+        {{ project.respondedCount }}/{{ project.totalParticipants }} ({{ 'Faltam' | translate }}:
         {{ project.pendingCount }})
       </td>
     </ng-container>
 
     <!-- Ações -->
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>Ações</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
       <td mat-cell *matCellDef="let project">
         <button
           mat-icon-button
           color="accent"
           (click)="goToProjectUsers(project.id)"
-          matTooltip="Usuários do projeto"
+          matTooltip="{{ 'Usuários do projeto' | translate }}"
         >
           <mat-icon>groups</mat-icon>
         </button>
         <button
           mat-icon-button
           color="primary"
-          matTooltip="Modelos de e-mail"
+          matTooltip="{{ 'Modelos de e-mail' | translate }}"
           (click)="goToProjectTemplates(project.clientId, project.id)"
         >
           <mat-icon>mail</mat-icon>
@@ -90,7 +90,7 @@
         <button
           mat-icon-button
           color="primary"
-          matTooltip="Formulário de Avaliação"
+          matTooltip="{{ 'Formulário de Avaliação' | translate }}"
           (click)="goToProjectQuestionnaires(project.clientId)"
         >
           <mat-icon>assignment</mat-icon>
@@ -98,7 +98,7 @@
         <button
           mat-icon-button
           color="accent"
-          matTooltip="Participantes"
+          matTooltip="{{ 'Participantes' | translate }}"
           (click)="openResendModal(project.id, project.clientId)"
         >
           <mat-icon>supervisor_account</mat-icon>
@@ -106,7 +106,7 @@
         <button
           mat-icon-button
           color="primary"
-          matTooltip="Editar Projeto"
+          matTooltip="{{ 'Editar Projeto' | translate }}"
           (click)="openProjectForm(project.id)"
         >
           <mat-icon>edit</mat-icon>
@@ -115,7 +115,7 @@
           mat-icon-button
           color="warn"
           (click)="deleteProject(project.id)"
-          matTooltip="Excluir Projeto"
+          matTooltip="{{ 'Excluir Projeto' | translate }}"
         >
           <mat-icon>delete</mat-icon>
         </button>

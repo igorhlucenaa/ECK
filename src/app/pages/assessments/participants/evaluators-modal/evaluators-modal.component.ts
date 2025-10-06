@@ -22,6 +22,7 @@ import {
 } from '@angular/fire/firestore';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface ModalData {
   evaluatee: any;
@@ -48,7 +49,7 @@ interface MailTemplate {
 @Component({
   selector: 'app-evaluators-modal',
   standalone: true,
-  imports: [MaterialModule, CommonModule, ReactiveFormsModule],
+  imports: [MaterialModule, CommonModule, ReactiveFormsModule, TranslateModule],
   templateUrl: './evaluators-modal.component.html',
   styleUrls: ['./evaluators-modal.component.scss'],
 })
@@ -272,7 +273,7 @@ export class EvaluatorsModalComponent implements OnInit {
 
         // Faz a chamada à função Firebase Cloud Function
         const response = await fetch(
-          'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
+          (await import('src/enviroments/environment')).environment.functions.sendEmailUrl,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

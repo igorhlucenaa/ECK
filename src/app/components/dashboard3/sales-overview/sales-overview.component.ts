@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import {
   Component,
   ViewChild,
@@ -40,7 +41,7 @@ export interface SalesOverviewChart {
 @Component({
   selector: 'app-sales-overview2',
   standalone: true,
-  imports: [NgApexchartsModule, MaterialModule, CommonModule],
+  imports: [NgApexchartsModule, MaterialModule, CommonModule, TranslateModule],
   templateUrl: './sales-overview.component.html',
 })
 export class AppSalesOverview2Component implements OnChanges {

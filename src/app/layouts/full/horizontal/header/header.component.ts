@@ -54,18 +54,18 @@ export class AppHorizontalHeaderComponent {
   showFiller = false;
 
   public selectedLanguage: any = {
-    language: 'English',
-    code: 'en',
-    type: 'US',
-    icon: '/assets/images/flag/icon-flag-en.svg',
+    language: 'Português',
+    code: 'pt-BR',
+    type: 'PT-BR',
+    icon: '/assets/images/flag/icon-flag-pt-br.jpg',
   };
 
   public languages: any[] = [
     {
-      language: 'English',
-      code: 'en',
-      type: 'US',
-      icon: '/assets/images/flag/icon-flag-en.svg',
+      language: 'Português',
+      code: 'pt-BR',
+      type: 'PT-BR',
+      icon: '/assets/images/flag/icon-flag-pt-br.jpg',
     },
     {
       language: 'Español',
@@ -73,14 +73,10 @@ export class AppHorizontalHeaderComponent {
       icon: '/assets/images/flag/icon-flag-es.svg',
     },
     {
-      language: 'Français',
-      code: 'fr',
-      icon: '/assets/images/flag/icon-flag-fr.svg',
-    },
-    {
-      language: 'German',
-      code: 'de',
-      icon: '/assets/images/flag/icon-flag-de.svg',
+      language: 'English',
+      code: 'en',
+      type: 'US',
+      icon: '/assets/images/flag/icon-flag-en.svg',
     },
   ];
 
@@ -90,7 +86,14 @@ export class AppHorizontalHeaderComponent {
     private translate: TranslateService,
     private authService: AuthService,
   ) {
-    translate.setDefaultLang('en');
+    translate.setDefaultLang('pt-BR');
+    const storedLang = localStorage.getItem('lang');
+    const current = storedLang || this.translate.currentLang || 'pt-BR';
+    const found = this.languages.find((l) => l.code === current);
+    if (found) {
+      this.selectedLanguage = found;
+      this.translate.use(found.code);
+    }
   }
 
   logout() {
@@ -107,6 +110,7 @@ export class AppHorizontalHeaderComponent {
 
   changeLanguage(lang: any): void {
     this.translate.use(lang.code);
+    localStorage.setItem('lang', lang.code);
     this.selectedLanguage = lang;
   }
 

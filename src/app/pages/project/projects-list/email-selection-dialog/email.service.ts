@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from 'src/enviroments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class EmailService {
-  private apiUrl =
-    'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail';
+  private apiUrl = environment.functions.sendEmailUrl;
 
   constructor(private http: HttpClient) {}
 
