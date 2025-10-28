@@ -14,7 +14,7 @@ import {
 } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { EmailService } from './email.service';
 import { FormsModule } from '@angular/forms';
@@ -57,6 +57,7 @@ export class EmailSelectionDialogComponent implements OnInit {
     public data: { clientId: string; templateId: string; emailType: string },
     private firestore: Firestore,
     private snackBar: MatSnackBar,
+    private translate: TranslateService,
     private emailService: EmailService
   ) {}
 
@@ -279,11 +280,11 @@ export class EmailSelectionDialogComponent implements OnInit {
   formatDeliveryStatus(deliveryStatus: string): string {
     switch (deliveryStatus) {
       case 'pending':
-        return 'Não Enviado';
+        return this.translate.instant('Não Enviado');
       case 'sent':
-        return 'Enviado';
+        return this.translate.instant('Enviado');
       case 'failed':
-        return 'Não Entregue';
+        return this.translate.instant('Não Entregue');
       default:
         return deliveryStatus;
     }
@@ -292,15 +293,15 @@ export class EmailSelectionDialogComponent implements OnInit {
   formatCategory(category: string): string {
     switch (category.toLowerCase()) {
       case 'gestor':
-        return 'Gestor';
+        return this.translate.instant('Gestor');
       case 'par':
-        return 'Par';
+        return this.translate.instant('Par');
       case 'subordinado':
-        return 'Subordinado';
+        return this.translate.instant('Subordinado');
       case 'avaliado':
-        return 'Avaliado';
+        return this.translate.instant('Avaliado');
       case 'outros':
-        return 'Outros';
+        return this.translate.instant('Outros');
       default:
         return category;
     }
@@ -442,14 +443,14 @@ export class EmailSelectionDialogComponent implements OnInit {
 
   async sendEmails() {
     if (this.selectedParticipants.size === 0) {
-      this.snackBar.open('Selecione ao menos um destinatário.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Selecione ao menos um destinatário.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
     }
 
     if (!this.selectedProjectId) {
-      this.snackBar.open('Selecione um projeto.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Selecione um projeto.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
@@ -462,7 +463,7 @@ export class EmailSelectionDialogComponent implements OnInit {
       ].includes(this.emailType) &&
       !this.selectedAssessmentId
     ) {
-      this.snackBar.open('Selecione uma avaliação.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Por favor, selecione uma avaliação.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -546,11 +547,8 @@ export class EmailSelectionDialogComponent implements OnInit {
             lastEmailSentAt: serverTimestamp(),
           });
 
-          this.snackBar.open(
-            `E-mail enviado para ${participant.name}`,
-            'Fechar',
-            { duration: 3000 }
-          );
+          const msg = this.translate.instant('E-mail enviado para {{name}}', { name: participant.name });
+          this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 3000 });
         }
       }
 
@@ -558,11 +556,7 @@ export class EmailSelectionDialogComponent implements OnInit {
       this.dialogRef.close();
     } catch (error) {
       console.error('Erro ao enviar e-mails ou atualizar documentos:', error);
-      this.snackBar.open(
-        'Erro ao enviar e-mails ou atualizar documentos.',
-        'Fechar',
-        { duration: 3000 }
-      );
+      this.snackBar.open(this.translate.instant('Erro ao enviar e-mails ou atualizar documentos.'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.isLoading.set(false);
     }
@@ -637,8 +631,10 @@ export class EmailSelectionDialogComponent implements OnInit {
   }
 
   formatDate(date: Date | undefined): string {
-    if (!date) return 'Não definida';
-    return date.toLocaleDateString('pt-BR', {
+    if (!date) return this.translate.instant('Não definida');
+    const lang = this.translate.currentLang || 'pt-BR';
+    const locale = lang.startsWith('en') ? 'en-US' : (lang.startsWith('es') ? 'es-ES' : 'pt-BR');
+    return date.toLocaleDateString(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

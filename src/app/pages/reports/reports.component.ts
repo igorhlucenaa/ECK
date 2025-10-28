@@ -1190,12 +1190,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       console.log(`Modo individual: ${targetParticipantCount} registros do avaliado alvo, ${totalParticipants} total de participantes`);
 
-      this.snackBar.open(
-        `Relatório individual para ${this.individualParticipantName} carregado. ` +
-        `(${targetParticipantCount} auto-avaliação, ${totalParticipants} total de participantes na avaliação)`,
-        'Fechar',
-        { duration: 4000 }
-      );
+      const message = this.t('Relatório individual para {{name}} carregado. ({{self}} auto-avaliação, {{total}} total de participantes na avaliação)')
+        .replace('{{name}}', this.individualParticipantName)
+        .replace('{{self}}', String(targetParticipantCount))
+        .replace('{{total}}', String(totalParticipants));
+      this.snackBar.open(message, this.t('Fechar'), { duration: 4000 });
     }
 
         // Atualizar perguntas bloqueadas após carregar os dados

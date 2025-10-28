@@ -6,11 +6,12 @@ import {
   Validators,
 } from '@angular/forms';
 import { MaterialModule } from '../../../material.module';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-form-wizard',
   standalone: true,
-  imports: [MaterialModule, FormsModule, ReactiveFormsModule],
+  imports: [MaterialModule, FormsModule, ReactiveFormsModule, TranslateModule],
   templateUrl: './form-wizard.component.html',
 })
 export class AppFormWizardComponent {

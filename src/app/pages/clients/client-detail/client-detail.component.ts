@@ -10,11 +10,12 @@ import {
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule, Location } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [MaterialModule, ReactiveFormsModule, RouterModule, CommonModule],
+  imports: [MaterialModule, ReactiveFormsModule, RouterModule, CommonModule, TranslateModule],
   templateUrl: './client-detail.component.html',
   styleUrls: ['./client-detail.component.scss'],
 })
@@ -28,7 +29,8 @@ export class ClientDetailComponent implements OnInit {
     private router: Router,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private location: Location
+    private location: Location,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -44,14 +46,14 @@ export class ClientDetailComponent implements OnInit {
       if (docSnap.exists()) {
         this.initForm(docSnap.data());
       } else {
-        this.snackBar.open('Cliente não encontrado.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Cliente não encontrado.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         this.router.navigate(['/clients']);
       }
     } catch (error) {
       console.error('Erro ao carregar cliente:', error);
-      this.snackBar.open('Erro ao carregar os dados do cliente.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar os dados do cliente.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } finally {
@@ -99,13 +101,13 @@ export class ClientDetailComponent implements OnInit {
 
     try {
       await updateDoc(clientDocRef, updatedClientData);
-      this.snackBar.open('Cliente atualizado com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Cliente atualizado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       this.router.navigate(['/clients']); // Redireciona para a lista de clientes
     } catch (error) {
       console.error('Erro ao atualizar cliente:', error);
-      this.snackBar.open('Erro ao salvar alterações.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao salvar alterações.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

@@ -6,6 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 
 import { MaterialModule } from '../../../material.module';
@@ -49,13 +50,14 @@ interface ReportGenerationData {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MaterialModule
+    MaterialModule,
+    TranslateModule
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <h2 mat-dialog-title style="display: flex; align-items: center; gap: 12px;">
       <mat-icon style="color: #6366f1;">description</mat-icon>
-      Gerar Relatório - {{ data.participant.name }}
+      {{ 'Gerar Relatório' | translate }} - {{ data.participant.name }}
     </h2>
 
     <mat-dialog-content style="max-width: 600px; min-height: 500px;">
@@ -69,7 +71,7 @@ interface ReportGenerationData {
           <mat-card-header>
             <mat-card-title style="font-size: 16px; color: #6366f1;">
               <mat-icon style="vertical-align: middle; margin-right: 8px;">person</mat-icon>
-              Informações do Participante
+              {{ 'Informações do Participante' | translate }}
             </mat-card-title>
           </mat-card-header>
           <mat-card-content>
@@ -99,12 +101,12 @@ interface ReportGenerationData {
           <mat-card-header>
             <mat-card-title style="font-size: 16px; color: #333;">
               <mat-icon style="vertical-align: middle; margin-right: 8px;">dashboard</mat-icon>
-              1. Selecione o Template de Relatório
+              1. {{ 'Selecione o Template de Relatório' | translate }}
             </mat-card-title>
           </mat-card-header>
           <mat-card-content>
             <mat-form-field appearance="outline" style="width: 100%;">
-              <mat-label>Template de Relatório</mat-label>
+              <mat-label>{{ 'Template de Relatório' | translate }}</mat-label>
               <mat-select [formControl]="templateControl">
                 <mat-option *ngFor="let template of reportTemplates" [value]="template">
                   <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -115,14 +117,14 @@ interface ReportGenerationData {
                   </div>
                 </mat-option>
               </mat-select>
-              <mat-hint>{{ reportTemplates.length }} templates disponíveis</mat-hint>
+              <mat-hint>{{ reportTemplates.length }} {{ 'templates disponíveis' | translate }}</mat-hint>
             </mat-form-field>
 
             <div *ngIf="templateControl.value" style="margin-top: 12px;">
               <mat-chip-listbox>
                 <mat-chip>
                   <mat-icon matChipAvatar>layers</mat-icon>
-                  {{ templateControl.value.sections.length || 0 }} seções configuradas
+                  {{ templateControl.value.sections.length || 0 }} {{ 'seções configuradas' | translate }}
                 </mat-chip>
               </mat-chip-listbox>
             </div>
@@ -134,12 +136,12 @@ interface ReportGenerationData {
           <mat-card-header>
             <mat-card-title style="font-size: 16px; color: #333;">
               <mat-icon style="vertical-align: middle; margin-right: 8px;">psychology</mat-icon>
-              2. Selecione as Competências
+              2. {{ 'Selecione as Competências' | translate }}
             </mat-card-title>
           </mat-card-header>
           <mat-card-content>
             <mat-form-field appearance="outline" style="width: 100%;">
-              <mat-label>Competências</mat-label>
+              <mat-label>{{ 'Competências' | translate }}</mat-label>
               <mat-select [formControl]="competenciesControl" multiple>
                 <mat-option *ngFor="let competency of competencies" [value]="competency">
                   <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -148,14 +150,14 @@ interface ReportGenerationData {
                       {{ competency.description }}
                     </span>
                     <span style="font-size: 11px; color: #888;">
-                      {{ competency.perguntasIds.length || 0 }} questões
+                      {{ competency.perguntasIds.length || 0 }} {{ 'questões' | translate }}
                     </span>
                   </div>
                 </mat-option>
               </mat-select>
               <mat-hint>
-                {{ competencies.length }} competências disponíveis.
-                {{ (competenciesControl.value || []).length }} selecionadas.
+                {{ competencies.length }} {{ 'competências disponíveis.' | translate }}
+                {{ (competenciesControl.value || []).length }} {{ 'selecionadas.' | translate }}
               </mat-hint>
             </mat-form-field>
 
@@ -175,22 +177,22 @@ interface ReportGenerationData {
           <mat-card-header>
             <mat-card-title style="font-size: 16px; color: #0ea5e9;">
               <mat-icon style="vertical-align: middle; margin-right: 8px;">summarize</mat-icon>
-              Resumo da Configuração
+              {{ 'Resumo da Configuração' | translate }}
             </mat-card-title>
           </mat-card-header>
           <mat-card-content>
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
               <mat-chip>
                 <mat-icon matChipAvatar>dashboard</mat-icon>
-                Template: {{ templateControl.value?.name }}
+                {{ 'Template' | translate }}: {{ templateControl.value?.name }}
               </mat-chip>
               <mat-chip>
                 <mat-icon matChipAvatar>psychology</mat-icon>
-                {{ (competenciesControl.value || []).length }} competências
+                {{ (competenciesControl.value || []).length }} {{ 'competências' | translate }}
               </mat-chip>
               <mat-chip>
                 <mat-icon matChipAvatar>quiz</mat-icon>
-                {{ getTotalQuestions() }} questões total
+                {{ getTotalQuestions() }} {{ 'questões total' | translate }}
               </mat-chip>
             </div>
           </mat-card-content>
@@ -200,7 +202,7 @@ interface ReportGenerationData {
 
     <mat-dialog-actions align="end" style="padding: 16px 24px; border-top: 1px solid #e0e0e0;">
       <button mat-button mat-dialog-close [disabled]="isGenerating">
-        Cancelar
+        {{ 'Cancelar' | translate }}
       </button>
       <button
         mat-flat-button
@@ -211,8 +213,8 @@ interface ReportGenerationData {
       >
         <mat-spinner *ngIf="isGenerating" [diameter]="20" style="margin-right: 8px;"></mat-spinner>
         <mat-icon *ngIf="!isGenerating" style="margin-right: 8px;">description</mat-icon>
-        <span *ngIf="isGenerating">Gerando Relatório...</span>
-        <span *ngIf="!isGenerating">Gerar Relatório PDF</span>
+        <span *ngIf="isGenerating">{{ 'Gerando Relatório...' | translate }}</span>
+        <span *ngIf="!isGenerating">{{ 'Gerar Relatório PDF' | translate }}</span>
       </button>
     </mat-dialog-actions>
   `,
@@ -261,7 +263,8 @@ export class ReportGenerationModalComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private translate: TranslateService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -273,7 +276,7 @@ export class ReportGenerationModalComponent implements OnInit {
       ]);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      this.snackBar.open('Erro ao carregar dados. Tente novamente.', 'Fechar', { duration: 5000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar dados. Tente novamente.'), this.translate.instant('Fechar'), { duration: 5000 });
     } finally {
       this.isLoading = false;
     }
@@ -403,11 +406,11 @@ export class ReportGenerationModalComponent implements OnInit {
         queryParams: queryParams
       });
 
-      this.snackBar.open('Redirecionando para geração do relatório...', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Redirecionando para geração do relatório...'), this.translate.instant('Fechar'), { duration: 3000 });
 
     } catch (error) {
       console.error('Erro ao gerar relatório:', error);
-      this.snackBar.open('Erro ao gerar relatório. Tente novamente.', 'Fechar', { duration: 5000 });
+      this.snackBar.open(this.translate.instant('Erro ao gerar relatório. Tente novamente.'), this.translate.instant('Fechar'), { duration: 5000 });
     } finally {
       this.isGenerating = false;
     }

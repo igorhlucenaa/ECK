@@ -24,7 +24,7 @@ import { EmailSelectionDialogComponent } from './email-selection-dialog/email-se
 import { ResendAssessmentModalComponent } from '../resend-assessment-modal/resend-assessment-modal.component';
 import { ParticipantsModalComponent } from '../participants-modal/participants-modal.component';
 import { ParticipantsComponent } from '../../assessments/participants/participants.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-projects-list',
@@ -59,7 +59,8 @@ export class ProjectsListComponent implements OnInit {
     private router: Router,
     private dialog: MatDialog,
     private authService: AuthService,
-    private location: Location
+    private location: Location,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -88,7 +89,7 @@ export class ProjectsListComponent implements OnInit {
       });
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -148,7 +149,7 @@ export class ProjectsListComponent implements OnInit {
         data.name.toLowerCase().includes(filter);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
-      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar projetos.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -262,7 +263,7 @@ export class ProjectsListComponent implements OnInit {
   deleteProject(projectId: string): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
-      data: { message: 'Tem certeza de que deseja excluir este projeto?' },
+      data: { message: this.translate.instant('Tem certeza de que deseja excluir este projeto?') },
     });
 
     dialogRef.afterClosed().subscribe((result) => {
@@ -273,17 +274,13 @@ export class ProjectsListComponent implements OnInit {
             this.dataSource.data = this.dataSource.data.filter(
               (project) => project.id !== projectId
             );
-            this.snackBar.open('Projeto excluído com sucesso.', 'Fechar', {
+            this.snackBar.open(this.translate.instant('Projeto excluído com sucesso.'), this.translate.instant('Fechar'), {
               duration: 3000,
             });
           })
           .catch((error) => {
             console.error('Erro ao excluir projeto:', error);
-            this.snackBar.open(
-              'Erro ao excluir projeto. Tente novamente mais tarde.',
-              'Fechar',
-              { duration: 3000 }
-            );
+            this.snackBar.open(this.translate.instant('Erro ao excluir projeto. Tente novamente mais tarde.'), this.translate.instant('Fechar'), { duration: 3000 });
           });
       }
     });
@@ -291,11 +288,7 @@ export class ProjectsListComponent implements OnInit {
 
   openProjectForm(projectId?: string): void {
     if (!this.clientId && !this.isAdminMaster) {
-      this.snackBar.open(
-        'Cliente não identificado. Contate o suporte.',
-        'Fechar',
-        { duration: 3000 }
-      );
+      this.snackBar.open(this.translate.instant('Cliente não identificado. Contate o suporte.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 

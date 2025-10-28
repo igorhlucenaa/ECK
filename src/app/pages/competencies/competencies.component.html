@@ -1,189 +1,244 @@
 <div class="container mt-4">
+  <!-- Cabeçalho -->
   <div class="row" style="margin-bottom: 20px">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center">
         <button mat-button routerLink="/assessments">
           <mat-icon>arrow_back</mat-icon>
-          Voltar
+          {{ 'Voltar' | translate }}
         </button>
         <h2 class="mb-0">
           <mat-icon class="me-2" style="color: #6366f1;">psychology</mat-icon>
-          Gerenciar Competências
+          Grupos de Competências
         </h2>
-        <button
-          mat-flat-button
-          color="primary"
-          (click)="openCompetencyDialog()"
-          [disabled]="!selectedClientId || !canEdit()"
-        >
-          <mat-icon>add</mat-icon>
-          Nova Competência
-        </button>
+        <div></div>
       </div>
     </div>
   </div>
 
-  <!-- Seletor de Cliente -->
+  <!-- Gerenciamento de Grupos de Competências (igual ao /reports) -->
   <mat-card class="mb-4">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon class="me-2">group</mat-icon>
+        {{ 'Gerenciamento de Grupos de Competências' | translate }}
+      </mat-card-title>
+      <mat-card-subtitle>
+        {{ 'Selecione um cliente e gerencie grupos de competências' | translate }}
+      </mat-card-subtitle>
+    </mat-card-header>
     <mat-card-content>
-      <div class="row">
-        <div class="col-md-6">
+      <div class="row g-3">
+        <div class="col-md-4">
           <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Cliente</mat-label>
-            <mat-select
-              [(value)]="selectedClientId"
-              (selectionChange)="onClientChange()"
-              [disabled]="userRole === 'admin_client'"
-            >
-              <mat-option
-                *ngFor="let client of clients"
-                [value]="client.id"
-              >
+            <mat-label>{{ 'Selecione o Cliente' | translate }}</mat-label>
+            <mat-select [(value)]="selectedClientId" (selectionChange)="onClientChange()" [disabled]="userRole === 'admin_client'">
+              <mat-option *ngFor="let client of clients" [value]="client.id">
                 {{ client.companyName }}
               </mat-option>
             </mat-select>
           </mat-form-field>
         </div>
+        <div class="col-md-4">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>{{ 'Nome do Novo Grupo' | translate }}</mat-label>
+            <input matInput [(ngModel)]="groupName" [placeholder]="'Digite um nome para salvar o grupo atual de competências' | translate">
+          </mat-form-field>
+        </div>
+        <div class="col-md-4">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>{{ 'Carregar Grupo Existente' | translate }}</mat-label>
+            <mat-select [(value)]="selectedGroupId" (selectionChange)="loadCompetencyGroup()">
+              <mat-option [value]="''">{{ 'Carregue um grupo de competências salvo' | translate }}</mat-option>
+              <mat-option *ngFor="let group of competencyGroups" [value]="group.id">
+                {{ group.name }} ({{ group.competencias?.length || 0 }} competências)
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <div class="d-flex align-items-center gap-3">
+            <mat-chip-set>
+              <mat-chip *ngIf="selectedClientId">
+                <mat-icon matChipAvatar>business</mat-icon>
+                {{ getClientName() }}
+              </mat-chip>
+              <mat-chip>
+                <mat-icon matChipAvatar>psychology</mat-icon>
+                {{ groupCompetencies.length }} competências
+              </mat-chip>
+              <mat-chip *ngIf="competencyGroups.length > 0">
+                <mat-icon matChipAvatar>folder</mat-icon>
+                {{ competencyGroups.length }} {{ 'grupos salvos' | translate }}
+              </mat-chip>
+            </mat-chip-set>
+          </div>
+        </div>
+        <div class="col-md-6 text-end">
+          <button mat-flat-button color="primary" (click)="saveCompetencyGroup()" [disabled]="!groupName || groupCompetencies.length === 0">
+            <mat-icon>save</mat-icon>
+            {{ 'Salvar Grupo' | translate }}
+          </button>
+          <button mat-stroked-button color="accent" (click)="loadCompetencyGroup()" [disabled]="!selectedGroupId" class="ms-2">
+            <mat-icon>download</mat-icon>
+            {{ 'Carregar' | translate }}
+          </button>
+        </div>
       </div>
     </mat-card-content>
   </mat-card>
 
-  <!-- Loading -->
-  <div *ngIf="isLoading" class="text-center py-5">
-    <mat-spinner [diameter]="50"></mat-spinner>
-    <p class="mt-3 text-muted">Carregando competências...</p>
-  </div>
+  <!-- Cadastro de Competências (igual ao /reports) -->
+    <mat-card class="mb-4">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon class="me-2">psychology</mat-icon>
+          {{ 'Cadastro de Competências' | translate }}
+        </mat-card-title>
+        <mat-card-subtitle>
+          {{ 'As competências são agrupamentos de perguntas que representam habilidades específicas a serem avaliadas.' | translate }}
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <!-- ✅ Formulário Reativo (igual ao reports) -->
+        <form [formGroup]="competenciaForm" (ngSubmit)="salvarCompetencia()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'Nome da competência' | translate }}*</mat-label>
+                <input matInput formControlName="nome" [placeholder]="'Nome que aparecerá nos relatórios e gráficos' | translate">
+              </mat-form-field>
+            </div>
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'Descrição detalhada' | translate }}*</mat-label>
+                <textarea matInput formControlName="descricao" rows="2" [placeholder]="'Descrição que aparecerá como subtítulo nos relatórios' | translate"></textarea>
+              </mat-form-field>
+            </div>
+          </div>
 
-  <!-- Lista de Competências -->
-  <div *ngIf="!isLoading">
-    <!-- Mensagem quando não há cliente selecionado -->
-    <div *ngIf="!selectedClientId" class="text-center py-5">
-      <mat-icon class="text-muted" style="font-size: 48px; width: 48px; height: 48px;">
-        business
-      </mat-icon>
-      <h4 class="text-muted mt-3">Selecione um cliente para visualizar as competências</h4>
-    </div>
+          <!-- Filtro de Tipos de Perguntas -->
+          <div class="mt-4">
+            <h6>{{ 'Filtro de Tipos de Perguntas' | translate }}</h6>
+            <div class="d-flex align-items-center gap-3 mb-3">
+              <!-- ✅ Checkbox com FormControl (igual ao reports) -->
+              <mat-checkbox [formControl]="includeOpenQuestions" (change)="onQuestionFilterChange()">
+                {{ 'Incluir perguntas abertas (texto livre)' | translate }}
+              </mat-checkbox>
+              <span class="text-muted">{{ getAvailableQuestionCount() }}</span>
+            </div>
 
-    <!-- Mensagem quando não há competências -->
-    <div *ngIf="selectedClientId && (!competencies || competencies.length === 0)" class="text-center py-5">
-      <mat-icon class="text-muted" style="font-size: 48px; width: 48px; height: 48px;">
-        psychology
-      </mat-icon>
-      <h4 class="text-muted mt-3">Nenhuma competência encontrada</h4>
-      <p class="text-muted">Clique em "Nova Competência" para criar a primeira competência</p>
-    </div>
-
-    <!-- Lista de Competências -->
-    <div *ngIf="competencies && competencies.length > 0" class="row">
-      <div *ngFor="let competency of competencies" class="col-12 mb-4">
-        <mat-card>
-          <mat-card-header>
-            <mat-card-title class="d-flex align-items-center">
-              <mat-icon class="me-2" style="color: #6366f1;">psychology</mat-icon>
-              {{ competency.name }}
-            </mat-card-title>
-            <mat-card-subtitle>
-              {{ competency.description }}
-            </mat-card-subtitle>
-          </mat-card-header>
-
-          <mat-card-content>
-            <!-- Estatísticas -->
-            <div class="row mb-3">
-              <div class="col-md-3">
-                <div class="text-center">
-                  <div class="h4 mb-0 text-primary">{{ getSafeQuestionsCount(competency) }}</div>
-                  <small class="text-muted">Perguntas</small>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="text-center">
-                  <div class="h4 mb-0 text-success">
-                    {{ getRequiredQuestionsCount(competency.questions) }}
-                  </div>
-                  <small class="text-muted">Obrigatórias</small>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="text-center">
-                  <div class="h4 mb-0 text-info">
-                    {{ getLikertQuestionsCount(competency.questions) }}
-                  </div>
-                  <small class="text-muted">Escala Likert</small>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="text-center">
-                  <div class="h4 mb-0 text-warning">
-                    {{ getMultipleChoiceQuestionsCount(competency.questions) }}
-                  </div>
-                  <small class="text-muted">Múltipla Escolha</small>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="border rounded p-3">
+                <h6 class="mb-2">Fechadas: Escalas, múltipla escolha, dropdown, matriz</h6>
+                <div class="text-muted small">
+                  <div>• Escala Likert (1-5)</div>
+                  <div>• Múltipla escolha</div>
+                  <div>• Dropdown</div>
+                  <div>• Matriz de perguntas</div>
                 </div>
               </div>
             </div>
-
-            <!-- Lista de Perguntas -->
-            <div class="questions-list" *ngIf="isValidCompetency(competency) && competency.questions && competency.questions.length > 0">
-              <h6 class="mb-3">
-                <mat-icon class="me-2" style="font-size: 18px;">quiz</mat-icon>
-                Perguntas ({{ getSafeQuestionsCount(competency) }})
-              </h6>
-
-              <div *ngFor="let question of competency.questions; let i = index" class="question-item">
-                <div class="d-flex align-items-start">
-                  <div class="question-number me-3">
-                    <span class="badge bg-primary rounded-pill">{{ getQuestionNumber(i) }}</span>
-                  </div>
-                  <div class="question-content flex-grow-1">
-                    <div class="d-flex align-items-center mb-2">
-                      <strong class="me-2">{{ getQuestionText(question) }}</strong>
-                      <span class="badge bg-secondary me-2">{{ getQuestionTypeLabel(question) }}</span>
-                      <span *ngIf="isQuestionRequired(question)" class="badge bg-danger">Obrigatória</span>
-                    </div>
-
-                    <!-- Opções para múltipla escolha -->
-                    <div *ngIf="isMultipleChoiceQuestion(question)" class="ms-4">
-                      <div *ngFor="let option of getQuestionOptions(question)" class="text-muted">
-                        • {{ option }}
-                      </div>
-                    </div>
-                  </div>
+            <div class="col-md-6">
+              <div class="border rounded p-3">
+                <h6 class="mb-2">Abertas: Texto livre, comentários, uploads</h6>
+                <div class="text-muted small">
+                  <div>• Texto livre</div>
+                  <div>• Comentários</div>
+                  <div>• Upload de arquivos</div>
+                  <div>• Campos numéricos</div>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            <!-- Mensagem quando não há perguntas -->
-            <div *ngIf="!isValidCompetency(competency) || !competency.questions || competency.questions.length === 0" class="text-center py-3">
-              <mat-icon class="text-muted" style="font-size: 24px; width: 24px; height: 24px;">
-                quiz
-              </mat-icon>
-              <p class="text-muted mb-0">Nenhuma pergunta cadastrada para esta competência</p>
-            </div>
-          </mat-card-content>
+        <!-- Questões Vinculadas -->
+        <div class="mt-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label">{{ 'Questões vinculadas' | translate }}*</label>
+            <button mat-stroked-button color="primary" (click)="openCreateQuestionDialog()">
+              <mat-icon>add</mat-icon>
+              {{ 'Criar Nova Pergunta' | translate }}
+            </button>
+          </div>
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>{{ 'Selecione as questões' | translate }}</mat-label>
+            <!-- ✅ mat-select com formControlName e dynamicColumns (igual ao reports) -->
+            <mat-select formControlName="perguntasIds" multiple>
+              <mat-option *ngFor="let q of dynamicColumns" [value]="q" [disabled]="perguntasBloqueadas.has(q)">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                  <span>{{ questionMap[q] || q }}</span>
+                </div>
+              </mat-option>
+            </mat-select>
+            <mat-hint>{{ 'Questões já utilizadas em outras competências são desabilitadas.' | translate }}</mat-hint>
+          </mat-form-field>
+          </div>
 
           <!-- Ações -->
-          <mat-card-actions class="d-flex justify-content-end">
-            <button
-              mat-button
-              color="primary"
-              (click)="openCompetencyDialog(competency)"
-              [disabled]="!canEdit()"
-            >
-              <mat-icon>edit</mat-icon>
-              Editar
+          <div class="mt-4 d-flex gap-2">
+            <!-- ✅ Botão submit com validação do formulário (igual ao reports) -->
+            <button mat-flat-button color="primary" type="submit" [disabled]="!competenciaForm.valid">
+              <mat-icon>{{ competenciaEditando.id ? 'save' : 'add' }}</mat-icon>
+              {{ (competenciaEditando.id ? 'Salvar Alterações' : 'Adicionar Competência') | translate }}
             </button>
-            <button
-              mat-button
-              color="warn"
-              (click)="deleteCompetency(competency)"
-              [disabled]="!canEdit()"
-            >
-              <mat-icon>delete</mat-icon>
-              Excluir
+            <button mat-stroked-button type="button" (click)="cancelarEdicaoCompetencia()" *ngIf="competenciaEditando.id">
+              <mat-icon>cancel</mat-icon>
+              {{ 'Cancelar' | translate }}
             </button>
-          </mat-card-actions>
-        </mat-card>
+            <button mat-stroked-button type="button" color="warn" (click)="debugPerguntas()">
+              <mat-icon>bug_report</mat-icon>
+              {{ 'Debug Perguntas' | translate }}
+            </button>
+            <button mat-stroked-button type="button" color="warn" (click)="debugTipos()">
+              <mat-icon>bug_report</mat-icon>
+              {{ 'Debug Tipos' | translate }}
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+  <!-- Lista de Competências Ativas no Grupo Atual (igual ao /reports) -->
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon class="me-2">list</mat-icon>
+        Competências Ativas ({{ groupCompetencies.length }})
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div *ngIf="groupCompetencies.length === 0" class="text-center py-4">
+        <mat-icon class="text-muted" style="font-size: 48px;">psychology</mat-icon>
+        <h5 class="text-muted mt-2">Nenhuma competência adicionada</h5>
+        <p class="text-muted">Adicione competências usando o formulário acima</p>
       </div>
-    </div>
-  </div>
+
+      <div *ngFor="let comp of groupCompetencies; let i = index" class="competency-item border rounded p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <h6 class="mb-1">{{ comp.nome }}</h6>
+            <p class="text-muted mb-2">{{ comp.descricao }}</p>
+            <div class="d-flex gap-3">
+              <span class="badge bg-primary">{{ comp.perguntasIds.length || 0 }} perguntas</span>
+              <span class="badge bg-secondary">{{ getQuestionTypesCount(comp) }} tipos</span>
+            </div>
+          </div>
+          <div class="d-flex gap-1">
+            <button mat-icon-button color="primary" (click)="editarCompetencia(comp)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="removerCompetencia(i)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
 </div>

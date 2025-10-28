@@ -1,11 +1,11 @@
 <div class="container my-4">
-  <h1>Lista de Clientes</h1>
+  <h1>{{ 'Lista de Clientes' | translate }}</h1>
   <!-- Campo de Busca -->
 
   <div class="row">
     <div class="col-12" style="text-align: end; margin-bottom: 10px">
       <button mat-flat-button color="primary" (click)="openAddClientDialog()">
-        Adicionar Cliente
+        {{ 'Adicionar Cliente' | translate }}
       </button>
     </div>
     <div class="col-12">
@@ -14,13 +14,13 @@
         class="search-field"
         style="width: 100%"
       >
-        <mat-label>Buscar</mat-label>
+        <mat-label>{{ 'Buscar' | translate }}</mat-label>
         <input
           matInput
           (keyup)="applyFilter($event)"
-          placeholder="Digite para buscar"
+          placeholder="{{ 'Digite para buscar' | translate }}"
         />
-        <button
+         <button
           mat-icon-button
           matSuffix
           *ngIf="searchValue"
@@ -41,7 +41,7 @@
   >
     <!-- Coluna: Nome do Cliente -->
     <ng-container matColumnDef="companyName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome do Cliente</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome do Cliente' | translate }}</th>
       <td mat-cell *matCellDef="let client">
         {{ client.companyName }}
       </td>
@@ -49,7 +49,7 @@
 
     <!-- Coluna: Setor -->
     <ng-container matColumnDef="sector">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Setor</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Setor' | translate }}</th>
       <td mat-cell *matCellDef="let client">
         {{ client.sector }}
       </td>
@@ -57,7 +57,7 @@
 
     <!-- Coluna: CNPJ -->
     <ng-container matColumnDef="cnpj">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>CNPJ</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'CNPJ' | translate }}</th>
       <td mat-cell *matCellDef="let client">
         {{ client.cnpj | cnpj }}
       </td>
@@ -66,7 +66,7 @@
     <!-- Coluna: Créditos -->
     <ng-container matColumnDef="credits">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>
-        Créditos Remanescentes
+        {{ 'Créditos Remanescentes' | translate }}
       </th>
       <td mat-cell *matCellDef="let client">
         {{ client.credits }}
@@ -75,7 +75,7 @@
 
     <!-- Coluna: Ações -->
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>Ações</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
       <td mat-cell *matCellDef="let client" class="text-center">
         <button
           mat-icon-button

@@ -22,6 +22,7 @@ import { AddClientDialogComponent } from '../add-client-dialog/add-client-dialog
 import { PhonePipe } from 'src/app/pipe/phone.pipe';
 import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
 import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-clients-list',
@@ -30,10 +31,11 @@ import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.componen
     CommonModule,
     MaterialModule,
     RouterModule,
-    PhonePipe,
+    // PhonePipe, // not used in this template
     CnpjPipe,
     RouterModule,
-    ConfirmDialogComponent,
+    // ConfirmDialogComponent, // provided via dialog.open, not used in template
+    TranslateModule,
   ],
   templateUrl: './clients-list.component.html',
   styleUrls: ['./clients-list.component.scss'],
@@ -56,7 +58,8 @@ export class ClientsListComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private router: Router
+    private router: Router,
+    private translate: TranslateService
   ) {}
 
   ngOnInit() {
@@ -99,11 +102,7 @@ export class ClientsListComponent implements OnInit {
       };
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open(
-        'Erro ao carregar a lista de clientes. Tente novamente mais tarde.',
-        'Fechar',
-        { duration: 3000 }
-      );
+      this.snackBar.open(this.translate.instant('Erro ao carregar a lista de clientes. Tente novamente mais tarde.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -151,7 +150,7 @@ export class ClientsListComponent implements OnInit {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
       data: {
-        message: `Ao remover o cliente, todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?`,
+        message: this.translate.instant('Ao remover o cliente, todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?'),
       },
     });
 
@@ -194,13 +193,7 @@ export class ClientsListComponent implements OnInit {
             return deleteDoc(clientDocRef);
           })
           .then(() => {
-            this.snackBar.open(
-              'Cliente e dados relacionados excluídos com sucesso.',
-              'Fechar',
-              {
-                duration: 3000,
-              }
-            );
+            this.snackBar.open(this.translate.instant('Cliente e dados relacionados excluídos com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
             // Atualizar tabela
             this.dataSource.data = this.dataSource.data.filter(
               (client) => client.id !== id
@@ -211,11 +204,7 @@ export class ClientsListComponent implements OnInit {
               'Erro ao excluir cliente e dados relacionados:',
               error
             );
-            this.snackBar.open(
-              'Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.',
-              'Fechar',
-              { duration: 3000 }
-            );
+            this.snackBar.open(this.translate.instant('Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.'), this.translate.instant('Fechar'), { duration: 3000 });
           });
       }
     });
@@ -230,7 +219,7 @@ export class ClientsListComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.loadClients();
-        this.snackBar.open('Lista de clientes atualizada!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Lista de clientes atualizada!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
       }

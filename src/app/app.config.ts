@@ -19,7 +19,7 @@ import {
 } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideClientHydration } from '@angular/platform-browser';
-import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
+import { TranslateLoader, TranslateModule, MissingTranslationHandler, MissingTranslationHandlerParams } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 
 // Firebase imports
@@ -59,6 +59,7 @@ import localePt from '@angular/common/locales/pt';
 import localeEs from '@angular/common/locales/es';
 import localeEn from '@angular/common/locales/en';
 import { EmailEditorModule } from 'angular-email-editor';
+import { AppMissingTranslationHandler } from './i18n/missing-translation.handler';
 
 registerLocaleData(localePt);
 registerLocaleData(localeEs);
@@ -123,6 +124,9 @@ export const appConfig: ApplicationConfig = {
           useFactory: HttpLoaderFactory,
           deps: [HttpClient],
         },
+        useDefaultLang: true,
+        defaultLanguage: 'pt-BR',
+        missingTranslationHandler: { provide: MissingTranslationHandler, useClass: AppMissingTranslationHandler },
       })
     ),
     provideNgxMask(),

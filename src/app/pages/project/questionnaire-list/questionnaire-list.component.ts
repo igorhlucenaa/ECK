@@ -14,11 +14,12 @@ import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-questionnaire-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, TranslateModule],
   templateUrl: './questionnaire-list.component.html',
   styleUrls: ['./questionnaire-list.component.scss'],
 })
@@ -34,7 +35,8 @@ export class QuestionnaireListComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -42,7 +44,7 @@ export class QuestionnaireListComponent implements OnInit {
     if (this.projectId) {
       this.loadQuestionnaires();
     } else {
-      this.snackBar.open('Projeto não encontrado.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Projeto não encontrado.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -60,7 +62,7 @@ export class QuestionnaireListComponent implements OnInit {
         id: doc.id,
         ...doc.data(),
       }));
-      
+
 
       this.dataSource.data = questionnaires;
       this.dataSource.paginator = this.paginator;
@@ -70,7 +72,7 @@ export class QuestionnaireListComponent implements OnInit {
         data.name.toLowerCase().includes(filter);
     } catch (error) {
       console.error('Erro ao carregar questionários:', error);
-      this.snackBar.open('Erro ao carregar questionários.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar questionários.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -107,12 +109,12 @@ export class QuestionnaireListComponent implements OnInit {
         (q) => q.id !== questionnaireId
       );
 
-      this.snackBar.open('Questionário excluído com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Questionário excluído com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } catch (error) {
       console.error('Erro ao excluir questionário:', error);
-      this.snackBar.open('Erro ao excluir questionário.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao excluir questionário.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -120,7 +122,7 @@ export class QuestionnaireListComponent implements OnInit {
 
   previewQuestionnaire(questionnaireId: string): void {
     if (!this.projectId) {
-      this.snackBar.open('Projeto não identificado.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Projeto não identificado.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;

@@ -10,7 +10,7 @@
   "Modelos de E-mail": "Email Templates",
   "Formulários": "Assessments",
   "Relatórios": "Reports",
-  "Competências": "Competencies",
+
   "Projetos Ativos por Cliente": "Active Projects by Client",
   "Distribuição de projetos ativos entre os clientes": "Distribution of active projects among clients",
   "Avaliações Cadastradas por Cliente": "Assessments Registered by Client",
@@ -64,14 +64,14 @@
   "As competências são agrupamentos de perguntas que representam habilidades específicas a serem avaliadas.": "Competencies are groups of questions that represent specific skills to be evaluated.",
   "Gerenciamento de Grupos de Competências": "Competency Group Management",
   "Selecione o cliente para associar as competências": "Select the client to associate competencies",
-  "Carregue um grupo de competências salvo": "Load a saved competency group",
+
   "Salvar grupo atual": "Save current group",
   "Carregar grupo selecionado": "Load selected group",
   "Nome da competência": "Competency name",
-  "Nome que aparecerá nos relatórios e gráficos": "Name that will appear in reports and charts",
+
   "Descrição detalhada": "Detailed description",
   "Ex: Capacidade de liderar equipes, tomar decisões estratégicas e influenciar positivamente os colaboradores": "E.g.: Ability to lead teams, make strategic decisions and positively influence collaborators",
-  "Descrição que aparecerá como subtítulo nos relatórios": "Description that will appear as a subtitle in reports",
+
   "Questões vinculadas": "Linked questions",
   "Questões já utilizadas em outras competências são desabilitadas.": "Questions already used in other competencies are disabled.",
   "Salvar Alterações": "Save Changes",
@@ -87,7 +87,7 @@
   "Gráfico de Defasagem": "Gap Chart",
   "Janela de Johari": "Johari Window",
   "Arraste para reordenar": "Drag to reorder",
-  "Tipo": "Type",
+
   "Resumo de Competências": "Competency Summary",
   "Tabela de Frequência": "Frequency Table",
   "Tabela de Distribuição": "Distribution Table",
@@ -266,15 +266,15 @@
   "Status": "Status",
   "Link Expirado": "Link Expired",
   "Data de Validade": "Validity Date",
-  "Cancelar": "Cancel",
+
   "Enviar E-mails": "Send Emails",
   "Carregando participantes...": "Loading participants...",
   "Data de Envio": "Sent At",
   "Data de Resposta": "Answered At",
   "Relatório": "Report",
-  "Gerar Relatório": "Generate Report",
+
   "Enviando...": "Sending...",
-  "Lista de Participantes": "Participants List",
+
   "Baixar Planilha de Modelo": "Download Template Spreadsheet",
   "Carregar Arquivo Excel": "Upload Excel File",
   "Adicionar Novo Participante": "Add New Participant",
@@ -286,6 +286,220 @@
   "Por favor, selecione uma avaliação.": "Please select an assessment.",
   "Nenhum participante encontrado.": "No participants found.",
   "Enviar Links": "Send Links",
+  "grupos salvos": "saved groups",
+  "Carregue um grupo de competências salvo": "Load a saved competency group",
+  "Selecione as questões": "Select questions",
+  "Criar Nova Pergunta": "Create New Question",
+  "Filtro de Tipos de Perguntas": "Question Type Filter",
+  "Incluir perguntas abertas (texto livre)": "Include open-ended questions (free text)",
+  "Nome que aparecerá nos relatórios e gráficos": "Name that will appear in reports and charts",
+  "Descrição que aparecerá como subtítulo nos relatórios": "Description that will appear as a subtitle in reports",
+
+  "Debug Perguntas": "Debug Questions",
+  "Debug Tipos": "Debug Types",
+  "Digite um nome para o grupo de competências.": "Enter a name for the competency group.",
+  "Selecione um cliente primeiro.": "Select a client first.",
+  "Erro ao carregar grupo de competências.": "Error loading competency group.",
+  "Editar Competência": "Edit Competency",
+  "Nova Competência": "New Competency",
+  "Novo Grupo de Competências": "New Competency Group",
+  "Criar como Grupo": "Create as Group",
+  "Nome da Competência": "Competency Name",
+  "O nome é obrigatório": "Name is required",
+  "O nome deve ter pelo menos 3 caracteres": "Name must be at least 3 characters",
+  "Descrição": "Description",
+  "Descreva o que esta competência avalia...": "Describe what this competency evaluates...",
+  "A descrição é obrigatória": "Description is required",
+  "Avaliação (opcional)": "Assessment (optional)",
+  "Nenhuma": "None",
+  "Competências do Grupo": "Group Competencies",
+  "Relacionar Perguntas às Competências": "Relate Questions to Competencies",
+  "Selecione as perguntas de avaliação que pertencem a cada competência.": "Select the assessment questions that belong to each competency.",
+  "Perguntas desta competência": "Questions for this competency",
+  "Criar Perguntas para cada Competência": "Create Questions for each Competency",
+  "Sem avaliação vinculada, você pode criar perguntas agora para cada competência do grupo.": "Without a linked assessment, you can create questions now for each group competency.",
+  "Pergunta": "Question",
+  "Nenhuma pergunta adicionada.": "No questions added.",
+  "Perguntas da Competência": "Competency Questions",
+  "Adicionar pergunta": "Add question",
+  "Tipo": "Type",
+  "Pergunta obrigatória": "Required question",
+  "Remover pergunta": "Remove question",
+  "Opções de Resposta": "Answer Options",
+  "Opção": "Option",
+  "Digite a opção...": "Type the option...",
+  "A opção é obrigatória": "Option is required",
+  "Adicionar Opção": "Add Option",
+  "Preview": "Preview",
+  "Obrigatória": "Required",
+  "Discordo Totalmente": "Strongly Disagree",
+  "Concordo Totalmente": "Strongly Agree",
+  "Opção...": "Option...",
+  "Resposta em texto...": "Text answer...",
+  "Digite um número...": "Type a number...",
+  "Atualizar": "Update",
+  "Criar": "Create",
+  "Criar Grupo": "Create Group",
+  "Erro ao salvar competência": "Error saving competency",
+  "Por favor, preencha todos os campos obrigatórios": "Please fill in all required fields",
+  "Relatório individual para {{name}} carregado. ({{self}} auto-avaliação, {{total}} total de participantes na avaliação)": "Individual report for {{name}} loaded. ({{self}} self-assessment, {{total}} total participants in the assessment)",
+  "Selecione ao menos um destinatário.": "Select at least one recipient.",
+  "Selecione um projeto.": "Select a project.",
+  "E-mail enviado para {{name}}": "Email sent to {{name}}",
+  "Erro ao enviar e-mails ou atualizar documentos.": "Error sending emails or updating documents.",
+  "Não definida": "Not set",
+  "Tem certeza de que deseja excluir este projeto?": "Are you sure you want to delete this project?",
+  "Projeto excluído com sucesso.": "Project deleted successfully.",
+  "Erro ao excluir projeto. Tente novamente mais tarde.": "Error deleting project. Please try again later.",
+  "Cliente não identificado. Contate o suporte.": "Client not identified. Contact support.",
+  "Reenviar Link para Respondentes": "Resend Link to Respondents",
+  "Escolha um Modelo de e-mail": "Choose an Email Template",
+  "Reenviar Links": "Resend Links",
+  "Nenhuma avaliação associada a este projeto.": "No assessment associated with this project.",
+  "Erro ao carregar participantes.": "Error loading participants.",
+  "Nenhum clientId fornecido.": "No clientId provided.",
+  "Nenhum template encontrado para este cliente.": "No template found for this client.",
+  "Erro ao carregar Modelos de e-mail.": "Error loading email templates.",
+  "Template selecionado não encontrado.": "Selected template not found.",
+  "Links enviados para {{count}} respondentes!": "Links sent to {{count}} respondents!",
+  "Erro ao enviar links.": "Error sending links.",
+  "Lista de Participantes": "Participants List",
+  "Filtrar por Tipo": "Filter by Type",
+  "Avaliador": "Evaluator",
+
+  "Excluir Participante": "Delete Participant",
+  "Tem certeza que deseja excluir este participante?": "Are you sure you want to delete this participant?",
+  "Participante excluído com sucesso.": "Participant deleted successfully.",
+  "Erro ao excluir participante.": "Error deleting participant.",
+  "Nenhum participante válido encontrado.": "No valid participants found.",
+  "Gerar Relatório PDF": "Generate PDF Report",
+  "Gerando Relatório...": "Generating Report...",
+  "Informações do Participante": "Participant Information",
+  "Selecione o Template de Relatório": "Select the Report Template",
+  "Template de Relatório": "Report Template",
+  "templates disponíveis": "templates available",
+  "seções configuradas": "configured sections",
+  "Selecione as Competências": "Select Competencies",
+  "Competências": "Competencies",
+  "competências disponíveis.": "competencies available.",
+  "selecionadas.": "selected.",
+  "Resumo da Configuração": "Configuration Summary",
+  "Template": "Template",
+  "competências": "competencies",
+  "questões": "questions",
+  "questões total": "total questions",
+  "Projeto não encontrado.": "Project not found.",
+  "Erro ao carregar questionários.": "Error loading questionnaires.",
+  "Questionário excluído com sucesso!": "Questionnaire deleted successfully!",
+  "Erro ao excluir questionário.": "Error deleting questionnaire.",
+  "Projeto não identificado.": "Project not identified.",
 
   "Tem certeza de que deseja excluir esta avaliação?": "Are you sure you want to delete this assessment?"
+  ,"Users": "Users"
+  ,"Add User": "Add User"
+  ,"Search User": "Search User"
+  ,"Type the name": "Type the name"
+  ,"Type the surname": "Type the surname"
+  ,"Type the email": "Type the email"
+  ,"Last Name": "Last Name"
+  ,"View Clients": "View Clients"
+  ,"No Clients": "No Clients"
+  ,"Projects": "Projects"
+  ,"View Projects": "View Projects"
+  ,"No projects": "No projects"
+  ,"Groups": "Groups"
+  ,"View Groups": "View Groups"
+  ,"No groups": "No groups"
+  ,"Role": "Role"
+  ,"Notification Status": "Notification Status"
+  ,"Delete User": "Delete User"
+  ,"Send Email": "Send Email"
+  ,"User Groups": "User Groups"
+  ,"Add User Group": "Add User Group"
+  ,"Search Group": "Search Group"
+  ,"Created by": "Created by"
+  ,"Delete Group": "Delete Group"
+  ,"Are you sure you want to delete the group \"{{name}}\"?": "Are you sure you want to delete the group \"{{name}}\"?"
+  ,"Group deleted successfully!": "Group deleted successfully!"
+  ,"Error deleting group.": "Error deleting group."
+  ,"Are you sure you want to delete the user \"{{name}}\"?": "Are you sure you want to delete the user \"{{name}}\"?"
+  ,"User deleted successfully!": "User deleted successfully!"
+  ,"Error deleting user.": "Error deleting user."
+  ,"Email sent to {{email}}": "Email sent to {{email}}"
+  ,"Error loading data.": "Error loading data."
+  ,"Error loading users.": "Error loading users."
+  ,"Error loading user groups.": "Error loading user groups."
+
+  ,"Edit User": "Edit User"
+  ,"Create New User": "Create New User"
+  ,"Email is required.": "Email is required."
+  ,"Save Changes": "Save Changes"
+  ,"Create User": "Create User"
+  ,"You do not have permission to assign this role.": "You do not have permission to assign this role."
+  ,"User updated successfully!": "User updated successfully!"
+  ,"User not found.": "User not found."
+  ,"User already exists in the system!": "User already exists in the system!"
+  ,"User created successfully!": "User created successfully!"
+  ,"Error updating user.": "Error updating user."
+  ,"Error creating user.": "Error creating user."
+  ,"Error loading projects or groups.": "Error loading projects or groups."
+
+  ,"Edit User Group": "Edit User Group"
+  ,"Create New User Group": "Create New User Group"
+  ,"Client is required.": "Client is required."
+  ,"Group Name": "Group Name"
+  ,"Type the group name": "Type the group name"
+  ,"Group name is required.": "Group name is required."
+  ,"Describe the group": "Describe the group"
+
+  ,"Client List": "Client List"
+  ,"Add Client": "Add Client"
+  ,"Client Name": "Client Name"
+  ,"Type the client name": "Type the client name"
+  ,"Client name is required.": "Client name is required."
+  ,"Sector": "Sector"
+  ,"Type the sector": "Type the sector"
+  ,"CNPJ": "CNPJ"
+  ,"Type the CNPJ": "Type the CNPJ"
+  ,"Remaining Credits": "Remaining Credits"
+  ,"Client updated successfully!": "Client updated successfully!"
+  ,"Client registered with ID {{id}}!": "Client registered with ID {{id}}!"
+  ,"Error saving client. Please try again.": "Error saving client. Please try again."
+  ,"Register Client": "Register Client"
+  ,"Edit Client": "Edit Client"
+  ,"Save": "Save"
+  ,"Update": "Update"
+  ,"Saving...": "Saving..."
+  ,"Client Details": "Client Details"
+  ,"Trade Name": "Trade Name"
+  ,"Email (field)": "Email"
+  ,"Phone": "Phone"
+  ,"Additional Notes": "Additional Notes"
+  ,"Representative Data": "Representative Data"
+  ,"Representative Name": "Representative Name"
+  ,"Representative Email": "Representative Email"
+  ,"Representative Role": "Representative Role"
+  ,"Client Users": "Client Users"
+  ,"Loading client details...": "Loading client details..."
+  ,"Confirmation": "Confirmation"
+  ,"Confirm": "Confirm"
+  ,"Client list updated!": "Client list updated!"
+  ,"By removing the client, all associated projects, groups, and users will also be deleted. Do you want to continue?": "By removing the client, all associated projects, groups, and users will also be deleted. Do you want to continue?"
+  ,"Client and related data deleted successfully.": "Client and related data deleted successfully."
+  ,"Error deleting client. Check related data and try again.": "Error deleting client. Check related data and try again."
+  ,"Client not found.": "Client not found."
+  ,"Error loading client data.": "Error loading client data."
+  ,"Error saving changes.": "Error saving changes."
+  ,"User added successfully!": "User added successfully!"
+  ,"Error adding user. Please try again later.": "Error adding user. Please try again later."
+  ,"Back": "Back"
+  ,"Password": "Password"
+  ,"Type the password": "Type the password"
+  ,"Hide password": "Hide password"
+  ,"Reveal password": "Reveal password"
+  ,"Generate random password": "Generate random password"
+  ,"Password is required.": "Password is required."
+  ,"Password must be at least 6 characters long.": "Password must be at least 6 characters long."
+  ,"Administrator": "Administrator"
+  ,"User": "User"
 }

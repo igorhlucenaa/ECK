@@ -24,6 +24,7 @@ import { ViewChild } from '@angular/core';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { Timestamp } from '@angular/fire/firestore';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ModalData {
   projectId: string;
@@ -53,9 +54,9 @@ interface MailTemplate {
 @Component({
   selector: 'app-resend-assessment-modal',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule],
   template: `
-    <h2 mat-dialog-title>Reenviar Link para Respondentes</h2>
+    <h2 mat-dialog-title>{{ 'Reenviar Link para Respondentes' | translate }}</h2>
     <mat-dialog-content>
       <!-- Campo de Seleção de Template -->
       <mat-form-field
@@ -63,7 +64,7 @@ interface MailTemplate {
         appearance="outline"
         style="margin-top: 20px"
       >
-        <mat-label>Escolha um Modelo de e-mail</mat-label>
+        <mat-label>{{ 'Escolha um Modelo de e-mail' | translate }}</mat-label>
         <mat-select [formControl]="templateFormControl" required>
           <mat-option
             *ngFor="let template of mailTemplates"
@@ -73,13 +74,13 @@ interface MailTemplate {
           </mat-option>
         </mat-select>
         <mat-error *ngIf="templateFormControl.hasError('required')">
-          Por favor, selecione um template.
+          {{ 'Por favor, selecione um template.' | translate }}
         </mat-error>
       </mat-form-field>
 
       <!-- Campo de Pesquisa -->
       <mat-form-field class="w-100 mb-3" appearance="outline">
-        <mat-label>Buscar por Nome ou E-mail</mat-label>
+        <mat-label>{{ 'Buscar por Nome ou E-mail' | translate }}</mat-label>
         <input
           matInput
           [(ngModel)]="searchValue"
@@ -123,7 +124,7 @@ interface MailTemplate {
 
           <!-- Nome -->
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.name }}
             </td>
@@ -131,7 +132,7 @@ interface MailTemplate {
 
           <!-- E-mail -->
           <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>E-mail</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'E-mail' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.email }}
             </td>
@@ -139,7 +140,7 @@ interface MailTemplate {
 
           <!-- Avaliação -->
           <ng-container matColumnDef="assessmentId">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Avaliação</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Avaliação' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.assessmentId || 'N/A' }}
             </td>
@@ -147,7 +148,7 @@ interface MailTemplate {
 
           <!-- Status -->
           <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Status' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.status }}
             </td>
@@ -156,7 +157,7 @@ interface MailTemplate {
           <!-- Data de Envio -->
           <ng-container matColumnDef="sentAt">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Data de Envio
+              {{ 'Data de Envio' | translate }}
             </th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.sentAt | date : 'short' }}
@@ -166,7 +167,7 @@ interface MailTemplate {
           <!-- Data de Resposta -->
           <ng-container matColumnDef="completedAt">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Data de Resposta
+              {{ 'Data de Resposta' | translate }}
             </th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.completedAt | date : 'short' }}
@@ -196,10 +197,10 @@ interface MailTemplate {
         "
       >
         <mat-spinner *ngIf="isLoading" [diameter]="20"></mat-spinner>
-        <span *ngIf="isLoading">Enviando...</span>
-        <span *ngIf="!isLoading">Reenviar Links</span>
+        <span *ngIf="isLoading">{{ 'Enviando...' | translate }}</span>
+        <span *ngIf="!isLoading">{{ 'Reenviar Links' | translate }}</span>
       </button>
-      <button mat-button mat-dialog-close>Cancelar</button>
+      <button mat-button mat-dialog-close>{{ 'Cancelar' | translate }}</button>
     </mat-dialog-actions>
   `,
   styleUrls: ['./resend-assessment-modal.component.scss'],
@@ -229,7 +230,8 @@ export class ResendAssessmentModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: ModalData,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private fb: FormBuilder // Adicionado FormBuilder
+    private fb: FormBuilder, // Adicionado FormBuilder
+    private translate: TranslateService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -252,11 +254,7 @@ export class ResendAssessmentModalComponent implements OnInit {
       const assessmentIds = assessmentsSnapshot.docs.map((doc) => doc.id);
 
       if (assessmentIds.length === 0) {
-        this.snackBar.open(
-          'Nenhuma avaliação associada a este projeto.',
-          'Fechar',
-          { duration: 3000 }
-        );
+        this.snackBar.open(this.translate.instant('Nenhuma avaliação associada a este projeto.'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
 
@@ -318,18 +316,14 @@ export class ResendAssessmentModalComponent implements OnInit {
       this.dataSource.data = participants;
     } catch (error) {
       console.error('Erro ao carregar participantes:', error);
-      this.snackBar.open('Erro ao carregar participantes.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao carregar participantes.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
   async loadMailTemplates(): Promise<void> {
     try {
       if (!this.data.clientId) {
-        this.snackBar.open('Nenhum clientId fornecido.', 'Fechar', {
-          duration: 3000,
-        });
+        this.snackBar.open(this.translate.instant('Nenhum clientId fornecido.'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
 
@@ -350,17 +344,11 @@ export class ResendAssessmentModalComponent implements OnInit {
       }));
 
       if (this.mailTemplates.length === 0) {
-        this.snackBar.open(
-          'Nenhum template encontrado para este cliente.',
-          'Fechar',
-          { duration: 3000 }
-        );
+        this.snackBar.open(this.translate.instant('Nenhum template encontrado para este cliente.'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     } catch (error) {
       console.error('Erro ao carregar Modelos de e-mail:', error);
-      this.snackBar.open('Erro ao carregar Modelos de e-mail.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao carregar Modelos de e-mail.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -414,11 +402,7 @@ export class ResendAssessmentModalComponent implements OnInit {
     try {
       const selectedTemplateId = this.templateFormControl.value;
       if (!selectedTemplateId) {
-        this.snackBar.open(
-          'Por favor, selecione um template antes de enviar.',
-          'Fechar',
-          { duration: 3000 }
-        );
+        this.snackBar.open(this.translate.instant('Por favor, selecione um template antes de enviar.'), this.translate.instant('Fechar'), { duration: 3000 });
         this.isLoading = false;
         return;
       }
@@ -427,9 +411,7 @@ export class ResendAssessmentModalComponent implements OnInit {
         (t) => t.id === selectedTemplateId
       );
       if (!template) {
-        this.snackBar.open('Template selecionado não encontrado.', 'Fechar', {
-          duration: 3000,
-        });
+        this.snackBar.open(this.translate.instant('Template selecionado não encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
         this.isLoading = false;
         return;
       }
@@ -472,17 +454,12 @@ export class ResendAssessmentModalComponent implements OnInit {
         });
       }
 
-      this.snackBar.open(
-        `Links enviados para ${this.selectedParticipants.length} respondentes!`,
-        'Fechar',
-        { duration: 3000 }
-      );
+      const msg = this.translate.instant('Links enviados para {{count}} respondentes!', { count: this.selectedParticipants.length });
+      this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 3000 });
       this.dialogRef.close();
     } catch (error) {
       console.error('Erro ao enviar links:', error);
-      this.snackBar.open('Erro ao enviar links.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao enviar links.'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.isLoading = false;
     }

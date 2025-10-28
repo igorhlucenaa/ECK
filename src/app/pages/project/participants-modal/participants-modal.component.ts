@@ -34,6 +34,7 @@ import * as XLSX from 'xlsx';
 import { AddParticipantModalComponent } from '../add-participant-modal/add-participant-modal.component';
 import { ParticipantsConfirmationDialogComponent } from '../../assessments/participants/participants-confirmation-dialog/participants-confirmation-dialog.component';
 import { Router } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ModalData {
   projectId: string;
@@ -71,9 +72,9 @@ interface Assessment {
 @Component({
   selector: 'app-participants-modal',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule],
   template: `
-    <h2 mat-dialog-title>Participantes</h2>
+    <h2 mat-dialog-title>{{ 'Lista de Participantes' | translate }}</h2>
     <mat-dialog-content>
       <!-- Botões de Upload/Download e Adicionar Participante -->
       <div class="d-flex justify-content-between mb-3">
@@ -85,13 +86,13 @@ interface Assessment {
             (click)="downloadTemplate()"
             style="margin-right: 10px"
           >
-            <mat-icon>download</mat-icon> Baixar Planilha de Modelo
+            <mat-icon>download</mat-icon> {{ 'Baixar Planilha de Modelo' | translate }}
           </button>
 
           <!-- Botão Upload -->
           <button mat-raised-button color="accent">
             <label for="uploadExcel" class="btn btn-secondary">
-              <mat-icon>upload_file</mat-icon> Carregar Arquivo Excel
+              <mat-icon>upload_file</mat-icon> {{ 'Carregar Arquivo Excel' | translate }}
             </label>
             <input
               id="uploadExcel"
@@ -109,7 +110,7 @@ interface Assessment {
           color="primary"
           (click)="openAddParticipantModal()"
         >
-          Adicionar Novo Participante
+          {{ 'Adicionar Novo Participante' | translate }}
         </button>
       </div>
 
@@ -118,14 +119,14 @@ interface Assessment {
         <!-- Filtro por Tipo -->
         <div class="col-md-3">
           <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Tipo</mat-label>
+            <mat-label>{{ 'Filtrar por Tipo' | translate }}</mat-label>
             <mat-select
               [(ngModel)]="filterType"
               (ngModelChange)="applyFilter()"
             >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="avaliado">Avaliado</mat-option>
-              <mat-option value="avaliador">Avaliador</mat-option>
+              <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+              <mat-option value="avaliado">{{ 'Avaliado' | translate }}</mat-option>
+              <mat-option value="avaliador">{{ 'Avaliador' | translate }}</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
@@ -133,17 +134,17 @@ interface Assessment {
         <!-- Filtro por Categoria -->
         <div class="col-md-3">
           <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Categoria</mat-label>
+            <mat-label>{{ 'Filtrar por Categoria' | translate }}</mat-label>
             <mat-select
               [(ngModel)]="filterCategory"
               (ngModelChange)="applyFilter()"
             >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="Avaliado">Avaliado</mat-option>
-              <mat-option value="Gestor">Gestor</mat-option>
-              <mat-option value="Par">Par</mat-option>
-              <mat-option value="Subordinado">Subordinado</mat-option>
-              <mat-option value="Outros">Outros</mat-option>
+              <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+              <mat-option value="Avaliado">{{ 'Avaliado' | translate }}</mat-option>
+              <mat-option value="Gestor">{{ 'Gestor' | translate }}</mat-option>
+              <mat-option value="Par">{{ 'Par' | translate }}</mat-option>
+              <mat-option value="Subordinado">{{ 'Subordinado' | translate }}</mat-option>
+              <mat-option value="Outros">{{ 'Outros' | translate }}</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
@@ -151,17 +152,17 @@ interface Assessment {
         <!-- Filtro por Status -->
         <div class="col-md-3">
           <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Filtrar por Status</mat-label>
+            <mat-label>{{ 'Filtrar por Status' | translate }}</mat-label>
             <mat-select
               [(ngModel)]="filterStatus"
               (ngModelChange)="applyFilter()"
             >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="Não Enviado">Não Enviado</mat-option>
+              <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+              <mat-option value="Não Enviado">{{ 'Não Enviado' | translate }}</mat-option>
               <mat-option value="Enviado (Pendente)"
-                >Enviado (Pendente)</mat-option
+                >{{ 'Enviado (Pendente)' | translate }}</mat-option
               >
-              <mat-option value="Respondido">Respondido</mat-option>
+              <mat-option value="Respondido">{{ 'Respondido' | translate }}</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
@@ -169,7 +170,7 @@ interface Assessment {
         <!-- Campo de Pesquisa -->
         <div class="col-md-3">
           <mat-form-field class="w-100" appearance="outline">
-            <mat-label>Buscar por Nome ou E-mail</mat-label>
+            <mat-label>{{ 'Buscar por Nome ou E-mail' | translate }}</mat-label>
             <input
               matInput
               [(ngModel)]="searchValue"
@@ -189,7 +190,7 @@ interface Assessment {
 
       <!-- Campo de Seleção de Template -->
       <mat-form-field class="w-100 mb-3" appearance="outline">
-        <mat-label>Escolha um Modelo de e-mail</mat-label>
+        <mat-label>{{ 'Escolha um Modelo de e-mail' | translate }}</mat-label>
         <mat-select [formControl]="templateFormControl" required>
           <mat-option
             *ngFor="let template of mailTemplates"
@@ -200,13 +201,13 @@ interface Assessment {
           </mat-option>
         </mat-select>
         <mat-error *ngIf="templateFormControl.hasError('required')">
-          Por favor, selecione um template.
+          {{ 'Por favor, selecione um template.' | translate }}
         </mat-error>
       </mat-form-field>
 
       <!-- Campo de Seleção de Avaliação -->
       <mat-form-field class="w-100 mb-3" appearance="outline">
-        <mat-label>Escolha um Formulário (Avaliação)</mat-label>
+        <mat-label>{{ 'Selecione um Formulário de Avaliação' | translate }}</mat-label>
         <mat-select [formControl]="assessmentFormControl" required>
           <mat-option
             *ngFor="let assessment of assessments"
@@ -216,7 +217,7 @@ interface Assessment {
           </mat-option>
         </mat-select>
         <mat-error *ngIf="assessmentFormControl.hasError('required')">
-          Por favor, selecione uma avaliação.
+          {{ 'Por favor, selecione uma avaliação.' | translate }}
         </mat-error>
       </mat-form-field>
 
@@ -248,7 +249,7 @@ interface Assessment {
 
           <!-- Nome -->
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.name }}
             </td>
@@ -256,7 +257,7 @@ interface Assessment {
 
           <!-- E-mail -->
           <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>E-mail</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'E-mail' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.email }}
             </td>
@@ -264,7 +265,7 @@ interface Assessment {
 
           <!-- Tipo -->
           <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Tipo</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Tipo' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.type }}
             </td>
@@ -272,7 +273,7 @@ interface Assessment {
 
           <!-- Categoria -->
           <ng-container matColumnDef="category">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoria</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Categoria' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.category }}
             </td>
@@ -280,7 +281,7 @@ interface Assessment {
 
           <!-- Status -->
           <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Status' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.status || 'N/A' }}
             </td>
@@ -289,7 +290,7 @@ interface Assessment {
           <!-- Data de Envio -->
           <ng-container matColumnDef="sentAt">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Data de Envio
+              {{ 'Data de Envio' | translate }}
             </th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.sentAt | date : 'short' }}
@@ -299,7 +300,7 @@ interface Assessment {
           <!-- Data de Resposta -->
           <ng-container matColumnDef="completedAt">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Data de Resposta
+              {{ 'Data de Resposta' | translate }}
             </th>
             <td mat-cell *matCellDef="let participant">
               {{ participant.completedAt | date : 'short' }}
@@ -308,13 +309,13 @@ interface Assessment {
 
           <!-- Relatório -->
           <ng-container matColumnDef="relatorio">
-            <th mat-header-cell *matHeaderCellDef>Relatório</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Relatório' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               <button
                 mat-icon-button
                 color="primary"
                 (click)="generateReportForParticipant(participant)"
-                matTooltip="Gerar Relatório"
+                matTooltip="{{ 'Gerar Relatório' | translate }}"
                 *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
                 [disabled]="assessmentFormControl.invalid"
               >
@@ -325,13 +326,13 @@ interface Assessment {
 
           <!-- Ações (Excluir) -->
           <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Ações</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
             <td mat-cell *matCellDef="let participant">
               <button
                 mat-icon-button
                 color="warn"
                 (click)="deleteParticipant(participant.id)"
-                matTooltip="Excluir Participante"
+                matTooltip="{{ 'Excluir Participante' | translate }}"
               >
                 <mat-icon>delete</mat-icon>
               </button>
@@ -365,10 +366,10 @@ interface Assessment {
         "
       >
         <mat-spinner *ngIf="isLoading" [diameter]="20"></mat-spinner>
-        <span *ngIf="isLoading">Enviando...</span>
-        <span *ngIf="!isLoading">Enviar Links</span>
+        <span *ngIf="isLoading">{{ 'Enviando...' | translate }}</span>
+        <span *ngIf="!isLoading">{{ 'Enviar Links' | translate }}</span>
       </button>
-      <button mat-button mat-dialog-close>Fechar</button>
+      <button mat-button mat-dialog-close>{{ 'Fechar' | translate }}</button>
     </mat-dialog-actions>
   `,
   styleUrls: ['./participants-modal.component.scss'],
@@ -413,7 +414,8 @@ export class ParticipantsModalComponent implements OnInit {
     private snackBar: MatSnackBar,
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private router: Router
+    private router: Router,
+    private translate: TranslateService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -552,18 +554,14 @@ export class ParticipantsModalComponent implements OnInit {
       this.dataSource.data = participants;
     } catch (error) {
       console.error('Erro ao carregar participantes:', error);
-      this.snackBar.open('Erro ao carregar participantes.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao carregar participantes.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
   async loadMailTemplates(): Promise<void> {
     try {
       if (!this.data.clientId) {
-        this.snackBar.open('Nenhum clientId fornecido.', 'Fechar', {
-          duration: 3000,
-        });
+        this.snackBar.open(this.translate.instant('Nenhum clientId fornecido.'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
 
@@ -584,17 +582,11 @@ export class ParticipantsModalComponent implements OnInit {
       }));
 
       if (this.mailTemplates.length === 0) {
-        this.snackBar.open(
-          'Nenhum template encontrado para este cliente.',
-          'Fechar',
-          { duration: 3000 }
-        );
+        this.snackBar.open(this.translate.instant('Nenhum template encontrado para este cliente.'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     } catch (error) {
       console.error('Erro ao carregar Modelos de e-mail:', error);
-      this.snackBar.open('Erro ao carregar Modelos de e-mail.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao carregar Modelos de e-mail.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -620,17 +612,11 @@ export class ParticipantsModalComponent implements OnInit {
       }));
 
       if (this.assessments.length === 0) {
-        this.snackBar.open(
-          'Nenhuma avaliação encontrada para este cliente.',
-          'Fechar',
-          { duration: 3000 }
-        );
+        this.snackBar.open(this.translate.instant('Nenhuma avaliação encontrada para este cliente.'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
-      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliações.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -645,9 +631,7 @@ export class ParticipantsModalComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -662,9 +646,7 @@ export class ParticipantsModalComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
-      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao carregar projetos.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -717,21 +699,13 @@ export class ParticipantsModalComponent implements OnInit {
       const selectedAssessmentId = this.assessmentFormControl.value;
 
       if (!selectedTemplateId) {
-        this.snackBar.open(
-          'Por favor, selecione um template antes de enviar.',
-          'Fechar',
-          { duration: 3000 }
-        );
+        this.snackBar.open(this.translate.instant('Por favor, selecione um template antes de enviar.'), this.translate.instant('Fechar'), { duration: 3000 });
         this.isLoading = false;
         return;
       }
 
       if (!selectedAssessmentId) {
-        this.snackBar.open(
-          'Por favor, selecione uma avaliação antes de enviar.',
-          'Fechar',
-          { duration: 3000 }
-        );
+        this.snackBar.open(this.translate.instant('Por favor, selecione uma avaliação antes de enviar.'), this.translate.instant('Fechar'), { duration: 3000 });
         this.isLoading = false;
         return;
       }
@@ -740,9 +714,7 @@ export class ParticipantsModalComponent implements OnInit {
         (t) => t.id === selectedTemplateId
       );
       if (!template) {
-        this.snackBar.open('Template selecionado não encontrado.', 'Fechar', {
-          duration: 3000,
-        });
+        this.snackBar.open(this.translate.instant('Template selecionado não encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
         this.isLoading = false;
         return;
       }
@@ -751,9 +723,7 @@ export class ParticipantsModalComponent implements OnInit {
         (a) => a.id === selectedAssessmentId
       );
       if (!assessment) {
-        this.snackBar.open('Avaliação selecionada não encontrada.', 'Fechar', {
-          duration: 3000,
-        });
+        this.snackBar.open(this.translate.instant('Avaliação selecionada não encontrada.'), this.translate.instant('Fechar'), { duration: 3000 });
         this.isLoading = false;
         return;
       }
@@ -818,26 +788,19 @@ export class ParticipantsModalComponent implements OnInit {
         }
       }
 
-      this.snackBar.open(
-        `Links enviados para ${this.selectedParticipants.length} participantes!`,
-        'Fechar',
-        { duration: 3000 }
-      );
+      const msg = this.translate.instant('Links enviados para {{count}} participantes!', { count: this.selectedParticipants.length });
+      this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 3000 });
       this.dialogRef.close();
     } catch (error) {
       console.error('Erro ao enviar links:', error);
-      this.snackBar.open('Erro ao enviar links.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao enviar links.'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.isLoading = false;
     }
   }
 
   async deleteParticipant(participantId: string): Promise<void> {
-    const confirmDelete = confirm(
-      'Tem certeza que deseja excluir este participante?'
-    );
+    const confirmDelete = confirm(this.translate.instant('Tem certeza que deseja excluir este participante?'));
     if (!confirmDelete) return;
 
     try {
@@ -850,14 +813,10 @@ export class ParticipantsModalComponent implements OnInit {
       this.dataSource.data = this.dataSource.data.filter(
         (p) => p.id !== participantId
       );
-      this.snackBar.open('Participante excluído com sucesso.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Participante excluído com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
     } catch (error) {
       console.error('Erro ao excluir participante:', error);
-      this.snackBar.open('Erro ao excluir participante.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao excluir participante.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -929,9 +888,7 @@ export class ParticipantsModalComponent implements OnInit {
       }
 
       if (participants.length === 0) {
-        this.snackBar.open('Nenhum participante válido encontrado.', 'Fechar', {
-          duration: 3000,
-        });
+        this.snackBar.open(this.translate.instant('Nenhum participante válido encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
 
