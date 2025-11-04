@@ -213,29 +213,29 @@
                 Modo: Criar Perguntas Custom
               </h6>
               <p style="margin: 0; color: #666; font-size: 13px;">
-                Como não há avaliação selecionada, você pode criar perguntas custom para esta competência. 
+                Como não há avaliação selecionada, você pode criar perguntas custom para esta competência.
                 Ao salvar o grupo, uma nova avaliação será criada automaticamente com todas as perguntas.
               </p>
             </div>
-            
+
             <!-- Lista de perguntas custom da competência -->
-            <div *ngIf="getPerguntasCustomCompetencia(competenciaEditando.id || '').length > 0" 
+            <div *ngIf="getPerguntasCustomCompetencia(competenciaEditando.id || '').length > 0"
                  style="margin-bottom: 16px;">
               <h6 style="margin-bottom: 12px;">Perguntas desta Competência</h6>
               <mat-list dense>
-                <mat-list-item *ngFor="let pergunta of getPerguntasCustomCompetencia(competenciaEditando.id || ''); let i = index" 
+                <mat-list-item *ngFor="let pergunta of getPerguntasCustomCompetencia(competenciaEditando.id || ''); let i = index"
                                style="padding: 8px 0; border-bottom: 1px solid #eee;">
                   <div style="display: flex; gap: 12px; width: 100%; align-items: center;">
                     <mat-form-field appearance="outline" style="flex: 2;">
                       <mat-label>Título da Pergunta</mat-label>
-                      <input matInput [value]="pergunta.title" 
+                      <input matInput [value]="pergunta.title"
                              (input)="atualizarPerguntaCustomCompetencia(competenciaEditando.id || '', i, 'title', $any($event.target).value)"
                              placeholder="Ex: Você se sente motivado no trabalho?">
                     </mat-form-field>
-                    
+
                     <mat-form-field appearance="outline" style="flex: 1;">
                       <mat-label>Tipo</mat-label>
-                      <mat-select [value]="pergunta.type" 
+                      <mat-select [value]="pergunta.type"
                                   (selectionChange)="atualizarPerguntaCustomCompetencia(competenciaEditando.id || '', i, 'type', $event.value)">
                         <mat-option value="rating">Escala (1-5)</mat-option>
                         <mat-option value="text">Texto</mat-option>
@@ -245,8 +245,8 @@
                         <mat-option value="dropdown">Dropdown</mat-option>
                       </mat-select>
                     </mat-form-field>
-                    
-                    <button mat-icon-button color="warn" 
+
+                    <button mat-icon-button color="warn"
                             (click)="removerPerguntaCustomCompetencia(competenciaEditando.id || '', i)"
                             matTooltip="Remover pergunta">
                       <mat-icon>delete</mat-icon>
@@ -255,15 +255,15 @@
                 </mat-list-item>
               </mat-list>
             </div>
-            
+
             <!-- Botão para adicionar nova pergunta custom -->
-            <button type="button" mat-stroked-button color="primary" 
+            <button type="button" mat-stroked-button color="primary"
                     (click)="adicionarPerguntaCustom(competenciaEditando.id || ''); $event.preventDefault(); $event.stopPropagation();"
                     style="width: 100%;">
               <mat-icon>add</mat-icon>
               Adicionar Pergunta Custom
             </button>
-            
+
             <mat-hint style="display: block; margin-top: 8px;">
               Adicione perguntas custom para esta competência. Elas serão incluídas na avaliação criada automaticamente.
             </mat-hint>
@@ -271,7 +271,7 @@
         </div>
 
         <div style="margin-top: 20px; display: flex; gap: 12px;">
-          <button mat-flat-button color="primary" type="submit" 
+          <button mat-flat-button color="primary" type="submit"
                   [disabled]="!competenciaForm.valid || (!selectedAssessmentId && !selectedClientId)">
             <mat-icon>{{ competenciaEditando.id ? 'save' : 'add' }}</mat-icon>
             {{ competenciaEditando.id ? 'Salvar Alterações' : 'Adicionar Competência' }}
@@ -281,9 +281,9 @@
             Cancelar
           </button>
         </div>
-        
+
         <!-- Aviso quando não há cliente selecionado -->
-        <div *ngIf="!selectedAssessmentId && !selectedClientId" 
+        <div *ngIf="!selectedAssessmentId && !selectedClientId"
              style="margin-top: 16px; padding: 12px; background-color: #fff3e0; border-left: 4px solid #ff9800; border-radius: 4px;">
           <div style="display: flex; align-items: center; gap: 8px; color: #e65100;">
             <mat-icon style="font-size: 20px;">info</mat-icon>
@@ -346,7 +346,7 @@
     </mat-icon>
     <h4 class="text-muted mt-3">Nenhuma competência cadastrada</h4>
     <p class="text-muted">
-      Comece criando competências. 
+      Comece criando competências.
       <span *ngIf="!selectedAssessmentId">Você pode criar perguntas custom para cada competência e ao salvar o grupo, uma avaliação será criada automaticamente.</span>
       <span *ngIf="selectedAssessmentId">Selecione perguntas da avaliação para vincular às competências.</span>
     </p>

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { MaterialModule } from '../../material.module';
-import { Firestore, collection, getDocs, getDoc, addDoc, doc, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, getDoc, addDoc, updateDoc, doc, query, where } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/apps/authentication/auth.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -54,6 +54,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   competencyGroups: any[] = [];
   competencyGroupControl = new FormControl('');
   groupNameControl = new FormControl('');
+  currentGroupId: string | null = null; // ID do grupo sendo editado
 
   // Clientes
   clients: Client[] = [];
@@ -143,6 +144,24 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
           // Limpar competências quando mudar de cliente
           this.competencias = [];
           this.customQuestions = [];
+          this.cancelarEdicaoCompetencia();
+          // Limpar grupo editado ao mudar de cliente
+          this.currentGroupId = null;
+          this.groupNameControl.reset();
+        }
+      });
+
+    // Listener para mudanças no grupo selecionado
+    this.competencyGroupControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(groupId => {
+        // Se o grupo foi limpo (valor vazio), limpar estado de edição
+        if (!groupId) {
+          this.currentGroupId = null;
+          this.groupNameControl.reset();
+          this.competencias = [];
+          this.customQuestions = [];
+          this.customQuestionsByCompetency = {};
           this.cancelarEdicaoCompetencia();
         }
       });
@@ -330,7 +349,11 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     const nome = this.competenciaForm.get('nome')?.value || '';
     const descricao = this.competenciaForm.get('descricao')?.value || '';
 
-    if (!nome.trim() || !descricao.trim()) {
+    // Se está editando, permitir usar o nome existente mesmo se estiver vazio no form (caso tenha sido apagado acidentalmente)
+    const nomeFinal = nome.trim() || (this.competenciaEditando.id ? this.competenciaEditando.nome : '');
+    const descricaoFinal = descricao.trim() || (this.competenciaEditando.id ? this.competenciaEditando.descricao : '');
+
+    if (!nomeFinal || !descricaoFinal) {
       this.snackBar.open(this.t('Preencha nome e descrição da competência.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
@@ -349,15 +372,14 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       const idCompetenciaEditando = this.competenciaEditando.id;
 
       // Buscar perguntas custom - pode ser ID temporário ou permanente
+      // Usar o método getPerguntasCustomCompetencia que já tem lógica robusta para encontrar perguntas
       let perguntasCustom: { id: string; title: string; type: string }[] = [];
 
       if (idCompetenciaEditando) {
-        // Tentar encontrar pelo ID que está sendo editado
-        perguntasCustom = this.customQuestionsByCompetency[idCompetenciaEditando] || [];
-      }
-
-      // Se não encontrou, tentar encontrar por qualquer ID temporário que possa existir
-      if (perguntasCustom.length === 0) {
+        // Usar o método auxiliar que já tem lógica para encontrar perguntas
+        perguntasCustom = this.getPerguntasCustomCompetencia(idCompetenciaEditando);
+      } else {
+        // Se não há ID, tentar encontrar por qualquer ID temporário que possa existir
         const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
           k.startsWith('comp_temp_') || k.startsWith('comp_')
         );
@@ -367,6 +389,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         }
       }
 
+      // Filtrar apenas perguntas que têm título preenchido (ou permitir sem título para edição posterior)
+      // Mas garantir que pelo menos uma pergunta existe
       perguntasIdsFinais = perguntasCustom.map(q => q.id);
 
       if (perguntasIdsFinais.length === 0) {
@@ -408,8 +432,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       // Atualizar a competência com os novos dados
       const competenciaAtualizada: Competencia = {
         id: this.competenciaEditando.id,
-        nome: nome.trim(),
-        descricao: descricao.trim(),
+        nome: nomeFinal,
+        descricao: descricaoFinal,
         perguntasIds: perguntasIdsFinais
       };
 
@@ -417,10 +441,25 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
       // Se não há avaliação, garantir que as perguntas custom estão migradas para o ID permanente
       if (!this.selectedAssessmentId) {
-        const perguntasTemp = this.customQuestionsByCompetency[idCompetenciaEditando] || [];
-        if (perguntasTemp.length > 0) {
+        // Usar as perguntas custom que estão no ID da competência sendo editada
+        const perguntasCustom = this.customQuestionsByCompetency[idCompetenciaEditando] || [];
+
+        // Se não há perguntas custom no ID, tentar migrar de qualquer ID temporário
+        if (perguntasCustom.length === 0) {
+          const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
+            k.startsWith('comp_temp_') || (k.startsWith('comp_') && k !== idCompetenciaEditando)
+          );
+          if (tempKeys.length > 0) {
+            const perguntasTemp = this.customQuestionsByCompetency[tempKeys[0]] || [];
+            if (perguntasTemp.length > 0) {
+              this.customQuestionsByCompetency[idCompetenciaEditando] = [...perguntasTemp];
+              // Limpar chave temporária
+              delete this.customQuestionsByCompetency[tempKeys[0]];
+            }
+          }
+        } else {
           // Garantir que as perguntas custom estão no ID permanente
-          this.customQuestionsByCompetency[idCompetenciaEditando] = perguntasTemp;
+          this.customQuestionsByCompetency[idCompetenciaEditando] = perguntasCustom;
         }
       }
 
@@ -474,8 +513,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
       const nova: Competencia = {
         id: novaId,
-        nome: nome.trim(),
-        descricao: descricao.trim(),
+        nome: nomeFinal,
+        descricao: descricaoFinal,
         perguntasIds: perguntasIdsFinais
       };
       this.competencias.push(nova);
@@ -504,15 +543,59 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
     // Se não há avaliação e a competência tem perguntas custom, restaurá-las
     if (!this.selectedAssessmentId && c.perguntasIds && c.perguntasIds.length > 0) {
-      // Tentar restaurar perguntas custom se existirem
-      // As perguntas custom podem estar em customQuestionsByCompetency ou precisam ser reconstruídas
+      // Verificar se já existem perguntas custom para esta competência
+      if (!this.customQuestionsByCompetency[c.id] || this.customQuestionsByCompetency[c.id].length === 0) {
+        // Se não existem perguntas custom salvas, tentar reconstruir a partir dos IDs
+        // Mas primeiro, tentar encontrar as perguntas custom em outros lugares (como quando carregadas de um grupo)
+        const perguntasCustomRestauradas = c.perguntasIds.map((id, idx) => {
+          // Tentar encontrar a pergunta custom completa em algum lugar
+          const perguntaExistente = Object.values(this.customQuestionsByCompetency)
+            .flat()
+            .find(q => q.id === id);
+
+          if (perguntaExistente) {
+            return { ...perguntaExistente }; // Clonar para não modificar a original
+          }
+
+          // Se não encontrou, criar objeto básico
+          return {
+            id: id,
+            title: `Pergunta ${idx + 1}`,
+            type: 'rating'
+          };
+        });
+
+        this.customQuestionsByCompetency[c.id] = perguntasCustomRestauradas;
+        console.log('✅ Perguntas custom restauradas para competência:', c.id, perguntasCustomRestauradas);
+      } else {
+        // Se já existem perguntas custom, garantir que todas as perguntasIds estão representadas
+        const idsExistentes = this.customQuestionsByCompetency[c.id].map(q => q.id);
+        const idsFaltantes = perguntasIds.filter(id => !idsExistentes.includes(id));
+
+        if (idsFaltantes.length > 0) {
+          // Adicionar perguntas faltantes
+          idsFaltantes.forEach((id, idx) => {
+            // Tentar encontrar a pergunta em outros lugares antes de criar uma nova
+            const perguntaExistente = Object.values(this.customQuestionsByCompetency)
+              .flat()
+              .find(q => q.id === id);
+
+            if (perguntaExistente) {
+              this.customQuestionsByCompetency[c.id].push({ ...perguntaExistente });
+            } else {
+              this.customQuestionsByCompetency[c.id].push({
+                id: id,
+                title: `Pergunta ${this.customQuestionsByCompetency[c.id].length + idx + 1}`,
+                type: 'rating'
+              });
+            }
+          });
+        }
+      }
+    } else if (!this.selectedAssessmentId) {
+      // Se não há perguntas ainda, garantir que o array existe para permitir adicionar novas
       if (!this.customQuestionsByCompetency[c.id]) {
-        // Se não existem perguntas custom salvas, criar objetos básicos a partir dos IDs
-        this.customQuestionsByCompetency[c.id] = c.perguntasIds.map((id, idx) => ({
-          id: id,
-          title: `Pergunta ${idx + 1}`,
-          type: 'rating'
-        }));
+        this.customQuestionsByCompetency[c.id] = [];
       }
     }
 
@@ -618,8 +701,10 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     try {
       let assessmentIdFinal = this.selectedAssessmentId;
 
-      // Se não há avaliação selecionada, criar uma nova automaticamente
-      if (!this.selectedAssessmentId) {
+      // Se não há avaliação selecionada, criar uma nova automaticamente (apenas se não estiver editando um grupo existente)
+      // Se estiver editando um grupo sem avaliação, manter sem avaliação (perguntas custom serão salvas)
+      if (!this.selectedAssessmentId && !this.currentGroupId) {
+        // Apenas criar nova avaliação se for um grupo novo
         if (!this.assessmentNameControl.value) {
           this.snackBar.open(this.t('Digite um nome para a avaliação que será criada.'), this.t('Fechar'), { duration: 3000 });
           return;
@@ -640,21 +725,36 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         // Recarregar avaliações para incluir a nova
         await this.loadAssessments();
       }
+      // Se estiver editando um grupo existente sem avaliação, manter sem avaliação (assessmentIdFinal será null)
 
       const groupData: any = {
         name: this.groupNameControl.value,
         clientId: this.selectedClientId,
         competencias: this.competencias,
-        createdAt: new Date(),
         assessmentId: assessmentIdFinal
       };
 
-      // Salvar perguntas custom se houver (para compatibilidade)
+      // Preservar createdAt se estiver editando
+      if (!this.currentGroupId) {
+        groupData.createdAt = new Date();
+      } else {
+        groupData.updatedAt = new Date();
+      }
+
+      // Salvar perguntas custom se houver (para compatibilidade com grupos antigos)
       if (this.customQuestions.length > 0) {
         groupData.customQuestions = this.customQuestions;
       }
 
+      // Salvar perguntas custom por competência (quando não há avaliação)
+      if (!this.selectedAssessmentId && Object.keys(this.customQuestionsByCompetency).length > 0) {
+        groupData.customQuestionsByCompetency = this.customQuestionsByCompetency;
+        console.log('💾 Salvando perguntas custom por competência:', this.customQuestionsByCompetency);
+      }
+
       console.log('📦 DADOS DO GRUPO A SER SALVO:');
+      console.log('  - Editando grupo existente:', !!this.currentGroupId);
+      console.log('  - ID do grupo:', this.currentGroupId || 'NOVO');
       console.log('  - Nome do grupo:', groupData.name);
       console.log('  - ClientId:', groupData.clientId);
       console.log('  - AssessmentId:', groupData.assessmentId);
@@ -662,19 +762,28 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       console.log('  - Competências:', JSON.stringify(groupData.competencias, null, 2));
       console.log('  - Perguntas custom:', groupData.customQuestions?.length || 0);
 
-      const docRef = await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
+      // Se está editando um grupo existente, atualizar; caso contrário, criar novo
+      if (this.currentGroupId) {
+        const groupDocRef = doc(this.firestore, 'competencyGroups', this.currentGroupId);
+        await updateDoc(groupDocRef, groupData);
+        console.log('✅ GRUPO ATUALIZADO COM SUCESSO!');
+        console.log('  - ID do documento:', this.currentGroupId);
+        this.snackBar.open(this.t('Grupo atualizado com sucesso!'), this.t('Fechar'), { duration: 3000 });
+      } else {
+        const docRef = await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
+        console.log('✅ GRUPO CRIADO COM SUCESSO!');
+        console.log('  - ID do documento:', docRef.id);
+        this.snackBar.open(this.t('Grupo salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
+      }
 
-      console.log('✅ GRUPO SALVO COM SUCESSO!');
-      console.log('  - ID do documento:', docRef.id);
-      console.log('  - Dados salvos:', JSON.stringify(groupData, null, 2));
-
-      this.snackBar.open(this.t('Grupo salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
-      this.groupNameControl.reset();
-
-      // Limpar competências após salvar
-      this.competencias = [];
-      this.customQuestions = [];
-      this.cancelarEdicaoCompetencia();
+      // Limpar campos se não estiver editando
+      if (!this.currentGroupId) {
+        this.groupNameControl.reset();
+        // Limpar competências após salvar novo grupo
+        this.competencias = [];
+        this.customQuestions = [];
+        this.cancelarEdicaoCompetencia();
+      }
 
       // Atualizar lista de grupos
       await this.loadCompetencyGroups(this.selectedClientId);
@@ -695,15 +804,25 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       if (groupDoc.exists()) {
         const groupData = groupDoc.data();
 
+        // Armazenar o ID do grupo sendo editado
+        this.currentGroupId = selectedGroupId;
+
+        // Preencher o nome do grupo no campo de edição
+        this.groupNameControl.setValue(groupData['name'] || '');
+
         // Carregar competências do grupo
         this.competencias = groupData['competencias'] || [];
+
+        // Limpar perguntas custom existentes antes de carregar
+        this.customQuestionsByCompetency = {};
+        this.customQuestions = [];
 
         // Se o grupo tem assessmentId associado, selecionar a avaliação
         if (groupData['assessmentId']) {
           this.selectedAssessmentId = groupData['assessmentId'];
           this.assessmentControl.setValue(groupData['assessmentId']);
 
-          // Carregar perguntas custom ANTES de carregar a avaliação
+          // Carregar perguntas custom ANTES de carregar a avaliação (para compatibilidade com grupos antigos)
           if (groupData['customQuestions'] && Array.isArray(groupData['customQuestions'])) {
             this.customQuestions = groupData['customQuestions'];
           } else {
@@ -712,15 +831,33 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
           await this.onAssessmentChange();
         } else {
-          // Se não tem assessmentId, apenas carregar perguntas custom
-          if (groupData['customQuestions'] && Array.isArray(groupData['customQuestions'])) {
+          // Se não tem assessmentId, restaurar perguntas custom por competência
+          // Verificar se há customQuestionsByCompetency salvo
+          if (groupData['customQuestionsByCompetency'] && typeof groupData['customQuestionsByCompetency'] === 'object') {
+            // Restaurar perguntas custom por competência
+            this.customQuestionsByCompetency = { ...groupData['customQuestionsByCompetency'] };
+            console.log('✅ Perguntas custom por competência restauradas:', this.customQuestionsByCompetency);
+          } else if (groupData['customQuestions'] && Array.isArray(groupData['customQuestions'])) {
+            // Compatibilidade com formato antigo (array simples)
             this.customQuestions = groupData['customQuestions'];
           } else {
-            this.customQuestions = [];
+            // Se não há perguntas custom salvas, reconstruir a partir dos perguntasIds das competências
+            this.competencias.forEach(comp => {
+              if (comp.perguntasIds && comp.perguntasIds.length > 0) {
+                this.customQuestionsByCompetency[comp.id] = comp.perguntasIds.map((id, idx) => ({
+                  id: id,
+                  title: `Pergunta ${idx + 1}`,
+                  type: 'rating'
+                }));
+              }
+            });
           }
         }
 
-        this.snackBar.open(this.t('Grupo carregado com sucesso!'), this.t('Fechar'), { duration: 3000 });
+        // Limpar edição atual ao carregar novo grupo
+        this.cancelarEdicaoCompetencia();
+
+        this.snackBar.open(this.t('Grupo carregado com sucesso! Você pode editá-lo e salvar as alterações.'), this.t('Fechar'), { duration: 4000 });
         this.atualizarPerguntasBloqueadas();
         this.cdr.detectChanges();
 
@@ -873,30 +1010,29 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     console.log('  - Total de competências salvas:', this.competencias.length);
 
     // Determinar qual ID usar para armazenar as perguntas custom
-    let idParaUsar = competenciaId;
+    // Prioridade: 1) ID da competência sendo editada, 2) ID recebido, 3) ID temporário
+    let idParaUsar = this.competenciaEditando.id || competenciaId;
 
     // Se a competência já foi salva e existe no array, usar o ID dela
-    if (competenciaId && this.competencias.some(c => c.id === competenciaId)) {
-      idParaUsar = competenciaId;
+    if (idParaUsar && this.competencias.some(c => c.id === idParaUsar)) {
       console.log('  ✅ Usando ID de competência salva:', idParaUsar);
-    } else if (this.competenciaEditando.id && this.competencias.some(c => c.id === this.competenciaEditando.id)) {
-      // Se estamos editando uma competência salva, usar o ID dela
-      idParaUsar = this.competenciaEditando.id;
-      console.log('  ✅ Usando ID de competência sendo editada:', idParaUsar);
+    } else if (competenciaId && this.competencias.some(c => c.id === competenciaId)) {
+      // Se o ID recebido corresponde a uma competência salva, usar ele
+      idParaUsar = competenciaId;
+      console.log('  ✅ Usando ID recebido de competência salva:', idParaUsar);
     } else {
       // Se não há competência salva ainda, criar ou usar um ID temporário único
       const nomeCompetencia = this.competenciaForm.get('nome')?.value || 'temp';
       console.log('  ⚠️ Nenhuma competência salva encontrada. Nome:', nomeCompetencia);
 
       // Verificar se já existe um ID temporário para esta sessão de edição
-      if (!this.competenciaEditando.id || this.competenciaEditando.id === '') {
+      if (!idParaUsar || idParaUsar === '') {
         // Criar um ID temporário único para esta sessão
         idParaUsar = `comp_temp_${nomeCompetencia.replace(/\s+/g, '_')}_${Date.now()}`;
         this.competenciaEditando.id = idParaUsar;
         console.log('  🆕 Criado novo ID temporário:', idParaUsar);
       } else {
         // Usar o ID temporário que já existe
-        idParaUsar = this.competenciaEditando.id;
         console.log('  ♻️ Reutilizando ID temporário existente:', idParaUsar);
       }
     }
@@ -929,29 +1065,63 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
   removerPerguntaCustomCompetencia(competenciaId: string, index: number): void {
     // Se não há ID, usar o ID temporário da competência sendo editada
-    let idParaUsar = competenciaId;
-    if (!idParaUsar && this.competenciaEditando.id) {
-      idParaUsar = this.competenciaEditando.id;
+    let idParaUsar = competenciaId || this.competenciaEditando.id;
+
+    // Se ainda não há ID, tentar encontrar perguntas em qualquer chave temporária
+    if (!idParaUsar) {
+      const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
+        k.startsWith('comp_temp_') || k.startsWith('comp_')
+      );
+      if (tempKeys.length > 0) {
+        idParaUsar = tempKeys[0];
+      } else {
+        console.warn('Não foi possível encontrar ID da competência para remover pergunta custom');
+        return;
+      }
+    }
+
+    // Garantir que o array existe
+    if (!this.customQuestionsByCompetency[idParaUsar]) {
+      this.customQuestionsByCompetency[idParaUsar] = [];
     }
 
     const perguntas = this.customQuestionsByCompetency[idParaUsar];
     if (perguntas && index >= 0 && index < perguntas.length) {
       perguntas.splice(index, 1);
       this.cdr.detectChanges();
+    } else {
+      console.warn(`Não foi possível remover pergunta custom: index ${index} fora do range (0-${perguntas.length - 1})`);
     }
   }
 
   atualizarPerguntaCustomCompetencia(competenciaId: string, index: number, campo: 'title' | 'type', valor: string): void {
     // Se não há ID, usar o ID temporário da competência sendo editada
-    let idParaUsar = competenciaId;
-    if (!idParaUsar && this.competenciaEditando.id) {
-      idParaUsar = this.competenciaEditando.id;
+    let idParaUsar = competenciaId || this.competenciaEditando.id;
+
+    // Se ainda não há ID, tentar encontrar perguntas em qualquer chave temporária
+    if (!idParaUsar) {
+      const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
+        k.startsWith('comp_temp_') || k.startsWith('comp_')
+      );
+      if (tempKeys.length > 0) {
+        idParaUsar = tempKeys[0];
+      } else {
+        console.warn('Não foi possível encontrar ID da competência para atualizar pergunta custom');
+        return;
+      }
+    }
+
+    // Garantir que o array existe
+    if (!this.customQuestionsByCompetency[idParaUsar]) {
+      this.customQuestionsByCompetency[idParaUsar] = [];
     }
 
     const perguntas = this.customQuestionsByCompetency[idParaUsar];
     if (perguntas && index >= 0 && index < perguntas.length) {
       perguntas[index][campo] = valor;
       this.cdr.detectChanges();
+    } else {
+      console.warn(`Não foi possível atualizar pergunta custom: index ${index} fora do range (0-${perguntas.length - 1})`);
     }
   }
 
@@ -974,7 +1144,31 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       return [];
     }
 
-    return this.customQuestionsByCompetency[idParaUsar] || [];
+    // Buscar perguntas custom pelo ID da competência
+    const perguntas = this.customQuestionsByCompetency[idParaUsar] || [];
+
+    // Se não encontrou perguntas e estamos editando uma competência existente,
+    // tentar reconstruir a partir dos perguntasIds da competência
+    if (perguntas.length === 0 && this.competenciaEditando.id === idParaUsar) {
+      const competenciaExistente = this.competencias.find(c => c.id === idParaUsar);
+      if (competenciaExistente && competenciaExistente.perguntasIds && competenciaExistente.perguntasIds.length > 0) {
+        // Reconstruir perguntas custom a partir dos IDs
+        return competenciaExistente.perguntasIds.map((id, idx) => {
+          // Tentar encontrar a pergunta em outras competências ou em arrays temporários
+          const perguntaExistente = Object.values(this.customQuestionsByCompetency)
+            .flat()
+            .find(q => q.id === id);
+
+          return perguntaExistente || {
+            id: id,
+            title: `Pergunta ${idx + 1}`,
+            type: 'rating'
+          };
+        });
+      }
+    }
+
+    return perguntas;
   }
 
   getTituloPerguntaCustom(competenciaId: string, perguntaId: string): string {
