@@ -67,6 +67,12 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   // Perguntas custom (para compatibilidade com grupos antigos)
   customQuestions: { id: string; title: string; type: string }[] = [];
 
+  // Perguntas custom por competência (quando não há avaliação)
+  customQuestionsByCompetency: { [competencyId: string]: { id: string; title: string; type: string }[] } = {};
+
+  // Nome da avaliação a ser criada (se não houver avaliação selecionada)
+  assessmentNameControl = new FormControl('');
+
   // Controles de UI
   userRole: string = '';
   userClientId: string = '';
@@ -83,12 +89,15 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog
   ) {
-    // Formulário igual ao reports
+    // Formulário igual ao reports (perguntasIds não é obrigatório quando não há avaliação)
     this.competenciaForm = this.fb.group({
       nome: ['', Validators.required],
       descricao: ['', Validators.required],
-      perguntasIds: [[] as string[], Validators.required]
+      perguntasIds: [[] as string[]] // Não obrigatório para permitir modo sem avaliação
     });
+
+    // Inicializar perguntas custom por competência
+    this.customQuestionsByCompetency = {};
   }
 
   async ngOnInit(): Promise<void> {
@@ -197,11 +206,16 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   }
 
   async onAssessmentChange(): Promise<void> {
+    const assessmentId = this.assessmentControl.value;
+    this.selectedAssessmentId = assessmentId || null;
+
+    // Se não há avaliação selecionada, limpar perguntas da avaliação mas manter perguntas custom
     if (!this.selectedAssessmentId) {
-      this.questionMap = {};
-      this.dynamicColumns = [];
       this.allQuestions = [];
       this.filteredQuestions = [];
+      this.questionMap = {};
+      this.dynamicColumns = [];
+      this.cdr.detectChanges();
       return;
     }
 
@@ -300,76 +314,178 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   }
 
   salvarCompetencia(): void {
-    if (this.competenciaForm.invalid) {
-      this.snackBar.open(this.t('Preencha todos os campos obrigatórios.'), this.t('Fechar'), { duration: 3000 });
+    console.log('🟢 SALVAR COMPETÊNCIA - INÍCIO');
+    console.log('  - competenciaEditando.id:', this.competenciaEditando.id);
+    console.log('  - Nome no form:', this.competenciaForm.get('nome')?.value);
+    console.log('  - Stack trace:', new Error().stack);
+
+    // Validar cliente primeiro (obrigatório quando não há avaliação)
+    if (!this.selectedAssessmentId && !this.selectedClientId) {
+      console.log('  ❌ Cliente não selecionado');
+      this.snackBar.open(this.t('Selecione um cliente antes de criar competências.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+
+    // Validar apenas nome e descrição (perguntasIds é opcional quando não há avaliação)
+    const nome = this.competenciaForm.get('nome')?.value || '';
+    const descricao = this.competenciaForm.get('descricao')?.value || '';
+
+    if (!nome.trim() || !descricao.trim()) {
+      this.snackBar.open(this.t('Preencha nome e descrição da competência.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
 
     // Pegar valores diretamente do FormControl para garantir que está atualizado
-    const nome = this.competenciaForm.get('nome')?.value || '';
-    const descricao = this.competenciaForm.get('descricao')?.value || '';
     const perguntasIdsControl = this.competenciaForm.get('perguntasIds');
     const perguntasIdsVinculadas = Array.isArray(perguntasIdsControl?.value)
       ? [...perguntasIdsControl.value]
       : [];
 
-    // Validar se há perguntas selecionadas
-    if (perguntasIdsVinculadas.length === 0) {
-      this.snackBar.open(this.t('Selecione pelo menos uma pergunta para a competência.'), this.t('Fechar'), { duration: 3000 });
-      return;
+    // Se não há avaliação selecionada, usar perguntas custom da competência
+    let perguntasIdsFinais = perguntasIdsVinculadas;
+
+    if (!this.selectedAssessmentId) {
+      // Modo sem avaliação: usar perguntas custom da competência
+      const idCompetenciaEditando = this.competenciaEditando.id;
+
+      // Buscar perguntas custom - pode ser ID temporário ou permanente
+      let perguntasCustom: { id: string; title: string; type: string }[] = [];
+
+      if (idCompetenciaEditando) {
+        // Tentar encontrar pelo ID que está sendo editado
+        perguntasCustom = this.customQuestionsByCompetency[idCompetenciaEditando] || [];
+      }
+
+      // Se não encontrou, tentar encontrar por qualquer ID temporário que possa existir
+      if (perguntasCustom.length === 0) {
+        const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
+          k.startsWith('comp_temp_') || k.startsWith('comp_')
+        );
+        if (tempKeys.length > 0) {
+          // Pegar a primeira chave temporária encontrada
+          perguntasCustom = this.customQuestionsByCompetency[tempKeys[0]] || [];
+        }
+      }
+
+      perguntasIdsFinais = perguntasCustom.map(q => q.id);
+
+      if (perguntasIdsFinais.length === 0) {
+        this.snackBar.open(this.t('Adicione pelo menos uma pergunta custom à competência ou selecione uma avaliação.'), this.t('Fechar'), { duration: 3000 });
+        return;
+      }
+    } else {
+      // Modo com avaliação: validar se há perguntas selecionadas
+      if (perguntasIdsVinculadas.length === 0) {
+        this.snackBar.open(this.t('Selecione pelo menos uma pergunta para a competência.'), this.t('Fechar'), { duration: 3000 });
+        return;
+      }
+
+      // Verificar se todas as perguntas custom vinculadas estão na lista
+      perguntasIdsVinculadas.forEach((perguntaId: string) => {
+        if (perguntaId.startsWith('custom_')) {
+          const existe = this.customQuestions.some(q => q.id === perguntaId);
+          if (!existe) {
+            // Tentar encontrar em allQuestions
+            const pergunta = this.allQuestions.find(q => q.id === perguntaId);
+            if (pergunta && pergunta.id.startsWith('custom_')) {
+              // Adicionar à lista de customQuestions se não estiver
+              this.customQuestions.push(pergunta);
+              console.log('Pergunta custom recuperada de allQuestions:', pergunta);
+            } else {
+              console.warn('Pergunta custom não encontrada:', perguntaId);
+            }
+          }
+        }
+      });
     }
 
-    // Verificar se todas as perguntas custom vinculadas estão na lista
-    perguntasIdsVinculadas.forEach((perguntaId: string) => {
-      if (perguntaId.startsWith('custom_')) {
-        const existe = this.customQuestions.some(q => q.id === perguntaId);
-        if (!existe) {
-          // Tentar encontrar em allQuestions
-          const pergunta = this.allQuestions.find(q => q.id === perguntaId);
-          if (pergunta && pergunta.id.startsWith('custom_')) {
-            // Adicionar à lista de customQuestions se não estiver
-            this.customQuestions.push(pergunta);
-            console.log('Pergunta custom recuperada de allQuestions:', pergunta);
-          } else {
-            console.warn('Pergunta custom não encontrada:', perguntaId);
+    const idCompetenciaEditando = this.competenciaEditando.id;
+    const idx = idCompetenciaEditando ? this.competencias.findIndex(c => c.id === idCompetenciaEditando) : -1;
+    const isEditandoExistente = idx > -1;
+
+    if (isEditandoExistente) {
+      // Editando competência existente
+      // Atualizar a competência com os novos dados
+      const competenciaAtualizada: Competencia = {
+        id: this.competenciaEditando.id,
+        nome: nome.trim(),
+        descricao: descricao.trim(),
+        perguntasIds: perguntasIdsFinais
+      };
+
+      this.competencias[idx] = competenciaAtualizada;
+
+      // Se não há avaliação, garantir que as perguntas custom estão migradas para o ID permanente
+      if (!this.selectedAssessmentId) {
+        const perguntasTemp = this.customQuestionsByCompetency[idCompetenciaEditando] || [];
+        if (perguntasTemp.length > 0) {
+          // Garantir que as perguntas custom estão no ID permanente
+          this.customQuestionsByCompetency[idCompetenciaEditando] = perguntasTemp;
+        }
+      }
+
+      console.log('✅ Competência atualizada:', competenciaAtualizada);
+      console.log('✅ Total de perguntas vinculadas:', perguntasIdsFinais.length);
+      this.snackBar.open(this.t('Competência atualizada com sucesso!'), this.t('Fechar'), { duration: 3000 });
+    } else {
+      // Adicionando nova competência (ou editando uma que ainda não foi salva)
+      const novaId = `comp_${new Date().getTime()}`;
+
+      // Se não há avaliação, migrar perguntas custom temporárias para o novo ID permanente
+      if (!this.selectedAssessmentId) {
+        // Procurar perguntas custom em qualquer ID temporário
+        let perguntasTemp: { id: string; title: string; type: string }[] = [];
+        let tempKey = '';
+
+        if (idCompetenciaEditando && this.customQuestionsByCompetency[idCompetenciaEditando]) {
+          perguntasTemp = this.customQuestionsByCompetency[idCompetenciaEditando];
+          tempKey = idCompetenciaEditando;
+        } else {
+          // Procurar em todas as chaves temporárias
+          const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
+            k.startsWith('comp_temp_') || (k.startsWith('comp_') && !this.competencias.some(c => c.id === k))
+          );
+          if (tempKeys.length > 0) {
+            tempKey = tempKeys[0];
+            perguntasTemp = this.customQuestionsByCompetency[tempKey] || [];
+          }
+        }
+
+        if (perguntasTemp.length > 0) {
+          // Migrar perguntas custom temporárias para o novo ID permanente
+          this.customQuestionsByCompetency[novaId] = perguntasTemp.map(q => {
+            // Manter o mesmo ID da pergunta ou atualizar se necessário
+            const novaPerguntaId = q.id.includes(tempKey)
+              ? q.id.replace(tempKey, novaId)
+              : q.id;
+            return {
+              ...q,
+              id: novaPerguntaId
+            };
+          });
+          perguntasIdsFinais = this.customQuestionsByCompetency[novaId].map(q => q.id);
+
+          // Limpar perguntas temporárias
+          if (tempKey && tempKey !== novaId) {
+            delete this.customQuestionsByCompetency[tempKey];
           }
         }
       }
-    });
 
-    const idCompetenciaEditando = this.competenciaEditando.id;
-
-    if (idCompetenciaEditando) {
-      // Editando competência existente
-      const idx = this.competencias.findIndex(c => c.id === idCompetenciaEditando);
-      if (idx > -1) {
-        // Atualizar a competência com os novos dados
-        const competenciaAtualizada: Competencia = {
-          id: this.competenciaEditando.id,
-          nome: nome.trim(),
-          descricao: descricao.trim(),
-          perguntasIds: perguntasIdsVinculadas // Array já é uma cópia
-        };
-
-        this.competencias[idx] = competenciaAtualizada;
-
-        console.log('✅ Competência atualizada:', competenciaAtualizada);
-        console.log('✅ Total de perguntas vinculadas:', perguntasIdsVinculadas.length);
-        console.log('✅ Perguntas custom disponíveis:', this.customQuestions.length);
-      } else {
-        this.snackBar.open(this.t('Erro: Competência não encontrada para edição.'), this.t('Fechar'), { duration: 3000 });
-        return;
-      }
-      this.snackBar.open(this.t('Competência atualizada com sucesso!'), this.t('Fechar'), { duration: 3000 });
-    } else {
-      // Adicionando nova competência
       const nova: Competencia = {
-        id: `comp_${new Date().getTime()}`,
+        id: novaId,
         nome: nome.trim(),
         descricao: descricao.trim(),
-        perguntasIds: perguntasIdsVinculadas
+        perguntasIds: perguntasIdsFinais
       };
       this.competencias.push(nova);
+
+      // Garantir que as perguntas custom estão no novo ID
+      if (!this.selectedAssessmentId && perguntasIdsFinais.length > 0 && !this.customQuestionsByCompetency[novaId]) {
+        // Se por algum motivo não migrou, criar array vazio (não deveria acontecer)
+        this.customQuestionsByCompetency[novaId] = [];
+      }
+
       this.snackBar.open(this.t('Competência adicionada com sucesso!'), this.t('Fechar'), { duration: 3000 });
     }
 
@@ -385,6 +501,20 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
     // Garantir que perguntasIds é um array válido
     const perguntasIds = Array.isArray(c.perguntasIds) ? [...c.perguntasIds] : [];
+
+    // Se não há avaliação e a competência tem perguntas custom, restaurá-las
+    if (!this.selectedAssessmentId && c.perguntasIds && c.perguntasIds.length > 0) {
+      // Tentar restaurar perguntas custom se existirem
+      // As perguntas custom podem estar em customQuestionsByCompetency ou precisam ser reconstruídas
+      if (!this.customQuestionsByCompetency[c.id]) {
+        // Se não existem perguntas custom salvas, criar objetos básicos a partir dos IDs
+        this.customQuestionsByCompetency[c.id] = c.perguntasIds.map((id, idx) => ({
+          id: id,
+          title: `Pergunta ${idx + 1}`,
+          type: 'rating'
+        }));
+      }
+    }
 
     this.competenciaForm.setValue({
       nome: c.nome || '',
@@ -427,17 +557,35 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   // Métodos de grupos de competências (igual ao reports)
   async loadCompetencyGroups(clientId: string): Promise<void> {
     try {
+      console.log('📦 CARREGANDO GRUPOS DE COMPETÊNCIAS');
+      console.log('  - ClientId:', clientId);
+
       const groupsCollection = collection(this.firestore, 'competencyGroups');
       const groupsSnapshot = await getDocs(
         query(groupsCollection, where('clientId', '==', clientId))
       );
 
-      this.competencyGroups = groupsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      console.log(`  - Total de grupos encontrados: ${groupsSnapshot.docs.length}`);
+
+      this.competencyGroups = groupsSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        console.log(`  - Grupo encontrado:`, {
+          id: doc.id,
+          name: data['name'],
+          clientId: data['clientId'],
+          assessmentId: data['assessmentId'],
+          totalCompetencias: data['competencias']?.length || 0,
+          competencias: data['competencias']
+        });
+        return {
+          id: doc.id,
+          ...data
+        };
+      });
+
+      console.log(`✅ Total de grupos carregados: ${this.competencyGroups.length}`);
     } catch (error) {
-      console.error('Erro ao carregar grupos de competências:', error);
+      console.error('❌ Erro ao carregar grupos de competências:', error);
       this.snackBar.open(this.t('Erro ao carregar grupos de competências.'), this.t('Fechar'), {
         duration: 3000,
       });
@@ -460,26 +608,65 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!this.selectedAssessmentId) {
-      this.snackBar.open(this.t('Selecione uma avaliação antes de salvar o grupo.'), this.t('Fechar'), { duration: 3000 });
+    // Validar se há perguntas em todas as competências
+    const competenciasSemPerguntas = this.competencias.filter(c => !c.perguntasIds || c.perguntasIds.length === 0);
+    if (competenciasSemPerguntas.length > 0) {
+      this.snackBar.open(this.t('Todas as competências devem ter pelo menos uma pergunta.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
 
     try {
+      let assessmentIdFinal = this.selectedAssessmentId;
+
+      // Se não há avaliação selecionada, criar uma nova automaticamente
+      if (!this.selectedAssessmentId) {
+        if (!this.assessmentNameControl.value) {
+          this.snackBar.open(this.t('Digite um nome para a avaliação que será criada.'), this.t('Fechar'), { duration: 3000 });
+          return;
+        }
+
+        // Criar avaliação com todas as perguntas das competências
+        assessmentIdFinal = await this.criarAvaliacaoDasCompetencias();
+
+        if (!assessmentIdFinal) {
+          this.snackBar.open(this.t('Erro ao criar avaliação.'), this.t('Fechar'), { duration: 3000 });
+          return;
+        }
+
+        // Atualizar seleção de avaliação
+        this.selectedAssessmentId = assessmentIdFinal;
+        this.assessmentControl.setValue(assessmentIdFinal);
+
+        // Recarregar avaliações para incluir a nova
+        await this.loadAssessments();
+      }
+
       const groupData: any = {
         name: this.groupNameControl.value,
         clientId: this.selectedClientId,
         competencias: this.competencias,
         createdAt: new Date(),
-        assessmentId: this.selectedAssessmentId
+        assessmentId: assessmentIdFinal
       };
 
-      // Salvar perguntas custom se houver
+      // Salvar perguntas custom se houver (para compatibilidade)
       if (this.customQuestions.length > 0) {
         groupData.customQuestions = this.customQuestions;
       }
 
-      await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
+      console.log('📦 DADOS DO GRUPO A SER SALVO:');
+      console.log('  - Nome do grupo:', groupData.name);
+      console.log('  - ClientId:', groupData.clientId);
+      console.log('  - AssessmentId:', groupData.assessmentId);
+      console.log('  - Total de competências:', groupData.competencias.length);
+      console.log('  - Competências:', JSON.stringify(groupData.competencias, null, 2));
+      console.log('  - Perguntas custom:', groupData.customQuestions?.length || 0);
+
+      const docRef = await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
+
+      console.log('✅ GRUPO SALVO COM SUCESSO!');
+      console.log('  - ID do documento:', docRef.id);
+      console.log('  - Dados salvos:', JSON.stringify(groupData, null, 2));
 
       this.snackBar.open(this.t('Grupo salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
       this.groupNameControl.reset();
@@ -675,6 +862,249 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       'matrix': 'Matriz'
     };
     return typeMap[type] || type;
+  }
+
+  // Métodos para gerenciar perguntas custom por competência (quando não há avaliação)
+  adicionarPerguntaCustom(competenciaId: string): void {
+    console.log('🔵 ADICIONAR PERGUNTA CUSTOM - INÍCIO');
+    console.log('  - competenciaId recebido:', competenciaId);
+    console.log('  - competenciaEditando.id atual:', this.competenciaEditando.id);
+    console.log('  - Nome da competência no form:', this.competenciaForm.get('nome')?.value);
+    console.log('  - Total de competências salvas:', this.competencias.length);
+
+    // Determinar qual ID usar para armazenar as perguntas custom
+    let idParaUsar = competenciaId;
+
+    // Se a competência já foi salva e existe no array, usar o ID dela
+    if (competenciaId && this.competencias.some(c => c.id === competenciaId)) {
+      idParaUsar = competenciaId;
+      console.log('  ✅ Usando ID de competência salva:', idParaUsar);
+    } else if (this.competenciaEditando.id && this.competencias.some(c => c.id === this.competenciaEditando.id)) {
+      // Se estamos editando uma competência salva, usar o ID dela
+      idParaUsar = this.competenciaEditando.id;
+      console.log('  ✅ Usando ID de competência sendo editada:', idParaUsar);
+    } else {
+      // Se não há competência salva ainda, criar ou usar um ID temporário único
+      const nomeCompetencia = this.competenciaForm.get('nome')?.value || 'temp';
+      console.log('  ⚠️ Nenhuma competência salva encontrada. Nome:', nomeCompetencia);
+
+      // Verificar se já existe um ID temporário para esta sessão de edição
+      if (!this.competenciaEditando.id || this.competenciaEditando.id === '') {
+        // Criar um ID temporário único para esta sessão
+        idParaUsar = `comp_temp_${nomeCompetencia.replace(/\s+/g, '_')}_${Date.now()}`;
+        this.competenciaEditando.id = idParaUsar;
+        console.log('  🆕 Criado novo ID temporário:', idParaUsar);
+      } else {
+        // Usar o ID temporário que já existe
+        idParaUsar = this.competenciaEditando.id;
+        console.log('  ♻️ Reutilizando ID temporário existente:', idParaUsar);
+      }
+    }
+
+    // Garantir que o array existe
+    if (!this.customQuestionsByCompetency[idParaUsar]) {
+      this.customQuestionsByCompetency[idParaUsar] = [];
+      console.log('  📝 Criado novo array para perguntas custom');
+    } else {
+      console.log('  📋 Array já existe com', this.customQuestionsByCompetency[idParaUsar].length, 'perguntas');
+    }
+
+    // Criar nova pergunta
+    const novaPerguntaId = `custom_${idParaUsar}_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.customQuestionsByCompetency[idParaUsar].push({
+      id: novaPerguntaId,
+      title: '',
+      type: 'rating'
+    });
+
+    console.log('✅ PERGUNTA CUSTOM ADICIONADA:');
+    console.log('  - ID da pergunta:', novaPerguntaId);
+    console.log('  - ID da competência:', idParaUsar);
+    console.log('  - Total de perguntas custom agora:', this.customQuestionsByCompetency[idParaUsar].length);
+    console.log('  - Todas as perguntas:', this.customQuestionsByCompetency[idParaUsar]);
+    console.log('🔵 ADICIONAR PERGUNTA CUSTOM - FIM');
+
+    this.cdr.detectChanges();
+  }
+
+  removerPerguntaCustomCompetencia(competenciaId: string, index: number): void {
+    // Se não há ID, usar o ID temporário da competência sendo editada
+    let idParaUsar = competenciaId;
+    if (!idParaUsar && this.competenciaEditando.id) {
+      idParaUsar = this.competenciaEditando.id;
+    }
+
+    const perguntas = this.customQuestionsByCompetency[idParaUsar];
+    if (perguntas && index >= 0 && index < perguntas.length) {
+      perguntas.splice(index, 1);
+      this.cdr.detectChanges();
+    }
+  }
+
+  atualizarPerguntaCustomCompetencia(competenciaId: string, index: number, campo: 'title' | 'type', valor: string): void {
+    // Se não há ID, usar o ID temporário da competência sendo editada
+    let idParaUsar = competenciaId;
+    if (!idParaUsar && this.competenciaEditando.id) {
+      idParaUsar = this.competenciaEditando.id;
+    }
+
+    const perguntas = this.customQuestionsByCompetency[idParaUsar];
+    if (perguntas && index >= 0 && index < perguntas.length) {
+      perguntas[index][campo] = valor;
+      this.cdr.detectChanges();
+    }
+  }
+
+  getPerguntasCustomCompetencia(competenciaId: string): { id: string; title: string; type: string }[] {
+    // Se não há ID fornecido, tentar usar o ID temporário da competência sendo editada
+    let idParaUsar = competenciaId;
+    if (!idParaUsar && this.competenciaEditando.id) {
+      idParaUsar = this.competenciaEditando.id;
+    }
+
+    // Se ainda não há ID, procurar em todas as chaves temporárias
+    if (!idParaUsar) {
+      const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
+        k.startsWith('comp_temp_') || k.startsWith('comp_')
+      );
+      if (tempKeys.length > 0) {
+        // Retornar perguntas da primeira chave temporária encontrada
+        return this.customQuestionsByCompetency[tempKeys[0]] || [];
+      }
+      return [];
+    }
+
+    return this.customQuestionsByCompetency[idParaUsar] || [];
+  }
+
+  getTituloPerguntaCustom(competenciaId: string, perguntaId: string): string {
+    const perguntas = this.getPerguntasCustomCompetencia(competenciaId);
+    const pergunta = perguntas.find(q => q.id === perguntaId);
+    return pergunta?.title || perguntaId;
+  }
+
+  temPerguntaCustom(competenciaId: string, perguntaId: string): boolean {
+    const perguntas = this.getPerguntasCustomCompetencia(competenciaId);
+    return perguntas.some(q => q.id === perguntaId);
+  }
+
+  // Criar avaliação a partir das competências e suas perguntas custom
+  private async criarAvaliacaoDasCompetencias(): Promise<string | null> {
+    try {
+      const currentUser = await this.authService.getCurrentUser();
+      if (!currentUser) {
+        this.snackBar.open(this.t('Erro ao obter usuário autenticado.'), this.t('Fechar'), { duration: 3000 });
+        return null;
+      }
+
+      // Coletar todas as perguntas de todas as competências
+      const todasPerguntas: Array<{ id: string; title: string; type: string; competencyId: string }> = [];
+
+      this.competencias.forEach(comp => {
+        // Se a competência tem perguntas custom, usar elas
+        const perguntasCustom = this.customQuestionsByCompetency[comp.id] || [];
+
+        if (perguntasCustom.length > 0) {
+          perguntasCustom.forEach(q => {
+            todasPerguntas.push({
+              id: q.id,
+              title: q.title,
+              type: q.type,
+              competencyId: comp.id
+            });
+          });
+        } else if (comp.perguntasIds && comp.perguntasIds.length > 0) {
+          // Se não tem custom, mas tem perguntasIds, tentar criar perguntas básicas
+          comp.perguntasIds.forEach((perguntaId, idx) => {
+            todasPerguntas.push({
+              id: perguntaId,
+              title: `Pergunta ${idx + 1} - ${comp.nome}`,
+              type: 'rating',
+              competencyId: comp.id
+            });
+          });
+        }
+      });
+
+      if (todasPerguntas.length === 0) {
+        this.snackBar.open(this.t('Nenhuma pergunta encontrada nas competências.'), this.t('Fechar'), { duration: 3000 });
+        return null;
+      }
+
+      // Criar surveyJSON com as perguntas organizadas por competência
+      const pages: any[] = [];
+
+      // Opção 1: Uma página por competência
+      this.competencias.forEach(comp => {
+        const perguntasCompetencia = todasPerguntas.filter(p => p.competencyId === comp.id);
+        if (perguntasCompetencia.length > 0) {
+          const elements = perguntasCompetencia.map(p => {
+            const element: any = {
+              name: p.id,
+              type: p.type || 'rating',
+              title: {
+                pt: p.title || `Pergunta de ${comp.nome}`
+              }
+            };
+
+            // Configurações específicas por tipo
+            if (p.type === 'rating') {
+              element.rateMin = 1;
+              element.rateMax = 5;
+              element.minRateDescription = { pt: 'Discordo Totalmente' };
+              element.maxRateDescription = { pt: 'Concordo Totalmente' };
+            }
+
+            return element;
+          });
+
+          pages.push({
+            name: `pagina_${comp.id}`,
+            title: {
+              pt: comp.nome
+            },
+            description: {
+              pt: comp.descricao || ''
+            },
+            elements: elements
+          });
+        }
+      });
+
+      // Criar o surveyJSON completo
+      const surveyJSON = {
+        title: {
+          pt: this.assessmentNameControl.value || 'Avaliação de Competências'
+        },
+        pages: pages,
+        locale: 'pt'
+      };
+
+      // Criar a avaliação no Firestore
+      const assessmentData = {
+        name: this.assessmentNameControl.value || 'Avaliação de Competências',
+        description: `Avaliação criada automaticamente a partir do grupo de competências: ${this.groupNameControl.value}`,
+        clientId: this.selectedClientId,
+        surveyJSON: surveyJSON,
+        createdBy: {
+          name: currentUser.name,
+          email: currentUser.email,
+          role: currentUser.role
+        },
+        createdAt: new Date()
+      };
+
+      const assessmentsCollection = collection(this.firestore, 'assessments');
+      const docRef = await addDoc(assessmentsCollection, assessmentData);
+
+      this.snackBar.open(this.t('Avaliação criada automaticamente com sucesso!'), this.t('Fechar'), { duration: 3000 });
+
+      return docRef.id;
+    } catch (error) {
+      console.error('Erro ao criar avaliação:', error);
+      this.snackBar.open(this.t('Erro ao criar avaliação.'), this.t('Fechar'), { duration: 3000 });
+      return null;
+    }
   }
 }
 

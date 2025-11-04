@@ -135,15 +135,97 @@ export class CreateAssessmentComponent implements OnInit {
 
   async loadCompetencies(clientId: string): Promise<void> {
     try {
-      const competenciesCollection = collection(this.firestore, 'competencies');
-      const q = query(competenciesCollection, where('clientId', '==', clientId));
-      const snapshot = await getDocs(q);
-      this.competencies = snapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data()['name']
-      }));
+      console.log('🔍 INICIANDO CARREGAMENTO DE COMPETÊNCIAS');
+      console.log('  - ClientId:', clientId);
+      
+      const competenciesSet = new Map<string, { id: string; name: string }>();
+      
+      // 1. Carregar competências da coleção 'competencies' (formato antigo - para compatibilidade)
+      try {
+        console.log('📚 Buscando na coleção "competencies"...');
+        const competenciesCollection = collection(this.firestore, 'competencies');
+        const q = query(competenciesCollection, where('clientId', '==', clientId));
+        const snapshot = await getDocs(q);
+        console.log(`  - Encontrados ${snapshot.docs.length} documentos na coleção "competencies"`);
+        
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          console.log(`  - Competência encontrada (formato antigo):`, {
+            id: doc.id,
+            name: data['name'],
+            data: data
+          });
+          competenciesSet.set(doc.id, {
+            id: doc.id,
+            name: data['name'] || ''
+          });
+        });
+      } catch (error) {
+        console.warn('⚠️ Erro ao carregar competências da coleção competencies:', error);
+      }
+      
+      // 2. Carregar competências dos grupos de competências (formato novo)
+      try {
+        console.log('📦 Buscando na coleção "competencyGroups"...');
+        const groupsCollection = collection(this.firestore, 'competencyGroups');
+        const groupsQuery = query(groupsCollection, where('clientId', '==', clientId));
+        const groupsSnapshot = await getDocs(groupsQuery);
+        console.log(`  - Encontrados ${groupsSnapshot.docs.length} grupos de competências`);
+        
+        groupsSnapshot.docs.forEach((groupDoc, groupIndex) => {
+          const groupData = groupDoc.data();
+          const competencias = groupData['competencias'] || [];
+          
+          console.log(`  - Grupo ${groupIndex + 1}:`, {
+            id: groupDoc.id,
+            name: groupData['name'],
+            clientId: groupData['clientId'],
+            totalCompetencias: competencias.length,
+            competencias: competencias
+          });
+          
+          // Adicionar cada competência do grupo à lista
+          competencias.forEach((comp: any, index: number) => {
+            if (comp && comp.nome) {
+              // Criar um ID único para a competência: grupoId_comp_index
+              const uniqueId = `${groupDoc.id}_comp_${index}`;
+              console.log(`    ✅ Competência encontrada no grupo:`, {
+                uniqueId: uniqueId,
+                nome: comp.nome,
+                descricao: comp.descricao,
+                perguntasIds: comp.perguntasIds,
+                index: index
+              });
+              competenciesSet.set(uniqueId, {
+                id: uniqueId,
+                name: comp.nome || `Competência ${index + 1}`
+              });
+            } else {
+              console.warn(`    ⚠️ Competência inválida no índice ${index}:`, comp);
+            }
+          });
+        });
+      } catch (error) {
+        console.error('❌ Erro ao carregar competências dos grupos:', error);
+        console.error('  - Detalhes do erro:', error);
+      }
+      
+      // Converter Map para Array
+      this.competencies = Array.from(competenciesSet.values());
+      
+      console.log(`✅ RESULTADO FINAL:`);
+      console.log(`  - Total de competências carregadas: ${this.competencies.length}`);
+      console.log(`  - Lista de competências:`, this.competencies);
+      
+      if (this.competencies.length === 0) {
+        console.warn('⚠️ NENHUMA COMPETÊNCIA ENCONTRADA!');
+        console.warn('  - Verifique se há grupos salvos para este cliente');
+        console.warn('  - Verifique se o clientId está correto:', clientId);
+      }
     } catch (error) {
-      console.error('Erro ao carregar competências:', error);
+      console.error('❌ Erro ao carregar competências:', error);
+      console.error('  - Stack trace:', error);
+      this.snackBar.open('Erro ao carregar competências', 'Fechar', { duration: 3000 });
     }
   }
 
@@ -160,60 +242,144 @@ export class CreateAssessmentComponent implements OnInit {
       const allQuestions: any[] = [];
 
       for (const id of competencyIds) {
-        const docRef = doc(this.firestore, 'competencies', id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const competencyData = docSnap.data();
-          if (competencyData && competencyData['questions']) {
-
-            const questions = (competencyData['questions'] || []).map((q: any) => {
-              const questionName = q.id || `q_${questionCounter++}`;
-
-              let surveyQuestion: any = {
-                name: questionName,
-                title: q.text,
-                isRequired: q.required,
-              };
-
-              // Mapeia os tipos de pergunta da competência para os tipos do SurveyJS
-              switch (q.type) {
-                case 'likert':
-                  surveyQuestion.type = 'rating';
-                  surveyQuestion.rateMin = 1;
-                  surveyQuestion.rateMax = 5;
-                  surveyQuestion.minRateDescription = 'Discordo Totalmente';
-                  surveyQuestion.maxRateDescription = 'Concordo Totalmente';
-                  break;
-                case 'multiple_choice':
-                  surveyQuestion.type = 'radiogroup';
-                  surveyQuestion.choices = q.options || [];
-                  break;
-                case 'text':
-                  surveyQuestion.type = 'comment'; // Campo de texto de múltiplas linhas
-                  break;
-                case 'number':
-                  surveyQuestion.type = 'text';
-                  surveyQuestion.inputType = 'number';
-                  break;
-                default:
-                  surveyQuestion.type = 'text';
+        let competencyData: any = null;
+        let competencyName = '';
+        let questions: any[] = [];
+        
+        // Verificar se é um ID de competência de grupo (formato: grupoId_comp_index)
+        if (id.includes('_comp_')) {
+          const parts = id.split('_comp_');
+          const groupId = parts[0];
+          const groupIndex = parseInt(parts[1] || '0');
+          
+          // Carregar o grupo de competências
+          const groupDocRef = doc(this.firestore, 'competencyGroups', groupId);
+          const groupDocSnap = await getDoc(groupDocRef);
+          
+          if (groupDocSnap.exists()) {
+            const groupData = groupDocSnap.data();
+            const competencias = groupData['competencias'] || [];
+            
+            if (competencias[groupIndex]) {
+              const comp = competencias[groupIndex];
+              competencyName = comp.nome || '';
+              
+              // Buscar perguntas a partir do assessmentId ou das perguntas custom
+              if (groupData['assessmentId']) {
+                // Carregar perguntas da avaliação
+                const assessmentRef = doc(this.firestore, 'assessments', groupData['assessmentId']);
+                const assessmentSnap = await getDoc(assessmentRef);
+                
+                if (assessmentSnap.exists()) {
+                  const assessmentData = assessmentSnap.data();
+                  const surveyJSON = assessmentData['surveyJSON'] || {};
+                  const allPages = surveyJSON.pages || [];
+                  
+                  // Extrair todas as perguntas de todas as páginas
+                  allPages.forEach((page: any) => {
+                    if (page.elements && Array.isArray(page.elements)) {
+                      page.elements.forEach((el: any) => {
+                        // Verificar se esta pergunta está vinculada a esta competência
+                        if (comp.perguntasIds && comp.perguntasIds.includes(el.name)) {
+                          questions.push({
+                            id: el.name,
+                            text: el.title?.pt || el.title || el.name,
+                            type: this.mapSurveyTypeToCompetencyType(el.type),
+                            required: el.isRequired || false
+                          });
+                        }
+                      });
+                    }
+                  });
+                }
+              } else if (groupData['customQuestions']) {
+                // Usar perguntas custom do grupo
+                const customQuestions = groupData['customQuestions'] || [];
+                comp.perguntasIds?.forEach((perguntaId: string) => {
+                  const customQ = customQuestions.find((cq: any) => cq.id === perguntaId);
+                  if (customQ) {
+                    questions.push({
+                      id: customQ.id,
+                      text: customQ.title || '',
+                      type: this.mapSurveyTypeToCompetencyType(customQ.type || 'rating'),
+                      required: false
+                    });
+                  }
+                });
               }
-              return surveyQuestion;
-            });
-
-            if (mixQuestions) {
-              allQuestions.push(...questions);
-            } else {
-              // Cria uma página para a competência (sem descrição, conforme solicitação)
-              const page = {
-                name: `page_${id}`,
-                title: competencyData['name'],
-                description: '',
-                elements: questions,
-              };
-              pages.push(page);
             }
+          }
+        } else {
+          // Formato antigo: buscar diretamente na coleção 'competencies'
+          const docRef = doc(this.firestore, 'competencies', id);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            competencyData = docSnap.data();
+            competencyName = competencyData['name'] || '';
+            
+            if (competencyData && competencyData['questions']) {
+              questions = (competencyData['questions'] || []).map((q: any) => ({
+                id: q.id || `q_${questionCounter++}`,
+                text: q.text,
+                type: q.type,
+                required: q.required || false
+              }));
+            }
+          }
+        }
+        
+        // Converter perguntas para formato SurveyJS
+        if (questions.length > 0) {
+          const surveyQuestions = questions.map((q: any) => {
+            const questionName = q.id || `q_${questionCounter++}`;
+
+            let surveyQuestion: any = {
+              name: questionName,
+              title: q.text,
+              isRequired: q.required,
+            };
+
+            // Mapeia os tipos de pergunta da competência para os tipos do SurveyJS
+            switch (q.type) {
+              case 'likert':
+              case 'rating':
+                surveyQuestion.type = 'rating';
+                surveyQuestion.rateMin = 1;
+                surveyQuestion.rateMax = 5;
+                surveyQuestion.minRateDescription = 'Discordo Totalmente';
+                surveyQuestion.maxRateDescription = 'Concordo Totalmente';
+                break;
+              case 'multiple_choice':
+              case 'radiogroup':
+                surveyQuestion.type = 'radiogroup';
+                surveyQuestion.choices = q.options || [];
+                break;
+              case 'text':
+              case 'comment':
+                surveyQuestion.type = 'comment';
+                break;
+              case 'number':
+                surveyQuestion.type = 'text';
+                surveyQuestion.inputType = 'number';
+                break;
+              default:
+                surveyQuestion.type = 'text';
+            }
+            return surveyQuestion;
+          });
+
+          if (mixQuestions) {
+            allQuestions.push(...surveyQuestions);
+          } else {
+            // Cria uma página para a competência
+            const page = {
+              name: `page_${id}`,
+              title: competencyName,
+              description: '',
+              elements: surveyQuestions,
+            };
+            pages.push(page);
           }
         }
       }
@@ -235,11 +401,25 @@ export class CreateAssessmentComponent implements OnInit {
         showProgressBar: 'top', // Melhora a navegação entre páginas
         pages: pages,
       };
-
+      
       this.creatorModel.JSON = surveyJSON;
     } catch (error) {
-      console.error('Erro ao gerar formulário a partir de competências:', error);
+      console.error('Erro ao gerar formulário a partir das competências:', error);
+      this.snackBar.open('Erro ao gerar formulário a partir das competências', 'Fechar', { duration: 3000 });
     }
+  }
+
+  private mapSurveyTypeToCompetencyType(surveyType: string): string {
+    const typeMap: { [key: string]: string } = {
+      'rating': 'rating',
+      'radiogroup': 'radiogroup',
+      'text': 'text',
+      'comment': 'comment',
+      'checkbox': 'checkbox',
+      'dropdown': 'dropdown',
+      'boolean': 'boolean'
+    };
+    return typeMap[surveyType] || 'text';
   }
 
   private shuffleArray<T>(array: T[]): void {
