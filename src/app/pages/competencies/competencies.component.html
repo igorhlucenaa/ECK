@@ -205,25 +205,29 @@
             <mat-hint>Questões já utilizadas em outras competências são desabilitadas.</mat-hint>
           </mat-form-field>
 
-          <!-- Criação de Perguntas Custom (quando não há avaliação) -->
-          <div *ngIf="!selectedAssessmentId" style="width: 100%;">
+          <!-- Criação de Perguntas Custom (quando não há avaliação OU quando está editando) -->
+          <div *ngIf="!selectedAssessmentId || competenciaEditando.id" style="width: 100%;">
             <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 16px; border-radius: 4px; margin-bottom: 16px;">
               <h6 style="margin: 0 0 12px 0; color: #ff9800; display: flex; align-items: center; gap: 8px;">
                 <mat-icon>info</mat-icon>
-                Modo: Criar Perguntas Custom
+                <span *ngIf="!selectedAssessmentId">Modo: Criar Perguntas Custom</span>
+                <span *ngIf="selectedAssessmentId && competenciaEditando.id">Perguntas Custom Adicionais</span>
               </h6>
-              <p style="margin: 0; color: #666; font-size: 13px;">
+              <p style="margin: 0; color: #666; font-size: 13px;" *ngIf="!selectedAssessmentId">
                 Como não há avaliação selecionada, você pode criar perguntas custom para esta competência.
                 Ao salvar o grupo, uma nova avaliação será criada automaticamente com todas as perguntas.
+              </p>
+              <p style="margin: 0; color: #666; font-size: 13px;" *ngIf="selectedAssessmentId && competenciaEditando.id">
+                Você pode adicionar perguntas custom adicionais para esta competência específica, além das perguntas da avaliação selecionada.
               </p>
             </div>
 
             <!-- Lista de perguntas custom da competência -->
-            <div *ngIf="getPerguntasCustomCompetencia(competenciaEditando.id || '').length > 0"
+            <div *ngIf="perguntasCustomCache.length > 0"
                  style="margin-bottom: 16px;">
               <h6 style="margin-bottom: 12px;">Perguntas desta Competência</h6>
               <mat-list dense>
-                <mat-list-item *ngFor="let pergunta of getPerguntasCustomCompetencia(competenciaEditando.id || ''); let i = index"
+                <mat-list-item *ngFor="let pergunta of perguntasCustomCache; let i = index; trackBy: trackByPerguntaCustom"
                                style="padding: 8px 0; border-bottom: 1px solid #eee;">
                   <div style="display: flex; gap: 12px; width: 100%; align-items: center;">
                     <mat-form-field appearance="outline" style="flex: 2;">
@@ -264,8 +268,11 @@
               Adicionar Pergunta Custom
             </button>
 
-            <mat-hint style="display: block; margin-top: 8px;">
+            <mat-hint style="display: block; margin-top: 8px;" *ngIf="!selectedAssessmentId">
               Adicione perguntas custom para esta competência. Elas serão incluídas na avaliação criada automaticamente.
+            </mat-hint>
+            <mat-hint style="display: block; margin-top: 8px;" *ngIf="selectedAssessmentId && competenciaEditando.id">
+              Adicione perguntas custom adicionais para esta competência. Elas serão salvas junto com as perguntas da avaliação selecionada.
             </mat-hint>
           </div>
         </div>
