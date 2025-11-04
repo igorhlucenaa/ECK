@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
 import { MaterialModule } from '../../../material.module';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { Firestore, addDoc, collection } from '@angular/fire/firestore';
+import { Firestore, addDoc, collection, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 interface Question {
@@ -26,11 +26,13 @@ export class CreateQuestionDialogComponent implements OnInit {
   isLoading = false;
 
   questionTypes = [
-    { value: 'likert', label: 'Escala Likert (1-5)', icon: 'linear_scale' },
-    { value: 'multiple_choice', label: 'Múltipla Escolha', icon: 'radio_button_checked' },
-    { value: 'text', label: 'Texto Livre', icon: 'text_fields' },
+    { value: 'rating', label: 'Escala (1-5)', icon: 'linear_scale' },
+    { value: 'radiogroup', label: 'Múltipla Escolha', icon: 'radio_button_checked' },
+    { value: 'text', label: 'Texto', icon: 'text_fields' },
     { value: 'comment', label: 'Comentário', icon: 'comment' },
-    { value: 'number', label: 'Número', icon: 'pin' }
+    { value: 'dropdown', label: 'Dropdown', icon: 'arrow_drop_down' },
+    { value: 'checkbox', label: 'Checkbox', icon: 'check_box' },
+    { value: 'boolean', label: 'Sim/Não', icon: 'toggle_on' }
   ];
 
   constructor(
@@ -49,8 +51,8 @@ export class CreateQuestionDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Inicializa com opções padrão para múltipla escolha
-    this.onQuestionTypeChange('likert');
+    // Inicializa com tipo padrão
+    this.onQuestionTypeChange('rating');
   }
 
   get optionsArray(): FormArray {
@@ -63,8 +65,8 @@ export class CreateQuestionDialogComponent implements OnInit {
     // Limpa as opções existentes
     this.optionsArray.clear();
 
-    if (type === 'multiple_choice') {
-      // Adiciona opções padrão para múltipla escolha
+    if (type === 'radiogroup' || type === 'dropdown' || type === 'checkbox') {
+      // Adiciona opções padrão para múltipla escolha, dropdown e checkbox
       this.optionsArray.push(this.fb.control('Opção 1', Validators.required));
       this.optionsArray.push(this.fb.control('Opção 2', Validators.required));
     }
@@ -80,8 +82,11 @@ export class CreateQuestionDialogComponent implements OnInit {
     }
   }
 
-  private generateId(): string {
-    return `custom_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+  private generateQuestionName(): string {
+    // Gera um nome único para a pergunta (usado como ID no SurveyJS)
+    const timestamp = new Date().getTime();
+    const random = Math.random().toString(36).substr(2, 6);
+    return `pergunta_${timestamp}_${random}`;
   }
 
   async saveQuestion(): Promise<void> {
@@ -90,36 +95,81 @@ export class CreateQuestionDialogComponent implements OnInit {
       return;
     }
 
+    if (!this.data?.assessmentId) {
+      this.snackBar.open('Erro: ID da avaliação não fornecido', 'Fechar', { duration: 3000 });
+      return;
+    }
+
     try {
       this.isLoading = true;
       const formValue = this.questionForm.value;
 
-      // Cria a nova pergunta
-      const newQuestion: Question = {
-        id: this.generateId(),
+      // Carregar a avaliação atual
+      const assessmentRef = doc(this.firestore, 'assessments', this.data.assessmentId);
+      const assessmentSnap = await getDoc(assessmentRef);
+
+      if (!assessmentSnap.exists()) {
+        this.snackBar.open('Avaliação não encontrada', 'Fechar', { duration: 3000 });
+        return;
+      }
+
+      const assessmentData = assessmentSnap.data();
+      const surveyJSON = assessmentData['surveyJSON'] || { pages: [] };
+
+      // Garantir que há pelo menos uma página
+      if (!surveyJSON.pages || !Array.isArray(surveyJSON.pages) || surveyJSON.pages.length === 0) {
+        surveyJSON.pages = [{ name: 'página1', elements: [] }];
+      }
+
+      // Criar o elemento da pergunta no formato SurveyJS
+      const questionName = this.generateQuestionName();
+      const newQuestionElement: any = {
+        name: questionName,
+        type: formValue.type,
+        title: {
+          pt: formValue.title
+        },
+        isRequired: formValue.required || false
+      };
+
+      // Adicionar configurações específicas por tipo
+      if (formValue.type === 'rating') {
+        newQuestionElement.rateMin = 1;
+        newQuestionElement.rateMax = 5;
+        newQuestionElement.minRateDescription = { pt: 'Discordo Totalmente' };
+        newQuestionElement.maxRateDescription = { pt: 'Concordo Totalmente' };
+      } else if ((formValue.type === 'radiogroup' || formValue.type === 'dropdown' || formValue.type === 'checkbox') 
+                 && formValue.options && formValue.options.length > 0) {
+        newQuestionElement.choices = formValue.options.filter((opt: string) => opt && opt.trim() !== '');
+      } else if (formValue.type === 'text') {
+        newQuestionElement.inputType = 'text';
+      }
+
+      // Adicionar a pergunta à primeira página (ou criar uma nova se necessário)
+      const firstPage = surveyJSON.pages[0];
+      if (!firstPage.elements) {
+        firstPage.elements = [];
+      }
+      firstPage.elements.push(newQuestionElement);
+
+      // Atualizar a avaliação no Firestore
+      await updateDoc(assessmentRef, {
+        surveyJSON: surveyJSON
+      });
+
+      // Criar objeto de retorno com informações da pergunta
+      const newQuestion = {
+        id: questionName,
         title: formValue.title,
         type: formValue.type,
         required: formValue.required || false
       };
 
-      // Adiciona opções se for múltipla escolha
-      if (formValue.type === 'multiple_choice' && formValue.options) {
-        newQuestion.options = formValue.options;
-      }
-
-      // Salva a pergunta customizada no Firestore
-      const customQuestionsCollection = collection(this.firestore, 'customQuestions');
-      await addDoc(customQuestionsCollection, {
-        ...newQuestion,
-        clientId: this.data.clientId,
-        createdAt: new Date()
-      });
-
-      this.snackBar.open('Pergunta criada com sucesso!', 'Fechar', { duration: 3000 });
+      this.snackBar.open('Pergunta criada e adicionada à avaliação com sucesso!', 'Fechar', { duration: 3000 });
       this.dialogRef.close(newQuestion);
     } catch (error) {
       console.error('Erro ao criar pergunta:', error);
-      this.snackBar.open('Erro ao criar pergunta', 'Fechar', { duration: 3000 });
+      this.snackBar.open('Erro ao criar pergunta na avaliação', 'Fechar', { duration: 3000 });
     } finally {
       this.isLoading = false;
     }

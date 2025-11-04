@@ -35,8 +35,8 @@
         </mat-form-field>
       </div>
 
-      <!-- Opções para Múltipla Escolha -->
-      <div *ngIf="questionForm.get('type')?.value === 'multiple_choice'" class="mb-4">
+      <!-- Opções para Múltipla Escolha, Dropdown e Checkbox -->
+      <div *ngIf="questionForm.get('type')?.value === 'radiogroup' || questionForm.get('type')?.value === 'dropdown' || questionForm.get('type')?.value === 'checkbox'" class="mb-4">
         <h6 class="mb-3">Opções de Resposta</h6>
         <div formArrayName="options">
           <div *ngFor="let option of optionsArray.controls; let i = index" class="d-flex align-items-center mb-2">
@@ -73,7 +73,7 @@
 
           <!-- Preview baseado no tipo -->
           <div class="mt-2">
-            <div *ngIf="questionForm.get('type')?.value === 'likert'" class="likert-preview">
+            <div *ngIf="questionForm.get('type')?.value === 'rating'" class="likert-preview">
               <div class="d-flex justify-content-between">
                 <span>1</span>
                 <span>2</span>
@@ -87,7 +87,7 @@
               </div>
             </div>
 
-            <div *ngIf="questionForm.get('type')?.value === 'multiple_choice'" class="choice-preview">
+            <div *ngIf="questionForm.get('type')?.value === 'radiogroup' || questionForm.get('type')?.value === 'dropdown' || questionForm.get('type')?.value === 'checkbox'" class="choice-preview">
               <div *ngFor="let option of optionsArray.controls" class="form-check">
                 <input class="form-check-input" type="radio" disabled>
                 <label class="form-check-label">{{ option.value || 'Opção...' }}</label>
