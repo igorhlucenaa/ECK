@@ -171,7 +171,7 @@
                   </button>
                 </div>
 
-                <mat-checkbox [formControl]="includeOpenQuestions" (change)="onQuestionFilterChange()" style="margin-bottom: 8px;">
+                <mat-checkbox [formControl]="includeOpenQuestions" (change)="onQuestionFilterChange()" style="margin-bottom: 8px; display: none;">
                   Incluir perguntas abertas (texto livre)
                 </mat-checkbox>
 
@@ -180,7 +180,7 @@
                   {{ getAvailableQuestionCount() }}
                 </div>
 
-                <div style="font-size: 11px; color: #888;">
+                <div style="font-size: 11px; color: #888; display: none;">
                   <strong>✅ Fechadas:</strong> Escalas, múltipla escolha, dropdown, matriz<br>
                   <strong>📝 Abertas:</strong> Texto livre, comentários, uploads
                 </div>
@@ -223,7 +223,7 @@
             </div>
 
             <!-- Lista de perguntas custom da competência -->
-            <div *ngIf="perguntasCustomCache.length > 0"
+            <!-- <div *ngIf="perguntasCustomCache.length > 0"
                  style="margin-bottom: 16px;">
               <h6 style="margin-bottom: 12px;">Perguntas desta Competência</h6>
               <mat-list dense>
@@ -258,7 +258,7 @@
                   </div>
                 </mat-list-item>
               </mat-list>
-            </div>
+            </div> -->
 
             <!-- Botão para adicionar nova pergunta custom -->
             <button type="button" mat-stroked-button color="primary"
