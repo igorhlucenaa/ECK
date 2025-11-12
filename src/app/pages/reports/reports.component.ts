@@ -349,6 +349,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   allQuestions: { id: string; title: string; type: string }[] = [];
   filteredQuestions: { id: string; title: string; type: string }[] = [];
 
+  // Armazenar perguntas custom por competência (carregadas do grupo)
+  customQuestionsByCompetency: { [key: string]: { id: string; title: string; type: string }[] } = {};
+
   today: Date = new Date();
 
   competencyAverages: { title: string; avg: number }[] = [];
@@ -2620,7 +2623,30 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Para cada pergunta da competência, calcular distribuição de notas
     competencia.perguntasIds.forEach(perguntaId => {
-      const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
+      // Buscar título da pergunta: primeiro no questionMap (avaliação), depois em customQuestionsByCompetency
+      let perguntaTexto = this.questionMap[perguntaId];
+      
+      // Se não encontrou no questionMap e é uma pergunta custom, buscar em customQuestionsByCompetency
+      if (!perguntaTexto && perguntaId.startsWith('custom_')) {
+        const perguntasCustom = this.customQuestionsByCompetency[competencia.id] || [];
+        const perguntaCustom = perguntasCustom.find(q => q.id === perguntaId);
+        if (perguntaCustom && perguntaCustom.title) {
+          perguntaTexto = perguntaCustom.title;
+        } else {
+          // Tentar encontrar em todas as competências (caso tenha sido migrada)
+          const todasPerguntasCustom = Object.values(this.customQuestionsByCompetency).flat();
+          const perguntaEncontrada = todasPerguntasCustom.find(q => q.id === perguntaId);
+          if (perguntaEncontrada && perguntaEncontrada.title) {
+            perguntaTexto = perguntaEncontrada.title;
+          }
+        }
+      }
+      
+      // Fallback se ainda não encontrou
+      if (!perguntaTexto) {
+        perguntaTexto = `Pergunta ${perguntaId}`;
+      }
+      
       console.log(`\n📝 Processando pergunta: ${perguntaId} - "${perguntaTexto}"`);
       const categorias: DadosCategoria[] = [];
 
@@ -3643,6 +3669,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         // Carregar competências do grupo
         this.competencias = groupData['competencias'] || [];
+
+        // Carregar perguntas custom por competência se existirem
+        if (groupData['customQuestionsByCompetency'] && typeof groupData['customQuestionsByCompetency'] === 'object') {
+          this.customQuestionsByCompetency = { ...groupData['customQuestionsByCompetency'] };
+          console.log('✅ Perguntas custom carregadas do grupo:', Object.keys(this.customQuestionsByCompetency).length, 'competências');
+        } else {
+          this.customQuestionsByCompetency = {};
+        }
 
         // Se o grupo tem assessmentId associado, selecionar a avaliação
         if (groupData['assessmentId']) {

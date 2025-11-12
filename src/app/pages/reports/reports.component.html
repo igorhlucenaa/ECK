@@ -1001,12 +1001,16 @@
                           </ng-container>
                         </tr>
 
-                        <!-- Linha Média sem autoavaliação (ponderada) -->
+                        <!-- Linha Média sem autoavaliação (por categoria) -->
                         <tr>
                           <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px; font-weight: bold;">Média sem autoavaliação</td>
-                          <td [attr.colspan]="tabelaData.mediasGerais.length * 5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">
-                            {{ getMediaSemAutoavaliacao(tabelaData) | number:'1.1-1' }}
-                          </td>
+                          <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                            <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">
+                              <ng-container *ngIf="getAbreviacaoCategoria(categoria.categoria) !== 'A'">
+                                {{ categoria.totalRespostas > 0 ? (categoria.media | number:'1.1-1') : '' }}
+                              </ng-container>
+                            </td>
+                          </ng-container>
                         </tr>
                       </tfoot>
                     </table>
