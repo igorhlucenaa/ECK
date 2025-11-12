@@ -327,8 +327,7 @@
         <mat-list dense>
           <mat-list-item *ngFor="let perguntaId of c.perguntasIds">
             <mat-icon matListItemIcon>drag_indicator</mat-icon>
-            <span *ngIf="selectedAssessmentId">{{ questionMap[perguntaId] || perguntaId }}</span>
-            <span *ngIf="!selectedAssessmentId">
+            <span>
               {{ getTituloPerguntaCustom(c.id, perguntaId) }}
             </span>
           </mat-list-item>
