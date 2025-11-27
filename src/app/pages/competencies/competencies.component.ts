@@ -907,32 +907,14 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.competencias.length === 0) {
-      this.snackBar.open(this.t('Adicione pelo menos uma competência antes de salvar o grupo.'), this.t('Fechar'), { duration: 3000 });
-      return;
-    }
-
-    // Validar se há perguntas em todas as competências
-    const competenciasSemPerguntas = this.competencias.filter(c => !c.perguntasIds || c.perguntasIds.length === 0);
-    if (competenciasSemPerguntas.length > 0) {
-      this.snackBar.open(this.t('Todas as competências devem ter pelo menos uma pergunta.'), this.t('Fechar'), { duration: 3000 });
-      return;
-    }
-
     try {
       let assessmentIdFinal = this.selectedAssessmentId;
 
       // Se não há avaliação selecionada, criar uma nova automaticamente (apenas se não estiver editando um grupo existente)
-      // Se estiver editando um grupo sem avaliação, manter sem avaliação (perguntas custom serão salvas)
       if (!this.selectedAssessmentId && !this.currentGroupId) {
-        // Apenas criar nova avaliação se for um grupo novo
-        if (!this.assessmentNameControl.value) {
-          this.snackBar.open(this.t('Digite um nome para a avaliação que será criada.'), this.t('Fechar'), { duration: 3000 });
-          return;
-        }
-
-        // Criar avaliação com todas as perguntas das competências
-        assessmentIdFinal = await this.criarAvaliacaoDasCompetencias();
+        // Criar avaliação vazia com o nome do grupo
+        const assessmentName = this.assessmentNameControl.value || this.groupNameControl.value || 'Avaliação de Competências';
+        assessmentIdFinal = await this.criarAvaliacaoVazia(assessmentName);
 
         if (!assessmentIdFinal) {
           this.snackBar.open(this.t('Erro ao criar avaliação.'), this.t('Fechar'), { duration: 3000 });
@@ -945,8 +927,19 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
         // Recarregar avaliações para incluir a nova
         await this.loadAssessments();
+        
+        // Carregar as perguntas da avaliação criada
+        await this.onAssessmentChange();
       }
-      // Se estiver editando um grupo existente sem avaliação, manter sem avaliação (assessmentIdFinal será null)
+
+      // Validar se há perguntas em todas as competências (apenas se houver competências)
+      if (this.competencias.length > 0) {
+        const competenciasSemPerguntas = this.competencias.filter(c => !c.perguntasIds || c.perguntasIds.length === 0);
+        if (competenciasSemPerguntas.length > 0) {
+          this.snackBar.open(this.t('Todas as competências devem ter pelo menos uma pergunta.'), this.t('Fechar'), { duration: 3000 });
+          return;
+        }
+      }
 
       // Garantir que todas as competências têm nome e descrição válidos antes de salvar
       const competenciasParaSalvar = this.competencias.map(comp => ({
@@ -1127,6 +1120,11 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
       // Atualizar lista de grupos
       await this.loadCompetencyGroups(this.selectedClientId);
+      
+      // Forçar atualização da view para garantir que o dropdown seja atualizado
+      setTimeout(() => {
+        this.cdr.detectChanges();
+      }, 0);
 
     } catch (error) {
       console.error('Erro ao salvar grupo de competências:', error);
@@ -1759,6 +1757,59 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   temPerguntaCustom(competenciaId: string, perguntaId: string): boolean {
     const perguntas = this.getPerguntasCustomCompetencia(competenciaId);
     return perguntas.some(q => q.id === perguntaId);
+  }
+
+  // Criar avaliação vazia (sem perguntas) - para quando o grupo é criado primeiro
+  private async criarAvaliacaoVazia(assessmentName: string): Promise<string | null> {
+    try {
+      const currentUser = await this.authService.getCurrentUser();
+      if (!currentUser) {
+        this.snackBar.open(this.t('Erro ao obter usuário autenticado.'), this.t('Fechar'), { duration: 3000 });
+        return null;
+      }
+
+      // Criar surveyJSON vazio (sem perguntas ainda)
+      const surveyJSON = {
+        title: {
+          pt: assessmentName
+        },
+        pages: [
+          {
+            name: 'pagina1',
+            title: {
+              pt: 'Perguntas'
+            },
+            elements: []
+          }
+        ],
+        locale: 'pt'
+      };
+
+      // Criar a avaliação no Firestore
+      const assessmentData = {
+        name: assessmentName,
+        description: `Avaliação criada automaticamente para o grupo: ${this.groupNameControl.value}`,
+        clientId: this.selectedClientId,
+        surveyJSON: surveyJSON,
+        createdBy: {
+          name: currentUser.name,
+          email: currentUser.email,
+          role: currentUser.role
+        },
+        createdAt: new Date()
+      };
+
+      const assessmentsCollection = collection(this.firestore, 'assessments');
+      const docRef = await addDoc(assessmentsCollection, assessmentData);
+
+      this.snackBar.open(this.t('Avaliação criada com sucesso! Agora você pode adicionar perguntas.'), this.t('Fechar'), { duration: 4000 });
+
+      return docRef.id;
+    } catch (error) {
+      console.error('Erro ao criar avaliação vazia:', error);
+      this.snackBar.open(this.t('Erro ao criar avaliação.'), this.t('Fechar'), { duration: 3000 });
+      return null;
+    }
   }
 
   // Criar avaliação a partir das competências e suas perguntas custom
