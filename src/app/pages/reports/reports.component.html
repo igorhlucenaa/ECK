@@ -776,9 +776,7 @@
         <ng-container [ngSwitch]="secao.tipo">
                       <div *ngSwitchCase="'capa'">
               <h1>{{ secao.titulo }}</h1>
-              <div [innerHTML]="secao.texto"></div>
-              <p><b>Nome do avaliado:</b> {{ selectedAvaliadoName }}</p>
-              <p><b>Data:</b> {{ today | date: 'dd/MM/yyyy' }}</p>
+              <div [innerHTML]="getCapaComDadosDinamicos(secao.texto)"></div>
             </div>
           <div *ngSwitchCase="'introducao'">
             <h2>{{ secao.titulo }}</h2>
