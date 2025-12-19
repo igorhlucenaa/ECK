@@ -50,6 +50,7 @@ export class CreateAssessmentComponent implements OnInit {
   clients: { id: string; name: string }[] = [];
   competencies: { id: string; name: string }[] = [];
   competencyLists: { id: string; name: string; competencyIds: string[] }[] = [];
+  competencyGroups: { id: string; name: string; competencias: any[] }[] = [];
   userRole: string | null = null;
   creatorModel: SurveyCreatorModel;
 
@@ -116,9 +117,11 @@ export class CreateAssessmentComponent implements OnInit {
       if (clientId) {
         this.loadCompetencies(clientId);
         this.loadCompetencyLists(clientId);
+        this.loadCompetencyGroups(clientId);
       } else {
         this.competencies = []; // Limpa as competências se nenhum cliente for selecionado
         this.competencyLists = [];
+        this.competencyGroups = [];
       }
     });
 
@@ -441,6 +444,70 @@ export class CreateAssessmentComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar listas de competências:', error);
+    }
+  }
+
+  async loadCompetencyGroups(clientId: string): Promise<void> {
+    try {
+      console.log('📦 Carregando grupos de competências para cliente:', clientId);
+      const groupsCollection = collection(this.firestore, 'competencyGroups');
+      const groupsQuery = query(groupsCollection, where('clientId', '==', clientId));
+      const groupsSnapshot = await getDocs(groupsQuery);
+      
+      this.competencyGroups = groupsSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data['name'] || '',
+          competencias: data['competencias'] || []
+        };
+      });
+      
+      console.log(`✅ Total de grupos carregados: ${this.competencyGroups.length}`);
+    } catch (error) {
+      console.error('❌ Erro ao carregar grupos de competências:', error);
+      this.snackBar.open('Erro ao carregar grupos de competências', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  async onCompetencyGroupChange(groupId: string): Promise<void> {
+    if (!groupId) {
+      // Se nenhum grupo foi selecionado, limpar a seleção
+      this.form.get('competencyIds')?.setValue([]);
+      return;
+    }
+    
+    const group = this.competencyGroups.find((g) => g.id === groupId);
+    if (!group) return;
+
+    // Garantir que as competências estão carregadas
+    const clientId = this.form.get('clientId')?.value;
+    if (clientId) {
+      await this.loadCompetencies(clientId);
+    }
+
+    // Extrair os IDs das competências do grupo
+    // Os IDs são no formato: grupoId_comp_index
+    const competencyIds: string[] = [];
+    
+    group.competencias.forEach((comp: any, index: number) => {
+      // Criar o ID único no mesmo formato usado em loadCompetencies
+      const uniqueId = `${groupId}_comp_${index}`;
+      // Verificar se a competência existe na lista carregada
+      const exists = this.competencies.some(c => c.id === uniqueId);
+      if (exists) {
+        competencyIds.push(uniqueId);
+      }
+    });
+
+    // Selecionar todas as competências do grupo
+    if (competencyIds.length > 0) {
+      this.form.get('competencyIds')?.setValue(competencyIds);
+      console.log(`✅ Grupo "${group.name}" selecionado: ${competencyIds.length} competências`);
+      this.snackBar.open(`Grupo "${group.name}" selecionado com ${competencyIds.length} competências`, 'Fechar', { duration: 3000 });
+    } else {
+      console.warn(`⚠️ Nenhuma competência encontrada para o grupo "${group.name}"`);
+      this.snackBar.open(`Nenhuma competência encontrada para o grupo "${group.name}"`, 'Fechar', { duration: 3000 });
     }
   }
 

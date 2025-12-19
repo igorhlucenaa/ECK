@@ -62,6 +62,22 @@
           </div>
           <!-- Campo de projeto removido -->
         </div>
+
+        <!-- Seleção de Grupo de Competências -->
+        <div class="row" *ngIf="form.get('clientId')?.value && competencyGroups.length > 0">
+          <div class="col-md-12">
+            <mat-form-field class="w-100" appearance="outline">
+              <mat-label>Grupo de Competências</mat-label>
+              <mat-select (selectionChange)="onCompetencyGroupChange($event.value)">
+                <mat-option [value]="''">Nenhum grupo selecionado</mat-option>
+                <mat-option *ngFor="let group of competencyGroups" [value]="group.id">
+                  {{ group.name }} ({{ group.competencias?.length || 0 }} competências)
+                </mat-option>
+              </mat-select>
+              <mat-hint>Selecione um grupo de competências para carregar todas as competências do grupo automaticamente.</mat-hint>
+            </mat-form-field>
+          </div>
+        </div>
         <div class="row" *ngIf="form.get('clientId')?.value && competencies.length > 0">
           <div class="col-md-8">
             <mat-form-field class="w-100" appearance="outline">
