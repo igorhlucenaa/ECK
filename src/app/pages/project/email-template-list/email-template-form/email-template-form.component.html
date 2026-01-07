@@ -94,6 +94,76 @@
       ></email-editor>
     </div>
 
+    <!-- Legenda de Variáveis Dinâmicas -->
+    <mat-card class="mt-3">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon style="vertical-align: middle; margin-right: 8px;">info</mat-icon>
+          Variáveis Dinâmicas Disponíveis
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p style="margin-bottom: 12px; color: #666;">
+          Use as seguintes variáveis no texto do template para preenchimento automático:
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <mat-icon style="color: #1976d2; margin-top: 4px;">person</mat-icon>
+            <div>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                $%Nome do usuário preenchido dinâmicamente$%
+              </strong>
+              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+                Será substituído automaticamente pelo nome do participante ao enviar o e-mail.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <mat-icon style="color: #1976d2; margin-top: 4px;">event</mat-icon>
+            <div>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                $%DATA DE EXPIRAÇÃO DO PROJETO$%
+              </strong>
+              <span style="color: #666; font-size: 13px;"> ou </span>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                *$%DATA DE EXPIRAÇÃO DO PROJETO$%*
+              </strong>
+              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+                Será substituído automaticamente pela data limite do projeto (formato: DD/MM/YYYY).
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <mat-icon style="color: #1976d2; margin-top: 4px;">link</mat-icon>
+            <div>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                [LINK_AVALIACAO]
+              </strong>
+              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+                Será substituído automaticamente pelo link da avaliação ao enviar o e-mail.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <mat-icon style="color: #1976d2; margin-top: 4px;">description</mat-icon>
+            <div>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                [LINK_RELATORIO]
+              </strong>
+              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+                Será substituído automaticamente pelo link do relatório (apenas para templates do tipo "Relatório Finalizado").
+              </p>
+            </div>
+          </div>
+        </div>
+        <mat-divider style="margin: 16px 0;"></mat-divider>
+        <p style="margin: 0; color: #ff9800; font-size: 12px;">
+          <mat-icon style="vertical-align: middle; font-size: 16px; height: 16px; width: 16px;">warning</mat-icon>
+          <strong>Importante:</strong> Digite exatamente como mostrado acima, incluindo os símbolos $% e colchetes [].
+        </p>
+      </mat-card-content>
+    </mat-card>
+
     <div class="text-end mt-3">
       <button mat-flat-button color="primary" (click)="saveTemplate()">
         {{ isEditMode ? "Salvar Alterações" : "Criar Template" }}

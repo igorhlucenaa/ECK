@@ -73,7 +73,40 @@ function renderTemplateToHtml(
             text-align: ${content.values.textAlign};
             line-height: ${content.values.lineHeight};
           `;
-          html += `<${content.values.headingType} style="${containerStyles} ${headingStyles}">${content.values.text}</${content.values.headingType}>`;
+          let headingText = content.values.text;
+
+          // Aplicar as mesmas substituições dos textos
+          const expirationPlaceholder = '___EXPIRATION_PLACEHOLDER___';
+          const expirationPlaceholderWithAsterisk = '___EXPIRATION_ASTERISK_PLACEHOLDER___';
+
+          if (replacements.projectDeadline) {
+            headingText = headingText.replace(
+              /\*\$%DATA DE EXPIRAÇÃO DO PROJETO\$%\*/g,
+              expirationPlaceholderWithAsterisk
+            );
+            headingText = headingText.replace(
+              /\$%DATA DE EXPIRAÇÃO DO PROJETO\$%/g,
+              expirationPlaceholder
+            );
+          }
+
+          headingText = headingText.replace(
+            /\$%.*?\$%/g,
+            replacements.participantName || 'Participante'
+          );
+
+          if (replacements.projectDeadline) {
+            headingText = headingText.replace(
+              expirationPlaceholderWithAsterisk,
+              replacements.projectDeadline
+            );
+            headingText = headingText.replace(
+              expirationPlaceholder,
+              replacements.projectDeadline
+            );
+          }
+
+          html += `<${content.values.headingType} style="${containerStyles} ${headingStyles}">${headingText}</${content.values.headingType}>`;
         } else if (content.type === 'text') {
           const textStyles = `
             font-size: ${content.values.fontSize};
@@ -82,17 +115,55 @@ function renderTemplateToHtml(
           `;
           let textContent = content.values.text;
 
+          // Substituir data de expiração primeiro (antes de substituir nome genérico)
+          // Usar placeholder temporário para proteger a data de expiração
+          const expirationPlaceholder = '___EXPIRATION_PLACEHOLDER___';
+          const expirationPlaceholderWithAsterisk = '___EXPIRATION_ASTERISK_PLACEHOLDER___';
+
+          if (replacements.projectDeadline) {
+            // Proteger a data de expiração com asteriscos: *$%DATA DE EXPIRAÇÃO DO PROJETO$%*
+            textContent = textContent.replace(
+              /\*\$%DATA DE EXPIRAÇÃO DO PROJETO\$%\*/g,
+              expirationPlaceholderWithAsterisk
+            );
+            // Proteger a data de expiração sem asteriscos: $%DATA DE EXPIRAÇÃO DO PROJETO$%
+            textContent = textContent.replace(
+              /\$%DATA DE EXPIRAÇÃO DO PROJETO\$%/g,
+              expirationPlaceholder
+            );
+          }
+
           // Substituir tudo entre $% $% pelo nome do participante
           textContent = textContent.replace(
             /\$%.*?\$%/g,
-            replacements.participantName
+            replacements.participantName || 'Participante'
           );
+
+          // Restaurar a data de expiração substituindo os placeholders
+          if (replacements.projectDeadline) {
+            textContent = textContent.replace(
+              expirationPlaceholderWithAsterisk,
+              replacements.projectDeadline
+            );
+            textContent = textContent.replace(
+              expirationPlaceholder,
+              replacements.projectDeadline
+            );
+          }
 
           // Substituir [LINK_AVALIACAO] pelo link
           textContent = textContent.replace(
             '[LINK_AVALIACAO]',
             replacements.LINK_AVALIACAO
           );
+
+          // Substituir [LINK_RELATORIO] pelo link do relatório se disponível
+          if (replacements.LINK_RELATORIO) {
+            textContent = textContent.replace(
+              '[LINK_RELATORIO]',
+              replacements.LINK_RELATORIO
+            );
+          }
 
           html += `<div style="${containerStyles} ${textStyles}">${textContent}</div>`;
         } else if (content.type === 'social') {
@@ -152,6 +223,46 @@ export const sendEmail = onRequest((req, res) => {
 
       const participantData = participantDoc.data();
       const participantName = participantData?.name || 'Participante';
+      const projectId = participantData?.projectId;
+
+      // Buscar a data limite do projeto
+      let projectDeadline: string = '';
+      if (projectId) {
+        try {
+          const projectRef = admin
+            .firestore()
+            .collection('projects')
+            .doc(projectId);
+          const projectDoc = await projectRef.get();
+
+          if (projectDoc.exists()) {
+            const projectData = projectDoc.data();
+            let deadline: Date | undefined;
+
+            if (projectData?.deadline) {
+              if (projectData.deadline.toDate) {
+                // Firestore Timestamp
+                deadline = projectData.deadline.toDate();
+              } else if (projectData.deadline instanceof Date) {
+                deadline = projectData.deadline;
+              } else if (typeof projectData.deadline === 'string') {
+                deadline = new Date(projectData.deadline);
+              }
+
+              if (deadline) {
+                // Formatar data no formato brasileiro: DD/MM/YYYY
+                const day = String(deadline.getDate()).padStart(2, '0');
+                const month = String(deadline.getMonth() + 1).padStart(2, '0');
+                const year = deadline.getFullYear();
+                projectDeadline = `${day}/${month}/${year}`;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao buscar deadline do projeto:', error);
+          // Continua sem a data limite se houver erro
+        }
+      }
 
       const template = await getTemplateById(templateId);
 
@@ -168,10 +279,11 @@ export const sendEmail = onRequest((req, res) => {
       try {
         const parsedContent = JSON.parse(template.content);
 
-        // Passar o nome do participante e o link
+        // Passar o nome do participante, data limite e o link
         emailHtml = renderTemplateToHtml(parsedContent, {
           LINK_AVALIACAO: assessmentLink,
-          participantName: participantName, // Passamos o nome explicitamente
+          participantName: participantName,
+          projectDeadline: projectDeadline,
         });
       } catch (err) {
         res
