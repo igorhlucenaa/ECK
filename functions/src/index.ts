@@ -2,9 +2,11 @@ import { onRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import { defineString } from 'firebase-functions/params';
-const cors = require('cors')({ origin: true });
 
-admin.initializeApp();
+// Inicializar Firebase Admin apenas se ainda não foi inicializado
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 // Definindo parâmetros configuráveis (não chamar .value() aqui)
 const EMAIL_USER_PARAM = defineString('EMAIL_USER');
@@ -185,8 +187,12 @@ function renderTemplateToHtml(
 }
 
 // Função para enviar o e-mail
-export const sendEmail = onRequest((req, res) => {
-  cors(req, res, async () => {
+export const sendEmail = onRequest(
+  {
+    region: 'us-central1',
+    cors: true,
+  },
+  async (req, res) => {
     const { email, templateId, participantId, assessmentId } = req.body;
 
     if (!email || !templateId || !participantId || !assessmentId) {
@@ -235,7 +241,7 @@ export const sendEmail = onRequest((req, res) => {
             .doc(projectId);
           const projectDoc = await projectRef.get();
 
-          if (projectDoc.exists()) {
+          if (projectDoc.exists) {
             const projectData = projectDoc.data();
             let deadline: Date | undefined;
 
@@ -336,5 +342,5 @@ export const sendEmail = onRequest((req, res) => {
         .status(500)
         .send({ error: `Erro ao enviar e-mail: ${error.message}` });
     }
-  });
-});
+  }
+);
