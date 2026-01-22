@@ -386,7 +386,7 @@ export const sendEmail = onRequest(
       res.status(200).send({ success: true });
     } catch (error: any) {
       console.error('Erro ao enviar e-mail:', error);
-      
+
       // Melhorar tratamento de erro para participantId
       if (participantId && typeof participantId === 'string') {
         try {
@@ -403,7 +403,7 @@ export const sendEmail = onRequest(
           // Continuar mesmo se falhar o update
         }
       }
-      
+
       res
         .status(500)
         .send({ error: `Erro ao enviar e-mail: ${error.message || 'Erro desconhecido'}` });

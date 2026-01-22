@@ -1,0 +1,58 @@
+<div class="survey-dashboard-container">
+  <!-- Cabeçalho com ações -->
+  <div class="dashboard-header">
+    <div class="header-left">
+      <h2>
+        <mat-icon>analytics</mat-icon>
+        Dashboard Interativo
+      </h2>
+      <p class="subtitle">Visualização interativa dos resultados da avaliação</p>
+    </div>
+    <div class="header-actions" *ngIf="!isLoading && !error && dashboard">
+      <button mat-stroked-button (click)="reload()" matTooltip="Recarregar dashboard">
+        <mat-icon>refresh</mat-icon>
+        Recarregar
+      </button>
+      <button mat-stroked-button (click)="exportToExcel()" matTooltip="Exportar para Excel">
+        <mat-icon>grid_on</mat-icon>
+        Excel
+      </button>
+      <button mat-stroked-button (click)="exportToPDF()" matTooltip="Exportar para PDF">
+        <mat-icon>picture_as_pdf</mat-icon>
+        PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Carregando dashboard...</p>
+  </div>
+
+  <!-- Erro -->
+  <div *ngIf="error && !isLoading" class="error-container">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <h3>Erro ao carregar dashboard</h3>
+    <p>{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="reload()">
+      <mat-icon>refresh</mat-icon>
+      Tentar Novamente
+    </button>
+  </div>
+
+  <!-- Container do dashboard -->
+  <div 
+    *ngIf="!isLoading && !error" 
+    #dashboardContainer 
+    class="dashboard-content"
+    id="survey-dashboard-container">
+    <!-- O dashboard será renderizado aqui pelo SurveyJS -->
+  </div>
+
+  <!-- Informações -->
+  <div *ngIf="!isLoading && !error && surveyResults.length > 0" class="dashboard-info">
+    <mat-icon>info</mat-icon>
+    <span>{{ surveyResults.length }} resultado(s) carregado(s)</span>
+  </div>
+</div>

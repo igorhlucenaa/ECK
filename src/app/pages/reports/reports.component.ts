@@ -21,6 +21,7 @@ import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { EChartsOption } from 'echarts';
 import { ReportsPdfService } from './reports-pdf.service';
+import { ReportPdfMakeService } from '../../services/report-pdfmake.service';
 import { NgxEchartsModule } from 'ngx-echarts';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -38,7 +39,10 @@ import { AuthService } from '../../services/apps/authentication/auth.service';
 import { query, where } from '@angular/fire/firestore';
 import { JohariWindowChartComponent, JohariWindowData } from './charts/johari-window-chart/johari-window-chart.component';
 import { MatRadioModule } from '@angular/material/radio';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { GapChartComponent, GapChartDataItem } from './charts/gap-chart/gap-chart.component';
+import { ReportBuilderVisualComponent } from './report-builder-visual/report-builder-visual.component';
+import { SurveyDashboardComponent } from './survey-dashboard/survey-dashboard.component';
 import { Subject, from, of, takeUntil, tap, debounceTime, switchMap } from 'rxjs';
 
 interface AssessmentOption {
@@ -80,7 +84,7 @@ interface TabelaCompetencia {
 // Modelo de dados para seções dinâmicas do relatório
 export interface RelatorioSecao {
   id: string;
-  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari';
+  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari';
   titulo?: string;
   texto?: string;
   visivel: boolean;
@@ -136,8 +140,11 @@ interface TabelaAvaliacoesAltas {
     MatExpansionModule,
     MatCheckboxModule,
     MatRadioModule,
+    MatButtonToggleModule,
     GapChartComponent,
-    JohariWindowChartComponent
+    JohariWindowChartComponent,
+    ReportBuilderVisualComponent,
+    SurveyDashboardComponent
   ],
   templateUrl: './reports.component.html',
   styleUrls: ['./reports.component.scss'],
@@ -439,6 +446,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   perguntasBloqueadas = new Set<string>();
 
+  // Modo de montagem: 'visual' ou 'classico'
+  modoMontagem: 'visual' | 'classico' = 'visual';
+
   // Exemplo de configuração inicial do relatório
   relatorioConfiguracao: RelatorioSecao[] = [
     {
@@ -550,7 +560,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     private firestoreInterceptor: FirestoreLoadingInterceptor,
     private authService: AuthService,
     private fb: FormBuilder,
-    private reportsPdf: ReportsPdfService
+    private reportsPdf: ReportsPdfService,
+    private pdfMakeService: ReportPdfMakeService
   ) {
     this.dummyForm = this.fb.group({
       relatorioFormArray: this.fb.array([])
@@ -2282,6 +2293,33 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
   }
 
+  /**
+   * Handler para mudança de modo de montagem
+   */
+  onModoMontagemChange(): void {
+    // Sincronizar configuração quando mudar de modo
+    if (this.modoMontagem === 'classico') {
+      this.atualizarFormArrayComConfiguracao();
+    }
+  }
+
+  /**
+   * Handler para mudanças do componente visual
+   */
+  onConfiguracaoVisualChange(novaConfiguracao: any[]): void {
+    // Converter RelatorioSecaoSimplificada[] para RelatorioSecao[]
+    const configuracaoConvertida: RelatorioSecao[] = novaConfiguracao.map(sec => ({
+      ...sec,
+      tipo: sec.tipo as RelatorioSecao['tipo']
+    }));
+    
+    this.relatorioConfiguracao = configuracaoConvertida;
+    this.relatorioConfiguracao = novaConfiguracao;
+    this.atualizarFormArrayComConfiguracao();
+    // Invalidar cache
+    this.invalidateCache('secao-');
+  }
+
   // Métodos auxiliares para UI das seções
   getTipoSecaoColor(tipo: string): string {
     switch (tipo) {
@@ -2493,6 +2531,48 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     pdf.save(fileName);
     this.snackBar.open(this.t('PDF exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
     return true;
+  }
+
+  /**
+   * Exporta relatório usando PDFMake (NOVO MÉTODO - POC)
+   * Gera PDF nativo com melhor qualidade e performance
+   */
+  async exportarRelatorioPDFMake(): Promise<void> {
+    try {
+      // Verificar se há dados
+      if (!this.isDataReady()) {
+        this.snackBar.open(
+          this.t('Por favor, selecione uma avaliação e aguarde o carregamento dos dados.'),
+          this.t('Fechar'),
+          { duration: 3000 }
+        );
+        return;
+      }
+
+      this.loadingService.show('Gerando PDF com PDFMake...');
+
+      // Preparar dados do componente para o serviço PDFMake
+      const reportData = this.pdfMakeService.prepareReportDataFromComponent(this);
+
+      // Gerar PDF
+      await this.pdfMakeService.generateReport(reportData);
+
+      this.loadingService.hide();
+      this.snackBar.open(
+        this.t('PDF gerado com sucesso usando PDFMake!'),
+        this.t('Fechar'),
+        { duration: 3000 }
+      );
+    } catch (error: any) {
+      this.loadingService.hide();
+      console.error('Erro ao gerar PDF com PDFMake:', error);
+      const errorMessage = error.message || 'Erro desconhecido';
+      this.snackBar.open(
+        this.t('Erro ao gerar PDF: ') + errorMessage,
+        this.t('Fechar'),
+        { duration: 5000 }
+      );
+    }
   }
 
   // Exportar relatório como DOCX

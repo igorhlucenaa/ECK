@@ -350,13 +350,37 @@
   </mat-tab>
 
   <mat-tab label="Montar Relatório">
-    <div style="margin-bottom: 24px;">
-      <h3>{{ 'Configuração de Relatório' | translate }}</h3>
-      <p style="color: #666; margin-bottom: 20px;">
-        {{ 'Monte seu relatório organizando as seções, personalizando textos e selecionando competências para análise.' | translate }}
-      </p>
+    <!-- Modo Visual (Novo) -->
+    <div style="margin-bottom: 16px;">
+      <mat-button-toggle-group [(value)]="modoMontagem" (change)="onModoMontagemChange()">
+        <mat-button-toggle value="visual">
+          <mat-icon>dashboard</mat-icon>
+          Visual (Drag & Drop)
+        </mat-button-toggle>
+        <mat-button-toggle value="classico">
+          <mat-icon>list</mat-icon>
+          Clássico
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
 
-      <!-- Controles superiores organizados -->
+    <!-- Componente Visual -->
+    <app-report-builder-visual
+      *ngIf="modoMontagem === 'visual'"
+      [relatorioConfiguracao]="relatorioConfiguracao"
+      [competencias]="competencias"
+      (configuracaoChange)="onConfiguracaoVisualChange($event)">
+    </app-report-builder-visual>
+
+    <!-- Modo Clássico -->
+    <div *ngIf="modoMontagem === 'classico'">
+      <div style="margin-bottom: 24px;">
+        <h3>{{ 'Configuração de Relatório' | translate }}</h3>
+        <p style="color: #666; margin-bottom: 20px;">
+          {{ 'Monte seu relatório organizando as seções, personalizando textos e selecionando competências para análise.' | translate }}
+        </p>
+
+        <!-- Controles superiores organizados -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
         <!-- Salvar/Carregar Relatório -->
         <mat-card style="padding: 16px;">
@@ -759,7 +783,15 @@
         </div>
       </div>
     </form>
+      </div>
+    <!-- Fim do modo clássico -->
   </mat-tab>
+
+  <!-- <mat-tab label="Dashboard Interativo">
+    <app-survey-dashboard
+      [assessmentId]="selectedAssessmentId">
+    </app-survey-dashboard>
+  </mat-tab> -->
 
   <mat-tab label="Visualizar Relatório">
     <button mat-flat-button color="accent" class="ui-only" style="margin-bottom: 16px;" (click)="exportarRelatorioPDF()">
