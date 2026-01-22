@@ -394,13 +394,13 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     console.log(`  - Total de perguntas selecionadas: ${perguntasIdsVinculadas.length}`);
     perguntasIdsVinculadas.forEach((id, idx) => {
       const isCustom = id.startsWith('custom_');
-      const titulo = isCustom 
+      const titulo = isCustom
         ? (this.questionMap[id] || 'NÃO ENCONTRADO NO questionMap')
         : (this.questionMap[id] || 'NÃO ENCONTRADO NO questionMap');
       console.log(`  ${idx + 1}. ID: ${id}`);
       console.log(`     - É custom: ${isCustom}`);
       console.log(`     - Título no questionMap: "${titulo}"`);
-      
+
       // Se é custom, tentar encontrar em customQuestionsByCompetency
       if (isCustom) {
         const todasPerguntasCustom = Object.values(this.customQuestionsByCompetency).flat();
@@ -467,7 +467,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       const perguntasCustomSelecionadas = perguntasIdsVinculadas.filter(id => id.startsWith('custom_'));
       if (perguntasCustomSelecionadas.length > 0) {
         console.log(`🔍 DEBUG: Encontradas ${perguntasCustomSelecionadas.length} perguntas CUSTOM selecionadas no dropdown:`);
-        
+
         // Determinar onde salvar (ID temporário ou permanente)
         let idParaSalvar = idCompetenciaEditando;
         if (!idParaSalvar) {
@@ -484,13 +484,13 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
             console.log(`  - Criado novo ID temporário: ${idParaSalvar}`);
           }
         }
-        
+
         // Buscar títulos dessas perguntas custom em todas as competências ou no questionMap
         perguntasCustomSelecionadas.forEach((id, idx) => {
           // Tentar encontrar em customQuestionsByCompetency de todas as competências
           const todasPerguntasCustom = Object.values(this.customQuestionsByCompetency).flat();
           const perguntaEncontrada = todasPerguntasCustom.find(q => q.id === id);
-          
+
           if (perguntaEncontrada) {
             console.log(`  ${idx + 1}. ID: ${id} - ✅ Título encontrado: "${perguntaEncontrada.title}"`);
             // Garantir que esta pergunta está em customQuestionsByCompetency
@@ -525,7 +525,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
             }
           }
         });
-        
+
         // Atualizar perguntasCustom após adicionar as selecionadas
         if (idParaSalvar) {
           perguntasCustom = this.getPerguntasCustomCompetencia(idParaSalvar);
@@ -533,13 +533,15 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         }
       }
 
-      // Combinar perguntas da avaliação com perguntas custom
-      const perguntasCustomIds = perguntasCustom.map(q => q.id);
-      perguntasIdsFinais = [...new Set([...perguntasIdsVinculadas, ...perguntasCustomIds])];
-      
-      console.log('🔍 DEBUG: Perguntas finais combinadas:');
+      // IMPORTANTE: Quando há avaliação selecionada, usar APENAS as perguntas selecionadas no dropdown
+      // O dropdown já inclui todas as perguntas (da avaliação e custom) que o usuário selecionou
+      // Não devemos adicionar perguntas custom que não foram selecionadas pelo usuário
+      perguntasIdsFinais = perguntasIdsVinculadas;
+
+      console.log('🔍 DEBUG: Perguntas finais (apenas do dropdown):');
       console.log(`  - Total: ${perguntasIdsFinais.length}`);
       console.log(`  - IDs:`, perguntasIdsFinais);
+      console.log(`  - Perguntas custom no dropdown: ${perguntasIdsFinais.filter(id => id.startsWith('custom_')).length}`);
 
       // Validar se há pelo menos uma pergunta (da avaliação ou custom)
       if (perguntasIdsFinais.length === 0) {
@@ -625,19 +627,19 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       console.log(`  - idCompetenciaEditando: ${idCompetenciaEditando || 'VAZIO'}`);
       console.log(`  - Todas as chaves em customQuestionsByCompetency:`, Object.keys(this.customQuestionsByCompetency));
       console.log(`  - perguntasCustomCache:`, this.perguntasCustomCache.length, 'perguntas');
-      
+
       // CRÍTICO: Se há perguntas no cache, usar elas (são as perguntas que o usuário acabou de editar)
       if (this.perguntasCustomCache && this.perguntasCustomCache.length > 0) {
         perguntasTemp = [...this.perguntasCustomCache];
         console.log(`✅ DEBUG SALVAR COMPETÊNCIA: Encontradas ${perguntasTemp.length} perguntas custom no CACHE`);
         console.log(`  - Perguntas no cache:`, perguntasTemp.map(p => ({ id: p.id, title: p.title })));
-        
+
         // Tentar encontrar a chave onde essas perguntas estão salvas
         Object.keys(this.customQuestionsByCompetency).forEach(key => {
           const perguntasNaChave = this.customQuestionsByCompetency[key] || [];
           const idsNoCache = new Set(perguntasTemp.map(p => p.id));
           const idsNaChave = new Set(perguntasNaChave.map(p => p.id));
-          
+
           // Se todas as perguntas do cache estão nesta chave, usar esta chave
           if (perguntasTemp.length > 0 && perguntasTemp.every(p => idsNaChave.has(p.id))) {
             tempKey = key;
@@ -645,14 +647,14 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
           }
         });
       }
-      
+
       // Se não encontrou no cache, tentar pelo ID temporário da competência sendo editada
       if (perguntasTemp.length === 0 && idCompetenciaEditando && this.customQuestionsByCompetency[idCompetenciaEditando]) {
         perguntasTemp = this.customQuestionsByCompetency[idCompetenciaEditando];
         tempKey = idCompetenciaEditando;
         console.log(`✅ DEBUG SALVAR COMPETÊNCIA: Encontradas ${perguntasTemp.length} perguntas custom no ID temporário ${idCompetenciaEditando}`);
       }
-      
+
       // Se ainda não encontrou, procurar em todas as chaves temporárias
       if (perguntasTemp.length === 0) {
         const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
@@ -669,14 +671,14 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       if (perguntasTemp.length > 0) {
         // Filtrar apenas perguntas custom que estão nos perguntasIdsFinais (para garantir consistência)
         const perguntasCustomFiltradas = perguntasTemp.filter(q => perguntasIdsFinais.includes(q.id));
-        
+
         if (perguntasCustomFiltradas.length > 0) {
           // Migrar perguntas custom temporárias para o novo ID permanente
           this.customQuestionsByCompetency[novaId] = perguntasCustomFiltradas.map(q => {
             // Manter o mesmo ID da pergunta (não precisa alterar o ID da pergunta, apenas a chave)
             return { ...q };
           });
-          
+
           console.log(`✅ DEBUG SALVAR COMPETÊNCIA: Migradas ${perguntasCustomFiltradas.length} perguntas custom para novo ID ${novaId}`);
           console.log(`  - Perguntas migradas:`, perguntasCustomFiltradas.map(p => ({ id: p.id, title: p.title })));
 
@@ -927,7 +929,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
         // Recarregar avaliações para incluir a nova
         await this.loadAssessments();
-        
+
         // Carregar as perguntas da avaliação criada
         await this.onAssessmentChange();
       }
@@ -983,7 +985,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       // para evitar salvar perguntas de competências antigas que não existem mais
       const idsCompetenciasNoGrupo = new Set(competenciasParaSalvar.map(c => c.id));
       const customQuestionsFiltradas: { [key: string]: { id: string; title: string; type: string }[] } = {};
-      
+
       // Primeiro, coletar perguntas custom que já estão em customQuestionsByCompetency
       Object.keys(this.customQuestionsByCompetency).forEach(compId => {
         // Apenas incluir se a competência está no grupo atual
@@ -992,7 +994,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
           // Filtrar apenas perguntas custom que estão nos perguntasIds da competência
           const perguntasIdsDaCompetencia = new Set(competenciasParaSalvar.find(c => c.id === compId)?.perguntasIds || []);
           const perguntasCustomFiltradas = perguntasCustom.filter(p => perguntasIdsDaCompetencia.has(p.id));
-          
+
           if (perguntasCustomFiltradas.length > 0) {
             customQuestionsFiltradas[compId] = perguntasCustomFiltradas;
           }
@@ -1008,7 +1010,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       todasPerguntasCustomDisponiveis.forEach((p, idx) => {
         console.log(`    ${idx + 1}. ID: ${p.id}, Título: "${p.title || 'SEM TÍTULO'}"`);
       });
-      
+
       competenciasParaSalvar.forEach(comp => {
         const perguntasCustomIds = comp.perguntasIds.filter(id => id.startsWith('custom_'));
         console.log(`🔍 DEBUG SALVAR: Processando competência ${comp.id} (${comp.nome}):`);
@@ -1017,7 +1019,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         perguntasCustomIds.forEach((id, idx) => {
           console.log(`    ${idx + 1}. ${id}`);
         });
-        
+
         if (perguntasCustomIds.length > 0) {
           // Se não tem perguntas custom salvas para esta competência, reconstruir
           if (!customQuestionsFiltradas[comp.id] || customQuestionsFiltradas[comp.id].length === 0) {
@@ -1026,20 +1028,20 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
             const perguntasCustomReconstruidas = perguntasCustomIds.map((id, idx) => {
               // Buscar em todas as perguntas custom disponíveis (de qualquer competência)
               const perguntaEncontrada = todasPerguntasCustomDisponiveis.find(p => p.id === id);
-              
+
               if (perguntaEncontrada) {
                 console.log(`    ✅ Encontrada pergunta ${id} com título: "${perguntaEncontrada.title}"`);
               } else {
                 console.log(`    ⚠️ Pergunta ${id} NÃO encontrada em customQuestionsByCompetency, criando título padrão: "Pergunta Custom ${idx + 1}"`);
               }
-              
+
               return perguntaEncontrada || {
                 id: id,
                 title: `Pergunta Custom ${idx + 1}`,
                 type: 'rating'
               };
             });
-            
+
             customQuestionsFiltradas[comp.id] = perguntasCustomReconstruidas;
             console.log(`💾 Reconstruídas ${perguntasCustomIds.length} perguntas custom para competência ${comp.id} antes de salvar`);
             console.log(`  - Perguntas que serão salvas:`, perguntasCustomReconstruidas.map(p => ({ id: p.id, title: p.title })));
@@ -1049,19 +1051,19 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
             // Garantir que todas as perguntas custom nos perguntasIds estão representadas
             const idsExistentes = new Set(customQuestionsFiltradas[comp.id].map(p => p.id));
             const idsFaltantes = perguntasCustomIds.filter(id => !idsExistentes.has(id));
-            
+
             if (idsFaltantes.length > 0) {
               console.log(`  ⚠️ Faltam ${idsFaltantes.length} perguntas custom:`, idsFaltantes);
               idsFaltantes.forEach((id, idx) => {
                 // Buscar em todas as perguntas custom disponíveis
                 const perguntaEncontrada = todasPerguntasCustomDisponiveis.find(p => p.id === id);
-                
+
                 if (perguntaEncontrada) {
                   console.log(`    ✅ Encontrada pergunta faltante ${id} com título: "${perguntaEncontrada.title}"`);
                 } else {
                   console.log(`    ⚠️ Pergunta faltante ${id} NÃO encontrada, criando título padrão`);
                 }
-                
+
                 customQuestionsFiltradas[comp.id].push(perguntaEncontrada || {
                   id: id,
                   title: `Pergunta Custom ${customQuestionsFiltradas[comp.id].length + idx + 1}`,
@@ -1120,7 +1122,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
       // Atualizar lista de grupos
       await this.loadCompetencyGroups(this.selectedClientId);
-      
+
       // Forçar atualização da view para garantir que o dropdown seja atualizado
       setTimeout(() => {
         this.cdr.detectChanges();
@@ -1190,7 +1192,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
           // IMPORTANTE: Restaurar customQuestionsByCompetency mesmo quando há assessmentId
           // Mas apenas para competências que estão sendo carregadas (filtrar competências antigas)
           const customQuestionsCarregadas: { [key: string]: { id: string; title: string; type: string }[] } = {};
-          
+
           if (groupData['customQuestionsByCompetency'] && typeof groupData['customQuestionsByCompetency'] === 'object') {
             // Filtrar apenas perguntas custom de competências que estão sendo carregadas
             Object.keys(groupData['customQuestionsByCompetency']).forEach(compId => {
@@ -1200,10 +1202,10 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
                 const competencia = this.competencias.find(c => c.id === compId);
                 if (competencia) {
                   const perguntasIdsDaCompetencia = new Set(competencia.perguntasIds || []);
-                  const perguntasCustomFiltradas = perguntasCustom.filter((p: any) => 
+                  const perguntasCustomFiltradas = perguntasCustom.filter((p: any) =>
                     perguntasIdsDaCompetencia.has(p.id)
                   );
-                  
+
                   if (perguntasCustomFiltradas.length > 0) {
                     // Garantir que todas as perguntas custom têm títulos válidos
                     perguntasCustomFiltradas.forEach((pergunta: any, idx: number) => {
@@ -1217,7 +1219,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
               }
             });
           }
-          
+
           // IMPORTANTE: Se não encontrou perguntas custom salvas, reconstruir a partir dos perguntasIds
           // Isso garante que perguntas custom que estão nos perguntasIds mas não foram salvas corretamente
           // sejam restauradas com títulos padrão
@@ -1240,7 +1242,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
           } else {
             console.log('⚠️ DEBUG: Nenhum customQuestionsByCompetency encontrado no grupo salvo');
           }
-          
+
           this.competencias.forEach(comp => {
             const perguntasCustomIds = comp.perguntasIds.filter(id => id.startsWith('custom_'));
             console.log(`🔍 DEBUG: Processando competência ${comp.id} (${comp.nome}):`);
@@ -1249,7 +1251,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
             perguntasCustomIds.forEach((id, idx) => {
               console.log(`    ${idx + 1}. ${id}`);
             });
-            
+
             if (perguntasCustomIds.length > 0) {
               // Se não tem perguntas custom restauradas para esta competência, reconstruir
               if (!customQuestionsCarregadas[comp.id] || customQuestionsCarregadas[comp.id].length === 0) {
@@ -1258,13 +1260,13 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
                 customQuestionsCarregadas[comp.id] = perguntasCustomIds.map((id, idx) => {
                   // Tentar encontrar em todas as perguntas custom salvas (de qualquer competência)
                   const perguntaEncontrada = todasPerguntasCustomSalvas.find(p => p.id === id);
-                  
+
                   if (perguntaEncontrada) {
                     console.log(`    ✅ Encontrada pergunta ${id} com título: "${perguntaEncontrada.title}"`);
                   } else {
                     console.log(`    ⚠️ Pergunta ${id} NÃO encontrada, criando título padrão: "Pergunta Custom ${idx + 1}"`);
                   }
-                  
+
                   return perguntaEncontrada || {
                     id: id,
                     title: `Pergunta Custom ${idx + 1}`,
@@ -1278,19 +1280,19 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
                 // Garantir que todas as perguntas custom nos perguntasIds estão representadas
                 const idsExistentes = new Set(customQuestionsCarregadas[comp.id].map(p => p.id));
                 const idsFaltantes = perguntasCustomIds.filter(id => !idsExistentes.has(id));
-                
+
                 if (idsFaltantes.length > 0) {
                   console.log(`  ⚠️ Faltam ${idsFaltantes.length} perguntas custom:`, idsFaltantes);
                   idsFaltantes.forEach((id, idx) => {
                     // Tentar encontrar em todas as perguntas custom salvas
                     const perguntaEncontrada = todasPerguntasCustomSalvas.find(p => p.id === id);
-                    
+
                     if (perguntaEncontrada) {
                       console.log(`    ✅ Encontrada pergunta faltante ${id} com título: "${perguntaEncontrada.title}"`);
                     } else {
                       console.log(`    ⚠️ Pergunta faltante ${id} NÃO encontrada, criando título padrão`);
                     }
-                    
+
                     customQuestionsCarregadas[comp.id].push(perguntaEncontrada || {
                       id: id,
                       title: `Pergunta Custom ${customQuestionsCarregadas[comp.id].length + idx + 1}`,
@@ -1302,7 +1304,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
               }
             }
           });
-          
+
           this.customQuestionsByCompetency = customQuestionsCarregadas;
           console.log('✅ Perguntas custom por competência restauradas (com assessmentId, filtradas):', Object.keys(this.customQuestionsByCompetency).length, 'competências');
           console.log('  - IDs de competências carregadas:', Array.from(idsCompetenciasCarregadas));
@@ -1313,7 +1315,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
           // Se não tem assessmentId, restaurar perguntas custom por competência
           // Verificar se há customQuestionsByCompetency salvo
           const customQuestionsCarregadas: { [key: string]: { id: string; title: string; type: string }[] } = {};
-          
+
           if (groupData['customQuestionsByCompetency'] && typeof groupData['customQuestionsByCompetency'] === 'object') {
             // Filtrar apenas perguntas custom de competências que estão sendo carregadas
             Object.keys(groupData['customQuestionsByCompetency']).forEach(compId => {
@@ -1323,10 +1325,10 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
                 const competencia = this.competencias.find(c => c.id === compId);
                 if (competencia) {
                   const perguntasIdsDaCompetencia = new Set(competencia.perguntasIds || []);
-                  const perguntasCustomFiltradas = perguntasCustom.filter((p: any) => 
+                  const perguntasCustomFiltradas = perguntasCustom.filter((p: any) =>
                     perguntasIdsDaCompetencia.has(p.id)
                   );
-                  
+
                   if (perguntasCustomFiltradas.length > 0) {
                     // Garantir que todas as perguntas custom têm títulos válidos
                     perguntasCustomFiltradas.forEach((pergunta: any, idx: number) => {
@@ -1343,7 +1345,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
             // Compatibilidade com formato antigo (array simples)
             this.customQuestions = groupData['customQuestions'];
           }
-          
+
           // IMPORTANTE: Se não encontrou perguntas custom salvas, reconstruir a partir dos perguntasIds
           // Isso garante que perguntas custom que estão nos perguntasIds mas não foram salvas corretamente
           // sejam restauradas com títulos padrão
@@ -1356,7 +1358,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
               }
             });
           }
-          
+
           this.competencias.forEach(comp => {
             if (comp.perguntasIds && comp.perguntasIds.length > 0) {
               // Quando não há assessmentId, todas as perguntas são custom
@@ -1364,7 +1366,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
                 customQuestionsCarregadas[comp.id] = comp.perguntasIds.map((id, idx) => {
                   // Tentar encontrar em todas as perguntas custom salvas
                   const perguntaEncontrada = todasPerguntasCustomSalvas.find(p => p.id === id);
-                  
+
                   return perguntaEncontrada || {
                     id: id,
                     title: `Pergunta Custom ${idx + 1}`,
@@ -1375,7 +1377,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
               }
             }
           });
-          
+
           this.customQuestionsByCompetency = customQuestionsCarregadas;
           console.log('✅ Perguntas custom por competência restauradas (filtradas):', Object.keys(this.customQuestionsByCompetency).length, 'competências');
           console.log('  - IDs de competências carregadas:', Array.from(idsCompetenciasCarregadas));
@@ -1582,7 +1584,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
     // Criar nova pergunta com título padrão
     const totalPerguntas = this.customQuestionsByCompetency[idParaUsar].length;
-    const novaPerguntaId = `custom_${idParaUsar}_${new Date().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+    const novaPerguntaId = `custom_${idParaUsar}_${new Date().getTime()}_${Math.random().toString(36).substring(2, 11)}`;
     this.customQuestionsByCompetency[idParaUsar].push({
       id: novaPerguntaId,
       title: `Pergunta Custom ${totalPerguntas + 1}`,
@@ -1744,12 +1746,12 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       console.warn(`  - Total de perguntas custom em todas as competências: ${todasPerguntasCustom.length}`);
       return perguntaId;
     }
-    
+
     // Se não é custom, buscar no questionMap (perguntas da avaliação)
     if (this.questionMap && this.questionMap[perguntaId]) {
       return this.questionMap[perguntaId];
     }
-    
+
     // Último fallback: retornar o próprio ID
     return perguntaId;
   }

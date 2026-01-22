@@ -1,6 +1,7 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
+import { randomBytes } from 'crypto';
 import { defineString } from 'firebase-functions/params';
 
 // Inicializar Firebase Admin apenas se ainda não foi inicializado
@@ -9,8 +10,9 @@ if (!admin.apps.length) {
 }
 
 // Definindo parâmetros configuráveis (não chamar .value() aqui)
-const EMAIL_USER_PARAM = defineString('EMAIL_USER');
-const EMAIL_PASS_PARAM = defineString('EMAIL_PASS');
+// Usando default vazio para evitar problemas de inicialização
+const EMAIL_USER_PARAM = defineString('EMAIL_USER', { default: '' });
+const EMAIL_PASS_PARAM = defineString('EMAIL_PASS', { default: '' });
 
 // Configuração do transporte de e-mail (usando valores em tempo de execução)
 const getTransporter = (emailUser: string, emailPass: string) => {
@@ -42,6 +44,11 @@ function renderTemplateToHtml(
   templateContent: any,
   replacements: { [key: string]: string }
 ): string {
+  // Validar estrutura do template
+  if (!templateContent?.body?.rows || !Array.isArray(templateContent.body.rows)) {
+    throw new Error('Template sem conteúdo válido. Estrutura do template inválida.');
+  }
+
   const rows = templateContent.body.rows;
   let html = '';
 
@@ -186,15 +193,35 @@ function renderTemplateToHtml(
   return html;
 }
 
+// Função para gerar token seguro
+function generateSecureToken(): string {
+  return randomBytes(32).toString('hex');
+}
+
+// Função para validar email
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 // Função para enviar o e-mail
 export const sendEmail = onRequest(
   {
     region: 'us-central1',
-    cors: true,
+    cors: true, // Permitir qualquer origem durante testes
   },
   async (req, res) => {
+    // TODO: Adicionar validação de origem quando sair da fase de testes
+    // const origin = req.headers.origin;
+    // const allowedOrigins = ['https://eck360.web.app', 'https://eck360.firebaseapp.com'];
+    // if (origin && !allowedOrigins.includes(origin)) {
+    //   res.status(403).send({ error: 'Origem não permitida.' });
+    //   return;
+    // }
+
     const { email, templateId, participantId, assessmentId } = req.body;
 
+    // Validar campos obrigatórios
     if (!email || !templateId || !participantId || !assessmentId) {
       res.status(400).send({
         error:
@@ -203,14 +230,22 @@ export const sendEmail = onRequest(
       return;
     }
 
-    const emailUser =
-      EMAIL_USER_PARAM.value() ||
-      process.env.EMAIL_USER ||
-      'igorhlucenaa@gmail.com';
-    const emailPass =
-      EMAIL_PASS_PARAM.value() ||
-      process.env.EMAIL_PASS ||
-      'catt vkem hnzg gwns';
+    // Validar formato do email
+    if (!isValidEmail(email)) {
+      res.status(400).send({ error: 'Email inválido.' });
+      return;
+    }
+
+    // Obter credenciais de email (sem valores hardcoded)
+    const emailUser = EMAIL_USER_PARAM.value() || process.env.EMAIL_USER;
+    const emailPass = EMAIL_PASS_PARAM.value() || process.env.EMAIL_PASS;
+
+    if (!emailUser || !emailPass) {
+      res.status(500).send({
+        error: 'Configuração de email não encontrada. Configure EMAIL_USER e EMAIL_PASS.',
+      });
+      return;
+    }
 
     const transporter = getTransporter(emailUser, emailPass);
 
@@ -256,11 +291,17 @@ export const sendEmail = onRequest(
               }
 
               if (deadline) {
-                // Formatar data no formato brasileiro: DD/MM/YYYY
-                const day = String(deadline.getDate()).padStart(2, '0');
-                const month = String(deadline.getMonth() + 1).padStart(2, '0');
-                const year = deadline.getFullYear();
-                projectDeadline = `${day}/${month}/${year}`;
+                // Validar data
+                if (isNaN(deadline.getTime())) {
+                  console.warn('Data inválida, ignorando deadline');
+                  deadline = undefined;
+                } else {
+                  // Formatar data no formato brasileiro: DD/MM/YYYY
+                  const day = String(deadline.getDate()).padStart(2, '0');
+                  const month = String(deadline.getMonth() + 1).padStart(2, '0');
+                  const year = deadline.getFullYear();
+                  projectDeadline = `${day}/${month}/${year}`;
+                }
               }
             }
           }
@@ -277,13 +318,18 @@ export const sendEmail = onRequest(
         return;
       }
 
-      const assessmentLink = `https://eck360.web.app/assessment?token=${
-        Math.random().toString(36).substr(2) + Date.now().toString(36)
-      }&participant=${participantId}&assessment=${assessmentId}`;
+      // Gerar token seguro usando criptografia
+      const secureToken = generateSecureToken();
+      const assessmentLink = `https://eck360.web.app/assessment?token=${secureToken}&participant=${participantId}&assessment=${assessmentId}`;
 
       let emailHtml;
       try {
         const parsedContent = JSON.parse(template.content);
+
+        // Validar estrutura do template
+        if (!parsedContent.body || !parsedContent.body.rows) {
+          throw new Error('Estrutura do template inválida.');
+        }
 
         // Passar o nome do participante, data limite e o link
         emailHtml = renderTemplateToHtml(parsedContent, {
@@ -291,25 +337,32 @@ export const sendEmail = onRequest(
           participantName: participantName,
           projectDeadline: projectDeadline,
         });
-      } catch (err) {
+      } catch (err: any) {
+        console.error('Erro ao processar template:', err);
         res
           .status(500)
-          .send({ error: 'Erro ao processar o Modelo de e-mail.' });
+          .send({ error: `Erro ao processar o Modelo de e-mail: ${err.message || 'Erro desconhecido'}` });
         return;
       }
 
-      // Restante do código permanece igual
+      // Criar objeto de link de avaliação com token seguro
       const assessmentLinkObj = {
         assessmentId,
-        token: Math.random().toString(36).substr(2) + Date.now().toString(36),
+        token: secureToken,
         status: 'sent',
       };
 
-      await participantRef.update({
-        assessmentLinks:
-          admin.firestore.FieldValue.arrayUnion(assessmentLinkObj),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      // Atualizar assessmentLinks (arrayUnion cria o campo se não existir)
+      try {
+        await participantRef.update({
+          assessmentLinks:
+            admin.firestore.FieldValue.arrayUnion(assessmentLinkObj),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (updateError: any) {
+        console.error('Erro ao atualizar assessmentLinks:', updateError);
+        throw new Error(`Erro ao atualizar links de avaliação: ${updateError.message}`);
+      }
 
       const mailOptions = {
         from: `ECK Avaliação 360 <${emailUser}>`,
@@ -320,27 +373,40 @@ export const sendEmail = onRequest(
 
       await transporter.sendMail(mailOptions);
 
-      await participantRef.update({
-        deliveryStatus: 'sent',
-        lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      try {
+        await participantRef.update({
+          deliveryStatus: 'sent',
+          lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (updateError: any) {
+        console.error('Erro ao atualizar status de entrega:', updateError);
+        // Não falhar a requisição se o email foi enviado, mas logar o erro
+      }
 
       res.status(200).send({ success: true });
     } catch (error: any) {
       console.error('Erro ao enviar e-mail:', error);
-      if (participantId) {
-        await admin
-          .firestore()
-          .collection('participants')
-          .doc(participantId)
-          .update({
-            deliveryStatus: 'failed',
-            errorMessage: error.message,
-          });
+      
+      // Melhorar tratamento de erro para participantId
+      if (participantId && typeof participantId === 'string') {
+        try {
+          await admin
+            .firestore()
+            .collection('participants')
+            .doc(participantId)
+            .update({
+              deliveryStatus: 'failed',
+              errorMessage: error.message || 'Erro desconhecido',
+            });
+        } catch (updateError: any) {
+          console.error('Erro ao atualizar status do participante:', updateError);
+          // Continuar mesmo se falhar o update
+        }
       }
+      
       res
         .status(500)
-        .send({ error: `Erro ao enviar e-mail: ${error.message}` });
+        .send({ error: `Erro ao enviar e-mail: ${error.message || 'Erro desconhecido'}` });
     }
   }
 );

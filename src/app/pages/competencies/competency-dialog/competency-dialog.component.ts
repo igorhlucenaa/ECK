@@ -308,7 +308,7 @@ export class CompetencyDialogComponent implements OnInit, OnDestroy {
   }
 
   private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
+    return Math.random().toString(36).substring(2, 11);
   }
 
   async saveCompetency(): Promise<void> {

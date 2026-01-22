@@ -85,7 +85,7 @@ export class CreateQuestionDialogComponent implements OnInit {
   private generateQuestionName(): string {
     // Gera um nome único para a pergunta (usado como ID no SurveyJS)
     const timestamp = new Date().getTime();
-    const random = Math.random().toString(36).substr(2, 6);
+    const random = Math.random().toString(36).substring(2, 8);
     return `pergunta_${timestamp}_${random}`;
   }
 
