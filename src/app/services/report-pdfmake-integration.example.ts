@@ -1,6 +1,6 @@
 /**
  * EXEMPLO DE INTEGRAÇÃO: Como usar ReportPdfMakeService no componente ReportsComponent
- * 
+ *
  * Este arquivo mostra como integrar o serviço PDFMake no componente existente.
  * Copie o método exportarRelatorioPDFMake() para o seu reports.component.ts
  */
@@ -9,7 +9,7 @@ import { ReportPdfMakeService } from './report-pdfmake.service';
 
 // Exemplo de método para adicionar ao ReportsComponent
 export class ReportsComponentIntegrationExample {
-  
+
   constructor(
     private pdfMakeService: ReportPdfMakeService
   ) {}

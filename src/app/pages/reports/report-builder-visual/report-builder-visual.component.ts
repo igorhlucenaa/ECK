@@ -73,7 +73,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
   @Output() configuracaoChange = new EventEmitter<RelatorioSecaoSimplificada[]>();
 
   private destroy$ = new Subject<void>();
-  
+
   // Templates de seções disponíveis
   sectionTemplates: SectionTemplate[] = [
     {
@@ -197,7 +197,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
 
   // Seções no canvas (relatório sendo construído)
   canvasSections: RelatorioSecaoSimplificada[] = [];
-  
+
   // Categorias para organização
   categorias = [
     { id: 'basico', nome: 'Básico', icone: 'description' },
@@ -296,7 +296,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
     this.canvasSections.push(novaSecao);
     this.ordenarSecoes();
     this.emitirMudancas();
-    
+
     // Abrir painel de configuração automaticamente
     this.editarSecao(novaSecao);
   }
@@ -338,7 +338,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
       titulo: `${secao.titulo} (Cópia)`,
       ordem: this.canvasSections.length + 1
     };
-    
+
     this.canvasSections.push(novaSecao);
     this.ordenarSecoes();
     this.emitirMudancas();

@@ -138,7 +138,7 @@ export class CreateQuestionDialogComponent implements OnInit {
         newQuestionElement.rateMax = 5;
         newQuestionElement.minRateDescription = { pt: 'Discordo Totalmente' };
         newQuestionElement.maxRateDescription = { pt: 'Concordo Totalmente' };
-      } else if ((formValue.type === 'radiogroup' || formValue.type === 'dropdown' || formValue.type === 'checkbox') 
+      } else if ((formValue.type === 'radiogroup' || formValue.type === 'dropdown' || formValue.type === 'checkbox')
                  && formValue.options && formValue.options.length > 0) {
         newQuestionElement.choices = formValue.options.filter((opt: string) => opt && opt.trim() !== '');
       } else if (formValue.type === 'text') {

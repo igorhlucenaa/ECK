@@ -7,16 +7,16 @@
         Construtor de Relatórios
       </h2>
       <div class="category-filters">
-        <button mat-stroked-button 
-                (click)="categoriaSelecionada = 'all'" 
+        <button mat-stroked-button
+                (click)="categoriaSelecionada = 'all'"
                 [color]="categoriaSelecionada === 'all' ? 'primary' : ''"
                 class="filter-btn">
           <mat-icon>apps</mat-icon>
           Todas
         </button>
-        <button mat-stroked-button 
+        <button mat-stroked-button
                 *ngFor="let cat of categorias"
-                (click)="categoriaSelecionada = cat.id" 
+                (click)="categoriaSelecionada = cat.id"
                 [color]="categoriaSelecionada === cat.id ? 'primary' : ''"
                 class="filter-btn">
           <mat-icon>{{ cat.icone }}</mat-icon>
@@ -44,14 +44,14 @@
         <h3>Componentes</h3>
         <span class="badge">{{ getTemplatesFiltrados().length }}</span>
       </div>
-      
-      <div class="templates-list" 
-           cdkDropList 
+
+      <div class="templates-list"
+           cdkDropList
            id="templates-list"
            [cdkDropListData]="getTemplatesFiltrados()"
            [cdkDropListDisabled]="true">
-        
-        <div *ngFor="let template of getTemplatesFiltrados()" 
+
+        <div *ngFor="let template of getTemplatesFiltrados()"
              class="template-item"
              cdkDrag
              (click)="adicionarSecaoClick(template)"
@@ -85,12 +85,12 @@
         </div>
       </div>
 
-      <div class="canvas-content" 
-           cdkDropList 
+      <div class="canvas-content"
+           cdkDropList
            id="canvas-list"
            [cdkDropListData]="canvasSections"
            (cdkDropListDropped)="dropSecao($event)">
-        
+
         <!-- Mensagem quando vazio -->
         <div *ngIf="canvasSections.length === 0" class="empty-state">
           <mat-icon>inbox</mat-icon>
@@ -99,12 +99,12 @@
         </div>
 
         <!-- Seções no canvas -->
-        <div *ngFor="let secao of canvasSections; let i = index" 
+        <div *ngFor="let secao of canvasSections; let i = index"
              class="canvas-section"
              cdkDrag
              [class.selected]="secaoEditando?.id === secao.id"
              [style.border-left-color]="getCorSecao(secao)">
-          
+
           <!-- Handle de arraste -->
           <div class="section-handle" cdkDragHandle>
             <mat-icon>drag_indicator</mat-icon>
@@ -129,18 +129,18 @@
                 </div>
               </div>
               <div class="section-actions">
-                <button mat-icon-button 
+                <button mat-icon-button
                         (click)="toggleVisibilidade(secao); $event.stopPropagation()"
                         [color]="secao.visivel ? 'primary' : ''"
                         matTooltip="{{ secao.visivel ? 'Ocultar' : 'Mostrar' }}">
                   <mat-icon>{{ secao.visivel ? 'visibility' : 'visibility_off' }}</mat-icon>
                 </button>
-                <button mat-icon-button 
+                <button mat-icon-button
                         (click)="duplicarSecao(secao); $event.stopPropagation()"
                         matTooltip="Duplicar">
                   <mat-icon>content_copy</mat-icon>
                 </button>
-                <button mat-icon-button 
+                <button mat-icon-button
                         color="warn"
                         (click)="removerSecao(secao); $event.stopPropagation()"
                         matTooltip="Remover">
@@ -227,8 +227,8 @@
         <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
           Conteúdo
         </label>
-        <angular-editor 
-          [(ngModel)]="secaoEditando.texto" 
+        <angular-editor
+          [(ngModel)]="secaoEditando.texto"
           [config]="editorConfig"
           style="margin-bottom: 16px;">
         </angular-editor>

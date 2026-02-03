@@ -1420,7 +1420,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   atualizarSecaoConfiguracao(index: number) {
     const formValue = this.relatorioFormArray.at(index).value;
     const secao = this.relatorioConfiguracao[index];
-    
+
     // Logar conteúdo do texto antes de atualizar (especialmente para capa)
     if (secao.tipo === 'capa' && formValue.texto) {
       const texto = formValue.texto;
@@ -1432,13 +1432,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       console.log('✏️ EDITANDO - Contém "Respondentes":', texto?.toLowerCase().includes('respondentes'));
       console.log('✏️ EDITANDO - Contém "por Categoria":', texto?.toLowerCase().includes('por categoria'));
       console.log('✏️ EDITANDO - Contém HTML entities:', texto?.includes('&nbsp;') || texto?.includes('&amp;') || texto?.includes('&lt;') || texto?.includes('&gt;'));
-      
+
       // Verificar estrutura específica da seção de categorias
       const temH3Respondentes = /<h3[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/h3>/i.test(texto);
       const temDivRespondentes = /<div[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/div>/i.test(texto);
       console.log('✏️ EDITANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
       console.log('✏️ EDITANDO - Tem DIV com "Respondentes por Categoria":', temDivRespondentes);
-      
+
       // Extrair trecho onde deveria estar a seção
       const indice = texto.toLowerCase().indexOf('respondentes');
       if (indice >= 0) {
@@ -1446,7 +1446,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log('✏️ EDITANDO - Trecho encontrado (índice', indice, '):', trecho);
       }
     }
-    
+
     Object.assign(secao, formValue);
     // Garantir que tipoGrafico está sincronizado
     if (secao.tipo === 'graficos' && formValue.tipoGrafico) {
@@ -2138,7 +2138,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     // Buscar nome da avaliação selecionada
     const assessment = this.assessments.find(a => a.id === this.selectedAssessmentId);
-    
+
     // Logar conteúdo das seções antes de salvar
     const secaoCapa = this.relatorioConfiguracao.find(s => s.tipo === 'capa');
     if (secaoCapa && secaoCapa.texto) {
@@ -2151,12 +2151,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       console.log('💾 SALVANDO - Contém "Respondentes":', texto.toLowerCase().includes('respondentes'));
       console.log('💾 SALVANDO - Contém "por Categoria":', texto.toLowerCase().includes('por categoria'));
       console.log('💾 SALVANDO - Contém HTML entities:', texto.includes('&nbsp;') || texto.includes('&amp;') || texto.includes('&lt;') || texto.includes('&gt;'));
-      
+
       // Verificar estrutura específica
       const temH3Respondentes = /<h3[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/h3>/i.test(texto);
       console.log('💾 SALVANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
     }
-    
+
     const reportData = {
       nome: this.nomeRelatorioControl.value,
       assessmentId: this.selectedAssessmentId,
@@ -2192,7 +2192,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         const reportData = reportSnap.data();
         this.relatorioConfiguracao = reportData['configuracao'] || [];
       this.competencias = reportData['competencias'] || [];
-      
+
       // Logar conteúdo das seções após carregar
       const secaoCapa = this.relatorioConfiguracao.find(s => s.tipo === 'capa');
       if (secaoCapa && secaoCapa.texto) {
@@ -2205,11 +2205,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log('📥 CARREGANDO - Contém "Respondentes":', texto.toLowerCase().includes('respondentes'));
         console.log('📥 CARREGANDO - Contém "por Categoria":', texto.toLowerCase().includes('por categoria'));
         console.log('📥 CARREGANDO - Contém HTML entities:', texto.includes('&nbsp;') || texto.includes('&amp;') || texto.includes('&lt;') || texto.includes('&gt;'));
-        
+
         // Verificar estrutura específica
         const temH3Respondentes = /<h3[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/h3>/i.test(texto);
         console.log('📥 CARREGANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
-        
+
         // Extrair trecho onde deveria estar a seção
         const indice = texto.toLowerCase().indexOf('respondentes');
         if (indice >= 0) {
@@ -2217,7 +2217,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           console.log('📥 CARREGANDO - Trecho encontrado (índice', indice, '):', trecho);
         }
       }
-      
+
       // Atualizar o form reativo
         this.atualizarFormArrayComConfiguracao();
       // Atualizar perguntas bloqueadas após carregar competências
@@ -2312,7 +2312,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       ...sec,
       tipo: sec.tipo as RelatorioSecao['tipo']
     }));
-    
+
     this.relatorioConfiguracao = configuracaoConvertida;
     this.relatorioConfiguracao = novaConfiguracao;
     this.atualizarFormArrayComConfiguracao();
@@ -2774,7 +2774,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     competencia.perguntasIds.forEach(perguntaId => {
       // Buscar título da pergunta: primeiro no questionMap (avaliação), depois em customQuestionsByCompetency
       let perguntaTexto = this.questionMap[perguntaId];
-      
+
       // Se não encontrou no questionMap e é uma pergunta custom, buscar em customQuestionsByCompetency
       if (!perguntaTexto && perguntaId.startsWith('custom_')) {
         const perguntasCustom = this.customQuestionsByCompetency[competencia.id] || [];
@@ -2790,12 +2790,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         }
       }
-      
+
       // Fallback se ainda não encontrou
       if (!perguntaTexto) {
         perguntaTexto = `Pergunta ${perguntaId}`;
       }
-      
+
       console.log(`\n📝 Processando pergunta: ${perguntaId} - "${perguntaTexto}"`);
       const categorias: DadosCategoria[] = [];
 
@@ -3893,7 +3893,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Método para obter contagem de respondentes por categoria
   getContagemRespondentesPorCategoria(): { categoria: string; quantidade: number }[] {
     const contagem: { [key: string]: number } = {};
-    
+
     // Mapear categorias para nomes amigáveis
     const categoriaMap: { [key: string]: string } = {
       'Avaliado(a)': 'Avaliado(a)',
@@ -3902,12 +3902,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       'Subordinados': 'Subordinados',
       'Outros': 'Outros'
     };
-    
+
     // Se não há dados carregados, retornar array vazio
     if (!this.dataSource || this.dataSource.length === 0 || !this.dataIndexes.participantsByCategory) {
       return [];
     }
-    
+
     // Contar participantes por categoria que responderam (têm respostas)
     this.dataIndexes.participantsByCategory.forEach((indices, grupo) => {
       let quantidade = 0;
@@ -3917,7 +3917,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           // Verificar se o participante tem pelo menos uma resposta válida
           // Verificar nas colunas dinâmicas se disponíveis, senão verificar qualquer propriedade numérica
           let temResposta = false;
-          
+
           if (this.dynamicColumns && this.dynamicColumns.length > 0) {
             temResposta = this.dynamicColumns.some(col => {
               const valor = participant[col];
@@ -3933,19 +3933,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
               return valor !== undefined && valor !== null && valor !== '' && !isNaN(Number(valor));
             });
           }
-          
+
           if (temResposta) {
             quantidade++;
           }
         }
       });
-      
+
       if (quantidade > 0) {
         const categoriaNome = categoriaMap[grupo] || grupo;
         contagem[categoriaNome] = quantidade;
       }
     });
-    
+
     // Retornar como array ordenado
     return Object.keys(contagem)
       .map(categoria => ({ categoria, quantidade: contagem[categoria] }))
@@ -3967,7 +3967,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!textoOriginal) {
       return '';
     }
-    
+
     // Logar o conteúdo recebido com mais detalhes
     console.log('🔄 PROCESSANDO - Conteúdo recebido (primeiros 1000 chars):', textoOriginal.substring(0, 1000));
     console.log('🔄 PROCESSANDO - Tipo do conteúdo:', typeof textoOriginal);
@@ -3975,7 +3975,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('🔄 PROCESSANDO - Contém HTML:', textoOriginal.includes('<div') || textoOriginal.includes('<h3'));
     console.log('🔄 PROCESSANDO - Contém Markdown:', textoOriginal.includes('##') || textoOriginal.includes('**'));
     console.log('🔄 PROCESSANDO - Contém HTML entities:', textoOriginal.includes('&nbsp;') || textoOriginal.includes('&amp;') || textoOriginal.includes('&lt;') || textoOriginal.includes('&gt;'));
-    
+
     // Verificar se o texto contém a seção de categorias de forma mais robusta
     const textoLower = textoOriginal.toLowerCase();
     const temRespondentes = textoLower.includes('respondentes');
@@ -3984,13 +3984,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('🔄 PROCESSANDO - Contém "respondentes":', temRespondentes);
     console.log('🔄 PROCESSANDO - Contém "por categoria":', temPorCategoria);
     console.log('🔄 PROCESSANDO - Contém "respondentes por categoria":', temRespondentesPorCategoria);
-    
+
     // Verificar estrutura HTML específica
     const temH3Respondentes = /<h3[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/h3>/i.test(textoOriginal);
     const temDivRespondentes = /<div[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/div>/i.test(textoOriginal);
     console.log('🔄 PROCESSANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
     console.log('🔄 PROCESSANDO - Tem DIV com "Respondentes por Categoria":', temDivRespondentes);
-    
+
     // Obter informações dinâmicas
     const nomeAvaliado = this.selectedAvaliadoName || 'Não informado';
     const dataRelatorio = this.today.toLocaleDateString('pt-BR', {
@@ -3999,7 +3999,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       year: 'numeric'
     });
     const contagemPorCategoria = this.getContagemRespondentesPorCategoria();
-    
+
     // Criar HTML para contagem por categoria (uma abaixo da outra)
     let contagemHtml = '';
     if (contagemPorCategoria.length > 0) {
@@ -4009,18 +4009,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     } else {
       contagemHtml = '<div style="color: #999; font-size: 14px; padding: 10px;">Nenhum respondente encontrado</div>';
     }
-    
+
     // Verificar se o texto já contém a estrutura de categorias (case-insensitive e mais robusto)
     // Tentar múltiplas formas de detectar a seção
     const temEstruturaCategorias1 = /respondentes\s+por\s+categoria/i.test(textoOriginal);
     const temEstruturaCategorias2 = /respondentes.*?por.*?categoria/i.test(textoOriginal);
     const temEstruturaCategorias3 = textoLower.includes('respondentes') && textoLower.includes('por') && textoLower.includes('categoria');
     const temEstruturaCategorias = temEstruturaCategorias1 || temEstruturaCategorias2 || temEstruturaCategorias3;
-    
+
     const temFlexWrap = /flex-wrap/i.test(textoOriginal);
     const temFlexColumn = /flex-direction:\s*column/i.test(textoOriginal);
     const temSpanInline = /display:\s*inline-block/i.test(textoOriginal);
-    
+
     console.log('🔍 Análise da seção "Respondentes por Categoria":');
     console.log('  - Encontrada (regex 1):', temEstruturaCategorias1);
     console.log('  - Encontrada (regex 2):', temEstruturaCategorias2);
@@ -4029,20 +4029,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('  - Tem flex-wrap:', temFlexWrap);
     console.log('  - Tem flex-direction: column:', temFlexColumn);
     console.log('  - Tem display: inline-block:', temSpanInline);
-    
+
     // Logar trecho específico onde deveria estar a seção
     const indiceCategoria = textoOriginal.toLowerCase().indexOf('respondentes');
     if (indiceCategoria >= 0) {
       const trechoCategoria = textoOriginal.substring(Math.max(0, indiceCategoria - 50), Math.min(textoOriginal.length, indiceCategoria + 500));
       console.log('  - 📋 Trecho HTML encontrado:', trechoCategoria);
     }
-    
+
     // Substituir variáveis dinâmicas no texto
     let textoProcessado = textoOriginal
       .replace(/\$%NOME_AVALIADO\$%/g, nomeAvaliado)
       .replace(/\$%DATA_RELATORIO\$%/g, dataRelatorio)
       .replace(/\$%CONTAGEM_CATEGORIAS\$%/g, contagemHtml);
-    
+
     // Se o texto não contém variáveis, mas é a capa padrão, garantir que as informações dinâmicas estejam atualizadas
     if (!textoOriginal.includes('$%') && /relatório\s+feedback\s+360/i.test(textoOriginal)) {
       // Atualizar nome do avaliado se estiver presente no template
@@ -4050,17 +4050,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         /<h2[^>]*>.*?<\/h2>/gi,
         `<h2 style="margin: 0; font-size: 28px; font-weight: 600;">${nomeAvaliado}</h2>`
       );
-      
+
       // Atualizar data do relatório se estiver presente
       textoProcessado = textoProcessado.replace(
         /Data\s+do\s+Relatório:\s*[\d\/]+/gi,
         `Data do Relatório: ${dataRelatorio}`
       );
-      
+
       // Verificar se já tem a seção de respondentes por categoria (case-insensitive)
       if (temEstruturaCategorias) {
         console.log('  - 🔄 Substituindo seção existente...');
-        
+
         // Estrutura nova com layout vertical
         const estruturaNova = `<div style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
               <h3 style="color: #1976d2; font-size: 20px; margin-bottom: 15px;">Respondentes por Categoria</h3>
@@ -4068,19 +4068,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
                 ${contagemHtml}
               </div>
             </div>`;
-        
+
         // Regex mais robustos e flexíveis para encontrar a seção
         // Padrão 1: Seção completa com h3 e div container
         const regexSecaoCompleta = /<div[^>]*>[\s\S]*?<h3[^>]*>[\s\S]*?Respondentes\s+por\s+Categoria[\s\S]*?<\/h3>[\s\S]*?<div[^>]*style="[^"]*"[\s\S]*?>[\s\S]*?<\/div>[\s\S]*?<\/div>/gi;
-        
+
         // Padrão 2: Seção com flex-wrap ou justify-content
         const regexSecaoHorizontal = /<div[^>]*style="[^"]*display:\s*flex[^"]*(?:flex-wrap|justify-content)[^"]*"[^>]*>[\s\S]*?Respondentes\s+por\s+Categoria[\s\S]*?<\/div>[\s\S]*?<\/div>/gi;
-        
+
         // Padrão 3: Seção genérica com qualquer estrutura
         const regexSecaoGenerica = /<div[^>]*>[\s\S]*?Respondentes\s+por\s+Categoria[\s\S]*?<\/div>[\s\S]*?<\/div>/gi;
-        
+
         let substituido = false;
-        
+
         // Tentar substituir usando regex mais específicos primeiro
         if (regexSecaoCompleta.test(textoProcessado)) {
           console.log('    ✅ Padrão 1 (seção completa)');
@@ -4095,25 +4095,25 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           textoProcessado = textoProcessado.replace(regexSecaoGenerica, estruturaNova);
           substituido = true;
         }
-        
+
         if (!substituido) {
           console.log('    ⚠️ Nenhum regex fez match, tentando abordagem alternativa...');
-          
+
           // Abordagem alternativa: encontrar o índice da seção e substituir manualmente
           const regexTitulo = /<h3[^>]*>[\s\S]*?Respondentes\s+por\s+Categoria[\s\S]*?<\/h3>/gi;
           const matchTitulo = regexTitulo.exec(textoProcessado);
-          
+
           if (matchTitulo) {
             console.log('    📍 Título encontrado na posição:', matchTitulo.index);
             const inicioTitulo = matchTitulo.index;
-            
+
             // Encontrar o início do div pai que contém o h3
             let inicioDiv = inicioTitulo;
             while (inicioDiv > 0 && textoProcessado.substring(inicioDiv - 5, inicioDiv) !== '<div') {
               inicioDiv--;
             }
             if (inicioDiv < inicioTitulo - 200) inicioDiv = inicioTitulo - 50; // Limite de busca
-            
+
             // Encontrar o fim do div pai (procurar por </div> correspondente)
             let fimDiv = inicioTitulo + matchTitulo[0].length;
             let nivelDiv = 1;
@@ -4130,14 +4130,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
               }
               tentativas++;
             }
-            
+
             if (nivelDiv === 0 && fimDiv > inicioTitulo) {
               console.log('    ✅ Div completo encontrado e substituído');
               textoProcessado = textoProcessado.substring(0, inicioDiv) + estruturaNova + textoProcessado.substring(fimDiv);
               substituido = true;
             }
           }
-          
+
           // Se ainda não foi substituído, tentar substituir apenas os estilos inline-block
           if (!substituido) {
             console.log('    ⚠️ Substituindo estilos inline-block...');
@@ -4147,13 +4147,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
               '<div style="margin: 8px 0; padding: 10px 20px; background: #e3f2fd; border-radius: 8px; font-size: 14px; text-align: left;">'
             );
             textoProcessado = textoProcessado.replace(/<\/span>/gi, '</div>');
-            
+
             // Atualizar container para flex-direction: column
             textoProcessado = textoProcessado.replace(
               /(display:\s*flex[^;]*)(?:flex-wrap|justify-content)[^;]*;?/gi,
               'display: flex; flex-direction: column; align-items: center; gap: 0;'
             );
-            
+
             // Substituir todo o conteúdo dentro do container de categorias pela nova contagemHtml
             const regexContainerCategorias = /(<div[^>]*style="[^"]*display:\s*flex[^"]*"[^>]*>)([\s\S]*?)(<\/div>)/gi;
             textoProcessado = textoProcessado.replace(regexContainerCategorias, (match, inicio, conteudo, fim) => {
@@ -4178,7 +4178,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           </div>`
         );
       }
-      
+
       // Verificar resultado final
       const temFlexColumnFinal = /flex-direction:\s*column/i.test(textoProcessado);
       const temSpanFinal = /display:\s*inline-block/i.test(textoProcessado);
@@ -4187,7 +4187,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       console.log('    - flex-direction: column:', temFlexColumnFinal);
       console.log('    - display: inline-block:', temSpanFinal);
       console.log('    - flex-wrap:', temFlexWrapFinal);
-      
+
       // Logar trecho final da seção de categorias para verificação
       const indiceCategoriaFinal = textoProcessado.toLowerCase().indexOf('respondentes');
       if (indiceCategoriaFinal >= 0) {
@@ -4195,7 +4195,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log('  - 📋 Trecho final:', trechoCategoriaFinal);
       }
     }
-    
+
     return textoProcessado;
   }
 
@@ -4214,7 +4214,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         year: 'numeric'
       });
       const contagemPorCategoria = this.getContagemRespondentesPorCategoria();
-      
+
       // Criar HTML para contagem por categoria (uma abaixo da outra)
       let contagemHtml = '';
       if (contagemPorCategoria.length > 0) {
@@ -4224,7 +4224,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       } else {
         contagemHtml = '<div style="color: #999; font-size: 14px; padding: 10px;">Nenhum respondente encontrado</div>';
       }
-      
+
       secao.texto = `
         <div style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
           <h1 style="color: #1976d2; font-size: 36px; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">

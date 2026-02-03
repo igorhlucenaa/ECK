@@ -90,15 +90,8 @@
           <mat-hint>Digite um nome para salvar o grupo atual de competências</mat-hint>
         </mat-form-field>
 
-        <!-- Botões de Ação -->
+        <!-- Botão Carregar -->
         <div style="display: flex; gap: 8px;">
-          <button mat-raised-button color="primary"
-                  (click)="saveCompetencyGroup()"
-                  [disabled]="!selectedClientId || !groupNameControl.value">
-            <mat-icon>save</mat-icon>
-            Salvar Grupo
-          </button>
-
           <button mat-stroked-button color="accent"
                   (click)="loadCompetencyGroup()"
                   [disabled]="!competencyGroupControl.value">
@@ -242,6 +235,17 @@
       </form>
     </mat-card-content>
   </mat-card>
+
+  <!-- Botão Salvar Grupo no final da tela -->
+  <div style="margin-top: 24px; margin-bottom: 24px; display: flex; justify-content: flex-end;">
+    <button mat-raised-button color="primary"
+            (click)="saveCompetencyGroup()"
+            [disabled]="!selectedClientId || !groupNameControl.value"
+            style="min-width: 200px;">
+      <mat-icon>save</mat-icon>
+      Salvar Grupo
+    </button>
+  </div>
 
           <!-- Lista de Competências Cadastradas -->
   <div *ngIf="competencias.length > 0">

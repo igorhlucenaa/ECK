@@ -65,7 +65,7 @@ interface ReportData {
 
 @Injectable({ providedIn: 'root' })
 export class ReportPdfMakeService {
-  
+
   /**
    * Gera relatório completo em PDF usando PDFMake
    */
@@ -81,7 +81,7 @@ export class ReportPdfMakeService {
         const pdfMakeModule = await import('pdfmake/build/pdfmake');
         // @ts-ignore - PDFMake será carregado dinamicamente em runtime
         const pdfFontsModule = await import('pdfmake/build/vfs_fonts');
-        
+
         pdfMakeLib = pdfMakeModule.default || pdfMakeModule;
         pdfFontsLib = pdfFontsModule.default || pdfFontsModule;
       } catch (importError: any) {
@@ -90,7 +90,7 @@ export class ReportPdfMakeService {
           `PDFMake não está instalado ou não pôde ser carregado. Execute: npm install pdfmake @types/pdfmake. Erro: ${errorMsg}`
         );
       }
-      
+
       // Configurar fontes
       if (pdfFontsLib.pdfMake && pdfFontsLib.pdfMake.vfs) {
         pdfMakeLib.vfs = pdfFontsLib.pdfMake.vfs;
@@ -142,38 +142,38 @@ export class ReportPdfMakeService {
     switch (secao.tipo) {
       case 'capa':
         return this.buildCover(data);
-      
+
       case 'introducao':
         return this.buildIntroduction(data, secao);
-      
+
       case 'resumo':
         return this.buildExecutiveSummary(data, secao);
-      
+
       case 'graficos':
         return await this.buildChartsSection(data, secao);
-      
+
       case 'tabela':
         return this.buildTablesSection(data, secao);
-      
+
       case 'tabela_detalhada':
         return this.buildDetailedDistributionTable(data, secao);
-      
+
       case 'destaques':
         return this.buildHighlights(data, secao);
-      
+
       case 'competencia_detalhada':
         return this.buildCompetencyDetail(data, secao);
-      
+
       case 'grafico_defasagem':
         return await this.buildGapChart(data, secao);
-      
+
       case 'janela_johari':
         return await this.buildJohariWindow(data, secao);
-      
+
       case 'texto':
       case 'custom':
         return this.buildTextSection(secao);
-      
+
       default:
         return [];
     }
@@ -221,7 +221,7 @@ export class ReportPdfMakeService {
    */
   private buildExecutiveSummary(data: ReportData, secao: RelatorioSecao): any[] {
     const competencias = data.getCompetenciasSelecionadasParaGraficos(secao);
-    
+
     if (competencias.length === 0) {
       return [];
     }
@@ -385,7 +385,7 @@ export class ReportPdfMakeService {
    */
   private buildDetailedDistributionTable(data: ReportData, secao: RelatorioSecao): any[] {
     const competencias = data.getCompetenciasSelecionadasParaGraficos(secao);
-    
+
     if (competencias.length === 0) {
       return [];
     }
@@ -397,7 +397,7 @@ export class ReportPdfMakeService {
     // Para cada competência, criar tabela de distribuição
     for (const comp of competencias) {
       const textoIntro = secao['textosPorCompetencia']?.[comp.id] || '';
-      
+
       content.push(
         { text: comp.nome, style: 'competencyTitle', margin: [0, 20, 0, 10] },
         { text: comp.descricao, style: 'competencyDescription', margin: [0, 0, 0, 10] }
@@ -418,12 +418,12 @@ export class ReportPdfMakeService {
       // Construir tabela de distribuição
       const grupos = data.grupos;
       const perguntas = comp.perguntasIds || [];
-      
+
       // Cabeçalho da tabela
       const headerRow: any[] = [
         { text: comp.nome.toUpperCase(), style: 'tableHeader', rowSpan: 2, alignment: 'center' }
       ];
-      
+
       // Cabeçalho de categorias (com colspan 5 para cada)
       grupos.forEach(grupo => {
         headerRow.push({
@@ -547,7 +547,7 @@ export class ReportPdfMakeService {
    */
   private buildTablesSection(data: ReportData, secao: RelatorioSecao): any[] {
     const competencias = data.getCompetenciasSelecionadasParaGraficos(secao);
-    
+
     if (competencias.length === 0) {
       return [];
     }
@@ -607,7 +607,7 @@ export class ReportPdfMakeService {
    */
   private buildHighlights(data: ReportData, secao: RelatorioSecao): any[] {
     const competencias = data.getCompetenciasSelecionadasParaGraficos(secao);
-    
+
     if (competencias.length === 0) {
       return [];
     }
@@ -690,7 +690,7 @@ export class ReportPdfMakeService {
 
       perguntas.forEach(perguntaId => {
         const perguntaTexto = data.questionMap[perguntaId] || perguntaId;
-        
+
         data.grupos.forEach(grupo => {
           const respostas = data.dataSource
             .filter(row => this.mapCategoriaToGrupo(row['categoria'], data) === grupo)
@@ -743,7 +743,7 @@ export class ReportPdfMakeService {
    */
   private async buildGapChart(data: ReportData, secao: RelatorioSecao): Promise<any[]> {
     const competencias = data.getCompetenciasSelecionadasParaGraficos(secao);
-    
+
     if (competencias.length === 0) {
       return [];
     }
@@ -757,7 +757,7 @@ export class ReportPdfMakeService {
 
       perguntas.forEach(perguntaId => {
         // Autoavaliação
-        const selfRows = data.dataSource.filter(row => 
+        const selfRows = data.dataSource.filter(row =>
           this.mapCategoriaToGrupo(row['categoria'], data) === 'Avaliado(a)'
         );
         selfRows.forEach(row => {
@@ -773,7 +773,7 @@ export class ReportPdfMakeService {
         });
 
         // Outros
-        const othersRows = data.dataSource.filter(row => 
+        const othersRows = data.dataSource.filter(row =>
           this.mapCategoriaToGrupo(row['categoria']) !== 'Avaliado(a)'
         );
         othersRows.forEach(row => {
@@ -802,7 +802,7 @@ export class ReportPdfMakeService {
     });
 
     const gapImage = await this.createGapChartImage(gapData);
-    
+
     return [
       { text: secao.titulo || 'Análise de Defasagem', style: 'sectionTitle', pageBreak: 'before' },
       { image: gapImage, width: 500, alignment: 'center', margin: [0, 10, 0, 20] }
@@ -814,13 +814,13 @@ export class ReportPdfMakeService {
    */
   private async buildJohariWindow(data: ReportData, secao: RelatorioSecao): Promise<any[]> {
     const johariData = data.getJohariWindowData(secao);
-    
+
     if (!johariData || !johariData.points || johariData.points.length === 0) {
       return [];
     }
 
     const johariImage = await this.createJohariWindowImage(johariData);
-    
+
     return [
       { text: secao.titulo || 'Janela de Johari', style: 'sectionTitle', pageBreak: 'before' },
       { image: johariImage, width: 500, alignment: 'center', margin: [0, 10, 0, 20] }
@@ -918,7 +918,7 @@ export class ReportPdfMakeService {
     canvas.width = 800;
     canvas.height = Math.max(300, data.length * 50 + 100);
     const ctx = canvas.getContext('2d');
-    
+
     if (!ctx) return '';
 
     // Background
@@ -941,7 +941,7 @@ export class ReportPdfMakeService {
     // Eixos
     ctx.strokeStyle = '#CCCCCC';
     ctx.lineWidth = 1;
-    
+
     // Linha vertical (eixo X)
     ctx.beginPath();
     ctx.moveTo(margin.left, margin.top);
@@ -964,7 +964,7 @@ export class ReportPdfMakeService {
       ctx.lineTo(x, margin.top + chartHeight);
       ctx.strokeStyle = '#E0E0E0';
       ctx.stroke();
-      
+
       ctx.fillStyle = '#666666';
       ctx.textAlign = 'center';
       ctx.fillText(i.toString(), x, margin.top + chartHeight + 20);
@@ -1015,7 +1015,7 @@ export class ReportPdfMakeService {
     canvas.width = 600;
     canvas.height = 600;
     const ctx = canvas.getContext('2d');
-    
+
     if (!ctx || !radarOptions || !radarOptions.radar || !radarOptions.series) {
       return '';
     }
@@ -1050,7 +1050,7 @@ export class ReportPdfMakeService {
       const angle = index * angleStep - Math.PI / 2;
       const x = centerX + Math.cos(angle) * radius;
       const y = centerY + Math.sin(angle) * radius;
-      
+
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
       ctx.lineTo(x, y);
@@ -1135,7 +1135,7 @@ export class ReportPdfMakeService {
     canvas.width = 500;
     canvas.height = 400;
     const ctx = canvas.getContext('2d');
-    
+
     if (!ctx) return '';
 
     ctx.fillStyle = '#FFFFFF';
@@ -1177,12 +1177,12 @@ export class ReportPdfMakeService {
       const labelAngle = currentAngle + sliceAngle / 2;
       const labelX = centerX + Math.cos(labelAngle) * (radius + 30);
       const labelY = centerY + Math.sin(labelAngle) * (radius + 30);
-      
+
       ctx.fillStyle = '#2C3E50';
       ctx.font = '12px Arial';
       ctx.textAlign = 'center';
       ctx.fillText(item.name, labelX, labelY - 10);
-      
+
       const percent = ((item.value / total) * 100).toFixed(1);
       ctx.fillText(`${percent}%`, labelX, labelY + 10);
 
@@ -1198,7 +1198,7 @@ export class ReportPdfMakeService {
 
       ctx.fillStyle = color;
       ctx.fillRect(x, y, 15, 15);
-      
+
       ctx.fillStyle = '#2C3E50';
       ctx.font = '11px Arial';
       ctx.textAlign = 'left';
@@ -1230,7 +1230,7 @@ export class ReportPdfMakeService {
     canvas.width = 600;
     canvas.height = Math.max(400, gapData.length * 60 + 100);
     const ctx = canvas.getContext('2d');
-    
+
     if (!ctx) return '';
 
     ctx.fillStyle = '#FFFFFF';
@@ -1317,7 +1317,7 @@ export class ReportPdfMakeService {
     canvas.width = 600;
     canvas.height = 600;
     const ctx = canvas.getContext('2d');
-    
+
     if (!ctx) return '';
 
     ctx.fillStyle = '#FFFFFF';
@@ -1337,13 +1337,13 @@ export class ReportPdfMakeService {
     // Desenhar eixos
     ctx.strokeStyle = '#CCCCCC';
     ctx.lineWidth = 2;
-    
+
     // Eixo X (Self)
     ctx.beginPath();
     ctx.moveTo(chartX, chartY + chartSize);
     ctx.lineTo(chartX + chartSize, chartY + chartSize);
     ctx.stroke();
-    
+
     // Eixo Y (Others)
     ctx.beginPath();
     ctx.moveTo(chartX, chartY);
@@ -1355,7 +1355,7 @@ export class ReportPdfMakeService {
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('Autoavaliação (Self)', chartX + chartSize / 2, chartY + chartSize + 30);
-    
+
     ctx.save();
     ctx.translate(chartX - 30, chartY + chartSize / 2);
     ctx.rotate(-Math.PI / 2);
@@ -1365,23 +1365,23 @@ export class ReportPdfMakeService {
     // Linha de threshold
     const thresholdX = chartX + (johariData.threshold - 1) / 4 * chartSize;
     const thresholdY = chartY + chartSize - (johariData.threshold - 1) / 4 * chartSize;
-    
+
     ctx.strokeStyle = '#FF6B35';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
-    
+
     // Linha vertical
     ctx.beginPath();
     ctx.moveTo(thresholdX, chartY);
     ctx.lineTo(thresholdX, chartY + chartSize);
     ctx.stroke();
-    
+
     // Linha horizontal
     ctx.beginPath();
     ctx.moveTo(chartX, thresholdY);
     ctx.lineTo(chartX + chartSize, thresholdY);
     ctx.stroke();
-    
+
     ctx.setLineDash([]);
 
     // Quadrantes
@@ -1472,7 +1472,7 @@ export class ReportPdfMakeService {
       questionMap: component.questionMap || {},
       relatorioConfiguracao: component.relatorioConfiguracao || [],
       grupos: component.getGrupos ? component.getGrupos() : ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'],
-      getMediaPorPerguntaEGrupo: (comp: Competencia, grupo: string) => 
+      getMediaPorPerguntaEGrupo: (comp: Competencia, grupo: string) =>
         component.getMediaPorPerguntaEGrupo ? component.getMediaPorPerguntaEGrupo(comp, grupo) : null,
       getCompetenciasSelecionadasParaGraficos: (secao: RelatorioSecao) =>
         component.getCompetenciasSelecionadasParaGraficos ? component.getCompetenciasSelecionadasParaGraficos(secao) : [],
@@ -1488,9 +1488,9 @@ export class ReportPdfMakeService {
         component.getJohariWindowData ? component.getJohariWindowData(secao) : { points: [], threshold: 3.5 },
       getColorSchemeParaSecao: (secao: RelatorioSecao) =>
         component.getColorSchemeParaSecao ? component.getColorSchemeParaSecao(secao) : { domain: ['#3498DB', '#E74C3C', '#2ECC71', '#F39C12', '#9B59B6'] },
-      getDadosPerguntaDefasagem: component.getDadosPerguntaDefasagem ? 
+      getDadosPerguntaDefasagem: component.getDadosPerguntaDefasagem ?
         (perguntaId: string) => component.getDadosPerguntaDefasagem(perguntaId) : undefined,
-      mapCategoriaToGrupo: component.mapCategoriaToGrupo ? 
+      mapCategoriaToGrupo: component.mapCategoriaToGrupo ?
         (categoria: string) => component.mapCategoriaToGrupo(categoria) : undefined
     };
   }

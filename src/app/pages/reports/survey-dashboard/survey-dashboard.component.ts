@@ -126,7 +126,7 @@ export class SurveyDashboardComponent implements OnInit, OnDestroy {
         try {
           const participantRef = doc(this.firestore, 'participants', resultData['participantId']);
           const participantSnap = await getDoc(participantRef);
-          
+
           if (participantSnap.exists()) {
             const participantData = participantSnap.data();
             participantName = participantData['name'] || participantName;
@@ -206,7 +206,7 @@ export class SurveyDashboardComponent implements OnInit, OnDestroy {
 
       // Criar modelo do survey a partir do surveyJSON
       const survey = new SurveyModel(this.surveyJSON);
-      
+
       // Obter todas as questões do survey
       const questions = survey.getAllQuestions();
 
