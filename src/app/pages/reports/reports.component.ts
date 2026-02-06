@@ -1119,6 +1119,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             data: '',
             categoria: participantData['category'] || 'N/A',
             avaliado: participantData['name'] || 'N/A',
+            tipo: participantData['type'] || 'avaliado', // 'avaliado' | 'avaliador' para filtrar lista
             dataAvaliacao: resultData['completedAt'] ?
               new Date(resultData['completedAt'].toDate()).toLocaleDateString('pt-BR') : 'N/A',
             isTargetParticipant: isTargetParticipant // Marcar se é o participante alvo
@@ -3585,13 +3586,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return count > 0 ? soma / count : null;
   }
 
-  // Método para obter lista de avaliados disponíveis
+  // Método para obter lista de avaliados disponíveis (apenas participantes tipo 'avaliado')
   getAvaliadosDisponiveis(): string[] {
     const avaliados = new Set<string>();
 
     this.dataSource.forEach(row => {
+      const tipo = (row['tipo'] || '').toLowerCase();
       const avaliado = row['avaliado'];
-      if (avaliado && avaliado.trim()) {
+      // Incluir apenas avaliados (pessoas sendo avaliadas), não avaliadores
+      if (tipo === 'avaliado' && avaliado && avaliado.trim()) {
         avaliados.add(avaliado.trim());
       }
     });
