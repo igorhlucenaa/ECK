@@ -39,6 +39,17 @@ const getTemplateById = async (templateId: string) => {
   return snapshot.data();
 };
 
+/**
+ * Converte URLs em texto (http:// ou https://) em links clicáveis.
+ * Não altera URLs que já estejam dentro de href="..."
+ */
+function linkifyPlainUrls(html: string): string {
+  const urlRegex = /(^|[\s>])(https?:\/\/[^\s<>"']+)/g;
+  return html.replace(urlRegex, (_, before, url) => {
+    return `${before}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+  });
+}
+
 // Função para renderizar o HTML a partir do template
 function renderTemplateToHtml(
   templateContent: any,
@@ -122,6 +133,7 @@ function renderTemplateToHtml(
             );
           }
 
+          headingText = linkifyPlainUrls(headingText);
           html += `<${content.values.headingType} style="${containerStyles} ${headingStyles}">${headingText}</${content.values.headingType}>`;
         } else if (content.type === 'text') {
           const textStyles = `
@@ -188,6 +200,7 @@ function renderTemplateToHtml(
             );
           }
 
+          textContent = linkifyPlainUrls(textContent);
           html += `<div style="${containerStyles} ${textStyles}">${textContent}</div>`;
         } else if (content.type === 'social') {
           const socialStyles = `
