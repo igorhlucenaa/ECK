@@ -131,7 +131,16 @@
             </button>
             <button
               mat-icon-button
+              color="accent"
+              matTooltip="Duplicar template"
+              (click)="duplicateTemplate(template)"
+            >
+              <mat-icon>content_copy</mat-icon>
+            </button>
+            <button
+              mat-icon-button
               color="primary"
+              matTooltip="Editar"
               (click)="editTemplate(template.id, template.isGlobal)"
             >
               <mat-icon>edit</mat-icon>
@@ -139,6 +148,7 @@
             <button
               mat-icon-button
               color="warn"
+              matTooltip="Excluir"
               (click)="deleteTemplate(template.id, template.isGlobal)"
             >
               <mat-icon>delete</mat-icon>

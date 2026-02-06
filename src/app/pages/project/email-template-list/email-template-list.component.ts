@@ -6,8 +6,10 @@ import {
   collection,
   query,
   getDocs,
+  getDoc,
   deleteDoc,
   doc,
+  addDoc,
   where,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
@@ -20,6 +22,10 @@ import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialo
 import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ParticipantsComponent } from '../../assessments/participants/participants.component';
+import {
+  DuplicateTemplateDialogComponent,
+  DuplicateTemplateDialogData,
+} from './duplicate-template-dialog/duplicate-template-dialog.component';
 
 @Component({
   selector: 'app-email-template-list',
@@ -309,6 +315,65 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
           duration: 3000,
         }
       );
+    }
+  }
+
+  getSuggestedDuplicateName(baseName: string): string {
+    const base = (baseName || '').trim();
+    const match = base.match(/^(.+?)\s*\((\d+)\)\s*$/);
+    const nameWithoutSuffix = match ? match[1].trim() : base;
+    const existingNumbers = this.allTemplates
+      .map((t) => t.name)
+      .filter((n) => n && n.startsWith(nameWithoutSuffix))
+      .map((n) => {
+        const m = n.match(/\s*\((\d+)\)\s*$/);
+        return m ? parseInt(m[1], 10) : 1;
+      });
+    const nextNum =
+      existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 2;
+    return `${nameWithoutSuffix} (${nextNum})`;
+  }
+
+  async duplicateTemplate(template: any): Promise<void> {
+    const suggestedName = this.getSuggestedDuplicateName(template.name);
+    const dialogRef = this.dialog.open(DuplicateTemplateDialogComponent, {
+      width: '400px',
+      data: { suggestedName } as DuplicateTemplateDialogData,
+    });
+
+    const newName = await dialogRef.afterClosed().toPromise();
+    if (newName == null || newName === '') return;
+
+    try {
+      const templateRef = doc(this.firestore, 'mailTemplates', template.id);
+      const templateSnap = await getDoc(templateRef);
+      if (!templateSnap.exists()) {
+        this.snackBar.open('Template não encontrado.', 'Fechar', {
+          duration: 3000,
+        });
+        return;
+      }
+
+      const data = templateSnap.data();
+      const templatesCollection = collection(this.firestore, 'mailTemplates');
+      await addDoc(templatesCollection, {
+        name: newName,
+        subject: data?.['subject'] ?? template.subject,
+        content: data?.['content'] ?? template.content,
+        emailType: data?.['emailType'] ?? template.emailType,
+        clientId: data?.['clientId'] ?? template.clientId ?? '',
+        projectId: data?.['projectId'] ?? template.projectId ?? '',
+      });
+
+      this.snackBar.open('Template duplicado com sucesso!', 'Fechar', {
+        duration: 3000,
+      });
+      await this.loadTemplates();
+    } catch (error) {
+      console.error('Erro ao duplicar template:', error);
+      this.snackBar.open('Erro ao duplicar template.', 'Fechar', {
+        duration: 3000,
+      });
     }
   }
 
