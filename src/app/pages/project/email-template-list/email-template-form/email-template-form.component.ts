@@ -201,15 +201,15 @@ export class EmailTemplateFormComponent implements OnInit {
   private async getDefaultTemplateWithLink(emailType: string): Promise<object> {
     let message = '';
 
-    if (
-      emailType === 'conviteAvaliador' ||
-      emailType === 'conviteRespondente'
-    ) {
+    if (emailType === 'conviteAvaliador') {
+      message = `<p>Você foi convidado(a) a avaliar <strong>$%NOME_DO_AVALIADO$%</strong>.</p>
+<p>Aqui está o link da sua avaliação. Por favor, preencha até <strong>*$%DATA DE EXPIRAÇÃO DO PROJETO$%*:</strong></p>`;
+    } else if (emailType === 'conviteRespondente') {
       message = `<p>Aqui está o link da sua avaliação.\n\n\n Por favor, preencha até <strong>*$%DATA DE EXPIRAÇÃO DO PROJETO$%*:</strong></p>`;
-    } else if (
-      emailType === 'lembreteAvaliador' ||
-      emailType === 'lembreteRespondente'
-    ) {
+    } else if (emailType === 'lembreteAvaliador') {
+      message = `<p>Este é um lembrete: ainda precisamos da sua avaliação sobre <strong>$%NOME_DO_AVALIADO$%</strong>.</p>
+<p>Não se esqueça de preenchê-la até <strong>*$%DATA DE EXPIRAÇÃO DO PROJETO$%*!</strong></p>`;
+    } else if (emailType === 'lembreteRespondente') {
       message = `<p>Este é um lembrete da sua avaliação.\n\n\n Não se esqueça de preenchê-la até <strong>*$%DATA DE EXPIRAÇÃO DO PROJETO$%*!</strong></p>`;
     } else if (emailType === 'relatorioFinalizado') {
       message = `<p>Seu relatório foi finalizado!\n\n\n Acesse o relatório clicando no link abaixo:</p>`;

@@ -99,6 +99,13 @@ function renderTemplateToHtml(
             );
           }
 
+          // Substituir nome do avaliado (antes do placeholder genérico)
+          if (replacements.avaliadoName !== undefined) {
+            headingText = headingText.replace(
+              /\$%NOME_DO_AVALIADO\$%/g,
+              replacements.avaliadoName
+            );
+          }
           headingText = headingText.replace(
             /\$%.*?\$%/g,
             replacements.participantName || 'Participante'
@@ -142,6 +149,13 @@ function renderTemplateToHtml(
             );
           }
 
+          // Substituir nome do avaliado (antes do placeholder genérico)
+          if (replacements.avaliadoName !== undefined) {
+            textContent = textContent.replace(
+              /\$%NOME_DO_AVALIADO\$%/g,
+              replacements.avaliadoName
+            );
+          }
           // Substituir tudo entre $% $% pelo nome do participante
           textContent = textContent.replace(
             /\$%.*?\$%/g,
@@ -219,7 +233,7 @@ export const sendEmail = onRequest(
     //   return;
     // }
 
-    const { email, templateId, participantId, assessmentId } = req.body;
+    const { email, templateId, participantId, assessmentId, evaluatedParticipantId } = req.body;
 
     // Validar campos obrigatórios
     if (!email || !templateId || !participantId || !assessmentId) {
@@ -265,6 +279,31 @@ export const sendEmail = onRequest(
       const participantData = participantDoc.data();
       const participantName = participantData?.name || 'Participante';
       const projectId = participantData?.projectId;
+      const participantType = participantData?.type as string | undefined;
+
+      // Resolver nome do avaliado (pessoa que o avaliador vai avaliar) para e-mails ao avaliador
+      let avaliadoName = '';
+      if (evaluatedParticipantId) {
+        const evaluatedRef = admin.firestore().collection('participants').doc(evaluatedParticipantId);
+        const evaluatedSnap = await evaluatedRef.get();
+        if (evaluatedSnap.exists) {
+          avaliadoName = (evaluatedSnap.data()?.name as string) || '';
+        }
+      }
+      if (!avaliadoName && projectId && (participantType === 'avaliador' || participantType === 'Avaliador')) {
+        const participantsSnap = await admin
+          .firestore()
+          .collection('participants')
+          .where('projectId', '==', projectId)
+          .where('type', '==', 'avaliado')
+          .get();
+        const names: string[] = [];
+        participantsSnap.docs.forEach((d) => {
+          const name = d.data()?.name;
+          if (name) names.push(name);
+        });
+        avaliadoName = names.length > 0 ? names.join(', ') : '';
+      }
 
       // Buscar a data limite do projeto
       let projectDeadline: string = '';
@@ -331,10 +370,11 @@ export const sendEmail = onRequest(
           throw new Error('Estrutura do template inválida.');
         }
 
-        // Passar o nome do participante, data limite e o link
+        // Passar o nome do participante, nome do avaliado, data limite e o link
         emailHtml = renderTemplateToHtml(parsedContent, {
           LINK_AVALIACAO: assessmentLink,
           participantName: participantName,
+          avaliadoName: avaliadoName || '—',
           projectDeadline: projectDeadline,
         });
       } catch (err: any) {
