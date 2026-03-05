@@ -1,0 +1,63 @@
+<div class="johari-wrapper">
+  <!-- Título dos eixos -->
+  <div class="y-title"><span>Pontuação média sem autoavaliações</span></div>
+  <div class="x-title">Próprio(a)</div>
+
+  <!-- Área do gráfico -->
+  <div class="plot-area">
+    <!-- Linhas de grade 1..5 -->
+    <div class="grid"></div>
+
+    <!-- Linha de corte vertical -->
+    <div class="threshold-v" [style.left.%]="thresholdPercent"></div>
+    <!-- Linha de corte horizontal (mesmo valor do threshold) -->
+    <div class="threshold-h" [style.top.%]="toPercentY(data.threshold)"></div>
+
+    <!-- Ticks X (1..5) -->
+    <div class="x-ticks">
+      <span *ngFor="let v of [1,2,3,4,5]" [style.left.%]="toPercentX(v)">{{ v }}</span>
+    </div>
+    <!-- Ticks Y (1..5) -->
+    <div class="y-ticks">
+      <span *ngFor="let v of [1,2,3,4,5]" [style.top.%]="toPercentY(v)">{{ v }}</span>
+    </div>
+
+    <!-- Pontos -->
+    <div *ngFor="let p of data.points" class="point" [style.left.%]="toPercentX(p.self)" [style.top.%]="toPercentY(p.others)" [style.background-color]="p.color" [matTooltip]="p.name + ' — ' + analysisLabel(p)">
+      {{ p.label }}
+    </div>
+
+    <!-- Rótulos de quadrantes (opcional) -->
+    <div class="quad-label top-left">Área de desenvolvimento conhecida</div>
+    <div class="quad-label top-right">Ponto cego</div>
+    <div class="quad-label bottom-left">Ponto forte oculto</div>
+    <div class="quad-label bottom-right">Ponto forte conhecido</div>
+  </div>
+
+  <!-- Tabela/legenda -->
+  <div class="legend-table" *ngIf="data.points.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:56px">ID</th>
+          <th>Comportamentos</th>
+          <th>Próprio(a)</th>
+          <th>Outros</th>
+          <th>Análise de defasagem</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of data.points">
+          <td>
+            <span class="chip" [style.background-color]="p.color">{{ p.label }}</span>
+          </td>
+          <td>{{ p.name }}</td>
+          <td>{{ p.self | number:'1.2-2' }}</td>
+          <td>{{ p.others | number:'1.2-2' }}</td>
+          <td>{{ analysisLabel(p) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+

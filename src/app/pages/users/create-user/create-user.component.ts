@@ -32,6 +32,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { updateDoc, doc } from '@angular/fire/firestore';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-create-user',
@@ -45,6 +46,7 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
     MatButtonModule,
     MatSnackBarModule,
     CommonModule,
+    TranslateModule,
   ],
   templateUrl: './create-user.component.html',
   styleUrls: ['./create-user.component.scss'],
@@ -69,7 +71,8 @@ export class CreateUserComponent implements OnInit {
     private auth: Auth,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -114,7 +117,6 @@ export class CreateUserComponent implements OnInit {
   }
 
   private async prefillForm(user: any): Promise<void> {
-    console.log('Usuário para edição:', user);
 
     // Obtém o ID do cliente correspondente ao nome (se necessário)
     const clientId = this.clients.find(
@@ -122,7 +124,6 @@ export class CreateUserComponent implements OnInit {
     )?.id;
 
     if (clientId) {
-      console.log('Carregando dados relacionados ao cliente:', clientId);
 
       // Aguarda o carregamento dos projetos e grupos
       await this.onClientChange(clientId);
@@ -169,14 +170,13 @@ export class CreateUserComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
   }
 
   async onClientChange(clientId: string): Promise<void> {
-    console.log('Cliente selecionado:', clientId);
 
     if (!clientId) {
       console.warn('Nenhum cliente válido selecionado.');
@@ -213,11 +213,9 @@ export class CreateUserComponent implements OnInit {
         name: doc.data()['name'] || 'Sem Nome',
       }));
 
-      console.log('Projetos carregados:', this.projects);
-      console.log('Grupos carregados:', this.groups);
-    } catch (error) {
+                } catch (error) {
       console.error('Erro ao carregar projetos ou grupos:', error);
-      this.snackBar.open('Erro ao carregar projetos ou grupos.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar projetos ou grupos.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -235,13 +233,7 @@ export class CreateUserComponent implements OnInit {
       userRole === 'admin_client' &&
       !['viewer', 'admin_client'].includes(selectedRole)
     ) {
-      this.snackBar.open(
-        'Você não tem permissão para atribuir este papel.',
-        'Fechar',
-        {
-          duration: 3000,
-        }
-      );
+      this.snackBar.open(this.translate.instant('Você não tem permissão para atribuir este papel.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
@@ -274,11 +266,11 @@ export class CreateUserComponent implements OnInit {
             updatedAt: new Date(),
           });
 
-          this.snackBar.open('Usuário atualizado com sucesso!', 'Fechar', {
+          this.snackBar.open(this.translate.instant('Usuário atualizado com sucesso!'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
         } else {
-          this.snackBar.open('Usuário não encontrado.', 'Fechar', {
+          this.snackBar.open(this.translate.instant('Usuário não encontrado.'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
         }
@@ -290,7 +282,7 @@ export class CreateUserComponent implements OnInit {
         );
 
         if (signInMethods.length > 0) {
-          this.snackBar.open('O usuário já existe no sistema!', 'Fechar', {
+          this.snackBar.open(this.translate.instant('O usuário já existe no sistema!'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
         } else {
@@ -307,7 +299,7 @@ export class CreateUserComponent implements OnInit {
             createdAt: new Date(),
           });
 
-          this.snackBar.open('Usuário criado com sucesso!', 'Fechar', {
+          this.snackBar.open(this.translate.instant('Usuário criado com sucesso!'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
         }
@@ -317,13 +309,7 @@ export class CreateUserComponent implements OnInit {
       this.dialogRef.close(true);
     } catch (error) {
       console.error('Erro ao salvar usuário:', error);
-      this.snackBar.open(
-        this.isEditMode
-          ? 'Erro ao atualizar usuário.'
-          : 'Erro ao criar usuário.',
-        'Fechar',
-        { duration: 3000 }
-      );
+      this.snackBar.open(this.translate.instant(this.isEditMode ? 'Erro ao atualizar usuário.' : 'Erro ao criar usuário.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 }

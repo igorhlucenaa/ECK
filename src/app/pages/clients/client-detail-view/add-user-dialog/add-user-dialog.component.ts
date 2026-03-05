@@ -11,11 +11,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule, Location } from '@angular/common';
 import { Auth, createUserWithEmailAndPassword } from '@angular/fire/auth';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-add-user-dialog',
   standalone: true,
-  imports: [ReactiveFormsModule, MaterialModule, CommonModule],
+  imports: [ReactiveFormsModule, MaterialModule, CommonModule, TranslateModule],
   templateUrl: './add-user-dialog.component.html',
   styleUrls: ['./add-user-dialog.component.scss'],
 })
@@ -40,10 +41,10 @@ export class AddUserDialogComponent {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private auth: Auth,
-    private location: Location
+    private location: Location,
+    private translate: TranslateService
   ) {
-    console.log('Client ID recebido:', data.clientId);
-  }
+      }
 
   togglePasswordVisibility() {
     this.passwordVisible = !this.passwordVisible;
@@ -90,17 +91,13 @@ export class AddUserDialogComponent {
         createdAt: new Date(),
       });
 
-      this.snackBar.open('Usuário adicionado com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Usuário adicionado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       this.dialogRef.close(true);
     } catch (error) {
       console.error('Erro ao adicionar usuário:', error);
-      this.snackBar.open(
-        'Erro ao adicionar usuário. Tente novamente mais tarde.',
-        'Fechar',
-        { duration: 3000 }
-      );
+      this.snackBar.open(this.translate.instant('Erro ao adicionar usuário. Tente novamente mais tarde.'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.isSubmitting = false;
     }

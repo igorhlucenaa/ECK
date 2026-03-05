@@ -41,8 +41,7 @@ export class SidebarComponent implements OnInit {
 
       if (clientSnap.exists()) {
         this.logo = clientSnap.data()['logo'] || null;
-        console.log('Logo carregada:', this.logo);
-      }
+              }
     } catch (error) {
       console.error('Erro ao carregar a logo do cliente:', error);
     }

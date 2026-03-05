@@ -40,13 +40,19 @@ export const AssessmentsRoutes: Routes = [
           ),
       },
       {
+        path: ':id/edit',
+        loadComponent: () =>
+          import('./create-assessment/create-assessment.component').then(
+            (m) => m.CreateAssessmentComponent
+          ),
+      },
+      {
         path: 'participants',
         loadComponent: () =>
           import('./participants/participants.component').then(
             (m) => m.ParticipantsComponent
           ),
       },
-      
     ],
   },
 ];

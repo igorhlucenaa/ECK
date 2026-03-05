@@ -1,38 +1,38 @@
 <h2 mat-dialog-title>
-  {{ isEditing ? "Editar Cliente" : "Cadastrar Cliente" }}
+  {{ isEditing ? ('Editar Cliente' | translate) : ('Cadastrar Cliente' | translate) }}
 </h2>
 <mat-dialog-content style="padding-top: 5px;" style="padding-top: 5px">
   <form [formGroup]="form">
     <!-- Nome do Cliente -->
     <mat-form-field appearance="outline" class="w-100">
-      <mat-label>Nome do Cliente</mat-label>
+      <mat-label>{{ 'Nome do Cliente' | translate }}</mat-label>
       <input
         matInput
         formControlName="companyName"
-        placeholder="Digite o nome do cliente"
+        placeholder="{{ 'Digite o nome do cliente' | translate }}"
       />
       <mat-error
         *ngIf="
           form.get('companyName')?.touched && form.get('companyName')?.invalid
         "
       >
-        O nome do cliente é obrigatório.
+        {{ 'O nome do cliente é obrigatório.' | translate }}
       </mat-error>
     </mat-form-field>
 
     <!-- Setor -->
     <mat-form-field appearance="outline" class="w-100">
-      <mat-label>Setor</mat-label>
-      <input matInput formControlName="sector" placeholder="Digite o setor" />
+      <mat-label>{{ 'Setor' | translate }}</mat-label>
+      <input matInput formControlName="sector" placeholder="{{ 'Digite o setor' | translate }}" />
     </mat-form-field>
 
     <!-- CNPJ -->
     <mat-form-field appearance="outline" class="w-100">
-      <mat-label>CNPJ</mat-label>
+      <mat-label>{{ 'CNPJ' | translate }}</mat-label>
       <input
         matInput
         formControlName="cnpj"
-        placeholder="Digite o CNPJ"
+        placeholder="{{ 'Digite o CNPJ' | translate }}"
         [mask]="'00.000.000/0000-00'"
       />
     </mat-form-field>
@@ -59,7 +59,7 @@
     </mat-form-field> -->
 
     <!-- Logo -->
-    <div class="w-100">
+    <!-- <div class="w-100">
       <label for="fileInput">Logo do Cliente</label>
       <input
         id="fileInput"
@@ -75,19 +75,19 @@
         alt="Pré-visualização da Logo"
         class="logo-preview"
       />
-    </div>
+    </div> -->
   </form>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-stroked-button color="warn" (click)="close()">Cancelar</button>
+  <button mat-stroked-button color="warn" (click)="close()">{{ 'Cancelar' | translate }}</button>
   <button
     mat-flat-button
     color="primary"
     [disabled]="isSubmitting || form.invalid"
     (click)="submit()"
   >
-    <span *ngIf="isSubmitting">Salvando...</span>
-    <span *ngIf="!isSubmitting">{{ isEditing ? "Atualizar" : "Salvar" }}</span>
+    <span *ngIf="isSubmitting">{{ 'Salvando...' | translate }}</span>
+    <span *ngIf="!isSubmitting">{{ isEditing ? ('Atualizar' | translate) : ('Salvar' | translate) }}</span>
   </button>
 </mat-dialog-actions>

@@ -14,7 +14,8 @@ import { MaterialModule } from 'src/app/material.module';
 import { BrandingComponent } from '../../vertical/sidebar/branding.component';
 import { NgFor, NgForOf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
- 
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+
 interface notifications {
   id: number;
   img: string;
@@ -44,7 +45,7 @@ interface profiledd {
   templateUrl: './header.component.html',
 })
 export class AppHorizontalHeaderComponent {
-   @Input() showToggle = true;
+  @Input() showToggle = true;
   @Input() toggleChecked = false;
   @Output() toggleMobileNav = new EventEmitter<void>();
   @Output() toggleMobileFilterNav = new EventEmitter<void>();
@@ -53,18 +54,18 @@ export class AppHorizontalHeaderComponent {
   showFiller = false;
 
   public selectedLanguage: any = {
-    language: 'English',
-    code: 'en',
-    type: 'US',
-    icon: '/assets/images/flag/icon-flag-en.svg',
+    language: 'Português',
+    code: 'pt-BR',
+    type: 'PT-BR',
+    icon: '/assets/images/flag/icon-flag-pt-br.jpg',
   };
 
   public languages: any[] = [
     {
-      language: 'English',
-      code: 'en',
-      type: 'US',
-      icon: '/assets/images/flag/icon-flag-en.svg',
+      language: 'Português',
+      code: 'pt-BR',
+      type: 'PT-BR',
+      icon: '/assets/images/flag/icon-flag-pt-br.jpg',
     },
     {
       language: 'Español',
@@ -72,35 +73,44 @@ export class AppHorizontalHeaderComponent {
       icon: '/assets/images/flag/icon-flag-es.svg',
     },
     {
-      language: 'Français',
-      code: 'fr',
-      icon: '/assets/images/flag/icon-flag-fr.svg',
-    },
-    {
-      language: 'German',
-      code: 'de',
-      icon: '/assets/images/flag/icon-flag-de.svg',
+      language: 'English',
+      code: 'en',
+      type: 'US',
+      icon: '/assets/images/flag/icon-flag-en.svg',
     },
   ];
 
   constructor(
     private vsidenav: CoreService,
     public dialog: MatDialog,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private authService: AuthService,
   ) {
-    translate.setDefaultLang('en');
+    translate.setDefaultLang('pt-BR');
+    const storedLang = localStorage.getItem('lang');
+    const current = storedLang || this.translate.currentLang || 'pt-BR';
+    const found = this.languages.find((l) => l.code === current);
+    if (found) {
+      this.selectedLanguage = found;
+      this.translate.use(found.code);
+    }
   }
 
+  logout() {
+    this.authService.logout().then(() => {
+      console.log("logout success")
+    })
+  }
   openDialog() {
     const dialogRef = this.dialog.open(AppHorizontalSearchDialogComponent);
 
     dialogRef.afterClosed().subscribe((result) => {
-      console.log(`Dialog result: ${result}`);
     });
   }
 
   changeLanguage(lang: any): void {
     this.translate.use(lang.code);
+    localStorage.setItem('lang', lang.code);
     this.selectedLanguage = lang;
   }
 

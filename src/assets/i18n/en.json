@@ -1,4 +1,117 @@
 {
+  "Bem Vindo!": "Welcome!",
+  "Dashboard": "Dashboard",
+  "Clientes": "Clients",
+  "Projetos": "Projects",
+  "Participantes": "Participants",
+  "Definições": "Settings",
+  "Pedidos": "Orders",
+  "Usuários e Grupos": "Users & Groups",
+  "Modelos de E-mail": "Email Templates",
+  "Formulários": "Assessments",
+  "Relatórios": "Reports",
+
+  "Projetos Ativos por Cliente": "Active Projects by Client",
+  "Distribuição de projetos ativos entre os clientes": "Distribution of active projects among clients",
+  "Avaliações Cadastradas por Cliente": "Assessments Registered by Client",
+  "Quantidade de avaliações cadastradas por cliente": "Number of assessments registered per client",
+  "Exportar para Excel": "Export to Excel",
+  "Exportar para PDF": "Export to PDF",
+  "Exportar para CSV": "Export to CSV",
+  "Excel": "Excel",
+  "PDF": "PDF",
+  "CSV": "CSV",
+  "Buscar": "Search",
+  "Digite para filtrar...": "Type to filter...",
+  "Selecione uma avaliação": "Select an assessment",
+  "Carregando resultados...": "Loading results...",
+  "Selecione uma avaliação para visualizar os resultados": "Select an assessment to view results",
+  "Total de Respostas": "Total Responses",
+  "Última Resposta": "Last Response",
+  "Taxa de Conclusão": "Completion Rate",
+  "Dados Detalhados": "Detailed Data",
+  "Selecione o avaliado": "Select participant",
+  "Todos os avaliados": "All participants",
+  "Cadastro de Competências": "Competency Registration",
+  "Selecione um cliente e gerencie grupos de competências": "Select a client and manage competency groups",
+  "Cliente": "Client",
+  "Carregar Grupo Existente": "Load Existing Group",
+  "Nome do Novo Grupo": "New Group Name",
+  "Digite um nome para salvar o grupo atual de competências": "Enter a name to save the current competency group",
+  "Salvar Grupo": "Save Group",
+  "Carregar": "Load",
+  "Competências Cadastradas": "Registered Competencies",
+  "Nenhuma competência cadastrada": "No competencies registered",
+  "Comece criando competências para organizar suas perguntas em grupos temáticos.": "Start by creating competencies to organize your questions into thematic groups.",
+  "Configuração de Relatório": "Report Configuration",
+  "Monte seu relatório organizando as seções, personalizando textos e selecionando competências para análise.": "Build your report by organizing sections, customizing texts and selecting competencies for analysis.",
+  "Nome do novo relatório": "New report name",
+  "Templates": "Templates",
+  "Nome do template": "Template name",
+  "Aplicar template": "Apply template",
+  "Exportar base (Excel)": "Export base (Excel)",
+  "Exportar DOCX": "Export DOCX",
+  "Sem dados para exportar.": "No data to export.",
+  "Sem respostas válidas para exportar.": "No valid responses to export.",
+  "Base exportada com sucesso!": "Base exported successfully!",
+  "Fechar": "Close",
+  "Selecione a avaliação": "Select the assessment",
+  "Nenhuma avaliação encontrada": "No assessments found",
+  "Selecione um avaliado específico para visualizar dados individuais": "Select a specific participant to view individual data",
+  "Limpar seleção de avaliado": "Clear participant selection",
+  "Debug Tabela Detalhada": "Debug Detailed Table",
+  "Debug Gráficos": "Debug Charts",
+  "As competências são agrupamentos de perguntas que representam habilidades específicas a serem avaliadas.": "Competencies are groups of questions that represent specific skills to be evaluated.",
+  "Gerenciamento de Grupos de Competências": "Competency Group Management",
+  "Selecione o cliente para associar as competências": "Select the client to associate competencies",
+
+  "Salvar grupo atual": "Save current group",
+  "Carregar grupo selecionado": "Load selected group",
+  "Nome da competência": "Competency name",
+
+  "Descrição detalhada": "Detailed description",
+  "Ex: Capacidade de liderar equipes, tomar decisões estratégicas e influenciar positivamente os colaboradores": "E.g.: Ability to lead teams, make strategic decisions and positively influence collaborators",
+
+  "Questões vinculadas": "Linked questions",
+  "Questões já utilizadas em outras competências são desabilitadas.": "Questions already used in other competencies are disabled.",
+  "Salvar Alterações": "Save Changes",
+  "Adicionar Competência": "Add Competency",
+  "Editar competência": "Edit competency",
+  "Remover competência": "Remove competency",
+  "Salvar configuração atual": "Save current configuration",
+  "Carregar relatório salvo": "Load saved report",
+  "Carregar configuração": "Load configuration",
+  "Salvar como template": "Save as template",
+  "Salvar alterações no template": "Save template changes",
+  "Tabela Detalhada": "Detailed Table",
+  "Gráfico de Defasagem": "Gap Chart",
+  "Janela de Johari": "Johari Window",
+  "Arraste para reordenar": "Drag to reorder",
+
+  "Resumo de Competências": "Competency Summary",
+  "Tabela de Frequência": "Frequency Table",
+  "Tabela de Distribuição": "Distribution Table",
+  "Destaques": "Highlights",
+  "Título da seção": "Section title",
+  "Este título aparecerá no relatório final": "This title will appear in the final report",
+  "Dica para Capa:": "Tip for Cover:",
+  "Aplicar Template": "Apply Template",
+  "Use o editor de texto rico para criar uma capa profissional. Você pode adicionar títulos, subtítulos, imagens, cores e formatação para destacar informações importantes. Clique em \"Aplicar Template\" para usar um modelo pré-formatado.": "Use the rich text editor to create a professional cover. You can add titles, subtitles, images, colors and formatting to highlight important information. Click \"Apply Template\" to use a preformatted template.",
+  "Dica para Introdução:": "Tip for Introduction:",
+  "Crie uma introdução atrativa usando formatação rica. Adicione títulos, listas, destaques e imagens para explicar o propósito e contexto do relatório. Clique em \"Aplicar Template\" para usar um modelo pré-formatado.": "Create an engaging introduction using rich formatting. Add titles, lists, highlights and images to explain the purpose and context of the report. Click \"Apply Template\" to use a preformatted template.",
+  "Competências para os gráficos": "Competencies for the charts",
+  "Selecione as competências que devem aparecer nesta seção de gráficos.": "Select the competencies to appear in this charts section.",
+  "Tipo de gráfico": "Chart type",
+  "Gráfico de Barras Comparativo:": "Comparative Bar Chart:",
+  "Cada categoria terá uma cor distinta para melhor visualização.": "Each category will have a distinct color for better visualization.",
+  "A paleta \"Categorias Distintas\" é recomendada para este tipo de gráfico.": "The \"Distinct Categories\" palette is recommended for this chart type.",
+  "Paleta de cores": "Color palette",
+  "Escolha uma paleta pré-definida ou personalize": "Choose a predefined palette or customize",
+  "Debug das cores": "Color debug",
+  "Cores personalizadas:": "Custom colors:",
+  "Adicionar cor": "Add color",
+  "Remover cor": "Remove color",
+  "Clique nas cores para editá-las. Adicione pelo menos 3 cores para melhores resultados.": "Click the colors to edit them. Add at least 3 colors for best results.",
   "Dashboard 1": "Dashboard 1",
   "Dashboard 2": "Dashboard 2",
   "Chat": "Chat",
@@ -97,5 +210,296 @@
   "Menu Level": "Menu Level",
   "Menu 1": "Menu 1",
   "Menu 2": "Menu 2",
-  "Disabled": "Disabled"
+  "Disabled": "Disabled",
+  "Lista de Projetos": "Project List",
+  "Adicionar Projeto": "Add Project",
+  "Digite para buscar": "Type to search",
+  "Nome": "Name",
+  "Prazo de Preenchimento": "Completion Deadline",
+  "Respostas": "Responses",
+  "Faltam": "Pending",
+  "Ações": "Actions",
+  "Usuários do projeto": "Project users",
+  "Modelos de e-mail": "Email templates",
+  "Formulário de Avaliação": "Assessment Form",
+  "Editar Projeto": "Edit Project",
+  "Excluir Projeto": "Delete Project",
+  "Voltar": "Back",
+  "Formulários de Avaliação": "Assessment Forms",
+  "Criar Novo Formulário de Avaliação": "Create New Assessment Form",
+  "Buscar por Nome": "Search by Name",
+  "Digite o nome da avaliação": "Type the assessment name",
+  "Nome do Formulário": "Form Name",
+  "Criado Por": "Created By",
+  "Data de Criação": "Creation Date",
+  "Respondidos": "Responded",
+  "Pré-visualizar": "Preview",
+  "Editar": "Edit",
+  "Excluir": "Delete",
+  "Selecionar Destinatários": "Select Recipients",
+  "Buscar Participante": "Search Participant",
+  "Filtrar por Categoria": "Filter by Category",
+  "Todos": "All",
+  "Gestor": "Manager",
+  "Par": "Peer",
+  "Subordinado": "Subordinate",
+  "Avaliado": "Evaluatee",
+  "Outros": "Others",
+  "Filtrar por Status": "Filter by Status",
+  "Não Enviado": "Not Sent",
+  "Enviado (Pendente)": "Sent (Pending)",
+  "Respondido": "Responded",
+  "Filtrar por Status de Entrega": "Filter by Delivery Status",
+  "Enviado": "Sent",
+  "Não Entregue": "Not Delivered",
+  "Selecione o Projeto": "Select Project",
+  "expira em": "expires on",
+  "Tipo de E-mail": "Email Type",
+  "Cadastro do Usuário": "User Registration",
+  "Convite - Avaliador": "Invite - Evaluator",
+  "Convite - Avaliado": "Invite - Evaluatee",
+  "Lembrete - Avaliador": "Reminder - Evaluator",
+  "Lembrete - Avaliado": "Reminder - Evaluatee",
+
+  "E-mail": "Email",
+  "Categoria": "Category",
+  "Status": "Status",
+  "Link Expirado": "Link Expired",
+  "Data de Validade": "Validity Date",
+
+  "Enviar E-mails": "Send Emails",
+  "Carregando participantes...": "Loading participants...",
+  "Data de Envio": "Sent At",
+  "Data de Resposta": "Answered At",
+  "Relatório": "Report",
+
+  "Enviando...": "Sending...",
+
+  "Baixar Planilha de Modelo": "Download Template Spreadsheet",
+  "Carregar Arquivo Excel": "Upload Excel File",
+  "Adicionar Novo Participante": "Add New Participant",
+  "Buscar por Nome ou E-mail": "Search by Name or Email",
+  "Selecione o Cliente": "Select Client",
+  "Selecione um Modelo de e-mail": "Select an Email Template",
+  "Por favor, selecione um template.": "Please select a template.",
+  "Selecione um Formulário de Avaliação": "Select an Assessment Form",
+  "Por favor, selecione uma avaliação.": "Please select an assessment.",
+  "Nenhum participante encontrado.": "No participants found.",
+  "Enviar Links": "Send Links",
+  "grupos salvos": "saved groups",
+  "Carregue um grupo de competências salvo": "Load a saved competency group",
+  "Selecione as questões": "Select questions",
+  "Criar Nova Pergunta": "Create New Question",
+  "Filtro de Tipos de Perguntas": "Question Type Filter",
+  "Incluir perguntas abertas (texto livre)": "Include open-ended questions (free text)",
+  "Nome que aparecerá nos relatórios e gráficos": "Name that will appear in reports and charts",
+  "Descrição que aparecerá como subtítulo nos relatórios": "Description that will appear as a subtitle in reports",
+
+  "Debug Perguntas": "Debug Questions",
+  "Debug Tipos": "Debug Types",
+  "Digite um nome para o grupo de competências.": "Enter a name for the competency group.",
+  "Selecione um cliente primeiro.": "Select a client first.",
+  "Erro ao carregar grupo de competências.": "Error loading competency group.",
+  "Editar Competência": "Edit Competency",
+  "Nova Competência": "New Competency",
+  "Novo Grupo de Competências": "New Competency Group",
+  "Criar como Grupo": "Create as Group",
+  "Nome da Competência": "Competency Name",
+  "O nome é obrigatório": "Name is required",
+  "O nome deve ter pelo menos 3 caracteres": "Name must be at least 3 characters",
+  "Descrição": "Description",
+  "Descreva o que esta competência avalia...": "Describe what this competency evaluates...",
+  "A descrição é obrigatória": "Description is required",
+  "Avaliação (opcional)": "Assessment (optional)",
+  "Nenhuma": "None",
+  "Competências do Grupo": "Group Competencies",
+  "Relacionar Perguntas às Competências": "Relate Questions to Competencies",
+  "Selecione as perguntas de avaliação que pertencem a cada competência.": "Select the assessment questions that belong to each competency.",
+  "Perguntas desta competência": "Questions for this competency",
+  "Criar Perguntas para cada Competência": "Create Questions for each Competency",
+  "Sem avaliação vinculada, você pode criar perguntas agora para cada competência do grupo.": "Without a linked assessment, you can create questions now for each group competency.",
+  "Pergunta": "Question",
+  "Nenhuma pergunta adicionada.": "No questions added.",
+  "Perguntas da Competência": "Competency Questions",
+  "Adicionar pergunta": "Add question",
+  "Tipo": "Type",
+  "Pergunta obrigatória": "Required question",
+  "Remover pergunta": "Remove question",
+  "Opções de Resposta": "Answer Options",
+  "Opção": "Option",
+  "Digite a opção...": "Type the option...",
+  "A opção é obrigatória": "Option is required",
+  "Adicionar Opção": "Add Option",
+  "Preview": "Preview",
+  "Obrigatória": "Required",
+  "Discordo Totalmente": "Strongly Disagree",
+  "Concordo Totalmente": "Strongly Agree",
+  "Opção...": "Option...",
+  "Resposta em texto...": "Text answer...",
+  "Digite um número...": "Type a number...",
+  "Atualizar": "Update",
+  "Criar": "Create",
+  "Criar Grupo": "Create Group",
+  "Erro ao salvar competência": "Error saving competency",
+  "Por favor, preencha todos os campos obrigatórios": "Please fill in all required fields",
+  "Relatório individual para {{name}} carregado. ({{self}} auto-avaliação, {{total}} total de participantes na avaliação)": "Individual report for {{name}} loaded. ({{self}} self-assessment, {{total}} total participants in the assessment)",
+  "Selecione ao menos um destinatário.": "Select at least one recipient.",
+  "Selecione um projeto.": "Select a project.",
+  "E-mail enviado para {{name}}": "Email sent to {{name}}",
+  "Erro ao enviar e-mails ou atualizar documentos.": "Error sending emails or updating documents.",
+  "Não definida": "Not set",
+  "Tem certeza de que deseja excluir este projeto?": "Are you sure you want to delete this project?",
+  "Projeto excluído com sucesso.": "Project deleted successfully.",
+  "Erro ao excluir projeto. Tente novamente mais tarde.": "Error deleting project. Please try again later.",
+  "Cliente não identificado. Contate o suporte.": "Client not identified. Contact support.",
+  "Reenviar Link para Respondentes": "Resend Link to Respondents",
+  "Escolha um Modelo de e-mail": "Choose an Email Template",
+  "Reenviar Links": "Resend Links",
+  "Nenhuma avaliação associada a este projeto.": "No assessment associated with this project.",
+  "Erro ao carregar participantes.": "Error loading participants.",
+  "Nenhum clientId fornecido.": "No clientId provided.",
+  "Nenhum template encontrado para este cliente.": "No template found for this client.",
+  "Erro ao carregar Modelos de e-mail.": "Error loading email templates.",
+  "Template selecionado não encontrado.": "Selected template not found.",
+  "Links enviados para {{count}} respondentes!": "Links sent to {{count}} respondents!",
+  "Erro ao enviar links.": "Error sending links.",
+  "Lista de Participantes": "Participants List",
+  "Filtrar por Tipo": "Filter by Type",
+  "Avaliador": "Evaluator",
+
+  "Excluir Participante": "Delete Participant",
+  "Tem certeza que deseja excluir este participante?": "Are you sure you want to delete this participant?",
+  "Participante excluído com sucesso.": "Participant deleted successfully.",
+  "Erro ao excluir participante.": "Error deleting participant.",
+  "Nenhum participante válido encontrado.": "No valid participants found.",
+  "Gerar Relatório PDF": "Generate PDF Report",
+  "Gerando Relatório...": "Generating Report...",
+  "Informações do Participante": "Participant Information",
+  "Selecione o Template de Relatório": "Select the Report Template",
+  "Template de Relatório": "Report Template",
+  "templates disponíveis": "templates available",
+  "seções configuradas": "configured sections",
+  "Selecione as Competências": "Select Competencies",
+  "Competências": "Competencies",
+  "competências disponíveis.": "competencies available.",
+  "selecionadas.": "selected.",
+  "Resumo da Configuração": "Configuration Summary",
+  "Template": "Template",
+  "competências": "competencies",
+  "questões": "questions",
+  "questões total": "total questions",
+  "Projeto não encontrado.": "Project not found.",
+  "Erro ao carregar questionários.": "Error loading questionnaires.",
+  "Questionário excluído com sucesso!": "Questionnaire deleted successfully!",
+  "Erro ao excluir questionário.": "Error deleting questionnaire.",
+  "Projeto não identificado.": "Project not identified.",
+
+  "Tem certeza de que deseja excluir esta avaliação?": "Are you sure you want to delete this assessment?"
+  ,"Users": "Users"
+  ,"Add User": "Add User"
+  ,"Search User": "Search User"
+  ,"Type the name": "Type the name"
+  ,"Type the surname": "Type the surname"
+  ,"Type the email": "Type the email"
+  ,"Last Name": "Last Name"
+  ,"View Clients": "View Clients"
+  ,"No Clients": "No Clients"
+  ,"Projects": "Projects"
+  ,"View Projects": "View Projects"
+  ,"No projects": "No projects"
+  ,"Groups": "Groups"
+  ,"View Groups": "View Groups"
+  ,"No groups": "No groups"
+  ,"Role": "Role"
+  ,"Notification Status": "Notification Status"
+  ,"Delete User": "Delete User"
+  ,"Send Email": "Send Email"
+  ,"User Groups": "User Groups"
+  ,"Add User Group": "Add User Group"
+  ,"Search Group": "Search Group"
+  ,"Created by": "Created by"
+  ,"Delete Group": "Delete Group"
+  ,"Are you sure you want to delete the group \"{{name}}\"?": "Are you sure you want to delete the group \"{{name}}\"?"
+  ,"Group deleted successfully!": "Group deleted successfully!"
+  ,"Error deleting group.": "Error deleting group."
+  ,"Are you sure you want to delete the user \"{{name}}\"?": "Are you sure you want to delete the user \"{{name}}\"?"
+  ,"User deleted successfully!": "User deleted successfully!"
+  ,"Error deleting user.": "Error deleting user."
+  ,"Email sent to {{email}}": "Email sent to {{email}}"
+  ,"Error loading data.": "Error loading data."
+  ,"Error loading users.": "Error loading users."
+  ,"Error loading user groups.": "Error loading user groups."
+
+  ,"Edit User": "Edit User"
+  ,"Create New User": "Create New User"
+  ,"Email is required.": "Email is required."
+  ,"Save Changes": "Save Changes"
+  ,"Create User": "Create User"
+  ,"You do not have permission to assign this role.": "You do not have permission to assign this role."
+  ,"User updated successfully!": "User updated successfully!"
+  ,"User not found.": "User not found."
+  ,"User already exists in the system!": "User already exists in the system!"
+  ,"User created successfully!": "User created successfully!"
+  ,"Error updating user.": "Error updating user."
+  ,"Error creating user.": "Error creating user."
+  ,"Error loading projects or groups.": "Error loading projects or groups."
+
+  ,"Edit User Group": "Edit User Group"
+  ,"Create New User Group": "Create New User Group"
+  ,"Client is required.": "Client is required."
+  ,"Group Name": "Group Name"
+  ,"Type the group name": "Type the group name"
+  ,"Group name is required.": "Group name is required."
+  ,"Describe the group": "Describe the group"
+
+  ,"Client List": "Client List"
+  ,"Add Client": "Add Client"
+  ,"Client Name": "Client Name"
+  ,"Type the client name": "Type the client name"
+  ,"Client name is required.": "Client name is required."
+  ,"Sector": "Sector"
+  ,"Type the sector": "Type the sector"
+  ,"CNPJ": "CNPJ"
+  ,"Type the CNPJ": "Type the CNPJ"
+  ,"Remaining Credits": "Remaining Credits"
+  ,"Client updated successfully!": "Client updated successfully!"
+  ,"Client registered with ID {{id}}!": "Client registered with ID {{id}}!"
+  ,"Error saving client. Please try again.": "Error saving client. Please try again."
+  ,"Register Client": "Register Client"
+  ,"Edit Client": "Edit Client"
+  ,"Save": "Save"
+  ,"Update": "Update"
+  ,"Saving...": "Saving..."
+  ,"Client Details": "Client Details"
+  ,"Trade Name": "Trade Name"
+  ,"Email (field)": "Email"
+  ,"Phone": "Phone"
+  ,"Additional Notes": "Additional Notes"
+  ,"Representative Data": "Representative Data"
+  ,"Representative Name": "Representative Name"
+  ,"Representative Email": "Representative Email"
+  ,"Representative Role": "Representative Role"
+  ,"Client Users": "Client Users"
+  ,"Loading client details...": "Loading client details..."
+  ,"Confirmation": "Confirmation"
+  ,"Confirm": "Confirm"
+  ,"Client list updated!": "Client list updated!"
+  ,"By removing the client, all associated projects, groups, and users will also be deleted. Do you want to continue?": "By removing the client, all associated projects, groups, and users will also be deleted. Do you want to continue?"
+  ,"Client and related data deleted successfully.": "Client and related data deleted successfully."
+  ,"Error deleting client. Check related data and try again.": "Error deleting client. Check related data and try again."
+  ,"Client not found.": "Client not found."
+  ,"Error loading client data.": "Error loading client data."
+  ,"Error saving changes.": "Error saving changes."
+  ,"User added successfully!": "User added successfully!"
+  ,"Error adding user. Please try again later.": "Error adding user. Please try again later."
+  ,"Back": "Back"
+  ,"Password": "Password"
+  ,"Type the password": "Type the password"
+  ,"Hide password": "Hide password"
+  ,"Reveal password": "Reveal password"
+  ,"Generate random password": "Generate random password"
+  ,"Password is required.": "Password is required."
+  ,"Password must be at least 6 characters long.": "Password must be at least 6 characters long."
+  ,"Administrator": "Administrator"
+  ,"User": "User"
 }

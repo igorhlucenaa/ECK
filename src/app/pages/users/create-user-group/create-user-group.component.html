@@ -1,11 +1,11 @@
 <div mat-dialog-title>
-  {{ isEditMode ? "Editar Grupo de Usuários" : "Criar Novo Grupo de Usuários" }}
+  {{ isEditMode ? ('Editar Grupo de Usuários' | translate) : ('Criar Novo Grupo de Usuários' | translate) }}
 </div>
 <div mat-dialog-content style="padding-top: 5px">
   <form [formGroup]="groupForm" (ngSubmit)="saveGroup()">
     <!-- Cliente -->
     <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>Cliente</mat-label>
+      <mat-label>{{ 'Cliente' | translate }}</mat-label>
       <mat-select
         formControlName="clientId"
         (selectionChange)="onClientChange()"
@@ -15,26 +15,26 @@
         </mat-option>
       </mat-select>
       <mat-error *ngIf="groupForm.get('clientId')?.hasError('required')">
-        O cliente é obrigatório.
+        {{ 'O cliente é obrigatório.' | translate }}
       </mat-error>
     </mat-form-field>
 
     <!-- Nome do Grupo -->
     <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>Nome do Grupo</mat-label>
+      <mat-label>{{ 'Nome do Grupo' | translate }}</mat-label>
       <input
         matInput
         formControlName="name"
-        placeholder="Digite o nome do grupo"
+        placeholder="{{ 'Digite o nome do grupo' | translate }}"
       />
       <mat-error *ngIf="groupForm.get('name')?.hasError('required')">
-        O nome do grupo é obrigatório.
+        {{ 'O nome do grupo é obrigatório.' | translate }}
       </mat-error>
     </mat-form-field>
 
     <!-- Usuários -->
     <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>Usuários</mat-label>
+      <mat-label>{{ 'Usuários' | translate }}</mat-label>
       <mat-select
         formControlName="userIds"
         multiple
@@ -48,12 +48,12 @@
 
     <!-- Descrição do Grupo -->
     <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>Descrição</mat-label>
+      <mat-label>{{ 'Descrição' | translate }}</mat-label>
       <textarea
         matInput
         formControlName="description"
         rows="3"
-        placeholder="Descreva o grupo"
+        placeholder="{{ 'Descreva o grupo' | translate }}"
       ></textarea>
     </mat-form-field>
 
@@ -69,13 +69,13 @@
   </form>
 </div>
 <div mat-dialog-actions align="end">
-  <button mat-button mat-dialog-close>Cancelar</button>
+  <button mat-button mat-dialog-close>{{ 'Cancelar' | translate }}</button>
   <button
     mat-flat-button
     color="primary"
     [disabled]="groupForm.invalid"
     (click)="saveGroup()"
   >
-    {{ isEditMode ? "Salvar Alterações" : "Criar Grupo" }}
+    {{ isEditMode ? ('Salvar Alterações' | translate) : ('Criar Grupo' | translate) }}
   </button>
 </div>

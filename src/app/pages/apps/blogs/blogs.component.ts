@@ -22,6 +22,5 @@ export class AppBlogsComponent implements OnInit {
     this.router.navigate(['apps/blog/detail', title]);
   }
   ngOnInit(): void {
-    console.log('Blog posts loaded:', this.posts);
-  }
+      }
 }

@@ -297,8 +297,7 @@ export class CreditOrdersComponent implements OnInit {
       this.dataSource.data = this.dataSource.data.map((order) =>
         order.id === orderId ? { ...order, status: 'Rejeitado' } : order
       );
-      console.log(orderId);
-
+      
       this.snackBar.open('Pedido rejeitado com sucesso!', 'Fechar', {
         duration: 3000,
       });

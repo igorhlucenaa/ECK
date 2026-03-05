@@ -3,7 +3,7 @@
     <div class="col-12">
       <button mat-button (click)="goBack()" class="mb-3">
         <mat-icon>arrow_back</mat-icon>
-        Voltar
+        {{ 'Voltar' | translate }}
       </button>
     </div>
   </div>
@@ -11,18 +11,18 @@
   <div class="row mb-4">
     <div class="col-12">
       <mat-card>
-        <mat-card-title class="p-3">Detalhes do Cliente</mat-card-title>
+        <mat-card-title class="p-3">{{ 'Detalhes do Cliente' | translate }}</mat-card-title>
         <mat-card-content>
           <div *ngIf="client" class="d-flex flex-column gap-2">
             <h3 class="client-p">{{ client.companyName }}</h3>
-            <p class="client-p"><strong>E-mail:</strong> {{ client.email }}</p>
-            <p class="client-p"><strong>Setor:</strong> {{ client.sector }}</p>
+            <p class="client-p"><strong>{{ 'E-mail' | translate }}:</strong> {{ client.email }}</p>
+            <p class="client-p"><strong>{{ 'Setor' | translate }}:</strong> {{ client.sector }}</p>
             <p class="client-p">
-              <strong>Telefone:</strong> {{ client.phone | phone }}
+              <strong>{{ 'Telefone' | translate }}:</strong> {{ client.phone | phone }}
             </p>
           </div>
           <div *ngIf="!client">
-            <p>Carregando detalhes do cliente...</p>
+            <p>{{ 'Carregando detalhes do cliente...' | translate }}</p>
           </div>
         </mat-card-content>
       </mat-card>
@@ -33,7 +33,7 @@
   <div class="row">
     <div class="col-12">
       <mat-card>
-        <mat-card-title class="p-3">Usuários do Cliente</mat-card-title>
+        <mat-card-title class="p-3">{{ 'Usuários do Cliente' | translate }}</mat-card-title>
         <mat-card-content>
           <div class="table-responsive">
             <table
@@ -43,19 +43,19 @@
             >
               <!-- Coluna: Nome -->
               <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef>Nome</th>
+                <th mat-header-cell *matHeaderCellDef>{{ 'Nome' | translate }}</th>
                 <td mat-cell *matCellDef="let user">{{ user.name }}</td>
               </ng-container>
 
               <!-- Coluna: E-mail -->
               <ng-container matColumnDef="email">
-                <th mat-header-cell *matHeaderCellDef>E-mail</th>
+                <th mat-header-cell *matHeaderCellDef>{{ 'E-mail' | translate }}</th>
                 <td mat-cell *matCellDef="let user">{{ user.email }}</td>
               </ng-container>
 
               <!-- Coluna: Role -->
               <ng-container matColumnDef="role">
-                <th mat-header-cell *matHeaderCellDef>Role</th>
+                <th mat-header-cell *matHeaderCellDef>{{ 'Papel' | translate }}</th>
                 <td mat-cell *matCellDef="let user">{{ user.role }}</td>
               </ng-container>
 
@@ -88,7 +88,7 @@
 
               <!-- Coluna: Ações -->
               <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef>Ações</th>
+                <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
                 <td mat-cell *matCellDef="let user">
                   <button
                     mat-icon-button
@@ -111,7 +111,7 @@
               color="primary"
               (click)="openAddUserDialog()"
             >
-              Adicionar Usuário
+              {{ 'Adicionar Usuário' | translate }}
             </button>
           </div>
         </mat-card-content>

@@ -22,6 +22,7 @@ import {
   NgApexchartsModule,
 } from 'ng-apexcharts';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule } from '@ngx-translate/core';
 
 export interface AssessmentsChart {
   series: ApexAxisChartSeries;
@@ -40,7 +41,7 @@ export interface AssessmentsChart {
 @Component({
   selector: 'app-newsletter-campaign2',
   standalone: true,
-  imports: [NgApexchartsModule, MaterialModule, CommonModule],
+  imports: [NgApexchartsModule, MaterialModule, CommonModule, TranslateModule],
   templateUrl: './newsletter-campaign2.component.html',
 })
 export class AppNewsletterCampaign2Component implements OnChanges {
@@ -69,8 +70,6 @@ export class AppNewsletterCampaign2Component implements OnChanges {
     const clientNames = this.creditUsageData.map((data) => data.client);
     const assessmentsCounts = this.creditUsageData.map((data) => data.used);
 
-    console.log('Clientes:', clientNames);
-    console.log('Avaliações cadastradas:', assessmentsCounts);
 
     this.assessmentsChart = {
       series: [

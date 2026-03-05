@@ -48,7 +48,10 @@
               "node_modules/tinymce/skins/content/default/content.min.css",
               "node_modules/grapesjs/dist/css/grapes.min.css",
               "node_modules/survey-core/defaultV2.css",
-              "node_modules/survey-creator-core/survey-creator-core.css"
+              "node_modules/survey-creator-core/survey-creator-core.css",
+              "node_modules/tabulator-tables/dist/css/tabulator.min.css",
+              "node_modules/survey-analytics/survey.analytics.min.css",
+              "node_modules/survey-analytics/survey.analytics.tabulator.min.css"
             ],
             "scripts": [
               "node_modules/tinymce/tinymce.min.js"
@@ -56,6 +59,12 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/enviroments/environment.ts",
+                  "with": "src/enviroments/environment.prod.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",

@@ -21,9 +21,23 @@
         <mat-form-field class="w-100">
           <mat-label>Tipo de Notificação</mat-label>
           <mat-select formControlName="emailType">
-            <mat-option value="convite">Convite</mat-option>
-            <mat-option value="lembrete">Lembrete</mat-option>
             <mat-option value="cadastro">Cadastro do Usuário</mat-option>
+            <mat-option value="conviteAvaliador"
+              >Convite - Avaliador</mat-option
+            >
+            <mat-option value="conviteRespondente"
+              >Convite - Avaliado</mat-option
+            >
+            <mat-option value="lembreteAvaliador"
+              >Lembrete - Avaliador</mat-option
+            >
+            <mat-option value="lembreteRespondente"
+              >Lembrete - Avaliado</mat-option
+            >
+            <mat-option value="relatorioFinalizado"
+              >Relatório Finalizado</mat-option
+            >
+            <!-- Nova opção -->
           </mat-select>
         </mat-form-field>
 
@@ -32,8 +46,11 @@
           <input matInput formControlName="subject" />
         </mat-form-field>
 
-        <!-- Campo de Cliente (apenas admin_master pode ver) -->
-        <mat-form-field class="w-100" *ngIf="userRole === 'admin_master'">
+        <!-- Campo de Cliente (apenas admin_master ou preenchido automaticamente) -->
+        <mat-form-field
+          class="w-100"
+          *ngIf="userRole === 'admin_master' && !clientIdFromRoute"
+        >
           <mat-label>Cliente</mat-label>
           <mat-select formControlName="clientId">
             <mat-option value="">TEMPLATE PADRÃO</mat-option>
@@ -42,27 +59,132 @@
             </mat-option>
           </mat-select>
         </mat-form-field>
-      </mat-card-content>
 
-      <!-- Para admin_client, o clientId já está preenchido e oculto -->
-      <input
-        type="hidden"
-        formControlName="clientId"
-        *ngIf="userRole === 'admin_client'"
-      />
+        <!-- Para admin_client ou clientId da rota, exibir como texto ou hidden -->
+        <div
+          *ngIf="!clientIdFromRoute || userRole === 'admin_client'"
+          class="w-100"
+        >
+          <p>
+            <strong>Cliente:</strong>
+            {{ clientNameFromRoute || "Não identificado" }}
+          </p>
+          <input
+            type="hidden"
+            formControlName="clientId"
+            [value]="clientIdFromRoute || userClientId"
+          />
+        </div>
+
+        <!-- Exibir apenas clientName se vier da rota -->
+        <div *ngIf="clientIdFromRoute && !projectIdFromRoute" class="w-100">
+          <p>
+            <strong>Cliente:</strong>
+            {{ clientNameFromRoute || "Não identificado" }}
+          </p>
+        </div>
+      </mat-card-content>
     </mat-card>
 
     <!-- Editor Unlayer -->
     <div class="col-12">
       <email-editor
-        [options]="{ locale: 'pt-BR' }"
-        (loaded)="editorLoaded()"
+        [options]="{ locale: 'pt' }"
         (ready)="onEditorReady()"
       ></email-editor>
     </div>
 
+    <!-- Legenda de Variáveis Dinâmicas -->
+    <mat-card class="mt-3">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon style="vertical-align: middle; margin-right: 8px;">info</mat-icon>
+          Variáveis Dinâmicas Disponíveis
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p style="margin-bottom: 12px; color: #666;">
+          Use as seguintes variáveis no texto do template para preenchimento automático:
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <mat-icon style="color: #1976d2; margin-top: 4px;">person</mat-icon>
+            <div>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                $%Nome do usuário preenchido dinâmicamente$%
+              </strong>
+              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+                Será substituído automaticamente pelo nome do participante (quem recebe o e-mail) ao enviar.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <mat-icon style="color: #1976d2; margin-top: 4px;">badge</mat-icon>
+            <div>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                $%NOME_DO_AVALIADO$%
+              </strong>
+              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+                (E-mail ao avaliador) Será substituído pelo nome de quem está sendo avaliado na respectiva avaliação.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <mat-icon style="color: #1976d2; margin-top: 4px;">event</mat-icon>
+            <div>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                $%DATA DE EXPIRAÇÃO DO PROJETO$%
+              </strong>
+              <span style="color: #666; font-size: 13px;"> ou </span>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                *$%DATA DE EXPIRAÇÃO DO PROJETO$%*
+              </strong>
+              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+                Será substituído automaticamente pela data limite do projeto (formato: DD/MM/YYYY).
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <mat-icon style="color: #1976d2; margin-top: 4px;">link</mat-icon>
+            <div>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                [LINK_AVALIACAO]
+              </strong>
+              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+                Será substituído automaticamente pelo link da avaliação ao enviar o e-mail.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <mat-icon style="color: #1976d2; margin-top: 4px;">description</mat-icon>
+            <div>
+              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
+                [LINK_RELATORIO]
+              </strong>
+              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+                Será substituído automaticamente pelo link do relatório (apenas para templates do tipo "Relatório Finalizado").
+              </p>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: start; gap: 12px; margin-top: 12px;">
+          <mat-icon style="color: #1976d2; margin-top: 4px;">link</mat-icon>
+          <div>
+            <strong style="color: #1976d2; font-size: 14px;">Links no texto</strong>
+            <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
+              Qualquer endereço que comece com http:// ou https:// (digitado ou colado) será enviado no e-mail como link clicável automaticamente.
+            </p>
+          </div>
+        </div>
+        <mat-divider style="margin: 16px 0;"></mat-divider>
+        <p style="margin: 0; color: #ff9800; font-size: 12px;">
+          <mat-icon style="vertical-align: middle; font-size: 16px; height: 16px; width: 16px;">warning</mat-icon>
+          <strong>Importante:</strong> Digite exatamente como mostrado acima, incluindo os símbolos $% e colchetes [].
+        </p>
+      </mat-card-content>
+    </mat-card>
+
     <div class="text-end mt-3">
-      <!-- <button mat-button (click)="goBack()">Voltar para Templates</button> -->
       <button mat-flat-button color="primary" (click)="saveTemplate()">
         {{ isEditMode ? "Salvar Alterações" : "Criar Template" }}
       </button>

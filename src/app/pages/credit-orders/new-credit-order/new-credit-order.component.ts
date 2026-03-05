@@ -102,37 +102,31 @@ export class NewCreditOrderComponent implements OnInit {
       const userRole = await this.authService.getCurrentUserRole();
       const clientId = await this.authService.getCurrentClientId();
 
-      console.log('Role do usuário:', userRole);
-      console.log('Client ID do usuário:', clientId);
-
+            
       const clientsCollection = collection(this.firestore, 'clients');
       let clientsSnapshot;
 
       if (userRole === 'admin_client' && clientId) {
-        console.log('Filtrando clientes para admin_client');
-        // Filtra pelo ID do documento
+                // Filtra pelo ID do documento
         clientsSnapshot = await getDocs(
           query(clientsCollection, where('__name__', '==', clientId))
         );
       } else if (userRole === 'admin_master') {
-        console.log('Carregando todos os clientes para admin_master');
-        clientsSnapshot = await getDocs(clientsCollection);
+                clientsSnapshot = await getDocs(clientsCollection);
       } else {
         console.warn('Usuário não tem permissão para acessar clientes.');
         this.clients = [];
         return;
       }
 
-      console.log('Clientes retornados:', clientsSnapshot.docs);
-
+      
       // Mapeia os clientes para o formulário
       this.clients = clientsSnapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['companyName'] || 'Cliente sem nome',
       }));
 
-      console.log('Lista de clientes carregados:', this.clients);
-    } catch (error) {
+          } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
         duration: 3000,

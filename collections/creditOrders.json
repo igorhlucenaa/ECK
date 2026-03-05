@@ -1,0 +1,122 @@
+[
+  {
+    "id": "4CBLdwOCthF3DNRE9icG",
+    "startDate": {
+      "seconds": 1741748400,
+      "nanoseconds": 0
+    },
+    "notes": "",
+    "credits": 55,
+    "validityDate": {
+      "seconds": 1743130800,
+      "nanoseconds": 0
+    },
+    "clientId": "tUI8j26jKwjaBQbnEzoB",
+    "remainingCredits": 0,
+    "status": "Expirado",
+    "createdAt": {
+      "seconds": 1741633646,
+      "nanoseconds": 357000000
+    }
+  },
+  {
+    "id": "QN9BrTI6Pib5Vh3Tpato",
+    "credits": 100,
+    "notes": "teste",
+    "clientId": "5QQGnqIRSzHtuxDp6O8W",
+    "validityDate": {
+      "seconds": 1739415600,
+      "nanoseconds": 0
+    },
+    "remainingCredits": 0,
+    "createdAt": {
+      "seconds": 1739372065,
+      "nanoseconds": 592000000
+    },
+    "startDate": {
+      "seconds": 1739329200,
+      "nanoseconds": 0
+    },
+    "status": "Expirado"
+  },
+  {
+    "id": "VAXS2mqBXDV6RsSBcFAe",
+    "createdAt": {
+      "seconds": 1739381983,
+      "nanoseconds": 942000000
+    },
+    "startDate": {
+      "seconds": 1739329200,
+      "nanoseconds": 0
+    },
+    "remainingCredits": 0,
+    "credits": 10,
+    "notes": "",
+    "validityDate": {
+      "seconds": 1739502000,
+      "nanoseconds": 0
+    },
+    "clientId": "c4JTESEHNyHgR1Jxj1u6",
+    "status": "Expirado"
+  },
+  {
+    "id": "ZYx5gtox8fpz6AGE5KoM",
+    "remainingCredits": 25,
+    "credits": 25,
+    "validityDate": {
+      "seconds": 1773111600,
+      "nanoseconds": 0
+    },
+    "status": "Aprovado",
+    "startDate": {
+      "seconds": 1741575600,
+      "nanoseconds": 0
+    },
+    "notes": "",
+    "createdAt": {
+      "seconds": 1741633625,
+      "nanoseconds": 28000000
+    },
+    "clientId": "Olqs7Li4JxDffNn73jjc"
+  },
+  {
+    "id": "kPX6aN9AxzdcIhYaeNcL",
+    "status": "Expirado",
+    "notes": "",
+    "startDate": {
+      "seconds": 1741316400,
+      "nanoseconds": 0
+    },
+    "remainingCredits": 0,
+    "validityDate": {
+      "seconds": 1741921200,
+      "nanoseconds": 0
+    },
+    "createdAt": {
+      "seconds": 1741374513,
+      "nanoseconds": 262000000
+    },
+    "credits": 10,
+    "clientId": "q1GDknN98CwZS25EBnfc"
+  },
+  {
+    "id": "wnefmToOWSmYKTFFKD3v",
+    "remainingCredits": 0,
+    "credits": 10,
+    "clientId": "q1GDknN98CwZS25EBnfc",
+    "status": "Expirado",
+    "notes": "",
+    "validityDate": {
+      "seconds": 1742439600,
+      "nanoseconds": 0
+    },
+    "startDate": {
+      "seconds": 1742180400,
+      "nanoseconds": 0
+    },
+    "createdAt": {
+      "seconds": 1742225692,
+      "nanoseconds": 459000000
+    }
+  }
+]

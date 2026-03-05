@@ -1,0 +1,124 @@
+.johari-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  margin: 12px auto 24px auto;
+}
+
+.y-title {
+  position: absolute;
+  left: -12px;
+  top: 40px;
+  bottom: 180px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: #424242;
+  font-size: 12px;
+}
+
+.x-title {
+  text-align: center;
+  color: #424242;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.plot-area {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1; /* quadrado */
+  background: #fafafa;
+  border: 1px solid #ddd;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: calc(100%/4) 100%, 100% calc(100%/4);
+}
+
+.threshold-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #757575;
+}
+
+.threshold-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #757575;
+}
+
+.x-ticks span,
+.y-ticks span {
+  position: absolute;
+  color: #616161;
+  font-size: 11px;
+}
+
+.x-ticks span { bottom: -18px; transform: translateX(-50%); }
+.y-ticks span { left: -18px; transform: translateY(50%); }
+
+.point {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.legend-table {
+  margin-top: 24px;
+}
+
+.legend-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.legend-table th, .legend-table td {
+  border: 1px solid #e0e0e0;
+  padding: 8px 10px;
+}
+
+.legend-table thead th {
+  background: #f5f5f5;
+  font-weight: 600;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
+.quad-label {
+  position: absolute;
+  color: #757575;
+  font-size: 12px;
+}
+
+.top-left { left: 6px; top: 6px; }
+.top-right { right: 6px; top: 6px; }
+.bottom-left { left: 6px; bottom: 6px; }
+.bottom-right { right: 6px; bottom: 6px; }
+

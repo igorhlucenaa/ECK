@@ -6,6 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { AppSettings } from 'src/app/config';
+import { TranslateService } from '@ngx-translate/core';
 import { CoreService } from 'src/app/services/core.service';
 import { BrandingComponent } from '../../vertical/sidebar/branding.component';
 import { TablerIconsModule } from 'angular-tabler-icons';
@@ -36,14 +37,14 @@ export class CustomizerComponent {
   @Output() optionsChange = new EventEmitter<AppSettings>();
   hideSingleSelectionIndicator = signal(true);
 
-  constructor(private settings: CoreService) { }
+  constructor(private settings: CoreService, private translate: TranslateService) { }
   setDark() {
     this.settings.setOptions({ theme: 'dark' });
     this.emitOptions();
   }
 
   setColor(color: string) {
-    console.log(color)
+
     this.settings.setOptions({ activeTheme: color });
     this.emitOptions();
   }
@@ -60,6 +61,11 @@ export class CustomizerComponent {
 
   private emitOptions() {
     this.optionsChange.emit(this.options);
+  }
+
+  setLang(lang: 'pt-BR' | 'es' | 'en') {
+    this.translate.use(lang);
+    localStorage.setItem('lang', lang);
   }
 }
 

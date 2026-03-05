@@ -1,0 +1,11 @@
+<div *ngIf="!alreadyCompleted">
+  <div id="surveyContainer"></div>
+  <div *ngIf="surveyCompleted" style="text-align: center; margin-top: 20px">
+    <p>Obrigado por completar a avaliação!</p>
+  </div>
+</div>
+<div *ngIf="alreadyCompleted" style="text-align: center; margin-top: 20px">
+  <p style="font-weight: bold; font-size: 30px">
+    Esta avaliação já foi concluída. Obrigado pela sua participação!
+  </p>
+</div>

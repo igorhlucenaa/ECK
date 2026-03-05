@@ -206,8 +206,7 @@ export class ProjectUsersComponent implements OnInit {
 
 //   ngOnInit(): void {
 //     this.projectId = this.route.snapshot.paramMap.get('id');
-//     console.log(this.projectId);
-//     if (this.projectId) {
+//     //     if (this.projectId) {
 //       this.loadGroupsWithUsers();
 //     }
 //     this.setupFilter(); // Configurar o filtro
@@ -323,8 +322,7 @@ export class ProjectUsersComponent implements OnInit {
 //   }
 
 //   openUsersModal(group: any): void {
-//     console.log(group);
-//     this.dialog.open(UsersListByGroupComponent, {
+//     //     this.dialog.open(UsersListByGroupComponent, {
 //       width: '800px', // Define a largura do modal
 //       data: {
 //         groupName: group.name,
