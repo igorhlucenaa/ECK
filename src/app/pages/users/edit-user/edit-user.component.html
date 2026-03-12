@@ -1,1 +1,15 @@
-<p>edit-user works!</p>
+<div class="container my-4">
+  <div class="row" style="margin-bottom: 10px">
+    <div class="col-12">
+      <button mat-button (click)="goBack()" class="mb-3">
+        <mat-icon>arrow_back</mat-icon>
+        {{ 'Voltar' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading" class="text-center py-5">
+    <mat-spinner diameter="50" style="margin: 0 auto 16px;"></mat-spinner>
+    <p>{{ 'Carregando formulário de edição...' | translate }}</p>
+  </div>
+</div>

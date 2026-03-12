@@ -1,0 +1,81 @@
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: auto;
+}
+
+.tour-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  pointer-events: none; /* O highlight usa box-shadow para o cutout; o overlay pai captura cliques */
+}
+
+.tour-highlight {
+  position: fixed;
+  border: 3px solid var(--primary-color, #1976d2);
+  border-radius: 8px;
+  /* Box-shadow cria o "cutout" - a sombra escurece o resto da tela */
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tour-card {
+  position: fixed;
+  z-index: 2;
+  max-width: 420px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  margin: 16px;
+}
+
+mat-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.tour-description {
+  margin: 0 0 16px 0;
+  line-height: 1.6;
+  font-size: 15px;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.tour-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 16px 16px !important;
+}
+
+.tour-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tour-progress-text {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.tour-progress-bar {
+  height: 4px !important;
+}
+
+.tour-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tour-nav {
+  display: flex;
+  gap: 8px;
+}

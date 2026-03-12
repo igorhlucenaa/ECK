@@ -28,6 +28,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TranslateModule } from '@ngx-translate/core';
 
 export interface Order {
   id: string;
@@ -61,6 +62,7 @@ export interface Order {
     MatNativeDateModule,
     RouterModule,
     FormsModule,
+    TranslateModule,
   ],
   templateUrl: './credit-orders.component.html',
   styleUrls: ['./credit-orders.component.scss'],

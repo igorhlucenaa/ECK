@@ -1,9 +1,9 @@
 <div class="container my-4">
   <mat-card>
-    <mat-card-title class="mb-4" style="margin: 10px">
+    <mat-card-title class="mb-4" style="margin: 10px" data-tour="customization-header">
       Personalização do Cliente
     </mat-card-title>
-    <mat-card-content>
+    <mat-card-content data-tour="customization-form">
       <form [formGroup]="customizationForm" (ngSubmit)="saveCustomization()">
         <!-- Nome -->
         <div class="form-group">
