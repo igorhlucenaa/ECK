@@ -1,5 +1,5 @@
 <div class="container my-4">
-  <mat-tab-group>
+  <mat-tab-group data-tour="users-tabs">
     <mat-tab label="{{ 'Usuários' | translate }}">
       <!-- Tabela de Usuários -->
       <mat-card>
@@ -9,6 +9,7 @@
           <div
             class="mt-3 text-end"
             style="margin-top: 10px; margin-bottom: 10px; text-align: end"
+            data-tour="users-add"
           >
             <button
               mat-flat-button
@@ -26,7 +27,7 @@
               placeholder="{{ 'Digite para buscar' | translate }}"
             />
           </mat-form-field>
-          <div class="table-responsive">
+          <div class="table-responsive" data-tour="users-table">
             <table
               mat-table
               [dataSource]="userDataSource"

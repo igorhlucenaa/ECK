@@ -138,6 +138,7 @@
       <div
         class="table-responsive"
         [hidden]="isTableLoading || dataSource.data.length === 0"
+        data-tour="participants-table"
       >
         <table
           mat-table
@@ -275,9 +276,9 @@
   </ng-container>
 
   <ng-template #defaultMode>
-    <h2>Lista de Participantes</h2>
+    <h2 data-tour="participants-header">Lista de Participantes</h2>
 
-    <div class="d-flex justify-content-between mb-3">
+    <div class="d-flex justify-content-between mb-3" data-tour="participants-add">
       <div>
         <button
           mat-raised-button
@@ -310,7 +311,7 @@
     </div>
 
     <div class="row mb-4" style="margin-top: 40px">
-      <div class="col-md-12">
+      <div class="col-md-12" data-tour="participants-search">
         <mat-form-field class="w-100" appearance="outline">
           <mat-label>Buscar por Nome ou E-mail</mat-label>
           <input

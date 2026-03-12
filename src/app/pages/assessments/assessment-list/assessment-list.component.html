@@ -11,14 +11,14 @@
 
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>{{ 'Formulários de Avaliação' | translate }}</h2>
-    <button mat-flat-button color="primary" (click)="createNewAssessment()">
+    <button mat-flat-button color="primary" (click)="createNewAssessment()" data-tour="assessments-create">
       <mat-icon>add</mat-icon>
       {{ 'Criar Novo Formulário de Avaliação' | translate }}
     </button>
   </div>
 
   <!-- Campos de Busca -->
-  <div class="d-flex gap-3 mb-3">
+  <div class="d-flex gap-3 mb-3" data-tour="assessments-search">
     <!-- Campo de Busca por Texto (somente nome) -->
     <mat-form-field class="w-100" appearance="outline">
       <mat-label>{{ 'Buscar por Nome' | translate }}</mat-label>
@@ -40,7 +40,7 @@
   </div>
 
   <!-- Tabela de Avaliações -->
-  <div class="table-responsive">
+  <div class="table-responsive" data-tour="assessments-table">
     <table
       mat-table
       [dataSource]="dataSource"

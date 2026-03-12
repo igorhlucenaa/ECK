@@ -15,6 +15,7 @@ import { BrandingComponent } from '../../vertical/sidebar/branding.component';
 import { NgFor, NgForOf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TourService } from 'src/app/services/tour/tour.service';
 
 interface notifications {
   id: number;
@@ -85,6 +86,7 @@ export class AppHorizontalHeaderComponent {
     public dialog: MatDialog,
     private translate: TranslateService,
     private authService: AuthService,
+    public tourService: TourService,
   ) {
     translate.setDefaultLang('pt-BR');
     const storedLang = localStorage.getItem('lang');
@@ -112,6 +114,10 @@ export class AppHorizontalHeaderComponent {
     this.translate.use(lang.code);
     localStorage.setItem('lang', lang.code);
     this.selectedLanguage = lang;
+  }
+
+  startPageTour(): void {
+    this.tourService.replayTour();
   }
 
   notifications: notifications[] = [

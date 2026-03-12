@@ -1,14 +1,14 @@
 <div class="container my-4">
-  <h1>{{ 'Lista de Clientes' | translate }}</h1>
+  <h1 data-tour="clients-header">{{ 'Lista de Clientes' | translate }}</h1>
   <!-- Campo de Busca -->
 
   <div class="row">
-    <div class="col-12" style="text-align: end; margin-bottom: 10px">
+    <div class="col-12" style="text-align: end; margin-bottom: 10px" data-tour="clients-add">
       <button mat-flat-button color="primary" (click)="openAddClientDialog()">
         {{ 'Adicionar Cliente' | translate }}
       </button>
     </div>
-    <div class="col-12">
+    <div class="col-12" data-tour="clients-search">
       <mat-form-field
         appearance="outline"
         class="search-field"
@@ -33,6 +33,7 @@
   </div>
 
   <!-- Tabela -->
+  <div data-tour="clients-table">
   <table
     mat-table
     [dataSource]="dataSource"
@@ -75,7 +76,7 @@
 
     <!-- Coluna: Ações -->
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
+      <th mat-header-cell *matHeaderCellDef data-tour="clients-actions">{{ 'Ações' | translate }}</th>
       <td mat-cell *matCellDef="let client" class="text-center">
         <button
           mat-icon-button
@@ -94,6 +95,7 @@
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let client; columns: displayedColumns"></tr>
   </table>
+  </div>
 
   <!-- Paginação -->
   <mat-paginator

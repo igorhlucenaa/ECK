@@ -1,7 +1,7 @@
 <div class="container my-4">
   <mat-card>
-    <mat-card-title style="margin: 10px">Novo Pedido de Crédito</mat-card-title>
-    <mat-card-content>
+    <mat-card-title style="margin: 10px" data-tour="new-order-header">Novo Pedido de Crédito</mat-card-title>
+    <mat-card-content data-tour="new-order-form">
       <form [formGroup]="orderForm" (ngSubmit)="createOrder()">
         <!-- Seleção de Cliente -->
         <mat-form-field appearance="outline" class="w-100 mb-3">

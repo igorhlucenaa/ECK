@@ -38,6 +38,7 @@
     "chance": "^1.1.12",
     "date-fns": "^2.29.3",
     "docx": "^9.5.1",
+    "driver.js": "^1.4.0",
     "echarts": "^5.5.0",
     "echarts-gl": "^2.0.9",
     "echarts-stat": "^1.2.0",

@@ -5,11 +5,14 @@ import { Auth, User } from '@angular/fire/auth';
 import { AuthService } from './services/apps/authentication/auth.service';
 import { filter } from 'rxjs/operators';
 import { GlobalLoadingComponent } from './components/global-loading/global-loading.component';
+import { TourOverlayComponent } from './components/tour-overlay/tour-overlay.component';
+import { TourService } from './services/tour/tour.service';
+import { AsyncPipe } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, GlobalLoadingComponent],
+  imports: [RouterOutlet, GlobalLoadingComponent, TourOverlayComponent, AsyncPipe],
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnInit {
@@ -17,7 +20,8 @@ export class AppComponent implements OnInit {
     private auth: Auth,
     private router: Router,
     private authService: AuthService,
-    private translate: TranslateService
+    private translate: TranslateService,
+    public tourService: TourService
   ) {}
 
   ngOnInit(): void {
