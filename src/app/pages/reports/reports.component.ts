@@ -44,6 +44,7 @@ import { GapChartComponent, GapChartDataItem } from './charts/gap-chart/gap-char
 import { ReportBuilderVisualComponent } from './report-builder-visual/report-builder-visual.component';
 import { SurveyDashboardComponent } from './survey-dashboard/survey-dashboard.component';
 import { Subject, from, of, takeUntil, tap, debounceTime, switchMap } from 'rxjs';
+import { environment } from 'src/enviroments/environment';
 
 interface AssessmentOption {
   id: string;
@@ -84,7 +85,7 @@ interface TabelaCompetencia {
 // Modelo de dados para seções dinâmicas do relatório
 export interface RelatorioSecao {
   id: string;
-  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari';
+  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari' | 'perguntas_abertas';
   titulo?: string;
   texto?: string;
   visivel: boolean;
@@ -154,6 +155,8 @@ interface TabelaAvaliacoesAltas {
 export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Habilite para logs detalhados (impacta performance). Mantenha false em produção.
   private debugMode = false;
+  /** Exibe botões de debug apenas em desenvolvimento */
+  readonly showDebugButtons = !environment.production;
   // Cache de participantes para evitar múltiplas idas ao Firestore
   private participantsCache: Map<string, any> = new Map<string, any>();
 
@@ -2229,7 +2232,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Adiciona uma nova seção customizada ao relatório
   addSecaoCustomizada(
-    tipo: 'texto' | 'graficos' | 'tabela' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari',
+    tipo: 'texto' | 'graficos' | 'tabela' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari' | 'perguntas_abertas',
     indice?: number
   ) {
     const novaSecao: RelatorioSecao = {
@@ -2268,6 +2271,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'janela_johari':
         novaSecao.titulo = 'Janela de Johari';
         novaSecao.competenciasIds = [];
+        break;
+      case 'perguntas_abertas':
+        novaSecao.titulo = 'Perguntas Abertas';
+        novaSecao.texto = '<p>Respostas qualitativas dos participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer.</p>';
         break;
     }
 
@@ -2334,6 +2341,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'destaques': return '#FFCA28';
       case 'custom': return '#8D6E63';
       case 'texto': return '#78909C';
+      case 'perguntas_abertas': return '#5C6BC0';
       default: return '#BDBDBD';
     }
   }
@@ -2350,6 +2358,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'destaques': return 'Pontos de Destaque';
       case 'custom': return 'Customizado';
       case 'texto': return 'Bloco de Texto';
+      case 'perguntas_abertas': return 'Perguntas Abertas';
       default: return 'Desconhecido';
     }
   }
@@ -3365,6 +3374,45 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       'Outros': 'O'
     };
     return abreviacoes[categoria] || categoria.charAt(0).toUpperCase();
+  }
+
+  // Ordem das categorias para exibição nas perguntas abertas
+  private readonly CATEGORIAS_ORDEM = ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
+
+  /**
+   * Retorna dados das perguntas abertas (texto livre) agrupadas por categoria de participante.
+   * Inclui as perguntas: continuar, parar e começar a fazer - respondidas por todos (avaliado e avaliadores).
+   */
+  getPerguntasAbertasData(): { perguntaId: string; perguntaTitulo: string; respostasPorCategoria: { [categoria: string]: string[] } }[] {
+    if (!this.allQuestions?.length || !this.dataSource?.length) return [];
+
+    const openTypes = ['text', 'comment', 'multipletext'];
+    const perguntasAbertas = this.allQuestions.filter((q: any) => openTypes.includes(q.type));
+
+    return perguntasAbertas.map((q: any) => {
+      const perguntaId = q.id;
+      const perguntaTitulo = this.questionMap[perguntaId] || q.title || perguntaId;
+      const respostasPorCategoria: { [categoria: string]: string[] } = {};
+
+      this.dataSource.forEach((row: any) => {
+        const valor = row[perguntaId];
+        if (valor == null) return;
+        const texto = typeof valor === 'string' ? valor.trim() : String(valor).trim();
+        if (!texto) return;
+
+        const categoria = this.mapCategoriaToGrupo(row.categoria || '');
+        if (!respostasPorCategoria[categoria]) respostasPorCategoria[categoria] = [];
+        respostasPorCategoria[categoria].push(texto);
+      });
+
+      return { perguntaId, perguntaTitulo, respostasPorCategoria };
+    }).filter(item => Object.keys(item.respostasPorCategoria).length > 0);
+  }
+
+  /** Retorna as categorias ordenadas para exibição */
+  getCategoriasOrdenadas(respostasPorCategoria: { [categoria: string]: string[] }): string[] {
+    const keys = Object.keys(respostasPorCategoria);
+    return this.CATEGORIAS_ORDEM.filter(c => keys.includes(c)).concat(keys.filter(k => !this.CATEGORIAS_ORDEM.includes(k)));
   }
 
   // Método de teste simples para verificar dados

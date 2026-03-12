@@ -26,7 +26,7 @@ interface Competencia {
 
 interface RelatorioSecao {
   id: string;
-  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari';
+  tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari' | 'perguntas_abertas';
   titulo?: string;
   texto?: string;
   visivel: boolean;
@@ -61,6 +61,8 @@ interface ReportData {
   getColorSchemeParaSecao: (secao: RelatorioSecao) => { domain: string[] };
   getDadosPerguntaDefasagem?: (perguntaId: string) => { selfScore: number | null; othersScore: number | null; gap: number | null } | null;
   mapCategoriaToGrupo?: (categoria: string) => string;
+  getPerguntasAbertasData?: () => { perguntaId: string; perguntaTitulo: string; respostasPorCategoria: { [categoria: string]: string[] } }[];
+  getCategoriasOrdenadas?: (respostasPorCategoria: { [categoria: string]: string[] }) => string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -169,6 +171,9 @@ export class ReportPdfMakeService {
 
       case 'janela_johari':
         return await this.buildJohariWindow(data, secao);
+
+      case 'perguntas_abertas':
+        return this.buildPerguntasAbertas(data, secao);
 
       case 'texto':
       case 'custom':
@@ -825,6 +830,39 @@ export class ReportPdfMakeService {
       { text: secao.titulo || 'Janela de Johari', style: 'sectionTitle', pageBreak: 'before' },
       { image: johariImage, width: 500, alignment: 'center', margin: [0, 10, 0, 20] }
     ];
+  }
+
+  /**
+   * Constrói seção de perguntas abertas (continuar, parar, começar a fazer)
+   */
+  private buildPerguntasAbertas(data: ReportData, secao: RelatorioSecao): any[] {
+    const getData = data.getPerguntasAbertasData;
+    const getCategorias = data.getCategoriasOrdenadas;
+    if (!getData || !getCategorias) return [];
+
+    const items = getData();
+    if (items.length === 0) return [];
+
+    const content: any[] = [
+      { text: secao.titulo || 'Perguntas Abertas', style: 'sectionTitle', pageBreak: 'before' },
+      ...(secao.texto ? [{ text: secao.texto, style: 'bodyText', margin: [0, 0, 0, 15] }] : [])
+    ];
+
+    for (const item of items) {
+      content.push({ text: item.perguntaTitulo, style: 'subsectionTitle', margin: [0, 15, 0, 8] });
+      const categorias = getCategorias(item.respostasPorCategoria);
+      for (const cat of categorias) {
+        const respostas = item.respostasPorCategoria[cat] || [];
+        if (respostas.length === 0) continue;
+        content.push({ text: cat, fontSize: 11, bold: true, margin: [0, 8, 0, 4] });
+        content.push({
+          ul: respostas.map((r: string) => ({ text: r, fontSize: 10 })),
+          margin: [15, 0, 0, 8]
+        });
+      }
+    }
+
+    return content;
   }
 
   /**
@@ -1491,7 +1529,11 @@ export class ReportPdfMakeService {
       getDadosPerguntaDefasagem: component.getDadosPerguntaDefasagem ?
         (perguntaId: string) => component.getDadosPerguntaDefasagem(perguntaId) : undefined,
       mapCategoriaToGrupo: component.mapCategoriaToGrupo ?
-        (categoria: string) => component.mapCategoriaToGrupo(categoria) : undefined
+        (categoria: string) => component.mapCategoriaToGrupo(categoria) : undefined,
+      getPerguntasAbertasData: component.getPerguntasAbertasData ?
+        () => component.getPerguntasAbertasData() : () => [],
+      getCategoriasOrdenadas: component.getCategoriasOrdenadas ?
+        (r: { [c: string]: string[] }) => component.getCategoriasOrdenadas(r) : () => []
     };
   }
 

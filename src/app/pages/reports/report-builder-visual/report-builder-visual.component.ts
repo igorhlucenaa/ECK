@@ -16,7 +16,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 
 // Interface local para evitar dependência circular
-type RelatorioSecaoTipo = 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari';
+type RelatorioSecaoTipo = 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari' | 'perguntas_abertas';
 
 interface SectionTemplate {
   id: string;
@@ -192,6 +192,15 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
       icone: 'text_fields',
       cor: '#9E9E9E',
       categoria: 'basico'
+    },
+    {
+      id: 'perguntas-abertas',
+      tipo: 'perguntas_abertas',
+      nome: 'Perguntas Abertas',
+      descricao: 'Respostas às perguntas: continuar, parar e começar a fazer',
+      icone: 'forum',
+      cor: '#5C6BC0',
+      categoria: 'analise'
     }
   ];
 

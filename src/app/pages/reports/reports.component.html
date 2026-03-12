@@ -287,16 +287,18 @@
               </button>
               <button mat-button type="button" (click)="cancelarEdicaoCompetencia()" *ngIf="competenciaEditando.id">
                 <mat-icon>cancel</mat-icon>
-                Cancelar
+                {{ 'Cancelar' | translate }}
               </button>
-              <button mat-button type="button" (click)="debugPerguntas()" color="accent">
-                <mat-icon>bug_report</mat-icon>
-                Debug Perguntas
-              </button>
-              <button mat-button type="button" (click)="debugTiposPerguntas()" color="primary">
-                <mat-icon>analytics</mat-icon>
-                Debug Tipos
-              </button>
+              @if (showDebugButtons) {
+                <button mat-button type="button" (click)="debugPerguntas()" color="accent">
+                  <mat-icon>bug_report</mat-icon>
+                  Debug Perguntas
+                </button>
+                <button mat-button type="button" (click)="debugTiposPerguntas()" color="primary">
+                  <mat-icon>analytics</mat-icon>
+                  Debug Tipos
+                </button>
+              }
             </div>
           </form>
         </mat-card-content>
@@ -473,6 +475,9 @@
           <mat-chip-option (click)="addSecaoCustomizada('janela_johari')">
             <mat-icon>view_quilt</mat-icon> {{ 'Janela de Johari' | translate }}
           </mat-chip-option>
+          <mat-chip-option (click)="addSecaoCustomizada('perguntas_abertas')">
+            <mat-icon>forum</mat-icon> {{ 'Perguntas Abertas' | translate }}
+          </mat-chip-option>
         </mat-chip-listbox>
       </div>
 
@@ -524,6 +529,7 @@
                       <mat-option value="destaques">{{ 'Destaques' | translate }}</mat-option>
                       <mat-option value="texto">Texto Livre</mat-option>
                       <mat-option value="grafico_defasagem">{{ 'Gráfico de Defasagem' | translate }}</mat-option>
+                      <mat-option value="perguntas_abertas">{{ 'Perguntas Abertas' | translate }}</mat-option>
                     </mat-select>
                   </mat-form-field>
                   <button mat-icon-button color="accent" (click)="addSecaoCustomizadaAbaixo(i, secaoCtrl.get('tipo')?.value)" matTooltip="Adicionar seção abaixo">
@@ -645,13 +651,14 @@
                         </div>
                       </div>
 
-                      <!-- Botão de debug -->
-                      <button mat-stroked-button color="accent"
-                              (click)="debugCores(relatorioConfiguracao[i], i)"
-                              style="height: 36px; font-size: 11px;"
-                              matTooltip="{{ 'Debug das cores' | translate }}">
-                        Debug
-                      </button>
+                      @if (showDebugButtons) {
+                        <button mat-stroked-button color="accent"
+                                (click)="debugCores(relatorioConfiguracao[i], i)"
+                                style="height: 36px; font-size: 11px;"
+                                matTooltip="{{ 'Debug das cores' | translate }}">
+                          Debug
+                        </button>
+                      }
                     </div>
 
                     <!-- Cores personalizadas (apenas se paleta personalizada estiver selecionada) -->
@@ -681,6 +688,19 @@
                 </mat-card>
               </div>
 
+              <div *ngIf="isSecaoTipo(secaoCtrl, 'perguntas_abertas')">
+                <mat-card style="margin-top: 16px; padding: 16px; background-color: #e8eaf6;">
+                  <mat-card-content>
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                      <mat-icon style="color: #5C6BC0; margin-right: 8px;">forum</mat-icon>
+                      <span style="font-weight: 500;">{{ 'Perguntas Abertas' | translate }}</span>
+                    </div>
+                    <p style="margin: 0; font-size: 14px; color: #555;">
+                      {{ 'Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado, Gestor, Par, Subordinado, Outros).' | translate }}
+                    </p>
+                  </mat-card-content>
+                </mat-card>
+              </div>
               <div *ngIf="isSecaoTipo(secaoCtrl, 'janela_johari')">
                 <mat-card style="margin-top: 16px; padding: 16px; background-color: #e3f2fd;">
                   <mat-card-content>
@@ -1059,10 +1079,11 @@
             <h2>{{ secao.titulo }}</h2>
             <div [innerHTML]="secao.texto"></div>
 
-            <!-- DEBUG: Botão temporário para debugar tabela detalhada -->
-            <button mat-raised-button color="warn" (click)="debugTabelaDetalhada()" style="margin-bottom: 16px;">
-              🔍 Debug Tabela Detalhada
-            </button>
+            @if (showDebugButtons) {
+              <button mat-raised-button color="warn" (click)="debugTabelaDetalhada()" style="margin-bottom: 16px;">
+                🔍 Debug Tabela Detalhada
+              </button>
+            }
 
             <!-- Seleção de competências para tabela detalhada -->
             <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0">
@@ -1288,6 +1309,30 @@
               <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
                 <mat-icon style="font-size: 48px; width: 48px; height: 48px;">waterfall_chart</mat-icon>
                 <p>Selecione uma ou mais competências para gerar o gráfico.</p>
+              </div>
+            </ng-template>
+          </div>
+          <div *ngSwitchCase="'perguntas_abertas'">
+            <h2>{{ secao.titulo }}</h2>
+            <div [innerHTML]="secao.texto"></div>
+
+            <div *ngIf="getPerguntasAbertasData().length > 0; else noPerguntasAbertas" style="margin-top: 20px;">
+              <h3 style="margin-bottom: 16px; color: #5C6BC0; font-size: 16px;">{{ 'Perguntas abertas:' | translate }}</h3>
+              <div *ngFor="let item of getPerguntasAbertasData()" style="margin-bottom: 28px;">
+                <h4 style="margin-bottom: 12px; font-weight: 600; color: #333;">{{ item.perguntaTitulo }}</h4>
+                <div *ngFor="let categoria of getCategoriasOrdenadas(item.respostasPorCategoria)" style="margin-bottom: 12px;">
+                  <div style="font-weight: 500; color: #5C6BC0; margin-bottom: 6px; font-size: 14px;">{{ categoria }}</div>
+                  <ul style="margin: 0; padding-left: 20px; color: #555;">
+                    <li *ngFor="let resposta of item.respostasPorCategoria[categoria]" style="margin-bottom: 4px;">{{ resposta }}</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <ng-template #noPerguntasAbertas>
+              <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
+                <mat-icon style="font-size: 48px; width: 48px; height: 48px;">forum</mat-icon>
+                <p>{{ 'Nenhuma pergunta aberta com respostas encontrada. Certifique-se de que o formulário possui perguntas de texto livre (continuar, parar, começar a fazer) e que os participantes responderam.' | translate }}</p>
               </div>
             </ng-template>
           </div>

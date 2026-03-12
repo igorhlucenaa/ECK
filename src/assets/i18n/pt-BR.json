@@ -271,6 +271,10 @@
   ,"Cancelar": "Cancelar"
   ,"Debug Perguntas": "Debug Perguntas"
   ,"Debug Tipos": "Debug Tipos"
+  ,"Perguntas Abertas": "Perguntas Abertas"
+  ,"Perguntas abertas:": "Perguntas abertas:"
+  ,"Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado, Gestor, Par, Subordinado, Outros).": "Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado, Gestor, Par, Subordinado, Outros)."
+  ,"Nenhuma pergunta aberta com respostas encontrada. Certifique-se de que o formulário possui perguntas de texto livre (continuar, parar, começar a fazer) e que os participantes responderam.": "Nenhuma pergunta aberta com respostas encontrada. Certifique-se de que o formulário possui perguntas de texto livre (continuar, parar, começar a fazer) e que os participantes responderam."
 
   ,"Usuários (lista)": "Usuários"
   ,"Adicionar Usuário": "Adicionar Usuário"
