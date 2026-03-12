@@ -733,6 +733,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.carregarRelatoriosSalvos();
     await this.carregarTemplatesSalvos(); // <-- Carrega os templates
 
+    // Se a rota tem :id, carregar o relatório salvo
+    const reportId = this.route.snapshot.paramMap.get('id');
+    if (reportId) {
+      this.selectedReportId.setValue(reportId);
+      await this.carregarRelatorioSelecionado();
+    }
+
     // Só depois de carregar os templates, processar os queryParams
     this.route.queryParams.subscribe(async params => {
       console.log('Query params recebidos:', params);

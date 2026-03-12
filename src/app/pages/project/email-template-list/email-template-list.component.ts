@@ -26,11 +26,12 @@ import {
   DuplicateTemplateDialogComponent,
   DuplicateTemplateDialogData,
 } from './duplicate-template-dialog/duplicate-template-dialog.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-email-template-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, TranslateModule],
   templateUrl: './email-template-list.component.html',
   styleUrls: ['./email-template-list.component.scss'],
 })

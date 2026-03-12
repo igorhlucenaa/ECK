@@ -88,7 +88,7 @@
             <input
               matInput
               (keyup)="applyTextFilter($event)"
-              placeholder="Digite para buscar"
+              [placeholder]="('Digite para buscar' | translate)"
             />
           </mat-form-field>
         </div>

@@ -1,1 +1,38 @@
-<p>user-details works!</p>
+<div class="container my-4">
+  <div class="row" style="margin-bottom: 10px">
+    <div class="col-12">
+      <button mat-button (click)="goBack()" class="mb-3">
+        <mat-icon>arrow_back</mat-icon>
+        {{ 'Voltar' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading" class="text-center py-5">
+    <mat-spinner diameter="50" style="margin: 0 auto 16px;"></mat-spinner>
+    <p>{{ 'Carregando detalhes do usuário...' | translate }}</p>
+  </div>
+
+  <div *ngIf="!isLoading && user">
+    <mat-card>
+      <mat-card-title class="p-3">{{ 'Detalhes do Usuário' | translate }}</mat-card-title>
+      <mat-card-content>
+        <div class="d-flex flex-column gap-2">
+          <h3>{{ user.name }} {{ user.surname }}</h3>
+          <p><strong>{{ 'E-mail' | translate }}:</strong> {{ user.email }}</p>
+          <p><strong>{{ 'Papel' | translate }}:</strong> {{ user.role }}</p>
+          <p><strong>{{ 'Cliente' | translate }}:</strong> {{ clientName || ('N/A' | translate) }}</p>
+          <p><strong>{{ 'Grupos' | translate }}:</strong> {{ groups.length ? groups.join(', ') : ('Nenhum' | translate) }}</p>
+          <p><strong>{{ 'Projetos' | translate }}:</strong> {{ projects.length ? projects.join(', ') : ('Nenhum' | translate) }}</p>
+          <p><strong>{{ 'Status de Notificação' | translate }}:</strong> {{ user.notificationStatus || ('Pendente' | translate) }}</p>
+        </div>
+        <div class="mt-4">
+          <button mat-flat-button color="primary" (click)="goToEdit()" [disabled]="user.role === 'admin_master'">
+            <mat-icon>edit</mat-icon>
+            {{ 'Editar Usuário' | translate }}
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

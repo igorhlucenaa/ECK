@@ -22,6 +22,7 @@ import { ConfirmDialogComponent } from '../clients/clients-list/confirm-dialog/c
 import { DetailsModalComponent } from 'src/app/layouts/full/shared/details-modal/details-modal.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { RouterModule } from '@angular/router';
 
 export interface User {
   id: string;
@@ -50,7 +51,7 @@ export interface UserGroup {
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, TranslateModule],
+  imports: [MaterialModule, CommonModule, FormsModule, RouterModule, TranslateModule],
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
 })
