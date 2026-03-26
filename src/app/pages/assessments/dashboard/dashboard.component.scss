@@ -1,0 +1,269 @@
+// Variáveis
+$primary-color: #007bff;
+$accent-color: #ff4081;
+$warn-color: #f44336;
+$text-color: #333;
+$border-radius: 8px;
+$card-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+// Estilos gerais
+.dashboard-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.mb-15 {
+  margin-bottom: 15px;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.filter-container {
+  max-width: 400px;
+  width: 100%;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+
+  p {
+    margin-top: 20px;
+    color: $text-color;
+    opacity: 0.7;
+  }
+}
+
+.no-selection-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px;
+  background: rgba($primary-color, 0.05);
+  border-radius: $border-radius;
+
+  mat-icon {
+    color: $primary-color;
+    opacity: 0.7;
+  }
+
+  p {
+    margin: 0;
+    color: $text-color;
+    opacity: 0.7;
+  }
+}
+
+// Cards de estatísticas
+.statistics-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+
+  .stat-card {
+    background: white;
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
+    transition: transform 0.2s;
+
+    &:hover {
+      transform: translateY(-5px);
+    }
+
+    mat-card-content {
+      display: flex;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .stat-icon {
+      background: rgba($primary-color, 0.1);
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 20px;
+
+      mat-icon {
+        font-size: 30px;
+        color: $primary-color;
+      }
+    }
+
+    .stat-info {
+      h3 {
+        margin: 0;
+        font-size: 14px;
+        color: $text-color;
+        opacity: 0.7;
+      }
+
+      .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: $text-color;
+        margin: 5px 0 0;
+      }
+    }
+  }
+}
+
+// Opções globais
+.global-options {
+  padding: 10px 0;
+
+  .theme-selector {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+
+    mat-label {
+      font-size: 14px;
+      font-weight: 500;
+    }
+  }
+}
+
+// Grid de gráficos
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+  gap: 15px;
+
+  .chart-card {
+    mat-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+
+      mat-card-title {
+        font-size: 16px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 400px;
+      }
+
+      .chart-actions {
+        display: flex;
+        gap: 5px;
+
+        button {
+          margin-left: auto;
+        }
+      }
+    }
+
+    mat-card-content {
+      width: 100%;
+      height: 320px;
+      display: flex;
+      justify-content: center;
+    }
+  }
+}
+
+// Tabela de dados
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+
+  .table-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  table {
+    width: 100%;
+
+    th {
+      background: rgba($primary-color, 0.05);
+      color: $text-color;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    td {
+      color: $text-color;
+    }
+
+    tr:hover {
+      background: rgba($primary-color, 0.02);
+    }
+  }
+}
+
+// Responsividade
+@media (max-width: 768px) {
+  .filter-container {
+    max-width: 100%;
+  }
+
+  .statistics-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .global-options .theme-selector {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .table-actions {
+    flex-direction: column;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Estilos para os menus de seleção de cores
+.color-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &.cool::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #2196F3, #4CAF50);
+  }
+
+  &.fire::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #FF5722, #FFC107);
+  }
+
+  &.natural::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #8BC34A, #009688);
+  }
+}

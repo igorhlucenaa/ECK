@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   Auth,
   signInWithEmailAndPassword,
@@ -26,7 +27,7 @@ import { firstValueFrom } from 'rxjs';
   providedIn: 'root',
 })
 export class AuthService {
-  constructor(private auth: Auth, private firestore: Firestore) {}
+  constructor(private auth: Auth, private firestore: Firestore, private router: Router) {}
 
   async login(
     email: string,
@@ -46,10 +47,39 @@ export class AuthService {
 
         // Redirecionar com base no papel do usuário
         if (userRole === 'admin_master') {
-          location.assign('/projects'); // Redireciona para 'products' diretamente
+          this.router.navigate(['/projects']);
         } else {
-          location.assign('/users'); // Ou outra rota padrão para outros papéis
+          this.router.navigate(['/users']);
         }
+      });
+    } catch (error) {
+      console.error('Erro no login:', error);
+      throw new Error('Falha ao realizar login. Verifique suas credenciais.');
+    }
+  }
+
+  async loginCreateUsers(
+    email: string,
+    password: string,
+    rememberMe: boolean
+  ): Promise<void> {
+    try {
+      const persistence = rememberMe
+        ? browserLocalPersistence
+        : browserSessionPersistence;
+
+      await this.auth.setPersistence(persistence).then(async () => {
+        await signInWithEmailAndPassword(this.auth, email, password);
+
+        // Obter o papel do usuário após login
+        // const userRole = await this.getCurrentUserRole();
+
+        // Redirecionar com base no papel do usuário
+        // if (userRole === 'admin_master') {
+          // location.assign('/projects'); // Redireciona para 'products' diretamente
+        // } else {
+          location.assign('/users'); // Ou outra rota padrão para outros papéis
+        // }
       });
     } catch (error) {
       console.error('Erro no login:', error);
@@ -351,8 +381,7 @@ export class AuthService {
 
       if (data && data['client']) {
         // Alterado de 'clientId' para 'client'
-        console.log(`client encontrado: ${data['client']}`);
-        return data['client']; // Alterado de 'clientId' para 'client'
+                return data['client']; // Alterado de 'clientId' para 'client'
       } else {
         console.warn('Campo "client" ausente no documento do usuário.');
         return null;

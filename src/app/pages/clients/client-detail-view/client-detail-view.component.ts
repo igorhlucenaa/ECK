@@ -15,13 +15,14 @@ import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule, Location } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AddUserDialogComponent } from './add-user-dialog/add-user-dialog.component';
 import { PhonePipe } from 'src/app/pipe/phone.pipe';
 
 @Component({
   selector: 'app-client-details-view',
   standalone: true,
-  imports: [MaterialModule, CommonModule, PhonePipe],
+  imports: [MaterialModule, CommonModule, PhonePipe, TranslateModule],
   templateUrl: './client-detail-view.component.html',
   styleUrls: ['./client-detail-view.component.scss'],
 })
@@ -40,7 +41,8 @@ export class ClientDetailsViewComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private location: Location
+    private location: Location,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -58,13 +60,13 @@ export class ClientDetailsViewComponent implements OnInit {
       if (clientSnapshot.exists()) {
         this.client = clientSnapshot.data();
       } else {
-        this.snackBar.open('Cliente não encontrado.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Cliente não encontrado.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
       }
     } catch (error) {
       console.error('Erro ao carregar detalhes do cliente:', error);
-      this.snackBar.open('Erro ao carregar os detalhes do cliente.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar os detalhes do cliente.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -90,7 +92,7 @@ export class ClientDetailsViewComponent implements OnInit {
       this.users.sort = this.sort;
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
-      this.snackBar.open('Erro ao carregar usuários.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar usuários.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -109,7 +111,7 @@ export class ClientDetailsViewComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
-        this.snackBar.open('Usuário adicionado com sucesso!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Usuário adicionado com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         this.loadClientUsers(this.client.id); // Recarrega a lista de usuários
@@ -118,7 +120,7 @@ export class ClientDetailsViewComponent implements OnInit {
   }
 
   deleteUser(userId: string) {
-    this.snackBar.open('Usuário excluído com sucesso!', 'Fechar', {
+    this.snackBar.open(this.translate.instant('Usuário excluído com sucesso!'), this.translate.instant('Fechar'), {
       duration: 3000,
     });
   }

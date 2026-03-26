@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import {
   Component,
   ViewChild,
@@ -40,30 +41,32 @@ export interface SalesOverviewChart {
 @Component({
   selector: 'app-sales-overview2',
   standalone: true,
-  imports: [NgApexchartsModule, MaterialModule, CommonModule],
+  imports: [NgApexchartsModule, MaterialModule, CommonModule, TranslateModule],
   templateUrl: './sales-overview.component.html',
 })
 export class AppSalesOverview2Component implements OnChanges {
   @ViewChild('chart') chart: ChartComponent = Object.create(null);
-  @Input() creditOrdersData!: { date: string; credits: number }[];
+
+  // Alterado para receber projetos ativos por cliente
+  @Input() projectsByClientData!: { client: string; projects: number }[];
 
   public salesoverChart!: Partial<SalesOverviewChart>;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['creditOrdersData']) {
+    if (changes['projectsByClientData']) {
       this.updateChart();
     }
   }
 
   private updateChart(): void {
-    const dates = this.creditOrdersData.map((order) => order.date);
-    const credits = this.creditOrdersData.map((order) => order.credits);
+    const clients = this.projectsByClientData.map((data) => data.client);
+    const projects = this.projectsByClientData.map((data) => data.projects);
 
     this.salesoverChart = {
       series: [
         {
-          name: 'Créditos',
-          data: credits,
+          name: 'Projetos Ativos',
+          data: projects,
         },
       ],
       chart: {
@@ -85,7 +88,7 @@ export class AppSalesOverview2Component implements OnChanges {
       },
       xaxis: {
         type: 'category',
-        categories: dates,
+        categories: clients, // Agora exibe os clientes
       },
       yaxis: {
         show: true,

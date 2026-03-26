@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
@@ -21,6 +21,8 @@ import { CreateUserComponent } from './create-user/create-user.component';
 import { ConfirmDialogComponent } from '../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { DetailsModalComponent } from 'src/app/layouts/full/shared/details-modal/details-modal.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { RouterModule } from '@angular/router';
 
 export interface User {
   id: string;
@@ -49,11 +51,11 @@ export interface UserGroup {
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule],
+  imports: [MaterialModule, CommonModule, FormsModule, RouterModule, TranslateModule],
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent implements OnInit, AfterViewInit {
   // Tabela de usuários
   displayedUserColumns: string[] = [
     'name',
@@ -70,29 +72,41 @@ export class UsersComponent implements OnInit {
   userRole: any;
   // Tabela de grupos de usuários
   displayedGroupColumns: string[] = [
-    'name',
     'client',
+    'name',
     'description',
     'createdBy',
     'actions',
   ];
   groupDataSource = new MatTableDataSource<UserGroup>([]);
 
+  // Titles for details modal (avoid pipe in (click) expressions)
+  clientUsersTitle = this.translate.instant('Clientes do Usuário');
+  userProjectsTitle = this.translate.instant('Projetos do Usuário');
+  userGroupsTitle = this.translate.instant('Grupos do Usuário');
+
   @ViewChild('userPaginator') userPaginator!: MatPaginator;
-  @ViewChild('userSort') userSort!: MatSort;
 
   @ViewChild('groupPaginator') groupPaginator!: MatPaginator;
-  @ViewChild('groupSort') groupSort!: MatSort;
+
+  @ViewChild('userSort', { static: false }) userSort!: MatSort;
+  @ViewChild('groupSort', { static: false }) groupSort!: MatSort;
 
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private authService: AuthService
+    private authService: AuthService,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
     this.loadData();
+  }
+
+  ngAfterViewInit(): void {
+            this.userDataSource.sort = this.userSort;
+    this.userDataSource.paginator = this.userPaginator;
   }
 
   async loadData(): Promise<void> {
@@ -101,7 +115,7 @@ export class UsersComponent implements OnInit {
       await this.loadUsers(groups); // Passa os grupos para associar
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      this.snackBar.open('Erro ao carregar dados.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar dados.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -215,14 +229,15 @@ export class UsersComponent implements OnInit {
         })
         .sort((a, b) => a.name.localeCompare(b.name));
 
-
       // Atualizar dataSource
       this.userDataSource.data = users;
-      this.userDataSource.paginator = this.userPaginator;
-      this.userDataSource.sort = this.userSort;
+      setTimeout(() => {
+        this.userDataSource.sort = this.userSort;
+        this.userDataSource.paginator = this.userPaginator;
+      });
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
-      this.snackBar.open('Erro ao carregar usuários.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar usuários.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -233,7 +248,6 @@ export class UsersComponent implements OnInit {
     try {
       const userRole = await this.authService.getCurrentUserRole();
       const clientId = await this.authService.getCurrentClientId();
-
 
       const groupsCollection = collection(this.firestore, 'userGroups');
       let groupsSnapshot;
@@ -279,13 +293,15 @@ export class UsersComponent implements OnInit {
         .sort((a, b) => a.name.localeCompare(b.name));
 
       this.groupDataSource.data = groups;
-      this.groupDataSource.paginator = this.groupPaginator;
-      this.groupDataSource.sort = this.groupSort;
+      setTimeout(() => {
+        this.groupDataSource.sort = this.groupSort;
+        this.groupDataSource.paginator = this.groupPaginator;
+      });
 
       return groups;
     } catch (error) {
       console.error('Erro ao carregar grupos de usuários:', error);
-      this.snackBar.open('Erro ao carregar grupos de usuários.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar grupos de usuários.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return [];
@@ -360,7 +376,7 @@ export class UsersComponent implements OnInit {
   async deleteGroup(group: UserGroup): Promise<void> {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        message: `Tem certeza de que deseja excluir o grupo "${group.name}"?`,
+        message: this.translate.instant('Tem certeza de que deseja excluir o grupo "{{name}}"?', { name: group.name }),
       },
     });
 
@@ -379,12 +395,12 @@ export class UsersComponent implements OnInit {
           const groups = await this.loadUserGroups();
           await this.loadUsers(groups);
 
-          this.snackBar.open('Grupo excluído com sucesso!', 'Fechar', {
+          this.snackBar.open(this.translate.instant('Grupo excluído com sucesso!'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
         } catch (error) {
           console.error('Erro ao excluir grupo:', error);
-          this.snackBar.open('Erro ao excluir grupo.', 'Fechar', {
+          this.snackBar.open(this.translate.instant('Erro ao excluir grupo.'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
         }
@@ -409,7 +425,7 @@ export class UsersComponent implements OnInit {
   async deleteUser(user: User): Promise<void> {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        message: `Tem certeza de que deseja excluir o usuário "${user.name}"?`,
+        message: this.translate.instant('Tem certeza de que deseja excluir o usuário "{{name}}"?', { name: user.name }),
       },
     });
 
@@ -424,12 +440,12 @@ export class UsersComponent implements OnInit {
             (u) => u.id !== user.id
           );
 
-          this.snackBar.open('Usuário excluído com sucesso!', 'Fechar', {
+          this.snackBar.open(this.translate.instant('Usuário excluído com sucesso!'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
         } catch (error) {
           console.error('Erro ao excluir usuário:', error);
-          this.snackBar.open('Erro ao excluir usuário.', 'Fechar', {
+          this.snackBar.open(this.translate.instant('Erro ao excluir usuário.'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
         }
@@ -439,12 +455,11 @@ export class UsersComponent implements OnInit {
 
   // Enviar e-mail de notificação
   sendEmailNotification(user: User): void {
-    console.log('Enviando e-mail para:', user.email);
-    // Aqui você implementaria a lógica de envio de e-mail, usando um serviço backend
+        // Aqui você implementaria a lógica de envio de e-mail, usando um serviço backend
     // Por exemplo, se você estiver usando Firebase Functions ou outro serviço:
     // this.emailService.sendNotification(user.email);
 
-    this.snackBar.open(`E-mail enviado para ${user.email}`, 'Fechar', {
+    this.snackBar.open(this.translate.instant('E-mail enviado para {{email}}', { email: user.email }), this.translate.instant('Fechar'), {
       duration: 3000,
     });
   }

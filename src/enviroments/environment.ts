@@ -9,4 +9,7 @@ export const environment = {
     messagingSenderId: '166389194595',
     appId: '1:166389194595:web:caa5f30d07b6bcca',
   },
+  functions: {
+    sendEmailUrl: 'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
+  },
 };

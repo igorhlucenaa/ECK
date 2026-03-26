@@ -1,38 +1,36 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
 import {
   FormGroup,
-  FormControl,
   FormBuilder,
   Validators,
   ReactiveFormsModule,
 } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   Firestore,
-  addDoc,
   collection,
+  addDoc,
   doc,
   getDoc,
   getDocs,
-  query,
+  updateDoc,
   where,
+  query,
 } from '@angular/fire/firestore';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { SurveyCreatorModel } from 'survey-creator-core';
+import { SurveyCreatorModule } from 'survey-creator-angular';
+import { SurveyModel, ITheme } from 'survey-core';
+import 'survey-core/survey.i18n.js';
+import 'survey-creator-core/survey-creator-core.i18n.js';
+import { editorLocalization } from 'survey-creator-core';
 
-interface Question {
-  labelControl: FormControl<string | null>;
-  type: string;
-  options: { control: FormControl<string | null> }[];
-}
+// Sobrescrevendo traduções
+const ptBRLocale = editorLocalization.getLocale('pt');
+ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
 
 @Component({
   selector: 'app-create-assessment',
@@ -42,73 +40,572 @@ interface Question {
   imports: [
     CommonModule,
     MaterialModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatTooltipModule,
     ReactiveFormsModule,
+    SurveyCreatorModule,
   ],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class CreateAssessmentComponent implements OnInit {
   form: FormGroup;
-  questionList: Question[] = [];
   clients: { id: string; name: string }[] = [];
+  competencies: { id: string; name: string }[] = [];
+  competencyLists: { id: string; name: string; competencyIds: string[] }[] = [];
+  competencyGroups: { id: string; name: string; competencias: any[] }[] = [];
   userRole: string | null = null;
+  creatorModel: SurveyCreatorModel;
 
   constructor(
     private fb: FormBuilder,
     private firestore: Firestore,
     private authService: AuthService,
     private snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute,
+    private location: Location
   ) {
+    // Inicializa o formulário de metadados
     this.form = this.fb.group({
       clientId: ['', Validators.required],
       name: ['', Validators.required],
-      description: ['', Validators.required],
+      description: [''],
+      competencyIds: [[]], // Alterado para FormControl para multi-select
+      mixQuestions: [true],
     });
   }
 
   async ngOnInit(): Promise<void> {
+    this.creatorModel = new SurveyCreatorModel({
+      showLogicTab: true,
+      isAutoSave: true,
+      showJSONEditorTab: true,
+      showThemeTab: true,
+    });
+
+    this.setupThemeSaving();
+    this.creatorModel.locale = 'pt';
+    this.creatorModel.survey.locale = 'pt';
+
     const currentUser = await this.authService.getCurrentUser();
     this.userRole = currentUser?.role || null;
 
     if (this.userRole === 'admin_client') {
-      // Usuário admin_client só vê o cliente associado
       const clientId = currentUser?.clientId || '';
-
       if (clientId) {
         const clientName = await this.getClientName(clientId);
         this.clients = [
-          {
-            id: clientId,
-            name: clientName || 'Cliente Indefinido',
-          },
+          { id: clientId, name: clientName || 'Cliente Indefinido' },
         ];
-        this.form.get('clientId')?.setValue(clientId);
-        this.form.get('clientId')?.disable();
+        this.form.get('clientId')?.setValue(clientId); // Define o valor antes de desabilitar
+        this.form.get('clientId')?.disable(); // Desabilita após definir o valor
+        console.log('Form status after clientId set:', this.form.status); // Depuração
       }
     } else if (this.userRole === 'admin_master') {
-      // Usuário admin_master vê todos os clientes
       await this.loadClients();
     }
+
+    this.syncThemeWithEditor();
+
+    this.route.paramMap.subscribe(async (params) => {
+      const assessmentId = params.get('id');
+      if (assessmentId) {
+        await this.loadAssessment(assessmentId);
+      }
+    });
+
+    // Observa mudanças no clientId para carregar competências
+    this.form.get('clientId')?.valueChanges.subscribe(clientId => {
+      if (clientId) {
+        this.loadCompetencies(clientId);
+        this.loadCompetencyLists(clientId);
+        this.loadCompetencyGroups(clientId);
+      } else {
+        this.competencies = []; // Limpa as competências se nenhum cliente for selecionado
+        this.competencyLists = [];
+        this.competencyGroups = [];
+      }
+    });
+
+    // Observa mudanças nas competências selecionadas para gerar o formulário
+    this.form.get('competencyIds')?.valueChanges.subscribe(async (competencyIds) => {
+      await this.generateSurveyFromCompetencies(competencyIds);
+    });
+
+    this.form.get('mixQuestions')?.valueChanges.subscribe(async () => {
+      const competencyIds = this.form.get('competencyIds')?.value as string[];
+      await this.generateSurveyFromCompetencies(competencyIds);
+    });
+  }
+
+  async loadCompetencies(clientId: string): Promise<void> {
+    try {
+      console.log('🔍 INICIANDO CARREGAMENTO DE COMPETÊNCIAS');
+      console.log('  - ClientId:', clientId);
+      
+      const competenciesSet = new Map<string, { id: string; name: string }>();
+      
+      // 1. Carregar competências da coleção 'competencies' (formato antigo - para compatibilidade)
+      try {
+        console.log('📚 Buscando na coleção "competencies"...');
+        const competenciesCollection = collection(this.firestore, 'competencies');
+        const q = query(competenciesCollection, where('clientId', '==', clientId));
+        const snapshot = await getDocs(q);
+        console.log(`  - Encontrados ${snapshot.docs.length} documentos na coleção "competencies"`);
+        
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          console.log(`  - Competência encontrada (formato antigo):`, {
+            id: doc.id,
+            name: data['name'],
+            data: data
+          });
+          competenciesSet.set(doc.id, {
+            id: doc.id,
+            name: data['name'] || ''
+          });
+        });
+      } catch (error) {
+        console.warn('⚠️ Erro ao carregar competências da coleção competencies:', error);
+      }
+      
+      // 2. Carregar competências dos grupos de competências (formato novo)
+      try {
+        console.log('📦 Buscando na coleção "competencyGroups"...');
+        const groupsCollection = collection(this.firestore, 'competencyGroups');
+        const groupsQuery = query(groupsCollection, where('clientId', '==', clientId));
+        const groupsSnapshot = await getDocs(groupsQuery);
+        console.log(`  - Encontrados ${groupsSnapshot.docs.length} grupos de competências`);
+        
+        groupsSnapshot.docs.forEach((groupDoc, groupIndex) => {
+          const groupData = groupDoc.data();
+          const competencias = groupData['competencias'] || [];
+          
+          console.log(`  - Grupo ${groupIndex + 1}:`, {
+            id: groupDoc.id,
+            name: groupData['name'],
+            clientId: groupData['clientId'],
+            totalCompetencias: competencias.length,
+            competencias: competencias
+          });
+          
+          // Adicionar cada competência do grupo à lista
+          competencias.forEach((comp: any, index: number) => {
+            if (comp && comp.nome) {
+              // Criar um ID único para a competência: grupoId_comp_index
+              const uniqueId = `${groupDoc.id}_comp_${index}`;
+              console.log(`    ✅ Competência encontrada no grupo:`, {
+                uniqueId: uniqueId,
+                nome: comp.nome,
+                descricao: comp.descricao,
+                perguntasIds: comp.perguntasIds,
+                index: index
+              });
+              competenciesSet.set(uniqueId, {
+                id: uniqueId,
+                name: comp.nome || `Competência ${index + 1}`
+              });
+            } else {
+              console.warn(`    ⚠️ Competência inválida no índice ${index}:`, comp);
+            }
+          });
+        });
+      } catch (error) {
+        console.error('❌ Erro ao carregar competências dos grupos:', error);
+        console.error('  - Detalhes do erro:', error);
+      }
+      
+      // Converter Map para Array
+      this.competencies = Array.from(competenciesSet.values());
+      
+      console.log(`✅ RESULTADO FINAL:`);
+      console.log(`  - Total de competências carregadas: ${this.competencies.length}`);
+      console.log(`  - Lista de competências:`, this.competencies);
+      
+      if (this.competencies.length === 0) {
+        console.warn('⚠️ NENHUMA COMPETÊNCIA ENCONTRADA!');
+        console.warn('  - Verifique se há grupos salvos para este cliente');
+        console.warn('  - Verifique se o clientId está correto:', clientId);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar competências:', error);
+      console.error('  - Stack trace:', error);
+      this.snackBar.open('Erro ao carregar competências', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  async generateSurveyFromCompetencies(competencyIds: string[]): Promise<void> {
+    if (!competencyIds || competencyIds.length === 0) {
+      this.creatorModel.JSON = { pages: [] }; // Limpa o formulário
+      return;
+    }
+
+    try {
+      const pages: any[] = [];
+      let questionCounter = 0; // Garante nomes de perguntas únicos
+      const mixQuestions = !!this.form.get('mixQuestions')?.value;
+      const allQuestions: any[] = [];
+
+      for (const id of competencyIds) {
+        let competencyData: any = null;
+        let competencyName = '';
+        let questions: any[] = [];
+        
+        // Verificar se é um ID de competência de grupo (formato: grupoId_comp_index)
+        if (id.includes('_comp_')) {
+          const parts = id.split('_comp_');
+          const groupId = parts[0];
+          const groupIndex = parseInt(parts[1] || '0');
+          
+          // Carregar o grupo de competências
+          const groupDocRef = doc(this.firestore, 'competencyGroups', groupId);
+          const groupDocSnap = await getDoc(groupDocRef);
+          
+          if (groupDocSnap.exists()) {
+            const groupData = groupDocSnap.data();
+            const competencias = groupData['competencias'] || [];
+            
+            if (competencias[groupIndex]) {
+              const comp = competencias[groupIndex];
+              competencyName = comp.nome || '';
+              
+              // Buscar perguntas a partir do assessmentId ou das perguntas custom
+              if (groupData['assessmentId']) {
+                // Carregar perguntas da avaliação
+                const assessmentRef = doc(this.firestore, 'assessments', groupData['assessmentId']);
+                const assessmentSnap = await getDoc(assessmentRef);
+                
+                if (assessmentSnap.exists()) {
+                  const assessmentData = assessmentSnap.data();
+                  const surveyJSON = assessmentData['surveyJSON'] || {};
+                  const allPages = surveyJSON.pages || [];
+                  
+                  // Extrair todas as perguntas de todas as páginas
+                  allPages.forEach((page: any) => {
+                    if (page.elements && Array.isArray(page.elements)) {
+                      page.elements.forEach((el: any) => {
+                        // Verificar se esta pergunta está vinculada a esta competência
+                        if (comp.perguntasIds && comp.perguntasIds.includes(el.name)) {
+                          questions.push({
+                            id: el.name,
+                            text: el.title?.pt || el.title || el.name,
+                            type: this.mapSurveyTypeToCompetencyType(el.type),
+                            required: el.isRequired || false
+                          });
+                        }
+                      });
+                    }
+                  });
+                }
+              } else if (groupData['customQuestions']) {
+                // Usar perguntas custom do grupo
+                const customQuestions = groupData['customQuestions'] || [];
+                comp.perguntasIds?.forEach((perguntaId: string) => {
+                  const customQ = customQuestions.find((cq: any) => cq.id === perguntaId);
+                  if (customQ) {
+                    questions.push({
+                      id: customQ.id,
+                      text: customQ.title || '',
+                      type: this.mapSurveyTypeToCompetencyType(customQ.type || 'rating'),
+                      required: false
+                    });
+                  }
+                });
+              }
+            }
+          }
+        } else {
+          // Formato antigo: buscar diretamente na coleção 'competencies'
+          const docRef = doc(this.firestore, 'competencies', id);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            competencyData = docSnap.data();
+            competencyName = competencyData['name'] || '';
+            
+            if (competencyData && competencyData['questions']) {
+              questions = (competencyData['questions'] || []).map((q: any) => ({
+                id: q.id || `q_${questionCounter++}`,
+                text: q.text,
+                type: q.type,
+                required: q.required || false
+              }));
+            }
+          }
+        }
+        
+        // Converter perguntas para formato SurveyJS
+        if (questions.length > 0) {
+          const surveyQuestions = questions.map((q: any) => {
+            const questionName = q.id || `q_${questionCounter++}`;
+
+            let surveyQuestion: any = {
+              name: questionName,
+              title: q.text,
+              isRequired: q.required,
+            };
+
+            // Mapeia os tipos de pergunta da competência para os tipos do SurveyJS
+            switch (q.type) {
+              case 'likert':
+              case 'rating':
+                surveyQuestion.type = 'rating';
+                surveyQuestion.rateMin = 1;
+                surveyQuestion.rateMax = 5;
+                surveyQuestion.minRateDescription = 'Discordo Totalmente';
+                surveyQuestion.maxRateDescription = 'Concordo Totalmente';
+                break;
+              case 'multiple_choice':
+              case 'radiogroup':
+                surveyQuestion.type = 'radiogroup';
+                surveyQuestion.choices = q.options || [];
+                break;
+              case 'text':
+              case 'comment':
+                surveyQuestion.type = 'comment';
+                break;
+              case 'number':
+                surveyQuestion.type = 'text';
+                surveyQuestion.inputType = 'number';
+                break;
+              default:
+                surveyQuestion.type = 'text';
+            }
+            return surveyQuestion;
+          });
+
+          if (mixQuestions) {
+            allQuestions.push(...surveyQuestions);
+          } else {
+            // Cria uma página para a competência
+            const page = {
+              name: `page_${id}`,
+              title: competencyName,
+              description: '',
+              elements: surveyQuestions,
+            };
+            pages.push(page);
+          }
+        }
+      }
+
+      if (mixQuestions) {
+        // Embaralha perguntas de todas as competências e cria uma única página
+        this.shuffleArray(allQuestions);
+        pages.push({
+          name: 'page_global',
+          title: this.form.get('name')?.value || 'Avaliação',
+          description: '',
+          elements: allQuestions,
+        });
+      }
+
+      const surveyJSON = {
+        title: this.form.get('name')?.value || 'Avaliação de Competências',
+        description: this.form.get('description')?.value || '',
+        showProgressBar: 'top', // Melhora a navegação entre páginas
+        pages: pages,
+      };
+      
+      this.creatorModel.JSON = surveyJSON;
+    } catch (error) {
+      console.error('Erro ao gerar formulário a partir das competências:', error);
+      this.snackBar.open('Erro ao gerar formulário a partir das competências', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  private mapSurveyTypeToCompetencyType(surveyType: string): string {
+    const typeMap: { [key: string]: string } = {
+      'rating': 'rating',
+      'radiogroup': 'radiogroup',
+      'text': 'text',
+      'comment': 'comment',
+      'checkbox': 'checkbox',
+      'dropdown': 'dropdown',
+      'boolean': 'boolean'
+    };
+    return typeMap[surveyType] || 'text';
+  }
+
+  private shuffleArray<T>(array: T[]): void {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+  async loadCompetencyLists(clientId: string): Promise<void> {
+    try {
+      const listsCollection = collection(this.firestore, 'competencyLists');
+      const qy = query(listsCollection, where('clientId', '==', clientId));
+      const snapshot = await getDocs(qy);
+      this.competencyLists = snapshot.docs.map((d) => ({
+        id: d.id,
+        name: (d.data() as any)['name'],
+        competencyIds: ((d.data() as any)['competencyIds'] as string[]) || [],
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar listas de competências:', error);
+    }
+  }
+
+  async loadCompetencyGroups(clientId: string): Promise<void> {
+    try {
+      console.log('📦 Carregando grupos de competências para cliente:', clientId);
+      const groupsCollection = collection(this.firestore, 'competencyGroups');
+      const groupsQuery = query(groupsCollection, where('clientId', '==', clientId));
+      const groupsSnapshot = await getDocs(groupsQuery);
+      
+      this.competencyGroups = groupsSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data['name'] || '',
+          competencias: data['competencias'] || []
+        };
+      });
+      
+      console.log(`✅ Total de grupos carregados: ${this.competencyGroups.length}`);
+    } catch (error) {
+      console.error('❌ Erro ao carregar grupos de competências:', error);
+      this.snackBar.open('Erro ao carregar grupos de competências', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  async onCompetencyGroupChange(groupId: string): Promise<void> {
+    if (!groupId) {
+      // Se nenhum grupo foi selecionado, limpar a seleção
+      this.form.get('competencyIds')?.setValue([]);
+      return;
+    }
+    
+    const group = this.competencyGroups.find((g) => g.id === groupId);
+    if (!group) return;
+
+    // Garantir que as competências estão carregadas
+    const clientId = this.form.get('clientId')?.value;
+    if (clientId) {
+      await this.loadCompetencies(clientId);
+    }
+
+    // Extrair os IDs das competências do grupo
+    // Os IDs são no formato: grupoId_comp_index
+    const competencyIds: string[] = [];
+    
+    group.competencias.forEach((comp: any, index: number) => {
+      // Criar o ID único no mesmo formato usado em loadCompetencies
+      const uniqueId = `${groupId}_comp_${index}`;
+      // Verificar se a competência existe na lista carregada
+      const exists = this.competencies.some(c => c.id === uniqueId);
+      if (exists) {
+        competencyIds.push(uniqueId);
+      }
+    });
+
+    // Selecionar todas as competências do grupo
+    if (competencyIds.length > 0) {
+      this.form.get('competencyIds')?.setValue(competencyIds);
+      console.log(`✅ Grupo "${group.name}" selecionado: ${competencyIds.length} competências`);
+      this.snackBar.open(`Grupo "${group.name}" selecionado com ${competencyIds.length} competências`, 'Fechar', { duration: 3000 });
+    } else {
+      console.warn(`⚠️ Nenhuma competência encontrada para o grupo "${group.name}"`);
+      this.snackBar.open(`Nenhuma competência encontrada para o grupo "${group.name}"`, 'Fechar', { duration: 3000 });
+    }
+  }
+
+  onCompetencyListChange(listId: string): void {
+    const list = this.competencyLists.find((l) => l.id === listId);
+    if (!list) return;
+    this.form.get('competencyIds')?.setValue(list.competencyIds);
+  }
+
+  async saveCurrentSelectionAsList(name: string): Promise<void> {
+    const clientId = this.form.get('clientId')?.value as string;
+    const competencyIds = (this.form.get('competencyIds')?.value as string[]) || [];
+    if (!clientId || !name || competencyIds.length === 0) {
+      this.snackBar.open('Informe um nome e selecione ao menos uma competência.', 'Fechar', { duration: 3000 });
+      return;
+    }
+    try {
+      const listsCollection = collection(this.firestore, 'competencyLists');
+      await addDoc(listsCollection, {
+        clientId,
+        name,
+        competencyIds,
+        createdAt: new Date(),
+      });
+      this.snackBar.open('Lista salva com sucesso!', 'Fechar', { duration: 3000 });
+      await this.loadCompetencyLists(clientId);
+    } catch (error) {
+      console.error('Erro ao salvar lista de competências:', error);
+      this.snackBar.open('Erro ao salvar lista.', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  async loadAssessment(assessmentId: string): Promise<void> {
+    try {
+      const docRef = doc(this.firestore, 'assessments', assessmentId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        console.log(data)
+        this.form.patchValue({
+          clientId: data['clientId'],
+          name: data['name'],
+          description: data['description'],
+        });
+
+        if (this.userRole === 'admin_client') {
+          this.form.get('clientId')?.disable();
+        }
+
+        if (data['surveyJSON']) {
+          this.creatorModel.JSON = data['surveyJSON'];
+        }
+
+        if (data['theme']) {
+          this.creatorModel.theme = data['theme'];
+        }
+
+        console.log('Form status after loadAssessment:', this.form.status); // Depuração
+      }
+    } catch (error) {
+      console.error('Erro ao carregar formulário:', error);
+    }
+  }
+
+  private setupThemeSaving(): void {
+    this.creatorModel.saveThemeFunc = (saveNo: any, callback: any) => {
+      const theme = this.creatorModel.theme as ITheme;
+      callback(saveNo, true);
+    };
+  }
+
+  private syncThemeWithEditor(): void {
+    const defaultTheme: ITheme = {
+      themeName: 'modern',
+      colorPalette: 'light',
+      isPanelless: false,
+      cssVariables: {
+        '--sjs-primary-backcolor': '#007BFF',
+        '--sjs-secondary-backcolor': '#6C757D',
+        '--sjs-general-backcolor': '#F8F9FA',
+        '--sjs-general-forecolor': '#212529',
+        '--sjs-hover-color': '#0056B3',
+      },
+    };
+
+    this.creatorModel.theme = defaultTheme;
   }
 
   private async getClientName(clientId: string): Promise<string | null> {
     try {
       const clientDocRef = doc(this.firestore, 'clients', clientId);
       const clientDoc = await getDoc(clientDocRef);
-
-      if (clientDoc.exists()) {
-        return clientDoc.data()['companyName'] || null;
-      } else {
-        console.warn(`Cliente com ID ${clientId} não encontrado.`);
-        return null;
-      }
+      return clientDoc.exists()
+        ? clientDoc.data()['companyName'] || null
+        : null;
     } catch (error) {
-      console.error('Erro ao buscar o nome do cliente:', error);
+      console.error('Erro ao buscar nome do cliente:', error);
       return null;
     }
   }
@@ -126,60 +623,27 @@ export class CreateAssessmentComponent implements OnInit {
     }
   }
 
-  onClientChange(event: any): void {
-    console.log('Cliente selecionado:', event.value);
-  }
-
-  addQuestion(type: string): void {
-    const newQuestion: Question = {
-      labelControl: new FormControl<string | null>('', Validators.required),
-      type,
-      options: [],
-    };
-
-    if (type === 'select' || type === 'checkbox') {
-      newQuestion.options.push({ control: new FormControl<string | null>('') });
-    }
-
-    this.questionList.push(newQuestion);
-  }
-
-  removeQuestion(index: number): void {
-    this.questionList.splice(index, 1);
-  }
-
-  addOption(questionIndex: number): void {
-    this.questionList[questionIndex].options.push({
-      control: new FormControl<string | null>('', Validators.required),
-    });
-  }
-
-  removeOption(questionIndex: number, optionIndex: number): void {
-    this.questionList[questionIndex].options.splice(optionIndex, 1);
-  }
-
   async saveForm(): Promise<void> {
     if (this.form.invalid) {
-      console.error('O formulário é inválido.');
+      console.error('O formulário é inválido. Status:', this.form.status);
+      console.log('Valores do formulário:', this.form.value); // Depuração
       return;
     }
 
     try {
-      // Aguarde o retorno do usuário autenticado
       const currentUser = await this.authService.getCurrentUser();
-
       if (!currentUser) {
         console.error('Erro ao obter usuário autenticado.');
         return;
       }
 
+      const surveyJSON = this.creatorModel.JSON;
+      const currentTheme = this.creatorModel.theme as ITheme;
+
       const formData = {
         ...this.form.value,
-        questions: this.questionList.map((q) => ({
-          label: q.labelControl.value,
-          type: q.type,
-          options: q.options.map((opt) => opt.control.value),
-        })),
+        surveyJSON,
+        theme: currentTheme,
         createdBy: {
           name: currentUser.name,
           email: currentUser.email,
@@ -188,23 +652,42 @@ export class CreateAssessmentComponent implements OnInit {
         createdAt: new Date(),
       };
 
-      const assessmentsCollection = collection(this.firestore, 'assessments');
-      await addDoc(assessmentsCollection, formData);
+      const assessmentId = this.route.snapshot.paramMap.get('id');
+      if (assessmentId) {
+        // Atualiza documento existente
+        const docRef = doc(this.firestore, 'assessments', assessmentId);
+        await updateDoc(docRef, formData);
 
-      console.log('Formulário salvo com sucesso:', formData);
-      this.snackBar.open('Formulário salvo com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-      this.router.navigate(['/assessments']);
+        this.snackBar.open('Formulário atualizado com sucesso!', 'Fechar', {
+          duration: 3000,
+        });
+      } else {
+        // Cria um novo formulário associado ao cliente
+        const assessmentsCollection = collection(this.firestore, 'assessments');
+        await addDoc(assessmentsCollection, formData);
+
+        this.snackBar.open('Formulário criado com sucesso!', 'Fechar', {
+          duration: 3000,
+        });
+      }
+
+      this.router.navigate(['/assessments']); // Redireciona para a lista de assessments
     } catch (error) {
       console.error('Erro ao salvar formulário:', error);
-      this.snackBar.open(
-        'Erro ao salvar formulário. Tente novamente.',
-        'Fechar',
-        {
-          duration: 3000,
-        }
-      );
+      this.snackBar.open('Erro ao salvar. Tente novamente.', 'Fechar', {
+        duration: 3000,
+      });
     }
+  }
+
+  onClientChange(event: any): void {
+    const clientId = event.value;
+    this.form.get('clientId')?.setValue(clientId);
+    console.log('Client changed, form status:', this.form.status); // Depuração
+  }
+
+
+  goBack(): void {
+    this.location.back();
   }
 }

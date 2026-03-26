@@ -18,6 +18,18 @@ export const navItems: NavItem[] = [
     role: ['admin_master'],
   },
   {
+    displayName: 'Projetos',
+    iconName: 'solar:bill-list-bold-duotone',
+    route: '/projects', // Caminho correto para a página de clientes,
+    role: ['admin_client'],
+  },
+  {
+    displayName: 'Participantes',
+    iconName: 'solar:user-id-bold-duotone',
+    route: '/assessments/participants', // Caminho correto para a página de clientes,
+    role: ['admin_client'],
+  },
+  {
     displayName: 'Definições',
     iconName: 'solar:document-add-bold-duotone',
     route: '',
@@ -35,23 +47,30 @@ export const navItems: NavItem[] = [
         role: ['admin_client'], // Visível apenas para Administrador Master
       },
       {
-        displayName: 'Projetos',
-        iconName: 'solar:bill-list-bold-duotone',
-        route: '/projects', // Caminho correto para a página de clientes,
-        role: ['admin_client'],
-      },
-      {
         displayName: 'Modelos de E-mail',
         iconName: 'solar:mailbox-bold-duotone', // Ícone representando transações ou dinheiro
         route: '/mail-templates', // Caminho correto para o componente de gestão de pedidos
         role: ['admin_client'], // Visível apenas para clientes
       },
       {
-        displayName: 'Avaliações',
+        displayName: 'Competências',
+        iconName: 'solar:psychology-bold-duotone', // Ícone representando competências/psicologia
+        route: '/competencies', // Nova rota para competências
+        role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
+      },
+      {
+        displayName: 'Formulários',
         iconName: 'solar:chart-2-bold-duotone', // Ícone representando avaliações ou relatórios
         route: '/assessments', // Caminho para o componente pai das avaliações
         role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
       },
+      {
+        displayName: 'Relatórios',
+        iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando gráficos/relatórios
+        route: '/reports', // Alterado para a nova rota de relatórios
+        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
+      },
+
     ],
   },
 

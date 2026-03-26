@@ -1,0 +1,4 @@
+::ng-deep .custom-dropdown.mat-mdc-select-panel-above {
+  max-height: 200px !important; /* Define a altura máxima */
+  overflow-y: auto !important; /* Habilita a rolagem se necessário */
+}

@@ -1,0 +1,250 @@
+<div class="report-builder-container">
+  <!-- Barra de ferramentas superior -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <h2>
+        <mat-icon>construction</mat-icon>
+        Construtor de Relatórios
+      </h2>
+      <div class="category-filters">
+        <button mat-stroked-button
+                (click)="categoriaSelecionada = 'all'"
+                [color]="categoriaSelecionada === 'all' ? 'primary' : ''"
+                class="filter-btn">
+          <mat-icon>apps</mat-icon>
+          Todas
+        </button>
+        <button mat-stroked-button
+                *ngFor="let cat of categorias"
+                (click)="categoriaSelecionada = cat.id"
+                [color]="categoriaSelecionada === cat.id ? 'primary' : ''"
+                class="filter-btn">
+          <mat-icon>{{ cat.icone }}</mat-icon>
+          {{ cat.nome }}
+        </button>
+      </div>
+    </div>
+    <div class="toolbar-right">
+      <button mat-raised-button color="warn" (click)="limparTudo()" matTooltip="Limpar tudo">
+        <mat-icon>delete_sweep</mat-icon>
+        Limpar
+      </button>
+      <button mat-raised-button color="primary" (click)="emitirMudancas()" matTooltip="Salvar configuração">
+        <mat-icon>save</mat-icon>
+        Salvar
+      </button>
+    </div>
+  </div>
+
+  <div class="builder-content">
+    <!-- Painel lateral: Templates de seções -->
+    <div class="templates-panel">
+      <div class="panel-header">
+        <mat-icon>widgets</mat-icon>
+        <h3>Componentes</h3>
+        <span class="badge">{{ getTemplatesFiltrados().length }}</span>
+      </div>
+
+      <div class="templates-list"
+           cdkDropList
+           id="templates-list"
+           [cdkDropListData]="getTemplatesFiltrados()"
+           [cdkDropListDisabled]="true">
+
+        <div *ngFor="let template of getTemplatesFiltrados()"
+             class="template-item"
+             cdkDrag
+             (click)="adicionarSecaoClick(template)"
+             [style.border-left-color]="template.cor">
+          <div class="template-icon" [style.background-color]="template.cor + '20'">
+            <mat-icon [style.color]="template.cor">{{ template.icone }}</mat-icon>
+          </div>
+          <div class="template-info">
+            <div class="template-nome">{{ template.nome }}</div>
+            <div class="template-descricao">{{ template.descricao }}</div>
+          </div>
+          <mat-icon class="drag-handle" cdkDragHandle>drag_indicator</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Área central: Canvas do relatório -->
+    <div class="canvas-area">
+      <div class="canvas-header">
+        <div>
+          <h3>
+            <mat-icon>description</mat-icon>
+            Estrutura do Relatório
+          </h3>
+          <span class="section-count">{{ canvasSections.length }} seção(ões)</span>
+        </div>
+        <div class="canvas-actions">
+          <button mat-icon-button matTooltip="Visualizar preview">
+            <mat-icon>preview</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="canvas-content"
+           cdkDropList
+           id="canvas-list"
+           [cdkDropListData]="canvasSections"
+           (cdkDropListDropped)="dropSecao($event)">
+
+        <!-- Mensagem quando vazio -->
+        <div *ngIf="canvasSections.length === 0" class="empty-state">
+          <mat-icon>inbox</mat-icon>
+          <h3>Nenhuma seção adicionada</h3>
+          <p>Arraste componentes da barra lateral ou clique neles para adicionar ao relatório</p>
+        </div>
+
+        <!-- Seções no canvas -->
+        <div *ngFor="let secao of canvasSections; let i = index"
+             class="canvas-section"
+             cdkDrag
+             [class.selected]="secaoEditando?.id === secao.id"
+             [style.border-left-color]="getCorSecao(secao)">
+
+          <!-- Handle de arraste -->
+          <div class="section-handle" cdkDragHandle>
+            <mat-icon>drag_indicator</mat-icon>
+            <span class="section-number">{{ i + 1 }}</span>
+          </div>
+
+          <!-- Conteúdo da seção -->
+          <div class="section-content" (click)="editarSecao(secao)">
+            <div class="section-header">
+              <div class="section-info">
+                <mat-icon [style.color]="getCorSecao(secao)">{{ getIconeSecao(secao) }}</mat-icon>
+                <div>
+                  <div class="section-title">{{ secao.titulo || 'Sem título' }}</div>
+                  <div class="section-meta">
+                    <mat-chip [style.background-color]="getCorSecao(secao)" [style.color]="'white'">
+                      {{ getTemplatePorTipo(secao.tipo)?.nome }}
+                    </mat-chip>
+                    <mat-chip *ngIf="contarCompetencias(secao) > 0" color="accent">
+                      {{ contarCompetencias(secao) }} competência(s)
+                    </mat-chip>
+                  </div>
+                </div>
+              </div>
+              <div class="section-actions">
+                <button mat-icon-button
+                        (click)="toggleVisibilidade(secao); $event.stopPropagation()"
+                        [color]="secao.visivel ? 'primary' : ''"
+                        matTooltip="{{ secao.visivel ? 'Ocultar' : 'Mostrar' }}">
+                  <mat-icon>{{ secao.visivel ? 'visibility' : 'visibility_off' }}</mat-icon>
+                </button>
+                <button mat-icon-button
+                        (click)="duplicarSecao(secao); $event.stopPropagation()"
+                        matTooltip="Duplicar">
+                  <mat-icon>content_copy</mat-icon>
+                </button>
+                <button mat-icon-button
+                        color="warn"
+                        (click)="removerSecao(secao); $event.stopPropagation()"
+                        matTooltip="Remover">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Painel de configuração lateral direito -->
+  <div class="config-panel" [class.open]="showConfigPanel">
+    <div class="config-header">
+      <h3>
+        <mat-icon>settings</mat-icon>
+        Configuração
+      </h3>
+      <button mat-icon-button (click)="fecharPainelConfig()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="config-content" *ngIf="secaoEditando">
+      <!-- Título -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Título da Seção</mat-label>
+        <input matInput [(ngModel)]="secaoEditando.titulo" placeholder="Digite o título...">
+      </mat-form-field>
+
+      <!-- Tipo -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Tipo</mat-label>
+        <mat-select [(ngModel)]="secaoEditando.tipo">
+          <mat-option value="capa">Capa</mat-option>
+          <mat-option value="introducao">Introdução</mat-option>
+          <mat-option value="resumo">Resumo Executivo</mat-option>
+          <mat-option value="graficos">Gráficos</mat-option>
+          <mat-option value="tabela">Tabela de Frequência</mat-option>
+          <mat-option value="tabela_detalhada">Tabela de Distribuição</mat-option>
+          <mat-option value="competencia_detalhada">Análise Detalhada</mat-option>
+          <mat-option value="destaques">Destaques</mat-option>
+          <mat-option value="texto">Texto Livre</mat-option>
+          <mat-option value="grafico_defasagem">Gráfico de Defasagem</mat-option>
+          <mat-option value="janela_johari">Janela de Johari</mat-option>
+          <mat-option value="perguntas_abertas">Perguntas Abertas</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Visibilidade -->
+      <mat-checkbox [(ngModel)]="secaoEditando.visivel" class="full-width">
+        Seção visível no relatório
+      </mat-checkbox>
+
+      <!-- Competências (se aplicável) -->
+      <div *ngIf="['graficos', 'tabela', 'tabela_detalhada', 'competencia_detalhada', 'grafico_defasagem', 'janela_johari'].includes(secaoEditando.tipo)">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Competências</mat-label>
+          <mat-select [(ngModel)]="secaoEditando.competenciasIds" multiple>
+            <mat-option *ngFor="let comp of competencias" [value]="comp.id">
+              {{ comp.nome }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <!-- Tipo de gráfico (se aplicável) -->
+      <div *ngIf="secaoEditando.tipo === 'graficos'">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Tipo de Gráfico</mat-label>
+          <mat-select [(ngModel)]="secaoEditando.tipoGrafico">
+            <mat-option value="barra">Barras Comparativas</mat-option>
+            <mat-option value="radar">Radar</mat-option>
+            <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
+            <mat-option value="pizza-individual">Pizza Individual</mat-option>
+            <mat-option value="barras-individuais">Barras Individuais</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <!-- Texto (se aplicável) - Rich Text Editor -->
+      <div *ngIf="['texto', 'capa', 'introducao'].includes(secaoEditando.tipo)" class="full-width">
+        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+          Conteúdo
+        </label>
+        <angular-editor
+          [(ngModel)]="secaoEditando.texto"
+          [config]="editorConfig"
+          style="margin-bottom: 16px;">
+        </angular-editor>
+      </div>
+
+      <!-- Botões de ação -->
+      <div class="config-actions">
+        <button mat-raised-button color="primary" (click)="salvarConfiguracaoSecao()" class="full-width">
+          <mat-icon>save</mat-icon>
+          Salvar Alterações
+        </button>
+        <button mat-button (click)="fecharPainelConfig()" class="full-width">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

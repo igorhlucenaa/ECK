@@ -18,6 +18,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NgxMaskDirective, NgxMaskPipe } from 'ngx-mask';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-add-client-dialog',
@@ -27,6 +28,7 @@ import { MaterialModule } from 'src/app/material.module';
     ReactiveFormsModule,
     NgxMaskDirective,
     CommonModule,
+    TranslateModule,
   ],
   templateUrl: './add-client-dialog.component.html',
   styleUrls: ['./add-client-dialog.component.scss'],
@@ -48,7 +50,8 @@ export class AddClientDialogComponent {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private dialogRef: MatDialogRef<AddClientDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: any
+    @Inject(MAT_DIALOG_DATA) public data: any,
+    private translate: TranslateService
   ) {
     if (data?.client) {
       this.isEditing = true;
@@ -89,7 +92,7 @@ export class AddClientDialogComponent {
       if (this.isEditing && this.clientId) {
         const clientDocRef = doc(this.firestore, `clients/${this.clientId}`);
         await updateDoc(clientDocRef, formData); // Atualiza o cliente
-        this.snackBar.open('Cliente atualizado com sucesso!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Cliente atualizado com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
       } else {
@@ -98,18 +101,12 @@ export class AddClientDialogComponent {
           ...formData,
           createdAt: serverTimestamp(),
         }); // Adiciona novo cliente
-        this.snackBar.open(
-          `Cliente cadastrado com ID ${docRef.id}!`,
-          'Fechar',
-          {
-            duration: 3000,
-          }
-        );
+        this.snackBar.open(this.translate.instant('Cliente cadastrado com ID {{id}}!', { id: docRef.id }), this.translate.instant('Fechar'), { duration: 3000 });
       }
       this.dialogRef.close(true);
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);
-      this.snackBar.open('Erro ao salvar cliente. Tente novamente.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao salvar cliente. Tente novamente.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } finally {

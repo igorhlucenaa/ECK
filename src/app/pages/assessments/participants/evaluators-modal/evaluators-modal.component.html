@@ -1,0 +1,79 @@
+<h2 mat-dialog-title>Detalhes das Avaliações de {{ data.evaluatee.name }}</h2>
+<mat-dialog-content>
+  <form [formGroup]="addAssessmentForm" class="mb-3">
+    <mat-form-field class="w-100">
+      <mat-label>Adicionar Avaliações</mat-label>
+      <mat-select formControlName="newAssessments" multiple>
+        <mat-option
+          *ngFor="let assessment of availableAssessmentsSync"
+          [value]="assessment.id"
+        >
+          {{ assessment.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button
+      mat-button
+      color="primary"
+      (click)="addAssessments()"
+      [disabled]="!addAssessmentForm.valid"
+    >
+      Adicionar
+    </button>
+  </form>
+
+  <table mat-table [dataSource]="assessments" class="mat-elevation-z8">
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef>Nome</th>
+      <td mat-cell *matCellDef="let assessment">{{ assessment.name }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef>Status</th>
+      <td mat-cell *matCellDef="let assessment">{{ assessment.status }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="linkSent">
+      <th mat-header-cell *matHeaderCellDef>Link Enviado</th>
+      <td mat-cell *matCellDef="let assessment">
+        {{ assessment.linkSent ? "Sim" : "Não" }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="isResponded">
+      <th mat-header-cell *matHeaderCellDef>Respondida</th>
+      <td mat-cell *matCellDef="let assessment">
+        {{ assessment.isResponded ? "Sim" : "Não" }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef>Ações</th>
+      <td mat-cell *matCellDef="let assessment">
+        <button
+          mat-icon-button
+          color="primary"
+          (click)="sendLink(assessment.id)"
+          [disabled]="assessment.linkSent"
+          matTooltip="Enviar Link"
+        >
+          <mat-icon>send</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          color="warn"
+          (click)="removeAssessment(assessment.id)"
+          matTooltip="Remover Avaliação"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+  </table>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="closeModal()">Fechar</button>
+</mat-dialog-actions>

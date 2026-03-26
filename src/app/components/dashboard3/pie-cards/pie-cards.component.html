@@ -1,7 +1,8 @@
 <div class="row">
+  <!-- Primeira linha: 3 colunas -->
   <div
     *ngFor="let chart of generateChartData(); let i = index"
-    class="col-lg-3 col-sm-6"
+    [ngClass]="{ 'col-lg-4 col-sm-6': i < 3, 'col-lg-6 col-sm-6': i >= 3 }"
   >
     <mat-card class="cardWithShadow">
       <mat-card-content class="p-x-24 p-y-16">

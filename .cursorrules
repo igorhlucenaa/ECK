@@ -1,0 +1,509 @@
+# Regras do Agente Cursor - ECK (Sistema de Avaliação 360)
+
+## 📋 Visão Geral do Projeto
+
+Este é um sistema de avaliação 360 graus (ECK) desenvolvido em Angular 18 com Firebase. O sistema permite criar avaliações, gerenciar participantes, gerar relatórios e enviar emails personalizados.
+
+## 🛠️ Stack Tecnológico
+
+### Frontend
+- **Angular**: 18.0.3+ (Standalone Components)
+- **TypeScript**: 5.4.5+
+- **Angular Material**: 18.2.14+
+- **Firebase**: 11.0.2+ (@angular/fire 18.0.1+)
+- **RxJS**: 7.5.0+
+- **Formly**: 6.3.12+ (ngx-formly/core e material)
+- **Translate**: 14.0.0+ (@ngx-translate/core)
+- **NgxPermissions**: 13.0.1+
+
+### Backend
+- **Firebase Functions**: v2 (TypeScript)
+- **Firestore**: Banco de dados NoSQL
+- **Firebase Auth**: Autenticação
+- **Nodemailer**: Envio de emails
+
+### Bibliotecas Principais
+- **SurveyJS**: survey-angular, survey-creator-angular (criação de formulários)
+- **ECharts**: ngx-echarts (gráficos)
+- **ApexCharts**: ng-apexcharts (gráficos)
+- **ExcelJS**: Geração de relatórios Excel
+- **jsPDF**: Geração de PDFs
+- **TinyMCE**: Editor de texto rico
+- **GrapesJS**: Editor de templates de email
+
+## 📁 Estrutura de Pastas
+
+```
+src/app/
+├── components/          # Componentes reutilizáveis
+│   ├── global-loading/  # Sistema de loading global
+│   └── dashboard*/      # Componentes de dashboard
+├── guards/              # Guards de rota (auth.guard)
+├── interceptors/        # Interceptors HTTP e Firestore
+│   ├── loading.interceptor.ts
+│   └── firestore-loading.interceptor.ts
+├── layouts/             # Layouts principais (full, blank)
+│   └── full/
+│       ├── horizontal/  # Layout horizontal
+│       └── vertical/    # Layout vertical
+├── pages/               # Páginas principais
+│   ├── assessments/     # Gestão de avaliações
+│   ├── competencies/    # Gestão de competências
+│   ├── reports/         # Geração de relatórios
+│   ├── project/         # Gestão de projetos
+│   ├── users/           # Gestão de usuários
+│   └── ...
+├── pipe/                # Pipes customizados (cpf, cnpj, phone, filter)
+├── services/            # Serviços da aplicação
+│   ├── apps/            # Serviços de apps específicos
+│   ├── client/          # Serviço de clientes
+│   ├── loading.service.ts
+│   └── core.service.ts
+└── material.module.ts   # Módulo Material centralizado
+```
+
+## 🔥 Estrutura do Firestore
+
+### Collections Principais
+
+```typescript
+// Estrutura de dados esperada
+clients/              // Clientes
+  - companyName: string
+  - ...
+
+users/                // Usuários do sistema
+  - name: string
+  - surname: string
+  - email: string
+  - role: 'admin_master' | 'admin_client'
+  - client: string (clientId)
+  - project: string (projectId)
+  - group: string (groupId)
+  - createdAt: Timestamp
+  - updatedAt: Timestamp
+
+projects/             // Projetos de avaliação
+  - name: string
+  - clientId: string
+  - assessmentId: string
+  - groupIds: string[]
+  - status: string
+  - deadline: Timestamp
+  - createdAt: Timestamp
+  - updatedAt: Timestamp
+
+assessments/          // Avaliações
+  - surveyJSON: { pages: [...] }
+  - results/          // Subcollection
+    - participantId: string
+    - completedAt: Timestamp
+    - surveyData: { [perguntaId]: valor }
+
+participants/         // Participantes das avaliações
+  - name: string
+  - email: string
+  - category: 'Avaliado' | 'Gestor' | 'Pares' | 'Subordinados' | 'Outros'
+  - type: 'avaliado' | 'avaliador'
+  - projectId: string
+  - assessmentLinks: Array<{ assessmentId, token, status }>
+  - deliveryStatus: 'sent' | 'failed'
+  - lastEmailSentAt: Timestamp
+
+competencyGroups/     // Grupos de competências
+  - name: string
+  - competencias: Array<{
+      id: string
+      nome: string
+      descricao: string
+      perguntasIds: string[]
+    }>
+
+reports/              // Relatórios salvos
+  - nome: string
+  - competencias: Array<{...}>
+
+mailTemplates/        // Templates de email
+  - subject: string
+  - content: string (JSON do GrapesJS)
+
+userGroups/           // Grupos de usuários
+  - name: string
+  - clientId: string
+  - userIds: string[]
+  - createdBy: string
+  - createdAt: Timestamp
+```
+
+## 💻 Padrões de Código
+
+### 1. Componentes Standalone
+
+**SEMPRE** usar componentes standalone:
+
+```typescript
+@Component({
+  selector: 'app-example',
+  standalone: true,
+  imports: [CommonModule, MaterialModule, ReactiveFormsModule, TranslateModule],
+  templateUrl: './example.component.html',
+  styleUrls: ['./example.component.scss']
+})
+export class ExampleComponent implements OnInit, OnDestroy {
+  // ...
+}
+```
+
+### 2. Imports Padrão
+
+```typescript
+// Sempre incluir estes imports básicos
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
+import { MaterialModule } from '../../material.module';
+import { Firestore, collection, getDocs, ... } from '@angular/fire/firestore';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { Subject, takeUntil } from 'rxjs';
+```
+
+### 3. Padrão de Serviços
+
+```typescript
+@Injectable({
+  providedIn: 'root'
+})
+export class ExampleService {
+  constructor(private firestore: Firestore) {}
+
+  // Métodos sempre retornam Promises ou Observables
+  async getData(): Promise<any[]> {
+    const ref = collection(this.firestore, 'collectionName');
+    const snapshot = await getDocs(ref);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+}
+```
+
+### 4. Gerenciamento de Subscriptions
+
+**SEMPRE** usar `takeUntil` com `Subject`:
+
+```typescript
+export class ExampleComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
+  ngOnInit() {
+    this.someObservable$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(data => {
+        // ...
+      });
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+}
+```
+
+### 5. Acesso ao Firestore
+
+```typescript
+// Padrão correto
+const collectionRef = collection(this.firestore, 'collectionName');
+const docRef = doc(this.firestore, 'collectionName', 'docId');
+
+// Para subcollections
+const subCollectionRef = collection(this.firestore, `collectionName/${docId}/subCollection`);
+
+// Queries com filtros
+const q = query(
+  collectionRef,
+  where('field', '==', value),
+  orderBy('createdAt', 'desc')
+);
+const snapshot = await getDocs(q);
+```
+
+### 6. Sistema de Loading
+
+**SEMPRE** usar o LoadingService para operações assíncronas:
+
+```typescript
+import { LoadingService } from '../../services/loading.service';
+
+constructor(private loadingService: LoadingService) {}
+
+async loadData() {
+  this.loadingService.show('Carregando dados...');
+  try {
+    const data = await this.getDataFromFirestore();
+    // processar dados
+  } catch (error) {
+    console.error(error);
+    this.snackBar.open('Erro ao carregar dados', 'Fechar');
+  } finally {
+    this.loadingService.hide();
+  }
+}
+```
+
+### 7. Tratamento de Erros
+
+```typescript
+try {
+  await someAsyncOperation();
+  this.snackBar.open('Operação realizada com sucesso', 'Fechar', {
+    duration: 3000
+  });
+} catch (error: any) {
+  console.error('Erro:', error);
+  this.snackBar.open(
+    `Erro: ${error.message || 'Erro desconhecido'}`,
+    'Fechar',
+    { duration: 5000 }
+  );
+}
+```
+
+### 8. Formulários Reativos
+
+```typescript
+export class ExampleComponent implements OnInit {
+  form!: FormGroup;
+
+  constructor(private fb: FormBuilder) {}
+
+  ngOnInit() {
+    this.form = this.fb.group({
+      name: ['', [Validators.required]],
+      email: ['', [Validators.required, Validators.email]]
+    });
+  }
+
+  onSubmit() {
+    if (this.form.valid) {
+      // processar
+    } else {
+      this.form.markAllAsTouched();
+    }
+  }
+}
+```
+
+### 9. Interfaces TypeScript
+
+**SEMPRE** definir interfaces para dados:
+
+```typescript
+interface Example {
+  id: string;
+  name: string;
+  createdAt: Timestamp;
+  // ...
+}
+```
+
+### 10. Nomenclatura
+
+- **Componentes**: PascalCase (`CompetenciesComponent`)
+- **Serviços**: PascalCase com sufixo Service (`ClientService`)
+- **Interfaces**: PascalCase (`Competencia`, `AssessmentOption`)
+- **Variáveis**: camelCase (`selectedAssessmentId`)
+- **Constantes**: UPPER_SNAKE_CASE (`EMAIL_USER_PARAM`)
+- **Métodos**: camelCase (`loadUsers`, `saveCompetency`)
+
+## 🔐 Autenticação e Autorização
+
+### Roles do Sistema
+
+- `admin_master`: Acesso total ao sistema
+- `admin_client`: Acesso apenas aos dados do seu cliente
+
+### Padrão de Verificação
+
+```typescript
+import { AuthService } from '../../services/apps/authentication/auth.service';
+
+const userRole = await this.authService.getCurrentUserRole();
+const clientId = await this.authService.getCurrentClientId();
+
+if (userRole === 'admin_client' && clientId) {
+  // Filtrar por cliente
+  const q = query(
+    collection(this.firestore, 'collection'),
+    where('client', '==', clientId)
+  );
+} else if (userRole === 'admin_master') {
+  // Acesso total
+}
+```
+
+## 📧 Sistema de Emails
+
+### Firebase Functions
+
+As funções estão em `functions/src/index.ts`:
+
+- `sendEmail`: Envia emails usando templates do Firestore
+- Usa Nodemailer com Gmail SMTP
+- Templates são renderizados a partir de JSON do GrapesJS
+- Substitui placeholders: `$%NOME$%`, `[LINK_AVALIACAO]`, etc.
+
+### Padrão de Chamada
+
+```typescript
+// No frontend
+const response = await fetch('https://us-central1-xxx.cloudfunctions.net/sendEmail', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    templateId: 'templateId',
+    participantId: 'participantId',
+    assessmentId: 'assessmentId'
+  })
+});
+```
+
+## 📊 Relatórios e Competências
+
+### Padrão de Dados
+
+- Competências são agrupadas em `competencyGroups`
+- Relatórios são salvos em `reports`
+- Ambos seguem estrutura similar com array de competências
+- Cada competência tem `perguntasIds` que referenciam perguntas do assessment
+
+### Processamento de Dados
+
+```typescript
+// Carregar assessment
+const assessmentDoc = await getDoc(doc(this.firestore, 'assessments', assessmentId));
+const surveyJSON = assessmentDoc.data()?.['surveyJSON'];
+
+// Carregar resultados
+const resultsRef = collection(this.firestore, `assessments/${assessmentId}/results`);
+const resultsSnap = await getDocs(resultsRef);
+
+// Para cada resultado, buscar participante
+for (const resultDoc of resultsSnap.docs) {
+  const participantDoc = await getDoc(
+    doc(this.firestore, 'participants', resultDoc.data()['participantId'])
+  );
+  // Construir linha de dados
+}
+```
+
+## 🎨 Material Design
+
+### Módulo Centralizado
+
+Sempre usar `MaterialModule` importado de `material.module.ts`:
+
+```typescript
+import { MaterialModule } from '../../material.module';
+```
+
+### Componentes Mais Usados
+
+- `MatTableModule`: Tabelas de dados
+- `MatDialogModule`: Diálogos modais
+- `MatSnackBarModule`: Notificações
+- `MatFormFieldModule`: Campos de formulário
+- `MatSelectModule`: Seletores
+- `MatButtonModule`: Botões
+- `MatIconModule`: Ícones
+
+## 🌐 Internacionalização
+
+### Uso do TranslateService
+
+```typescript
+import { TranslateService } from '@ngx-translate/core';
+
+// No template
+{{ 'key.translation' | translate }}
+
+// No componente
+this.translateService.get('key.translation').subscribe(text => {
+  // usar texto
+});
+```
+
+## ⚡ Performance e Boas Práticas
+
+1. **Lazy Loading**: Usar lazy loading para rotas quando possível
+2. **OnPush**: Considerar ChangeDetectionStrategy.OnPush para componentes pesados
+3. **TrackBy**: Sempre usar `trackBy` em `*ngFor` para listas grandes
+4. **Unsubscribe**: Sempre fazer unsubscribe de observables
+5. **Loading States**: Sempre mostrar loading durante operações assíncronas
+6. **Error Handling**: Sempre tratar erros adequadamente
+7. **Type Safety**: Usar TypeScript strict mode, evitar `any` quando possível
+
+## 🧪 Testes
+
+- Usar Jasmine/Karma para testes unitários
+- Seguir padrão: `*.spec.ts` para arquivos de teste
+- Testar serviços, componentes e guards
+
+## 📝 Convenções de Commit
+
+- Usar mensagens descritivas em português
+- Referenciar issues quando aplicável
+- Commits atômicos (uma funcionalidade por commit)
+
+## 🚨 Regras Importantes
+
+1. **NUNCA** usar `any` sem necessidade - sempre definir interfaces
+2. **SEMPRE** tratar erros em operações assíncronas
+3. **SEMPRE** usar LoadingService para operações que demoram
+4. **SEMPRE** fazer unsubscribe de observables
+5. **SEMPRE** usar componentes standalone
+6. **SEMPRE** validar formulários antes de submeter
+7. **SEMPRE** verificar permissões de usuário antes de operações sensíveis
+8. **SEMPRE** usar `takeUntil` para gerenciar subscriptions
+9. **SEMPRE** formatar datas no padrão brasileiro (DD/MM/YYYY)
+10. **SEMPRE** usar MaterialModule ao invés de importar módulos individuais
+11. **NUNCA** usar `.substr()` - usar `.substring()` ou `.slice()` ao invés
+12. **NUNCA** hardcodear credenciais ou senhas no código
+13. **SEMPRE** validar emails antes de usar
+14. **SEMPRE** usar tokens criptograficamente seguros (crypto.randomBytes)
+15. **SEMPRE** limpar timeouts/intervals no ngOnDestroy
+16. **SEMPRE** validar estrutura de dados do Firestore antes de usar
+17. **SEMPRE** usar try/catch em operações que podem falhar
+18. **SEMPRE** considerar race conditions em operações assíncronas paralelas
+19. **SEMPRE** validar CORS e origem de requisições em Firebase Functions
+20. **SEMPRE** limpar cache e variáveis no ngOnDestroy para evitar memory leaks
+
+## 🔍 Quando Criar Novo Código
+
+- Seguir a estrutura de pastas existente
+- Reutilizar componentes e serviços quando possível
+- Manter consistência com padrões existentes
+- Documentar código complexo
+- Adicionar tratamento de erros
+- Implementar loading states
+- Considerar internacionalização desde o início
+- Validar todos os inputs do usuário
+- Considerar edge cases (valores null, undefined, arrays vazios)
+- Implementar cancelamento de operações assíncronas
+- Limpar recursos no ngOnDestroy (timeouts, subscriptions, cache)
+- Usar operações atômicas quando necessário (evitar race conditions)
+- Validar estrutura de dados do Firestore antes de usar
+- Implementar rate limiting para endpoints públicos
+
+## 📚 Recursos Adicionais
+
+- Documentação Angular: https://angular.io/docs
+- Firebase Docs: https://firebase.google.com/docs
+- Material Design: https://material.angular.io
+- SurveyJS: https://surveyjs.io
+- ECharts: https://echarts.apache.org
+
+---
+
+**Última atualização**: Baseado na estrutura do projeto ECK v2.0.0
+**Mantenedor**: Equipe ECK

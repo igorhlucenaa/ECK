@@ -21,6 +21,7 @@ import { AppHorizontalSidebarComponent } from './horizontal/sidebar/sidebar.comp
 import { AppBreadcrumbComponent } from './shared/breadcrumb/breadcrumb.component';
 import { CustomizerComponent } from './shared/customizer/customizer.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TourService } from 'src/app/services/tour/tour.service';
 
 const MOBILE_VIEW = 'screen and (max-width: 768px)';
 const TABLET_VIEW = 'screen and (min-width: 769px) and (max-width: 1024px)';
@@ -93,7 +94,8 @@ export class FullComponent implements OnInit {
     private router: Router,
     private breakpointObserver: BreakpointObserver,
     private navService: NavService,
-    private authService: AuthService
+    private authService: AuthService,
+    private tourService: TourService
   ) {
     this.htmlElement = document.querySelector('html')!;
     this.layoutChangesSubscription = this.breakpointObserver
@@ -112,18 +114,21 @@ export class FullComponent implements OnInit {
     // Initialize project theme with options
     this.receiveOptions(this.options);
 
-    // This is for scroll to top
-    // this.router.events
-    //   .pipe(filter((event) => event instanceof NavigationEnd))
-    //   .subscribe((e) => {
-    //     this.content.scrollTo({ top: 0 });
-    //   });
+    // Tour de primeiro acesso: ao navegar, verifica se deve mostrar o tutorial
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((e) => {
+        const url = e.urlAfterRedirects?.split('?')[0] || '';
+        const skipTour = ['/dashboard', '/authentication'];
+        if (url && !skipTour.some((p) => url === p || url.startsWith(p + '/'))) {
+          this.tourService.maybeStartTourOnNavigation(url);
+        }
+      });
   }
 
   ngOnInit(): void {
     this.authService.getCurrentUserRole().then((res) => {
       this.userRole = res;
-      console.log('Role do usuário:', res);
 
       // Atualizar os itens do menu de acordo com a role
       if (this.userRole === 'admin_master') {
@@ -180,7 +185,10 @@ export class FullComponent implements OnInit {
   }
 
   receiveOptions(options: AppSettings): void {
+    console.log(this.options)
     this.options = options;
+    this.options.horizontal = true;
+    this.options.boxed = false;
     this.toggleDarkTheme(options);
   }
 

@@ -1,0 +1,252 @@
+<h2 mat-dialog-title>{{ 'Selecionar Destinatários' | translate }}</h2>
+<div mat-dialog-content class="container">
+  <div class="row">
+    <!-- Campo de Busca -->
+    <div class="col-md-12" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'Buscar Participante' | translate }}</mat-label>
+        <input
+          matInput
+          (keyup)="applyFilter($event)"
+          [placeholder]="('Digite para buscar' | translate)"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          *ngIf="searchValue()"
+          (click)="searchValue.set(''); applyFilter($event)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Filtros Adicionais -->
+  <div class="row mb-3">
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'Filtrar por Categoria' | translate }}</mat-label>
+        <mat-select (selectionChange)="filterByCategory($event.value)">
+          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option value="gestor">{{ 'Gestor' | translate }}</mat-option>
+          <mat-option value="par">{{ 'Par' | translate }}</mat-option>
+          <mat-option value="subordinado">{{ 'Subordinado' | translate }}</mat-option>
+          <mat-option value="avaliado">{{ 'Avaliado' | translate }}</mat-option>
+          <mat-option value="outros">{{ 'Outros' | translate }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'Filtrar por Status' | translate }}</mat-label>
+        <mat-select (selectionChange)="filterByStatus($event.value)">
+          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option value="Não Enviado">{{ 'Não Enviado' | translate }}</mat-option>
+          <mat-option value="Enviado (Pendente)">{{ 'Enviado (Pendente)' | translate }}</mat-option>
+          <mat-option value="Respondido">{{ 'Respondido' | translate }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'Filtrar por Status de Entrega' | translate }}</mat-label>
+        <mat-select (selectionChange)="filterByDeliveryStatus($event.value)">
+          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option value="Não Enviado">{{ 'Não Enviado' | translate }}</mat-option>
+          <mat-option value="Enviado">{{ 'Enviado' | translate }}</mat-option>
+          <mat-option value="Não Entregue">{{ 'Não Entregue' | translate }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="col-md-6" style="padding: 10px">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Filtrar por Link Expirado</mat-label>
+        <mat-select (selectionChange)="filterByLinkExpired($event.value)">
+          <mat-option value="">Todos</mat-option>
+          <mat-option value="true">Sim</mat-option>
+          <mat-option value="false">Não</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <hr style="border: 1px solid #ccc" />
+
+  <!-- Seleção de Projeto -->
+  <div class="col-md-12">
+      <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'Selecione o Projeto' | translate }}</mat-label>
+      <mat-select
+        [(ngModel)]="selectedProjectId"
+        (ngModelChange)="onProjectChange()"
+      >
+        <mat-option *ngFor="let project of projects" [value]="project.id">
+          {{ project.name }} - {{ 'expira em' | translate }}: {{ formatDate(project.deadline) }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Tipo de E-mail -->
+  <div class="col-md-12">
+      <mat-form-field appearance="outline" class="w-100">
+      <mat-label>{{ 'Tipo de E-mail' | translate }}</mat-label>
+      <mat-select
+        [(ngModel)]="emailType"
+        (selectionChange)="onEmailTypeChange($event)"
+      >
+        <mat-option value="cadastro">{{ 'Cadastro do Usuário' | translate }}</mat-option>
+        <mat-option value="conviteAvaliador">{{ 'Convite - Avaliador' | translate }}</mat-option>
+        <mat-option value="conviteRespondente">{{ 'Convite - Avaliado' | translate }}</mat-option>
+        <mat-option value="lembreteAvaliador">{{ 'Lembrete - Avaliador' | translate }}</mat-option>
+        <mat-option value="lembreteRespondente">{{ 'Lembrete - Avaliado' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Seleção de Avaliação -->
+  <div class="row">
+    <div
+      class="col-12"
+      *ngIf="
+        [
+          'conviteAvaliador',
+          'conviteRespondente',
+          'lembreteAvaliador',
+          'lembreteRespondente'
+        ].includes(emailType)
+      "
+    >
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'Selecione a avaliação' | translate }}</mat-label>
+        <mat-select
+          [(ngModel)]="selectedAssessmentId"
+          (ngModelChange)="onAssessmentChange()"
+        >
+          <mat-option
+            *ngFor="let assessment of assessments"
+            [value]="assessment.id"
+          >
+            {{ assessment.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Tabela com barra de rolagem -->
+  <div class="row">
+    <div class="col-12">
+      <div class="table-container">
+        @if (isLoading()) {
+        <mat-progress-spinner
+          mode="indeterminate"
+          diameter="40"
+        ></mat-progress-spinner>
+        } @else {
+        <table
+          mat-table
+          [dataSource]="dataSource"
+          class="mat-elevation-z8 w-100"
+        >
+          <!-- Seleção -->
+          <ng-container matColumnDef="select">
+            <th mat-header-cell *matHeaderCellDef>
+              <mat-checkbox (change)="selectAll($event)"></mat-checkbox>
+            </th>
+            <td mat-cell *matCellDef="let participant">
+              <mat-checkbox
+                (change)="toggleSelection(participant)"
+                [checked]="isSelected(participant)"
+              >
+              </mat-checkbox>
+            </td>
+          </ng-container>
+
+          <!-- Nome -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>{{ 'Nome' | translate }}</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.name }}
+            </td>
+          </ng-container>
+
+          <!-- E-mail -->
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>{{ 'E-mail' | translate }}</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.email }}
+            </td>
+          </ng-container>
+
+          <!-- Categoria -->
+          <ng-container matColumnDef="category">
+            <th mat-header-cell *matHeaderCellDef>{{ 'Categoria' | translate }}</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ formatCategory(participant.category) }}
+            </td>
+          </ng-container>
+
+          <!-- Status -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>{{ 'Status' | translate }}</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.status }}
+            </td>
+          </ng-container>
+
+          <!-- Status de Entrega -->
+          <!-- <ng-container matColumnDef="deliveryStatus">
+            <th mat-header-cell *matHeaderCellDef>Status de Resposta</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ formatDeliveryStatus(participant.deliveryStatus) }}
+            </td>
+          </ng-container> -->
+
+          <!-- Link Expirado -->
+          <ng-container matColumnDef="isLinkExpired">
+            <th mat-header-cell *matHeaderCellDef>{{ 'Link Expirado' | translate }}</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.isLinkExpired ? "Sim" : "Não" }}
+            </td>
+          </ng-container>
+
+          <!-- Data de Validade -->
+          <ng-container matColumnDef="linkValidityDate">
+            <th mat-header-cell *matHeaderCellDef>{{ 'Data de Validade' | translate }}</th>
+            <td mat-cell *matCellDef="let participant">
+              {{ participant.linkValidityDate || "Não definida" }}
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+
+        <!-- Paginação (opcional) -->
+        <mat-paginator
+          [pageSize]="10"
+          [pageSizeOptions]="[5, 10, 20]"
+          showFirstLastButtons
+        ></mat-paginator>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ações -->
+<div mat-dialog-actions class="row mt-3">
+  <div class="col-12 text-end" style="text-align: end">
+    <button mat-button (click)="close()">{{ 'Cancelar' | translate }}</button>
+    <button
+      mat-flat-button
+      color="primary"
+      (click)="sendEmails()"
+      [disabled]="selectedParticipants.size === 0"
+    >
+      {{ 'Enviar E-mails' | translate }}
+    </button>
+  </div>
+</div>

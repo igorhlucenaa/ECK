@@ -27,6 +27,7 @@ import {
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 export interface UserGroup {
   id?: string;
@@ -49,6 +50,7 @@ export interface UserGroup {
     MatButtonModule,
     MatSnackBarModule,
     CommonModule,
+    TranslateModule,
   ],
   templateUrl: './create-user-group.component.html',
   styleUrls: ['./create-user-group.component.scss'],
@@ -57,7 +59,7 @@ export class CreateUserGroupComponent implements OnInit {
   groupForm!: FormGroup;
   clients: { id: string; name: string }[] = [];
   projects: { id: string; name: string }[] = [];
-  users: { id: string; name: string }[] = [];
+  users: { id: string; name: string; surname: string }[] = [];
   isEditMode: boolean = false;
 
   constructor(
@@ -66,7 +68,8 @@ export class CreateUserGroupComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private authService: AuthService,
-    @Inject(MAT_DIALOG_DATA) public data: UserGroup | null
+    @Inject(MAT_DIALOG_DATA) public data: UserGroup | null,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -133,7 +136,7 @@ export class CreateUserGroupComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -142,8 +145,7 @@ export class CreateUserGroupComponent implements OnInit {
   private async loadProjects(clientId: string | null): Promise<void> {
     if (!clientId) {
       this.projects = [];
-      console.log('Nenhum clientId fornecido para carregar projetos.');
-      return;
+            return;
     }
 
     try {
@@ -158,10 +160,9 @@ export class CreateUserGroupComponent implements OnInit {
         id: doc.id,
         name: doc.data()['name'] || 'Sem Nome',
       }));
-      console.log('Projetos carregados:', this.projects);
-    } catch (error) {
+          } catch (error) {
       console.error('Erro ao carregar projetos:', error);
-      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar projetos.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -175,19 +176,17 @@ export class CreateUserGroupComponent implements OnInit {
 
     try {
       const usersCollection = collection(this.firestore, 'users');
-      const usersQuery = query(
-        usersCollection,
-        where('client', '==', clientId)
-      );
+      const usersQuery = query(usersCollection);
       const snapshot = await getDocs(usersQuery);
 
       this.users = snapshot.docs.map((doc) => ({
         id: doc.id,
         name: doc.data()['name'] || 'Sem Nome',
+        surname: doc.data()['surname'] || 'Sem Sobrenome',
       }));
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
-      this.snackBar.open('Erro ao carregar usuários.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar usuários.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -195,8 +194,7 @@ export class CreateUserGroupComponent implements OnInit {
 
   private async patchFormWithData(): Promise<void> {
     if (this.data) {
-      console.log('Dados do grupo recebidos no patch:', this.data);
-      const clientId = this.data.clientId;
+            const clientId = this.data.clientId;
 
       if (clientId) {
         try {
@@ -208,13 +206,11 @@ export class CreateUserGroupComponent implements OnInit {
             this.loadProjects(clientId),
             this.loadUsers(clientId),
           ]);
-          console.log('Carregamento concluído.');
-        } catch (error) {
+                  } catch (error) {
           console.error('Erro ao carregar dados associados ao cliente:', error);
         }
       }
 
-      console.log('Dados após carregamento:', this.data);
 
       this.groupForm.patchValue({
         name: this.data.name,
@@ -257,11 +253,7 @@ export class CreateUserGroupComponent implements OnInit {
     try {
       const currentUser = await this.authService.getCurrentUser();
       if (!currentUser) {
-        this.snackBar.open(
-          'Erro ao obter dados do usuário autenticado.',
-          'Fechar',
-          { duration: 3000 }
-        );
+        this.snackBar.open(this.translate.instant('Erro ao obter dados do usuário autenticado.'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
 
@@ -276,13 +268,13 @@ export class CreateUserGroupComponent implements OnInit {
       // Atualizar os usuários e o cliente/projeto para cada usuário
       await this.updateUserDocuments(userIds, clientId, projectIds);
 
-      this.snackBar.open('Grupo criado com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Grupo criado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       this.dialogRef.close(true);
     } catch (error) {
       console.error('Erro ao criar grupo:', error);
-      this.snackBar.open('Erro ao criar grupo.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao criar grupo.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -300,13 +292,13 @@ export class CreateUserGroupComponent implements OnInit {
       // Atualizar os usuários e o cliente/projeto para cada usuário
       await this.updateUserDocuments(userIds, clientId, projectIds);
 
-      this.snackBar.open('Grupo atualizado com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Grupo atualizado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       this.dialogRef.close(true);
     } catch (error) {
       console.error('Erro ao atualizar grupo:', error);
-      this.snackBar.open('Erro ao atualizar grupo.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao atualizar grupo.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -327,16 +319,12 @@ export class CreateUserGroupComponent implements OnInit {
         });
       }
 
-      this.snackBar.open('Usuários atualizados com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Usuários atualizados com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } catch (error) {
       console.error('Erro ao atualizar documentos dos usuários:', error);
-      this.snackBar.open(
-        'Erro ao atualizar documentos dos usuários.',
-        'Fechar',
-        { duration: 3000 }
-      );
+      this.snackBar.open(this.translate.instant('Erro ao atualizar documentos dos usuários.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 

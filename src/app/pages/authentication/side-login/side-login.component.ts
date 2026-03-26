@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CoreService } from 'src/app/services/core.service';
 import {
   FormGroup,
@@ -11,6 +11,7 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MaterialModule } from 'src/app/material.module';
 import { NgIf } from '@angular/common';
+
 
 @Component({
   selector: 'app-side-login',
@@ -34,6 +35,8 @@ export class AppSideLoginComponent {
     ]), // Senha
     rememberMe: new FormControl(false), // Lembrar-me
   });
+
+
 
   errorMessage: string = ''; // Mensagens de erro
   isLoading: boolean = false; // Indicador de carregamento
@@ -60,9 +63,8 @@ export class AppSideLoginComponent {
     const { uname, password, rememberMe } = this.form.value;
 
     try {
-      // Login com persistência configurável
-      await this.authService.login(uname!, password!, rememberMe!);
-      this.router.navigate(['/starter']); // Redireciona após login bem-sucedido
+      // Realiza login e delega redirecionamento ao serviço
+      await this.authService.login(uname!, password!, !!rememberMe);
     } catch (error: any) {
       this.errorMessage =
         error.message || 'Erro ao realizar login. Tente novamente.';

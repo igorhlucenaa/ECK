@@ -1,0 +1,89 @@
+.ui-only {
+  print-color-adjust: exact;
+}
+
+@media print {
+  .ui-only,
+  .mat-tab-header,
+  .mat-mdc-form-field,
+  .mat-mdc-select,
+  .mat-mdc-select-arrow,
+  .mat-mdc-text-field-wrapper,
+  button,
+  .mat-mdc-checkbox,
+  .mat-mdc-card .mat-mdc-card-actions,
+  .mat-mdc-chip-set,
+  .mat-mdc-tooltip-trigger {
+    display: none !important;
+  }
+
+  #report-preview {
+    padding: 0 !important;
+  }
+}
+.report-section {
+  page-break-inside: avoid; /* evita cortar a seção no meio */
+  margin-bottom: 16px;
+}
+
+/* Quebras seguras entre seções apenas quando for necessário */
+@media print {
+  .report-section {
+    break-inside: avoid;
+  }
+}
+
+/* Oculta elementos de UI durante exportação na tela (não só em print) */
+.export-mode {
+  .ui-only,
+  .mat-tab-header,
+  .mat-mdc-form-field,
+  .mat-mdc-select,
+  .mat-mdc-select-arrow,
+  .mat-mdc-text-field-wrapper,
+  button,
+  .mat-mdc-checkbox,
+  .mat-mdc-card .mat-mdc-card-actions,
+  .mat-mdc-chip-set,
+  .mat-mdc-tooltip-trigger {
+    display: none !important;
+  }
+}
+.table-container {
+  overflow-x: auto;
+  width: 100%;
+}
+
+mat-table {
+  min-width: 800px; /* largura mínima para habilitar scroll em telas pequenas */
+}
+
+/* Destacar cabeçalho */
+.mat-header-cell {
+  background-color: #e0e0e0; /* cinza mais forte */
+  font-weight: 700;
+  border-bottom: 2px solid #bdbdbd;
+  padding: 8px;
+  max-width: 220px;
+}
+
+/* Conteúdo do cabeçalho com rolagem se muito largo */
+.mat-header-cell {
+  max-width: 220px; /* largura máxima para cabeçalhos longos */
+  white-space: normal;
+  padding: 8px;
+}
+
+.mat-header-cell span {
+  display: block;
+  max-height: 100px;
+  overflow: auto;
+  white-space: normal;
+}
+
+.cell-content {
+  max-width: 220px;
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-line;
+}

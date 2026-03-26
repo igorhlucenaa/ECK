@@ -6,8 +6,13 @@ import { ClientCustomizationComponent } from './pages/client-customization/clien
 import { CreditOrdersComponent } from './pages/credit-orders/credit-orders.component';
 import { NewCreditOrderComponent } from './pages/credit-orders/new-credit-order/new-credit-order.component';
 import { EmailTemplateListComponent } from './pages/project/email-template-list/email-template-list.component';
+import { AssessmentComponent } from './pages/assessments/assessment/assessment.component';
 
 export const routes: Routes = [
+  {
+    path: 'assessment',
+    component: AssessmentComponent,
+  },
   {
     path: '',
     component: BlankComponent,
@@ -86,7 +91,14 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./pages/reports/reports.routes').then((m) => m.ReportsRoutes),
         canActivate: [AuthGuard],
-        data: { role: 'viewer' },
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
+      },
+      {
+        path: 'competencies',
+        loadChildren: () =>
+          import('./pages/competencies/competencies.routes').then((m) => m.CompetenciesRoutes),
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master', 'admin_client'] },
       },
       {
         path: 'orders',

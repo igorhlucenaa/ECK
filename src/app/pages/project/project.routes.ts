@@ -8,6 +8,7 @@ import { EmailTemplateFormComponent } from './email-template-list/email-template
 import { QuestionnaireListComponent } from './questionnaire-list/questionnaire-list.component';
 import { QuestionnaireFormComponent } from './questionnaire-list/questionnaire-form/questionnaire-form.component';
 import { QuestionnairePreviewComponent } from './questionnaire-list/preview-questionnaire/preview-questionnaire.component';
+import { AssessmentListComponent } from '../assessments/assessment-list/assessment-list.component';
 
 export const ProjectsRoutes: Routes = [
   {
@@ -35,7 +36,7 @@ export const ProjectsRoutes: Routes = [
     data: { role: 'admin_client' },
   },
   {
-    path: ':id/templates',
+    path: ':id/:idProject/templates',
     component: EmailTemplateListComponent,
     canActivate: [AuthGuard],
     data: { role: 'admin_client' },
@@ -85,6 +86,12 @@ export const ProjectsRoutes: Routes = [
   {
     path: ':id/questionnaires/:questionnaireId/preview',
     component: QuestionnairePreviewComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'admin_client' },
+  },
+  {
+    path: 'assessments/:id',
+    component: AssessmentListComponent,
     canActivate: [AuthGuard],
     data: { role: 'admin_client' },
   },

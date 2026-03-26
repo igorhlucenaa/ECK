@@ -1,0 +1,61 @@
+<div class="tour-overlay" (click)="closeTour()">
+  <!-- Backdrop escuro (clique para fechar) -->
+  <div class="tour-backdrop"></div>
+
+  <!-- Destaque ao redor do elemento (cutout com box-shadow) -->
+  @if (highlightRect) {
+  <div
+    class="tour-highlight"
+    (click)="$event.stopPropagation()"
+    [style.left.px]="highlightRect.left - 12"
+    [style.top.px]="highlightRect.top - 12"
+    [style.width.px]="highlightRect.width + 24"
+    [style.height.px]="highlightRect.height + 24"
+  ></div>
+  }
+
+  <!-- Card com instruções - sempre visível -->
+  @if (step) {
+  <div class="tour-card" (click)="$event.stopPropagation()">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>{{ step?.title }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p class="tour-description">{{ step?.description }}</p>
+      </mat-card-content>
+      <mat-card-actions class="tour-actions">
+        <div class="tour-progress">
+          <span class="tour-progress-text">Passo {{ currentStep + 1 }} de {{ totalSteps }}</span>
+          <mat-progress-bar mode="determinate" [value]="progressPercent" class="tour-progress-bar"></mat-progress-bar>
+        </div>
+        <div class="tour-buttons">
+          <button mat-button (click)="closeTour(); $event.stopPropagation()">
+            <mat-icon>close</mat-icon>
+            Sair
+          </button>
+          <div class="tour-nav">
+            @if (!isFirst) {
+            <button mat-stroked-button (click)="prevStep(); $event.stopPropagation()">
+              <mat-icon>arrow_back</mat-icon>
+              Anterior
+            </button>
+            }
+            @if (isLast) {
+            <button mat-flat-button color="primary" (click)="nextStep(); $event.stopPropagation()">
+              <mat-icon>check</mat-icon>
+              Concluir
+            </button>
+            } @else {
+            <button mat-flat-button color="primary" (click)="nextStep(); $event.stopPropagation()">
+              Próximo
+              <mat-icon>arrow_forward</mat-icon>
+            </button>
+            }
+          </div>
+        </div>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+  }
+</div>

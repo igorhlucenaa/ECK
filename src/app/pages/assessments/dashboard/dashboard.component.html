@@ -1,1 +1,268 @@
-<p>dashboard works!</p>
+<div class="dashboard-container" data-tour="assessment-dashboard-page">
+  <!-- Cabeçalho -->
+  <mat-card class="mb-15">
+    <mat-card-header>
+      <mat-card-title>Dashboard de Avaliações</mat-card-title>
+      <mat-card-subtitle>Visualize e analise os resultados das suas avaliações</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <!-- Seletor de Avaliação -->
+      <div class="filter-container mb-15 mt-10">
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>{{ 'Selecione uma avaliação' | translate }}</mat-label>
+          <mat-select [value]="selectedAssessment" (selectionChange)="onAssessmentChange($event)">
+            <mat-option *ngFor="let assessment of assessments" [value]="assessment.id">
+              {{ assessment.name }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div *ngIf="isLoading" class="loading-container">
+        <mat-spinner diameter="50"></mat-spinner>
+        <p>{{ 'Carregando resultados...' | translate }}</p>
+      </div>
+
+      <!-- Mensagem quando nenhuma avaliação selecionada -->
+      <div *ngIf="!isLoading && !selectedAssessment" class="no-selection-message">
+        <mat-icon>info</mat-icon>
+        <p>{{ 'Selecione uma avaliação para visualizar os resultados' | translate }}</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Conteúdo Principal (visível apenas quando há uma avaliação selecionada) -->
+  <div *ngIf="selectedAssessment && !isLoading">
+    <!-- Cards de Estatísticas -->
+    <div class="statistics-cards">
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon">
+            <mat-icon>people</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ 'Total de Respostas' | translate }}</h3>
+            <p class="stat-value">{{ statistics.totalResponses }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon">
+            <mat-icon>date_range</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ 'Última Resposta' | translate }}</h3>
+            <p class="stat-value">{{ statistics.lastResponse | date:'dd/MM/yyyy' }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon">
+            <mat-icon>assessment</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ 'Taxa de Conclusão' | translate }}</h3>
+            <p class="stat-value">{{ statistics.completionRate }}%</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Gráficos e Métricas por Pergunta -->
+    <div class="charts-container">
+      <mat-card *ngFor="let questionChart of questionCharts" class="chart-card mb-15">
+        <mat-card-header>
+          <mat-card-title>{{ questionChart.question.title }}</mat-card-title>
+          <div class="chart-actions">
+            <!-- Seletor de Tipo de Gráfico -->
+            <button mat-icon-button [matMenuTriggerFor]="chartTypeMenu" matTooltip="Mudar tipo de gráfico" *ngIf="questionChart.question.type !== 'matrix'">
+              <mat-icon>bar_chart</mat-icon>
+            </button>
+            <mat-menu #chartTypeMenu="matMenu">
+              <button mat-menu-item (click)="questionChart.type = 'bar'" [class.active]="questionChart.type === 'bar'">
+                <mat-icon>bar_chart</mat-icon>
+                <span>Barras</span>
+              </button>
+              <button mat-menu-item (click)="questionChart.type = 'pie'" [class.active]="questionChart.type === 'pie'">
+                <mat-icon>pie_chart</mat-icon>
+                <span>Pizza</span>
+              </button>
+              <button mat-menu-item (click)="questionChart.type = 'polar'" [class.active]="questionChart.type === 'polar'">
+                <mat-icon>track_changes</mat-icon>
+                <span>Polar</span>
+              </button>
+              <button mat-menu-item (click)="questionChart.type = 'gauge'" [class.active]="questionChart.type === 'gauge'" *ngIf="questionChart.question.type === 'rating'">
+                <mat-icon>speed</mat-icon>
+                <span>Medidor</span>
+              </button>
+            </mat-menu>
+
+            <!-- Seletor de Esquema de Cores -->
+            <button mat-icon-button [matMenuTriggerFor]="colorMenu" matTooltip="Mudar cores">
+              <mat-icon>palette</mat-icon>
+            </button>
+            <mat-menu #colorMenu="matMenu">
+              <button mat-menu-item (click)="changeColorScheme('cool')" class="color-option cool">
+                <span>Cores Frias</span>
+              </button>
+              <button mat-menu-item (click)="changeColorScheme('fire')" class="color-option fire">
+                <span>Cores Quentes</span>
+              </button>
+              <button mat-menu-item (click)="changeColorScheme('natural')" class="color-option natural">
+                <span>Cores Naturais</span>
+              </button>
+            </mat-menu>
+          </div>
+        </mat-card-header>
+
+        <mat-card-content>
+          <!-- Container do Gráfico -->
+          <div [ngSwitch]="questionChart.type" class="chart-container" *ngIf="questionChart.question.type !== 'matrix'">
+            <!-- Gráfico de Barras -->
+            <ngx-charts-bar-vertical *ngSwitchCase="'bar'" [results]="questionChart.data" [scheme]="'cool'" [gradient]="false" [xAxis]="true" [yAxis]="true" [legend]="true" [showXAxisLabel]="true" [showYAxisLabel]="true" xAxisLabel="Opções" yAxisLabel="Respostas" [animations]="true">
+            </ngx-charts-bar-vertical>
+
+            <!-- Gráfico de Pizza -->
+            <ngx-charts-pie-chart *ngSwitchCase="'pie'" [results]="questionChart.data" [scheme]="'cool'" [gradient]="false" [legend]="true" [labels]="true" [doughnut]="false" [animations]="true">
+            </ngx-charts-pie-chart>
+
+            <!-- Gráfico Polar -->
+            <ngx-charts-polar-chart *ngSwitchCase="'polar'" [results]="questionChart.data" [scheme]="'cool'" [gradient]="false" [legend]="true" [showXAxisLabel]="true" [showYAxisLabel]="true" [animations]="true" [showGridLines]="true">
+            </ngx-charts-polar-chart>
+
+            <!-- Medidor (Gauge) -->
+            <ngx-charts-gauge *ngSwitchCase="'gauge'" [results]="questionChart.data" [scheme]="'cool'" [min]="0" [max]="(questionChart.statistics?.max || 10)" [units]="''" [angleSpan]="240" [startAngle]="-120" [animations]="true" [showAxis]="true">
+            </ngx-charts-gauge>
+          </div>
+          <div *ngIf="questionChart.question.type === 'matrix'" class="matrix-placeholder">
+            <mat-icon>table_chart</mat-icon>
+            <p>Visualizações detalhadas para perguntas de matriz serão exibidas na tabela abaixo.</p>
+          </div>
+
+          <!-- Métricas Dinâmicas -->
+          <div class="metrics-container">
+            <div class="metric-item">
+              <mat-icon>format_list_numbered</mat-icon>
+              <span class="metric-label">Total Respostas:</span>
+              <span class="metric-value">{{ questionChart.statistics.totalResponses }}</span>
+            </div>
+
+            <!-- Métricas para perguntas numéricas/rating -->
+            <ng-container *ngIf="questionChart.question.type === 'rating' || (questionChart.question.type === 'matrix' && areMatrixColumnsNumeric(questionChart.question))">
+              <div class="metric-item" *ngIf="questionChart.statistics.average !== undefined">
+                <mat-icon>trending_up</mat-icon>
+                <span class="metric-label">Média:</span>
+                <span class="metric-value">{{ questionChart.statistics.average | number:'1.1-2' }}</span>
+              </div>
+              <div class="metric-item" *ngIf="questionChart.statistics.median !== undefined">
+                <mat-icon>timeline</mat-icon>
+                <span class="metric-label">Mediana:</span>
+                <span class="metric-value">{{ questionChart.statistics.median | number:'1.1-2' }}</span>
+              </div>
+              <div class="metric-item" *ngIf="questionChart.statistics.mode !== undefined">
+                <mat-icon>bar_chart</mat-icon>
+                <span class="metric-label">Moda:</span>
+                <span class="metric-value">{{ questionChart.statistics.mode }}</span>
+              </div>
+              <div class="metric-item" *ngIf="questionChart.statistics.stdDev !== undefined">
+                <mat-icon>show_chart</mat-icon>
+                <span class="metric-label">Desvio Padrão:</span>
+                <span class="metric-value">{{ questionChart.statistics.stdDev | number:'1.1-2' }}</span>
+              </div>
+              <div class="metric-item" *ngIf="questionChart.statistics.min !== undefined">
+                <mat-icon>arrow_downward</mat-icon>
+                <span class="metric-label">Mínimo:</span>
+                <span class="metric-value">{{ questionChart.statistics.min }}</span>
+              </div>
+              <div class="metric-item" *ngIf="questionChart.statistics.max !== undefined">
+                <mat-icon>arrow_upward</mat-icon>
+                <span class="metric-label">Máximo:</span>
+                <span class="metric-value">{{ questionChart.statistics.max }}</span>
+              </div>
+            </ng-container>
+
+            <!-- Métricas para perguntas categóricas -->
+            <ng-container *ngIf="['radiogroup', 'checkbox', 'dropdown', 'boolean'].includes(questionChart.question.type)">
+              <div *ngFor="let count of questionChart.statistics.counts" class="metric-item count-item">
+                 <mat-icon>check_box_outline_blank</mat-icon>
+                 <span class="metric-label">{{ count.name }}:</span>
+                 <span class="metric-value">{{ count.value }} ({{ count.percentage }}%)</span>
+              </div>
+               <div class="metric-item" *ngIf="questionChart.statistics.mode !== undefined">
+                 <mat-icon>star</mat-icon>
+                 <span class="metric-label">Mais Frequente:</span>
+                 <span class="metric-value">{{ questionChart.statistics.mode }}</span>
+               </div>
+            </ng-container>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Tabela de Dados -->
+    <mat-card class="mb-15">
+      <mat-card-header>
+        <mat-card-title>{{ 'Dados Detalhados' | translate }}</mat-card-title>
+        <div class="table-actions">
+          <!-- Botões de Exportação -->
+          <button mat-raised-button color="primary" (click)="exportExcel()" matTooltip="{{ 'Exportar para Excel' | translate }}">
+            <mat-icon>description</mat-icon>
+            {{ 'Excel' | translate }}
+          </button>
+          <button mat-raised-button color="accent" (click)="exportPDF()" matTooltip="{{ 'Exportar para PDF' | translate }}">
+            <mat-icon>picture_as_pdf</mat-icon>
+            {{ 'PDF' | translate }}
+          </button>
+          <button mat-raised-button color="warn" (click)="exportCSV()" matTooltip="{{ 'Exportar para CSV' | translate }}">
+            <mat-icon>table_chart</mat-icon>
+            {{ 'CSV' | translate }}
+          </button>
+        </div>
+      </mat-card-header>
+
+      <mat-card-content>
+        <!-- Campo de Busca -->
+        <mat-form-field appearance="outline" class="w-100 mb-15">
+          <mat-label>{{ 'Buscar' | translate }}</mat-label>
+          <input matInput (keyup)="applyFilter($event)" [placeholder]="('Digite para filtrar...' | translate)" #input>
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <!-- Tabela -->
+        <div class="mat-elevation-z8 table-container">
+          <table mat-table [dataSource]="dataSource" matSort>
+            <!-- ID Column -->
+            <ng-container matColumnDef="id">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header> ID </th>
+              <td mat-cell *matCellDef="let row"> {{row.id}} </td>
+            </ng-container>
+
+            <!-- Dynamic Columns -->
+            <ng-container *ngFor="let column of displayedColumns | slice:1:-1">
+              <ng-container [matColumnDef]="column">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header> {{getQuestionTitle(column)}} </th>
+                <td mat-cell *matCellDef="let row"> {{formatValue(row[column])}} </td>
+              </ng-container>
+            </ng-container>
+
+            <!-- Data Column -->
+            <ng-container matColumnDef="completedAt">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header> Data de Conclusão </th>
+              <td mat-cell *matCellDef="let row"> {{row.completedAt | date:'dd/MM/yyyy HH:mm'}} </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+
+          <mat-paginator [pageSizeOptions]="[5, 10, 25, 100]" aria-label="Selecione a página"></mat-paginator>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

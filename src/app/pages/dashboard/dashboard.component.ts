@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import {
@@ -47,7 +47,7 @@ import { MatDialog } from '@angular/material/dialog';
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {
-  constructor(private dialog: MatDialog) {}
+  constructor(private dialog: MatDialog, private cdr: ChangeDetectorRef) {}
 
   pieCardsData: { value: number; label: string; color: string }[] = [];
   totalEvaluatedParticipants: number = 0;
@@ -98,6 +98,10 @@ export class DashboardComponent implements OnInit {
       { key: 'createdAt', header: 'Data de Criação' },
     ],
   };
+  assessmentsData: { client: string; used: number; remaining: number }[] = [];
+
+  projectsByClientData: { client: string; projects: number }[] = [];
+  totalActiveProjects: number = 0;
 
   availableTables = [
     { key: 'clients', label: 'Clientes' },
@@ -107,22 +111,43 @@ export class DashboardComponent implements OnInit {
   ];
 
   async ngOnInit(): Promise<void> {
+    // Teste de collections
+    // const col = collection(this.firestore, 'assessmentLinks');
+
+    // const snap = await getDocs(col);
+
+    // let result = snap.docs.map((res) => res.data());
+    // console.log(result);
+
     const data = await this.fetchDashboardData();
     this.creditOrdersData = await this.fetchCreditOrdersData();
+    this.assessmentsData = await this.fetchAssessmentsData();
+
+    this.cdr.detectChanges();
+    // await this.fetchProjectsByClient();
     // Dados para os gráficos de pizza
     this.pieCardsData = [
       { value: data.totalClients, label: 'Clientes', color: '#1e88e5' },
-      { value: data.totalProjects, label: 'Projetos Ativos', color: '#26c6da' },
       {
-        value: data.totalCreditOrders,
-        label: 'Pedidos de Crédito',
-        color: '#ffb22b',
+        value: data.totalActiveProjects,
+        label: 'Projetos Ativos',
+        color: '#26c6da',
       },
       {
         value: data.totalEvaluatedParticipants,
         label: 'Avaliados',
         color: '#fc4b6c',
       },
+      {
+        value: data.totalCreditOrders,
+        label: 'Pedidos de Crédito',
+        color: '#ffb22b',
+      },
+      {
+        value: data.totalRemainingCredits,
+        label: 'Créditos Remanescentes',
+        color: '#4caf50',
+      }, // Novo KPI!
     ];
 
     // Dados vazios (placeholder)
@@ -138,6 +163,43 @@ export class DashboardComponent implements OnInit {
     this.totalEvaluatedParticipants = data.totalEvaluatedParticipants;
     this.activeProjects = data.totalProjects;
     this.totalCredits = data.totalCredits;
+  }
+
+  private async fetchAssessmentsData(): Promise<
+    { client: string; used: number; remaining: number }[]
+  > {
+    const assessmentsCollection = collection(this.firestore, 'assessments');
+    const clientsCollection = collection(this.firestore, 'clients');
+
+    const assessmentsSnapshot = await getDocs(assessmentsCollection);
+    const clientsSnapshot = await getDocs(clientsCollection);
+
+    // Criar um mapa para associar clientId ao nome do cliente
+    const clientMap = new Map(
+      clientsSnapshot.docs.map((doc) => [doc.id, doc.data()['companyName']])
+    );
+
+    // Criar um mapa para contar avaliações por cliente
+    const assessmentsByClient = new Map<string, number>();
+
+    assessmentsSnapshot.docs.forEach((doc) => {
+      const clientId = doc.data()['clientId'];
+      if (clientId) {
+        assessmentsByClient.set(
+          clientId,
+          (assessmentsByClient.get(clientId) || 0) + 1
+        );
+      }
+    });
+
+    // Transformar os dados para o formato esperado
+    return Array.from(assessmentsByClient.entries()).map(
+      ([clientId, count]) => ({
+        client: clientMap.get(clientId) || 'Desconhecido',
+        used: count, // Número de avaliações cadastradas por cliente
+        remaining: 0, // Não usado aqui, mas mantido para compatibilidade com o gráfico
+      })
+    );
   }
 
   async generatePDF(): Promise<void> {
@@ -203,10 +265,6 @@ export class DashboardComponent implements OnInit {
     const creditOrdersSnapshot = await getDocs(creditOrdersCollection);
     const participantsSnapshot = await getDocs(participantsCollection);
 
-    const activeProjects = projectsSnapshot.docs.filter(
-      (doc) => doc.data()['status'] === 'Ativo'
-    ).length;
-
     const evaluatedParticipants = participantsSnapshot.docs.filter(
       (doc) => doc.data()['type'] === 'avaliado'
     ).length;
@@ -216,12 +274,54 @@ export class DashboardComponent implements OnInit {
       return sum + (data['credits'] || 0);
     }, 0);
 
+    const activeProjects = projectsSnapshot.docs.filter(
+      (doc) => doc.data()['status'] === 'Ativo'
+    );
+
+    // Criar um mapa de clientes para contar projetos ativos
+    const projectCountByClient = new Map<string, number>();
+
+    activeProjects.forEach((doc) => {
+      const clientId = doc.data()['clientId'];
+      if (clientId) {
+        projectCountByClient.set(
+          clientId,
+          (projectCountByClient.get(clientId) || 0) + 1
+        );
+      }
+    });
+
+    // Transformar os dados para incluir o nome dos clientes e corrigir os nomes das propriedades
+    this.projectsByClientData = clientsSnapshot.docs.map((doc) => ({
+      client: doc.data()['companyName'], // Nome do cliente
+      projects: projectCountByClient.get(doc.id) || 0, // Número de projetos ativos do cliente
+    }));
+
+    this.totalActiveProjects = activeProjects.length;
+
+    let remainingCredits = 0;
+    clientsSnapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      const credits = data['credits'] || 0;
+      const validityDate = data['validityDate']
+        ? new Date(data['validityDate'].seconds * 1000)
+        : null;
+      const today = new Date();
+
+      // Apenas créditos não expirados são somados
+      if (!validityDate || validityDate > today) {
+        remainingCredits += credits;
+      }
+    });
+
     return {
       totalClients: clientsSnapshot.size || 0,
       totalProjects: activeProjects || 0,
       totalCreditOrders: creditOrdersSnapshot.size || 0,
       totalEvaluatedParticipants: evaluatedParticipants || 0,
       totalCredits,
+      totalRemainingCredits: remainingCredits,
+      totalActiveProjects: this.totalActiveProjects,
     };
   }
 
