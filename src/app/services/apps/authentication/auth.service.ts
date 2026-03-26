@@ -45,8 +45,13 @@ export class AuthService {
         // Obter o papel do usuário após login
         const userRole = await this.getCurrentUserRole();
 
-        // Redirecionar com base no papel do usuário
-        if (userRole === 'admin_master') {
+        // Restaurar a página onde o usuário estava antes de ser redirecionado para login
+        const returnUrl = localStorage.getItem('returnUrl');
+        localStorage.removeItem('returnUrl');
+
+        if (returnUrl && returnUrl !== '/authentication/login') {
+          this.router.navigate([returnUrl]);
+        } else if (userRole === 'admin_master') {
           this.router.navigate(['/projects']);
         } else {
           this.router.navigate(['/users']);

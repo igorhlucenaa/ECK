@@ -38,6 +38,8 @@ import { AddParticipantModalComponent } from '../../project/add-participant-moda
 import { RelatorioPreviewDialogComponent } from '../../project/participants-modal/relatorio-preview-dialog.component';
 import { ReportGenerationModalComponent } from '../../project/report-generation-modal/report-generation-modal.component';
 import { Router } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 interface ModalData {
   projectId?: string;
@@ -91,7 +93,7 @@ interface Assessment {
 @Component({
   selector: 'app-participants',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './participants.component.html',
   styleUrls: ['./participants.component.scss'],
 })
@@ -391,7 +393,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         if (data['projectId']) projectIds.add(data['projectId']);
       });
 
-      const projectsMap: { [key: string]: { name: string; clientId: string } } =
+      const projectsMap: { [key: string]: { name: string; clientId: string; assessmentId?: string } } =
         {};
       if (projectIds.size > 0) {
         const projectsPromises = Array.from(projectIds).map(
@@ -399,9 +401,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             const projectDoc = doc(this.firestore, 'projects', projectId);
             const projectSnapshot = await getDoc(projectDoc);
             if (projectSnapshot.exists()) {
+              const pd = projectSnapshot.data();
               projectsMap[projectId] = {
-                name: projectSnapshot.data()['name'] || 'Projeto Sem Nome',
-                clientId: projectSnapshot.data()['clientId'] || '',
+                name: pd['name'] || 'Projeto Sem Nome',
+                clientId: pd['clientId'] || '',
+                assessmentId: pd['assessmentId'] || undefined,
               };
             } else {
               projectsMap[projectId] = { name: 'N/A', clientId: '' };
@@ -464,6 +468,28 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           assessmentIdsToQuery = assessments;
         }
 
+        let resolvedAssessmentId: string | undefined =
+          assessments.length > 0
+            ? assessments[0]
+            : (selectedAssessmentId || projectsMap[projectId]?.assessmentId || undefined);
+
+        const processLinks = (linksSnapshot: any) => {
+          linksSnapshot.docs.forEach((linkDoc: any) => {
+            const linkData = linkDoc.data();
+            if (!resolvedAssessmentId && linkData['assessmentId']) {
+              resolvedAssessmentId = linkData['assessmentId'];
+            }
+            if (linkData['sentAt']) {
+              const linkSentAt = (linkData['sentAt'] as Timestamp).toDate();
+              if (!sentAt || linkSentAt > sentAt) sentAt = linkSentAt;
+            }
+            if (linkData['status'] === 'completed' && linkData['completedAt']) {
+              const linkCompletedAt = (linkData['completedAt'] as Timestamp).toDate();
+              if (!completedAt || linkCompletedAt > completedAt) completedAt = linkCompletedAt;
+            }
+          });
+        };
+
         if (assessmentIdsToQuery.length > 0) {
           const batchSize = 10;
           for (let i = 0; i < assessmentIdsToQuery.length; i += batchSize) {
@@ -474,26 +500,20 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
               where('assessmentId', 'in', batch)
             );
             const linksSnapshot = await getDocs(assessmentLinksQuery);
-
-            linksSnapshot.docs.forEach((linkDoc) => {
-              const linkData = linkDoc.data();
-              if (linkData['sentAt']) {
-                const linkSentAt = (linkData['sentAt'] as Timestamp).toDate();
-                if (!sentAt || linkSentAt > sentAt) sentAt = linkSentAt;
-              }
-              if (
-                linkData['status'] === 'completed' &&
-                linkData['completedAt']
-              ) {
-                const linkCompletedAt = (
-                  linkData['completedAt'] as Timestamp
-                ).toDate();
-                if (!completedAt || linkCompletedAt > completedAt)
-                  completedAt = linkCompletedAt;
-              }
-            });
+            processLinks(linksSnapshot);
           }
           status = this.determineStatus(sentAt, completedAt);
+        } else if (!resolvedAssessmentId) {
+          // Discovery: find any assessmentLinks for this participant
+          const discoveryQuery = query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('participantId', '==', participantId)
+          );
+          const discoverySnap = await getDocs(discoveryQuery);
+          if (!discoverySnap.empty) {
+            processLinks(discoverySnap);
+            status = this.determineStatus(sentAt, completedAt);
+          }
         }
 
         if (clientId) {
@@ -501,7 +521,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             id: participantId,
             name: participantData['name'] || 'Desconhecido',
             email: email,
-            assessmentId: assessments.length > 0 ? assessments[0] : undefined,
+            assessmentId: resolvedAssessmentId,
             sentAt: sentAt,
             completedAt: completedAt,
             status: status,
@@ -645,6 +665,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   onProjectChange(): void {
     this.applyFilter();
+  }
+
+  getSelectedClientName(): string {
+    return this.clients.find(c => c.id === this.filterClient)?.name || '';
+  }
+
+  getSelectedProjectName(): string {
+    return this.filteredProjects.find(p => p.id === this.filterProject)?.name || '';
   }
 
   onTemplateChange(): void {
@@ -1104,7 +1132,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   openAddParticipantModal(): void {
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
-      width: '500px',
+      width: '480px',
+      maxWidth: '95vw',
+      panelClass: 'add-participant-dialog',
       data: {
         clientId: this.filterClient || undefined,
         projectId: this.filterProject || undefined,
@@ -1151,6 +1181,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const dateA = a ? a.getTime() : 0;
     const dateB = b ? b.getTime() : 0;
     return (dateA - dateB) * (isAsc ? 1 : -1);
+  }
+
+  countByType(type: string): number {
+    return this.dataSource.filteredData.filter(p => p.type === type).length;
+  }
+
+  countByStatus(status: string): number {
+    return this.dataSource.filteredData.filter(p => (p.status || 'Não Enviado') === status).length;
   }
 
   generateReportForParticipant(participant: UnifiedParticipant) {

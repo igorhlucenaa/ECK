@@ -26,9 +26,10 @@ import { MaterialModule } from 'src/app/material.module';
 import { CommonModule, Location } from '@angular/common';
 import { ParticipantResponsesModalComponent } from './participant-responses-modal/participant-responses-modal.component';
 import { SendAssessmentModalComponent } from './send-assessment-modal/send-assessment-modal.component';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 interface Assessment {
   id: string;
@@ -72,7 +73,7 @@ interface MailTemplate {
 @Component({
   selector: 'app-assessment-list',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule],
+  imports: [MaterialModule, CommonModule, FormsModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './assessment-list.component.html',
   styleUrls: ['./assessment-list.component.scss'],
 })
@@ -88,11 +89,19 @@ export class AssessmentListComponent implements OnInit {
   ];
   dataSource = new MatTableDataSource<any>([]);
   searchValue: string = '';
-  clientFilter = new FormControl('');
+  clientFilterValue: string = '';
+  creatorFilter: string = '';
+  dateFrom: Date | null = null;
+  dateTo: Date | null = null;
   clients: Client[] = [];
-  projects: Project[] = []; // Mantido, mas não será usado para filtragem
-  clientId: string | null = null; // Alterado de projectId para clientId
+  creators: string[] = [];
+  projects: Project[] = [];
+  clientId: string | null = null;
   mailTemplates: MailTemplate[] = [];
+
+  get hasActiveFilters(): boolean {
+    return !!(this.searchValue || this.clientFilterValue || this.creatorFilter || this.dateFrom || this.dateTo);
+  }
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -105,30 +114,55 @@ export class AssessmentListComponent implements OnInit {
     private route: ActivatedRoute,
     private location: Location,
     private translate: TranslateService
-  ) {
-    this.clientFilter.setValue('');
-  }
+  ) {}
 
   ngOnInit(): void {
     this.dataSource.filterPredicate = (data: any, filter: string) => {
-      const filterObj = JSON.parse(filter);
-      const textMatch = data.name.toLowerCase().includes(filterObj.text);
+      if (!filter) return true;
+      const f = JSON.parse(filter);
+
+      const textMatch = !f.text || data.name.toLowerCase().includes(f.text);
       const clientMatch =
-        (!filterObj.client || data.clientId === filterObj.client) &&
-        (!this.clientId || data.clientId === this.clientId); // Alterado para clientId
-      return textMatch && clientMatch;
+        (!f.client || data.clientId === f.client) &&
+        (!this.clientId || data.clientId === this.clientId);
+      const creatorMatch = !f.creator ||
+        (data.createdBy?.name || '').toLowerCase().includes(f.creator);
+
+      let dateFromMatch = true;
+      if (f.dateFrom) {
+        const from = new Date(f.dateFrom);
+        from.setHours(0, 0, 0, 0);
+        dateFromMatch = data.createdAt >= from;
+      }
+      let dateToMatch = true;
+      if (f.dateTo) {
+        const to = new Date(f.dateTo);
+        to.setHours(23, 59, 59, 999);
+        dateToMatch = data.createdAt <= to;
+      }
+
+      return textMatch && clientMatch && creatorMatch && dateFromMatch && dateToMatch;
     };
 
-    this.clientId = this.route.snapshot.paramMap.get('id'); // Alterado para clientId
-    console.log('Client ID:', this.clientId);
+    this.clientId = this.route.snapshot.paramMap.get('id');
     Promise.all([
       this.loadClients(),
       this.loadProjects(),
       this.loadAssessments(),
       this.loadMailTemplates(),
     ]).then(() => {
+      this.buildCreators();
       this.applyFilters();
     });
+  }
+
+  private buildCreators(): void {
+    const names = new Set<string>();
+    this.dataSource.data.forEach((a: any) => {
+      const name = a.createdBy?.name;
+      if (name && name !== 'Desconhecido') names.add(name);
+    });
+    this.creators = Array.from(names).sort();
   }
 
   async loadAssessments(): Promise<void> {
@@ -216,7 +250,6 @@ export class AssessmentListComponent implements OnInit {
         id: doc.id,
         companyName: doc.data()['companyName'] || 'Sem Nome',
       }));
-      this.clients.unshift({ id: '', companyName: 'Todos' });
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
@@ -462,12 +495,12 @@ export class AssessmentListComponent implements OnInit {
   }
 
   applyFilters(): void {
-    const textFilter = this.searchValue.trim().toLowerCase();
-    const clientFilterValue = this.clientFilter.value || '';
-
     this.dataSource.filter = JSON.stringify({
-      text: textFilter,
-      client: clientFilterValue,
+      text: this.searchValue.trim().toLowerCase(),
+      client: this.clientFilterValue,
+      creator: this.creatorFilter.trim().toLowerCase(),
+      dateFrom: this.dateFrom ? this.dateFrom.toISOString() : null,
+      dateTo: this.dateTo ? this.dateTo.toISOString() : null,
     });
 
     if (this.dataSource.paginator) {
@@ -475,13 +508,12 @@ export class AssessmentListComponent implements OnInit {
     }
   }
 
-  applyFilter(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.searchValue = filterValue;
-    this.applyFilters();
-  }
-
-  onClientFilterChange(): void {
+  clearFilters(): void {
+    this.searchValue = '';
+    this.clientFilterValue = '';
+    this.creatorFilter = '';
+    this.dateFrom = null;
+    this.dateTo = null;
     this.applyFilters();
   }
 
@@ -519,11 +551,21 @@ export class AssessmentListComponent implements OnInit {
     }
   }
 
-  previewAssessment(assessment: any): void {
-    this.dialog.open(AssessmentPreviewComponent, {
-      width: '600px',
-      data: assessment,
-    });
+  async previewAssessment(assessment: any): Promise<void> {
+    try {
+      const assessmentDoc = await getDoc(doc(this.firestore, 'assessments', assessment.id));
+      const surveyJSON = assessmentDoc.exists() ? assessmentDoc.data()['surveyJSON'] : null;
+      this.dialog.open(AssessmentPreviewComponent, {
+        width: '860px',
+        maxWidth: '95vw',
+        maxHeight: '90vh',
+        panelClass: 'assessment-preview-dialog',
+        data: { ...assessment, surveyJSON },
+      });
+    } catch (error) {
+      console.error('Erro ao carregar preview:', error);
+      this.snackBar.open('Erro ao carregar pré-visualização.', 'Fechar', { duration: 3000 });
+    }
   }
 
   goBack(): void {

@@ -1,8 +1,13 @@
 <mat-toolbar class="topbar horizontal-topbar">
   <div class="container">
-    <div class="d-none d-sm-flex">
-      <app-branding></app-branding>
-    </div>
+    <!-- Logo ECK (visível em todas as telas) -->
+    <a (click)="goToDashboard()" class="topbar-logo d-flex align-items-center" style="cursor:pointer;">
+      <img
+        src="/assets/images/logos/eck-branco.svg"
+        alt="ECK Consulting"
+        class="topbar-logo-img"
+      />
+    </a>
 
     <!-- Mobile Menu -->
     <button
@@ -16,12 +21,34 @@
 
     <span class="flex-1-auto"></span>
 
+    <!-- Nav Items (desktop) -->
+    <div class="horizontal-navbar hstack align-items-center topbar-nav d-none d-lg-flex">
+      @for(item of horizontalNavItems; track item) {
+        <app-horizontal-nav-item [item]="item" class="parentBox {{ item.ddType }}">
+        </app-horizontal-nav-item>
+      }
+    </div>
+
+    <span class="flex-1-auto"></span>
+
     <!-- --------------------------------------------------------------- -->
     <!--  Search -->
     <!-- --------------------------------------------------------------- -->
     <!-- <button mat-icon-button (click)="openDialog()" class="d-flex">
       <i-tabler name="search" class="icon-20 d-flex"></i-tabler>
     </button> -->
+
+    <!-- --------------------------------------------------------------- -->
+    <!-- Dashboard -->
+    <!-- --------------------------------------------------------------- -->
+    <button
+      mat-icon-button
+      (click)="goToDashboard()"
+      matTooltip="Ir para o Dashboard"
+      class="m-r-5"
+    >
+      <i-tabler name="layout-dashboard" class="icon-20 d-flex"></i-tabler>
+    </button>
 
     <!-- --------------------------------------------------------------- -->
     <!-- Tour / Ajuda -->
@@ -38,16 +65,19 @@
     <!-- --------------------------------------------------------------- -->
     <!-- langugage Dropdown -->
     <!-- --------------------------------------------------------------- -->
-    <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">
-      <img [src]="selectedLanguage.icon" class="rounded object-cover icon-20" />
+    <button [matMenuTriggerFor]="flags" mat-button class="lang-pill m-r-5">
+      <div class="lang-pill__inner">
+        <img [src]="selectedLanguage.icon" class="lang-flag-img" />
+        <span class="lang-pill__code">{{ selectedLanguage.type }}</span>
+        <mat-icon class="lang-pill__arrow">expand_more</mat-icon>
+      </div>
     </button>
-    <mat-menu #flags="matMenu" class="cardWithShadow">
+    <mat-menu #flags="matMenu" class="cardWithShadow lang-menu" xPosition="before">
       @for(lang of languages; track lang) {
-      <button mat-menu-item (click)="changeLanguage(lang)">
-        <div class="d-flex align-items-center">
-          <img [src]="lang.icon" class="rounded object-cover m-r-8 icon-20" />
-          <span class="mat-subtitle-1 f-s-14">{{ lang.language }}</span>
-        </div>
+      <button mat-menu-item (click)="changeLanguage(lang)" class="lang-menu-item">
+        <img [src]="lang.icon" class="lang-flag-menu" />
+        <span class="mat-subtitle-1 f-s-14 f-w-500">{{ lang.language }}</span>
+        <span class="lang-code-tag m-l-auto">{{ lang.type }}</span>
       </button>
       }
     </mat-menu>
@@ -81,7 +111,7 @@
           >
         </span>
       </div>
-      @for(notification of notifications; track notification.title) {
+      @for(notification of notifications; track $index) {
       <button mat-menu-item class="p-x-32 p-y-16">
         <div class="d-flex align-items-center">
           <img [src]="notification.img" class="rounded-circle" width="48" />
@@ -154,13 +184,12 @@
     <button
       mat-icon-button
       [matMenuTriggerFor]="profilemenu"
-      aria-label="Notifications"
+      aria-label="Menu do usuário"
+      class="user-avatar-btn"
     >
-      <img
-        src="/assets/images/logos/eck-branco-1.svg"
-        class="rounded-circle object-cover icon-35 profile-dd"
-        width="35"
-      />
+      <div class="user-avatar-circle">
+        <i-tabler name="user-circle" class="icon-22 d-flex" style="color:#fff;"></i-tabler>
+      </div>
     </button>
     <mat-menu
       #profilemenu="matMenu"
@@ -168,71 +197,36 @@
       class="topbar-dd cardWithShadow"
     >
       <div class="p-x-32 p-y-16">
-        <!-- <h6 class="f-s-16 f-w-600 m-0 mat-subtitle-1">User Profile</h6> -->
-
-        <div class="d-flex align-items-center p-b-24 b-b-1 m-t-16">
-          <!-- <img
-            src="/assets/images/profile/user-1.jpg"
-            class="rounded-circle"
-            width="95"
-          /> -->
-          <div class="m-l-16">
-            <h6 class="f-s-14 f-w-600 m-0 mat-subtitle-1">nome usuário</h6>
-            <!-- <span class="f-s-14 d-block m-b-4">Designer</span> -->
-            <span class="d-flex align-items-center">
-              <i-tabler name="mail" class="icon-15 m-r-4"></i-tabler>
-              email
+        <div class="d-flex align-items-center p-b-16 b-b-1 m-t-8">
+          <div
+            style="width:44px;height:44px;border-radius:50%;background:var(--mat-primary, #1976d2);
+                   display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+          >
+            <span style="color:#fff;font-size:18px;font-weight:700;">
+              {{ userName ? userName[0].toUpperCase() : '?' }}
+            </span>
+          </div>
+          <div class="m-l-12">
+            <h6 class="f-s-14 f-w-600 m-0 mat-subtitle-1">{{ userName || 'Usuário' }}</h6>
+            <span class="d-flex align-items-center f-s-12" style="color:#888;margin-top:2px;">
+              <i-tabler name="mail" class="icon-14 m-r-4"></i-tabler>
+              {{ userEmail || '' }}
             </span>
           </div>
         </div>
       </div>
-      <!-- <div class="p-x-32">
-        @for(profile of profiledd; track profile.img) {
-        <a
-          class="p-y-16 text-decoration-none d-block text-hover-primary"
-          [routerLink]="[profile.link]"
-        >
-          <div class="d-flex align-items-center">
-            <button
-              mat-mini-fab
-              class="text-primary bg-light-primary shadow-none rounded"
-            >
-              <img [src]="profile.img" width="20" />
-            </button>
 
-            <div class="m-l-16">
-              <h5
-                class="f-s-14 f-w-600 m-0 textprimary mat-subtitle-1 hover-text"
-              >
-                {{ profile.title }}
-              </h5>
-              <span class="mat-body-1">{{ profile.subtitle }}</span>
-            </div>
-          </div>
-        </a>
-        }
-
-        <div
-          class="p-24 overflow-hidden bg-light-primary rounded position-relative m-y-16"
+      <div class="p-x-32 p-b-8">
+        <button
+          mat-button
+          class="w-100"
+          style="justify-content:flex-start; color:#555;"
+          (click)="openChangePasswordDialog()"
         >
-          <div class="d-flex align-items-center">
-            <div>
-              <h5 class="f-s-18 m-0 f-w-600 m-b-12 mat-subtitle-1">
-                Unlimited <br />
-                Access
-              </h5>
-              <button mat-flat-button color="primary">Upgrade</button>
-            </div>
-            <div class="m-l-auto">
-              <img
-                src="/assets/images/backgrounds/unlimited-bg.png"
-                alt="upgrade-bg"
-                class="upgrade-bg"
-              />
-            </div>
-          </div>
-        </div>
-      </div> -->
+          <mat-icon style="margin-right:8px;font-size:18px;vertical-align:middle;">lock_reset</mat-icon>
+          Alterar senha
+        </button>
+      </div>
 
       <div class="p-y-12 p-x-32">
         <a

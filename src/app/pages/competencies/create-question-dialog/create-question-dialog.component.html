@@ -1,7 +1,7 @@
 <div class="create-question-dialog">
   <h2 mat-dialog-title class="d-flex align-items-center">
-    <mat-icon class="me-2" style="color: #6366f1;">add_circle</mat-icon>
-    Criar Nova Pergunta
+    <mat-icon class="me-2" style="color: #6366f1;">{{ data?.existingQuestion ? 'edit' : 'add_circle' }}</mat-icon>
+    {{ data?.existingQuestion ? 'Editar Pergunta' : 'Criar Nova Pergunta' }}
   </h2>
 
   <form [formGroup]="questionForm" (ngSubmit)="saveQuestion()">
@@ -118,7 +118,7 @@
           <mat-spinner diameter="16"></mat-spinner>
         </mat-icon>
         <mat-icon *ngIf="!isLoading" class="me-2">save</mat-icon>
-        Criar Pergunta
+        {{ data?.existingQuestion ? 'Salvar Alterações' : 'Criar Pergunta' }}
       </button>
     </mat-dialog-actions>
   </form>

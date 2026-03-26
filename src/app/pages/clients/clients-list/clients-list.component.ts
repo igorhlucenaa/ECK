@@ -16,6 +16,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { Router, RouterModule } from '@angular/router';
 import { AddClientDialogComponent } from '../add-client-dialog/add-client-dialog.component';
@@ -23,19 +24,20 @@ import { PhonePipe } from 'src/app/pipe/phone.pipe';
 import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
 import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { ToastService } from 'src/app/services/toast.service';
 
 @Component({
   selector: 'app-clients-list',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MaterialModule,
     RouterModule,
-    // PhonePipe, // not used in this template
     CnpjPipe,
-    RouterModule,
-    // ConfirmDialogComponent, // provided via dialog.open, not used in template
     TranslateModule,
+    AppPageHeaderComponent,
   ],
   templateUrl: './clients-list.component.html',
   styleUrls: ['./clients-list.component.scss'],
@@ -49,7 +51,10 @@ export class ClientsListComponent implements OnInit {
     'actions',
   ];
   dataSource = new MatTableDataSource<any>();
-  searchValue: string = ''; // Adicionando a propriedade searchValue
+  searchValue: string = '';
+  cnpjFilter: string = '';
+  sectorFilter: string = '';
+  sectors: string[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -59,7 +64,8 @@ export class ClientsListComponent implements OnInit {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private router: Router,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private toast: ToastService
   ) {}
 
   ngOnInit() {
@@ -89,20 +95,27 @@ export class ClientsListComponent implements OnInit {
       );
 
 
-      this.dataSource.data = clients; // Atualizar a tabela após o cálculo dos créditos
+      this.dataSource.data = clients;
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
 
+      // Extrair setores únicos para o filtro dropdown
+      this.sectors = [...new Set(
+        clients.map(c => c.sector).filter(s => s && s.trim() !== '')
+      )].sort();
+
       this.dataSource.filterPredicate = (data, filter) => {
-        const dataStr =
-          `${data.companyName} ${data.sector} ${data.cnpj} ${data.credits}`
-            .toLowerCase()
-            .trim();
-        return dataStr.includes(filter);
+        const f = JSON.parse(filter || '{}');
+        const nameMatch = !f.name || (data.companyName || '').toLowerCase().includes(f.name);
+        const cnpjMatch = !f.cnpj || (data.cnpj || '').replace(/\D/g, '').includes(f.cnpj);
+        const sectorMatch = !f.sector || data.sector === f.sector;
+        return nameMatch && cnpjMatch && sectorMatch;
       };
+
+      this.applyFilters();
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open(this.translate.instant('Erro ao carregar a lista de clientes. Tente novamente mais tarde.'), this.translate.instant('Fechar'), { duration: 3000 });
+      this.toast.error(this.translate.instant('Erro ao carregar a lista de clientes. Tente novamente mais tarde.'));
     }
   }
 
@@ -137,13 +150,27 @@ export class ClientsListComponent implements OnInit {
   }
 
   applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.searchValue = filterValue; // Atualizando a propriedade searchValue
-    this.dataSource.filter = filterValue.trim().toLowerCase();
+    this.searchValue = (event.target as HTMLInputElement).value;
+    this.applyFilters();
+  }
 
+  applyFilters() {
+    const filterObj = {
+      name: this.searchValue.trim().toLowerCase(),
+      cnpj: this.cnpjFilter.trim().replace(/\D/g, ''),
+      sector: this.sectorFilter
+    };
+    this.dataSource.filter = JSON.stringify(filterObj);
     if (this.dataSource.paginator) {
       this.dataSource.paginator.firstPage();
     }
+  }
+
+  clearFilters() {
+    this.searchValue = '';
+    this.cnpjFilter = '';
+    this.sectorFilter = '';
+    this.applyFilters();
   }
 
   deleteClient(id: string) {
@@ -193,7 +220,7 @@ export class ClientsListComponent implements OnInit {
             return deleteDoc(clientDocRef);
           })
           .then(() => {
-            this.snackBar.open(this.translate.instant('Cliente e dados relacionados excluídos com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
+            this.toast.success(this.translate.instant('Cliente e dados relacionados excluídos com sucesso.'));
             // Atualizar tabela
             this.dataSource.data = this.dataSource.data.filter(
               (client) => client.id !== id
@@ -204,7 +231,7 @@ export class ClientsListComponent implements OnInit {
               'Erro ao excluir cliente e dados relacionados:',
               error
             );
-            this.snackBar.open(this.translate.instant('Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.'), this.translate.instant('Fechar'), { duration: 3000 });
+            this.toast.error(this.translate.instant('Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.'));
           });
       }
     });
@@ -219,9 +246,7 @@ export class ClientsListComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.loadClients();
-        this.snackBar.open(this.translate.instant('Lista de clientes atualizada!'), this.translate.instant('Fechar'), {
-          duration: 3000,
-        });
+        this.toast.success(this.translate.instant('Lista de clientes atualizada!'));
       }
     });
   }

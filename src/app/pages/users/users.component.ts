@@ -20,9 +20,12 @@ import { CreateUserGroupComponent } from './create-user-group/create-user-group.
 import { CreateUserComponent } from './create-user/create-user.component';
 import { ConfirmDialogComponent } from '../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { DetailsModalComponent } from 'src/app/layouts/full/shared/details-modal/details-modal.component';
+import { UserDetailsDialogComponent } from './user-details-dialog/user-details-dialog.component';
+import { GroupDetailsDialogComponent } from './group-details-dialog/group-details-dialog.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 export interface User {
   id: string;
@@ -33,9 +36,10 @@ export interface User {
   role: string;
   notificationStatus: 'Enviado' | 'Pendente';
   client: string;
+  clients: string[]; // nomes dos clientes vinculados
   project: string;
-  groups: string[]; // Torna groups opcional
-  projects: string[]; // Modificado para múltiplos projetos
+  groups: string[];
+  projects: string[];
 }
 
 export interface UserGroup {
@@ -51,7 +55,7 @@ export interface UserGroup {
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, RouterModule, TranslateModule],
+  imports: [MaterialModule, CommonModule, FormsModule, RouterModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
 })
@@ -80,6 +84,10 @@ export class UsersComponent implements OnInit, AfterViewInit {
   ];
   groupDataSource = new MatTableDataSource<UserGroup>([]);
 
+  // Usuário logado
+  currentUserEmail: string | null = null;
+  currentUserRole: string | null = null;
+
   // Titles for details modal (avoid pipe in (click) expressions)
   clientUsersTitle = this.translate.instant('Clientes do Usuário');
   userProjectsTitle = this.translate.instant('Projetos do Usuário');
@@ -97,11 +105,50 @@ export class UsersComponent implements OnInit, AfterViewInit {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private authService: AuthService,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
     this.loadData();
+  }
+
+  /** Retorna true se o usuário logado pode editar o usuário alvo */
+  canEdit(user: User): boolean {
+    // admin_master nunca pode ser editado
+    if (user.role === 'admin_master') return false;
+    // admin_client só pode editar viewers
+    if (this.currentUserRole === 'admin_client') {
+      return user.role === 'viewer' || user.role === 'user';
+    }
+    return true;
+  }
+
+  /** Retorna true se o usuário logado pode excluir o usuário alvo */
+  canDelete(user: User): boolean {
+    // admin_master nunca pode ser excluído
+    if (user.role === 'admin_master') return false;
+    // Não pode excluir a si mesmo
+    if (user.email === this.currentUserEmail) return false;
+    // admin_client só pode excluir viewers
+    if (this.currentUserRole === 'admin_client') {
+      return user.role === 'viewer' || user.role === 'user';
+    }
+    return true;
+  }
+
+  /** Tooltip explicando por que o botão está desativado */
+  getEditTooltip(user: User): string {
+    if (user.role === 'admin_master') return this.translate.instant('Usuários Master não podem ser editados');
+    if (this.currentUserRole === 'admin_client' && user.role === 'admin_client') return this.translate.instant('Sem permissão para editar este perfil');
+    return this.translate.instant('Editar');
+  }
+
+  getDeleteTooltip(user: User): string {
+    if (user.role === 'admin_master') return this.translate.instant('Usuários Master não podem ser excluídos');
+    if (user.email === this.currentUserEmail) return this.translate.instant('Você não pode excluir sua própria conta');
+    if (this.currentUserRole === 'admin_client' && user.role === 'admin_client') return this.translate.instant('Sem permissão para excluir este perfil');
+    return this.translate.instant('Excluir');
   }
 
   ngAfterViewInit(): void {
@@ -111,6 +158,11 @@ export class UsersComponent implements OnInit, AfterViewInit {
 
   async loadData(): Promise<void> {
     try {
+      // Carrega dados do usuário logado para regras de permissão
+      const currentUser = await this.authService.getCurrentUser();
+      this.currentUserEmail = currentUser?.email || null;
+      this.currentUserRole = await this.authService.getCurrentUserRole();
+
       const groups = await this.loadUserGroups(); // Carrega os grupos e retorna a lista
       await this.loadUsers(groups); // Passa os grupos para associar
     } catch (error) {
@@ -199,8 +251,14 @@ export class UsersComponent implements OnInit, AfterViewInit {
       const users = usersSnapshot.docs
         .map((doc) => {
           const data = doc.data();
-          const companyName =
-            clientsMap[data['client']] || 'Cliente não encontrado';
+
+          // Suporta tanto campo único 'client' quanto array 'clients'
+          const rawClients: string[] = Array.isArray(data['clients'])
+            ? data['clients']
+            : data['client'] ? [data['client']] : [];
+          const clientNames = rawClients
+            .map((id) => clientsMap[id])
+            .filter((name): name is string => !!name);
 
           const userGroups = groupsMap[doc.id]?.groups || [];
           const userProjects = (groupsMap[doc.id]?.projects || [])
@@ -220,11 +278,12 @@ export class UsersComponent implements OnInit, AfterViewInit {
             email: data['email'] || '',
             role: data['role'] || '',
             notificationStatus: data['notificationStatus'] || 'Pendente',
-            client: companyName,
-            projects: userProjects, // Agora com múltiplos projetos
-            groups: userGroups, // A lista de grupos
-            group: userGroups.join(', '), // Ajusta para interface `User`
-            project: userProjects.join(', '), // Ajusta para interface `User`
+            client: clientNames[0] || '',
+            clients: clientNames,
+            projects: userProjects,
+            groups: userGroups,
+            group: userGroups.join(', '),
+            project: userProjects.join(', '),
           } as User;
         })
         .sort((a, b) => a.name.localeCompare(b.name));
@@ -326,36 +385,28 @@ export class UsersComponent implements OnInit, AfterViewInit {
     }
   }
 
+  openUserDetails(user: User): void {
+    this.dialog.open(UserDetailsDialogComponent, {
+      data: user,
+      panelClass: 'udlg-panel',
+    });
+  }
+
   // Ações da tabela de usuários
   editUser(user: any): void {
-    const dialogRef = this.dialog.open(CreateUserComponent, {
-      width: '500px',
-      data: { user }, // Passa os dados do usuário para edição
-    });
+    this.router.navigate(['/users', user.id, 'edit']);
+  }
 
-    dialogRef.afterClosed().subscribe(async (result) => {
-      if (result) {
-        const groups = await this.loadUserGroups(); // Carrega os grupos e retorna a lista
-        await this.loadUsers(groups); // Recarrega a tabela de usuários após edição
-      }
+  openGroupDetails(group: UserGroup): void {
+    this.dialog.open(GroupDetailsDialogComponent, {
+      data: group,
+      panelClass: 'gdlg-panel',
     });
   }
 
   // Ações da tabela de grupos
   editGroup(group: UserGroup): void {
-    const dialogRef = this.dialog.open(CreateUserGroupComponent, {
-      width: '500px',
-      data: group, // Passa os dados do grupo para edição
-    });
-
-    dialogRef.afterClosed().subscribe(async (result) => {
-      if (result) {
-        // Após editar o grupo, recarrega a lista de grupos
-        const groups = await this.loadUserGroups();
-        // Agora, recarrega os usuários com os novos grupos
-        await this.loadUsers(groups);
-      }
-    });
+    this.router.navigate(['/users/group', group.id, 'edit']);
   }
 
   openCreateGroupDialog(): void {

@@ -1,13 +1,12 @@
-import { Component, Inject, OnInit, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { ChangeDetectorRef, Component, Inject, NgZone, OnInit, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-
 
 import { MaterialModule } from '../../../material.module';
 
@@ -55,201 +54,345 @@ interface ReportGenerationData {
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
-    <h2 mat-dialog-title style="display: flex; align-items: center; gap: 12px;">
-      <mat-icon style="color: #6366f1;">description</mat-icon>
-      {{ 'Gerar Relatório' | translate }} - {{ data.participant.name }}
-    </h2>
+    <!-- Header -->
+    <div class="rgm-header">
+      <div class="rgm-header__icon">
+        <mat-icon>description</mat-icon>
+      </div>
+      <div class="rgm-header__text">
+        <p class="rgm-header__title">Gerar Relatório Individual</p>
+        <p class="rgm-header__subtitle">{{ data.participant.name }}</p>
+      </div>
+      <button mat-icon-button class="rgm-header__close" (click)="dialogRef.close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
 
-    <mat-dialog-content style="max-width: 600px; min-height: 500px;">
-      <div *ngIf="isLoading" style="display: flex; justify-content: center; align-items: center; height: 300px;">
-        <mat-spinner [diameter]="50"></mat-spinner>
+    <mat-dialog-content class="rgm-content">
+
+      <!-- Loading state -->
+      <div *ngIf="isLoading" class="rgm-loading">
+        <mat-spinner [diameter]="44"></mat-spinner>
+        <p>Carregando dados da avaliação...</p>
       </div>
 
       <div *ngIf="!isLoading">
-        <!-- Informações do Participante -->
-        <mat-card style="margin-bottom: 20px; background-color: #f8f9ff; border-left: 4px solid #6366f1;">
-          <mat-card-header>
-            <mat-card-title style="font-size: 16px; color: #6366f1;">
-              <mat-icon style="vertical-align: middle; margin-right: 8px;">person</mat-icon>
-              {{ 'Informações do Participante' | translate }}
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-              <mat-chip>
-                <mat-icon matChipAvatar>person</mat-icon>
-                {{ data.participant.name }}
-              </mat-chip>
-              <mat-chip>
-                <mat-icon matChipAvatar>email</mat-icon>
-                {{ data.participant.email }}
-              </mat-chip>
-              <mat-chip>
-                <mat-icon matChipAvatar>category</mat-icon>
-                {{ data.participant.category }}
-              </mat-chip>
-              <mat-chip>
-                <mat-icon matChipAvatar>check_circle</mat-icon>
-                {{ data.participant.status }}
-              </mat-chip>
+
+        <!-- Participant info strip -->
+        <div class="rgm-participant-strip">
+          <div class="rgm-participant-strip__avatar">
+            {{ data.participant.name.charAt(0).toUpperCase() }}
+          </div>
+          <div class="rgm-participant-strip__info">
+            <span class="rgm-participant-strip__name">{{ data.participant.name }}</span>
+            <span class="rgm-participant-strip__email">{{ data.participant.email }}</span>
+          </div>
+          <div class="rgm-participant-strip__badges">
+            <span class="rgm-badge rgm-badge--category">{{ data.participant.category }}</span>
+            <span class="rgm-badge rgm-badge--status">{{ data.participant.status }}</span>
+          </div>
+        </div>
+
+        <!-- Step 1: Template -->
+        <div class="rgm-step">
+          <div class="rgm-step__header">
+            <div class="rgm-step__number">1</div>
+            <div>
+              <p class="rgm-step__title">Estrutura do Relatório</p>
+              <p class="rgm-step__desc">Selecione um template salvo ou prossiga sem template</p>
             </div>
-          </mat-card-content>
-        </mat-card>
+          </div>
 
-        <!-- Seleção de Template -->
-        <mat-card style="margin-bottom: 20px;">
-          <mat-card-header>
-            <mat-card-title style="font-size: 16px; color: #333;">
-              <mat-icon style="vertical-align: middle; margin-right: 8px;">dashboard</mat-icon>
-              1. {{ 'Selecione o Template de Relatório' | translate }}
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <mat-form-field appearance="outline" style="width: 100%;">
-              <mat-label>{{ 'Template de Relatório' | translate }}</mat-label>
-              <mat-select [formControl]="templateControl">
-                <mat-option *ngFor="let template of reportTemplates" [value]="template">
-                  <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <span style="font-weight: 500;">{{ template.name }}</span>
-                    <span style="font-size: 12px; color: #666;" *ngIf="template.description">
-                      {{ template.description }}
-                    </span>
-                  </div>
-                </mat-option>
-              </mat-select>
-              <mat-hint>{{ reportTemplates.length }} {{ 'templates disponíveis' | translate }}</mat-hint>
-            </mat-form-field>
+          <!-- No templates state -->
+          <div *ngIf="reportTemplates.length === 0" class="rgm-empty-state">
+            <mat-icon>dashboard_customize</mat-icon>
+            <p>Nenhum template salvo ainda.</p>
+            <span>Você pode prosseguir sem template e configurar manualmente na página de relatórios, ou criar um template primeiro em <b>Relatórios → Montar Relatório → Templates</b>.</span>
+          </div>
 
-            <div *ngIf="templateControl.value" style="margin-top: 12px;">
-              <mat-chip-listbox>
-                <mat-chip>
-                  <mat-icon matChipAvatar>layers</mat-icon>
-                  {{ templateControl.value.sections.length || 0 }} {{ 'seções configuradas' | translate }}
-                </mat-chip>
-              </mat-chip-listbox>
+          <mat-form-field *ngIf="reportTemplates.length > 0" appearance="outline" class="rgm-field">
+            <mat-label>Template de Relatório</mat-label>
+            <mat-select [formControl]="templateControl">
+              <mat-option [value]="null">— Sem template (configurar manualmente) —</mat-option>
+              <mat-option *ngFor="let t of reportTemplates" [value]="t">
+                {{ t.name }}
+                <span *ngIf="t.description" style="font-size:11px; color:#888;"> — {{ t.description }}</span>
+              </mat-option>
+            </mat-select>
+            <mat-hint>{{ reportTemplates.length }} template(s) disponível(is)</mat-hint>
+          </mat-form-field>
+
+          <div *ngIf="templateControl.value" class="rgm-info-pill">
+            <mat-icon>layers</mat-icon>
+            {{ templateControl.value.sections?.length || 0 }} seções configuradas no template
+          </div>
+        </div>
+
+        <!-- Step 2: Competencies -->
+        <div class="rgm-step">
+          <div class="rgm-step__header">
+            <div class="rgm-step__number">2</div>
+            <div>
+              <p class="rgm-step__title">Competências</p>
+              <p class="rgm-step__desc">Selecione as competências a incluir no relatório</p>
             </div>
-          </mat-card-content>
-        </mat-card>
+          </div>
 
-        <!-- Seleção de Competências -->
-        <mat-card style="margin-bottom: 20px;">
-          <mat-card-header>
-            <mat-card-title style="font-size: 16px; color: #333;">
-              <mat-icon style="vertical-align: middle; margin-right: 8px;">psychology</mat-icon>
-              2. {{ 'Selecione as Competências' | translate }}
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <mat-form-field appearance="outline" style="width: 100%;">
-              <mat-label>{{ 'Competências' | translate }}</mat-label>
-              <mat-select [formControl]="competenciesControl" multiple>
-                <mat-option *ngFor="let competency of competencies" [value]="competency">
-                  <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <span style="font-weight: 500;">{{ competency.name }}</span>
-                    <span style="font-size: 12px; color: #666;">
-                      {{ competency.description }}
-                    </span>
-                    <span style="font-size: 11px; color: #888;">
-                      {{ competency.perguntasIds.length || 0 }} {{ 'questões' | translate }}
-                    </span>
-                  </div>
-                </mat-option>
-              </mat-select>
-              <mat-hint>
-                {{ competencies.length }} {{ 'competências disponíveis.' | translate }}
-                {{ (competenciesControl.value || []).length }} {{ 'selecionadas.' | translate }}
-              </mat-hint>
-            </mat-form-field>
+          <div *ngIf="competencies.length === 0" class="rgm-empty-state">
+            <mat-icon>psychology</mat-icon>
+            <p>Nenhuma competência encontrada para este cliente.</p>
+            <span>Configure competências em <b>Definições → Competências</b> antes de gerar o relatório.</span>
+          </div>
 
-            <div *ngIf="(competenciesControl.value || []).length > 0" style="margin-top: 12px;">
-              <mat-chip-listbox>
-                <mat-chip *ngFor="let comp of competenciesControl.value || []">
-                  <mat-icon matChipAvatar>psychology</mat-icon>
-                  {{ comp.name }}
-                </mat-chip>
-              </mat-chip-listbox>
-            </div>
-          </mat-card-content>
-        </mat-card>
+          <mat-form-field *ngIf="competencies.length > 0" appearance="outline" class="rgm-field">
+            <mat-label>Competências</mat-label>
+            <mat-select [formControl]="competenciesControl" multiple>
+              <mat-option *ngFor="let comp of competencies" [value]="comp">
+                {{ comp.name }}
+                <span style="font-size:11px; color:#888;"> ({{ comp.perguntasIds.length }} questões)</span>
+              </mat-option>
+            </mat-select>
+            <mat-hint>
+              {{ competencies.length }} disponível(is) ·
+              {{ (competenciesControl.value || []).length }} selecionada(s)
+            </mat-hint>
+          </mat-form-field>
 
-        <!-- Resumo -->
-        <mat-card *ngIf="templateControl.valid && competenciesControl.valid && (competenciesControl.value || []).length > 0" style="background-color: #f0f9ff; border-left: 4px solid #0ea5e9;">
-          <mat-card-header>
-            <mat-card-title style="font-size: 16px; color: #0ea5e9;">
-              <mat-icon style="vertical-align: middle; margin-right: 8px;">summarize</mat-icon>
-              {{ 'Resumo da Configuração' | translate }}
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-              <mat-chip>
-                <mat-icon matChipAvatar>dashboard</mat-icon>
-                {{ 'Template' | translate }}: {{ templateControl.value?.name }}
-              </mat-chip>
-              <mat-chip>
-                <mat-icon matChipAvatar>psychology</mat-icon>
-                {{ (competenciesControl.value || []).length }} {{ 'competências' | translate }}
-              </mat-chip>
-              <mat-chip>
-                <mat-icon matChipAvatar>quiz</mat-icon>
-                {{ getTotalQuestions() }} {{ 'questões total' | translate }}
-              </mat-chip>
-            </div>
-          </mat-card-content>
-        </mat-card>
+          <div *ngIf="(competenciesControl.value || []).length > 0" class="rgm-chips">
+            <span class="rgm-chip" *ngFor="let c of (competenciesControl.value || [])">
+              <mat-icon>psychology</mat-icon>{{ c.name }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Summary (only when competencies selected) -->
+        <div class="rgm-summary" *ngIf="(competenciesControl.value || []).length > 0">
+          <mat-icon>summarize</mat-icon>
+          <span>
+            <b>{{ (competenciesControl.value || []).length }}</b> competência(s) ·
+            <b>{{ getTotalQuestions() }}</b> questões ·
+            Template: <b>{{ templateControl.value?.name || 'Sem template' }}</b>
+          </span>
+        </div>
+
       </div>
     </mat-dialog-content>
 
-    <mat-dialog-actions align="end" style="padding: 16px 24px; border-top: 1px solid #e0e0e0;">
-      <button mat-button mat-dialog-close [disabled]="isGenerating">
-        {{ 'Cancelar' | translate }}
+    <!-- Actions -->
+    <div class="rgm-actions">
+      <button mat-button class="rgm-btn-cancel" (click)="dialogRef.close()" [disabled]="isGenerating">
+        Cancelar
       </button>
       <button
         mat-flat-button
-        color="primary"
-        [disabled]="templateControl.invalid || competenciesControl.invalid || isGenerating"
+        class="rgm-btn-generate"
+        [disabled]="!canGenerate() || isGenerating"
         (click)="generateReport()"
-        style="margin-left: 8px;"
       >
-        <mat-spinner *ngIf="isGenerating" [diameter]="20" style="margin-right: 8px;"></mat-spinner>
-        <mat-icon *ngIf="!isGenerating" style="margin-right: 8px;">description</mat-icon>
-        <span *ngIf="isGenerating">{{ 'Gerando Relatório...' | translate }}</span>
-        <span *ngIf="!isGenerating">{{ 'Gerar Relatório PDF' | translate }}</span>
+        <mat-spinner *ngIf="isGenerating" [diameter]="18" class="rgm-btn-spinner"></mat-spinner>
+        <mat-icon *ngIf="!isGenerating">open_in_new</mat-icon>
+        <span>{{ isGenerating ? 'Abrindo relatório...' : 'Abrir no Relatório' }}</span>
       </button>
-    </mat-dialog-actions>
+    </div>
   `,
   styles: [`
-    mat-chip-listbox {
+    /* Header */
+    .rgm-header {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 24px 16px;
+      background: linear-gradient(135deg, #1B2D56, #1B84FF);
+      color: #fff;
+      border-radius: 12px 12px 0 0;
     }
 
-    mat-chip {
-      margin: 2px;
+    .rgm-header__icon {
+      width: 42px; height: 42px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .rgm-header__icon mat-icon { font-size: 22px; width: 22px; height: 22px; }
+
+    .rgm-header__text { flex: 1; }
+    .rgm-header__title { margin: 0; font-size: 16px; font-weight: 700; }
+    .rgm-header__subtitle { margin: 2px 0 0; font-size: 13px; opacity: 0.8; }
+
+    .rgm-header__close {
+      color: rgba(255,255,255,0.7) !important;
+      &:hover { color: #fff !important; }
     }
 
-    .mat-mdc-chip-listbox .mat-mdc-chip {
-      --mdc-chip-container-height: 32px;
-    }
-
-    mat-card {
-      margin-bottom: 16px;
-    }
-
-    mat-form-field {
-      margin-bottom: 8px;
-    }
-
-    .mat-mdc-dialog-content {
-      max-height: 70vh;
+    /* Content */
+    .rgm-content {
+      padding: 20px 24px !important;
+      max-height: 65vh;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Loading */
+    .rgm-loading {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 16px;
+      min-height: 280px;
+      width: 100%;
+      color: #64748b; font-size: 13px;
+    }
+
+    /* Participant strip */
+    .rgm-participant-strip {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      background: #f8faff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+    }
+    .rgm-participant-strip__avatar {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, #1B2D56, #1B84FF);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; flex-shrink: 0;
+    }
+    .rgm-participant-strip__info {
+      flex: 1;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .rgm-participant-strip__name { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .rgm-participant-strip__email { font-size: 12px; color: #64748b; }
+    .rgm-participant-strip__badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* Badges */
+    .rgm-badge {
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .rgm-badge--category { background: #dbeafe; color: #1d4ed8; }
+    .rgm-badge--status { background: #dcfce7; color: #16a34a; }
+
+    /* Steps */
+    .rgm-step {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .rgm-step__header {
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .rgm-step__number {
+      width: 26px; height: 26px;
+      background: linear-gradient(135deg, #1B2D56, #1B84FF);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .rgm-step__title { margin: 0; font-size: 14px; font-weight: 700; color: #1e293b; }
+    .rgm-step__desc { margin: 2px 0 0; font-size: 12px; color: #94a3b8; }
+
+    .rgm-field { width: 100%; }
+
+    /* Empty state */
+    .rgm-empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; gap: 6px;
+      padding: 16px;
+      background: #fafafa;
+      border: 1px dashed #e2e8f0;
+      border-radius: 8px;
+      color: #94a3b8;
+
+      mat-icon { font-size: 32px; width: 32px; height: 32px; }
+      p { margin: 0; font-size: 13px; font-weight: 600; color: #64748b; }
+      span { font-size: 12px; line-height: 1.5; }
+    }
+
+    /* Info pill */
+    .rgm-info-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      font-size: 12px; color: #1d4ed8;
+      mat-icon { font-size: 15px; width: 15px; height: 15px; }
+    }
+
+    /* Chips */
+    .rgm-chips {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .rgm-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px;
+      background: #f1f5f9;
+      border-radius: 999px;
+      font-size: 12px; color: #475569;
+      mat-icon { font-size: 13px; width: 13px; height: 13px; color: #6366f1; }
+    }
+
+    /* Summary */
+    .rgm-summary {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      font-size: 13px; color: #166534;
+      mat-icon { color: #16a34a; }
+    }
+
+    /* Actions */
+    .rgm-actions {
+      display: flex; justify-content: flex-end; align-items: center;
+      gap: 10px;
+      padding: 14px 24px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .rgm-btn-cancel {
+      color: #64748b !important;
+      border-radius: 8px !important;
+    }
+
+    .rgm-btn-generate {
+      background: linear-gradient(135deg, #1B2D56, #1B84FF) !important;
+      color: #fff !important;
+      border-radius: 8px !important;
+      font-weight: 600 !important;
+      height: 38px;
+      display: flex; align-items: center; gap: 6px;
+      padding: 0 18px !important;
+
+      &[disabled] {
+        background: #e2e8f0 !important;
+        color: #94a3b8 !important;
+      }
+
+      mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    }
+
+    .rgm-btn-spinner {
+      display: inline-block;
     }
   `]
 })
 export class ReportGenerationModalComponent implements OnInit {
-  templateControl = new FormControl<ReportTemplate | null>(null, [Validators.required]);
-  competenciesControl = new FormControl<Competency[]>([], [Validators.required]);
+  templateControl = new FormControl<ReportTemplate | null>(null);
+  competenciesControl = new FormControl<Competency[]>([]);
 
   reportTemplates: ReportTemplate[] = [];
   competencies: Competency[] = [];
@@ -264,11 +407,26 @@ export class ReportGenerationModalComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router,
     private dialog: MatDialog,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {}
 
   async ngOnInit(): Promise<void> {
     this.isLoading = true;
+
+    // Safety net: Firestore modular API may resolve outside Angular zone.
+    // NgZone.run() guarantees change detection fires when we update state.
+    const finishLoading = () => {
+      this.ngZone.run(() => {
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      });
+    };
+
+    // Hard timeout — if queries hang (no network, Firestore offline, etc.)
+    const safetyTimer = setTimeout(finishLoading, 5_000);
+
     try {
       await Promise.all([
         this.loadReportTemplates(),
@@ -276,30 +434,31 @@ export class ReportGenerationModalComponent implements OnInit {
       ]);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      this.snackBar.open(this.translate.instant('Erro ao carregar dados. Tente novamente.'), this.translate.instant('Fechar'), { duration: 5000 });
     } finally {
-      this.isLoading = false;
+      clearTimeout(safetyTimer);
+      finishLoading();
     }
+  }
+
+  canGenerate(): boolean {
+    // Require at least 1 competency selected
+    return (this.competenciesControl.value || []).length > 0;
   }
 
   async loadReportTemplates(): Promise<void> {
     try {
-      const templatesCollection = collection(this.firestore, 'reportTemplates');
-      const templatesSnapshot = await getDocs(templatesCollection);
-
-      this.reportTemplates = templatesSnapshot.docs.map(doc => {
-        const data: any = doc.data();
+      const snap = await getDocs(collection(this.firestore, 'reportTemplates'));
+      this.reportTemplates = snap.docs.map(doc => {
+        const d: any = doc.data();
         return {
           id: doc.id,
-          name: data['name'] || data['nome'] || 'Template sem nome',
-          description: data['description'] || data['descricao'] || '',
-          sections: data['sections'] || data['configuracao'] || [],
-          clientId: data['clientId'] || '',
-          assessmentId: data['assessmentId'] || data['avaliacaoId'] || undefined
+          name: d['name'] || d['nome'] || 'Template sem nome',
+          description: d['description'] || d['descricao'] || '',
+          sections: d['sections'] || d['configuracao'] || [],
+          clientId: d['clientId'] || '',
+          assessmentId: d['assessmentId'] || d['avaliacaoId'] || undefined
         } as ReportTemplate;
       });
-
-      console.log('Templates carregados:', this.reportTemplates.length);
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
       this.reportTemplates = [];
@@ -308,113 +467,82 @@ export class ReportGenerationModalComponent implements OnInit {
 
   async loadCompetencies(): Promise<void> {
     try {
-      // Buscar grupos de competências do cliente
       const groupsCollection = collection(this.firestore, 'competencyGroups');
-      let groupsSnapshot;
 
       if (this.data.clientId) {
-        const groupsQuery = query(groupsCollection, where('clientId', '==', this.data.clientId));
-        groupsSnapshot = await getDocs(groupsQuery);
-      } else {
-        // Fallback: buscar todas as competências se não tiver clientId
-        const competenciesCollection = collection(this.firestore, 'competencies');
-        let competenciesSnapshot;
-
-        if (this.data.assessmentId) {
-          const competenciesQuery = query(competenciesCollection, where('assessmentId', '==', this.data.assessmentId));
-          competenciesSnapshot = await getDocs(competenciesQuery);
-        } else {
-          competenciesSnapshot = await getDocs(competenciesCollection);
-        }
-
-        this.competencies = competenciesSnapshot.docs.map(doc => {
-          const data: any = doc.data();
+        const snap = await getDocs(query(groupsCollection, where('clientId', '==', this.data.clientId)));
+        this.competencies = snap.docs.map(doc => {
+          const d = doc.data();
           return {
             id: doc.id,
-            name: data['name'] || data['nome'] || 'Competência sem nome',
-            description: data['description'] || data['descricao'] || '',
-            perguntasIds: data['perguntasIds'] || data['questionIds'] || [],
-            assessmentId: data['assessmentId'] || undefined
+            name: d['name'] || 'Grupo sem nome',
+            description: `Grupo: ${d['competencias']?.length || 0} competências`,
+            perguntasIds: d['competencias'] || [],
+            assessmentId: d['assessmentId'] || undefined
           } as Competency;
         });
-        return;
+      } else {
+        const col = this.data.assessmentId
+          ? query(collection(this.firestore, 'competencies'), where('assessmentId', '==', this.data.assessmentId))
+          : collection(this.firestore, 'competencies');
+        const snap = await getDocs(col);
+        this.competencies = snap.docs.map(doc => {
+          const d: any = doc.data();
+          return {
+            id: doc.id,
+            name: d['name'] || d['nome'] || 'Competência sem nome',
+            description: d['description'] || d['descricao'] || '',
+            perguntasIds: d['perguntasIds'] || d['questionIds'] || [],
+            assessmentId: d['assessmentId'] || undefined
+          } as Competency;
+        });
       }
-
-      // Processar grupos de competências
-      this.competencies = [];
-      groupsSnapshot.docs.forEach(doc => {
-        const groupData = doc.data();
-        const groupName = groupData['name'] || 'Grupo sem nome';
-
-        // Adicionar o grupo como uma competência
-        this.competencies.push({
-          id: doc.id,
-          name: groupName,
-          description: `Grupo de competências: ${groupData['competencias']?.length || 0} competências`,
-          perguntasIds: groupData['competencias'] || [],
-          assessmentId: groupData['assessmentId'] || undefined
-        } as Competency);
-      });
-
-      console.log('Grupos de competências carregados:', this.competencies.length);
     } catch (error) {
       console.error('Erro ao carregar competências:', error);
       this.competencies = [];
     }
   }
 
-
-
-
-
   getTotalQuestions(): number {
-    const selectedComps = this.competenciesControl.value || [];
-    return selectedComps.reduce((total, comp) =>
-      total + (comp.perguntasIds?.length || 0), 0);
+    return (this.competenciesControl.value || []).reduce((t, c) => t + (c.perguntasIds?.length || 0), 0);
   }
 
-    async generateReport(): Promise<void> {
-    if (this.templateControl.invalid || this.competenciesControl.invalid) {
-      this.snackBar.open('Por favor, selecione um template e pelo menos uma competência.', 'Fechar', { duration: 3000 });
+  async generateReport(): Promise<void> {
+    if (!this.canGenerate()) {
+      this.snackBar.open('Selecione pelo menos uma competência para gerar o relatório.', 'Fechar', { duration: 3000 });
       return;
     }
 
-    this.isGenerating = true;
+    this.ngZone.run(() => { this.isGenerating = true; this.cdr.markForCheck(); });
 
     try {
-      // Navegar para a página de relatórios com configuração automática
-      const selectedTemplate = this.templateControl.value!;
+      const selectedTemplate = this.templateControl.value;
       const selectedCompetencies = this.competenciesControl.value || [];
 
-                   // Preparar parâmetros para navegação
-             const queryParams = {
-               mode: 'individual',
-               assessmentId: this.data.assessmentId,
-               participantId: this.data.participant.id,
-               participantName: this.data.participant.name,
-               templateId: selectedTemplate.id,
-               competencyIds: JSON.stringify(selectedCompetencies.map(c => c.id)),
-               autoGenerate: 'true',
-               aba: 'visualizar'
-             };
+      const queryParams: any = {
+        mode: 'individual',
+        assessmentId: this.data.assessmentId,
+        participantId: this.data.participant.id,
+        participantName: this.data.participant.name,
+        competencyIds: JSON.stringify(selectedCompetencies.map(c => c.id)),
+        autoGenerate: 'true',
+        aba: 'visualizar'
+      };
 
-      // Fechar este modal
-      this.dialogRef.close({ success: true });
+      if (selectedTemplate) {
+        queryParams['templateId'] = selectedTemplate.id;
+      }
 
-            // Navegar para a página de relatórios
-      this.router.navigate(['/reports'], {
-        queryParams: queryParams
-      });
+      this.dialog.closeAll();
 
-      this.snackBar.open(this.translate.instant('Redirecionando para geração do relatório...'), this.translate.instant('Fechar'), { duration: 3000 });
+      this.router.navigate(['/reports'], { queryParams });
 
+      this.snackBar.open('Redirecionando para geração do relatório...', 'Fechar', { duration: 3000 });
     } catch (error) {
-      console.error('Erro ao gerar relatório:', error);
-      this.snackBar.open(this.translate.instant('Erro ao gerar relatório. Tente novamente.'), this.translate.instant('Fechar'), { duration: 5000 });
+      console.error('Erro ao abrir relatório:', error);
+      this.snackBar.open('Erro ao abrir relatório. Tente novamente.', 'Fechar', { duration: 5000 });
     } finally {
-      this.isGenerating = false;
+      this.ngZone.run(() => { this.isGenerating = false; this.cdr.markForCheck(); });
     }
   }
-
-
 }

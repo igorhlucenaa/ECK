@@ -13,6 +13,7 @@ import { CoreService } from 'src/app/services/core.service';
           src="./assets/images/logos/eck-branco.svg"
           class="align-middle m-2"
           alt="logo"
+          height="36"
         />
       </a>
     </div>

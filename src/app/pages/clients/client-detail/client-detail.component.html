@@ -1,106 +1,153 @@
-<mat-card *ngIf="!isLoading" class="client-detail-container">
-  <div class="row" style="margin-bottom: 10px;">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
-        <mat-icon>arrow_back</mat-icon>
-        {{ 'Voltar' | translate }}
-      </button>
-    </div>
-  </div>
+<!-- Loading -->
+<div class="loading-wrapper" *ngIf="isLoading">
+  <mat-spinner diameter="48"></mat-spinner>
+</div>
 
-  <h1 class="mb-4">{{ 'Detalhes do Cliente' | translate }}</h1>
+<div class="detail-wrapper" *ngIf="!isLoading">
+
+  <app-page-header
+    eyebrow="Clientes"
+    [title]="'Editar Cliente' | translate"
+    subtitle="Atualize os dados cadastrais do cliente">
+
+    <button mat-button class="btn-back" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'Voltar' | translate }}
+    </button>
+
+    <button
+      mat-raised-button
+      color="primary"
+      class="btn-save"
+      [disabled]="clientForm.invalid"
+      (click)="saveChanges()">
+      <mat-icon>save</mat-icon>
+      {{ 'Salvar Alterações' | translate }}
+    </button>
+
+  </app-page-header>
 
   <form [formGroup]="clientForm" (ngSubmit)="saveChanges()">
-    <!-- Linha 1: Nome Fantasia e Email -->
-    <div class="row">
-      <div class="col-md-6">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Nome Fantasia' | translate }}</mat-label>
-          <input matInput formControlName="companyName" />
-        </mat-form-field>
-      </div>
-      <div class="col-md-6">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Email' | translate }}</mat-label>
-          <input matInput formControlName="email" />
-        </mat-form-field>
-      </div>
-    </div>
+    <div class="form-grid">
 
-    <!-- Linha 2: Telefone e CNPJ -->
-    <div class="row">
-      <div class="col-md-6">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Telefone' | translate }}</mat-label>
-          <input matInput formControlName="phone" />
-        </mat-form-field>
-      </div>
-      <div class="col-md-6">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'CNPJ' | translate }}</mat-label>
-          <input matInput formControlName="cnpj" />
-        </mat-form-field>
-      </div>
-    </div>
+      <!-- Seção: Dados da Empresa -->
+      <div class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-icon">
+            <mat-icon>business</mat-icon>
+          </div>
+          <div>
+            <h3 class="form-card-title">Dados da Empresa</h3>
+            <p class="form-card-subtitle">Informações gerais do cliente</p>
+          </div>
+        </div>
 
-    <!-- Linha 3: Setor e Notas -->
-    <div class="row">
-      <div class="col-md-6">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Setor' | translate }}</mat-label>
-          <input matInput formControlName="sector" />
-        </mat-form-field>
-      </div>
-      <div class="col-md-6">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Notas Adicionais' | translate }}</mat-label>
-          <textarea matInput formControlName="notes"></textarea>
-        </mat-form-field>
-      </div>
-    </div>
+        <div class="form-card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'Nome Fantasia' | translate }}</mat-label>
+                <mat-icon matPrefix class="field-icon">badge</mat-icon>
+                <input matInput formControlName="companyName" placeholder="Nome da empresa" />
+                <mat-error *ngIf="clientForm.get('companyName')?.invalid">
+                  Nome é obrigatório.
+                </mat-error>
+              </mat-form-field>
+            </div>
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>E-mail</mat-label>
+                <mat-icon matPrefix class="field-icon">mail_outline</mat-icon>
+                <input matInput formControlName="email" placeholder="email@empresa.com" />
+                <mat-error *ngIf="clientForm.get('email')?.hasError('email')">
+                  E-mail inválido.
+                </mat-error>
+              </mat-form-field>
+            </div>
+          </div>
 
-    <h2 class="mt-4 mb-4">{{ 'Dados do Representante' | translate }}</h2>
+          <div class="row">
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'Telefone' | translate }}</mat-label>
+                <mat-icon matPrefix class="field-icon">phone</mat-icon>
+                <input matInput formControlName="phone" placeholder="(00) 00000-0000" />
+              </mat-form-field>
+            </div>
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'CNPJ' | translate }}</mat-label>
+                <mat-icon matPrefix class="field-icon">receipt_long</mat-icon>
+                <input matInput formControlName="cnpj" placeholder="00.000.000/0000-00" />
+              </mat-form-field>
+            </div>
+          </div>
 
-    <!-- Linha 4: Nome e Email do Representante -->
-    <div class="row">
-      <div class="col-md-6">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Nome do Representante' | translate }}</mat-label>
-          <input matInput formControlName="representativeName" />
-        </mat-form-field>
+          <div class="row">
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'Setor' | translate }}</mat-label>
+                <mat-icon matPrefix class="field-icon">category</mat-icon>
+                <input matInput formControlName="sector" placeholder="Ex: Tecnologia" />
+              </mat-form-field>
+            </div>
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'Notas Adicionais' | translate }}</mat-label>
+                <mat-icon matPrefix class="field-icon">notes</mat-icon>
+                <textarea matInput formControlName="notes" rows="1" placeholder="Observações..."></textarea>
+              </mat-form-field>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="col-md-6">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Email do Representante' | translate }}</mat-label>
-          <input matInput formControlName="representativeEmail" />
-        </mat-form-field>
-      </div>
-    </div>
 
-    <!-- Linha 5: Função do Representante -->
-    <div class="row">
-      <div class="col-md-6">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'Função do Representante' | translate }}</mat-label>
-          <input matInput formControlName="representativeRole" />
-        </mat-form-field>
-      </div>
-    </div>
+      <!-- Seção: Dados do Representante -->
+      <div class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-icon form-card-icon--accent">
+            <mat-icon>person</mat-icon>
+          </div>
+          <div>
+            <h3 class="form-card-title">{{ 'Dados do Representante' | translate }}</h3>
+            <p class="form-card-subtitle">Contato responsável pelo cliente</p>
+          </div>
+        </div>
 
-    <!-- Botão de Salvar -->
-    <div class="row mt-4">
-      <div class="col text-right">
-        <button
-          mat-flat-button
-          color="primary"
-          type="submit"
-          [disabled]="clientForm.invalid"
-        >
-          {{ 'Salvar Alterações' | translate }}
-        </button>
+        <div class="form-card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'Nome do Representante' | translate }}</mat-label>
+                <mat-icon matPrefix class="field-icon">person_outline</mat-icon>
+                <input matInput formControlName="representativeName" placeholder="Nome completo" />
+              </mat-form-field>
+            </div>
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>{{ 'Email do Representante' | translate }}</mat-label>
+                <mat-icon matPrefix class="field-icon">alternate_email</mat-icon>
+                <input matInput formControlName="representativeEmail" placeholder="email@contato.com" />
+                <mat-error *ngIf="clientForm.get('representativeEmail')?.hasError('email')">
+                  E-mail inválido.
+                </mat-error>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <mat-form-field appearance="outline" class="w-100">
+                <mat-label>Função / Cargo</mat-label>
+                <mat-icon matPrefix class="field-icon">work_outline</mat-icon>
+                <input matInput formControlName="representativeRole" placeholder="Ex: Diretor de RH" />
+              </mat-form-field>
+            </div>
+          </div>
+        </div>
       </div>
+
     </div>
   </form>
-</mat-card>
 
-<mat-spinner *ngIf="isLoading"></mat-spinner>
+</div>

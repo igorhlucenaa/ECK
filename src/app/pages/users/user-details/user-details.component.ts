@@ -6,11 +6,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-user-details',
   standalone: true,
-  imports: [MaterialModule, CommonModule, TranslateModule],
+  imports: [MaterialModule, CommonModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './user-details.component.html',
   styleUrl: './user-details.component.scss'
 })

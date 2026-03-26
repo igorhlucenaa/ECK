@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -67,10 +67,13 @@ interface RelatorioSecaoSimplificada {
   templateUrl: './report-builder-visual.component.html',
   styleUrls: ['./report-builder-visual.component.scss']
 })
-export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
+export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestroy {
   @Input() relatorioConfiguracao: RelatorioSecaoSimplificada[] = [];
   @Input() competencias: any[] = [];
+  @Input() savedLabel: string = '';
+  @Input() hasUnsavedChanges: boolean = false;
   @Output() configuracaoChange = new EventEmitter<RelatorioSecaoSimplificada[]>();
+  @Output() saveRequested = new EventEmitter<void>();
 
   private destroy$ = new Subject<void>();
 
@@ -243,9 +246,16 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // Inicializar com configuração existente ou vazia
     this.canvasSections = [...this.relatorioConfiguracao];
     this.ordenarSecoes();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['relatorioConfiguracao'] && !changes['relatorioConfiguracao'].firstChange) {
+      this.canvasSections = [...this.relatorioConfiguracao];
+      this.ordenarSecoes();
+      this.fecharPainelConfig();
+    }
   }
 
   ngOnDestroy(): void {
@@ -290,6 +300,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
    * Adiciona uma nova seção baseada em um template
    */
   adicionarSecaoDoTemplate(template: SectionTemplate): void {
+    const tiposComCompetencias = ['graficos', 'tabela', 'tabela_detalhada', 'competencia_detalhada', 'grafico_defasagem', 'janela_johari'];
     const novaSecao: RelatorioSecaoSimplificada = {
       id: `${template.tipo}_${Date.now()}`,
       tipo: template.tipo,
@@ -297,7 +308,9 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
       texto: '',
       visivel: true,
       ordem: this.canvasSections.length + 1,
-      competenciasIds: [],
+      competenciasIds: tiposComCompetencias.includes(template.tipo)
+        ? this.competencias.map(c => c.id)
+        : [],
       tipoGrafico: template.tipo === 'graficos' ? 'barra' : undefined,
       paletaCor: 'padrao'
     };

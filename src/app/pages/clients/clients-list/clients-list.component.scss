@@ -1,81 +1,249 @@
-.client-list-container {
-  padding: 20px;
-  background-color: #f9f9f9;
+// ─── Wrapper ───────────────────────────────────────────────
+.clients-wrapper {
+  padding: 28px 24px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+// ─── Card principal ─────────────────────────────────────────
+.clients-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(27, 45, 86, 0.08);
+  overflow: hidden;
+}
+
+// ─── Barra de busca e filtros ────────────────────────────────
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px 4px;
+  flex-wrap: wrap;
+
+  .search-prefix-icon {
+    color: #8a8fa8;
+    margin-right: 4px;
+    font-size: 20px;
+  }
+}
+
+.search-field {
+  flex: 1;
+  min-width: 220px;
+}
+
+.filter-field {
+  width: 200px;
+  min-width: 160px;
+
+  @media (max-width: 768px) {
+    flex: 1;
+    min-width: 140px;
+  }
+}
+
+.search-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.search-count {
+  font-size: 13px;
+  color: #8a8fa8;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.btn-clear-filters {
+  font-size: 13px;
+  color: #6366f1;
+  border-color: #c7d2fe;
+  height: 36px;
   border-radius: 8px;
+  white-space: nowrap;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
 }
 
-.custom-table {
+// ─── Tabela ──────────────────────────────────────────────────
+.table-container {
+  overflow-x: auto;
+}
+
+.clients-table {
   width: 100%;
+  border-collapse: collapse;
+
+  // Cabeçalho
+  .mat-mdc-header-row {
+    background: #f5f7fa;
+    height: 48px;
+  }
+
+  .mat-mdc-header-cell {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e8edf3;
+    padding: 0 16px;
+  }
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .col-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+      color: #94a3b8;
+    }
+  }
+
+  // Linhas
+  .mat-mdc-row {
+    height: 58px;
+    transition: background 0.15s;
+
+    &:hover {
+      background: #f0f5ff;
+    }
+
+    &:not(:last-child) {
+      border-bottom: 1px solid #f1f5f9;
+    }
+  }
+
+  .mat-mdc-cell {
+    font-size: 13.5px;
+    color: #374151;
+    padding: 0 16px;
+    border-bottom: none;
+  }
 }
 
-.mat-header-cell {
-  font-weight: bold;
+// ─── Células especiais ────────────────────────────────────────
+.company-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .company-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1B2D56, #1B84FF);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .company-name {
+    font-weight: 500;
+    color: #1a1a2e;
+  }
 }
 
-.mat-row:hover {
-  background-color: #f5f5f5;
-}
-
-.expanded-row {
-  background-color: #f9f9f9;
-}
-
-.expanded-content {
-  padding: 16px;
-  font-size: 14px;
-  color: #555;
-}
-.actions-cell button {
-  margin: 0 4px; /* Espaçamento lateral entre os botões */
-}
-
-.mat-header-cell,
-.mat-cell {
-  vertical-align: middle; /* Alinha o conteúdo verticalmente */
-}
-
-.mat-row,
-.mat-header-row {
-  height: 48px; /* Define uma altura fixa para todas as linhas */
-}
-
-td {
+.sector-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(27, 132, 255, 0.08);
+  color: #1B84FF;
   font-size: 12px;
+  font-weight: 500;
 }
 
-.credit-cell {
-  font-weight: bold;
-  text-align: center;
+.cnpj-cell {
+  font-family: monospace;
+  font-size: 13px;
+  color: #64748b;
 }
 
-.hoverable-rows tr.clickable-row {
-  cursor: pointer; /* Muda o cursor para indicar clique */
-  transition: background-color 0.2s ease-in-out; /* Suaviza a transição */
+.credits-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(76, 175, 80, 0.1);
+  color: #2e7d32;
+  font-size: 13px;
+  font-weight: 600;
+
+  &.credits-zero {
+    background: rgba(239, 68, 68, 0.08);
+    color: #dc2626;
+  }
 }
 
-.hoverable-rows tr.clickable-row:hover {
-  background-color: #e3f2fd; /* Muda o fundo ao passar o mouse */
+// ─── Botões de ação ───────────────────────────────────────────
+.actions-cell {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
 }
 
-table.hoverable-rows tr.clickable-row:hover {
-  background-color: #e3f2fd !important;
-  cursor: pointer !important;
+.actions-col {
+  text-align: center !important;
+  width: 100px;
 }
 
-.demo-table {
-  width: 100%;
+.action-edit {
+  color: #1B84FF !important;
 }
 
-.mat-mdc-row .mat-mdc-cell {
-  border-bottom: 1px solid transparent;
-  border-top: 1px solid transparent;
-  cursor: pointer;
+.action-delete {
+  color: #ef4444 !important;
 }
 
-.mat-mdc-row:hover .mat-mdc-cell {
-  border-color: currentColor;
+// ─── Estado vazio ────────────────────────────────────────────
+.no-data-row td {
+  padding: 48px 24px !important;
 }
 
-.demo-row-is-clicked {
-  font-weight: bold;
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+
+  mat-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+  }
+
+  span {
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+// ─── Paginação ────────────────────────────────────────────────
+.clients-paginator {
+  border-top: 1px solid #f1f5f9;
+  padding: 4px 8px;
+}
+
+// ─── Responsivo ──────────────────────────────────────────────
+@media (max-width: 600px) {
+  .clients-wrapper {
+    padding: 16px 12px;
+  }
+
+  .search-bar {
+    padding: 16px 16px 4px;
+  }
 }

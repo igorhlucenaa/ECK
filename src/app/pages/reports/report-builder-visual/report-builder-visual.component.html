@@ -25,11 +25,24 @@
       </div>
     </div>
     <div class="toolbar-right">
-      <button mat-raised-button color="warn" (click)="limparTudo()" matTooltip="Limpar tudo">
-        <mat-icon>delete_sweep</mat-icon>
-        Limpar
-      </button>
-      <button mat-raised-button color="primary" (click)="emitirMudancas()" matTooltip="Salvar configuração">
+      <!-- Indicador de contexto: o que está carregado -->
+      <div class="toolbar-save-context" *ngIf="savedLabel">
+        <mat-icon class="toolbar-save-context__icon">{{ hasUnsavedChanges ? 'edit_note' : 'check_circle' }}</mat-icon>
+        <span class="toolbar-save-context__label">{{ savedLabel }}</span>
+        <span class="toolbar-save-context__status" [class.toolbar-save-context__status--unsaved]="hasUnsavedChanges">
+          {{ hasUnsavedChanges ? 'Não salvo' : 'Salvo' }}
+        </span>
+      </div>
+      <div class="toolbar-save-context toolbar-save-context--empty" *ngIf="!savedLabel">
+        <mat-icon>info_outline</mat-icon>
+        <span>Nenhum template ou relatório carregado</span>
+      </div>
+      <!-- Botão salvar -->
+      <button mat-flat-button class="toolbar-save-btn"
+              [class.toolbar-save-btn--unsaved]="hasUnsavedChanges"
+              [disabled]="!savedLabel"
+              (click)="saveRequested.emit()"
+              [matTooltip]="!savedLabel ? 'Carregue um template ou relatório acima para salvar' : 'Salvar em: ' + savedLabel">
         <mat-icon>save</mat-icon>
         Salvar
       </button>
@@ -152,6 +165,29 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Barra de salvar inferior -->
+  <div class="bottom-save-bar">
+    <div class="bottom-save-bar__context" *ngIf="savedLabel">
+      <mat-icon>{{ hasUnsavedChanges ? 'edit_note' : 'check_circle' }}</mat-icon>
+      <span>{{ savedLabel }}</span>
+      <span class="bottom-save-bar__status" [class.bottom-save-bar__status--unsaved]="hasUnsavedChanges">
+        {{ hasUnsavedChanges ? 'Alterações não salvas' : 'Salvo' }}
+      </span>
+    </div>
+    <div class="bottom-save-bar__context bottom-save-bar__context--empty" *ngIf="!savedLabel">
+      <mat-icon>info_outline</mat-icon>
+      <span>Nenhum template ou relatório carregado</span>
+    </div>
+    <button mat-flat-button class="bottom-save-bar__btn"
+            [class.bottom-save-bar__btn--unsaved]="hasUnsavedChanges"
+            [disabled]="!savedLabel"
+            (click)="saveRequested.emit()"
+            [matTooltip]="!savedLabel ? 'Carregue um template ou relatório acima para salvar' : 'Salvar em: ' + savedLabel">
+      <mat-icon>save</mat-icon>
+      Salvar
+    </button>
   </div>
 
   <!-- Painel de configuração lateral direito -->

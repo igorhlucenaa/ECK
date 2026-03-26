@@ -31,7 +31,7 @@ export const navItems: NavItem[] = [
   },
   {
     displayName: 'Definições',
-    iconName: 'solar:document-add-bold-duotone',
+    iconName: 'solar:settings-bold-duotone',
     route: '',
     children: [
       {
@@ -54,7 +54,7 @@ export const navItems: NavItem[] = [
       },
       {
         displayName: 'Competências',
-        iconName: 'solar:psychology-bold-duotone', // Ícone representando competências/psicologia
+        iconName: 'solar:diploma-bold-duotone', // Ícone representando competências
         route: '/competencies', // Nova rota para competências
         role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
       },

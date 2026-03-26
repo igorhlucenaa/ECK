@@ -27,6 +27,8 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { MatIconModule } from '@angular/material/icon';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-new-credit-order',
@@ -43,7 +45,9 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
     MatButtonModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatIconModule,
     RouterModule,
+    AppPageHeaderComponent,
   ],
   templateUrl: './new-credit-order.component.html',
   styleUrls: ['./new-credit-order.component.scss'],
