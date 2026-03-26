@@ -1,0 +1,111 @@
+// ── Header ─────────────────────────────────────────────────────
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px 16px;
+  background: linear-gradient(135deg, #1B2D56 0%, #1B84FF 100%);
+  margin: -24px -24px 0;
+
+  &__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    mat-icon { color: #fff; font-size: 22px; width: 22px; height: 22px; }
+  }
+
+  &__text { flex: 1; min-width: 0; }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+  }
+
+  &__sub {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+  }
+
+  &__close {
+    color: rgba(255,255,255,0.8) !important;
+    flex-shrink: 0;
+  }
+}
+
+// ── Body ───────────────────────────────────────────────────────
+.form-body {
+  padding: 20px 24px 8px !important;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.form-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin: 16px 0 8px;
+
+  &:first-child { margin-top: 0; }
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-field {
+  width: 100%;
+
+  &--full { grid-column: 1 / -1; }
+
+  ::ng-deep .mat-mdc-form-field-icon-prefix mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #94a3b8;
+    margin-right: 4px;
+  }
+}
+
+// ── Footer ─────────────────────────────────────────────────────
+.form-footer {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  padding: 12px 24px 20px !important;
+  border-top: 1px solid #f1f5f9;
+  margin: 0 -24px -24px;
+}
+
+.btn-cancel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-color: #e2e8f0 !important;
+  color: #64748b !important;
+  border-radius: 8px !important;
+  height: 38px;
+}
+
+.btn-save {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #1B2D56, #1B84FF) !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  height: 38px;
+}

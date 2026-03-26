@@ -33,7 +33,76 @@
 
   .toolbar-right {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .toolbar-save-context {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: #f8faff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 12px;
+
+    &--empty {
+      color: #94a3b8;
+      mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    }
+
+    &__icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+      color: #10b981;
+      flex-shrink: 0;
+    }
+
+    &__label {
+      font-weight: 600;
+      color: #374151;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &__status {
+      padding: 1px 7px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      background: #d1fae5;
+      color: #065f46;
+
+      &--unsaved {
+        background: #fef3c7;
+        color: #92400e;
+      }
+    }
+  }
+
+  .toolbar-save-btn {
+    background: #1B84FF !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+
+    &--unsaved {
+      background: #f59e0b !important;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+    }
+
+    &[disabled] {
+      background: #e2e8f0 !important;
+      color: #94a3b8 !important;
+    }
   }
 
   .category-filters {
@@ -391,6 +460,69 @@
 
 .cdk-drag-placeholder {
   opacity: 0.3;
+}
+
+// ─── Barra de salvar inferior ────────────────────────────────
+.bottom-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #fff;
+  border-top: 1px solid #e8edf3;
+  border-radius: 0 0 12px 12px;
+  gap: 16px;
+
+  &__context {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #475569;
+
+    mat-icon { font-size: 18px; width: 18px; height: 18px; color: #10b981; }
+
+    &--empty {
+      mat-icon { color: #94a3b8; }
+      color: #94a3b8;
+    }
+  }
+
+  &__status {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #16a34a;
+
+    &--unsaved {
+      background: #fef9c3;
+      color: #a16207;
+    }
+  }
+
+  &__btn {
+    background: #1B84FF !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+
+    &--unsaved {
+      background: #f59e0b !important;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+    }
+
+    &[disabled] {
+      background: #e2e8f0 !important;
+      color: #94a3b8 !important;
+    }
+  }
 }
 
 .cdk-drag-animating {

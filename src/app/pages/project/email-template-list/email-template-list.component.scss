@@ -1,23 +1,199 @@
-.container {
-  margin: 16px;
+// ─── Wrapper ─────────────────────────────────────────────────
+.templates-wrapper {
+  padding: 28px 24px;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
-mat-card {
-  padding: 16px;
+.btn-back {
+  color: #64748b !important;
+  font-weight: 500;
+  mat-icon { font-size: 18px; vertical-align: middle; }
 }
 
-mat-table {
+// ─── Card principal ──────────────────────────────────────────
+.templates-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(27, 45, 86, 0.08);
+  overflow: hidden;
+}
+
+// ─── Filtros ─────────────────────────────────────────────────
+.filters-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 24px 4px;
+  flex-wrap: wrap;
+
+  .filter-field { flex: 1; min-width: 180px; }
+  .filter-search { flex: 1.5; min-width: 220px; }
+}
+
+.btn-clear {
+  margin-top: 4px;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
+  height: 56px;
+  white-space: nowrap;
+
+  mat-icon { font-size: 18px; vertical-align: middle; margin-right: 4px; }
+}
+
+.results-count {
+  padding: 0 24px 12px;
+  font-size: 13px;
+  color: #8a8fa8;
+  font-weight: 500;
+}
+
+// ─── Tabela ──────────────────────────────────────────────────
+.table-container { overflow-x: auto; }
+
+.templates-table {
   width: 100%;
+
+  .mat-mdc-header-row { background: #f5f7fa; height: 48px; }
+
+  .mat-mdc-header-cell {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e8edf3;
+    padding: 0 14px;
+  }
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    .col-icon { font-size: 15px; width: 15px; height: 15px; color: #94a3b8; }
+  }
+
+  .mat-mdc-row {
+    height: 60px;
+    transition: background 0.15s;
+    &:hover { background: #f0f5ff; }
+    &:not(:last-child) { border-bottom: 1px solid #f1f5f9; }
+  }
+
+  .mat-mdc-cell {
+    font-size: 13.5px;
+    color: #374151;
+    padding: 0 14px;
+    border-bottom: none;
+  }
 }
 
-mat-form-field {
-  margin-bottom: 16px;
+// ─── Células especiais ────────────────────────────────────────
+.template-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-button {
-  margin: 4px;
+.template-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(27, 132, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    color: #1B84FF;
+  }
 }
 
-mat-paginator {
-  margin-top: 16px;
+.template-name {
+  font-weight: 500;
+  color: #1a1a2e;
+}
+
+.subject-cell {
+  color: #64748b;
+  font-size: 13px;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Cliente badge
+.client-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(27, 132, 255, 0.08);
+  color: #1B84FF;
+  font-size: 12px;
+  font-weight: 500;
+
+  &--global {
+    background: rgba(27, 45, 86, 0.08);
+    color: #1B2D56;
+  }
+}
+
+// ─── Badge de tipo ────────────────────────────────────────────
+.type-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.type-cadastro   { background: rgba(76, 175, 80, 0.1);   color: #2e7d32; }
+.type-convite    { background: rgba(27, 132, 255, 0.1);   color: #1565C0; }
+.type-lembrete   { background: rgba(245, 158, 11, 0.12);  color: #b45309; }
+.type-relatorio  { background: rgba(139, 92, 246, 0.1);   color: #6d28d9; }
+.type-default    { background: rgba(100, 116, 139, 0.1);  color: #475569; }
+
+// ─── Ações ───────────────────────────────────────────────────
+.actions-col {
+  text-align: center !important;
+  min-width: 160px;
+}
+
+.actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-send      { color: #0284c7 !important; }
+.action-duplicate { color: #0e9488 !important; }
+.action-edit      { color: #1B84FF !important; }
+.action-delete    { color: #ef4444 !important; }
+
+// ─── Vazio ───────────────────────────────────────────────────
+.no-data-cell { padding: 48px 24px !important; }
+
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  mat-icon { font-size: 40px; width: 40px; height: 40px; }
+  span { font-size: 14px; font-weight: 500; }
+}
+
+// ─── Paginação ────────────────────────────────────────────────
+.templates-paginator { border-top: 1px solid #f1f5f9; padding: 4px 8px; }
+
+@media (max-width: 768px) {
+  .templates-wrapper { padding: 16px 12px; }
+  .filters-bar { flex-direction: column; }
+  .filter-field, .filter-search { min-width: 100%; }
 }

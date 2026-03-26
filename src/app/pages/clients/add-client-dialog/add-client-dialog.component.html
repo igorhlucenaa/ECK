@@ -1,93 +1,72 @@
-<h2 mat-dialog-title>
-  {{ isEditing ? ('Editar Cliente' | translate) : ('Cadastrar Cliente' | translate) }}
-</h2>
-<mat-dialog-content style="padding-top: 5px;" style="padding-top: 5px">
-  <form [formGroup]="form">
-    <!-- Nome do Cliente -->
-    <mat-form-field appearance="outline" class="w-100">
-      <mat-label>{{ 'Nome do Cliente' | translate }}</mat-label>
-      <input
-        matInput
-        formControlName="companyName"
-        placeholder="{{ 'Digite o nome do cliente' | translate }}"
-      />
-      <mat-error
-        *ngIf="
-          form.get('companyName')?.touched && form.get('companyName')?.invalid
-        "
-      >
-        {{ 'O nome do cliente é obrigatório.' | translate }}
-      </mat-error>
-    </mat-form-field>
+<!-- Cabeçalho colorido -->
+<div class="dialog-header">
+  <div class="dialog-header-avatar">
+    <mat-icon>{{ isEditing ? 'edit_note' : 'business' }}</mat-icon>
+  </div>
+  <div class="dialog-header-text">
+    <h2 class="dialog-title">{{ (isEditing ? 'Editar Cliente' : 'Cadastrar Cliente') | translate }}</h2>
+    <p class="dialog-subtitle">{{ isEditing ? 'Atualize os dados do cliente' : 'Preencha os dados para cadastrar um novo cliente' }}</p>
+  </div>
+  <button mat-icon-button class="dialog-close-btn" (click)="close()">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<!-- Conteúdo -->
+<mat-dialog-content class="dialog-body">
+  <form [formGroup]="form" class="client-form">
+
+    <!-- Nome da Empresa -->
+    <div class="form-group">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Nome da Empresa</mat-label>
+        <mat-icon matPrefix class="field-icon">business_center</mat-icon>
+        <input matInput formControlName="companyName" placeholder="Ex: Empresa Ltda." />
+        <mat-error *ngIf="form.get('companyName')?.touched && form.get('companyName')?.invalid">
+          Nome da empresa é obrigatório.
+        </mat-error>
+      </mat-form-field>
+    </div>
 
     <!-- Setor -->
-    <mat-form-field appearance="outline" class="w-100">
-      <mat-label>{{ 'Setor' | translate }}</mat-label>
-      <input matInput formControlName="sector" placeholder="{{ 'Digite o setor' | translate }}" />
-    </mat-form-field>
+    <div class="form-group">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'Setor' | translate }}</mat-label>
+        <mat-icon matPrefix class="field-icon">category</mat-icon>
+        <input matInput formControlName="sector" placeholder="Ex: Tecnologia, Saúde..." />
+      </mat-form-field>
+    </div>
 
     <!-- CNPJ -->
-    <mat-form-field appearance="outline" class="w-100">
-      <mat-label>{{ 'CNPJ' | translate }}</mat-label>
-      <input
-        matInput
-        formControlName="cnpj"
-        placeholder="{{ 'Digite o CNPJ' | translate }}"
-        [mask]="'00.000.000/0000-00'"
-      />
-    </mat-form-field>
-
-    <!-- Créditos -->
-    <!-- <mat-form-field appearance="outline" class="w-100">
-      <mat-label>Créditos</mat-label>
-      <input
-        matInput
-        type="number"
-        formControlName="credits"
-        placeholder="Digite a quantidade de créditos"
-      />
-      <mat-error
-        *ngIf="form.get('credits')?.touched && form.get('credits')?.invalid"
-      >
-        <div *ngIf="form.get('credits')?.errors?.['required']">
-          A quantidade de créditos é obrigatória.
-        </div>
-        <div *ngIf="form.get('credits')?.errors?.['min']">
-          A quantidade de créditos deve ser maior ou igual a 0.
-        </div>
-      </mat-error>
-    </mat-form-field> -->
-
-    <!-- Logo -->
-    <!-- <div class="w-100">
-      <label for="fileInput">Logo do Cliente</label>
-      <input
-        id="fileInput"
-        type="file"
-        (change)="onFileSelected($event)"
-        accept="image/*"
-        class="file-input"
-      />
+    <div class="form-group">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>{{ 'CNPJ' | translate }}</mat-label>
+        <mat-icon matPrefix class="field-icon">badge</mat-icon>
+        <input
+          matInput
+          formControlName="cnpj"
+          placeholder="00.000.000/0000-00"
+          [mask]="'00.000.000/0000-00'"
+        />
+      </mat-form-field>
     </div>
-    <div *ngIf="logoPreview" class="preview-container">
-      <img
-        [src]="logoPreview"
-        alt="Pré-visualização da Logo"
-        class="logo-preview"
-      />
-    </div> -->
+
   </form>
 </mat-dialog-content>
 
-<mat-dialog-actions align="end">
-  <button mat-stroked-button color="warn" (click)="close()">{{ 'Cancelar' | translate }}</button>
+<!-- Ações -->
+<mat-dialog-actions class="dialog-actions">
+  <button mat-button class="btn-cancel" (click)="close()">
+    {{ 'Cancelar' | translate }}
+  </button>
   <button
     mat-flat-button
-    color="primary"
+    class="btn-save"
     [disabled]="isSubmitting || form.invalid"
     (click)="submit()"
   >
-    <span *ngIf="isSubmitting">{{ 'Salvando...' | translate }}</span>
-    <span *ngIf="!isSubmitting">{{ isEditing ? ('Atualizar' | translate) : ('Salvar' | translate) }}</span>
+    <mat-spinner *ngIf="isSubmitting" diameter="16" class="btn-spinner"></mat-spinner>
+    <mat-icon *ngIf="!isSubmitting">{{ isEditing ? 'save' : 'add_circle' }}</mat-icon>
+    {{ (isSubmitting ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Cadastrar Cliente')) | translate }}
   </button>
 </mat-dialog-actions>

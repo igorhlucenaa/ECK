@@ -3,9 +3,31 @@
     background: $white;
   }
 
+  // Esconde a barra de nav separada — nav foi movido para dentro do topbar
+  .horizontal-sidebar {
+    display: none !important;
+  }
+
+  // Ajusta altura mínima da página para o novo header de 72px
+  .pageWrapper {
+    min-height: calc(100vh - 72px);
+  }
+
   // header
   .horizontal-topbar {
-    box-shadow: rgba(0, 0, 0, 0.05) 0px 9px 17.5px;
+    background-color: #1B2D56 !important;
+    height: 72px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+
+    // Ícones brancos no topbar (exceto dentro dos dropdowns)
+    > .container > mat-icon,
+    > .container > .mat-icon,
+    > .container > button mat-icon,
+    > .container > button .mat-icon,
+    > .container > button i-tabler {
+      color: #ffffff !important;
+    }
+
     .branding {
       padding-left: 0;
     }
@@ -14,6 +36,76 @@
       display: flex;
       align-items: center;
       width: 100%;
+    }
+
+    // Nav items dentro do topbar (apenas primeiro nível — não afeta dropdown)
+    .horizontal-navbar {
+      gap: 2px;
+      > .parentBox {
+        // Apenas o link direto de primeiro nível (não dentro de .childBox)
+        > .menuLink {
+          color: #ffffff;
+          font-weight: 400;
+          font-size: 14px;
+          letter-spacing: 0.2px;
+          padding: 8px 14px;
+          border-radius: 6px;
+          border-bottom: 2px solid transparent;
+          transition: background-color 0.15s ease, border-color 0.15s ease;
+
+          span.routeIcon,
+          .mat-icon {
+            color: #ffffff;
+          }
+        }
+
+        &:hover > .menuLink {
+          background-color: rgba(255, 255, 255, 0.12) !important;
+          color: #ffffff;
+        }
+
+        &:hover > .activeMenu,
+        > .activeMenu {
+          color: #ffffff !important;
+          background-color: rgba(255, 255, 255, 0.15) !important;
+          border-bottom: 2px solid #ffffff !important;
+          border-radius: 6px 6px 0 0 !important;
+          font-weight: 500;
+          box-shadow: none !important;
+        }
+
+        // Dropdown panel: texto escuro, fundo branco
+        .childBox {
+          background: $white;
+          .ddmenu {
+            > .menuLink {
+              color: #333333 !important;
+              font-weight: 400;
+              font-size: 13.5px;
+              border-bottom: none;
+
+              span.routeIcon,
+              .mat-icon {
+                color: #555555 !important;
+              }
+            }
+
+            &:hover > .menuLink {
+              background-color: rgba(0, 0, 0, 0.05) !important;
+              color: #1B2D56 !important;
+            }
+
+            > .activeMenu {
+              color: #1B2D56 !important;
+              font-weight: 600 !important;
+              background-color: rgba(27, 45, 86, 0.08) !important;
+              border-bottom: none !important;
+              border-radius: 6px !important;
+              box-shadow: none !important;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -25,7 +117,7 @@
       position: relative;
       z-index: 5;
       margin: 5px 0;
-      
+
       &.mega-menu {
         position: static;
         &:hover {
@@ -36,7 +128,7 @@
         > .childBox {
           width: 100%;
           left: 0;
-          
+
           > .ddmenu {
             width: 24%;
           }
@@ -70,7 +162,9 @@
       &:hover > .activeMenu,
       .activeMenu {
         color: $white;
-        background-color: $accent;
+        background-color: $primary;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
       }
       .down-icon .mat-icon {
         width: 18px;
@@ -83,7 +177,6 @@
         position: absolute;
         width: 250px;
         padding: 15px;
-        // background-color: $white;
         display: none;
         .ddmenu {
           display: block;
@@ -111,13 +204,12 @@
 
       &:hover > .childBox {
         display: block;
-        
+
         > .ddmenu:hover > .childBox {
           display: block;
-          
+
           > .ddmenu:hover > .childBox {
             display: block;
-            
           }
         }
       }

@@ -1,38 +1,139 @@
-<div class="container my-4">
-  <div class="row" style="margin-bottom: 10px">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
-        <mat-icon>arrow_back</mat-icon>
-        {{ 'Voltar' | translate }}
-      </button>
-    </div>
+<div class="detail-wrapper">
+
+  <app-page-header
+    eyebrow="Gestão / Usuários"
+    [title]="user ? (user.name + ' ' + (user.surname || '')) : 'Detalhes do Usuário'"
+    subtitle="Informações detalhadas do usuário">
+
+    <button mat-button class="btn-back" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      Voltar
+    </button>
+
+    <button mat-raised-button class="btn-save"
+      *ngIf="user && user.role !== 'admin_master'"
+      (click)="goToEdit()">
+      <mat-icon>edit</mat-icon>
+      Editar Usuário
+    </button>
+
+  </app-page-header>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="isLoading">
+    <mat-spinner diameter="48"></mat-spinner>
+    <span>Carregando dados do usuário…</span>
   </div>
 
-  <div *ngIf="isLoading" class="text-center py-5">
-    <mat-spinner diameter="50" style="margin: 0 auto 16px;"></mat-spinner>
-    <p>{{ 'Carregando detalhes do usuário...' | translate }}</p>
-  </div>
-
+  <!-- Conteúdo -->
   <div *ngIf="!isLoading && user">
-    <mat-card>
-      <mat-card-title class="p-3">{{ 'Detalhes do Usuário' | translate }}</mat-card-title>
-      <mat-card-content>
-        <div class="d-flex flex-column gap-2">
-          <h3>{{ user.name }} {{ user.surname }}</h3>
-          <p><strong>{{ 'E-mail' | translate }}:</strong> {{ user.email }}</p>
-          <p><strong>{{ 'Papel' | translate }}:</strong> {{ user.role }}</p>
-          <p><strong>{{ 'Cliente' | translate }}:</strong> {{ clientName || ('N/A' | translate) }}</p>
-          <p><strong>{{ 'Grupos' | translate }}:</strong> {{ groups.length ? groups.join(', ') : ('Nenhum' | translate) }}</p>
-          <p><strong>{{ 'Projetos' | translate }}:</strong> {{ projects.length ? projects.join(', ') : ('Nenhum' | translate) }}</p>
-          <p><strong>{{ 'Status de Notificação' | translate }}:</strong> {{ user.notificationStatus || ('Pendente' | translate) }}</p>
+
+    <!-- Card: Perfil -->
+    <div class="detail-card">
+      <div class="card-header">
+        <div class="card-icon">
+          <mat-icon>person</mat-icon>
         </div>
-        <div class="mt-4">
-          <button mat-flat-button color="primary" (click)="goToEdit()" [disabled]="user.role === 'admin_master'">
-            <mat-icon>edit</mat-icon>
-            {{ 'Editar Usuário' | translate }}
-          </button>
+        <div>
+          <h3 class="card-title">Perfil</h3>
+          <p class="card-subtitle">Dados cadastrais do usuário</p>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </div>
+
+      <div class="card-body">
+        <div class="profile-hero">
+          <div class="profile-avatar">{{ (user.name || '?')[0].toUpperCase() }}</div>
+          <div class="profile-info">
+            <h2 class="profile-name">{{ user.name }} {{ user.surname }}</h2>
+            <span class="role-badge"
+              [class.role-master]="user.role === 'admin_master'"
+              [class.role-client]="user.role === 'admin_client'"
+              [class.role-user]="user.role === 'user'">
+              {{ user.role === 'admin_master' ? 'Admin Master' : user.role === 'admin_client' ? 'Admin Cliente' : user.role || '—' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="fields-grid">
+          <div class="field-item">
+            <mat-icon class="field-icon">email</mat-icon>
+            <div>
+              <span class="field-label">E-mail</span>
+              <span class="field-value">{{ user.email }}</span>
+            </div>
+          </div>
+          <div class="field-item">
+            <mat-icon class="field-icon">business</mat-icon>
+            <div>
+              <span class="field-label">Cliente</span>
+              <span class="field-value">{{ clientName || '—' }}</span>
+            </div>
+          </div>
+          <div class="field-item">
+            <mat-icon class="field-icon">notifications</mat-icon>
+            <div>
+              <span class="field-label">Status de Notificação</span>
+              <span class="notif-chip"
+                [class.notif-sent]="user.notificationStatus === 'Enviado'"
+                [class.notif-pending]="user.notificationStatus !== 'Enviado'">
+                {{ user.notificationStatus || 'Pendente' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Grupos & Projetos -->
+    <div class="detail-card">
+      <div class="card-header">
+        <div class="card-icon card-icon--accent">
+          <mat-icon>hub</mat-icon>
+        </div>
+        <div>
+          <h3 class="card-title">Vínculos</h3>
+          <p class="card-subtitle">Grupos e projetos aos quais o usuário pertence</p>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="links-grid">
+
+          <!-- Grupos -->
+          <div class="links-section">
+            <h4 class="links-title">
+              <mat-icon>group</mat-icon>
+              Grupos ({{ groups.length }})
+            </h4>
+            <div class="tags-list" *ngIf="groups.length > 0">
+              <span class="tag tag--group" *ngFor="let g of groups">{{ g }}</span>
+            </div>
+            <p class="empty-msg" *ngIf="groups.length === 0">Nenhum grupo vinculado</p>
+          </div>
+
+          <!-- Projetos -->
+          <div class="links-section">
+            <h4 class="links-title">
+              <mat-icon>folder_open</mat-icon>
+              Projetos ({{ projects.length }})
+            </h4>
+            <div class="tags-list" *ngIf="projects.length > 0">
+              <span class="tag tag--project" *ngFor="let p of projects">{{ p }}</span>
+            </div>
+            <p class="empty-msg" *ngIf="projects.length === 0">Nenhum projeto vinculado</p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
   </div>
+
+  <!-- Não encontrado -->
+  <div class="not-found" *ngIf="!isLoading && !user">
+    <mat-icon>person_off</mat-icon>
+    <span>Usuário não encontrado</span>
+    <button mat-stroked-button (click)="goBack()">Voltar</button>
+  </div>
+
 </div>

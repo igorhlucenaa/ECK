@@ -23,6 +23,8 @@ import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { EmailEditorModule, EmailEditorComponent } from 'angular-email-editor';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TranslateModule } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-email-template-form',
@@ -34,6 +36,8 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
     MatSnackBarModule,
     RouterModule,
     EmailEditorModule,
+    TranslateModule,
+    AppPageHeaderComponent,
   ],
   templateUrl: './email-template-form.component.html',
   styleUrls: ['./email-template-form.component.scss'],

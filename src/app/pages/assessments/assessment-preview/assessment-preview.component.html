@@ -1,25 +1,55 @@
-<div class="container" style="max-height: 90vh">
-  <h2 class="mb-4">Pré-visualização</h2>
-
-  <!-- Informações Básicas -->
-  <div class="mb-4">
-    <p><strong>Descrição:</strong> {{ data.description }}</p>
-    <p><strong>Criado Por:</strong> {{ data.createdBy.name }}</p>
-    <p>
-      <strong>Data de Criação:</strong>
-      {{
-        data.createdAt?.toDate
-          ? (data.createdAt.toDate() | date : "short")
-          : (data.createdAt | date : "short")
-      }}
-    </p>
+<!-- Header -->
+<div class="preview-header">
+  <div class="preview-header-icon">
+    <mat-icon>assignment</mat-icon>
   </div>
-
-  <!-- Perguntas Renderizadas usando SurveyJS -->
-  <survey [model]="surveyModel"></survey>
-
-  <!-- Botão de Fechar -->
-  <div class="text-end">
-    <button mat-button color="primary" (click)="closeDialog()">Fechar</button>
+  <div class="preview-header-text">
+    <h2 class="preview-title">{{ data.name }}</h2>
+    <p class="preview-subtitle">Pré-visualização do Formulário</p>
   </div>
+  <button mat-icon-button class="preview-close-btn" (click)="closeDialog()">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<!-- Meta info -->
+<div class="preview-meta" *ngIf="data.description || data.createdBy || data.createdAt">
+  <div class="meta-item" *ngIf="data.description">
+    <mat-icon class="meta-icon">notes</mat-icon>
+    <span class="meta-label">Descrição:</span>
+    <span class="meta-value">{{ data.description }}</span>
+  </div>
+  <div class="meta-item" *ngIf="data.createdBy?.name">
+    <mat-icon class="meta-icon">person</mat-icon>
+    <span class="meta-label">Criado por:</span>
+    <span class="meta-value">{{ data.createdBy.name }}</span>
+  </div>
+  <div class="meta-item" *ngIf="data.createdAt">
+    <mat-icon class="meta-icon">event</mat-icon>
+    <span class="meta-label">Data:</span>
+    <span class="meta-value">
+      {{ data.createdAt?.toDate ? (data.createdAt.toDate() | date:'dd/MM/yyyy') : (data.createdAt | date:'dd/MM/yyyy') }}
+    </span>
+  </div>
+</div>
+
+<!-- Survey -->
+<div class="preview-body">
+  <div *ngIf="surveyModel; else noSurvey">
+    <survey [model]="surveyModel"></survey>
+  </div>
+  <ng-template #noSurvey>
+    <div class="no-survey">
+      <mat-icon>info_outline</mat-icon>
+      <span>Este formulário não possui perguntas configuradas.</span>
+    </div>
+  </ng-template>
+</div>
+
+<!-- Footer -->
+<div class="preview-footer">
+  <button mat-raised-button class="btn-close-dialog" (click)="closeDialog()">
+    <mat-icon>close</mat-icon>
+    Fechar
+  </button>
 </div>

@@ -27,6 +27,8 @@ import { SurveyModel, ITheme } from 'survey-core';
 import 'survey-core/survey.i18n.js';
 import 'survey-creator-core/survey-creator-core.i18n.js';
 import { editorLocalization } from 'survey-creator-core';
+import { TranslateModule } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 // Sobrescrevendo traduções
 const ptBRLocale = editorLocalization.getLocale('pt');
@@ -42,6 +44,8 @@ ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
     MaterialModule,
     ReactiveFormsModule,
     SurveyCreatorModule,
+    TranslateModule,
+    AppPageHeaderComponent,
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
@@ -51,6 +55,7 @@ export class CreateAssessmentComponent implements OnInit {
   competencies: { id: string; name: string }[] = [];
   competencyLists: { id: string; name: string; competencyIds: string[] }[] = [];
   competencyGroups: { id: string; name: string; competencias: any[] }[] = [];
+  selectedGroupId: string = '';
   userRole: string | null = null;
   creatorModel: SurveyCreatorModel;
 
@@ -471,43 +476,47 @@ export class CreateAssessmentComponent implements OnInit {
   }
 
   async onCompetencyGroupChange(groupId: string): Promise<void> {
+    this.selectedGroupId = groupId;
+
     if (!groupId) {
-      // Se nenhum grupo foi selecionado, limpar a seleção
       this.form.get('competencyIds')?.setValue([]);
       return;
     }
-    
+
     const group = this.competencyGroups.find((g) => g.id === groupId);
     if (!group) return;
 
-    // Garantir que as competências estão carregadas
     const clientId = this.form.get('clientId')?.value;
     if (clientId) {
       await this.loadCompetencies(clientId);
     }
 
-    // Extrair os IDs das competências do grupo
-    // Os IDs são no formato: grupoId_comp_index
     const competencyIds: string[] = [];
-    
-    group.competencias.forEach((comp: any, index: number) => {
-      // Criar o ID único no mesmo formato usado em loadCompetencies
+    group.competencias.forEach((_comp: any, index: number) => {
       const uniqueId = `${groupId}_comp_${index}`;
-      // Verificar se a competência existe na lista carregada
-      const exists = this.competencies.some(c => c.id === uniqueId);
-      if (exists) {
+      if (this.competencies.some(c => c.id === uniqueId)) {
         competencyIds.push(uniqueId);
       }
     });
 
-    // Selecionar todas as competências do grupo
     if (competencyIds.length > 0) {
       this.form.get('competencyIds')?.setValue(competencyIds);
-      console.log(`✅ Grupo "${group.name}" selecionado: ${competencyIds.length} competências`);
       this.snackBar.open(`Grupo "${group.name}" selecionado com ${competencyIds.length} competências`, 'Fechar', { duration: 3000 });
     } else {
-      console.warn(`⚠️ Nenhuma competência encontrada para o grupo "${group.name}"`);
       this.snackBar.open(`Nenhuma competência encontrada para o grupo "${group.name}"`, 'Fechar', { duration: 3000 });
+    }
+  }
+
+  private detectSelectedGroup(competencyIds: string[]): void {
+    if (!competencyIds || competencyIds.length === 0) return;
+    const groupIds = new Set<string>();
+    for (const id of competencyIds) {
+      if (id.includes('_comp_')) {
+        groupIds.add(id.split('_comp_')[0]);
+      }
+    }
+    if (groupIds.size === 1) {
+      this.selectedGroupId = Array.from(groupIds)[0];
     }
   }
 
@@ -545,28 +554,48 @@ export class CreateAssessmentComponent implements OnInit {
       const docRef = doc(this.firestore, 'assessments', assessmentId);
       const docSnap = await getDoc(docRef);
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        console.log(data)
-        this.form.patchValue({
-          clientId: data['clientId'],
-          name: data['name'],
-          description: data['description'],
-        });
+      if (!docSnap.exists()) return;
 
-        if (this.userRole === 'admin_client') {
-          this.form.get('clientId')?.disable();
-        }
+      const data = docSnap.data();
+      const clientId = data['clientId'];
+      const savedCompetencyIds: string[] = data['competencyIds'] || [];
+      const savedMixQuestions: boolean = data['mixQuestions'] ?? true;
 
-        if (data['surveyJSON']) {
-          this.creatorModel.JSON = data['surveyJSON'];
-        }
+      // Preenche campos básicos sem disparar valueChanges (evita regenerar o survey)
+      this.form.patchValue({
+        clientId,
+        name: data['name'],
+        description: data['description'],
+        mixQuestions: savedMixQuestions,
+      }, { emitEvent: false });
 
-        if (data['theme']) {
-          this.creatorModel.theme = data['theme'];
-        }
+      // Carrega as listas dependentes do cliente manualmente
+      if (clientId) {
+        await Promise.all([
+          this.loadCompetencies(clientId),
+          this.loadCompetencyLists(clientId),
+          this.loadCompetencyGroups(clientId),
+        ]);
+      }
 
-        console.log('Form status after loadAssessment:', this.form.status); // Depuração
+      // Restaura competências selecionadas sem disparar geração do survey
+      // (o surveyJSON já está salvo e será carregado abaixo)
+      if (savedCompetencyIds.length > 0) {
+        this.form.get('competencyIds')?.setValue(savedCompetencyIds, { emitEvent: false });
+        this.detectSelectedGroup(savedCompetencyIds);
+      }
+
+      if (this.userRole === 'admin_client') {
+        this.form.get('clientId')?.disable();
+      }
+
+      // Restaura o survey e tema do editor
+      if (data['surveyJSON']) {
+        this.creatorModel.JSON = data['surveyJSON'];
+      }
+
+      if (data['theme']) {
+        this.creatorModel.theme = data['theme'];
       }
     } catch (error) {
       console.error('Erro ao carregar formulário:', error);
@@ -686,6 +715,10 @@ export class CreateAssessmentComponent implements OnInit {
     console.log('Client changed, form status:', this.form.status); // Depuração
   }
 
+
+  get isEditMode(): boolean {
+    return !!this.route.snapshot.paramMap.get('id');
+  }
 
   goBack(): void {
     this.location.back();

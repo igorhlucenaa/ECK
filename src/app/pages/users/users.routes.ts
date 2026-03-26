@@ -21,6 +21,13 @@ export const UsersRoutes: Routes = [
       ),
   },
   {
+    path: 'group/:groupId/edit', // Rota para editar um grupo de usuários
+    loadComponent: () =>
+      import('./edit-group/edit-group.component').then(
+        (c) => c.EditGroupComponent
+      ),
+  },
+  {
     path: ':id/edit', // Rota para editar um usuário
     loadComponent: () =>
       import('./edit-user/edit-user.component').then(

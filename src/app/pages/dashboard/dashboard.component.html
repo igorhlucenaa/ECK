@@ -1,64 +1,126 @@
-<div class="d-flex justify-content-end mb-4" style="margin-bottom: 10px">
-  <button mat-raised-button color="primary" (click)="generatePDF()">
-    Exportar Dashboard
-  </button>
-  <button
-    style="margin-left: 10px"
-    mat-raised-button
-    color="accent"
-    class="ml-2"
-    (click)="openExportDialog()"
-  >
-    Exportar Tabelas
-  </button>
+<div class="dash-wrapper">
+
+  <app-page-header
+    eyebrow="{{ 'Visão Geral' | translate }}"
+    title="{{ 'Dashboard' | translate }}"
+    subtitle="{{ 'Indicadores e métricas da plataforma em tempo real' | translate }}">
+
+    <button mat-flat-button color="primary"
+            (click)="generatePDF()"
+            [disabled]="isExporting || isExportingTables">
+      <mat-icon>picture_as_pdf</mat-icon>
+      {{ 'Exportar Dashboard' | translate }}
+    </button>
+
+    <button mat-stroked-button color="primary"
+            (click)="openExportDialog()"
+            [disabled]="isExporting || isExportingTables">
+      <mat-icon>table_chart</mat-icon>
+      {{ 'Exportar Tabelas' | translate }}
+    </button>
+
+  </app-page-header>
+
+  <!-- Loading overlay (mesmo padrão da página de relatórios) -->
+  <div class="dash-export-overlay" *ngIf="isExporting || isExportingTables">
+    <div class="dash-export-overlay__box">
+      <mat-spinner diameter="48"></mat-spinner>
+      <span class="dash-export-overlay__label">{{ exportLabel }}</span>
+      <span class="dash-export-overlay__hint">{{ 'Isso pode levar alguns segundos, aguarde...' | translate }}</span>
+    </div>
+  </div>
+
+  <!-- Conteúdo do Dashboard -->
+  <div id="dashboard-content">
+
+    <!-- ── KPIs ─────────────────────────────────────────────── -->
+    <app-pie-cards [pieChartsData]="pieCardsData"></app-pie-cards>
+
+    <!-- ── Gráficos: Projetos e Avaliações ───────────────────── -->
+    <div class="dash-charts-grid">
+      <mat-card class="dash-card">
+        <div class="dash-card__header">
+          <div class="dash-card__header-icon dash-card__header-icon--cyan">
+            <mat-icon>folder_open</mat-icon>
+          </div>
+          <div>
+            <h3 class="dash-card__title">{{ 'Projetos Ativos por Cliente' | translate }}</h3>
+            <p class="dash-card__sub">{{ 'Distribuição de projetos ativos entre os clientes' | translate }}</p>
+          </div>
+        </div>
+        <div class="dash-card__body">
+          <app-sales-overview2 [projectsByClientData]="projectsByClientData"></app-sales-overview2>
+        </div>
+      </mat-card>
+
+      <mat-card class="dash-card">
+        <div class="dash-card__header">
+          <div class="dash-card__header-icon dash-card__header-icon--purple">
+            <mat-icon>assignment_turned_in</mat-icon>
+          </div>
+          <div>
+            <h3 class="dash-card__title">{{ 'Avaliações por Cliente' | translate }}</h3>
+            <p class="dash-card__sub">{{ 'Quantidade de avaliações cadastradas por cliente' | translate }}</p>
+          </div>
+        </div>
+        <div class="dash-card__body">
+          <app-newsletter-campaign2 [creditUsageData]="assessmentsData"></app-newsletter-campaign2>
+        </div>
+      </mat-card>
+    </div>
+
+    <!-- ── Participantes + Créditos Vencendo ─────────────────── -->
+    <div class="dash-bottom-grid">
+
+      <!-- Donut: Participantes por Categoria -->
+      <mat-card class="dash-card">
+        <div class="dash-card__header">
+          <div class="dash-card__header-icon dash-card__header-icon--pink">
+            <mat-icon>groups</mat-icon>
+          </div>
+          <div>
+            <h3 class="dash-card__title">{{ 'Participantes por Categoria' | translate }}</h3>
+            <p class="dash-card__sub">{{ 'Distribuição dos participantes por tipo de avaliador' | translate }}</p>
+          </div>
+        </div>
+        <div class="dash-card__body dash-card__body--center">
+          <apx-chart
+            *ngIf="participantsByCategoryChart"
+            [series]="participantsByCategoryChart.series"
+            [chart]="participantsByCategoryChart.chart"
+            [labels]="participantsByCategoryChart.labels"
+            [colors]="participantsByCategoryChart.colors"
+            [legend]="participantsByCategoryChart.legend"
+            [dataLabels]="participantsByCategoryChart.dataLabels"
+            [plotOptions]="participantsByCategoryChart.plotOptions"
+            [stroke]="participantsByCategoryChart.stroke"
+            [tooltip]="participantsByCategoryChart.tooltip">
+          </apx-chart>
+          <div class="dash-empty" *ngIf="!participantsByCategoryChart">
+            <mat-icon>groups</mat-icon>
+            <span>{{ 'Nenhum participante encontrado' | translate }}</span>
+          </div>
+        </div>
+      </mat-card>
+
+      <!-- Tabela: Créditos próximos do vencimento -->
+      <mat-card class="dash-card dash-card--table">
+        <div class="dash-card__header">
+          <div class="dash-card__header-icon dash-card__header-icon--orange">
+            <mat-icon>warning_amber</mat-icon>
+          </div>
+          <div>
+            <h3 class="dash-card__title">{{ 'Créditos Próximos ao Vencimento' | translate }}</h3>
+            <p class="dash-card__sub">{{ 'Pedidos de crédito com validade nos próximos 30 dias' | translate }}</p>
+          </div>
+        </div>
+        <div class="dash-card__body dash-card__body--no-pad">
+          <app-project-data></app-project-data>
+        </div>
+      </mat-card>
+
+    </div>
+
+  </div><!-- /dashboard-content -->
+
 </div>
-
-<div id="dashboard-content">
-  <app-pie-cards [pieChartsData]="pieCardsData"> </app-pie-cards>
-
-  <div class="row">
-    <div class="col-lg-6">
-      <app-sales-overview2
-        [projectsByClientData]="projectsByClientData"
-      ></app-sales-overview2>
-    </div>
-    <div class="col-lg-6">
-      <app-newsletter-campaign2
-        [creditUsageData]="assessmentsData"
-      ></app-newsletter-campaign2>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="col-lg-12">
-      <app-project-data></app-project-data>
-    </div>
-  </div>
-</div>
-<!-- <div class="row">
-  <div class="col-lg-4">
-    <div class="row">
-      <div class="col-lg-12 col-sm-6">
-        <app-bandwidth-usage></app-bandwidth-usage>
-      </div>
-      <div class="col-lg-12 col-sm-6">
-        <app-download-count></app-download-count>
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-4">
-    <app-favourite-contacts></app-favourite-contacts>
-  </div>
-  <div class="col-lg-4">
-    <app-feeds></app-feeds>
-  </div>
-</div>
-
-<div class="row">
-  <div class="col-lg-6">
-    <app-recent-comments></app-recent-comments>
-  </div>
-  <div class="col-lg-6">
-    <app-todo-list></app-todo-list>
-  </div>
-</div> -->

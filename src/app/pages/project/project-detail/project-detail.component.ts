@@ -22,6 +22,8 @@ import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MatSelectSearchModule } from 'mat-select-search';
 import { MatSelectModule } from '@angular/material/select';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-project-detail',
@@ -32,6 +34,8 @@ import { MatSelectModule } from '@angular/material/select';
     MaterialModule,
     MatSelectSearchModule,
     MatSelectModule,
+    AppPageHeaderComponent,
+    TranslateModule,
   ],
   templateUrl: './project-detail.component.html',
   styleUrls: ['./project-detail.component.scss'],
@@ -49,8 +53,9 @@ export class ProjectDetailComponent implements OnInit {
   });
 
   filterDates = (date: Date | null): boolean => {
+    // Em modo edição, aceita qualquer data (prazo existente pode ser passado)
+    if (this.isEditMode) return true;
     const today = new Date();
-    // Zera as horas, minutos, segundos e milissegundos para comparar apenas a data
     today.setHours(0, 0, 0, 0);
     return date ? date >= today : false;
   };
@@ -91,6 +96,7 @@ export class ProjectDetailComponent implements OnInit {
         this.loadUserGroups(); // Carregar grupos de usuários
       } else if (this.clientId) {
         this.form.get('clientId')?.setValue(this.clientId);
+        this.loadUserGroups(); // Também carrega grupos para admin_client
       } else {
         this.snackBar.open(
           'Cliente não identificado. Redirecionando...',

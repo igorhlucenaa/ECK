@@ -822,7 +822,9 @@ export class ParticipantsModalComponent implements OnInit {
 
   openAddParticipantModal(): void {
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
-      width: '500px',
+      width: '480px',
+      maxWidth: '95vw',
+      panelClass: 'add-participant-dialog',
       data: {
         projectId: this.data.projectId,
         clientId: this.data.clientId,

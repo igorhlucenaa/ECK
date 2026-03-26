@@ -43,125 +43,133 @@ interface ModalData {
   standalone: true,
   imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
   template: `
-    <h2 mat-dialog-title>Adicionar Novo Participante</h2>
-    <mat-dialog-content>
-      <!-- Exibir estado de carregamento -->
-      <div *ngIf="isLoading" class="text-center my-4">
-        <mat-spinner [diameter]="40"></mat-spinner>
-        <p>Carregando dados...</p>
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <div class="ap-header">
+      <div class="ap-header__avatar" [class.ap-header__avatar--filled]="participantForm.get('name')?.value">
+        <span *ngIf="participantForm.get('name')?.value">
+          {{ participantForm.get('name')?.value?.charAt(0)?.toUpperCase() }}
+        </span>
+        <mat-icon *ngIf="!participantForm.get('name')?.value">person_add</mat-icon>
       </div>
-
-      <!-- Exibir mensagem de erro se não houver clientes -->
-      <div *ngIf="!isLoading && !hasClients" class="text-center my-4">
-        <p>Nenhum cliente disponível. Por favor, tente novamente mais tarde.</p>
+      <div class="ap-header__text">
+        <h2 class="ap-header__title">Adicionar Participante</h2>
+        <p class="ap-header__sub">
+          {{ participantForm.get('name')?.value || 'Preencha os dados abaixo' }}
+        </p>
       </div>
+      <button mat-icon-button class="ap-header__close" (click)="dialogRef.close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
 
-      <!-- Exibir formulário quando os dados estiverem carregados -->
-      <form [formGroup]="participantForm" *ngIf="!isLoading && hasClients">
-        <!-- Cliente -->
-        <mat-form-field
-          class="w-100 mb-3"
-          appearance="outline"
-          style="margin-top: 15px"
-        >
-          <mat-label>Cliente</mat-label>
-          <mat-select
-            formControlName="clientId"
-            required
-            (selectionChange)="onClientChange()"
-            [disabled]="isClientDisabled"
-          >
-            <mat-option *ngFor="let client of clients" [value]="client.id">
-              {{ client.name }}
-            </mat-option>
-          </mat-select>
-          <mat-error
-            *ngIf="participantForm.get('clientId')?.hasError('required')"
-          >
-            Cliente é obrigatório.
-          </mat-error>
-        </mat-form-field>
+    <!-- ── Loading ────────────────────────────────────────────── -->
+    <div class="ap-loading" *ngIf="isLoading">
+      <mat-spinner [diameter]="36"></mat-spinner>
+      <span>Carregando dados...</span>
+    </div>
 
-        <!-- Projeto -->
-        <mat-form-field class="w-100 mb-3" appearance="outline">
-          <mat-label>Projeto</mat-label>
-          <mat-select
-            formControlName="projectId"
-            required
-            [disabled]="
-              isProjectDisabled || !participantForm.get('clientId')?.value
-            "
-          >
-            <mat-option
-              *ngFor="let project of filteredProjects"
-              [value]="project.id"
-            >
-              {{ project.name }}
-            </mat-option>
-          </mat-select>
-          <mat-error
-            *ngIf="participantForm.get('projectId')?.hasError('required')"
-          >
-            Projeto é obrigatório.
-          </mat-error>
-        </mat-form-field>
+    <!-- ── No clients ─────────────────────────────────────────── -->
+    <div class="ap-empty" *ngIf="!isLoading && !hasClients">
+      <mat-icon>warning_amber</mat-icon>
+      <p>Nenhum cliente disponível. Tente novamente mais tarde.</p>
+    </div>
+
+    <!-- ── Form ───────────────────────────────────────────────── -->
+    <mat-dialog-content class="ap-body" *ngIf="!isLoading && hasClients">
+      <form [formGroup]="participantForm">
+
+        <!-- Contexto: cliente + projeto (somente leitura quando pré-definidos) -->
+        <div class="ap-context-row" *ngIf="isClientDisabled && isProjectDisabled">
+          <div class="ap-context-chip">
+            <mat-icon>business</mat-icon>
+            <span>{{ clients[0]?.name }}</span>
+          </div>
+          <mat-icon class="ap-context-sep">chevron_right</mat-icon>
+          <div class="ap-context-chip ap-context-chip--project">
+            <mat-icon>folder_open</mat-icon>
+            <span>{{ filteredProjects[0]?.name }}</span>
+          </div>
+        </div>
+
+        <!-- Seletores de cliente/projeto (quando não pré-definidos) -->
+        <div class="ap-fields-row" *ngIf="!isClientDisabled || !isProjectDisabled">
+          <mat-form-field appearance="outline" class="ap-field" *ngIf="!isClientDisabled">
+            <mat-label>Cliente</mat-label>
+            <mat-icon matPrefix class="ap-prefix-icon">business</mat-icon>
+            <mat-select formControlName="clientId" (selectionChange)="onClientChange()">
+              <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
+            </mat-select>
+            <mat-error *ngIf="participantForm.get('clientId')?.hasError('required')">Obrigatório</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="ap-field" *ngIf="!isProjectDisabled">
+            <mat-label>Projeto</mat-label>
+            <mat-icon matPrefix class="ap-prefix-icon">folder_open</mat-icon>
+            <mat-select formControlName="projectId" [disabled]="!participantForm.get('clientId')?.value">
+              <mat-option *ngFor="let project of filteredProjects" [value]="project.id">{{ project.name }}</mat-option>
+            </mat-select>
+            <mat-error *ngIf="participantForm.get('projectId')?.hasError('required')">Obrigatório</mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="ap-divider"></div>
 
         <!-- Nome -->
-        <mat-form-field class="w-100 mb-3" appearance="outline">
-          <mat-label>Nome</mat-label>
-          <input matInput formControlName="name" required />
-          <mat-error *ngIf="participantForm.get('name')?.hasError('required')">
-            Nome é obrigatório.
-          </mat-error>
+        <mat-form-field appearance="outline" class="ap-field ap-field--full">
+          <mat-label>Nome completo</mat-label>
+          <mat-icon matPrefix class="ap-prefix-icon">person</mat-icon>
+          <input matInput formControlName="name" placeholder="Ex: João da Silva" />
+          <mat-error *ngIf="participantForm.get('name')?.hasError('required')">Nome é obrigatório</mat-error>
         </mat-form-field>
 
         <!-- E-mail -->
-        <mat-form-field class="w-100 mb-3" appearance="outline">
+        <mat-form-field appearance="outline" class="ap-field ap-field--full">
           <mat-label>E-mail</mat-label>
-          <input matInput formControlName="email" required type="email" />
-          <mat-error *ngIf="participantForm.get('email')?.hasError('required')">
-            E-mail é obrigatório.
-          </mat-error>
-          <mat-error *ngIf="participantForm.get('email')?.hasError('email')">
-            Insira um e-mail válido.
-          </mat-error>
+          <mat-icon matPrefix class="ap-prefix-icon">email</mat-icon>
+          <input matInput formControlName="email" type="email" placeholder="exemplo@empresa.com" />
+          <mat-error *ngIf="participantForm.get('email')?.hasError('required')">E-mail é obrigatório</mat-error>
+          <mat-error *ngIf="participantForm.get('email')?.hasError('email')">E-mail inválido</mat-error>
         </mat-form-field>
 
         <!-- Categoria -->
-        <mat-form-field class="w-100 mb-3" appearance="outline">
+        <mat-form-field appearance="outline" class="ap-field ap-field--full">
           <mat-label>Categoria</mat-label>
-          <mat-select
-            formControlName="category"
-            required
-            (selectionChange)="onCategoryChange()"
-          >
-            <mat-option value="Avaliado">Avaliado</mat-option>
-            <mat-option value="Gestor">Gestor</mat-option>
-            <mat-option value="Par">Par</mat-option>
-            <mat-option value="Subordinado">Subordinado</mat-option>
-            <mat-option value="Outros">Outros</mat-option>
+          <mat-icon matPrefix class="ap-prefix-icon">group</mat-icon>
+          <mat-select formControlName="category" (selectionChange)="onCategoryChange()">
+            <mat-option value="Avaliado">
+              <div class="ap-option"><span class="ap-option__dot ap-option__dot--avaliado"></span>Avaliado</div>
+            </mat-option>
+            <mat-option value="Gestor">
+              <div class="ap-option"><span class="ap-option__dot ap-option__dot--gestor"></span>Gestor</div>
+            </mat-option>
+            <mat-option value="Par">
+              <div class="ap-option"><span class="ap-option__dot ap-option__dot--par"></span>Par</div>
+            </mat-option>
+            <mat-option value="Subordinado">
+              <div class="ap-option"><span class="ap-option__dot ap-option__dot--subordinado"></span>Subordinado</div>
+            </mat-option>
+            <mat-option value="Outros">
+              <div class="ap-option"><span class="ap-option__dot ap-option__dot--outros"></span>Outros</div>
+            </mat-option>
           </mat-select>
-          <mat-error
-            *ngIf="participantForm.get('category')?.hasError('required')"
-          >
-            Categoria é obrigatória.
-          </mat-error>
+          <mat-hint *ngIf="participantForm.get('category')?.value === 'Avaliado'">Tipo: <strong>avaliado</strong></mat-hint>
+          <mat-hint *ngIf="participantForm.get('category')?.value && participantForm.get('category')?.value !== 'Avaliado'">Tipo: <strong>avaliador</strong></mat-hint>
+          <mat-error *ngIf="participantForm.get('category')?.hasError('required')">Categoria é obrigatória</mat-error>
         </mat-form-field>
+
       </form>
     </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button
-        mat-button
+
+    <!-- ── Actions ────────────────────────────────────────────── -->
+    <mat-dialog-actions class="ap-actions" *ngIf="!isLoading && hasClients">
+      <button mat-button class="ap-btn-cancel" (click)="dialogRef.close()">Cancelar</button>
+      <button mat-flat-button class="ap-btn-save"
         (click)="onAddParticipantClick()"
-        [disabled]="
-          !participantForm.valid || isSaving || isLoading || !hasClients
-        "
-      >
-        <mat-spinner *ngIf="isSaving" [diameter]="20"></mat-spinner>
-        <span *ngIf="isSaving">Salvando...</span>
-        <span *ngIf="!isSaving">Adicionar</span>
+        [disabled]="!participantForm.valid || isSaving">
+        <mat-spinner *ngIf="isSaving" [diameter]="18" class="ap-spinner"></mat-spinner>
+        <mat-icon *ngIf="!isSaving">person_add</mat-icon>
+        {{ isSaving ? 'Salvando...' : 'Adicionar Participante' }}
       </button>
-      <button mat-button mat-dialog-close>Cancelar</button>
     </mat-dialog-actions>
   `,
   styleUrls: ['./add-participant-modal.component.scss'],

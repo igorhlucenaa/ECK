@@ -1,0 +1,112 @@
+// ─── Header ──────────────────────────────────────────────────
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px 16px;
+  background: linear-gradient(135deg, #1B2D56 0%, #1B84FF 100%);
+  color: #fff;
+}
+
+.preview-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  mat-icon { font-size: 22px; width: 22px; height: 22px; color: #fff; }
+}
+
+.preview-header-text { flex: 1; }
+
+.preview-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 2px;
+  color: #fff;
+}
+
+.preview-subtitle {
+  font-size: 12px;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.preview-close-btn {
+  color: rgba(255,255,255,0.8) !important;
+  &:hover { color: #fff !important; }
+}
+
+// ─── Meta ─────────────────────────────────────────────────────
+.preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  padding: 12px 24px;
+  background: #f8faff;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.meta-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #1B84FF;
+}
+
+.meta-label {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.meta-value { color: #1a1a2e; }
+
+// ─── Body ─────────────────────────────────────────────────────
+.preview-body {
+  padding: 20px 24px;
+  max-height: 65vh;
+  overflow-y: auto;
+  background: #f8faff;
+}
+
+.no-survey {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 24px;
+  color: #94a3b8;
+  mat-icon { font-size: 40px; width: 40px; height: 40px; }
+  span { font-size: 14px; }
+}
+
+// ─── Footer ───────────────────────────────────────────────────
+.preview-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 24px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.btn-close-dialog {
+  background: linear-gradient(135deg, #1B2D56, #1B84FF) !important;
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+}

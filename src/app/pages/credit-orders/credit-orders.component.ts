@@ -29,6 +29,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 export interface Order {
   id: string;
@@ -63,6 +64,7 @@ export interface Order {
     RouterModule,
     FormsModule,
     TranslateModule,
+    AppPageHeaderComponent,
   ],
   templateUrl: './credit-orders.component.html',
   styleUrls: ['./credit-orders.component.scss'],

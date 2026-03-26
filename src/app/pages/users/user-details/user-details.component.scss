@@ -1,0 +1,241 @@
+.detail-wrapper {
+  padding: 28px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.btn-back {
+  color: #64748b !important;
+  font-weight: 500;
+  mat-icon { font-size: 18px; vertical-align: middle; }
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #1B2D56, #1B84FF) !important;
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+}
+
+// ─── Loading / not found ──────────────────────────────────────
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 64px 0;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 0;
+  color: #94a3b8;
+  mat-icon { font-size: 48px; width: 48px; height: 48px; opacity: 0.5; }
+  span { font-size: 15px; }
+}
+
+// ─── Cards ────────────────────────────────────────────────────
+.detail-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(27, 45, 86, 0.08);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fafbfd;
+}
+
+.card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1B2D56, #1B84FF);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  mat-icon { color: #fff; font-size: 20px; width: 20px; height: 20px; }
+
+  &--accent { background: linear-gradient(135deg, #0e9488, #43CED7); }
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 2px;
+}
+
+.card-subtitle {
+  font-size: 12.5px;
+  color: #8a8fa8;
+  margin: 0;
+}
+
+.card-body { padding: 24px; }
+
+// ─── Profile hero ─────────────────────────────────────────────
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1B2D56, #1B84FF);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 8px;
+}
+
+// ─── Fields grid ──────────────────────────────────────────────
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.field-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+}
+
+.field-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: #1B84FF;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.field-value {
+  font-size: 14px;
+  color: #1a1a2e;
+  font-weight: 500;
+}
+
+// ─── Role badge ───────────────────────────────────────────────
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+
+  &.role-master { background: linear-gradient(135deg, #1B2D56, #1B84FF); color: #fff; }
+  &.role-client { background: #eff6ff; color: #1B84FF; border: 1px solid #bfdbfe; }
+  &.role-user   { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+}
+
+// ─── Notif chip ───────────────────────────────────────────────
+.notif-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+
+  &.notif-sent    { background: #f0fdf4; color: #16a34a; }
+  &.notif-pending { background: #fff7ed; color: #b45309; }
+}
+
+// ─── Links grid ───────────────────────────────────────────────
+.links-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.links-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  margin: 0 0 12px;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; color: #8a8fa8; }
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 500;
+
+  &--group   { background: #faf5ff; color: #9333ea; border: 1px solid #e9d5ff; }
+  &--project { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+}
+
+.empty-msg {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .detail-wrapper { padding: 16px 12px; }
+  .links-grid { grid-template-columns: 1fr; }
+  .fields-grid { grid-template-columns: 1fr; }
+}

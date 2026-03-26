@@ -25,11 +25,12 @@ import { ResendAssessmentModalComponent } from '../resend-assessment-modal/resen
 import { ParticipantsModalComponent } from '../participants-modal/participants-modal.component';
 import { ParticipantsComponent } from '../../assessments/participants/participants.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-projects-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, TranslateModule],
+  imports: [CommonModule, MaterialModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './projects-list.component.html',
   styleUrls: ['./projects-list.component.scss'],
 })
@@ -49,6 +50,24 @@ export class ProjectsListComponent implements OnInit {
   clients: { id: string; name: string }[] = [];
   selectedClientId: string | null = null;
   isAdminMaster: boolean = false;
+  today = new Date();
+
+  getInitial(name: string): string {
+    return name?.charAt(0)?.toUpperCase() || 'P';
+  }
+
+  getStatusClass(status: string): string {
+    const map: Record<string, string> = {
+      'Ativo': 'status-ativo',
+      'Inativo': 'status-inativo',
+      'Concluído': 'status-concluido',
+    };
+    return map[status] || 'status-inativo';
+  }
+
+  isOverdue(deadline: Date | null): boolean {
+    return !!deadline && deadline < this.today;
+  }
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -323,7 +342,10 @@ export class ProjectsListComponent implements OnInit {
 
   openResendModal(projectId: string, clientId: string): void {
     const dialogRef = this.dialog.open(ParticipantsComponent, {
-      width: '80%',
+      width: '95vw',
+      maxWidth: '95vw',
+      height: '90vh',
+      panelClass: 'participants-fullscreen-dialog',
       data: {
         projectId: projectId,
         clientId: clientId,

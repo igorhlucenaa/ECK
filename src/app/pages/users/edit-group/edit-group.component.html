@@ -1,0 +1,153 @@
+<!-- Loading -->
+<div class="eu-loading" *ngIf="isLoading">
+  <mat-spinner diameter="48"></mat-spinner>
+  <p>Carregando grupo...</p>
+</div>
+
+<!-- Page -->
+<div class="eu-wrapper" *ngIf="!isLoading">
+
+  <!-- Breadcrumb / back -->
+  <div class="eu-breadcrumb">
+    <button mat-icon-button class="eu-back-btn" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span class="eu-breadcrumb__trail">
+      <a class="eu-breadcrumb__link" routerLink="/users">Usuários</a>
+      <mat-icon class="eu-breadcrumb__sep">chevron_right</mat-icon>
+      <span class="eu-breadcrumb__current">Editar grupo</span>
+    </span>
+  </div>
+
+  <!-- Content grid -->
+  <div class="eu-grid">
+
+    <!-- ── Sidebar ── -->
+    <aside class="eu-sidebar">
+      <div class="eu-profile-card">
+        <div class="eu-avatar">{{ groupInitial }}</div>
+        <p class="eu-profile-card__name">{{ groupName }}</p>
+        <span class="eu-profile-card__sub">Grupo de usuários</span>
+
+        <div class="eu-profile-card__divider"></div>
+
+        <div class="eu-profile-info">
+          <div class="eu-profile-info__row">
+            <mat-icon>business</mat-icon>
+            <div>
+              <span class="eu-profile-info__label">Cliente</span>
+              <span class="eu-profile-info__val">{{ clientName }}</span>
+            </div>
+          </div>
+          <div class="eu-profile-info__row">
+            <mat-icon>people</mat-icon>
+            <div>
+              <span class="eu-profile-info__label">Membros selecionados</span>
+              <span class="eu-profile-info__val">{{ selectedMemberCount }} membro{{ selectedMemberCount !== 1 ? 's' : '' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="eu-profile-card__hint">
+          <mat-icon>info</mat-icon>
+          Alterações refletirão imediatamente no sistema
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Main: formulário ── -->
+    <main class="eu-main">
+      <div class="eu-form-card">
+
+        <!-- Card header -->
+        <div class="eu-form-card__header">
+          <div class="eu-form-card__header-icon">
+            <mat-icon>group_work</mat-icon>
+          </div>
+          <div>
+            <h2 class="eu-form-card__title">Editar grupo</h2>
+            <p class="eu-form-card__sub">Atualize os dados e membros do grupo abaixo</p>
+          </div>
+        </div>
+
+        <form [formGroup]="groupForm" class="eu-form">
+
+          <!-- Identificação -->
+          <p class="eu-section-label">Identificação</p>
+          <mat-form-field appearance="outline" class="eu-field eu-field--full">
+            <mat-label>Nome do Grupo</mat-label>
+            <mat-icon matPrefix>group</mat-icon>
+            <input matInput formControlName="name" placeholder="Ex: Líderes de Projetos">
+            <mat-error *ngIf="groupForm.get('name')?.hasError('required')">Nome é obrigatório</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="eu-field eu-field--full">
+            <mat-label>Descrição</mat-label>
+            <mat-icon matPrefix>notes</mat-icon>
+            <textarea matInput formControlName="description" rows="3"
+              placeholder="Descreva o propósito deste grupo"></textarea>
+          </mat-form-field>
+
+          <!-- Vínculo -->
+          <p class="eu-section-label">Vínculo</p>
+          <mat-form-field appearance="outline" class="eu-field eu-field--full">
+            <mat-label>Cliente</mat-label>
+            <mat-icon matPrefix>business</mat-icon>
+            <mat-select formControlName="clientId">
+              <mat-option *ngFor="let client of clients" [value]="client.id">
+                {{ client.name }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="groupForm.get('clientId')?.hasError('required')">Cliente é obrigatório</mat-error>
+          </mat-form-field>
+
+          <!-- Membros -->
+          <p class="eu-section-label">Membros</p>
+          <mat-form-field appearance="outline" class="eu-field eu-field--full">
+            <mat-label>Usuários do Grupo</mat-label>
+            <mat-icon matPrefix>people</mat-icon>
+            <mat-select formControlName="userIds" multiple>
+              <mat-option *ngIf="users.length === 0" disabled>
+                Selecione um cliente para carregar usuários
+              </mat-option>
+              <mat-option *ngFor="let user of users" [value]="user.id">
+                {{ user.name }} {{ user.surname }}
+              </mat-option>
+            </mat-select>
+            <mat-hint>{{ selectedMemberCount }} usuário{{ selectedMemberCount !== 1 ? 's' : '' }} selecionado{{ selectedMemberCount !== 1 ? 's' : '' }}</mat-hint>
+          </mat-form-field>
+
+          <!-- Lista de membros selecionados -->
+          <div class="eu-member-list" *ngIf="selectedMemberCount > 0">
+            <ng-container *ngFor="let uid of groupForm.get('userIds')?.value">
+              <ng-container *ngFor="let u of users">
+                <div class="eu-member-chip" *ngIf="u.id === uid">
+                  <div class="eu-member-chip__avatar">{{ (u.name || '?')[0].toUpperCase() }}</div>
+                  <span>{{ u.name }} {{ u.surname }}</span>
+                </div>
+              </ng-container>
+            </ng-container>
+          </div>
+
+        </form>
+
+        <!-- Card footer -->
+        <div class="eu-form-card__footer">
+          <button mat-stroked-button class="eu-btn-cancel" (click)="goBack()">
+            <mat-icon>close</mat-icon>
+            Cancelar
+          </button>
+          <button mat-raised-button class="eu-btn-save"
+            [disabled]="groupForm.invalid || isSaving"
+            (click)="save()">
+            <mat-spinner *ngIf="isSaving" diameter="18" class="eu-btn-save__spinner"></mat-spinner>
+            <mat-icon *ngIf="!isSaving">save</mat-icon>
+            {{ isSaving ? 'Salvando...' : 'Salvar alterações' }}
+          </button>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+</div>
