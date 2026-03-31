@@ -66,14 +66,31 @@
 
 // ─── Users preview ────────────────────────────────────────────
 .users-preview { margin-top: 12px; }
-.users-preview__label { font-size: 11.5px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+.users-preview__header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.users-preview__label {
+  font-size: 11.5px; font-weight: 600; color: #64748b;
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+
+.users-preview__count {
+  font-size: 11.5px; font-weight: 600;
+  color: #6366f1; background: #ede9fe;
+  padding: 2px 8px; border-radius: 999px;
+}
 
 .users-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .user-chip {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px 4px 4px; border-radius: 999px;
+  padding: 4px 8px 4px 4px; border-radius: 999px;
   background: #f1f5f9; font-size: 12px; color: #374151;
+  cursor: default; transition: background 0.15s;
+  &:hover { background: #e2e8f0; }
 }
 
 .user-chip__avatar {
@@ -81,6 +98,17 @@
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   color: #fff; font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+.user-chip__name { line-height: 1; }
+
+// Badge pequeno quando o usuário está em mais de 1 grupo
+.user-chip__groups {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 10px; font-weight: 600; color: #7c3aed;
+  background: #ede9fe; border-radius: 999px;
+  padding: 1px 5px; margin-left: 2px;
+  mat-icon { font-size: 11px; width: 11px; height: 11px; }
 }
 
 // ─── Loading state ─────────────────────────────────────────────
@@ -145,6 +173,39 @@
 
   mat-icon { font-size: 18px; width: 18px; height: 18px; }
   &:disabled { opacity: 0.5; }
+}
+
+// ─── Participants shortcut ────────────────────────────────────
+.participants-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f0f4ff;
+  border: 1px dashed #a5b4fc;
+  border-radius: 8px;
+  margin-top: 4px;
+
+  &__icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #6366f1;
+    flex-shrink: 0;
+  }
+
+  &__text {
+    font-size: 13px;
+    color: #475569;
+    flex: 1;
+  }
+
+  &__btn {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  }
 }
 
 @media (max-width: 600px) {

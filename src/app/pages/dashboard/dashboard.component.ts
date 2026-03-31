@@ -265,46 +265,119 @@ export class DashboardComponent implements OnInit {
 
   async generatePDF(): Promise<void> {
     if (this.isExporting) return;
-    this.isExporting = true;
-    this.exportLabel = this.translate.instant('Exportando dashboard...');
-    this.cdr.markForCheck();
 
-    const el = document.getElementById('dashboard-content');
-    if (!el) {
+    const dashboardEl = document.getElementById('dashboard-content');
+    if (!dashboardEl) {
       this.snackBar.open(this.translate.instant('Elemento do dashboard não encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
-      this.isExporting = false;
-      this.exportLabel = '';
-      this.cdr.markForCheck();
       return;
     }
 
+    this.isExporting = true;
+    this.exportLabel = this.translate.instant('Preparando impressão...');
+    this.cdr.markForCheck();
+
+    let iframe: HTMLIFrameElement | null = null;
+
     try {
-      const { default: html2canvas } = await import('html2canvas');
-      const { default: jsPDF } = await import('jspdf');
-      const canvas = await html2canvas(el, { scrollY: -window.scrollY, scale: 1.5, useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let position = 0;
+      await new Promise(r => setTimeout(r, 100));
 
-      if (imgHeight > pageHeight) {
-        while (position < imgHeight) {
-          pdf.addImage(imgData, 'PNG', 0, -position, imgWidth, imgHeight);
-          position += pageHeight;
-          if (position < imgHeight) pdf.addPage();
-        }
-      } else {
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      }
+      // ApexCharts renderiza em SVG — converter para img para preservar no clone
+      const canvases = Array.from(dashboardEl.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      const canvasDataUrls = canvases.map(c => {
+        try { return c.toDataURL('image/jpeg', 0.92); } catch { return ''; }
+      });
 
-      pdf.save('dashboard.pdf');
+      const clone = dashboardEl.cloneNode(true) as HTMLElement;
+
+      Array.from(clone.querySelectorAll('canvas')).forEach((clonedCanvas, i) => {
+        const dataUrl = canvasDataUrls[i];
+        if (!dataUrl) return;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.width  = canvases[i].style.width  || `${canvases[i].offsetWidth}px`;
+        img.style.height = canvases[i].style.height || `${canvases[i].offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+        clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
+      });
+
+      const angularStyles = Array.from(document.head.querySelectorAll('style'))
+        .map(s => s.innerHTML).join('\n');
+      const linkTags = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML).join('\n');
+
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;border:none;visibility:hidden;';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument!;
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="${window.location.origin}/">
+  ${linkTags}
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+    * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+    body { margin: 0; padding: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background: #fff; width: 186mm; }
+    #dashboard-content { width: 100%; }
+    table { border-collapse: collapse; }
+    img, svg { max-width: 100% !important; height: auto; }
+    ${angularStyles}
+  </style>
+</head>
+<body>
+  <div id="dashboard-content">${clone.innerHTML}</div>
+  <script>
+    (function() {
+      var bodyWidth = document.body.offsetWidth;
+      document.querySelectorAll('table').forEach(function(table) {
+        var natural = table.scrollWidth;
+        if (natural <= bodyWidth + 2) return;
+        var scale = bodyWidth / natural;
+        var origH = table.offsetHeight;
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'width:100%;overflow:hidden;display:block;';
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(table);
+        table.style.transformOrigin = 'top left';
+        table.style.transform = 'scale(' + scale + ')';
+        table.style.marginBottom = (origH * (scale - 1)) + 'px';
+      });
+    })();
+  <\/script>
+</body>
+</html>`);
+      iframeDoc.close();
+
+      await new Promise<void>((resolve) => {
+        const doPrint = () => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            window.removeEventListener('afterprint', finish);
+            try { iframe!.contentWindow?.removeEventListener('afterprint', finish); } catch {}
+            clearTimeout(safetyTimer);
+            resolve();
+          };
+          window.addEventListener('afterprint', finish);
+          try { iframe!.contentWindow?.addEventListener('afterprint', finish); } catch {}
+          const safetyTimer = setTimeout(finish, 2 * 60 * 1000);
+          iframe!.contentWindow?.focus();
+          iframe!.contentWindow?.print();
+        };
+        iframe!.addEventListener('load', () => setTimeout(doPrint, 400));
+      });
+
       this.snackBar.open(this.translate.instant('Dashboard exportado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
     } catch (err) {
       console.error(err);
       this.snackBar.open(this.translate.instant('Erro ao exportar o dashboard.'), this.translate.instant('Fechar'), { duration: 4000 });
     } finally {
+      if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
       this.isExporting = false;
       this.exportLabel = '';
       this.cdr.markForCheck();

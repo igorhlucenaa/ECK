@@ -44,6 +44,7 @@ import { ToastService } from 'src/app/services/toast.service';
 })
 export class ClientsListComponent implements OnInit {
   displayedColumns: string[] = [
+    'select',
     'companyName',
     'sector',
     'cnpj',
@@ -55,6 +56,7 @@ export class ClientsListComponent implements OnInit {
   cnpjFilter: string = '';
   sectorFilter: string = '';
   sectors: string[] = [];
+  selectedClientIds = new Set<string>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -233,6 +235,75 @@ export class ClientsListComponent implements OnInit {
             );
             this.toast.error(this.translate.instant('Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.'));
           });
+      }
+    });
+  }
+
+  // ─── Seleção em massa ────────────────────────────────────────
+  isAllClientsSelected(): boolean {
+    const visible = this.dataSource.filteredData;
+    return visible.length > 0 && visible.every(c => this.selectedClientIds.has(c.id));
+  }
+
+  isSomeClientsSelected(): boolean {
+    return this.dataSource.filteredData.some(c => this.selectedClientIds.has(c.id));
+  }
+
+  toggleAllClients(checked: boolean): void {
+    if (checked) {
+      this.dataSource.filteredData.forEach(c => this.selectedClientIds.add(c.id));
+    } else {
+      this.dataSource.filteredData.forEach(c => this.selectedClientIds.delete(c.id));
+    }
+  }
+
+  toggleClientSelect(id: string): void {
+    if (this.selectedClientIds.has(id)) {
+      this.selectedClientIds.delete(id);
+    } else {
+      this.selectedClientIds.add(id);
+    }
+  }
+
+  deleteSelectedClients(): void {
+    const count = this.selectedClientIds.size;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: {
+        message: this.translate.instant(`Ao remover ${count} cliente(s), todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?`),
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      const ids = Array.from(this.selectedClientIds);
+      const projectsCol = collection(this.firestore, 'projects');
+      const groupsCol   = collection(this.firestore, 'userGroups');
+      const usersCol    = collection(this.firestore, 'users');
+
+      const deleteByQuery = async (q: any) => {
+        const snap = await getDocs(q);
+        if (snap.empty) return;
+        const batch = writeBatch(this.firestore);
+        snap.forEach((d: any) => batch.delete(d.ref));
+        await batch.commit();
+      };
+
+      try {
+        for (const id of ids) {
+          await Promise.all([
+            deleteByQuery(query(projectsCol, where('clientId', '==', id))),
+            deleteByQuery(query(groupsCol,   where('clientId', '==', id))),
+            deleteByQuery(query(usersCol,    where('client',   '==', id))),
+          ]);
+          await deleteDoc(doc(this.firestore, `clients/${id}`));
+        }
+        this.dataSource.data = this.dataSource.data.filter(c => !this.selectedClientIds.has(c.id));
+        this.selectedClientIds.clear();
+        this.toast.success(this.translate.instant('Clientes excluídos com sucesso.'));
+      } catch (error) {
+        console.error('Erro ao excluir clientes em massa:', error);
+        this.toast.error(this.translate.instant('Erro ao excluir clientes. Tente novamente.'));
       }
     });
   }

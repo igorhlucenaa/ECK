@@ -437,6 +437,127 @@
   }
 }
 
+// ── Palette badge (canvas card) ─────────────────────────────────────────────
+.palette-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  border: 1.5px dashed #cbd5e1;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+
+  &:hover {
+    border-color: #1B84FF;
+    background: #f0f7ff;
+
+    .palette-badge__icon { color: #1B84FF; }
+  }
+
+  &__icon {
+    font-size: 15px !important;
+    width: 15px !important;
+    height: 15px !important;
+    color: #94a3b8;
+    transition: color .15s;
+  }
+
+  &__dots {
+    display: flex;
+    gap: 2px;
+  }
+
+  &__dot {
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,.1);
+  }
+}
+
+// ── Palette picker ──────────────────────────────────────────────────────────
+.palette-picker {
+  margin-top: 16px;
+
+  &__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    margin: 0 0 10px;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+}
+
+.palette-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 6px 6px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #fff;
+  transition: border-color .15s, box-shadow .15s, transform .1s;
+
+  &:hover {
+    border-color: #94a3b8;
+    box-shadow: 0 2px 6px rgba(0,0,0,.1);
+    transform: translateY(-1px);
+  }
+
+  &--selected {
+    border-color: #1B84FF;
+    box-shadow: 0 0 0 3px rgba(27,132,255,.18);
+    background: #f0f7ff;
+  }
+
+  &__swatches {
+    display: flex;
+    gap: 2px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  &__swatch {
+    display: block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,.08);
+    flex-shrink: 0;
+  }
+
+  &__name {
+    font-size: 10px;
+    color: #475569;
+    text-align: center;
+    line-height: 1.2;
+    font-weight: 500;
+  }
+
+  &__check {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    font-size: 13px !important;
+    width: 13px !important;
+    height: 13px !important;
+    color: #1B84FF;
+  }
+}
+
 // Overlay quando painel está aberto (opcional - para destacar o painel)
 .config-panel.open ~ .builder-content::after {
   content: '';

@@ -2,8 +2,13 @@
 
   <app-page-header
     eyebrow="Gestão"
-    [title]="'Usuários' | translate"
+    [title]="'Usuários e Grupos' | translate"
     subtitle="Gerencie os usuários e grupos de usuários da plataforma">
+
+    <button mat-icon-button *ngIf="dialogRef" (click)="dialogRef.close()" matTooltip="Fechar">
+      <mat-icon>close</mat-icon>
+    </button>
+
   </app-page-header>
 
   <mat-tab-group data-tour="users-tabs" class="users-tabs" animationDuration="200ms">
@@ -15,9 +20,8 @@
         <!-- Toolbar -->
         <div class="search-bar">
           <mat-form-field appearance="outline" class="search-field">
-            <mat-label>{{ 'Buscar usuário' | translate }}</mat-label>
             <mat-icon matPrefix class="search-prefix-icon">search</mat-icon>
-            <input matInput (keyup)="applyUserFilter($event)" placeholder="{{ 'Nome, e-mail...' | translate }}" />
+            <input matInput (keyup)="applyUserFilter($event)" placeholder="{{ 'Buscar por nome, e-mail...' | translate }}" />
           </mat-form-field>
           <div class="search-bar__right">
             <div class="search-count">
@@ -104,9 +108,41 @@
           </div>
         </mat-expansion-panel>
 
+        <!-- Barra de ações em massa — Usuários -->
+        <div class="bulk-action-bar" *ngIf="isSomeUsersSelected()">
+          <mat-icon>check_circle</mat-icon>
+          <strong>{{ selectedUserIds.size }}</strong>
+          <span>usuário{{ selectedUserIds.size !== 1 ? 's' : '' }} selecionado{{ selectedUserIds.size !== 1 ? 's' : '' }}</span>
+          <span class="bulk-spacer"></span>
+          <button mat-button (click)="toggleAllUsers(false)">
+            <mat-icon>deselect</mat-icon> Limpar seleção
+          </button>
+          <button mat-flat-button color="warn" (click)="deleteSelectedUsers()">
+            <mat-icon>delete_sweep</mat-icon> Excluir selecionados
+          </button>
+        </div>
+
         <!-- Tabela -->
         <div class="table-container" data-tour="users-table">
           <table mat-table [dataSource]="userDataSource" matSort #userSort="matSort" class="users-table">
+
+            <!-- Seleção -->
+            <ng-container matColumnDef="select">
+              <th mat-header-cell *matHeaderCellDef class="select-col">
+                <mat-checkbox
+                  [checked]="isAllUsersSelected()"
+                  [indeterminate]="isSomeUsersSelected() && !isAllUsersSelected()"
+                  (change)="toggleAllUsers($event.checked)">
+                </mat-checkbox>
+              </th>
+              <td mat-cell *matCellDef="let user" class="select-col">
+                <mat-checkbox
+                  [checked]="selectedUserIds.has(user.id)"
+                  [disabled]="!canDelete(user)"
+                  (change)="toggleUserSelect(user)">
+                </mat-checkbox>
+              </td>
+            </ng-container>
 
             <!-- Nome -->
             <ng-container matColumnDef="name">
@@ -222,22 +258,28 @@
                     matTooltip="{{ 'Ver detalhes' | translate }}">
                     <mat-icon>visibility</mat-icon>
                   </button>
-                  <button mat-icon-button
-                    [class.action-edit]="canEdit(user)"
-                    [class.action-locked]="!canEdit(user)"
-                    (click)="editUser(user)"
-                    [disabled]="!canEdit(user)"
-                    [matTooltip]="getEditTooltip(user)">
-                    <mat-icon>{{ canEdit(user) ? 'edit' : 'lock' }}</mat-icon>
-                  </button>
-                  <button mat-icon-button
-                    [class.action-delete]="canDelete(user)"
-                    [class.action-locked]="!canDelete(user)"
-                    [disabled]="!canDelete(user)"
-                    (click)="canDelete(user) && deleteUser(user)"
-                    [matTooltip]="getDeleteTooltip(user)">
-                    <mat-icon>{{ canDelete(user) ? 'delete_outline' : 'lock' }}</mat-icon>
-                  </button>
+                  <!-- Editar: ocultar para não-masters quando alvo é admin_master -->
+                  <ng-container *ngIf="user.role !== 'admin_master' || currentUserRole === 'admin_master'">
+                    <button mat-icon-button
+                      [class.action-edit]="canEdit(user)"
+                      [class.action-locked]="!canEdit(user)"
+                      (click)="editUser(user)"
+                      [disabled]="!canEdit(user)"
+                      [matTooltip]="getEditTooltip(user)">
+                      <mat-icon>{{ canEdit(user) ? 'edit' : 'lock' }}</mat-icon>
+                    </button>
+                  </ng-container>
+                  <!-- Excluir: ocultar para não-masters quando alvo é admin_master -->
+                  <ng-container *ngIf="user.role !== 'admin_master' || currentUserRole === 'admin_master'">
+                    <button mat-icon-button
+                      [class.action-delete]="canDelete(user)"
+                      [class.action-locked]="!canDelete(user)"
+                      [disabled]="!canDelete(user)"
+                      (click)="canDelete(user) && deleteUser(user)"
+                      [matTooltip]="getDeleteTooltip(user)">
+                      <mat-icon>{{ canDelete(user) ? 'delete_outline' : 'lock' }}</mat-icon>
+                    </button>
+                  </ng-container>
                   <button mat-icon-button class="action-email"
                     (click)="sendEmailNotification(user)"
                     matTooltip="{{ 'Enviar E-mail' | translate }}">
@@ -248,7 +290,8 @@
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedUserColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedUserColumns;" class="table-row"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedUserColumns;" class="table-row"
+                [class.row-duplicate-email]="hasDuplicateEmail(row)"></tr>
 
             <tr class="mat-row no-data-row" *matNoDataRow>
               <td class="mat-cell" [attr.colspan]="displayedUserColumns.length">
@@ -273,9 +316,8 @@
         <!-- Toolbar -->
         <div class="search-bar">
           <mat-form-field appearance="outline" class="search-field">
-            <mat-label>{{ 'Buscar grupo' | translate }}</mat-label>
             <mat-icon matPrefix class="search-prefix-icon">search</mat-icon>
-            <input matInput (keyup)="applyGroupFilter($event)" placeholder="{{ 'Nome, cliente...' | translate }}" />
+            <input matInput (keyup)="applyGroupFilter($event)" placeholder="{{ 'Buscar por nome, cliente...' | translate }}" />
           </mat-form-field>
           <div class="search-bar__right">
             <div class="search-count">
@@ -288,9 +330,40 @@
           </div>
         </div>
 
+        <!-- Barra de ações em massa — Grupos -->
+        <div class="bulk-action-bar" *ngIf="isSomeGroupsSelected()">
+          <mat-icon>check_circle</mat-icon>
+          <strong>{{ selectedGroupIds.size }}</strong>
+          <span>grupo{{ selectedGroupIds.size !== 1 ? 's' : '' }} selecionado{{ selectedGroupIds.size !== 1 ? 's' : '' }}</span>
+          <span class="bulk-spacer"></span>
+          <button mat-button (click)="toggleAllGroups(false)">
+            <mat-icon>deselect</mat-icon> Limpar seleção
+          </button>
+          <button mat-flat-button color="warn" (click)="deleteSelectedGroups()">
+            <mat-icon>delete_sweep</mat-icon> Excluir selecionados
+          </button>
+        </div>
+
         <!-- Tabela -->
         <div class="table-container">
-          <table mat-table [dataSource]="groupDataSource" matSort #groupSort="matSort" class="users-table">
+          <table mat-table [dataSource]="groupDataSource" matSort #groupSort="matSort" class="users-table groups-table">
+
+            <!-- Seleção -->
+            <ng-container matColumnDef="select">
+              <th mat-header-cell *matHeaderCellDef class="select-col">
+                <mat-checkbox
+                  [checked]="isAllGroupsSelected()"
+                  [indeterminate]="isSomeGroupsSelected() && !isAllGroupsSelected()"
+                  (change)="toggleAllGroups($event.checked)">
+                </mat-checkbox>
+              </th>
+              <td mat-cell *matCellDef="let group" class="select-col">
+                <mat-checkbox
+                  [checked]="selectedGroupIds.has(group.id)"
+                  (change)="toggleGroupSelect(group.id)">
+                </mat-checkbox>
+              </td>
+            </ng-container>
 
             <!-- Nome do Grupo -->
             <ng-container matColumnDef="name">

@@ -59,57 +59,73 @@ export class AppSalesOverview2Component implements OnChanges {
   }
 
   private updateChart(): void {
-    const clients = this.projectsByClientData.map((data) => data.client);
-    const projects = this.projectsByClientData.map((data) => data.projects);
+    // Filtra clientes sem projetos e ordena do maior para o menor
+    const sorted = [...this.projectsByClientData]
+      .filter(d => d.projects > 0)
+      .sort((a, b) => b.projects - a.projects);
+
+    if (sorted.length === 0) return;
+
+    const clients  = sorted.map(d => d.client);
+    const projects = sorted.map(d => d.projects);
+    const maxVal   = Math.max(...projects);
 
     this.salesoverChart = {
-      series: [
-        {
-          name: 'Projetos Ativos',
-          data: projects,
-        },
-      ],
+      series: [{ name: 'Projetos Ativos', data: projects }],
       chart: {
         type: 'bar',
-        height: 280,
+        // Altura dinâmica: cada cliente ocupa ~36px, mínimo 200px
+        height: Math.max(200, clients.length * 36 + 60),
         toolbar: { show: false },
-        foreColor: '#adb0bb',
-        fontFamily: 'Poppins',
-        sparkline: { enabled: false },
-      },
-      grid: {
-        show: true,
+        foreColor: '#64748b',
+        fontFamily: 'Poppins, sans-serif',
       },
       plotOptions: {
-        bar: { horizontal: false, columnWidth: '35%', borderRadius: 5 },
+        bar: {
+          horizontal: true,   // Horizontal: nomes de clientes ficam legíveis
+          barHeight: '60%',
+          borderRadius: 4,
+          dataLabels: { position: 'right' },
+        },
       },
       dataLabels: {
-        enabled: false,
+        enabled: true,
+        formatter: (val: number) => String(val),
+        style: { fontSize: '12px', fontFamily: 'Poppins', colors: ['#374151'] },
+        offsetX: 8,
       },
       xaxis: {
-        type: 'category',
-        categories: clients, // Agora exibe os clientes
+        categories: clients,
+        labels: {
+          style: { fontSize: '12px', fontFamily: 'Poppins' },
+        },
+        max: maxVal + 1,  // Folga para o data label não cortar
       },
       yaxis: {
-        show: true,
-        min: 0,
-        tickAmount: 5,
+        labels: {
+          style: { fontSize: '12px', fontFamily: 'Poppins', colors: ['#374151'] },
+          maxWidth: 140,
+        },
       },
-      stroke: {
-        show: true,
-        width: 2,
-        colors: ['transparent'],
-      },
-      legend: {
-        show: true,
-        position: 'top',
+      grid: {
+        xaxis: { lines: { show: true } },
+        yaxis: { lines: { show: false } },
+        borderColor: '#f1f5f9',
       },
       fill: {
+        type: 'gradient',
+        gradient: {
+          shade: 'light',
+          type: 'horizontal',
+          gradientToColors: ['#1B84FF'],
+          stops: [0, 100],
+        },
         colors: ['#26c6da'],
-        opacity: 1,
       },
+      legend: { show: false },
       tooltip: {
-        theme: 'dark',
+        theme: 'light',
+        y: { formatter: (val: number) => `${val} projeto${val !== 1 ? 's' : ''}` },
       },
     };
   }

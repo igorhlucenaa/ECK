@@ -64,7 +64,10 @@
           </div>
         </div>
         <div class="dash-card__body">
-          <app-newsletter-campaign2 [creditUsageData]="assessmentsData"></app-newsletter-campaign2>
+          <app-newsletter-campaign2
+            [creditUsageData]="assessmentsData"
+            [projectsData]="projectsByClientData">
+          </app-newsletter-campaign2>
         </div>
       </mat-card>
     </div>

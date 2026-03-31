@@ -47,6 +47,7 @@ import { GapChartComponent, GapChartDataItem } from './charts/gap-chart/gap-char
 import { ReportBuilderVisualComponent } from './report-builder-visual/report-builder-visual.component';
 import { SurveyDashboardComponent } from './survey-dashboard/survey-dashboard.component';
 import { Subject, from, of, takeUntil, tap, debounceTime, switchMap } from 'rxjs';
+import { ConfirmDialogService } from '../../shared/confirm-dialog/confirm-dialog.service';
 import { environment } from 'src/enviroments/environment';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
@@ -609,7 +610,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     private fb: FormBuilder,
     private reportsPdf: ReportsPdfService,
     private pdfMakeService: ReportPdfMakeService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private confirmDialog: ConfirmDialogService
   ) {
     this.dummyForm = this.fb.group({
       relatorioFormArray: this.fb.array([])
@@ -826,9 +828,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       }
 
-      // 5. Carregar dados da avaliação
+      // 5. Carregar dados da avaliação e calcular médias
       try {
         await this.onAssessmentChange();
+        await this.calcularMediasPorCompetencia();
       } catch (e) {
         console.error('[Relatório Individual] Erro em onAssessmentChange:', e);
       }
@@ -1829,6 +1832,32 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return { domain };
   }
 
+  // Retorna as cores de cabeçalho da tabela baseadas na paleta da seção
+  getTableHeaderColors(secao: any): { primary: string; secondary: string; footer: string } {
+    const paletaKey = secao?.['paletaCor'] || 'azul';
+    const paleta = (this.paletasCores as any)[paletaKey] || this.paletasCores['azul'];
+    const cores = paleta.cores;
+    return {
+      primary:   cores[3] || '#1E88E5',
+      secondary: cores[2] || '#42A5F5',
+      footer:    cores[3] || '#1E88E5'
+    };
+  }
+
+  getDestaquesAltasColors(secao: any): { header: string; text: string } {
+    const paletaKey = secao?.['paletaCor'] || 'verde';
+    const paleta = (this.paletasCores as any)[paletaKey] || this.paletasCores['verde'];
+    const cores = paleta.cores;
+    return { header: cores[3] || '#558B2F', text: cores[3] || '#558B2F' };
+  }
+
+  getDestaquesBaixasColors(secao: any): { header: string; text: string } {
+    const paletaKey = secao?.['paletaCorBaixas'] || 'vermelho';
+    const paleta = (this.paletasCores as any)[paletaKey] || this.paletasCores['vermelho'];
+    const cores = paleta.cores;
+    return { header: cores[3] || '#C62828', text: cores[3] || '#C62828' };
+  }
+
   // Método para gerar tooltip informativo para cada cor
   getCorTooltip(secao: any, index: number): string {
     const paletaSelecionada = secao?.paletaCor || secao?.['paletaCor'] || 'padrao';
@@ -2606,6 +2635,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Selecione um relatório para excluir.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const nome = this.savedReports.find(r => r.id === id)?.name || id;
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
     try {
       await deleteDoc(doc(this.firestore, 'reports', id));
       this.snackBar.open(this.t('Relatório excluído com sucesso!'), this.t('Fechar'), { duration: 3000 });
@@ -2622,6 +2654,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Selecione um template para excluir.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const nome = this.savedTemplates.find(t => t.id === id)?.name || id;
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
     try {
       await deleteDoc(doc(this.firestore, 'reportTemplates', id));
       this.snackBar.open(this.t('Template excluído com sucesso!'), this.t('Fechar'), { duration: 3000 });
@@ -2670,73 +2705,185 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // Exportar relatório completo como PDF
+  // Exportar relatório como PDF capturando diretamente a pré-visualização (html2canvas)
   async exportarRelatorioPDF(): Promise<boolean> {
     if (this.isExporting) return false;
-    this.isExporting = true;
-    this.exportingLabel = 'Gerando PDF...';
-    this.cdr.markForCheck();
-    try {
-    const jsPDFmod = await import('jspdf');
-    const { default: html2canvas } = await import('html2canvas');
-    const element = document.getElementById('report-preview');
-    if (!element) {
-      this.snackBar.open(this.t('Não foi possível encontrar o preview do relatório.'), this.t('Fechar'), { duration: 3000 });
+
+    if (!this.isDataReady()) {
+      this.snackBar.open(this.t('Selecione uma avaliação antes de exportar.'), this.t('Fechar'), { duration: 4000 });
       return false;
     }
-    // Ativar modo exportação (oculta UI visível) e capturar o próprio preview em tela
-    const root = document.body;
-    root.classList.add('export-mode');
-    await new Promise(r => setTimeout(r, 100)); // delay para aplicar estilos e renderizar cores
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      imageTimeout: 0,
-    });
-    root.classList.remove('export-mode');
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDFmod.jsPDF('p', 'mm', 'a4');
-    const pageWidth = 210;
-    const pageHeight = 297;
-    // Sem margem: imagem ocupa toda a largura A4
-    const imgWidth = pageWidth;
-    const imgHeight = canvas.height * imgWidth / canvas.width;
 
-    // Fatiar a imagem verticalmente para não cortar conteúdo entre páginas
-    const sliceHeight = pageHeight * (canvas.width / imgWidth);
-    let y = 0;
-    let firstPage = true;
-    while (y < canvas.height) {
-      const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvas.width;
-      sliceCanvas.height = Math.min(sliceHeight, canvas.height - y);
-      const ctx = sliceCanvas.getContext('2d');
-      if (ctx) ctx.drawImage(canvas, 0, y, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
-      const sliceImg = sliceCanvas.toDataURL('image/png');
-      if (!firstPage) pdf.addPage();
-      pdf.addImage(sliceImg, 'PNG', 0, 0, imgWidth, sliceCanvas.height * imgWidth / canvas.width);
-      y += sliceHeight;
-      firstPage = false;
+    const previewEl = document.getElementById('report-preview');
+    if (!previewEl) {
+      this.snackBar.open(this.t('Vá para a aba "Visualizar" antes de exportar.'), this.t('Fechar'), { duration: 4000 });
+      return false;
     }
 
-    // Nome do arquivo baseado no modo
-    let fileName = 'relatorio-360.pdf';
-    if (this.isIndividualMode && this.individualParticipantName) {
-      const sanitizedName = this.individualParticipantName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
-      fileName = `relatorio-${sanitizedName}.pdf`;
-    }
+    this.isExporting = true;
+    this.exportingLabel = 'Preparando impressão...';
+    this.cdr.markForCheck();
 
-    pdf.save(fileName);
-    this.snackBar.open(this.t('PDF exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
-    return true;
-    } catch (err) {
-      console.error('Erro ao exportar PDF:', err);
-      this.snackBar.open(this.t('Erro ao gerar o PDF.'), this.t('Fechar'), { duration: 3000 });
+    let iframe: HTMLIFrameElement | null = null;
+
+    try {
+      await new Promise(r => setTimeout(r, 100));
+
+      // 1. Canvas elements não clonam seu conteúdo via innerHTML — converter para img
+      const canvases = Array.from(previewEl.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      const canvasDataUrls = canvases.map(c => {
+        try { return c.toDataURL('image/jpeg', 0.92); } catch { return ''; }
+      });
+
+      // 2. Clonar o preview (preserva atributos _ngcontent-* do Angular)
+      const clone = previewEl.cloneNode(true) as HTMLElement;
+
+      // 3. Substituir <canvas> por <img> no clone
+      Array.from(clone.querySelectorAll('canvas')).forEach((clonedCanvas, i) => {
+        const dataUrl = canvasDataUrls[i];
+        if (!dataUrl) return;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.width  = canvases[i].style.width  || `${canvases[i].offsetWidth}px`;
+        img.style.height = canvases[i].style.height || `${canvases[i].offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+        clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
+      });
+
+      // 4. Remover elementos de UI (botões, separadores, etc.)
+      clone.querySelectorAll('.ui-only').forEach(el => el.remove());
+
+      // 5. Coletar os <style> gerados pelo Angular (contêm seletores _ngcontent-* que batem com o clone)
+      const angularStyles = Array.from(document.head.querySelectorAll('style'))
+        .map(s => s.innerHTML).join('\n');
+
+      // 6. Coletar os <link rel="stylesheet"> externos
+      const linkTags = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML).join('\n');
+
+      // 7. Criar iframe isolado — documento contém APENAS o relatório,
+      //    então o browser pagina pela altura real do conteúdo
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;border:none;visibility:hidden;';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument!;
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="${window.location.origin}/">
+  ${linkTags}
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+
+    * {
+      box-sizing: border-box;
+      print-color-adjust: exact !important;
+      -webkit-print-color-adjust: exact !important;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Roboto, "Helvetica Neue", sans-serif;
+      background: #fff;
+      width: 186mm;
+    }
+    #report-preview {
+      width: 100%;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      zoom: 0.82;
+    }
+    .report-section {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin-bottom: 4mm;
+    }
+    h1 { font-size: 1.5em !important; margin: 3mm 0 2mm !important; }
+    h2 { font-size: 1.2em !important; margin: 2mm 0 1.5mm !important; }
+    h3 { font-size: 1.05em !important; margin: 2mm 0 1mm !important; }
+    p  { margin: 1.5mm 0 !important; }
+    td, th { padding: 4px 8px !important; }
+    /* Tabelas renderizam no tamanho natural — o script abaixo escala as que ultrapassarem */
+    table { border-collapse: collapse; }
+    /* Imagens e SVGs limitados à largura */
+    img, svg { max-width: 100% !important; height: auto; }
+    ${angularStyles}
+  </style>
+</head>
+<body>
+  <div id="report-preview">${clone.innerHTML}</div>
+  <script>
+    // Escala proporcional de tabelas que ultrapassam a largura do A4.
+    // transform: scale preserva a estrutura visual — não quebra células nem altera texto.
+    (function scaleOverflowingTables() {
+      var bodyWidth = document.body.offsetWidth;
+      document.querySelectorAll('table').forEach(function(table) {
+        var natural = table.scrollWidth;
+        if (natural <= bodyWidth + 2) return; // dentro do limite, nada a fazer
+
+        var scale    = bodyWidth / natural;
+        var origH    = table.offsetHeight;
+
+        // Envolve em um div que clipa o overflow de layout do transform
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'width:100%;overflow:hidden;display:block;';
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(table);
+
+        table.style.transformOrigin = 'top left';
+        table.style.transform       = 'scale(' + scale + ')';
+        // transform não afeta o layout box — compensar a altura excedente
+        table.style.marginBottom    = (origH * (scale - 1)) + 'px';
+      });
+    })();
+  <\/script>
+</body>
+</html>`);
+      iframeDoc.close();
+
+      // 8. Aguardar carregamento dos recursos e imprimir
+      await new Promise<void>((resolve) => {
+        const doPrint = () => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            // Remover listeners de ambas as janelas
+            window.removeEventListener('afterprint', finish);
+            try { iframe!.contentWindow?.removeEventListener('afterprint', finish); } catch {}
+            clearTimeout(safetyTimer);
+            resolve();
+          };
+
+          // Chrome dispara afterprint na janela principal; Firefox dispara no iframe
+          window.addEventListener('afterprint', finish);
+          try { iframe!.contentWindow?.addEventListener('afterprint', finish); } catch {}
+
+          // Segurança: se o browser não disparar afterprint (ex.: Safari antigo),
+          // encerra o loading em 2 minutos para não travar a UI
+          const safetyTimer = setTimeout(finish, 2 * 60 * 1000);
+
+          iframe!.contentWindow?.focus();
+          iframe!.contentWindow?.print();
+        };
+        // Delay para fontes e estilos externos carregarem
+        iframe!.addEventListener('load', () => setTimeout(doPrint, 400));
+      });
+
+      return true;
+
+    } catch (err: any) {
+      console.error('Erro ao imprimir:', err);
+      this.snackBar.open(this.t('Erro ao gerar PDF: ') + (err?.message || 'erro desconhecido'), this.t('Fechar'), { duration: 5000 });
       return false;
     } finally {
+      if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
       this.isExporting = false;
       this.exportingLabel = '';
       this.cdr.markForCheck();
@@ -2785,68 +2932,211 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // Exportar relatório como DOCX
+  // Exportar relatório como DOCX (geração nativa a partir dos dados — sem html2canvas)
   async exportarRelatorioDOCX(): Promise<void> {
     if (this.isExporting) return;
     this.isExporting = true;
     this.exportingLabel = 'Gerando DOCX...';
     this.cdr.markForCheck();
-    let docxMod: any;
+
     try {
-      docxMod = await import('docx');
-    } catch (e) {
-      this.snackBar.open(this.t('Pacote docx não encontrado. Instale com: npm i docx'), this.t('Fechar'), { duration: 4000 });
-      this.isExporting = false;
-      this.exportingLabel = '';
-      return;
-    }
-    try {
-      const { Document, Packer, Paragraph, ImageRun } = docxMod;
-      const element = document.getElementById('report-preview');
-      if (!element) return;
+      const docxMod = await import('docx');
+      const {
+        Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+        WidthType, HeadingLevel, AlignmentType, BorderStyle, PageBreak
+      } = docxMod;
 
-      // Rasteriza o preview como imagem (ocultando UI) e insere no DOCX
-      const { default: html2canvas } = await import('html2canvas');
-      const root = document.body;
-      root.classList.add('export-mode');
-      await new Promise(r => setTimeout(r, 100));
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        imageTimeout: 0,
-      });
-      root.classList.remove('export-mode');
+      const nomePart = this.individualParticipantName || this.selectedAvaliado || 'Participante';
+      const grupos = this.getGrupos();
+      const secoesVisiveis = [...this.relatorioConfiguracao]
+        .filter((s: any) => s.visivel)
+        .sort((a: any, b: any) => a.ordem - b.ordem);
 
-      const dataUrl = canvas.toDataURL('image/png');
-      const base64 = dataUrl.split(',')[1];
-      const byteChars = atob(base64);
-      const byteNumbers = new Array(byteChars.length);
-      for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-      const uint8Array = new Uint8Array(byteNumbers);
-
-      const image = new ImageRun({
-        data: uint8Array,
-        transformation: { width: 600, height: Math.round(600 * (canvas.height / canvas.width)) }
+      // ── helpers ──────────────────────────────────────────────────────────────
+      const hd = (text: string, level: any) => new Paragraph({ text, heading: level, spacing: { before: 300, after: 160 } });
+      const p = (text: string) => new Paragraph({ children: [new TextRun({ text })], spacing: { after: 120 } });
+      const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
+      const hr = () => new Paragraph({
+        border: { bottom: { color: 'CCCCCC', space: 1, style: BorderStyle.SINGLE, size: 6 } },
+        spacing: { after: 200 }
       });
 
-      const doc = new Document({
-        sections: [
-          {
-            properties: {},
-            children: [new Paragraph({ children: [image] })]
-          }
+      const cell = (text: string, bold = false, bg = 'FFFFFF') => new TableCell({
+        shading: { fill: bg, type: 'clear' as any },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text, bold, size: 18 })]
+        })]
+      });
+
+      const buildTable = (headers: string[], rows: string[][]): any => new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            tableHeader: true,
+            children: headers.map(h => cell(h, true, '1B84FF'
+            ))
+          }),
+          ...rows.map((row, ri) => new TableRow({
+            children: row.map(v => cell(v, false, ri % 2 === 0 ? 'FFFFFF' : 'F5F8FF'))
+          }))
         ]
       });
 
+      const stripHtml = (html: string) => html ? html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+
+      // ── CAPA ────────────────────────────────────────────────────────────────
+      const children: any[] = [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 1200, after: 400 },
+          children: [new TextRun({ text: 'RELATÓRIO DE AVALIAÇÃO 360°', bold: true, size: 52, color: '1B84FF' })]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 200 },
+          children: [new TextRun({ text: nomePart, bold: true, size: 36 })]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 1200 },
+          children: [new TextRun({ text: `Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, size: 22, color: '666666' })]
+        }),
+        pageBreak()
+      ];
+
+      // ── SEÇÕES ──────────────────────────────────────────────────────────────
+      for (const secao of secoesVisiveis as any[]) {
+        if (secao.titulo) {
+          children.push(hd(secao.titulo, HeadingLevel.HEADING_2));
+          children.push(hr());
+        }
+
+        switch (secao.tipo) {
+          case 'capa':
+            // já foi tratado na capa acima
+            break;
+
+          case 'texto':
+          case 'introducao': {
+            const texto = stripHtml(secao.texto || '');
+            if (texto) children.push(p(texto));
+            break;
+          }
+
+          case 'resumo':
+          case 'tabela':
+          case 'tabela_detalhada': {
+            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
+            if (comps.length === 0) { children.push(p('Sem competências configuradas.')); break; }
+            const headers = ['Competência', ...grupos];
+            const rows = comps.map((comp: any) => [
+              comp.nome,
+              ...grupos.map((g: string) => {
+                const v = this.getMediaPorPerguntaEGrupo(comp, g);
+                return v !== null ? v.toFixed(2) : '-';
+              })
+            ]);
+            children.push(buildTable(headers, rows));
+            children.push(new Paragraph({ spacing: { after: 240 } }));
+            break;
+          }
+
+          case 'graficos': {
+            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
+            children.push(p(`Tipo de gráfico: ${secao.tipoGrafico || 'barra'}`));
+            if (comps.length === 0) { children.push(p('Sem competências configuradas.')); break; }
+            const headers = ['Competência', ...grupos];
+            const rows = comps.map((comp: any) => [
+              comp.nome,
+              ...grupos.map((g: string) => {
+                const v = this.getMediaPorPerguntaEGrupo(comp, g);
+                return v !== null ? v.toFixed(2) : '-';
+              })
+            ]);
+            children.push(buildTable(headers, rows));
+            children.push(new Paragraph({ spacing: { after: 240 } }));
+            break;
+          }
+
+          case 'competencia_detalhada': {
+            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
+            for (const comp of comps as any[]) {
+              children.push(hd(comp.nome, HeadingLevel.HEADING_3));
+              if (comp.descricao) children.push(p(comp.descricao));
+              const rows = grupos.map((g: string) => {
+                const v = this.getMediaPorPerguntaEGrupo(comp, g);
+                return [g, v !== null ? v.toFixed(2) : '-'];
+              });
+              children.push(buildTable(['Grupo Avaliador', 'Média'], rows));
+              children.push(new Paragraph({ spacing: { after: 200 } }));
+            }
+            break;
+          }
+
+          case 'destaques': {
+            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
+            const medias = comps.map((c: any) => {
+              const vals = grupos.map((g: string) => this.getMediaPorPerguntaEGrupo(c, g)).filter(v => v !== null) as number[];
+              const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+              return { nome: c.nome, avg };
+            }).filter(x => x.avg !== null).sort((a: any, b: any) => b.avg - a.avg);
+            if (medias.length) {
+              children.push(hd('Pontos Fortes', HeadingLevel.HEADING_3));
+              medias.slice(0, 3).forEach((m: any) => children.push(p(`• ${m.nome} — Média: ${m.avg.toFixed(2)}`)));
+              children.push(hd('Oportunidades de Melhoria', HeadingLevel.HEADING_3));
+              [...medias].reverse().slice(0, 3).forEach((m: any) => children.push(p(`• ${m.nome} — Média: ${m.avg.toFixed(2)}`)));
+            }
+            break;
+          }
+
+          case 'grafico_defasagem': {
+            const perguntas = secao.perguntasIds || [];
+            if (!perguntas.length) { children.push(p('Sem perguntas configuradas.')); break; }
+            const rows = perguntas.map((pId: string) => {
+              const titulo = this.questionMap[pId] || pId;
+              const dados = this.getDadosPerguntaDefasagem(pId);
+              return [
+                titulo,
+                dados?.selfScore !== null && dados?.selfScore !== undefined ? dados.selfScore.toFixed(2) : '-',
+                dados?.othersScore !== null && dados?.othersScore !== undefined ? dados.othersScore.toFixed(2) : '-',
+                dados?.gap !== null && dados?.gap !== undefined ? dados.gap.toFixed(2) : '-'
+              ];
+            });
+            children.push(buildTable(['Pergunta', 'Auto-avaliação', 'Outros', 'Gap'], rows));
+            break;
+          }
+
+          case 'perguntas_abertas': {
+            const dadosAbertas = this.getPerguntasAbertasData();
+            for (const item of dadosAbertas) {
+              children.push(hd(item.perguntaTitulo, HeadingLevel.HEADING_3));
+              const cats = this.getCategoriasOrdenadas(item.respostasPorCategoria);
+              for (const cat of cats) {
+                children.push(p(`${cat}:`));
+                (item.respostasPorCategoria[cat] || []).forEach((r: string) => children.push(p(`  • ${r}`)));
+              }
+              children.push(new Paragraph({ spacing: { after: 200 } }));
+            }
+            break;
+          }
+
+          default:
+            children.push(p(`[Seção "${secao.tipo}" não suportada no formato DOCX]`));
+        }
+      }
+
+      // ── Gerar arquivo ────────────────────────────────────────────────────────
+      const doc = new Document({ sections: [{ properties: {}, children }] });
       const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'relatorio-360.docx';
+      a.href = url;
+      a.download = `relatorio-${nomePart.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.docx`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(a.href);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       this.snackBar.open(this.t('DOCX exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
     } catch (err) {
       console.error('Erro ao exportar DOCX:', err);
@@ -4854,8 +5144,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
                 id: compId,
                 nome: c.nome || c.name || 'Competência sem nome',
                 descricao: c.descricao || c.description || '',
-                perguntasIds: c.perguntasIds || c.questionIds || []
-              } as Competencia);
+                perguntasIds: c.perguntasIds || c.questionIds || [],
+                groupId: groupDoc.id  // rastreia o grupo pai para matching com pendingCompetencyIds
+              } as any);
             }
           });
         });
@@ -4899,10 +5190,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // Aplicar competências pendentes se houver
       if (this.pendingCompetencyIds.length > 0) {
         console.log('🎯 Aplicando competências pendentes:', this.pendingCompetencyIds);
-        this.competencias = this.allCompetencies.filter((comp: Competencia) =>
-          this.pendingCompetencyIds.includes(comp.id)
+        // O modal envia IDs de documentos de competencyGroups (group IDs).
+        // loadAllCompetencies() cria sub-competências com comp.id = sub-competency ID e comp.groupId = group doc ID.
+        // Por isso buscamos match em ambos os campos.
+        this.competencias = (this.allCompetencies as any[]).filter((comp: any) =>
+          this.pendingCompetencyIds.includes(comp.id) ||
+          this.pendingCompetencyIds.includes(comp.groupId)
         );
-        console.log('🎯 Competências aplicadas:', this.competencias);
+        // Se ainda não encontrou nada, usar todas as competências da avaliação como fallback
+        if (this.competencias.length === 0) {
+          console.warn('🎯 pendingCompetencyIds não bateram com nenhuma sub-competência — usando todas:', this.allCompetencies.length);
+          this.competencias = [...this.allCompetencies];
+        }
+        console.log('🎯 Competências aplicadas:', this.competencias.length);
         this.pendingCompetencyIds = [];
       } else if (this.competencias.length === 0) {
         // Auto-selecionar todas as competências da avaliação para evitar configuração manual

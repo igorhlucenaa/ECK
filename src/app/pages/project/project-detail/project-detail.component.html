@@ -85,14 +85,14 @@
         </div>
       </div>
 
-      <!-- Card: Participantes -->
+      <!-- Card: Grupos de Usuários -->
       <div class="form-card">
         <div class="form-card-header">
           <div class="form-card-icon form-card-icon--purple">
-            <mat-icon>group</mat-icon>
+            <mat-icon>group_work</mat-icon>
           </div>
           <div>
-            <h3 class="form-card-title">Participantes</h3>
+            <h3 class="form-card-title">Grupos de Usuários</h3>
             <p class="form-card-subtitle">Grupos de usuários que participarão deste projeto</p>
           </div>
           <span class="participants-badge" *ngIf="usersInGroups.length > 0">
@@ -115,13 +115,33 @@
             </mat-error>
           </mat-form-field>
 
-          <!-- Preview de usuários -->
+          <!-- Atalho para gerenciar usuários e grupos sem sair da página -->
+          <div class="participants-shortcut">
+            <mat-icon class="participants-shortcut__icon">info_outline</mat-icon>
+            <span class="participants-shortcut__text">Precisa cadastrar usuários ou criar grupos?</span>
+            <button mat-button color="primary" type="button"
+                    class="participants-shortcut__btn"
+                    (click)="openUsersDialog()">
+              <mat-icon>open_in_new</mat-icon>
+              Gerenciar Usuários e Grupos
+            </button>
+          </div>
+
+          <!-- Preview de usuários deduplcados -->
           <div class="users-preview" *ngIf="usersInGroups.length > 0">
-            <div class="users-preview__label">Usuários incluídos:</div>
+            <div class="users-preview__header">
+              <span class="users-preview__label">Usuários incluídos</span>
+              <span class="users-preview__count">{{ usersInGroups.length }} usuário{{ usersInGroups.length !== 1 ? 's' : '' }} único{{ usersInGroups.length !== 1 ? 's' : '' }}</span>
+            </div>
             <div class="users-chips">
-              <span class="user-chip" *ngFor="let user of usersInGroups">
+              <span class="user-chip" *ngFor="let user of usersInGroups"
+                    [matTooltip]="'Grupos: ' + user.groupNames.join(', ')"
+                    matTooltipPosition="above">
                 <span class="user-chip__avatar">{{ user.name?.charAt(0)?.toUpperCase() }}</span>
-                {{ user.name }}
+                <span class="user-chip__name">{{ user.name }}</span>
+                <span class="user-chip__groups" *ngIf="user.groupNames.length > 1">
+                  <mat-icon>group_work</mat-icon>{{ user.groupNames.length }}
+                </span>
               </span>
             </div>
           </div>
@@ -150,6 +170,7 @@
                 [matDatepicker]="picker"
                 formControlName="deadline"
                 [matDatepickerFilter]="filterDates"
+                [min]="today"
                 placeholder="DD/MM/AAAA"
               />
               <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>

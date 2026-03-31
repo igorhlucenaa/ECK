@@ -55,9 +55,10 @@
 
   .search-prefix-icon {
     color: #8a8fa8;
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
   }
 
   .search-field { flex: 1; min-width: 240px; }
@@ -82,6 +83,19 @@
 
 .users-table {
   width: 100%;
+  table-layout: fixed;
+
+  // Column widths
+  ::ng-deep .mat-column-select           { width: 48px; }
+  ::ng-deep .mat-column-name             { width: 150px; }
+  ::ng-deep .mat-column-surname          { width: 110px; }
+  ::ng-deep .mat-column-email            { width: 200px; }
+  ::ng-deep .mat-column-client           { width: 90px; }
+  ::ng-deep .mat-column-projects         { width: 90px; }
+  ::ng-deep .mat-column-group            { width: 90px; }
+  ::ng-deep .mat-column-role             { width: 95px; }
+  ::ng-deep .mat-column-notificationStatus { width: 110px; }
+  ::ng-deep .mat-column-actions          { width: 130px; }
 
   .mat-mdc-header-row {
     background: #f8faff;
@@ -89,17 +103,18 @@
   }
 
   .mat-mdc-header-cell {
-    font-size: 12px;
-    font-weight: 600;
-    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.5px;
     padding: 0 16px;
     white-space: nowrap;
     border-bottom: none;
   }
 
   .mat-mdc-row {
+    height: 52px;
     border-bottom: 1px solid #f1f5f9;
     transition: background 0.15s;
   }
@@ -107,7 +122,7 @@
   .table-row:hover { background: #f8faff; }
 
   .mat-mdc-cell {
-    padding: 12px 16px;
+    padding: 8px 16px;
     font-size: 13.5px;
     color: #1a1a2e;
     border-bottom: none;
@@ -121,10 +136,7 @@
 }
 
 .col-icon {
-  font-size: 15px;
-  width: 15px;
-  height: 15px;
-  color: #94a3b8;
+  display: none;
 }
 
 // ─── User cell ────────────────────────────────────────────────
@@ -135,8 +147,8 @@
 }
 
 .user-avatar {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   background: linear-gradient(135deg, #1B2D56, #1B84FF);
   color: #fff;
@@ -148,7 +160,7 @@
   flex-shrink: 0;
 
   &--group {
-    background: linear-gradient(135deg, #0e9488, #43CED7);
+    background: #0e7490;
   }
 }
 
@@ -232,8 +244,47 @@
     color: #16a34a;
   }
   &.notif-pending {
-    background: #fff7ed;
-    color: #b45309;
+    background: #f1f5f9;
+    color: #64748b;
+  }
+}
+
+// ─── Groups table — layout compacto sem scroll ────────────────
+.groups-table {
+  table-layout: fixed;
+
+  ::ng-deep .mat-column-select      { width: 48px; }
+  ::ng-deep .mat-column-client      { width: 150px; }
+  ::ng-deep .mat-column-name        { width: 220px; }
+  ::ng-deep .mat-column-createdBy   { width: 140px; }
+  ::ng-deep .mat-column-actions     { width: 145px; }
+  // description: sem width = ocupa o espaço restante
+
+  // Truncar texto nas colunas de texto
+  .mat-mdc-cell:not(.actions-col):not(.select-col) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Célula de ações com padding reduzido para caber 3 botões
+  .actions-col.mat-mdc-cell {
+    padding: 4px 6px !important;
+    overflow: visible !important;
+    white-space: nowrap;
+  }
+
+  // Célula do nome do grupo — impede que o user-cell quebre linha
+  .user-cell {
+    flex-wrap: nowrap;
+    min-width: 0;
+
+    .group-name-link {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
   }
 }
 
@@ -260,7 +311,11 @@
 }
 
 // ─── Actions ──────────────────────────────────────────────────
-.actions-col { width: 130px; }
+.actions-col {
+  width: 130px;
+  overflow: visible !important;
+  white-space: nowrap;
+}
 
 .actions-cell {
   display: flex;
@@ -277,6 +332,10 @@
   cursor: not-allowed !important;
   opacity: 0.5;
 }
+
+// Duplicate email row highlight
+.row-duplicate-email { background: #FAEEDA !important; }
+.row-duplicate-email:hover { background: #f5dfc0 !important; }
 
 // ─── Permissions Panel ────────────────────────────────────────
 .permissions-panel {

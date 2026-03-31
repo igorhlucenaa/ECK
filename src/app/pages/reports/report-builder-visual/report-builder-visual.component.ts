@@ -14,6 +14,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Subject, takeUntil } from 'rxjs';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
+import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 
 // Interface local para evitar dependência circular
 type RelatorioSecaoTipo = 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari' | 'perguntas_abertas';
@@ -222,6 +223,28 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   secaoEditando: RelatorioSecaoSimplificada | null = null;
   showConfigPanel = false;
 
+  paletasCores: { [key: string]: { nome: string; cores: string[] } } = {
+    'padrao':     { nome: 'Padrão',           cores: ['#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#424242'] },
+    'azul':       { nome: 'Azul',             cores: ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#0D47A1'] },
+    'verde':      { nome: 'Verde',            cores: ['#E8F5E8', '#A5D6A7', '#66BB6A', '#43A047', '#1B5E20'] },
+    'laranja':    { nome: 'Laranja',          cores: ['#FFF3E0', '#FFCC80', '#FF9800', '#F57C00', '#E65100'] },
+    'roxo':       { nome: 'Roxo',             cores: ['#F3E5F5', '#CE93D8', '#AB47BC', '#8E24AA', '#4A148C'] },
+    'vermelho':   { nome: 'Vermelho',         cores: ['#FFEBEE', '#EF9A9A', '#EF5350', '#E53935', '#B71C1C'] },
+    'teal':       { nome: 'Teal',             cores: ['#E0F2F1', '#80CBC4', '#26A69A', '#00897B', '#004D40'] },
+    'categorias': { nome: 'Categorias',       cores: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'] },
+    'personalizada': { nome: 'Personalizada', cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] }
+  };
+
+  selecionarPaleta(key: string): void {
+    if (!this.secaoEditando) return;
+    this.secaoEditando['paletaCor'] = key;
+  }
+
+  selecionarPaletaBaixas(key: string): void {
+    if (!this.secaoEditando) return;
+    this.secaoEditando['paletaCorBaixas'] = key;
+  }
+
   // Configuração do editor rich text
   editorConfig: AngularEditorConfig = {
     editable: true,
@@ -242,7 +265,8 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
 
   constructor(
     private fb: FormBuilder,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private confirmDialog: ConfirmDialogService
   ) {}
 
   ngOnInit(): void {
@@ -341,7 +365,10 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   /**
    * Remove uma seção
    */
-  removerSecao(secao: RelatorioSecaoSimplificada): void {
+  async removerSecao(secao: RelatorioSecaoSimplificada): Promise<void> {
+    const nome = secao.titulo || this.getTemplatePorTipo(secao.tipo)?.nome || 'esta seção';
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
     const index = this.canvasSections.findIndex(s => s.id === secao.id);
     if (index > -1) {
       this.canvasSections.splice(index, 1);

@@ -3,6 +3,98 @@
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
+/* ===================== PRINT / PDF (window.print) ===================== */
+@media print {
+  /* Garantir que cores e fundos sejam impressos corretamente */
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /*
+   * Técnica visibility: esconde tudo mas permite que filhos específicos
+   * sobrescrevam com visibility:visible (display:none não permite isso).
+   */
+  body.printing * {
+    visibility: hidden !important;
+  }
+
+  body.printing #report-preview,
+  body.printing #report-preview * {
+    visibility: visible !important;
+  }
+
+  /* Elementos de UI dentro do preview continuam ocultos */
+  body.printing .ui-only,
+  body.printing .ui-only * {
+    visibility: hidden !important;
+    display: none !important;
+  }
+
+  /*
+   * position: absolute (não fixed!) permite que o conteúdo flua
+   * para além do viewport, gerando múltiplas páginas.
+   * position: fixed ficaria preso a uma única "tela".
+   */
+  body.printing #report-preview {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8mm 14mm !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  body.printing .report-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 6mm;
+  }
+}
+
+/* ===================== BULK ACTION BAR (seleção em massa) ===================== */
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin: 0 0 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  animation: slideDown 0.18s ease;
+
+  mat-icon { color: #2563eb; font-size: 20px; width: 20px; height: 20px; }
+  strong   { color: #1e40af; font-size: 15px; }
+  span     { color: #374151; font-size: 14px; }
+
+  .bulk-spacer { flex: 1; }
+
+  button[mat-button] {
+    color: #374151;
+    mat-icon { font-size: 18px; width: 18px; height: 18px; }
+  }
+
+  button[mat-flat-button][color="warn"] {
+    border-radius: 6px;
+    mat-icon { font-size: 18px; width: 18px; height: 18px; }
+  }
+}
+
+.select-col {
+  width: 48px;
+  padding-right: 0 !important;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    BOTÃO DE AÇÃO PRIMÁRIA — padrão gradient (Adicionar / Criar)
    ═══════════════════════════════════════════════════════════════ */
@@ -118,6 +210,23 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   .mat-mdc-snack-bar-label {
     color: #dbeafe !important;
   }
+}
+
+/* ── Form dialogs (Novo Usuário / Novo Grupo) — sem scroll ── */
+.form-dialog-panel .mdc-dialog__surface {
+  overflow: hidden !important;
+}
+
+.form-dialog-panel .mat-mdc-dialog-content,
+.form-dialog-panel .mdc-dialog__content {
+  max-height: unset !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.form-dialog-panel .mat-mdc-dialog-actions {
+  padding: 0 !important;
+  min-height: unset !important;
 }
 
 /* Assessment preview dialog */

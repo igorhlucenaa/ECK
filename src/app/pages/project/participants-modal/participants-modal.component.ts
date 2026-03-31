@@ -35,6 +35,7 @@ import { AddParticipantModalComponent } from '../add-participant-modal/add-parti
 import { ParticipantsConfirmationDialogComponent } from '../../assessments/participants/participants-confirmation-dialog/participants-confirmation-dialog.component';
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 
 interface ModalData {
   projectId: string;
@@ -415,7 +416,8 @@ export class ParticipantsModalComponent implements OnInit {
     private fb: FormBuilder,
     private dialog: MatDialog,
     private router: Router,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private confirmDialog: ConfirmDialogService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -800,8 +802,9 @@ export class ParticipantsModalComponent implements OnInit {
   }
 
   async deleteParticipant(participantId: string): Promise<void> {
-    const confirmDelete = confirm(this.translate.instant('Tem certeza que deseja excluir este participante?'));
-    if (!confirmDelete) return;
+    const nome = this.dataSource.data.find((p: any) => p.id === participantId)?.name || participantId;
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
 
     try {
       const participantDoc = doc(

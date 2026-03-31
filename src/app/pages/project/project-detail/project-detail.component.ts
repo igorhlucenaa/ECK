@@ -24,6 +24,8 @@ import { MatSelectSearchModule } from 'mat-select-search';
 import { MatSelectModule } from '@angular/material/select';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { TranslateModule } from '@ngx-translate/core';
+import { MatDialog } from '@angular/material/dialog';
+import { UsersComponent } from '../../users/users.component';
 
 @Component({
   selector: 'app-project-detail',
@@ -52,20 +54,22 @@ export class ProjectDetailComponent implements OnInit {
     groupIds: new FormControl([], Validators.required), // Novo campo para selecionar grupos
   });
 
+  readonly today: Date = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+
   filterDates = (date: Date | null): boolean => {
-    // Em modo edição, aceita qualquer data (prazo existente pode ser passado)
-    if (this.isEditMode) return true;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date ? date >= today : false;
+    return date ? date >= this.today : false;
   };
 
   isEditMode = false;
   projectId: string | null = null;
   clientId: string | null = null;
   clients: { id: string; name: string }[] = [];
-  groups: { id: string; name: string }[] = []; // Lista de grupos de usuários
-  usersInGroups: { id: string; name: string }[] = []; // Lista de usuários para cada grupo
+  groups: { id: string; name: string }[] = [];
+  usersInGroups: { id: string; name: string; groupNames: string[] }[] = [];
   isLoading = false;
 
   constructor(
@@ -74,7 +78,8 @@ export class ProjectDetailComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private location: Location,
-    private authService: AuthService
+    private authService: AuthService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -181,31 +186,51 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   async updateUsersInGroups(): Promise<void> {
-    const selectedGroups = this.form.get('groupIds')?.value || [];
-    const users: { id: string; name: string }[] = [];
+    const selectedGroupIds: string[] = this.form.get('groupIds')?.value || [];
+    // Map keyed by userId garante deduplicação — usuários em múltiplos grupos
+    // aparecem uma única vez, acumulando os grupos a que pertencem
+    const userMap = new Map<string, { id: string; name: string; groupNames: string[] }>();
 
-    for (const groupId of selectedGroups) {
+    for (const groupId of selectedGroupIds) {
+      const groupName = this.groups.find(g => g.id === groupId)?.name ?? groupId;
       const groupDocRef = doc(this.firestore, `userGroups/${groupId}`);
       const groupDoc = await getDoc(groupDocRef);
-      if (groupDoc.exists()) {
-        const groupData = groupDoc.data();
-        const userIds = groupData?.['userIds'] || [];
-        for (const userId of userIds) {
-          const userDocRef = doc(this.firestore, `users/${userId}`);
-          const userDoc = await getDoc(userDocRef);
+      if (!groupDoc.exists()) continue;
+
+      const userIds: string[] = groupDoc.data()?.['userIds'] ?? [];
+      for (const userId of userIds) {
+        if (userMap.has(userId)) {
+          // Já carregado — só adiciona o grupo ao array
+          userMap.get(userId)!.groupNames.push(groupName);
+        } else {
+          const userDoc = await getDoc(doc(this.firestore, `users/${userId}`));
           if (userDoc.exists()) {
-            users.push({ id: userDoc.id, name: userDoc.data()['name'] });
+            userMap.set(userId, {
+              id: userDoc.id,
+              name: userDoc.data()['name'],
+              groupNames: [groupName],
+            });
           }
         }
       }
     }
-    this.usersInGroups = users;
+    this.usersInGroups = Array.from(userMap.values());
   }
 
   async saveProject(): Promise<void> {
     if (this.form.invalid) {
       this.snackBar.open('Preencha todos os campos obrigatórios!', 'Fechar', {
         duration: 3000,
+      });
+      return;
+    }
+
+    const deadlineValue = this.form.get('deadline')?.value;
+    const deadlineDate = deadlineValue ? new Date(deadlineValue) : null;
+    if (deadlineDate) deadlineDate.setHours(0, 0, 0, 0);
+    if (!deadlineDate || deadlineDate < this.today) {
+      this.snackBar.open('O prazo de preenchimento não pode ser uma data anterior a hoje.', 'Fechar', {
+        duration: 4000,
       });
       return;
     }
@@ -257,6 +282,18 @@ export class ProjectDetailComponent implements OnInit {
 
   goBack(): void {
     this.location.back();
+  }
+
+  openUsersDialog(): void {
+    const ref = this.dialog.open(UsersComponent, {
+      width: '90vw',
+      maxWidth: '1200px',
+      height: '85vh',
+      panelClass: 'users-dialog-panel',
+    });
+    ref.afterClosed().subscribe(() => {
+      this.loadUserGroups();
+    });
   }
 
   async updateUserProjects(): Promise<void> {

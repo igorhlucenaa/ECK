@@ -532,19 +532,26 @@
 
       </div>
 
-      <!-- Mode toggle -->
-      <div class="rp-mode-toggle">
-        <mat-button-toggle-group [(value)]="modoMontagem" (change)="onModoMontagemChange()">
-          <mat-button-toggle value="visual">
-            <mat-icon>dashboard</mat-icon>
-            Visual (Drag & Drop)
-          </mat-button-toggle>
-          <mat-button-toggle value="classico">
-            <mat-icon>list</mat-icon>
-            Clássico
-          </mat-button-toggle>
-        </mat-button-toggle-group>
+      <!-- Atalho para visualizar no topo do kanban -->
+      <div class="rp-builder-top-bar">
+        <div class="rp-mode-toggle-inline">
+          <mat-button-toggle-group [(value)]="modoMontagem" (change)="onModoMontagemChange()">
+            <mat-button-toggle value="visual">
+              <mat-icon>dashboard</mat-icon>
+              Visual (Drag & Drop)
+            </mat-button-toggle>
+            <mat-button-toggle value="classico">
+              <mat-icon>list</mat-icon>
+              Clássico
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+        <button mat-flat-button color="primary" class="rp-advance-btn" (click)="goToTab(2)">
+          Visualizar Relatório
+          <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        </button>
       </div>
+
 
       <!-- Visual mode -->
       <app-report-builder-visual
@@ -732,32 +739,35 @@
                           </span>
                         </div>
 
-                        <div class="rp-palette-row">
-                          <mat-form-field appearance="outline">
-                            <mat-label>{{ 'Paleta de cores' | translate }}</mat-label>
-                            <mat-select formControlName="paletaCor" (selectionChange)="onPaletaCorChange(relatorioConfiguracao[i], i)">
-                              <mat-option *ngFor="let paleta of paletasCores | keyvalue" [value]="paleta.key">{{ paleta.value.nome }}</mat-option>
-                            </mat-select>
-                            <mat-hint>{{ 'Escolha uma paleta pré-definida ou personalize' | translate }}</mat-hint>
-                          </mat-form-field>
-
-                          <div class="rp-color-preview">
-                            <div *ngFor="let cor of getColorSchemeParaSecao(relatorioConfiguracao[i]).domain; let idx = index"
-                                 class="rp-color-swatch"
-                                 [style.background-color]="cor"
-                                 [matTooltip]="getCorTooltip(relatorioConfiguracao[i], idx)">
+                        <p class="rp-palette-label">{{ 'Paleta de cores' | translate }}</p>
+                        <div class="rp-palette-grid">
+                          <div *ngFor="let paleta of paletasCores | keyvalue"
+                               class="rp-palette-card"
+                               [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                               (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
+                               [matTooltip]="paleta.value.nome">
+                            <div class="rp-palette-card__swatches">
+                              <span *ngFor="let cor of paleta.value.cores.slice(0, 5)"
+                                    class="rp-palette-card__swatch"
+                                    [style.background-color]="cor">
+                              </span>
                             </div>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                                      class="rp-palette-card__check">
+                              check_circle
+                            </mat-icon>
                           </div>
-
-                          @if (showDebugButtons) {
-                            <button mat-stroked-button color="accent"
-                                    (click)="debugCores(relatorioConfiguracao[i], i)"
-                                    class="rp-debug-btn"
-                                    matTooltip="{{ 'Debug das cores' | translate }}">
-                              Debug
-                            </button>
-                          }
                         </div>
+
+                        @if (showDebugButtons) {
+                          <button mat-stroked-button color="accent"
+                                  (click)="debugCores(relatorioConfiguracao[i], i)"
+                                  class="rp-debug-btn"
+                                  matTooltip="{{ 'Debug das cores' | translate }}">
+                            Debug
+                          </button>
+                        }
 
                         <div *ngIf="isPaletaPersonalizada(secaoCtrl, i)" class="rp-custom-colors">
                           <div class="rp-custom-colors__header">
@@ -1041,7 +1051,8 @@
                             [barPadding]="8"
                             [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
                             [xAxisLabel]="'Pontuação (0-5)'"
-                            [yAxisLabel]="'Categorias'">
+                            [yAxisLabel]="'Categorias'"
+                            [scheme]="getColorSchemeParaSecao(secao)">
                           </ngx-charts-bar-horizontal>
                         </ng-container>
                       </div>
@@ -1120,13 +1131,13 @@
                     <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
                       <table class="tabela-frequencia" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                         <thead>
-                          <tr style="background-color: #8BC34A; color: white;">
+                          <tr [style.background-color]="getTableHeaderColors(secao).primary" style="color: white;">
                             <th rowspan="2" style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">{{ comp.nome.toUpperCase() }}</th>
                             <th *ngFor="let categoria of tabelaData.mediasGerais" [attr.colspan]="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">
                               {{ getAbreviacaoCategoria(categoria.categoria) }}
                             </th>
                           </tr>
-                          <tr style="background-color: #A5D6A7; color: white;">
+                          <tr [style.background-color]="getTableHeaderColors(secao).secondary" style="color: white;">
                             <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
                               <th *ngFor="let nota of [1,2,3,4,5]" style="border: 1px solid #ddd; padding: 4px; text-align: center; min-width: 30px; font-weight: bold;">{{ nota }}</th>
                             </ng-container>
@@ -1143,7 +1154,7 @@
                           </tr>
                         </tbody>
                         <tfoot>
-                          <tr style="background-color: #8BC34A; color: white; font-weight: bold;">
+                          <tr [style.background-color]="getTableHeaderColors(secao).footer" style="color: white; font-weight: bold;">
                             <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px;">Média</td>
                             <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
                               <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">{{ categoria.media | number:'1.1-1' }}</td>
@@ -1191,11 +1202,11 @@
                       <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
                         <table class="tabela-distribuicao-notas" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                           <thead>
-                            <tr style="background-color: #4CAF50; color: white;">
+                            <tr [style.background-color]="getTableHeaderColors(secao).primary" style="color: white;">
                               <th rowspan="2" style="border: 1px solid #ddd; padding: 8px; text-align: left;">{{ comp.nome.toUpperCase() }}</th>
                               <th *ngFor="let categoria of tabelaData.mediasGerais" [attr.colspan]="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ getAbreviacaoCategoria(categoria.categoria) }}</th>
                             </tr>
-                            <tr style="background-color: #66BB6A; color: white;">
+                            <tr [style.background-color]="getTableHeaderColors(secao).secondary" style="color: white;">
                               <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
                                 <th *ngFor="let nota of [1,2,3,4,5]" style="border: 1px solid #ddd; padding: 4px; text-align: center; min-width: 30px;">{{ nota }}</th>
                               </ng-container>
@@ -1210,7 +1221,7 @@
                                 </td>
                               </ng-container>
                             </tr>
-                            <tr style="background-color: #81C784; color: white; font-weight: bold;">
+                            <tr [style.background-color]="getTableHeaderColors(secao).footer" style="color: white; font-weight: bold;">
                               <td style="border: 1px solid #ddd; padding: 8px;">Média</td>
                               <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
                                 <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ categoria.media | number:'1.1-2' }}</td>
@@ -1243,13 +1254,13 @@
               <div [innerHTML]="safeHtml(secao.texto)"></div>
               <ng-container *ngIf="gerarTabelaAvaliacoesAltas(competencias.length) as tabelaAltas">
                 <div *ngIf="tabelaAltas.items.length > 0; else noDestaquesData">
-                  <h3 style="color: #8BC34A; margin-top: 20px;">Avaliações mais altas</h3>
+                  <h3 [style.color]="getDestaquesAltasColors(secao).text" style="margin-top: 20px;">Avaliações mais altas</h3>
                   <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
                     Esta seção apresenta os comportamentos em que você obteve as maiores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
                     Pela perspectiva das outras pessoas, seus pontos fortes são estes padrões de comportamento específicos:
                   </p>
                   <table class="mat-elevation-z8" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                    <thead style="background-color: #8BC34A; color: white;">
+                    <thead [style.background-color]="getDestaquesAltasColors(secao).header" style="color: white;">
                       <tr>
                         <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Classificação</th>
                         <th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">Comportamento</th>
@@ -1270,13 +1281,13 @@
               </ng-container>
               <ng-container *ngIf="gerarTabelaAvaliacoesBaixas(competencias.length) as tabelaBaixas">
                 <div *ngIf="tabelaBaixas.items.length > 0">
-                  <h3 style="color: #FF5722; margin-top: 30px;">Avaliações mais baixas</h3>
+                  <h3 [style.color]="getDestaquesBaixasColors(secao).text" style="margin-top: 30px;">Avaliações mais baixas</h3>
                   <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
                     Esta seção apresenta os comportamentos em que você obteve as menores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
                     Pela perspectiva das outras pessoas, estes são os padrões de comportamento que podem ser desenvolvidos:
                   </p>
                   <table class="mat-elevation-z8" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                    <thead style="background-color: #FF5722; color: white;">
+                    <thead [style.background-color]="getDestaquesBaixasColors(secao).header" style="color: white;">
                       <tr>
                         <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Classificação</th>
                         <th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">Comportamento</th>

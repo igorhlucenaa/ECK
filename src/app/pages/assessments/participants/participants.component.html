@@ -601,6 +601,10 @@
           <mat-icon>deselect</mat-icon>
           {{ 'Limpar seleção' | translate }}
         </button>
+        <button mat-stroked-button color="warn" (click)="deleteSelectedParticipants()" [disabled]="isLoading">
+          <mat-icon>delete_sweep</mat-icon>
+          {{ 'Excluir selecionados' | translate }}
+        </button>
         <button mat-raised-button class="btn-send-main"
           (click)="resendLinks()"
           [disabled]="isLoading || !templateFormControl.valid ||

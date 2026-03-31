@@ -17,6 +17,8 @@ import {
   updateDoc,
   where,
   addDoc,
+  deleteDoc,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -34,6 +36,7 @@ import {
 } from '@angular/material/dialog';
 import { FormBuilder, Validators } from '@angular/forms';
 import { ParticipantsConfirmationDialogComponent } from './participants-confirmation-dialog/participants-confirmation-dialog.component';
+import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
 import { RelatorioPreviewDialogComponent } from '../../project/participants-modal/relatorio-preview-dialog.component';
 import { ReportGenerationModalComponent } from '../../project/report-generation-modal/report-generation-modal.component';
@@ -125,7 +128,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   assessments: Assessment[] = [];
   selectedParticipants: UnifiedParticipant[] = [];
   isLoading: boolean = false;
-  isTableLoading: boolean = false;
+  // Inicia como true: spinner aparece no primeiro frame do dialog,
+  // antes mesmo de ngOnInit carregar os dados — evita cliques acidentais
+  isTableLoading: boolean = true;
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
   selectedTemplate: MailTemplate | any = null;
@@ -727,6 +732,31 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       (p) => this.applyEmailTypeFilter(p) && !p.completedAt
     );
     return eligibleParticipants.some((p) => p.selected) && !this.allSelected();
+  }
+
+  async deleteSelectedParticipants(): Promise<void> {
+    const count = this.selectedParticipants.length;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: { message: `Tem certeza de que deseja excluir ${count} participante(s)? Esta ação não pode ser desfeita.` },
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        const batch = writeBatch(this.firestore);
+        this.selectedParticipants.forEach(p => batch.delete(doc(this.firestore, `participants/${p.id}`)));
+        await batch.commit();
+        const removedIds = new Set(this.selectedParticipants.map(p => p.id));
+        this.dataSource.data = this.dataSource.data.filter(p => !removedIds.has(p.id));
+        this.selectedParticipants = [];
+        this.applyFilter();
+        this.snackBar.open('Participantes excluídos com sucesso!', 'Fechar', { duration: 3000 });
+      } catch (error) {
+        console.error('Erro ao excluir participantes em massa:', error);
+        this.snackBar.open('Erro ao excluir participantes. Tente novamente.', 'Fechar', { duration: 3000 });
+      }
+    });
   }
 
   async resendLinks(): Promise<void> {

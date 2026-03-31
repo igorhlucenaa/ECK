@@ -11,6 +11,7 @@ import { CreateQuestionDialogComponent } from './create-question-dialog/create-q
 import { Subject, takeUntil } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 
 // Interface igual ao reports
 interface Competencia {
@@ -99,7 +100,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     private translate: TranslateService,
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private confirmDialog: ConfirmDialogService
   ) {
     // Formulário igual ao reports (perguntasIds não é obrigatório quando não há avaliação)
     this.competenciaForm = this.fb.group({
@@ -849,7 +851,9 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     }, 0);
   }
 
-  removerCompetencia(c: Competencia): void {
+  async removerCompetencia(c: Competencia): Promise<void> {
+    const confirmado = await this.confirmDialog.confirmDelete(c.nome);
+    if (!confirmado) return;
     const idx = this.competencias.findIndex(comp => comp.id === c.id);
     if (idx > -1) {
       this.competencias.splice(idx, 1);
@@ -1645,6 +1649,12 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const textoPergunta = this.questionMap[perguntaId]
+      || this.allQuestions.find(q => q.id === perguntaId)?.title
+      || perguntaId;
+    const confirmado = await this.confirmDialog.confirmDelete(textoPergunta);
+    if (!confirmado) return;
+
     try {
       // Remover do surveyJSON da avaliação (fonte principal das perguntas)
       if (this.selectedAssessmentId) {
@@ -1763,7 +1773,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     }, 0);
   }
 
-  removerPerguntaCustomCompetencia(competenciaId: string, index: number): void {
+  async removerPerguntaCustomCompetencia(competenciaId: string, index: number): Promise<void> {
     // Se não há ID, usar o ID temporário da competência sendo editada
     let idParaUsar = competenciaId || this.competenciaEditando.id;
 
@@ -1786,16 +1796,21 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     }
 
     const perguntas = this.customQuestionsByCompetency[idParaUsar];
-    if (perguntas && index >= 0 && index < perguntas.length) {
-      perguntas.splice(index, 1);
-      // Atualizar cache e usar setTimeout para evitar loops infinitos
-      this.perguntasCustomCache = this.getPerguntasCustomCompetencia(idParaUsar);
-      setTimeout(() => {
-        this.cdr.detectChanges();
-      }, 0);
-    } else {
-      console.warn(`Não foi possível remover pergunta custom: index ${index} fora do range (0-${perguntas.length - 1})`);
+    if (!perguntas || index < 0 || index >= perguntas.length) {
+      console.warn(`Não foi possível remover pergunta custom: index ${index} fora do range (0-${perguntas?.length - 1})`);
+      return;
     }
+
+    const textoPergunta = perguntas[index]?.title || `Pergunta ${index + 1}`;
+    const confirmado = await this.confirmDialog.confirmDelete(textoPergunta);
+    if (!confirmado) return;
+
+    perguntas.splice(index, 1);
+    // Atualizar cache e usar setTimeout para evitar loops infinitos
+    this.perguntasCustomCache = this.getPerguntasCustomCompetencia(idParaUsar);
+    setTimeout(() => {
+      this.cdr.detectChanges();
+    }, 0);
   }
 
   atualizarPerguntaCustomCompetencia(competenciaId: string, index: number, campo: 'title' | 'type', valor: string): void {
@@ -1969,8 +1984,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   }
 
   async deleteCompetencyGroup(group: any): Promise<void> {
-    const confirmed = confirm(`Deseja excluir o grupo "${group.name}"? Esta ação não pode ser desfeita.`);
-    if (!confirmed) return;
+    const confirmado = await this.confirmDialog.confirmDelete(group.name);
+    if (!confirmado) return;
 
     try {
       await deleteDoc(doc(this.firestore, 'competencyGroups', group.id));

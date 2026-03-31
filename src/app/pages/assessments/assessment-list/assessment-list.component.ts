@@ -30,6 +30,7 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 
 interface Assessment {
   id: string;
@@ -113,7 +114,8 @@ export class AssessmentListComponent implements OnInit {
     private dialog: MatDialog,
     private route: ActivatedRoute,
     private location: Location,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private confirmDialog: ConfirmDialogService
   ) {}
 
   ngOnInit(): void {
@@ -526,11 +528,10 @@ export class AssessmentListComponent implements OnInit {
   }
 
   async deleteAssessment(id: string): Promise<void> {
+    const nome = this.dataSource.data.find((a: any) => a.id === id)?.name || id;
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
     try {
-      const confirmDelete = confirm(
-        this.translate.instant('Tem certeza de que deseja excluir esta avaliação?')
-      );
-      if (!confirmDelete) return;
 
       const assessmentDocRef = doc(this.firestore, `assessments/${id}`);
       await deleteDoc(assessmentDocRef);
