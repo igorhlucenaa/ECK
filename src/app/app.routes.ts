@@ -64,6 +64,13 @@ export const routes: Routes = [
         data: { role: ['admin_master', 'admin_client'] },
       },
       {
+        path: 'settings',
+        loadChildren: () =>
+          import('./pages/settings/settings.routes').then((m) => m.SettingsRoutes),
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master', 'admin_client'] },
+      },
+      {
         path: 'clients/:id/customization',
         component: ClientCustomizationComponent,
         canActivate: [AuthGuard],
