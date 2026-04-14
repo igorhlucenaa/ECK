@@ -36,13 +36,16 @@ import {
 } from '@angular/material/dialog';
 import { FormBuilder, Validators } from '@angular/forms';
 import { ParticipantsConfirmationDialogComponent } from './participants-confirmation-dialog/participants-confirmation-dialog.component';
+import { EditParticipantDialogComponent } from './edit-participant-dialog/edit-participant-dialog.component';
+import { LinkEvaluateeModalComponent, LinkEvaluateeModalResult } from './link-evaluatee-modal/link-evaluatee-modal.component';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
 import { RelatorioPreviewDialogComponent } from '../../project/participants-modal/relatorio-preview-dialog.component';
 import { ReportGenerationModalComponent } from '../../project/report-generation-modal/report-generation-modal.component';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 interface ModalData {
   projectId?: string;
@@ -66,6 +69,9 @@ interface UnifiedParticipant {
   clientId: string;
   clientName: string;
   selected?: boolean;
+  avaliadoId?: string;
+  cargo?: string;
+  setor?: string;
 }
 
 interface Client {
@@ -96,7 +102,7 @@ interface Assessment {
 @Component({
   selector: 'app-participants',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent, RouterLink],
   templateUrl: './participants.component.html',
   styleUrls: ['./participants.component.scss'],
 })
@@ -104,14 +110,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   displayedColumns: string[] = [
     'select',
     'name',
-    'email',
     'type',
     'category',
+    'cargo',
     'projectName',
     'status',
-    'sentAt',
-    'completedAt',
-    'relatorio', // nova coluna
+    'datas',
+    'relatorio',
   ];
 
   dataSource = new MatTableDataSource<UnifiedParticipant>([]);
@@ -128,12 +133,18 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   assessments: Assessment[] = [];
   selectedParticipants: UnifiedParticipant[] = [];
   isLoading: boolean = false;
+  isInitializing: boolean = true; // overlay de tela cheia durante carregamento inicial
+  clientCredits: number | null = null; // saldo disponível do cliente selecionado
   // Inicia como true: spinner aparece no primeiro frame do dialog,
   // antes mesmo de ngOnInit carregar os dados — evita cliques acidentais
   isTableLoading: boolean = true;
+  isRefreshing: boolean = false;
+  lastRefreshed: Date | null = null;
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
   selectedTemplate: MailTemplate | any = null;
+  userRole: string = '';
+  userClientIds: string[] = [];
   isClientDisabled: boolean = false;
   isProjectDisabled: boolean = false;
   isEmailSendingMode: boolean = false;
@@ -151,12 +162,17 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     private dialog: MatDialog,
     private fb: FormBuilder,
     private router: Router,
+    private authService: AuthService,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: ModalData | null,
     @Optional() public dialogRef: MatDialogRef<ParticipantsComponent>
   ) {}
 
   async ngOnInit(): Promise<void> {
     this.isTableLoading = true;
+
+    this.userRole = await this.authService.getCurrentUserRole() || '';
+    this.userClientIds = await this.authService.getCurrentUserClientIds();
+
     await this.loadReportTemplates();
 
     this.isEmailSendingMode =
@@ -170,8 +186,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     ]);
 
     this.isTableLoading = false;
+    this.isInitializing = false;
 
     this.configureDataSource();
+
+    // Após configureDataSource definir filterClient (modo email), atualizar créditos
+    if (this.filterClient) {
+      this.updateClientCredits(this.filterClient);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -349,43 +371,74 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   async loadClients(): Promise<void> {
     try {
-      const clientsCollection = collection(this.firestore, 'clients');
-      const snapshot = await getDocs(clientsCollection);
-      this.clients = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['companyName'] || 'Cliente Sem Nome',
+      let docs: any[] = [];
+      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+        const snaps = await Promise.all(
+          this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
+        );
+        docs = snaps.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }));
+      } else {
+        const snapshot = await getDocs(collection(this.firestore, 'clients'));
+        docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      }
+      this.clients = docs.map(d => ({
+        id: d.id,
+        name: d['companyName'] || 'Cliente Sem Nome',
+        credits: d['credits'] || 0,
+        creditsUsed: d['creditsUsed'] || 0,
       }));
+      if (this.filterClient) {
+        this.updateClientCredits(this.filterClient);
+      }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', { duration: 3000 });
     }
+  }
+
+  updateClientCredits(clientId: string): void {
+    const client = (this.clients as any[]).find(c => c.id === clientId);
+    this.clientCredits = client ? (client.credits ?? 0) : null;
   }
 
   async loadProjects(): Promise<void> {
     try {
       const projectsCollection = collection(this.firestore, 'projects');
-      const snapshot = await getDocs(projectsCollection);
-      this.projects = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'] || 'Projeto Sem Nome',
-        clientId: doc.data()['clientId'] || '',
+      let snapshot;
+      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+        snapshot = await getDocs(query(projectsCollection, where('clientId', 'in', this.userClientIds)));
+      } else {
+        snapshot = await getDocs(projectsCollection);
+      }
+      this.projects = snapshot.docs.map((d) => ({
+        id: d.id,
+        name: d.data()['name'] || 'Projeto Sem Nome',
+        clientId: d.data()['clientId'] || '',
       }));
       this.filteredProjects = [...this.projects];
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
-      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', { duration: 3000 });
     }
+  }
+
+  async refreshTable(): Promise<void> {
+    this.isRefreshing = true;
+    await this.loadParticipants();
+    this.isRefreshing = false;
+    this.lastRefreshed = new Date();
   }
 
   async loadParticipants(): Promise<void> {
     this.isTableLoading = true;
     try {
       const participantsCollection = collection(this.firestore, 'participants');
-      const participantsSnapshot = await getDocs(participantsCollection);
+      let participantsSnapshot;
+      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+        participantsSnapshot = await getDocs(query(participantsCollection, where('clientId', 'in', this.userClientIds)));
+      } else {
+        participantsSnapshot = await getDocs(participantsCollection);
+      }
 
       if (participantsSnapshot.empty) {
         this.dataSource.data = [];
@@ -537,6 +590,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             clientId: clientId,
             clientName: clientsMap[clientId] || 'N/A',
             selected: false,
+            avaliadoId: participantData['avaliadoId'] || undefined,
+            cargo: participantData['cargo'] || undefined,
+            setor: participantData['setor'] || undefined,
           });
         }
       }
@@ -656,6 +712,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.assessmentFormControl.setValue('');
     this.mailTemplates = [];
     this.assessments = [];
+    this.updateClientCredits(this.filterClient);
     if (this.filterClient) {
       this.filteredProjects = this.projects.filter(
         (project) => project.clientId === this.filterClient
@@ -711,6 +768,21 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.updateSelection();
   }
 
+  /** Retorna true quando o usuário já selecionou modelo de e-mail E avaliação (se necessária) */
+  get isSelectionReady(): boolean {
+    if (!this.templateFormControl.valid) return false;
+    const needsAssessment = this.selectedTemplate?.emailType && this.selectedTemplate?.emailType !== 'cadastro';
+    if (needsAssessment && !this.assessmentFormControl.valid) return false;
+    return true;
+  }
+
+  get selectionTooltip(): string {
+    if (!this.templateFormControl.valid) return 'Selecione um modelo de e-mail primeiro';
+    const needsAssessment = this.selectedTemplate?.emailType && this.selectedTemplate?.emailType !== 'cadastro';
+    if (needsAssessment && !this.assessmentFormControl.valid) return 'Selecione um formulário de avaliação primeiro';
+    return '';
+  }
+
   updateSelection(): void {
     this.selectedParticipants = this.dataSource.filteredData.filter(
       (p) => p.selected && this.applyEmailTypeFilter(p) && !p.completedAt
@@ -760,9 +832,73 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async resendLinks(): Promise<void> {
+    // ── Interceptar se há avaliadores (não-avaliados) na seleção ──────────────
+    const assessmentId = this.assessmentFormControl.value;
+    const nonAvaliados = this.selectedParticipants.filter(p => p.type !== 'avaliado');
+    if (nonAvaliados.length > 0 && assessmentId) {
+      // Buscar todos os avaliados do mesmo projeto
+      const projectId = this.filterProject || this.selectedParticipants[0]?.projectId;
+      let avaliados: Array<{ id: string; name: string }> = [];
+      if (projectId) {
+        const snap = await getDocs(query(
+          collection(this.firestore, 'participants'),
+          where('projectId', '==', projectId),
+          where('type', '==', 'avaliado')
+        ));
+        avaliados = snap.docs.map(d => ({ id: d.id, name: d.data()['name'] || '' }));
+      }
+
+      const dialogRef = this.dialog.open(LinkEvaluateeModalComponent, {
+        width: '600px',
+        disableClose: true,
+        data: {
+          evaluators: nonAvaliados.map(p => ({
+            id: p.id,
+            name: p.name,
+            email: p.email,
+            avaliadoId: p.avaliadoId,
+            assessmentId,
+          })),
+          avaliados,
+          assessmentId,
+          projectId: projectId || '',
+        },
+      });
+
+      const result: LinkEvaluateeModalResult | null = await dialogRef.afterClosed().toPromise();
+      if (!result) return; // cancelou
+
+      // Propagar os avaliadoIds para os participantes selecionados
+      for (const binding of result.bindings) {
+        const p = this.selectedParticipants.find(x => x.id === binding.participantId);
+        if (p) p.avaliadoId = binding.avaliadoId ?? undefined;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     this.isLoading = true;
     this.isTableLoading = true;
     try {
+      // ── Verificar créditos do cliente antes de enviar ──────────
+      const clientId = this.filterClient || this.data?.clientId;
+      if (clientId) {
+        const clientSnap = await getDoc(doc(this.firestore, `clients/${clientId}`));
+        if (clientSnap.exists()) {
+          const availableCredits: number = clientSnap.data()['credits'] || 0;
+          // Conta quantos participantes ainda não responderam (cada resposta consome 1 crédito)
+          const pendingCount = this.selectedParticipants.filter(p => !p.completedAt).length;
+          if (availableCredits < pendingCount) {
+            this.snackBar.open(
+              `Créditos insuficientes. Disponíveis: ${availableCredits} — necessários: ${pendingCount}. Adquira mais créditos para continuar.`,
+              'Fechar',
+              { duration: 6000 }
+            );
+            return;
+          }
+        }
+      }
+      // ──────────────────────────────────────────────────────────
+
       let selectedTemplateId: any;
       if (this.isEmailSendingMode) {
         selectedTemplateId = this.data!.templateId!;
@@ -859,91 +995,97 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       }
       const formattedDeadline = this.formatDate(projectDeadline);
 
-      contentObj = this.replaceDeadlineInContent(contentObj, formattedDeadline);
-      const updatedContent = JSON.stringify(contentObj);
+      const projectName = this.getSelectedProjectName() || '';
+      const clientName = this.getSelectedClientName() || '';
+      const avaliadoNameCache = new Map<string, string>();
+      const sendEmailUrl = (await import('src/enviroments/environment')).environment.functions.sendEmailUrl;
 
-      await updateDoc(templateRef, { content: updatedContent });
+      // Envio sequencial: cada participante recebe template com variáveis próprias
+      for (const participant of this.selectedParticipants) {
+        // Resolver nome do avaliado (para e-mails de avaliador)
+        let nomeAvaliado = '';
+        if (participant.avaliadoId) {
+          if (avaliadoNameCache.has(participant.avaliadoId)) {
+            nomeAvaliado = avaliadoNameCache.get(participant.avaliadoId)!;
+          } else {
+            const avaliadoDoc = await getDoc(doc(this.firestore, 'participants', participant.avaliadoId));
+            nomeAvaliado = avaliadoDoc.exists() ? (avaliadoDoc.data()['name'] || '') : '';
+            avaliadoNameCache.set(participant.avaliadoId, nomeAvaliado);
+          }
+        }
 
-      const updatePromises = this.selectedParticipants.map(
-        async (participant) => {
-          const emailRequest = {
+        const participantContent = this.replaceAllVariables(
+          JSON.parse(JSON.stringify(contentObj)),
+          {
+            nome_participante: participant.name,
+            nome_avaliado: nomeAvaliado,
+            data_expiracao: formattedDeadline,
+            nome_projeto: projectName,
+            nome_cliente: clientName,
+          }
+        );
+
+        await updateDoc(templateRef, { content: JSON.stringify(participantContent) });
+
+        const response = await fetch(sendEmailUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             email: participant.email,
             templateId: selectedTemplateId,
             participantId: participant.id,
             assessmentId: selectedAssessmentId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erro ao enviar e-mail para ${participant.email}: ${await response.text()}`);
+        }
+
+        const assessmentLinkQuery = query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('participantId', '==', participant.id),
+          where('assessmentId', '==', selectedAssessmentId)
+        );
+        const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
+
+        if (existingLinksSnapshot.empty) {
+          const assessmentLinkDoc = doc(collection(this.firestore, 'assessmentLinks'));
+          const linkData: any = {
+            assessmentId: selectedAssessmentId,
+            participantId: participant.id,
+            sentAt: new Date(),
+            status: 'pending',
+            emailTemplate: selectedTemplateId,
+            participantEmail: participant.email,
           };
-
-          const response = await fetch(
-            (await import('src/enviroments/environment')).environment.functions.sendEmailUrl,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(emailRequest),
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error(
-              `Erro ao enviar e-mail para ${
-                participant.email
-              }: ${await response.text()}`
-            );
+          if (participant.type === 'avaliador' && participant.avaliadoId) {
+            linkData['avaliadoId'] = participant.avaliadoId;
           }
-
-          const assessmentLinkQuery = query(
-            collection(this.firestore, 'assessmentLinks'),
-            where('participantId', '==', participant.id),
-            where('assessmentId', '==', selectedAssessmentId)
-          );
-          const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
-
-          if (existingLinksSnapshot.empty) {
-            const assessmentLinkDoc = doc(
-              collection(this.firestore, 'assessmentLinks')
-            );
-            await setDoc(assessmentLinkDoc, {
-              assessmentId: selectedAssessmentId,
-              participantId: participant.id,
-              sentAt: new Date(),
-              status: 'pending',
-              emailTemplate: selectedTemplateId,
-              participantEmail: participant.email,
-            });
-          } else {
-            const existingLinkDoc = existingLinksSnapshot.docs[0];
-            await updateDoc(
-              doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
-              {
-                sentAt: new Date(),
-                emailTemplate: selectedTemplateId,
-                status:
-                  existingLinkDoc.data()['status'] === 'completed'
-                    ? 'completed'
-                    : 'pending',
-              }
-            );
+          await setDoc(assessmentLinkDoc, linkData);
+        } else {
+          const existingLinkDoc = existingLinksSnapshot.docs[0];
+          const updateData: any = {
+            sentAt: new Date(),
+            emailTemplate: selectedTemplateId,
+            status: existingLinkDoc.data()['status'] === 'completed' ? 'completed' : 'pending',
+          };
+          if (participant.type !== 'avaliado' && participant.avaliadoId) {
+            updateData['avaliadoId'] = participant.avaliadoId;
           }
+          await updateDoc(doc(this.firestore, 'assessmentLinks', existingLinkDoc.id), updateData);
+        }
 
-          const participantRef = doc(
-            this.firestore,
-            'participants',
-            participant.id
-          );
-          const participantDoc = await getDoc(participantRef);
-          if (participantDoc.exists()) {
-            const currentAssessments =
-              participantDoc.data()['assessments'] || [];
-            if (!currentAssessments.includes(selectedAssessmentId)) {
-              currentAssessments.push(selectedAssessmentId);
-              await updateDoc(participantRef, {
-                assessments: currentAssessments,
-              });
-            }
+        const participantRef = doc(this.firestore, 'participants', participant.id);
+        const participantDoc = await getDoc(participantRef);
+        if (participantDoc.exists()) {
+          const currentAssessments = participantDoc.data()['assessments'] || [];
+          if (!currentAssessments.includes(selectedAssessmentId)) {
+            await updateDoc(participantRef, { assessments: [...currentAssessments, selectedAssessmentId] });
           }
         }
-      );
+      }
 
-      await Promise.all(updatePromises);
       await updateDoc(templateRef, { content: originalContent });
 
       this.snackBar.open(
@@ -968,26 +1110,31 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  private replaceDeadlineInContent(
-    contentObj: any,
-    formattedDeadline: string
-  ): any {
-    if (contentObj.body && contentObj.body.rows) {
+  /** Substitui todas as variáveis dinâmicas (nova sintaxe {{...}} + legado $%...$%) */
+  private replaceAllVariables(contentObj: any, vars: Record<string, string>): any {
+    const replaceInText = (text: string): string => {
+      // Nova sintaxe {{...}}
+      text = text.replace(/\{\{nome_participante\}\}/g, vars['nome_participante'] || '');
+      text = text.replace(/\{\{nome_avaliado\}\}/g, vars['nome_avaliado'] || '');
+      text = text.replace(/\{\{data_expiracao\}\}/g, vars['data_expiracao'] || '');
+      text = text.replace(/\{\{nome_projeto\}\}/g, vars['nome_projeto'] || '');
+      text = text.replace(/\{\{nome_cliente\}\}/g, vars['nome_cliente'] || '');
+      // Sintaxe legada (compatibilidade com templates antigos)
+      text = text.replace(/\$%Nome do usuário preenchido dinâmicamente\$%/g, vars['nome_participante'] || '');
+      text = text.replace(/\$%NOME_DO_AVALIADO\$%/g, vars['nome_avaliado'] || '');
+      text = text.replace(/\*?\$%DATA DE EXPIRAÇÃO DO PROJETO\$%\*?/g, vars['data_expiracao'] || '');
+      return text;
+    };
+
+    if (contentObj.body?.rows) {
       contentObj.body.rows.forEach((row: any) => {
-        if (row.columns) {
-          row.columns.forEach((column: any) => {
-            if (column.contents) {
-              column.contents.forEach((content: any) => {
-                if (content.values && content.values.text) {
-                  content.values.text = content.values.text.replace(
-                    /\*\$\%DATA DE EXPIRAÇÃO DO PROJETO\$\%/g,
-                    formattedDeadline
-                  );
-                }
-              });
+        row.columns?.forEach((column: any) => {
+          column.contents?.forEach((content: any) => {
+            if (content.values?.text) {
+              content.values.text = replaceInText(content.values.text);
             }
           });
-        }
+        });
       });
     }
     return contentObj;
@@ -1010,112 +1157,91 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async uploadExcel(event: any): Promise<void> {
-    if (!this.filterClient || !this.filterProject) {
-      this.snackBar.open(
-        'Por favor, selecione um cliente e um projeto antes de fazer o upload.',
-        'Fechar',
-        { duration: 3000 }
-      );
-      return;
-    }
-
     const file = event.target.files[0];
     if (!file) return;
+    // Reset input so the same file can be selected again
+    (event.target as HTMLInputElement).value = '';
 
     const reader = new FileReader();
-
     reader.onload = async (e: any) => {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1,
-      });
+      const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
       const startRowIndex = 19;
       const participants: any[] = [];
-
       for (let i = startRowIndex; i < jsonData.length; i++) {
         const row = jsonData[i];
-        if (
-          !Array.isArray(row) ||
-          row.length < 4 ||
-          !row[1] ||
-          !row[2] ||
-          !row[3]
-        )
-          continue;
-
+        if (!Array.isArray(row) || row.length < 4 || !row[1] || !row[2] || !row[3]) continue;
         const category = row[3]?.toString().trim() || '';
         const type = category === 'Avaliado' ? 'avaliado' : 'avaliador';
-        participants.push({
+        const cargo = row[4]?.toString().trim() || '';
+        const setor = row[5]?.toString().trim() || '';
+        const participant: any = {
           name: row[1]?.toString().trim() || '',
           email: row[2]?.toString().trim() || '',
           category,
           type,
-        });
+        };
+        if (cargo) participant['cargo'] = cargo;
+        if (setor) participant['setor'] = setor;
+        participants.push(participant);
       }
 
       if (participants.length === 0) {
-        this.snackBar.open('Nenhum participante válido encontrado.', 'Fechar', {
-          duration: 3000,
-        });
+        this.snackBar.open('Nenhum participante válido encontrado na planilha.', 'Fechar', { duration: 3000 });
         return;
       }
 
-      const dialogRef = this.dialog.open(
-        ParticipantsConfirmationDialogComponent,
-        {
-          width: '800px',
-          data: {
-            participants,
-            clientId: this.filterClient,
-            clientName:
-              this.clients.find((c) => c.id === this.filterClient)?.name ||
-              'Cliente Desconhecido',
-            projectId: this.filterProject,
-            projectName:
-              this.projects.find((p) => p.id === this.filterProject)?.name ||
-              'Projeto Desconhecido',
-            loadEvaluation: (projectId: string) =>
-              this.loadEvaluation(projectId),
-          },
-        }
-      );
+      const dialogRef = this.dialog.open(ParticipantsConfirmationDialogComponent, {
+        width: '760px',
+        maxWidth: '95vw',
+        disableClose: true,
+        data: {
+          participants,
+          clients: this.clients,
+          projects: this.projects,
+          preselectedClientId: this.filterClient || undefined,
+          preselectedProjectId: this.filterProject || undefined,
+          loadEvaluation: (projectId: string) => this.loadEvaluation(projectId),
+        },
+      });
 
       dialogRef.afterClosed().subscribe(async (result) => {
-        if (result) {
-          const savedParticipants = [];
-          for (const participant of participants) {
-            try {
-              const docRef = await addDoc(
-                collection(this.firestore, 'participants'),
-                {
-                  ...participant,
-                  clientId: result.client,
-                  projectId: result.project,
-                  assessments: result.evaluation ? [result.evaluation] : [],
-                  createdAt: new Date(),
-                }
-              );
-              savedParticipants.push({
-                ...participant,
-                id: docRef.id,
-                assessments: result.evaluation ? [result.evaluation] : [],
-              });
-            } catch (error) {
-              console.error('Erro ao salvar participante:', error);
-            }
+        if (!result) return;
+        let saved = 0;
+        for (const participant of participants) {
+          try {
+            await addDoc(collection(this.firestore, 'participants'), {
+              ...participant,
+              clientId: result.client,
+              projectId: result.project,
+              assessments: result.evaluation ? [result.evaluation] : [],
+              createdAt: new Date(),
+            });
+            saved++;
+          } catch (error) {
+            console.error('Erro ao salvar participante:', error);
           }
-          this.snackBar.open('Upload e salvamento concluídos!', 'Fechar', {
-            duration: 3000,
-          });
-          await this.loadParticipants();
         }
+        const total = participants.length;
+        const msg = saved === total
+          ? `${saved} participante${saved !== 1 ? 's' : ''} importado${saved !== 1 ? 's' : ''} com sucesso!`
+          : `${saved} de ${total} participante${total !== 1 ? 's' : ''} importados (${total - saved} com erro)`;
+        this.snackBar.open(msg, 'Fechar', { duration: 5000 });
+        if (result.project) await this.revertProjectIfConcluded(result.project);
+        // Ajustar filtros para exibir os novos participantes sem recarregar cliente/projeto
+        if (!this.filterClient) {
+          this.filterClient = result.client;
+          this.filteredProjects = this.projects.filter(p => p.clientId === result.client);
+          this.updateClientCredits(result.client);
+        }
+        if (!this.filterProject) this.filterProject = result.project;
+        await this.loadParticipants();
       });
     };
-
     reader.readAsArrayBuffer(file);
   }
 
@@ -1160,6 +1286,30 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
   }
 
+  openEditParticipantDialog(participant: UnifiedParticipant): void {
+    const dialogRef = this.dialog.open(EditParticipantDialogComponent, {
+      width: '440px',
+      maxWidth: '95vw',
+      data: { name: participant.name, email: participant.email },
+    });
+
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (!result) return;
+      const updates: any = {};
+      if (result.name !== participant.name) updates['name'] = result.name;
+      if (result.email !== participant.email) updates['email'] = result.email;
+      if (!Object.keys(updates).length) return;
+      try {
+        await updateDoc(doc(this.firestore, `participants/${participant.id}`), updates);
+        if (updates['name']) participant.name = updates['name'];
+        if (updates['email']) participant.email = updates['email'];
+        this.snackBar.open('Participante atualizado com sucesso!', 'Fechar', { duration: 2500 });
+      } catch (e) {
+        this.snackBar.open('Erro ao atualizar participante.', 'Fechar', { duration: 3000 });
+      }
+    });
+  }
+
   openAddParticipantModal(): void {
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
       width: '480px',
@@ -1173,9 +1323,26 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       },
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) this.loadParticipants();
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result) {
+        if (this.filterProject) await this.revertProjectIfConcluded(this.filterProject);
+        this.loadParticipants();
+      }
     });
+  }
+
+  private async revertProjectIfConcluded(projectId: string): Promise<void> {
+    try {
+      const projectRef = doc(this.firestore, `projects/${projectId}`);
+      const projectSnap = await getDoc(projectRef);
+      if (!projectSnap.exists()) return;
+      const status = projectSnap.data()['status'];
+      if (status === 'Concluído') {
+        await updateDoc(projectRef, { status: 'Em andamento' });
+      }
+    } catch (e) {
+      console.error('Erro ao reverter status do projeto:', e);
+    }
   }
 
   getFriendlyEmailType(emailType: string): string {

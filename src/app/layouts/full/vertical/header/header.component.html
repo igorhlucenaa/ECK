@@ -316,6 +316,11 @@
           <span class="f-s-12 mat-body-2">
             {{ userEmail || "email@exemplo.com" }}
           </span>
+          @if(roleBadgeLabel) {
+          <span class="role-badge-header" [style]="roleBadgeStyle">
+            {{ roleBadgeLabel }}
+          </span>
+          }
         </div>
       </div>
     </div>

@@ -75,7 +75,18 @@ interface Assessment {
   standalone: true,
   imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule],
   template: `
-    <h2 mat-dialog-title>{{ 'Lista de Participantes' | translate }}</h2>
+    <div mat-dialog-title class="pm-title-bar">
+      <span class="pm-title-bar__text">{{ 'Lista de Participantes' | translate }}</span>
+      <span class="pm-title-bar__spacer"></span>
+      <span class="pm-title-bar__updated" *ngIf="lastRefreshed && !isRefreshing">
+        atualizado às {{ lastRefreshed | date:'HH:mm:ss' }}
+      </span>
+      <button class="pm-refresh-btn" (click)="refreshParticipants()" [disabled]="isRefreshing"
+              matTooltip="Atualizar dados em tempo real">
+        <mat-icon [class.spin]="isRefreshing">refresh</mat-icon>
+        {{ isRefreshing ? 'Atualizando...' : 'Atualizar' }}
+      </button>
+    </div>
     <mat-dialog-content>
       <!-- Botões de Upload/Download e Adicionar Participante -->
       <div class="d-flex justify-content-between mb-3">
@@ -221,6 +232,12 @@ interface Assessment {
           {{ 'Por favor, selecione uma avaliação.' | translate }}
         </mat-error>
       </mat-form-field>
+
+      <!-- Contador de participantes -->
+      <div class="pm-table-count">
+        <mat-icon>group</mat-icon>
+        {{ dataSource.filteredData.length }} participante{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
+      </div>
 
       <!-- Tabela de Participantes -->
       <div class="table-responsive">
@@ -396,6 +413,8 @@ export class ParticipantsModalComponent implements OnInit {
   filterStatus: string = '';
   selectedParticipants: UnifiedParticipant[] = [];
   isLoading: boolean = false;
+  isRefreshing: boolean = false;
+  lastRefreshed: Date | null = null;
   mailTemplates: MailTemplate[] = [];
   assessments: Assessment[] = [];
   templateFormControl = this.fb.control('', Validators.required);
@@ -467,6 +486,13 @@ export class ParticipantsModalComponent implements OnInit {
       default:
         return emailType || 'Tipo Desconhecido';
     }
+  }
+
+  async refreshParticipants(): Promise<void> {
+    this.isRefreshing = true;
+    await this.loadParticipants();
+    this.isRefreshing = false;
+    this.lastRefreshed = new Date();
   }
 
   async loadParticipants(): Promise<void> {

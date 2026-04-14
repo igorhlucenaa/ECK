@@ -31,6 +31,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 interface Assessment {
   id: string;
@@ -98,6 +99,8 @@ export class AssessmentListComponent implements OnInit {
   creators: string[] = [];
   projects: Project[] = [];
   clientId: string | null = null;
+  userClientIds: string[] = [];
+  userRole: string = '';
   mailTemplates: MailTemplate[] = [];
 
   get hasActiveFilters(): boolean {
@@ -115,7 +118,8 @@ export class AssessmentListComponent implements OnInit {
     private route: ActivatedRoute,
     private location: Location,
     private translate: TranslateService,
-    private confirmDialog: ConfirmDialogService
+    private confirmDialog: ConfirmDialogService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -147,14 +151,18 @@ export class AssessmentListComponent implements OnInit {
     };
 
     this.clientId = this.route.snapshot.paramMap.get('id');
-    Promise.all([
-      this.loadClients(),
-      this.loadProjects(),
-      this.loadAssessments(),
-      this.loadMailTemplates(),
-    ]).then(() => {
-      this.buildCreators();
-      this.applyFilters();
+    this.authService.getCurrentUserRole().then(async (role) => {
+      this.userRole = role || '';
+      this.userClientIds = await this.authService.getCurrentUserClientIds();
+      Promise.all([
+        this.loadClients(),
+        this.loadProjects(),
+        this.loadAssessments(),
+        this.loadMailTemplates(),
+      ]).then(() => {
+        this.buildCreators();
+        this.applyFilters();
+      });
     });
   }
 
@@ -175,10 +183,9 @@ export class AssessmentListComponent implements OnInit {
         | Query<DocumentData, DocumentData> = assessmentsCollection;
 
       if (this.clientId) {
-        q = query(
-          assessmentsCollection,
-          where('clientId', '==', this.clientId)
-        ); // Alterado para clientId
+        q = query(assessmentsCollection, where('clientId', '==', this.clientId));
+      } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+        q = query(assessmentsCollection, where('clientId', 'in', this.userClientIds));
       }
 
       const snapshot = await getDocs(q);
@@ -246,17 +253,23 @@ export class AssessmentListComponent implements OnInit {
 
   async loadClients(): Promise<void> {
     try {
-      const clientsCollection = collection(this.firestore, 'clients');
-      const snapshot = await getDocs(clientsCollection);
-      this.clients = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        companyName: doc.data()['companyName'] || 'Sem Nome',
-      }));
+      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+        const docs = await Promise.all(
+          this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
+        );
+        this.clients = docs
+          .filter(d => d.exists())
+          .map(d => ({ id: d.id, companyName: d.data()!['companyName'] || 'Sem Nome' }));
+      } else {
+        const snapshot = await getDocs(collection(this.firestore, 'clients'));
+        this.clients = snapshot.docs.map((d) => ({
+          id: d.id,
+          companyName: d.data()['companyName'] || 'Sem Nome',
+        }));
+      }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', { duration: 3000 });
     }
   }
 

@@ -40,23 +40,21 @@ export class AuthGuard implements CanActivate {
     try {
       const userRole = await this.authService.getCurrentUserRole();
 
-      if (userRole === 'admin_master') {
-        if (state.url === '/authentication/login') {
-          this.router.navigate(['/projects']);
-          return false;
-        }
+      // Se não há restrição de role na rota, qualquer usuário autenticado passa
+      if (!requiredRole) {
         return true;
       }
 
-      if (Array.isArray(requiredRole)) {
-        if (requiredRole.includes(userRole)) {
-          return true;
-        }
-      } else if (requiredRole === userRole) {
+      const allowed = Array.isArray(requiredRole)
+        ? requiredRole.includes(userRole)
+        : requiredRole === userRole;
+
+      if (allowed) {
         return true;
       }
 
-      this.router.navigate(['/authentication/login']);
+      // Usuário autenticado mas sem permissão → página de não autorizado
+      this.router.navigate(['/nao-autorizado']);
       return false;
     } catch (error) {
       console.error('Erro ao verificar papel do usuário:', error);

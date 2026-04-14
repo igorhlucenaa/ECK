@@ -123,22 +123,24 @@
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 2px 16px rgba(27, 45, 86, 0.08);
-  padding: 20px 24px;
+  overflow: hidden;
   margin-bottom: 28px;
 }
 
 .vars-card-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.vars-header-icon {
-  font-size: 22px;
-  width: 22px;
-  height: 22px;
-  color: #1B84FF;
+.vars-header-icon-wrap {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1B2D56, #1B84FF);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  mat-icon { color: #fff; font-size: 22px; width: 22px; height: 22px; }
 }
 
 .vars-card-title {
@@ -148,77 +150,219 @@
   margin: 0;
 }
 
-.vars-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+.vars-card-subtitle {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 2px 0 0;
 }
 
+// ─── Group ───────────────────────────────────────────────────
+.vars-group {
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  &:last-of-type { border-bottom: none; }
+}
+
+.vars-group-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  margin-bottom: 14px;
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+}
+
+.vars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+// ─── Variable item ───────────────────────────────────────────
 .var-item {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 10px;
-  background: #f8faff;
-  border: 1px solid #e8edf3;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  cursor: default;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+  }
+
+  // Accent borda esquerda colorida por tipo
+  &--blue   { border-left: 3px solid #1B84FF; &:hover { border-color: #93c5fd; } }
+  &--teal   { border-left: 3px solid #0e9488; &:hover { border-color: #5eead4; } }
+  &--indigo { border-left: 3px solid #6366f1; &:hover { border-color: #a5b4fc; } }
+  &--gray   { border-left: 3px solid #94a3b8; &:hover { border-color: #cbd5e1; } }
+  &--amber  { border-left: 3px solid #d97706; &:hover { border-color: #fcd34d; } }
+  &--green  { border-left: 3px solid #16a34a; &:hover { border-color: #86efac; } }
+  &--purple { border-left: 3px solid #7c3aed; &:hover { border-color: #c4b5fd; } }
+}
+
+// ─── Header do card ──────────────────────────────────────────
+.var-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .var-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  mat-icon { font-size: 17px; width: 17px; height: 17px; }
+
+  &--blue   { background: #dbeafe; mat-icon { color: #1d4ed8; } }
+  &--teal   { background: #ccfbf1; mat-icon { color: #0f766e; } }
+  &--amber  { background: #fef3c7; mat-icon { color: #b45309; } }
+  &--purple { background: #ede9fe; mat-icon { color: #7c3aed; } }
+  &--indigo { background: #e0e7ff; mat-icon { color: #4338ca; } }
+  &--gray   { background: #f1f5f9; mat-icon { color: #475569; } }
+  &--green  { background: #dcfce7; mat-icon { color: #15803d; } }
+}
+
+.var-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+// ─── Pill (variável) ─────────────────────────────────────────
+.var-pill {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid transparent;
+
+  &--blue   { background: #eff6ff; border-color: #bfdbfe;
+    .var-pill__text { color: #1e40af; }
+    .var-pill__copy { background: #dbeafe; color: #1d4ed8; &:hover { background: #bfdbfe; } }
+  }
+  &--teal   { background: #f0fdfa; border-color: #99f6e4;
+    .var-pill__text { color: #0f766e; }
+    .var-pill__copy { background: #ccfbf1; color: #0f766e; &:hover { background: #99f6e4; } }
+  }
+  &--indigo { background: #eef2ff; border-color: #c7d2fe;
+    .var-pill__text { color: #3730a3; }
+    .var-pill__copy { background: #e0e7ff; color: #4338ca; &:hover { background: #c7d2fe; } }
+  }
+  &--gray   { background: #f8fafc; border-color: #cbd5e1;
+    .var-pill__text { color: #334155; }
+    .var-pill__copy { background: #f1f5f9; color: #475569; &:hover { background: #e2e8f0; } }
+  }
+  &--amber  { background: #fffbeb; border-color: #fde68a;
+    .var-pill__text { color: #92400e; }
+    .var-pill__copy { background: #fef3c7; color: #b45309; &:hover { background: #fde68a; } }
+  }
+  &--green  { background: #f0fdf4; border-color: #bbf7d0;
+    .var-pill__text { color: #14532d; }
+    .var-pill__copy { background: #dcfce7; color: #15803d; &:hover { background: #bbf7d0; } }
+  }
+  &--purple { background: #faf5ff; border-color: #e9d5ff;
+    .var-pill__text { color: #581c87; }
+    .var-pill__copy { background: #ede9fe; color: #7c3aed; &:hover { background: #ddd6fe; } }
+  }
+}
+
+.var-pill__text {
+  flex: 1;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 9px 12px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.var-pill__copy {
+  border: none;
+  cursor: pointer;
+  padding: 0 12px;
+  height: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-left: 1px solid rgba(0,0,0,0.06);
+  transition: background 0.15s;
+  white-space: nowrap;
   flex-shrink: 0;
 
-  mat-icon { font-size: 16px; width: 16px; height: 16px; }
-
-  &--blue   { background: rgba(27, 132, 255, 0.1);  mat-icon { color: #1B84FF; } }
-  &--teal   { background: rgba(14, 148, 136, 0.1);  mat-icon { color: #0e9488; } }
-  &--amber  { background: rgba(245, 158, 11, 0.12); mat-icon { color: #d97706; } }
-  &--purple { background: rgba(139, 92, 246, 0.1);  mat-icon { color: #7c3aed; } }
-}
-
-.var-body { flex: 1; min-width: 0; }
-
-.var-code {
-  display: block;
-  font-family: monospace;
-  font-size: 12px;
-  color: #1B84FF;
-  font-weight: 600;
-  word-break: break-all;
-  margin-bottom: 4px;
-}
-
-.var-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1B84FF;
-  display: block;
-  margin-bottom: 4px;
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
 }
 
 .var-desc {
   font-size: 12px;
   color: #64748b;
   margin: 0;
+  line-height: 1.5;
 }
 
-.vars-warning {
+.var-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.var-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #64748b;
+
+  &--blue   { background: #dbeafe; color: #1d4ed8; }
+  &--orange { background: #ffedd5; color: #c2410c; }
+  &--purple { background: #ede9fe; color: #7c3aed; }
+}
+
+// ─── Exemplo de uso ──────────────────────────────────────────
+.vars-example {
+  margin: 0 24px 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.vars-example__header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  color: #b45309;
+  gap: 6px;
+  padding: 9px 14px;
+  background: #fafafa;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  mat-icon { font-size: 15px; width: 15px; height: 15px; color: #f59e0b; }
+}
+
+.vars-example__code {
+  margin: 0;
+  padding: 16px 20px;
+  background: #0f172a;
+  font-family: 'Fira Code', 'Courier New', monospace;
   font-size: 13px;
-  mat-icon { font-size: 18px; width: 18px; height: 18px; flex-shrink: 0; }
+  line-height: 1.8;
+  color: #94a3b8;
+  white-space: pre;
+  overflow-x: auto;
+
+  .ex-var  { color: #86efac; font-weight: 700; background: rgba(134,239,172,0.1); border-radius: 3px; padding: 0 2px; }
+  .ex-link { color: #7dd3fc; font-weight: 700; background: rgba(125,211,252,0.1); border-radius: 3px; padding: 0 2px; }
 }
 
 // ─── Bottom save bar ─────────────────────────────────────────

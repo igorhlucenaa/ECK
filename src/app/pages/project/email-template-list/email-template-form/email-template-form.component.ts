@@ -206,15 +206,17 @@ export class EmailTemplateFormComponent implements OnInit {
     let message = '';
 
     if (emailType === 'conviteAvaliador') {
-      message = `<p>Você foi convidado(a) a avaliar <strong>$%NOME_DO_AVALIADO$%</strong>.</p>
-<p>Aqui está o link da sua avaliação. Por favor, preencha até <strong>*$%DATA DE EXPIRAÇÃO DO PROJETO$%*:</strong></p>`;
+      message = `<p>Você foi convidado(a) a avaliar <strong>{{nome_avaliado}}</strong> no projeto <strong>{{nome_projeto}}</strong>.</p>
+<p>Aqui está o link da sua avaliação. Por favor, preencha até <strong>{{data_expiracao}}</strong>.</p>`;
     } else if (emailType === 'conviteRespondente') {
-      message = `<p>Aqui está o link da sua avaliação.\n\n\n Por favor, preencha até <strong>*$%DATA DE EXPIRAÇÃO DO PROJETO$%*:</strong></p>`;
+      message = `<p>Você foi convidado(a) a participar da avaliação do projeto <strong>{{nome_projeto}}</strong>.</p>
+<p>Por favor, preencha até <strong>{{data_expiracao}}</strong>.</p>`;
     } else if (emailType === 'lembreteAvaliador') {
-      message = `<p>Este é um lembrete: ainda precisamos da sua avaliação sobre <strong>$%NOME_DO_AVALIADO$%</strong>.</p>
-<p>Não se esqueça de preenchê-la até <strong>*$%DATA DE EXPIRAÇÃO DO PROJETO$%*!</strong></p>`;
+      message = `<p>Este é um lembrete: ainda precisamos da sua avaliação sobre <strong>{{nome_avaliado}}</strong>.</p>
+<p>Não se esqueça de preenchê-la até <strong>{{data_expiracao}}</strong>!</p>`;
     } else if (emailType === 'lembreteRespondente') {
-      message = `<p>Este é um lembrete da sua avaliação.\n\n\n Não se esqueça de preenchê-la até <strong>*$%DATA DE EXPIRAÇÃO DO PROJETO$%*!</strong></p>`;
+      message = `<p>Este é um lembrete da sua avaliação no projeto <strong>{{nome_projeto}}</strong>.</p>
+<p>Não se esqueça de preenchê-la até <strong>{{data_expiracao}}</strong>!</p>`;
     } else if (emailType === 'relatorioFinalizado') {
       message = `<p>Seu relatório foi finalizado!\n\n\n Acesse o relatório clicando no link abaixo:</p>`;
     }
@@ -245,7 +247,7 @@ export class EmailTemplateFormComponent implements OnInit {
                       textAlign: 'center',
                       lineHeight: '140%',
                       hideDesktop: false,
-                      text: `Olá, <strong>$%Nome do usuário preenchido dinâmicamente$%</strong>\n\n\n
+                      text: `Olá, <strong>{{nome_participante}}</strong>\n\n\n
                       ${message}<p><a href="${
                         emailType === 'relatorioFinalizado'
                           ? '[LINK_RELATORIO]'
@@ -518,6 +520,12 @@ export class EmailTemplateFormComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  copyVar(variable: string): void {
+    navigator.clipboard.writeText(variable).then(() => {
+      this.snackBar.open(`Copiado: ${variable}`, 'OK', { duration: 1800 });
+    });
   }
 
   goBack(): void {

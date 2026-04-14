@@ -74,12 +74,16 @@
             <input matInput formControlName="responsible" placeholder="Nome do responsável pelo projeto" />
           </mat-form-field>
 
-          <!-- Descrição -->
+          <!-- Formulário a utilizar -->
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Descrição</mat-label>
-            <mat-icon matPrefix class="field-icon">notes</mat-icon>
-            <textarea matInput formControlName="description" rows="3"
-                      placeholder="Descreva o objetivo e escopo do projeto..."></textarea>
+            <mat-label>Formulário a utilizar</mat-label>
+            <mat-icon matPrefix class="field-icon">assignment</mat-icon>
+            <mat-select formControlName="assessmentId">
+              <mat-option value="">— Nenhum —</mat-option>
+              <mat-option *ngFor="let a of assessments" [value]="a.id">{{ a.name }}</mat-option>
+            </mat-select>
+            <mat-hint *ngIf="!form.get('clientId')?.value">Selecione um cliente para ver os formulários disponíveis</mat-hint>
+            <mat-hint *ngIf="form.get('clientId')?.value && assessments.length === 0">Nenhum formulário disponível para este cliente</mat-hint>
           </mat-form-field>
 
         </div>
@@ -156,7 +160,7 @@
           </div>
           <div>
             <h3 class="form-card-title">Configurações</h3>
-            <p class="form-card-subtitle">Prazo, status e orçamento</p>
+            <p class="form-card-subtitle">Prazo e status</p>
           </div>
         </div>
 
@@ -169,8 +173,6 @@
                 matInput
                 [matDatepicker]="picker"
                 formControlName="deadline"
-                [matDatepickerFilter]="filterDates"
-                [min]="today"
                 placeholder="DD/MM/AAAA"
               />
               <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
@@ -184,25 +186,19 @@
               <mat-label>Status</mat-label>
               <mat-icon matPrefix class="field-icon">toggle_on</mat-icon>
               <mat-select formControlName="status">
-                <mat-option value="Ativo">
-                  <span class="status-option status-ativo">● Ativo</span>
-                </mat-option>
-                <mat-option value="Inativo">
-                  <span class="status-option status-inativo">● Inativo</span>
+                <mat-option value="Em andamento">
+                  <span class="status-option status-em-andamento">● Em andamento</span>
                 </mat-option>
                 <mat-option value="Concluído">
                   <span class="status-option status-concluido">● Concluído</span>
+                </mat-option>
+                <mat-option value="Cancelado">
+                  <span class="status-option status-cancelado">● Cancelado</span>
                 </mat-option>
               </mat-select>
             </mat-form-field>
           </div>
 
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Orçamento (opcional)</mat-label>
-            <mat-icon matPrefix class="field-icon">attach_money</mat-icon>
-            <input matInput formControlName="budget" type="number" placeholder="Ex: 15000" />
-            <mat-hint>Valor de referência para controle interno</mat-hint>
-          </mat-form-field>
         </div>
       </div>
 

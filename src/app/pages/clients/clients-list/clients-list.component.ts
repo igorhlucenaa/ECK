@@ -26,6 +26,7 @@ import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.componen
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { ToastService } from 'src/app/services/toast.service';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 @Component({
   selector: 'app-clients-list',
@@ -57,6 +58,8 @@ export class ClientsListComponent implements OnInit {
   sectorFilter: string = '';
   sectors: string[] = [];
   selectedClientIds = new Set<string>();
+  isAdminMaster = true;
+  userClientIds: string[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -67,25 +70,36 @@ export class ClientsListComponent implements OnInit {
     private dialog: MatDialog,
     private router: Router,
     private translate: TranslateService,
-    private toast: ToastService
+    private toast: ToastService,
+    private authService: AuthService
   ) {}
 
-  ngOnInit() {
+  async ngOnInit() {
+    const role = await this.authService.getCurrentUserRole();
+    this.isAdminMaster = role === 'admin_master';
+    this.userClientIds = await this.authService.getCurrentUserClientIds();
+    if (!this.isAdminMaster) {
+      this.displayedColumns = ['companyName', 'sector', 'cnpj', 'credits'];
+    }
     this.loadClients();
   }
 
   private async loadClients() {
-    const clientsCollection = collection(this.firestore, 'clients');
-    const clientsQuery = query(clientsCollection);
-
     try {
-      const snapshot = await getDocs(clientsQuery);
-      const clients = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as any),
-        }))
-        .sort((a, b) => {
+      let allDocs: any[] = [];
+
+      if (this.isAdminMaster) {
+        const snapshot = await getDocs(collection(this.firestore, 'clients'));
+        allDocs = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      } else {
+        // admin_client: carrega apenas os clientes vinculados
+        const snaps = await Promise.all(
+          this.userClientIds.map(id => getDocs(query(collection(this.firestore, 'clients'), where('__name__', '==', id))))
+        );
+        allDocs = snaps.flatMap(s => s.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+      }
+
+      const clients = allDocs.sort((a, b) => {
           const nameA = a.companyName?.toLowerCase() || '';
           const nameB = b.companyName?.toLowerCase() || '';
           return nameA.localeCompare(nameB);
@@ -131,21 +145,24 @@ export class ClientsListComponent implements OnInit {
 
     try {
       const ordersSnapshot = await getDocs(ordersQuery);
-      let totalCredits = 0;
+      const currentDate = new Date();
+      let creditsPurchased = 0;
 
       ordersSnapshot.docs.forEach((orderDoc) => {
         const orderData = orderDoc.data();
-        const validityDate = orderData['validityDate']?.toDate(); // Usar o campo correto
+        const validityDate = orderData['validityDate']?.toDate();
         const credits = orderData['credits'] || 0;
-        const currentDate = new Date();
-
+        // Comprados = soma de pedidos aprovados ainda válidos
         if (validityDate && validityDate > currentDate) {
-          totalCredits += credits; // Só conta créditos válidos
+          creditsPurchased += credits;
         }
       });
 
-      // Atualiza os créditos do cliente
-      client.credits = totalCredits;
+      client.creditsPurchased = creditsPurchased;
+      // creditsUsed e credits (disponíveis) vêm diretamente do doc do cliente no Firestore
+      // — são mantidos incrementalmente pelo sistema (respostas, aprovações, expirações)
+      client.creditsUsed = client.creditsUsed || 0;
+      client.creditsAvailable = client.credits || 0;
     } catch (error) {
       console.error('Erro ao calcular créditos:', error);
     }

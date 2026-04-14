@@ -1,0 +1,71 @@
+.epd {
+  width: 420px;
+  max-width: 100%;
+}
+
+// ── Header ────────────────────────────────────────────────────────
+.epd__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 24px 0;
+}
+
+.epd__header-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1B2D56, #1B84FF);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  mat-icon { color: #fff; font-size: 22px; width: 22px; height: 22px; }
+}
+
+.epd__header-text {
+  h2 { margin: 0; font-size: 17px; font-weight: 700; color: #1e293b; }
+  p  { margin: 3px 0 0; font-size: 12.5px; color: #64748b; }
+}
+
+// ── Body ──────────────────────────────────────────────────────────
+.epd__body {
+  padding: 20px 24px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.epd__field {
+  width: 100%;
+  .mat-mdc-form-field-subscript-wrapper { margin-top: 0; }
+}
+
+.epd__prefix-icon {
+  font-size: 18px; width: 18px; height: 18px; color: #94a3b8;
+}
+
+// ── Actions ───────────────────────────────────────────────────────
+.epd__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 24px 20px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.epd__btn-cancel {
+  color: #64748b !important;
+  font-size: 13.5px;
+}
+
+.epd__btn-confirm {
+  background: linear-gradient(135deg, #1B2D56, #1B84FF) !important;
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+  &:disabled { opacity: 0.5 !important; }
+}

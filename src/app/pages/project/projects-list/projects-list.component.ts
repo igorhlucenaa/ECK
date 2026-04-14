@@ -8,6 +8,7 @@ import {
   getDoc,
   getDocs,
   query,
+  updateDoc,
   where,
   writeBatch,
 } from '@angular/fire/firestore';
@@ -18,6 +19,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { Router } from '@angular/router';
 import { CommonModule, Location } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
@@ -31,19 +33,13 @@ import { AppPageHeaderComponent } from 'src/app/components/page-header/page-head
 @Component({
   selector: 'app-projects-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, TranslateModule, AppPageHeaderComponent],
+  imports: [CommonModule, FormsModule, MaterialModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './projects-list.component.html',
   styleUrls: ['./projects-list.component.scss'],
 })
 export class ProjectsListComponent implements OnInit {
-  displayedColumns: string[] = [
-    'select',
-    'client',
-    'name',
-    'deadline',
-    'responses',
-    'actions',
-  ];
+  displayedColumns: string[] = [];
+  private allProjects: any[] = [];
   dataSource = new MatTableDataSource<any>();
   searchValue: string = '';
   currentUser: any;
@@ -52,9 +48,18 @@ export class ProjectsListComponent implements OnInit {
   clients: { id: string; name: string }[] = [];
   selectedClientId: string | null = null;
   isAdminMaster: boolean = false;
+  userClientIds: string[] = [];
   today = new Date();
   loadingParticipantsProjectId: string | null = null;
   selectedProjectIds = new Set<string>();
+  statusFilter: string = 'all';
+
+  readonly STATUS_FILTERS = [
+    { value: 'all',          label: 'Todos' },
+    { value: 'Em andamento', label: 'Em andamento' },
+    { value: 'Concluído',    label: 'Concluído' },
+    { value: 'Cancelado',    label: 'Cancelado' },
+  ];
 
   getInitial(name: string): string {
     return name?.charAt(0)?.toUpperCase() || 'P';
@@ -62,11 +67,51 @@ export class ProjectsListComponent implements OnInit {
 
   getStatusClass(status: string): string {
     const map: Record<string, string> = {
-      'Ativo': 'status-ativo',
-      'Inativo': 'status-inativo',
-      'Concluído': 'status-concluido',
+      'Em andamento': 'status-em-andamento',
+      'Concluído':    'status-concluido',
+      'Cancelado':    'status-cancelado',
+      // legados
+      'Ativo':        'status-em-andamento',
+      'Inativo':      'status-cancelado',
     };
-    return map[status] || 'status-inativo';
+    return map[status] || 'status-em-andamento';
+  }
+
+  applyStatusFilter(value: string): void {
+    this.statusFilter = value;
+    this.dataSource.filter = this.statusFilter === 'all' ? (this.searchValue.trim().toLowerCase() || '') : '__status__';
+    this._applyCustomFilter();
+    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
+  }
+
+  private _applyCustomFilter(): void {
+    this.dataSource.filterPredicate = (data: any, filter: string) => {
+      const matchSearch = !this.searchValue || data.name.toLowerCase().includes(this.searchValue.trim().toLowerCase());
+      const matchStatus = this.statusFilter === 'all' || data.status === this.statusFilter;
+      return matchSearch && matchStatus;
+    };
+    // trigger re-filter
+    this.dataSource.filter = this.dataSource.filter === '' ? ' ' : this.dataSource.filter.trim() || ' ';
+    this.dataSource.filter = this.dataSource.filter.trim();
+  }
+
+  async cancelProject(projectId: string): Promise<void> {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: { message: this.translate.instant('Tem certeza de que deseja cancelar este projeto? Ele não aparecerá mais no Dashboard.') },
+    });
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        await updateDoc(doc(this.firestore, `projects/${projectId}`), { status: 'Cancelado' });
+        this.dataSource.data = this.dataSource.data.map(p =>
+          p.id === projectId ? { ...p, status: 'Cancelado' } : p
+        );
+        this.snackBar.open(this.translate.instant('Projeto cancelado com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
+      } catch (e) {
+        this.snackBar.open(this.translate.instant('Erro ao cancelar projeto.'), this.translate.instant('Fechar'), { duration: 3000 });
+      }
+    });
   }
 
   isOverdue(deadline: Date | null): boolean {
@@ -87,12 +132,29 @@ export class ProjectsListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.authService.getCurrentUser().then((user) => {
+    this.authService.getCurrentUser().then(async (user) => {
       this.isAdminMaster = user?.role === 'admin_master';
+      this.userClientIds = await this.authService.getCurrentUserClientIds();
+      this.clientId = this.userClientIds[0] || null;
+
+      this.displayedColumns = [
+        ...(this.isAdminMaster ? ['select'] : []),
+        'client',
+        'name',
+        'deadline',
+        'responses',
+        'actions',
+      ];
+
       if (this.isAdminMaster) {
-        this.loadClients();
+        await this.loadClients();
+      } else if (this.userClientIds.length > 0) {
+        // admin_client: popula clientsMap apenas com os clientes vinculados
+        await Promise.all(this.userClientIds.map(async (id) => {
+          const snap = await getDoc(doc(this.firestore, 'clients', id));
+          if (snap.exists()) this.clientsMap[id] = snap.data()['companyName'] || id;
+        }));
       }
-      this.clientId = user?.clientId;
       this.loadProjects();
     });
   }
@@ -125,20 +187,33 @@ export class ProjectsListComponent implements OnInit {
 
       const snapshot = await getDocs(projectsQuery);
       const projects = await Promise.all(
-        snapshot.docs.map(async (doc) => {
-          const data = doc.data();
+        snapshot.docs.map(async (projectDoc) => {
+          const data = projectDoc.data();
           const deadline =
             data['deadline'] instanceof Timestamp
               ? data['deadline'].toDate()
               : null;
 
-          const projectId = doc.id;
+          const projectId = projectDoc.id;
           const [respondedCount, totalParticipants] =
             await this.countAssessmentResponses(projectId);
 
+          // Auto-conclusão: se todos responderam, marcar como Concluído
+          let currentStatus = data['status'];
+          if (
+            totalParticipants > 0 &&
+            respondedCount >= totalParticipants &&
+            !['Concluído', 'Cancelado'].includes(currentStatus)
+          ) {
+            const projectRef = doc(this.firestore, 'projects', projectId);
+            await updateDoc(projectRef, { status: 'Concluído' });
+            currentStatus = 'Concluído';
+          }
+
           return {
-            id: doc.id,
+            id: projectDoc.id,
             ...data,
+            status: currentStatus,
             deadline: deadline,
             clientName:
               this.clientsMap[data['clientId']] || 'Cliente não encontrado',
@@ -149,8 +224,10 @@ export class ProjectsListComponent implements OnInit {
         })
       );
 
+      this.allProjects = projects;
       this.dataSource.data = this.filterProjectsByClient(projects);
       this.dataSource.paginator = this.paginator;
+      this._applyCustomFilter();
 
       this.dataSource.sortingDataAccessor = (item, property) => {
         switch (property) {
@@ -262,25 +339,24 @@ export class ProjectsListComponent implements OnInit {
 
   private filterProjectsByClient(projects: any[]): any[] {
     if (this.isAdminMaster && this.selectedClientId) {
-      return projects.filter(
-        (project) => project.clientId === this.selectedClientId
-      );
+      return projects.filter((project) => project.clientId === this.selectedClientId);
+    }
+    if (!this.isAdminMaster && this.userClientIds.length > 0) {
+      return projects.filter((project) => this.userClientIds.includes(project.clientId));
     }
     return projects;
   }
 
   onClientChange(): void {
-    this.loadProjects();
+    this.dataSource.data = this.filterProjectsByClient(this.allProjects);
+    this._applyCustomFilter();
+    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
   }
 
   applyFilter(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.searchValue = filterValue;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
-
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+    this.searchValue = (event.target as HTMLInputElement).value;
+    this._applyCustomFilter();
+    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
   }
 
   // ─── Seleção em massa ────────────────────────────────────────

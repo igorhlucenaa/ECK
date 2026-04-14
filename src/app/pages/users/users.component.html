@@ -23,11 +23,30 @@
             <mat-icon matPrefix class="search-prefix-icon">search</mat-icon>
             <input matInput (keyup)="applyUserFilter($event)" placeholder="{{ 'Buscar por nome, e-mail...' | translate }}" />
           </mat-form-field>
+
+          <!-- Filtro de status -->
+          <div class="status-filter-group">
+            <button class="status-filter-btn" [class.active]="statusFilter === 'all'"
+              (click)="applyStatusFilter('all')">
+              <mat-icon>people</mat-icon> Todos
+            </button>
+            <button class="status-filter-btn" [class.active]="statusFilter === 'active'"
+              (click)="applyStatusFilter('active')">
+              <mat-icon>check_circle</mat-icon> Ativos
+            </button>
+            <button class="status-filter-btn status-filter-btn--blocked" [class.active]="statusFilter === 'blocked'"
+              (click)="applyStatusFilter('blocked')">
+              <mat-icon>lock</mat-icon> Bloqueados
+            </button>
+          </div>
+
           <div class="search-bar__right">
             <div class="search-count">
               {{ userDataSource.filteredData.length }} resultado{{ userDataSource.filteredData.length !== 1 ? 's' : '' }}
             </div>
-            <button mat-raised-button class="btn-action" (click)="openCreateUserDialog()" data-tour="users-add">
+            <button mat-raised-button class="btn-action"
+              *ngIf="currentUserRole === 'admin_master'"
+              (click)="openCreateUserDialog()" data-tour="users-add">
               <mat-icon>person_add</mat-icon>
               {{ 'Adicionar Usuário' | translate }}
             </button>
@@ -71,18 +90,19 @@
             <div class="perm-card perm-card--admin">
               <div class="perm-card__header">
                 <span class="perm-badge perm-badge--admin">Admin Cliente</span>
-                <span class="perm-card__subtitle">Gestão do seu cliente</span>
+                <span class="perm-card__subtitle">Gestão da própria empresa</span>
               </div>
               <ul class="perm-list">
-                <li><mat-icon>check_circle</mat-icon>Visualizar projetos do seu cliente</li>
-                <li><mat-icon>check_circle</mat-icon>Gerenciar usuários Visualizadores do seu cliente</li>
+                <li><mat-icon>check_circle</mat-icon>Visualizar projetos da própria empresa</li>
+                <li><mat-icon>check_circle</mat-icon>Criar e gerenciar participantes dos projetos</li>
                 <li><mat-icon>check_circle</mat-icon>Criar e gerenciar grupos de usuários</li>
-                <li><mat-icon>check_circle</mat-icon>Visualizar avaliações vinculadas ao seu cliente</li>
-                <li><mat-icon>check_circle</mat-icon>Acessar relatórios do seu cliente</li>
-                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>Não gerencia outros clientes</li>
+                <li><mat-icon>check_circle</mat-icon>Visualizar avaliações vinculadas à empresa</li>
+                <li><mat-icon>check_circle</mat-icon>Acessar relatórios da própria empresa</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>Não cria, edita ou exclui usuários</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>Não acessa dados de outros clientes</li>
               </ul>
               <div class="perm-card__note perm-card__note--info">
-                <mat-icon>info</mat-icon> Pode editar/excluir apenas usuários Visualizadores
+                <mat-icon>info</mat-icon> Acesso restrito aos dados da própria empresa
               </div>
             </div>
 
@@ -108,8 +128,8 @@
           </div>
         </mat-expansion-panel>
 
-        <!-- Barra de ações em massa — Usuários -->
-        <div class="bulk-action-bar" *ngIf="isSomeUsersSelected()">
+        <!-- Barra de ações em massa — Usuários (apenas admin_master) -->
+        <div class="bulk-action-bar" *ngIf="isSomeUsersSelected() && currentUserRole === 'admin_master'">
           <mat-icon>check_circle</mat-icon>
           <strong>{{ selectedUserIds.size }}</strong>
           <span>usuário{{ selectedUserIds.size !== 1 ? 's' : '' }} selecionado{{ selectedUserIds.size !== 1 ? 's' : '' }}</span>
@@ -126,17 +146,17 @@
         <div class="table-container" data-tour="users-table">
           <table mat-table [dataSource]="userDataSource" matSort #userSort="matSort" class="users-table">
 
-            <!-- Seleção -->
+            <!-- Seleção (apenas admin_master) -->
             <ng-container matColumnDef="select">
               <th mat-header-cell *matHeaderCellDef class="select-col">
-                <mat-checkbox
+                <mat-checkbox *ngIf="currentUserRole === 'admin_master'"
                   [checked]="isAllUsersSelected()"
                   [indeterminate]="isSomeUsersSelected() && !isAllUsersSelected()"
                   (change)="toggleAllUsers($event.checked)">
                 </mat-checkbox>
               </th>
               <td mat-cell *matCellDef="let user" class="select-col">
-                <mat-checkbox
+                <mat-checkbox *ngIf="currentUserRole === 'admin_master'"
                   [checked]="selectedUserIds.has(user.id)"
                   [disabled]="!canDelete(user)"
                   (change)="toggleUserSelect(user)">
@@ -144,25 +164,25 @@
               </td>
             </ng-container>
 
-            <!-- Nome -->
+            <!-- Nome + Sobrenome -->
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                <span class="col-header"><mat-icon class="col-icon">person</mat-icon>Nome</span>
+                <span class="col-header"><mat-icon class="col-icon">person</mat-icon>Usuário</span>
               </th>
               <td mat-cell *matCellDef="let user">
                 <div class="user-cell">
-                  <div class="user-avatar">{{ (user.name || '?')[0].toUpperCase() }}</div>
-                  <span class="user-name">{{ user.name }}</span>
+                  <div class="user-avatar" [class.user-avatar--blocked]="user.blocked">
+                    <mat-icon *ngIf="user.blocked" class="avatar-lock-icon">lock</mat-icon>
+                    <span *ngIf="!user.blocked">{{ (user.name || '?')[0].toUpperCase() }}</span>
+                  </div>
+                  <div class="user-name-col">
+                    <span class="user-name">{{ user.name }} {{ user.surname }}</span>
+                    <span class="blocked-badge" *ngIf="user.blocked">
+                      <mat-icon>lock</mat-icon> Bloqueado
+                    </span>
+                  </div>
                 </div>
               </td>
-            </ng-container>
-
-            <!-- Sobrenome -->
-            <ng-container matColumnDef="surname">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                <span class="col-header"><mat-icon class="col-icon">badge</mat-icon>Sobrenome</span>
-              </th>
-              <td mat-cell *matCellDef="let user">{{ user.surname }}</td>
             </ng-container>
 
             <!-- E-mail -->
@@ -236,14 +256,24 @@
             <!-- Status de Notificação -->
             <ng-container matColumnDef="notificationStatus">
               <th mat-header-cell *matHeaderCellDef>
-                <span class="col-header"><mat-icon class="col-icon">notifications</mat-icon>Notificação</span>
+                <span class="col-header"><mat-icon class="col-icon">notifications</mat-icon>Acesso</span>
               </th>
               <td mat-cell *matCellDef="let user">
                 <span class="notif-chip"
-                  [class.notif-sent]="user.notificationStatus === 'Enviado'"
-                  [class.notif-pending]="user.notificationStatus !== 'Enviado'">
-                  <mat-icon>{{ user.notificationStatus === 'Enviado' ? 'check_circle' : 'schedule' }}</mat-icon>
-                  {{ user.notificationStatus || 'Pendente' }}
+                  [class.notif-accessed]="user.notificationStatus === 'Acessou'"
+                  [class.notif-link-sent]="user.notificationStatus === 'Link Enviado'"
+                  [class.notif-pending]="user.notificationStatus === 'Pendente'"
+                  [matTooltip]="user.notificationStatus === 'Acessou' && user.lastLoginAt
+                    ? 'Último acesso: ' + (user.lastLoginAt | date:'dd/MM/yyyy HH:mm')
+                    : user.notificationStatus === 'Link Enviado' && user.lastInviteSentAt
+                    ? 'Link enviado em: ' + (user.lastInviteSentAt | date:'dd/MM/yyyy HH:mm')
+                    : 'Nenhum link enviado ainda'">
+                  <mat-icon>{{
+                    user.notificationStatus === 'Acessou' ? 'verified_user' :
+                    user.notificationStatus === 'Link Enviado' ? 'mark_email_read' :
+                    'schedule'
+                  }}</mat-icon>
+                  {{ user.notificationStatus }}
                 </span>
               </td>
             </ng-container>
@@ -253,45 +283,63 @@
               <th mat-header-cell *matHeaderCellDef class="actions-col">Ações</th>
               <td mat-cell *matCellDef="let user" class="actions-col">
                 <div class="actions-cell">
-                  <button mat-icon-button class="action-view"
-                    (click)="openUserDetails(user)"
-                    matTooltip="{{ 'Ver detalhes' | translate }}">
-                    <mat-icon>visibility</mat-icon>
-                  </button>
-                  <!-- Editar: ocultar para não-masters quando alvo é admin_master -->
-                  <ng-container *ngIf="user.role !== 'admin_master' || currentUserRole === 'admin_master'">
-                    <button mat-icon-button
-                      [class.action-edit]="canEdit(user)"
-                      [class.action-locked]="!canEdit(user)"
-                      (click)="editUser(user)"
-                      [disabled]="!canEdit(user)"
-                      [matTooltip]="getEditTooltip(user)">
-                      <mat-icon>{{ canEdit(user) ? 'edit' : 'lock' }}</mat-icon>
+
+                  <div class="action-group">
+                    <!-- Ver detalhes -->
+                    <button mat-icon-button class="action-btn action-btn--view"
+                      (click)="openUserDetails(user)"
+                      matTooltip="Ver detalhes">
+                      <mat-icon>person_search</mat-icon>
                     </button>
-                  </ng-container>
-                  <!-- Excluir: ocultar para não-masters quando alvo é admin_master -->
-                  <ng-container *ngIf="user.role !== 'admin_master' || currentUserRole === 'admin_master'">
-                    <button mat-icon-button
-                      [class.action-delete]="canDelete(user)"
-                      [class.action-locked]="!canDelete(user)"
-                      [disabled]="!canDelete(user)"
-                      (click)="canDelete(user) && deleteUser(user)"
-                      [matTooltip]="getDeleteTooltip(user)">
-                      <mat-icon>{{ canDelete(user) ? 'delete_outline' : 'lock' }}</mat-icon>
+
+                    <!-- Editar e Excluir: apenas admin_master -->
+                    <ng-container *ngIf="currentUserRole === 'admin_master'">
+                      <button mat-icon-button class="action-btn"
+                        [class.action-btn--edit]="canEdit(user)"
+                        [class.action-btn--locked]="!canEdit(user)"
+                        (click)="editUser(user)"
+                        [disabled]="!canEdit(user)"
+                        [matTooltip]="getEditTooltip(user)">
+                        <mat-icon>{{ canEdit(user) ? 'edit' : 'lock' }}</mat-icon>
+                      </button>
+                      <button mat-icon-button class="action-btn"
+                        [class.action-btn--delete]="canDelete(user)"
+                        [class.action-btn--locked]="!canDelete(user)"
+                        [disabled]="!canDelete(user)"
+                        (click)="canDelete(user) && deleteUser(user)"
+                        [matTooltip]="getDeleteTooltip(user)">
+                        <mat-icon>{{ canDelete(user) ? 'delete_outline' : 'lock' }}</mat-icon>
+                      </button>
+                    </ng-container>
+                  </div>
+
+                  <div class="action-group action-group--secondary">
+                    <!-- Bloquear / Desbloquear -->
+                    <button mat-icon-button *ngIf="canBlock(user)"
+                      class="action-btn"
+                      [class.action-btn--block]="!user.blocked"
+                      [class.action-btn--unblock]="user.blocked"
+                      [matTooltip]="user.blocked ? 'Desbloquear acesso' : 'Bloquear acesso'"
+                      (click)="toggleBlockUser(user)">
+                      <mat-icon>{{ user.blocked ? 'lock_open' : 'lock' }}</mat-icon>
                     </button>
-                  </ng-container>
-                  <button mat-icon-button class="action-email"
-                    (click)="sendEmailNotification(user)"
-                    matTooltip="{{ 'Enviar E-mail' | translate }}">
-                    <mat-icon>send</mat-icon>
-                  </button>
+
+                    <!-- Enviar link de criação / redefinição de senha -->
+                    <button mat-icon-button class="action-btn action-btn--invite"
+                      (click)="sendEmailNotification(user)"
+                      matTooltip="Enviar link de criação / redefinição de senha">
+                      <mat-icon>key</mat-icon>
+                    </button>
+                  </div>
+
                 </div>
               </td>
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedUserColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: displayedUserColumns;" class="table-row"
-                [class.row-duplicate-email]="hasDuplicateEmail(row)"></tr>
+                [class.row-duplicate-email]="hasDuplicateEmail(row)"
+                [class.row-blocked]="row.blocked"></tr>
 
             <tr class="mat-row no-data-row" *matNoDataRow>
               <td class="mat-cell" [attr.colspan]="displayedUserColumns.length">

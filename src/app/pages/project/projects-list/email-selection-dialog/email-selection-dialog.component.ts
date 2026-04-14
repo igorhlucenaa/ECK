@@ -505,22 +505,45 @@ export class EmailSelectionDialogComponent implements OnInit {
       }
       const formattedDeadline = this.formatDate(projectDeadline);
 
+      // Obter nome do projeto para variável {{nome_projeto}}
+      const projectName = projectDoc.data()['name'] || '';
+      // Obter nome do cliente para variável {{nome_cliente}}
+      let clientName = '';
+      const clientId = projectDoc.data()['clientId'];
+      if (clientId) {
+        const clientDoc = await getDoc(doc(this.firestore, 'clients', clientId));
+        if (clientDoc.exists()) clientName = clientDoc.data()['companyName'] || '';
+      }
+      const avaliadoNameCache = new Map<string, string>();
+
       // Enviar e-mails para cada participante selecionado
       for (const key of this.selectedParticipants) {
         const participant = this.dataSource.data.find(
           (p) => this.getParticipantKey(p) === key
         );
         if (participant) {
-          let participantContent = JSON.parse(JSON.stringify(contentObj));
+          // Resolver nome do avaliado
+          let nomeAvaliado = '';
+          const avaliadoId = (participant as any)['avaliadoId'];
+          if (avaliadoId) {
+            if (avaliadoNameCache.has(avaliadoId)) {
+              nomeAvaliado = avaliadoNameCache.get(avaliadoId)!;
+            } else {
+              const avaliadoDoc = await getDoc(doc(this.firestore, 'participants', avaliadoId));
+              nomeAvaliado = avaliadoDoc.exists() ? (avaliadoDoc.data()['name'] || '') : '';
+              avaliadoNameCache.set(avaliadoId, nomeAvaliado);
+            }
+          }
 
-          participantContent = this.replaceDeadlineInContent(
-            participantContent,
-            formattedDeadline
-          );
-
-          participantContent = this.replaceUserNameInContent(
-            participantContent,
-            participant.name
+          let participantContent = this.replaceAllVariables(
+            JSON.parse(JSON.stringify(contentObj)),
+            {
+              nome_participante: participant.name,
+              nome_avaliado: nomeAvaliado,
+              data_expiracao: formattedDeadline,
+              nome_projeto: projectName,
+              nome_cliente: clientName,
+            }
           );
 
           const finalContent = JSON.stringify(participantContent);
@@ -562,56 +585,31 @@ export class EmailSelectionDialogComponent implements OnInit {
     }
   }
 
-  private replaceUserNameInContent(contentObj: any, userName: string): any {
-    if (contentObj.body && contentObj.body.rows) {
-      contentObj.body.rows.forEach((row: any) => {
-        if (row.columns) {
-          row.columns.forEach((column: any) => {
-            if (column.contents) {
-              column.contents.forEach((content: any) => {
-                if (content.values && content.values.text) {
-                  content.values.text = content.values.text.replace(
-                    /\$%Nome do usuário preenchido dinâmicamente\$%/g,
-                    userName
-                  );
-                }
-              });
-            }
-          });
-        }
-      });
-    }
-    return contentObj;
-  }
+  /** Substitui todas as variáveis dinâmicas (nova sintaxe {{...}} + legado $%...$%) */
+  private replaceAllVariables(contentObj: any, vars: Record<string, string>): any {
+    const replaceInText = (text: string): string => {
+      // Nova sintaxe {{...}}
+      text = text.replace(/\{\{nome_participante\}\}/g, vars['nome_participante'] || '');
+      text = text.replace(/\{\{nome_avaliado\}\}/g, vars['nome_avaliado'] || '');
+      text = text.replace(/\{\{data_expiracao\}\}/g, vars['data_expiracao'] || '');
+      text = text.replace(/\{\{nome_projeto\}\}/g, vars['nome_projeto'] || '');
+      text = text.replace(/\{\{nome_cliente\}\}/g, vars['nome_cliente'] || '');
+      // Sintaxe legada (compatibilidade com templates antigos)
+      text = text.replace(/\$%Nome do usuário preenchido dinâmicamente\$%/g, vars['nome_participante'] || '');
+      text = text.replace(/\$%NOME_DO_AVALIADO\$%/g, vars['nome_avaliado'] || '');
+      text = text.replace(/\*?\$%DATA DE EXPIRAÇÃO DO PROJETO\$%\*?/g, vars['data_expiracao'] || '');
+      return text;
+    };
 
-  private replaceDeadlineInContent(
-    contentObj: any,
-    formattedDeadline: string
-  ): any {
-    if (contentObj.body && contentObj.body.rows) {
+    if (contentObj.body?.rows) {
       contentObj.body.rows.forEach((row: any) => {
-        if (row.columns) {
-          row.columns.forEach((column: any) => {
-            if (column.contents) {
-              column.contents.forEach((content: any) => {
-                if (content.values && content.values.text) {
-                  console.log(
-                    'Texto antes da substituição:',
-                    content.values.text
-                  );
-                  content.values.text = content.values.text.replace(
-                    /\*\$%DATA DE EXPIRAÇÃO DO PROJETO\$%\*/g,
-                    formattedDeadline
-                  );
-                  console.log(
-                    'Texto após a substituição:',
-                    content.values.text
-                  );
-                }
-              });
+        row.columns?.forEach((column: any) => {
+          column.contents?.forEach((content: any) => {
+            if (content.values?.text) {
+              content.values.text = replaceInText(content.values.text);
             }
           });
-        }
+        });
       });
     }
     return contentObj;

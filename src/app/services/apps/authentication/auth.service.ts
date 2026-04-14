@@ -19,6 +19,7 @@ import {
   getDoc,
   getDocs,
   query,
+  updateDoc,
   where,
 } from '@angular/fire/firestore';
 import { firstValueFrom } from 'rxjs';
@@ -42,6 +43,28 @@ export class AuthService {
       await this.auth.setPersistence(persistence).then(async () => {
         await signInWithEmailAndPassword(this.auth, email, password);
 
+        // Verificar se o usuário está bloqueado antes de prosseguir
+        const usersCollection = collection(this.firestore, 'users');
+        const emailQuery = query(usersCollection, where('email', '==', email));
+        const snap = await getDocs(emailQuery);
+
+        if (!snap.empty && snap.docs[0].data()['blocked'] === true) {
+          await signOut(this.auth);
+          throw new Error('Seu acesso foi suspenso. Entre em contato com o administrador.');
+        }
+
+        // Registrar acesso: atualiza notificationStatus e lastLoginAt
+        if (!snap.empty) {
+          try {
+            await updateDoc(doc(this.firestore, `users/${snap.docs[0].id}`), {
+              notificationStatus: 'Acessou',
+              lastLoginAt: new Date(),
+            });
+          } catch {
+            // não bloqueia o login em caso de falha
+          }
+        }
+
         // Obter o papel do usuário após login
         const userRole = await this.getCurrentUserRole();
 
@@ -57,9 +80,9 @@ export class AuthService {
           this.router.navigate(['/users']);
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no login:', error);
-      throw new Error('Falha ao realizar login. Verifique suas credenciais.');
+      throw new Error(error.message || 'Falha ao realizar login. Verifique suas credenciais.');
     }
   }
 
@@ -354,6 +377,25 @@ export class AuthService {
     }
 
     return null;
+  }
+
+  /** Retorna todos os clientIds vinculados ao usuário (suporta clients[] e campo legado client) */
+  async getCurrentUserClientIds(): Promise<string[]> {
+    try {
+      const user = this.auth.currentUser;
+      if (!user || !user.email) return [];
+      const usersCollection = collection(this.firestore, 'users');
+      const snap = await getDocs(query(usersCollection, where('email', '==', user.email)));
+      if (snap.empty) return [];
+      const data = snap.docs[0].data();
+      if (Array.isArray(data['clients']) && data['clients'].length > 0) {
+        return data['clients'];
+      }
+      if (data['client']) return [data['client']];
+      return [];
+    } catch {
+      return [];
+    }
   }
 
   async getCurrentClientId(): Promise<string | null> {

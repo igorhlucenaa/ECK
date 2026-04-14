@@ -79,8 +79,20 @@
 
 // ─── Status chips ─────────────────────────────────────────────
 .status-chip {
-  display: inline-block; padding: 3px 10px;
-  border-radius: 999px; font-size: 11.5px; font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status-chip__icon {
+  font-size: 13px;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 .status-respondido  { background: rgba(76, 175, 80, 0.1);   color: #2e7d32; }
 .status-enviado     { background: rgba(27, 132, 255, 0.1);  color: #1565C0; }
@@ -99,6 +111,67 @@
 .email-cell  { color: #64748b; font-size: 12.5px; }
 .date-cell   { color: #64748b; font-size: 12px; white-space: nowrap; }
 .action-report { color: #7c3aed !important; }
+
+.col-credit-header {
+  cursor: default;
+  white-space: nowrap;
+}
+
+.credit-consumed {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(76, 175, 80, 0.1);
+  color: #2e7d32;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.credit-pending {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+// ─── Banner de créditos ───────────────────────────────────────
+.credits-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  font-weight: 500;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  &--ok {
+    background: rgba(76, 175, 80, 0.08);
+    border: 1px solid rgba(76, 175, 80, 0.25);
+    color: #2e7d32;
+  }
+
+  &--zero {
+    background: rgba(239, 68, 68, 0.07);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #b91c1c;
+  }
+}
 
 // ─── Dialog Actions ───────────────────────────────────────────
 .send-dialog-actions {
@@ -125,12 +198,44 @@
 // DEFAULT MODE (full page)
 // ═════════════════════════════════════════════════════════════
 
+// ─── Overlay de inicialização ────────────────────────────────
+.init-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(255, 255, 255, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+
+  &__label {
+    font-size: 15px;
+    font-weight: 500;
+    color: #475569;
+    margin: 0;
+  }
+}
+
+// Garante que o host preencha e role corretamente tanto como página quanto como dialog
+:host {
+  display: block;
+  height: 100%;
+  overflow-y: auto;
+}
+
 .default-wrapper {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
-  min-height: 100%;
   box-sizing: border-box;
+}
+
+// Quando aberto como dialog (panelClass: 'participants-fullscreen-dialog'),
+// a superfície do dialog precisa permitir scroll interno
+::ng-deep .participants-fullscreen-dialog .mat-mdc-dialog-surface {
+  overflow-y: auto !important;
 }
 
 .btn-dialog-close {
@@ -444,22 +549,77 @@
 
 .send-config-card__body { padding: 16px 20px; }
 
+// ─── Table refresh bar ────────────────────────────────────────
+.table-refresh-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.table-refresh-bar__info {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  &--loading { color: #6b7280; font-style: italic; }
+}
+
+.table-refresh-bar__updated {
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.table-refresh-bar__spacer { flex: 1; }
+
+.table-refresh-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border: 1.5px solid #1B84FF;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1B84FF;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+
+  &:hover:not([disabled]) { background: #dbeafe; border-color: #1B2D56; }
+  &[disabled] { opacity: 0.55; cursor: default; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin { animation: spin 0.75s linear infinite; }
+
 // ─── Table card ───────────────────────────────────────────────
 .table-card {
   background: #fff; border-radius: 16px;
   box-shadow: 0 2px 14px rgba(27, 45, 86, 0.07);
-  overflow: hidden; margin-bottom: 80px; /* espaço para send-action-bar */
+  overflow: hidden;
+  overflow-x: auto;
+  margin-bottom: 80px;
 }
 
 .participants-table {
   width: 100%;
+  min-width: 960px;
 
   .mat-mdc-header-row { background: #f5f7fa; height: 46px; }
 
   .mat-mdc-header-cell {
     font-size: 11px; font-weight: 700; color: #64748b;
     text-transform: uppercase; letter-spacing: 0.5px;
-    border-bottom: 2px solid #e8edf3; padding: 0 14px;
+    border-bottom: 2px solid #e8edf3; padding: 0 12px;
+    white-space: nowrap;
   }
 
   .mat-mdc-row {
@@ -468,18 +628,44 @@
     &:not(:last-child) { border-bottom: 1px solid #f1f5f9; }
   }
 
-  .mat-mdc-cell { font-size: 13px; color: #374151; padding: 0 14px; border-bottom: none; }
+  .mat-mdc-cell { font-size: 13px; color: #374151; padding: 0 12px; border-bottom: none; }
+
+  .mat-column-select      { width: 48px; }
+  .mat-column-name        { width: 220px; }
+  .mat-column-type        { width: 100px; }
+  .mat-column-category    { width: 110px; }
+  .mat-column-cargo       { width: 130px; }
+  .mat-column-projectName { width: 150px; }
+  .mat-column-status      { width: 130px; }
+  .mat-column-datas       { width: 130px; }
+  .mat-column-relatorio   { width: 90px; }
 }
 
 .row-selected { background: #eff6ff !important; }
 
-// ─── Participant cell (full page) ─────────────────────────────
-.participant-info { display: flex; flex-direction: column; gap: 1px; }
-.participant-name { font-weight: 600; font-size: 13px; }
-.participant-email-small { font-size: 11.5px; color: #94a3b8; }
+// ─── Participant cell ─────────────────────────────────────────
+.participant-cell {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+}
 
-.avatar--avaliado   { background: linear-gradient(135deg, #1B2D56, #1B84FF) !important; }
-.avatar--avaliador  { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; }
+.participant-info {
+  display: flex; flex-direction: column; gap: 1px;
+  min-width: 0; flex: 1;
+}
+
+.participant-name {
+  font-weight: 600; font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.participant-email-small {
+  font-size: 11px; color: #94a3b8;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+
+.avatar--avaliado  { background: linear-gradient(135deg, #1B2D56, #1B84FF) !important; }
+.avatar--avaliador { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; }
 
 // ─── Type badge ──────────────────────────────────────────────
 .type-badge {
@@ -492,9 +678,8 @@
 .category-text { font-size: 12.5px; color: #374151; }
 
 .project-cell {
-  display: flex; align-items: center; gap: 6px;
-  mat-icon { font-size: 15px; width: 15px; height: 15px; color: #94a3b8; }
-  font-size: 12.5px; color: #374151;
+  display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: #374151;
+  mat-icon { font-size: 15px; width: 15px; height: 15px; color: #94a3b8; flex-shrink: 0; }
 }
 
 // ─── Empty (full page) ───────────────────────────────────────
@@ -556,4 +741,76 @@
   .default-wrapper { padding: 12px; }
   .stats-bar { gap: 12px; flex-wrap: wrap; }
   .send-action-bar { flex-direction: column; padding: 12px 20px; }
+}
+
+
+// ─── Coluna Envio / Resposta ──────────────────────────────────
+.datas-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.datas-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #374151;
+  white-space: nowrap;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    color: #1B84FF;
+    flex-shrink: 0;
+  }
+
+  &--resp mat-icon { color: #16a34a; }
+
+  &--credit {
+    color: #92400e;
+    font-size: 11px;
+    mat-icon { color: #d97706; font-size: 13px; width: 13px; height: 13px; }
+  }
+
+  &--empty {
+    color: #cbd5e1;
+    mat-icon { color: #e2e8f0; }
+  }
+}
+
+// ─── Botões de ação (padrão das outras tabelas) ───────────────
+.actions-cell-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.action-edit   { color: #1B84FF !important; }
+.action-report { color: #7c3aed !important; }
+
+
+.cargo-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cargo-text {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+}
+.setor-badge {
+  font-size: 11px;
+  color: #64748b;
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 1px 6px;
+  display: inline-block;
+}
+.text-muted {
+  color: #cbd5e1;
+  font-size: 12px;
 }

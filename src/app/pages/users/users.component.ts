@@ -4,11 +4,14 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import {
   Firestore,
+  QueryDocumentSnapshot,
+  DocumentData,
   collection,
   deleteDoc,
   doc,
   getDocs,
   query,
+  updateDoc,
   where,
   writeBatch,
 } from '@angular/fire/firestore';
@@ -23,6 +26,7 @@ import { ConfirmDialogComponent } from '../clients/clients-list/confirm-dialog/c
 import { DetailsModalComponent } from 'src/app/layouts/full/shared/details-modal/details-modal.component';
 import { UserDetailsDialogComponent } from './user-details-dialog/user-details-dialog.component';
 import { GroupDetailsDialogComponent } from './group-details-dialog/group-details-dialog.component';
+import { Auth, sendPasswordResetEmail } from '@angular/fire/auth';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Router, RouterModule } from '@angular/router';
@@ -35,12 +39,15 @@ export interface User {
   email: string;
   group: string;
   role: string;
-  notificationStatus: 'Enviado' | 'Pendente';
+  notificationStatus: 'Pendente' | 'Link Enviado' | 'Acessou';
+  lastInviteSentAt?: Date;
+  lastLoginAt?: Date;
   client: string;
-  clients: string[]; // nomes dos clientes vinculados
+  clients: string[];
   project: string;
   groups: string[];
   projects: string[];
+  blocked: boolean;
 }
 
 export interface UserGroup {
@@ -65,7 +72,6 @@ export class UsersComponent implements OnInit, AfterViewInit {
   displayedUserColumns: string[] = [
     'select',
     'name',
-    'surname',
     'email',
     'client',
     'projects',
@@ -95,6 +101,9 @@ export class UsersComponent implements OnInit, AfterViewInit {
   selectedGroupIds = new Set<string>();
   duplicateEmails  = new Set<string>();
 
+  statusFilter: 'all' | 'active' | 'blocked' = 'all';
+  allUsers: User[] = [];
+
   // Titles for details modal (avoid pipe in (click) expressions)
   clientUsersTitle = this.translate.instant('Clientes do Usuário');
   userProjectsTitle = this.translate.instant('Projetos do Usuário');
@@ -114,6 +123,7 @@ export class UsersComponent implements OnInit, AfterViewInit {
     private authService: AuthService,
     private translate: TranslateService,
     private router: Router,
+    private auth: Auth,
     @Optional() public dialogRef: MatDialogRef<UsersComponent>
   ) {}
 
@@ -123,28 +133,24 @@ export class UsersComponent implements OnInit, AfterViewInit {
 
   /** Retorna true se o usuário logado pode editar o usuário alvo */
   canEdit(user: User): boolean {
-    // Usuário admin_master só pode ser editado por outro admin_master (e não por si mesmo)
+    // admin_client não pode editar nenhum usuário
+    if (this.currentUserRole === 'admin_client') return false;
+    // admin_master não pode editar a si mesmo nem outros masters
     if (user.role === 'admin_master') {
       return this.currentUserRole === 'admin_master' && user.email !== this.currentUserEmail;
-    }
-    // admin_client só pode editar viewers/users
-    if (this.currentUserRole === 'admin_client') {
-      return user.role === 'viewer' || user.role === 'user';
     }
     return true;
   }
 
   /** Retorna true se o usuário logado pode excluir o usuário alvo */
   canDelete(user: User): boolean {
+    // admin_client não pode excluir nenhum usuário
+    if (this.currentUserRole === 'admin_client') return false;
     // Não pode excluir a si mesmo
     if (user.email === this.currentUserEmail) return false;
     // admin_master só pode ser excluído por outro admin_master
     if (user.role === 'admin_master') {
       return this.currentUserRole === 'admin_master';
-    }
-    // admin_client só pode excluir viewers/users
-    if (this.currentUserRole === 'admin_client') {
-      return user.role === 'viewer' || user.role === 'user';
     }
     return true;
   }
@@ -156,24 +162,24 @@ export class UsersComponent implements OnInit, AfterViewInit {
 
   /** Tooltip explicando por que o botão está desativado */
   getEditTooltip(user: User): string {
+    if (this.currentUserRole === 'admin_client')
+      return this.translate.instant('ADM Cliente não possui permissão para editar usuários');
     if (user.role === 'admin_master' && user.email === this.currentUserEmail)
       return this.translate.instant('Você não pode editar sua própria conta MASTER');
     if (user.role === 'admin_master' && this.currentUserRole !== 'admin_master')
       return this.translate.instant('Apenas um admin MASTER pode editar outro admin MASTER');
-    if (this.currentUserRole === 'admin_client' && user.role === 'admin_client')
-      return this.translate.instant('Sem permissão para editar este perfil');
     return this.translate.instant('Editar');
   }
 
   getDeleteTooltip(user: User): string {
+    if (this.currentUserRole === 'admin_client')
+      return this.translate.instant('ADM Cliente não possui permissão para excluir usuários');
     if (user.email === this.currentUserEmail && user.role === 'admin_master')
       return this.translate.instant('Você não pode remover sua própria conta MASTER. Solicite a outro admin MASTER que realize esta ação');
     if (user.email === this.currentUserEmail)
       return this.translate.instant('Você não pode excluir sua própria conta');
     if (user.role === 'admin_master' && this.currentUserRole !== 'admin_master')
       return this.translate.instant('Apenas um admin MASTER pode remover outro admin MASTER');
-    if (this.currentUserRole === 'admin_client' && user.role === 'admin_client')
-      return this.translate.instant('Sem permissão para excluir este perfil');
     return this.translate.instant('Excluir');
   }
 
@@ -210,10 +216,16 @@ export class UsersComponent implements OnInit, AfterViewInit {
       let usersSnapshot;
 
       // Admin_client pode ver apenas os usuários do seu cliente
+      // Suporta tanto campo legado 'client' quanto novo 'clients' (array)
       if (this.userRole === 'admin_client' && clientId) {
-        usersSnapshot = await getDocs(
-          query(usersCollection, where('client', '==', clientId))
-        );
+        const [snapLegacy, snapArray] = await Promise.all([
+          getDocs(query(usersCollection, where('client', '==', clientId))),
+          getDocs(query(usersCollection, where('clients', 'array-contains', clientId))),
+        ]);
+        // Mescla sem duplicatas
+        const docsMap = new Map<string, any>();
+        [...snapLegacy.docs, ...snapArray.docs].forEach(d => docsMap.set(d.id, d));
+        usersSnapshot = { docs: Array.from(docsMap.values()) } as any;
       } else if (this.userRole === 'admin_master') {
         usersSnapshot = await getDocs(usersCollection);
       } else {
@@ -274,9 +286,9 @@ export class UsersComponent implements OnInit, AfterViewInit {
       }, {} as { [key: string]: { groups: string[]; projects: string[] } });
 
       // Mapear usuários com grupos e projetos
-      const users = usersSnapshot.docs
-        .map((doc) => {
-          const data = doc.data();
+      const users: User[] = usersSnapshot.docs
+        .map((userDoc: QueryDocumentSnapshot<DocumentData>) => {
+          const data = userDoc.data();
 
           // Suporta tanto campo único 'client' quanto array 'clients'
           const rawClients: string[] = Array.isArray(data['clients'])
@@ -286,8 +298,8 @@ export class UsersComponent implements OnInit, AfterViewInit {
             .map((id) => clientsMap[id])
             .filter((name): name is string => !!name);
 
-          const userGroups = groupsMap[doc.id]?.groups || [];
-          const userProjects = (groupsMap[doc.id]?.projects || [])
+          const userGroups = groupsMap[userDoc.id]?.groups || [];
+          const userProjects = (groupsMap[userDoc.id]?.projects || [])
             .map((projectId) => {
               const project = projectsMap[projectId];
               if (project) {
@@ -297,22 +309,31 @@ export class UsersComponent implements OnInit, AfterViewInit {
             })
             .filter((projectName) => projectName !== null);
 
+          const rawStatus = data['notificationStatus'];
+          const notificationStatus: User['notificationStatus'] =
+            rawStatus === 'Acessou' ? 'Acessou'
+            : rawStatus === 'Link Enviado' ? 'Link Enviado'
+            : 'Pendente';
+
           return {
-            id: doc.id,
+            id: userDoc.id,
             name: data['name'] || '',
             surname: data['surname'] || '',
             email: data['email'] || '',
             role: data['role'] || '',
-            notificationStatus: data['notificationStatus'] || 'Pendente',
+            notificationStatus,
+            lastInviteSentAt: data['lastInviteSentAt']?.toDate?.() ?? undefined,
+            lastLoginAt: data['lastLoginAt']?.toDate?.() ?? undefined,
             client: clientNames[0] || '',
             clients: clientNames,
             projects: userProjects,
             groups: userGroups,
             group: userGroups.join(', '),
             project: userProjects.join(', '),
+            blocked: data['blocked'] || false,
           } as User;
         })
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a: User, b: User) => a.name.localeCompare(b.name));
 
       // Detectar e-mails duplicados
       const emailCount = new Map<string, number>();
@@ -324,8 +345,9 @@ export class UsersComponent implements OnInit, AfterViewInit {
         Array.from(emailCount.entries()).filter(([, c]) => c > 1).map(([e]) => e)
       );
 
-      // Atualizar dataSource
-      this.userDataSource.data = users;
+      // Armazena todos os usuários e aplica filtro de status atual
+      this.allUsers = users;
+      this.applyStatusFilter(this.statusFilter);
       setTimeout(() => {
         this.userDataSource.sort = this.userSort;
         this.userDataSource.paginator = this.userPaginator;
@@ -681,19 +703,94 @@ export class UsersComponent implements OnInit, AfterViewInit {
     });
   }
 
+  /** Retorna true se o usuário logado pode bloquear/desbloquear o alvo */
+  canBlock(user: User): boolean {
+    if (user.email === this.currentUserEmail) return false;
+    if (user.role === 'admin_master') return this.currentUserRole === 'admin_master';
+    if (this.currentUserRole === 'admin_client') return user.role === 'viewer' || user.role === 'user';
+    return true;
+  }
+
+  async toggleBlockUser(user: User): Promise<void> {
+    const newBlocked = !user.blocked;
+    const action = newBlocked ? 'bloquear' : 'desbloquear';
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: { message: `Tem certeza de que deseja ${action} o acesso de "${user.name} ${user.surname}"?` },
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        await updateDoc(doc(this.firestore, `users/${user.id}`), { blocked: newBlocked });
+
+        const patch = (u: User) => u.id === user.id ? { ...u, blocked: newBlocked } : u;
+        this.allUsers = this.allUsers.map(patch);
+        this.userDataSource.data = this.userDataSource.data.map(patch);
+
+        const msg = newBlocked ? 'Acesso bloqueado com sucesso!' : 'Acesso desbloqueado com sucesso!';
+        this.snackBar.open(msg, 'Fechar', { duration: 3000 });
+      } catch (error) {
+        console.error('Erro ao alterar bloqueio:', error);
+        this.snackBar.open('Erro ao alterar status de acesso.', 'Fechar', { duration: 3000 });
+      }
+    });
+  }
+
+  applyStatusFilter(filter: 'all' | 'active' | 'blocked'): void {
+    this.statusFilter = filter;
+    if (filter === 'active') {
+      this.userDataSource.data = this.allUsers.filter(u => !u.blocked);
+    } else if (filter === 'blocked') {
+      this.userDataSource.data = this.allUsers.filter(u => !!u.blocked);
+    } else {
+      this.userDataSource.data = this.allUsers;
+    }
+    this.userDataSource.paginator?.firstPage();
+  }
+
   hasDuplicateEmail(user: User): boolean {
     return this.duplicateEmails.has(user.email?.toLowerCase());
   }
 
-  // Enviar e-mail de notificação
-  sendEmailNotification(user: User): void {
-        // Aqui você implementaria a lógica de envio de e-mail, usando um serviço backend
-    // Por exemplo, se você estiver usando Firebase Functions ou outro serviço:
-    // this.emailService.sendNotification(user.email);
+  // Enviar link de criação / redefinição de senha
+  async sendEmailNotification(user: User): Promise<void> {
+    try {
+      const actionCodeSettings = {
+        url: `${window.location.origin}/authentication/login`,
+        handleCodeInApp: false,
+      };
+      await sendPasswordResetEmail(this.auth, user.email, actionCodeSettings);
 
-    this.snackBar.open(this.translate.instant('E-mail enviado para {{email}}', { email: user.email }), this.translate.instant('Fechar'), {
-      duration: 3000,
-    });
+      const now = new Date();
+
+      // Persiste no Firestore
+      await updateDoc(doc(this.firestore, `users/${user.id}`), {
+        notificationStatus: 'Link Enviado',
+        lastInviteSentAt: now,
+      });
+
+      // Atualiza tabela local sem reload
+      const patch = (u: User): User =>
+        u.id === user.id
+          ? { ...u, notificationStatus: 'Link Enviado', lastInviteSentAt: now }
+          : u;
+      this.allUsers = this.allUsers.map(patch);
+      this.userDataSource.data = this.userDataSource.data.map(patch);
+
+      this.snackBar.open(
+        this.translate.instant('Link de acesso enviado para {{email}}', { email: user.email }),
+        this.translate.instant('Fechar'),
+        { duration: 3000 }
+      );
+    } catch (err: any) {
+      console.error('Erro ao enviar link:', err?.code, err?.message);
+      this.snackBar.open(
+        `Erro ao enviar link: ${err?.message}`,
+        this.translate.instant('Fechar'),
+        { duration: 6000 }
+      );
+    }
   }
 
   openDetailsModal(title: string, items: any): void {

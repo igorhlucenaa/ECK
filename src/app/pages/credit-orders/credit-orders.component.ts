@@ -19,13 +19,12 @@ import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule } from '@ngx-translate/core';
@@ -54,13 +53,12 @@ export interface Order {
     MatSnackBarModule,
     MatButtonModule,
     MatIconModule,
+    MatTooltipModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     MatOptionModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
     RouterModule,
     FormsModule,
     TranslateModule,
@@ -71,16 +69,15 @@ export interface Order {
 })
 export class CreditOrdersComponent implements OnInit {
   displayedColumns: string[] = [
-    'createdAt', // Adiciona a coluna de data do pedido
     'clientName',
+    'status',
     'openingBalance',
     'usedBalance',
     'remainingBalance',
-    'daysRemaining',
     'expirationDate',
-    'status',
+    'daysRemaining',
+    'createdAt',
     'actions',
-    'id',
   ];
 
   userRole: any;
@@ -89,9 +86,13 @@ export class CreditOrdersComponent implements OnInit {
   startDate: Date | null = null;
   endDate: Date | null = null;
   selectedStatus: string = '';
-  originalData: Order[] = []; // Dados originais para filtro
+  originalData: Order[] = [];
   clientsList: { id: string; name: string }[] = [];
   selectedClient: string = '';
+
+  editingExpirationId: string | null = null;
+  editingExpirationDate: Date | null = null;
+  editingExpirationDateStr: string = '';
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -105,7 +106,6 @@ export class CreditOrdersComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadOrders();
-    this.expireOrders(); // Processa pedidos expirados na inicialização
   }
 
   private getStatusPriority(status: string): number {
@@ -136,6 +136,11 @@ export class CreditOrdersComponent implements OnInit {
         id: doc.id,
         name: doc.data()['companyName'] || 'Não identificado',
       }));
+
+      if (this.userRole === 'admin_master') {
+        await this.expireOrders();
+        await this.sincronizarCreditosClientes();
+      }
 
       const ordersCollection = collection(this.firestore, 'creditOrders');
       let queryConstraint = query(ordersCollection);
@@ -170,15 +175,19 @@ export class CreditOrdersComponent implements OnInit {
           : 0;
 
         const totalCredits = data['credits'] || 0;
-        const remainingCredits = data['remainingCredits'] || 0;
+        // FIFO: cada pedido rastreia seu próprio remainingCredits
+        // remainingCredits é inicializado = credits quando aprovado e decrementado a cada uso
+        const orderRemaining: number = data['remainingCredits'] ?? (data['status'] === 'Aprovado' ? totalCredits : 0);
+        const usedBalance = data['status'] === 'Aprovado' ? totalCredits - orderRemaining : 0;
+        const remainingBalance = data['status'] === 'Aprovado' ? orderRemaining : 0;
 
         return {
           id: doc.id,
           clientId: data['clientId'],
           clientName: clientsMap[data['clientId']] || 'Não identificado',
-          openingBalance: data['credits'] || 0,
-          usedBalance: totalCredits - remainingCredits,
-          remainingBalance: remainingCredits,
+          openingBalance: totalCredits,
+          usedBalance,
+          remainingBalance,
           daysRemaining,
           expirationDate: validityDate,
           status: data['status'],
@@ -255,8 +264,8 @@ export class CreditOrdersComponent implements OnInit {
       const clientId = orderData['clientId'];
       const creditsToAdd = orderData['credits'];
 
-      // Atualiza o status do pedido para "Aprovado"
-      await updateDoc(orderDoc, { status: 'Aprovado' });
+      // Atualiza o status do pedido para "Aprovado" e inicializa remainingCredits
+      await updateDoc(orderDoc, { status: 'Aprovado', remainingCredits: creditsToAdd });
 
       // Atualiza os créditos remanescentes do cliente
       const clientDoc = doc(this.firestore, `clients/${clientId}`);
@@ -267,22 +276,19 @@ export class CreditOrdersComponent implements OnInit {
         throw new Error('Cliente não encontrado.');
       }
 
-      const currentRemainingCredits = clientData['remainingCredits'] || 0;
+      const currentCredits = clientData['credits'] || 0;
 
       await updateDoc(clientDoc, {
-        remainingCredits: currentRemainingCredits + creditsToAdd,
+        credits: currentCredits + creditsToAdd,
       });
 
-      // Atualiza a tabela localmente
-      this.dataSource.data = this.dataSource.data.map((order) =>
-        order.id === orderId ? { ...order, status: 'Aprovado' } : order
-      );
-
       this.snackBar.open(
-        'Pedido aprovado com sucesso e créditos adicionados aos remanescentes!',
+        'Pedido aprovado com sucesso e créditos adicionados!',
         'Fechar',
         { duration: 3000 }
       );
+
+      await this.loadOrders();
     } catch (error) {
       console.error('Erro ao aprovar pedido:', error);
       this.snackBar.open('Erro ao aprovar pedido.', 'Fechar', {
@@ -297,14 +303,12 @@ export class CreditOrdersComponent implements OnInit {
 
       // Atualiza o status do pedido para "Rejeitado"
       await updateDoc(orderDoc, { status: 'Rejeitado' });
-      // Atualiza a tabela localmente
-      this.dataSource.data = this.dataSource.data.map((order) =>
-        order.id === orderId ? { ...order, status: 'Rejeitado' } : order
-      );
-      
+
       this.snackBar.open('Pedido rejeitado com sucesso!', 'Fechar', {
         duration: 3000,
       });
+
+      await this.loadOrders();
     } catch (error) {
       console.error('Erro ao rejeitar pedido:', error);
       this.snackBar.open('Erro ao rejeitar pedido.', 'Fechar', {
@@ -385,47 +389,152 @@ export class CreditOrdersComponent implements OnInit {
           expiredOrders.push({
             orderId: doc.id,
             clientId: orderData['clientId'],
-            creditsToDeduct: orderData['remainingCredits'] || 0,
+            creditsToDeduct: orderData['credits'] || 0,
           });
         }
       });
 
-      // Atualiza pedidos e clientes
-      for (const { orderId, clientId, creditsToDeduct } of expiredOrders) {
+      if (expiredOrders.length === 0) return;
+
+      // Atualiza pedidos expirados (créditos serão recalculados pela sincronização)
+      for (const { orderId } of expiredOrders) {
         const orderDoc = doc(this.firestore, `creditOrders/${orderId}`);
-        const clientDoc = doc(this.firestore, `clients/${clientId}`);
-
-        // Atualiza status do pedido
         await updateDoc(orderDoc, { status: 'Expirado', remainingCredits: 0 });
-
-        // Deduz créditos do cliente
-        const clientSnapshot = await getDoc(clientDoc);
-        const clientData = clientSnapshot.data();
-
-        if (clientData) {
-          const currentCredits = clientData['credits'] || 0;
-          await updateDoc(clientDoc, {
-            credits: Math.max(0, currentCredits - creditsToDeduct),
-          });
-        }
       }
-
-      this.snackBar.open(
-        'Pedidos expirados processados e créditos deduzidos com sucesso!',
-        'Fechar',
-        {
-          duration: 3000,
-        }
-      );
     } catch (error) {
       console.error('Erro ao processar pedidos expirados:', error);
-      this.snackBar.open('Erro ao processar pedidos expirados.', 'Fechar', {
-        duration: 3000,
-      });
     }
   }
 
   openNewOrderForm(): void {
     this.router.navigate(['/orders/new']);
+  }
+
+  startEditExpiration(orderId: string, currentDate: Date): void {
+    this.editingExpirationId = orderId;
+    const d = currentDate ? new Date(currentDate) : new Date();
+    this.editingExpirationDate = d;
+    this.editingExpirationDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  setEditingDate(value: string): void {
+    this.editingExpirationDateStr = value;
+    this.editingExpirationDate = value ? new Date(value + 'T12:00:00') : null;
+  }
+
+  cancelEditExpiration(): void {
+    this.editingExpirationId = null;
+    this.editingExpirationDate = null;
+  }
+
+  async saveExpirationDate(orderId: string): Promise<void> {
+    if (!this.editingExpirationDate) return;
+    try {
+      const orderRef = doc(this.firestore, `creditOrders/${orderId}`);
+      const orderSnap = await getDoc(orderRef);
+      if (!orderSnap.exists()) return;
+
+      const orderData = orderSnap.data();
+      const currentStatus: string = orderData['status'];
+      const now = new Date();
+      const newDate = this.editingExpirationDate;
+
+      const update: Record<string, any> = { validityDate: newDate };
+
+      // Expirado + nova data futura → reativa como Aprovado
+      // remainingCredits = credits total (sincronizarCreditosClientes vai recalcular FIFO)
+      if (currentStatus === 'Expirado' && newDate > now) {
+        update['status'] = 'Aprovado';
+        update['remainingCredits'] = orderData['credits'] || 0;
+      }
+      // Aprovado + nova data passada → expira imediatamente
+      else if (currentStatus === 'Aprovado' && newDate <= now) {
+        update['status'] = 'Expirado';
+        update['remainingCredits'] = 0;
+      }
+      // Pendente / Rejeitado → apenas atualiza a data, sem alterar status
+
+      await updateDoc(orderRef, update);
+      this.cancelEditExpiration();
+      this.snackBar.open('Data de expiração atualizada!', 'Fechar', { duration: 3000 });
+      await this.loadOrders(); // executa expireOrders + sincronizarCreditosClientes
+    } catch (error) {
+      console.error('Erro ao atualizar data de expiração:', error);
+      this.snackBar.open('Erro ao atualizar data de expiração.', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  private async sincronizarCreditosClientes(): Promise<void> {
+    try {
+      const now = new Date();
+
+      // 1. Pedidos aprovados — busca sem orderBy para incluir docs sem createdAt indexado
+      const ordersSnap = await getDocs(
+        query(collection(this.firestore, 'creditOrders'), where('status', '==', 'Aprovado'))
+      );
+
+      // Agrupa pedidos válidos por cliente ordenados por createdAt ASC em memória (FIFO)
+      const ordersByClient = new Map<string, { id: string; credits: number }[]>();
+      const sortedOrderDocs = ordersSnap.docs.slice().sort((a, b) => {
+        const tA = a.data()['createdAt']?.toMillis?.() ?? 0;
+        const tB = b.data()['createdAt']?.toMillis?.() ?? 0;
+        return tA - tB;
+      });
+      sortedOrderDocs.forEach(d => {
+        const data = d.data();
+        const validityDate = data['validityDate']?.toDate();
+        if (validityDate && validityDate < now) return;
+        const clientId = data['clientId'];
+        if (!clientId) return;
+        if (!ordersByClient.has(clientId)) ordersByClient.set(clientId, []);
+        ordersByClient.get(clientId)!.push({ id: d.id, credits: data['credits'] || 0 });
+      });
+
+      // 2. Créditos usados: conta assessmentLinks completed por cliente
+      const completedLinksSnap = await getDocs(
+        query(collection(this.firestore, 'assessmentLinks'), where('status', '==', 'completed'))
+      );
+      const usedByClient = new Map<string, number>();
+      const participantClientCache = new Map<string, string>();
+
+      for (const linkDoc of completedLinksSnap.docs) {
+        const participantId = linkDoc.data()['participantId'];
+        if (!participantId) continue;
+
+        let clientId = participantClientCache.get(participantId);
+        if (!clientId) {
+          const pSnap = await getDoc(doc(this.firestore, `participants/${participantId}`));
+          clientId = pSnap.exists() ? pSnap.data()['clientId'] : undefined;
+          if (clientId) participantClientCache.set(participantId, clientId);
+        }
+        if (!clientId) continue;
+        usedByClient.set(clientId, (usedByClient.get(clientId) || 0) + 1);
+      }
+
+      // 3. Distribui créditos usados via FIFO nos pedidos e atualiza remainingCredits por pedido
+      for (const [clientId, orders] of ordersByClient.entries()) {
+        let toDeduct = usedByClient.get(clientId) || 0;
+        for (const order of orders) {
+          const consumed = Math.min(toDeduct, order.credits);
+          const remaining = order.credits - consumed;
+          toDeduct -= consumed;
+          const orderRef = doc(this.firestore, `creditOrders/${order.id}`);
+          await updateDoc(orderRef, { remainingCredits: remaining });
+        }
+      }
+
+      // 4. Atualiza cada cliente com os valores recalculados
+      const allClientIds = new Set([...ordersByClient.keys(), ...usedByClient.keys()]);
+      for (const clientId of allClientIds) {
+        const orders = ordersByClient.get(clientId) || [];
+        const purchased = orders.reduce((sum, o) => sum + o.credits, 0);
+        const used = usedByClient.get(clientId) || 0;
+        const available = Math.max(0, purchased - used);
+        const clientDocRef = doc(this.firestore, `clients/${clientId}`);
+        await updateDoc(clientDocRef, { credits: available, creditsUsed: used });
+      }
+    } catch (error) {
+      console.error('Erro ao sincronizar créditos:', error);
+    }
   }
 }

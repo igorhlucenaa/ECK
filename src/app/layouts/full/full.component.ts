@@ -130,12 +130,8 @@ export class FullComponent implements OnInit {
     this.authService.getCurrentUserRole().then((res) => {
       this.userRole = res;
 
-      // Atualizar os itens do menu de acordo com a role
-      if (this.userRole === 'admin_master') {
-        this.navItems = navItems; // Exibe todas as opções para admin_master
-      } else {
-        this.navItems = this.filterNavItemsByRole(navItems, this.userRole);
-      }
+      // Filtrar itens do menu de acordo com a role
+      this.navItems = this.filterNavItemsByRole(navItems, this.userRole);
     });
   }
 

@@ -9,6 +9,8 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  query,
+  where,
 } from '@angular/fire/firestore';
 import {
   FormGroup,
@@ -45,13 +47,12 @@ import { UsersComponent } from '../../users/users.component';
 export class ProjectDetailComponent implements OnInit {
   form: FormGroup = new FormGroup({
     name: new FormControl('', Validators.required),
-    budget: new FormControl(''),
     deadline: new FormControl('', Validators.required),
-    status: new FormControl('Ativo', Validators.required),
-    description: new FormControl(''),
+    status: new FormControl('Em andamento', Validators.required),
+    assessmentId: new FormControl(''),
     responsible: new FormControl(''),
     clientId: new FormControl('', Validators.required),
-    groupIds: new FormControl([], Validators.required), // Novo campo para selecionar grupos
+    groupIds: new FormControl([], Validators.required),
   });
 
   readonly today: Date = (() => {
@@ -69,6 +70,7 @@ export class ProjectDetailComponent implements OnInit {
   clientId: string | null = null;
   clients: { id: string; name: string }[] = [];
   groups: { id: string; name: string }[] = [];
+  assessments: { id: string; name: string }[] = [];
   usersInGroups: { id: string; name: string; groupNames: string[] }[] = [];
   isLoading = false;
 
@@ -84,6 +86,13 @@ export class ProjectDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id');
+
+    // Recarrega formulários sempre que o cliente mudar
+    this.form.get('clientId')?.valueChanges.subscribe(clientId => {
+      this.assessments = [];
+      if (clientId) this.loadAssessments(clientId);
+    });
+
     this.route.queryParamMap.subscribe(async (params) => {
       this.clientId = params.get('clientId');
 
@@ -132,6 +141,20 @@ export class ProjectDetailComponent implements OnInit {
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
         duration: 3000,
       });
+    }
+  }
+
+  async loadAssessments(clientId: string): Promise<void> {
+    try {
+      const snap = await getDocs(
+        query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
+      );
+      this.assessments = snap.docs.map(d => ({
+        id: d.id,
+        name: d.data()['name'] || 'Sem nome',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar formulários:', error);
     }
   }
 

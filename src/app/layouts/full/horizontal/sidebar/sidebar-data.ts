@@ -3,76 +3,77 @@ import { NavItem } from '../../vertical/sidebar/nav-item/nav-item';
 export const navItems: NavItem[] = [
   {
     navCap: 'Bem Vindo!',
-    role: 'any', // Visível para todos
+    role: ['admin_master', 'admin_client'],
   },
   {
     displayName: 'Dashboard',
-    iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando o dashboard
+    iconName: 'solar:pie-chart-2-bold-duotone',
     route: '/dashboard',
-    role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
-  },
-  {
-    displayName: 'Clientes',
-    iconName: 'solar:people-nearby-bold-duotone',
-    route: '/clients', // Caminho correto para a página de clientes
-    role: ['admin_master'],
-  },
-  {
-    displayName: 'Projetos',
-    iconName: 'solar:bill-list-bold-duotone',
-    route: '/projects', // Caminho correto para a página de clientes,
-    role: ['admin_client'],
-  },
-  {
-    displayName: 'Participantes',
-    iconName: 'solar:user-id-bold-duotone',
-    route: '/assessments/participants', // Caminho correto para a página de clientes,
-    role: ['admin_client'],
+    role: ['admin_master', 'admin_client'],
   },
   {
     displayName: 'Definições',
     iconName: 'solar:settings-bold-duotone',
     route: '',
+    role: ['admin_master', 'admin_client'],
     children: [
       {
-        displayName: 'Pedidos',
-        iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
-        route: '/orders', // Caminho correto para o componente de gestão de pedidos
-        role: ['admin_client'], // Visível apenas para clientes
+        displayName: 'Clientes',
+        iconName: 'solar:people-nearby-bold-duotone',
+        route: '/clients',
+        role: ['admin_master', 'admin_client'],
+      },
+      {
+        displayName: 'Pedidos de Crédito',
+        iconName: 'solar:wallet-money-bold-duotone',
+        route: '/orders',
+        role: ['admin_master'],
       },
       {
         displayName: 'Usuários e Grupos',
-        iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
-        route: '/users', // Caminho correto para a página de usuários
-        role: ['admin_client'], // Visível apenas para Administrador Master
+        iconName: 'solar:users-group-two-rounded-bold-duotone',
+        route: '/users',
+        role: ['admin_master'],
       },
       {
         displayName: 'Modelos de E-mail',
-        iconName: 'solar:mailbox-bold-duotone', // Ícone representando transações ou dinheiro
-        route: '/mail-templates', // Caminho correto para o componente de gestão de pedidos
-        role: ['admin_client'], // Visível apenas para clientes
+        iconName: 'solar:mailbox-bold-duotone',
+        route: '/mail-templates',
+        role: ['admin_master', 'admin_client'],
       },
       {
-        displayName: 'Competências',
-        iconName: 'solar:diploma-bold-duotone', // Ícone representando competências
-        route: '/competencies', // Nova rota para competências
-        role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
+        displayName: 'Gerenciar Competências',
+        iconName: 'solar:diploma-bold-duotone',
+        route: '/competencies',
+        role: ['admin_master', 'admin_client'],
       },
       {
         displayName: 'Formulários',
-        iconName: 'solar:chart-2-bold-duotone', // Ícone representando avaliações ou relatórios
-        route: '/assessments', // Caminho para o componente pai das avaliações
-        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
+        iconName: 'solar:chart-2-bold-duotone',
+        route: '/assessments',
+        role: ['admin_master', 'admin_client'],
       },
       {
         displayName: 'Relatórios',
-        iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando gráficos/relatórios
-        route: '/reports', // Alterado para a nova rota de relatórios
-        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
+        iconName: 'solar:pie-chart-2-bold-duotone',
+        route: '/reports',
+        role: ['admin_master', 'admin_client'],
       },
-
     ],
   },
+  {
+    displayName: 'Participantes',
+    iconName: 'solar:user-id-bold-duotone',
+    route: '/assessments/participants',
+    role: ['admin_master', 'admin_client'],
+  },
+  {
+    displayName: 'Projetos',
+    iconName: 'solar:bill-list-bold-duotone',
+    route: '/projects',
+    role: ['admin_master', 'admin_client'],
+  },
+
 
   // {
   //   displayName: 'Projetos',

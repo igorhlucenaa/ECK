@@ -91,11 +91,24 @@
           <mat-icon class="sidebar-block__done" *ngIf="selectedClientId">check_circle</mat-icon>
         </div>
         <mat-form-field appearance="outline" class="w-full">
-          <mat-select [formControl]="clientControl" [disabled]="userRole === 'admin_client'">
-            <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.companyName }}</mat-option>
+          <mat-select [formControl]="clientControl"
+                      [disabled]="userRole === 'admin_client' && clients.length <= 1"
+                      (closed)="onClientSelectClose()">
+            <div class="client-search-wrap">
+              <mat-icon class="client-search-icon">search</mat-icon>
+              <input class="client-search-input"
+                     [formControl]="clientSearchControl"
+                     placeholder="Buscar cliente..."
+                     (click)="$event.stopPropagation()"
+                     (keydown)="$event.stopPropagation()" />
+            </div>
+            <mat-option *ngFor="let client of filteredClients" [value]="client.id">
+              {{ client.companyName }}
+            </mat-option>
+            <div *ngIf="filteredClients.length === 0" class="client-search-empty">
+              Nenhum cliente encontrado
+            </div>
           </mat-select>
-          <mat-hint *ngIf="!selectedClientId">Selecione para começar</mat-hint>
-          <mat-hint *ngIf="selectedClientId">{{ competencyGroups.length }} grupo(s) cadastrado(s)</mat-hint>
         </mat-form-field>
       </div>
 
@@ -226,24 +239,15 @@
             <mat-label>Nome do Grupo</mat-label>
             <mat-icon matPrefix class="field-icon">label</mat-icon>
             <input matInput [formControl]="groupNameControl" placeholder="Ex: Liderança Executiva" />
-            <mat-hint>Identifica este conjunto de competências</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Avaliação vinculada (opcional)</mat-label>
             <mat-icon matPrefix class="field-icon">assignment</mat-icon>
             <mat-select [formControl]="assessmentControl">
-              <mat-option [value]="''">Criar avaliação automaticamente ao salvar</mat-option>
+              <mat-option [value]="''">Nenhuma</mat-option>
               <mat-option *ngFor="let a of assessments" [value]="a.id">{{ a.name }}</mat-option>
             </mat-select>
-            <mat-hint>Deixe em branco para usar perguntas customizadas</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="w-full" *ngIf="!selectedAssessmentId">
-            <mat-label>Nome da avaliação a criar</mat-label>
-            <mat-icon matPrefix class="field-icon">create</mat-icon>
-            <input matInput [formControl]="assessmentNameControl" placeholder="Ex: Avaliação de Liderança 2025" />
-            <mat-hint>Será criada automaticamente ao salvar o grupo</mat-hint>
           </mat-form-field>
 
           <div class="ws-group-editor__actions">
@@ -275,11 +279,18 @@
             </div>
           </div>
           <div class="ws-context-bar__actions">
+            <button mat-stroked-button class="btn-back-group"
+                    [class.btn-back-group--warn]="hasUnsavedChanges"
+                    (click)="hasUnsavedChanges ? confirmAndExit() : clearGroupSelection()">
+              <mat-icon>arrow_back</mat-icon>
+              Sair{{ hasUnsavedChanges ? ' *' : '' }}
+            </button>
             <button mat-stroked-button class="btn-edit-meta" (click)="openGroupEditor(getActiveGroup())">
               <mat-icon>edit</mat-icon>
               Editar Grupo
             </button>
-            <button mat-raised-button class="btn-save-group" (click)="saveCompetencyGroup()"
+            <button mat-raised-button class="btn-save-group"
+                    (click)="saveCompetencyGroup()"
                     [disabled]="!groupNameControl.value">
               <mat-icon>save</mat-icon>
               Salvar
@@ -342,7 +353,6 @@
                 <mat-label>Nome da Competência</mat-label>
                 <mat-icon matPrefix class="field-icon">label</mat-icon>
                 <input matInput formControlName="nome" placeholder="Ex: Liderança, Comunicação..." />
-                <mat-hint>Aparecerá nos relatórios e gráficos</mat-hint>
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="w-full">
@@ -364,29 +374,15 @@
                     </div>
                   </mat-option>
                 </mat-select>
-                <mat-hint>Questões já usadas em outras competências estão bloqueadas</mat-hint>
               </mat-form-field>
 
               <!-- Tools bar -->
               <div class="question-tools" *ngIf="selectedAssessmentId">
-                <div class="question-tools__info">
-                  <mat-icon class="info-icon">info_outline</mat-icon>
-                  <span>{{ getAvailableQuestionCount() }}</span>
-                </div>
                 <button mat-stroked-button class="btn-new-question" type="button"
                         (click)="openCreateQuestionDialog()">
                   <mat-icon>add_circle_outline</mat-icon>
                   Nova Pergunta
                 </button>
-              </div>
-
-              <!-- Warning sem avaliação -->
-              <div class="info-banner info-banner--warning" *ngIf="!selectedAssessmentId">
-                <mat-icon>info</mat-icon>
-                <div>
-                  <strong>Sem avaliação</strong>
-                  <p>Selecione uma avaliação para vincular perguntas à competência.</p>
-                </div>
               </div>
 
               <div class="form-actions">
@@ -468,6 +464,11 @@
                   <div *ngFor="let pId of c.perguntasIds; let qi = index" class="comp-card__question-item">
                     <span class="comp-card__q-num">{{ qi + 1 }}</span>
                     <span class="comp-card__q-text">{{ questionMap[pId] || pId }}</span>
+                    <button mat-icon-button class="comp-card__q-edit" *ngIf="selectedAssessmentId"
+                            matTooltip="Editar texto da pergunta"
+                            (click)="openEditQuestionDialog(pId); $event.stopPropagation()">
+                      <mat-icon style="font-size:16px;width:16px;height:16px">edit</mat-icon>
+                    </button>
                   </div>
                 </div>
                 <div *ngIf="!(c.perguntasIds?.length)" class="comp-card__no-questions">
@@ -520,6 +521,10 @@
                   <div *ngFor="let q of getUnlinkedLinkable()" class="coverage-q-item coverage-q-item--linkable">
                     <mat-icon class="coverage-q-item__icon">{{ getQuestionTypeIcon(q.type) }}</mat-icon>
                     <span class="coverage-q-item__text">{{ q.title }}</span>
+                    <button mat-icon-button class="coverage-q-item__edit" matTooltip="Editar pergunta"
+                            (click)="openEditQuestionDialog(q.id)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
                     <button mat-icon-button class="coverage-q-item__del" matTooltip="Remover pergunta"
                             (click)="removerPerguntaCustom(q.id)">
                       <mat-icon>delete_outline</mat-icon>
@@ -543,6 +548,10 @@
                   <div *ngFor="let q of getUnlinkedOpen()" class="coverage-q-item coverage-q-item--open">
                     <mat-icon class="coverage-q-item__icon">{{ getQuestionTypeIcon(q.type) }}</mat-icon>
                     <span class="coverage-q-item__text">{{ q.title }}</span>
+                    <button mat-icon-button class="coverage-q-item__edit" matTooltip="Editar pergunta"
+                            (click)="openEditQuestionDialog(q.id)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
                     <button mat-icon-button class="coverage-q-item__del" matTooltip="Remover pergunta"
                             (click)="removerPerguntaCustom(q.id)">
                       <mat-icon>delete_outline</mat-icon>

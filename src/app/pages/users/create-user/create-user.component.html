@@ -50,7 +50,7 @@
       </mat-form-field>
     </div>
 
-    <!-- Papel + Cliente -->
+    <!-- Papel + Clientes (multi-select) -->
     <div class="form-group form-row">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Papel / Perfil</mat-label>
@@ -64,14 +64,14 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Cliente</mat-label>
+        <mat-label>Clientes</mat-label>
         <mat-icon matPrefix class="field-icon">business</mat-icon>
-        <mat-select formControlName="client" (selectionChange)="onClientChange($event.value)">
-          <mat-option value="">Nenhum</mat-option>
+        <mat-select formControlName="clients" multiple>
           <mat-option *ngFor="let client of clients" [value]="client.id">
             {{ client.name }}
           </mat-option>
         </mat-select>
+        <mat-hint>Selecione um ou mais clientes</mat-hint>
       </mat-form-field>
     </div>
 

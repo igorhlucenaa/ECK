@@ -6,7 +6,8 @@
     subtitle="Gerencie os projetos cadastrados na plataforma"
     data-tour="projects-title">
 
-    <button mat-raised-button class="btn-action" (click)="openProjectForm()" data-tour="projects-add">
+    <button mat-raised-button class="btn-action" (click)="openProjectForm()" data-tour="projects-add"
+            *ngIf="isAdminMaster">
       <mat-icon>add</mat-icon>
       {{ 'Adicionar Projeto' | translate }}
     </button>
@@ -16,8 +17,20 @@
   <!-- Card principal -->
   <div class="projects-card">
 
-    <!-- Barra de busca -->
+    <!-- Barra de busca + filtros -->
     <div class="search-bar" data-tour="projects-search">
+
+      <!-- Filtro por cliente (admin_master) -->
+      <mat-form-field appearance="outline" class="client-filter-field" *ngIf="isAdminMaster && clients.length > 0">
+        <mat-label>Filtrar por cliente</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:18px;">business</mat-icon>
+        <mat-select [(ngModel)]="selectedClientId" (selectionChange)="onClientChange()">
+          <mat-option [value]="null">Todos os clientes</mat-option>
+          <mat-option *ngFor="let c of clients" [value]="c.id">{{ c.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Busca por nome do projeto -->
       <mat-form-field appearance="outline" class="search-field">
         <mat-label>Buscar projeto</mat-label>
         <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:20px;">search</mat-icon>
@@ -26,13 +39,26 @@
           <mat-icon>close</mat-icon>
         </button>
       </mat-form-field>
+
+      <div class="status-filter-chips">
+        <button *ngFor="let f of STATUS_FILTERS"
+                class="status-chip"
+                [class.status-chip--active]="statusFilter === f.value"
+                [class.status-chip--em-andamento]="f.value === 'Em andamento'"
+                [class.status-chip--concluido]="f.value === 'Concluído'"
+                [class.status-chip--cancelado]="f.value === 'Cancelado'"
+                (click)="applyStatusFilter(f.value)">
+          {{ f.label }}
+        </button>
+      </div>
+
       <div class="search-count" *ngIf="dataSource.filteredData">
         {{ dataSource.filteredData.length }} resultado{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
       </div>
     </div>
 
-    <!-- Barra de ações em massa -->
-    <div class="bulk-action-bar" *ngIf="isSomeProjectsSelected()">
+    <!-- Barra de ações em massa (admin_master apenas) -->
+    <div class="bulk-action-bar" *ngIf="isAdminMaster && isSomeProjectsSelected()">
       <mat-icon>check_circle</mat-icon>
       <strong>{{ selectedProjectIds.size }}</strong>
       <span>projeto{{ selectedProjectIds.size !== 1 ? 's' : '' }} selecionado{{ selectedProjectIds.size !== 1 ? 's' : '' }}</span>
@@ -49,7 +75,7 @@
     <div class="table-container" data-tour="projects-table">
       <table mat-table [dataSource]="dataSource" matSort class="projects-table">
 
-        <!-- Seleção -->
+        <!-- Seleção (admin_master apenas) -->
         <ng-container matColumnDef="select">
           <th mat-header-cell *matHeaderCellDef class="select-col">
             <mat-checkbox
@@ -130,14 +156,9 @@
           <th mat-header-cell *matHeaderCellDef class="actions-col" data-tour="projects-actions">{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let p" class="actions-col">
             <div class="actions-cell">
+              <!-- Disponível para todos -->
               <button mat-icon-button class="action-users" (click)="goToProjectUsers(p.id)" [matTooltip]="'Usuários do projeto' | translate">
                 <mat-icon>groups</mat-icon>
-              </button>
-              <button mat-icon-button class="action-mail" (click)="goToProjectTemplates(p.clientId, p.id)" [matTooltip]="'Modelos de e-mail' | translate">
-                <mat-icon>mail</mat-icon>
-              </button>
-              <button mat-icon-button class="action-form" (click)="goToProjectQuestionnaires(p.clientId)" [matTooltip]="'Formulário de Avaliação' | translate">
-                <mat-icon>assignment</mat-icon>
               </button>
               <button mat-icon-button class="action-participants"
                       (click)="openResendModal(p.id, p.clientId)"
@@ -146,10 +167,31 @@
                 <mat-spinner *ngIf="loadingParticipantsProjectId === p.id" diameter="20"></mat-spinner>
                 <mat-icon *ngIf="loadingParticipantsProjectId !== p.id">supervisor_account</mat-icon>
               </button>
-              <button mat-icon-button class="action-edit" (click)="openProjectForm(p.id)" [matTooltip]="'Editar Projeto' | translate">
+
+              <!-- Somente admin_master -->
+              <button mat-icon-button class="action-mail" *ngIf="isAdminMaster"
+                      (click)="goToProjectTemplates(p.clientId, p.id)"
+                      [matTooltip]="'Modelos de e-mail' | translate">
+                <mat-icon>mail</mat-icon>
+              </button>
+              <button mat-icon-button class="action-form" *ngIf="isAdminMaster"
+                      (click)="goToProjectQuestionnaires(p.clientId)"
+                      [matTooltip]="'Formulário de Avaliação' | translate">
+                <mat-icon>assignment</mat-icon>
+              </button>
+              <button mat-icon-button class="action-edit" *ngIf="isAdminMaster"
+                      (click)="openProjectForm(p.id)"
+                      [matTooltip]="'Editar Projeto' | translate">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button class="action-delete" (click)="deleteProject(p.id)" [matTooltip]="'Excluir Projeto' | translate">
+              <button mat-icon-button class="action-cancel" *ngIf="isAdminMaster && p.status !== 'Cancelado'"
+                      (click)="cancelProject(p.id)"
+                      [matTooltip]="'Cancelar Projeto' | translate">
+                <mat-icon>block</mat-icon>
+              </button>
+              <button mat-icon-button class="action-delete" *ngIf="isAdminMaster"
+                      (click)="deleteProject(p.id)"
+                      [matTooltip]="'Excluir Projeto' | translate">
                 <mat-icon>delete_outline</mat-icon>
               </button>
             </div>

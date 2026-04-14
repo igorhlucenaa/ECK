@@ -170,17 +170,52 @@
   color: #64748b;
 }
 
-.credits-badge {
-  display: inline-flex;
+.credits-cell {
+  display: flex;
+  gap: 6px;
   align-items: center;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: rgba(76, 175, 80, 0.1);
-  color: #2e7d32;
-  font-size: 13px;
-  font-weight: 600;
+}
 
-  &.credits-zero {
+.credits-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  min-width: 62px;
+  cursor: default;
+
+  &__label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+
+  &__value {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  &--purchased {
+    background: rgba(99, 102, 241, 0.08);
+    color: #4f46e5;
+  }
+
+  &--used {
+    background: rgba(245, 158, 11, 0.1);
+    color: #b45309;
+  }
+
+  &--available {
+    background: rgba(76, 175, 80, 0.1);
+    color: #2e7d32;
+  }
+
+  &--zero {
     background: rgba(239, 68, 68, 0.08);
     color: #dc2626;
   }

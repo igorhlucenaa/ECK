@@ -84,6 +84,7 @@ export class CreateAssessmentComponent implements OnInit {
       isAutoSave: true,
       showJSONEditorTab: true,
       showThemeTab: true,
+      showTranslationTab: true,
     });
 
     this.setupThemeSaving();
@@ -353,8 +354,14 @@ export class CreateAssessmentComponent implements OnInit {
               case 'likert':
               case 'rating':
                 surveyQuestion.type = 'rating';
-                surveyQuestion.rateMin = 1;
-                surveyQuestion.rateMax = 5;
+                surveyQuestion.rateValues = [
+                  { value: 1, text: '1' },
+                  { value: 2, text: '2' },
+                  { value: 3, text: '3' },
+                  { value: 4, text: '4' },
+                  { value: 5, text: '5' },
+                  { value: '?', text: '?' }
+                ];
                 surveyQuestion.minRateDescription = 'Discordo Totalmente';
                 surveyQuestion.maxRateDescription = 'Concordo Totalmente';
                 break;

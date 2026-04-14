@@ -5,6 +5,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 import { TablerIconsModule } from 'angular-tabler-icons';
 import { MaterialModule } from 'src/app/material.module';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 export interface CreditExpiryData {
   clientName: string;
@@ -27,24 +28,36 @@ export class AppProjectDataComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   private firestore = inject(Firestore);
+  private authService = inject(AuthService);
 
   async ngOnInit(): Promise<void> {
     const data = await this.fetchExpiringCredits();
     this.dataSource2.data = data;
-    this.dataSource2.paginator = this.paginator; // Configura a paginação
+    this.dataSource2.paginator = this.paginator;
   }
 
   private async fetchExpiringCredits(): Promise<CreditExpiryData[]> {
     const creditOrdersCollection = collection(this.firestore, 'creditOrders');
     const now = new Date();
-
-    // Buscar documentos cuja validade esteja próxima (exemplo: nos próximos 30 dias)
     const expiryThreshold = new Date();
     expiryThreshold.setDate(now.getDate() + 30);
 
-    const querySnapshot = await getDocs(
-      query(creditOrdersCollection, where('validityDate', '<=', expiryThreshold))
-    );
+    const userRole = await this.authService.getCurrentUserRole();
+    const userClientIds = await this.authService.getCurrentUserClientIds();
+
+    let querySnapshot;
+    if (userRole === 'admin_client' && userClientIds.length > 0) {
+      querySnapshot = await getDocs(
+        query(creditOrdersCollection,
+          where('clientId', 'in', userClientIds),
+          where('validityDate', '<=', expiryThreshold)
+        )
+      );
+    } else {
+      querySnapshot = await getDocs(
+        query(creditOrdersCollection, where('validityDate', '<=', expiryThreshold))
+      );
+    }
 
     const results = await Promise.all(
       querySnapshot.docs.map(async (orderDoc) => {
