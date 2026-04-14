@@ -13,6 +13,8 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 export interface User {
   id: string;
@@ -24,7 +26,7 @@ export interface User {
 @Component({
   selector: 'app-project-users',
   standalone: true,
-  imports: [MaterialModule, CommonModule],
+  imports: [MaterialModule, CommonModule, AppPageHeaderComponent, TranslateModule],
   templateUrl: './project-users.component.html',
   styleUrls: ['./project-users.component.scss'],
 })
@@ -143,6 +145,28 @@ export class ProjectUsersComponent implements OnInit {
     if (this.dataSource.paginator) {
       this.dataSource.paginator.firstPage();
     }
+  }
+
+  getInitial(name: string): string {
+    return name?.charAt(0)?.toUpperCase() || '?';
+  }
+
+  getRoleLabel(role: string): string {
+    const map: Record<string, string> = {
+      admin_master: 'Admin Master',
+      admin_client: 'Admin Cliente',
+      viewer: 'Visualizador',
+    };
+    return map[role] || role;
+  }
+
+  getRoleClass(role: string): string {
+    const map: Record<string, string> = {
+      admin_master: 'role-admin-master',
+      admin_client: 'role-admin-client',
+      viewer: 'role-viewer',
+    };
+    return map[role] || 'role-viewer';
   }
 
   goBack(): void {

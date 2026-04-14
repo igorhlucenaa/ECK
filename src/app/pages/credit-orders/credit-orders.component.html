@@ -1,246 +1,256 @@
-<div class="container my-4">
-  <mat-card>
-    <mat-card-title style="margin: 15px" data-tour="orders-header"
-      >Gestão de Pedidos de Crédito</mat-card-title
-    >
-    <mat-card-content>
-      <div
-        class="mt-3 text-end"
-        style="margin-top: 10px; margin-bottom: 10px; text-align: end"
-        data-tour="orders-add"
-      >
-        <button mat-flat-button color="primary" (click)="openNewOrderForm()">
-          Criar Novo Pedido
+<div class="orders-wrapper">
+
+  <app-page-header
+    eyebrow="Financeiro"
+    title="Pedidos de Crédito"
+    subtitle="Gerencie os pedidos de crédito dos clientes"
+    data-tour="orders-header">
+
+    <button mat-raised-button class="btn-action" (click)="openNewOrderForm()" data-tour="orders-add">
+      <mat-icon>add_circle</mat-icon>
+      Criar Novo Pedido
+    </button>
+
+  </app-page-header>
+
+  <!-- Card principal -->
+  <div class="orders-card">
+
+    <!-- Barra de busca e filtros -->
+    <div class="search-bar">
+
+      <mat-form-field appearance="outline" class="filter-field filter-field--client">
+        <mat-label>Cliente</mat-label>
+        <mat-icon matPrefix class="search-prefix-icon">business</mat-icon>
+        <mat-select [(ngModel)]="selectedClient" (selectionChange)="applyFilter()">
+          <mat-option value="">Todos os clientes</mat-option>
+          <mat-option *ngFor="let client of clientsList" [value]="client.id">
+            {{ client.name }}
+          </mat-option>
+        </mat-select>
+        <button mat-icon-button matSuffix *ngIf="selectedClient"
+          (click)="selectedClient = ''; applyFilter(); $event.stopPropagation()" matTooltip="Limpar">
+          <mat-icon>close</mat-icon>
         </button>
-      </div>
-      <!-- Filtros -->
-      <div class="row mb-4 align-items-center">
-        <div class="col-md-6 mb-4">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Cliente</mat-label>
-            <mat-select
-              [(ngModel)]="selectedClient"
-              (selectionChange)="applyFilter()"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option
-                *ngFor="let client of clientsList"
-                [value]="client.id"
-              >
-                {{ client.name }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
+      </mat-form-field>
 
-        <!-- <div class="col-md-4 mb-4">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Data Início</mat-label>
-            <input
-              matInput
-              [matDatepicker]="startDatePicker"
-              [(ngModel)]="startDate"
-              (dateChange)="applyFilter()"
-              [max]="endDate"
-            />
-            <mat-datepicker-toggle
-              matSuffix
-              [for]="startDatePicker"
-            ></mat-datepicker-toggle>
-            <mat-datepicker #startDatePicker></mat-datepicker>
-          </mat-form-field>
-        </div>
-        <div class="col-md-4 mb-4">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Data Fim</mat-label>
-            <input
-              matInput
-              [matDatepicker]="endDatePicker"
-              [(ngModel)]="endDate"
-              (dateChange)="applyFilter()"
-              [min]="startDate"
-            />
-            <mat-datepicker-toggle
-              matSuffix
-              [for]="endDatePicker"
-            ></mat-datepicker-toggle>
-            <mat-datepicker #endDatePicker></mat-datepicker>
-          </mat-form-field>
-        </div> -->
-        <div class="col-md-6 mb-4">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Status</mat-label>
-            <mat-select
-              [(ngModel)]="selectedStatus"
-              (selectionChange)="applyFilter()"
-            >
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="Pendente">Pendente</mat-option>
-              <mat-option value="Aprovado">Aprovado</mat-option>
-              <mat-option value="Rejeitado">Rejeitado</mat-option>
-              <mat-option value="Expirado">Expirado</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-        <div class="col-md-12 mb-12">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Buscar</mat-label>
-            <input
-              matInput
-              (keyup)="applyTextFilter($event)"
-              [placeholder]="('Digite para buscar' | translate)"
-            />
-          </mat-form-field>
+      <mat-form-field appearance="outline" class="filter-field filter-field--status">
+        <mat-label>Status</mat-label>
+        <mat-icon matPrefix class="search-prefix-icon">toggle_on</mat-icon>
+        <mat-select [(ngModel)]="selectedStatus" (selectionChange)="applyFilter()">
+          <mat-option value="">Todos os status</mat-option>
+          <mat-option value="Pendente">Pendente</mat-option>
+          <mat-option value="Aprovado">Aprovado</mat-option>
+          <mat-option value="Rejeitado">Rejeitado</mat-option>
+          <mat-option value="Expirado">Expirado</mat-option>
+        </mat-select>
+        <button mat-icon-button matSuffix *ngIf="selectedStatus"
+          (click)="selectedStatus = ''; applyFilter(); $event.stopPropagation()" matTooltip="Limpar">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="filter-field filter-field--search">
+        <mat-label>Buscar</mat-label>
+        <mat-icon matPrefix class="search-prefix-icon">search</mat-icon>
+        <input matInput (keyup)="applyTextFilter($event)" placeholder="Nome do cliente..." />
+      </mat-form-field>
+
+      <div class="search-bar__right">
+        <button mat-stroked-button class="btn-clear-filters"
+                *ngIf="selectedClient || selectedStatus"
+                (click)="resetFilters()">
+          <mat-icon>filter_list_off</mat-icon>
+          Limpar filtros
+        </button>
+        <div class="search-count">
+          {{ dataSource.filteredData.length }} resultado{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
         </div>
       </div>
 
-      <!-- Botão Limpar Filtros -->
-      <div class="row mb-4">
-        <div class="col-md-12" style="text-align: end">
-          <button mat-flat-button color="accent" (click)="resetFilters()">
-            Limpar Filtros
-          </button>
-        </div>
-      </div>
+    </div>
 
-      <!-- Tabela -->
-      <div class="table-responsive">
-        <table
-          mat-table
-          [dataSource]="dataSource"
-          class="mat-elevation-z8 w-100"
-          matSort
-        >
-          <!-- Colunas -->
-          <ng-container matColumnDef="id">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Ref. Pedido
-            </th>
-            <td mat-cell *matCellDef="let order">{{ order.id }}</td>
-          </ng-container>
+    <!-- Tabela -->
+    <div class="table-container">
+      <table mat-table [dataSource]="dataSource" matSort class="orders-table">
 
-          <ng-container matColumnDef="createdAt">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
+        <!-- Coluna: Ref. Pedido -->
+        <ng-container matColumnDef="id">
+          <th mat-header-cell *matHeaderCellDef>
+            <span class="col-header">
+              <mat-icon class="col-icon">tag</mat-icon>
+              Referência
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order">
+            <span class="ref-cell">{{ order.id | slice:0:8 }}…</span>
+          </td>
+        </ng-container>
+
+        <!-- Coluna: Data do Pedido -->
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">calendar_today</mat-icon>
               Data do Pedido
-            </th>
-            <td mat-cell *matCellDef="let order">
-              {{ order.createdAt | date : "dd/MM/yyyy HH:mm" }}
-            </td>
-          </ng-container>
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order" class="date-cell">
+            {{ order.createdAt | date:'dd/MM/yyyy' }}
+            <span class="date-time">{{ order.createdAt | date:'HH:mm' }}</span>
+          </td>
+        </ng-container>
 
-          <!-- Outras colunas aqui... -->
+        <!-- Coluna: Cliente -->
+        <ng-container matColumnDef="clientName">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">business</mat-icon>
+              Cliente
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order">
+            <div class="company-cell">
+              <div class="company-avatar">{{ (order.clientName || '?')[0].toUpperCase() }}</div>
+              <span class="company-name">{{ order.clientName || 'Não identificado' }}</span>
+            </div>
+          </td>
+        </ng-container>
 
-          <ng-container matColumnDef="clientName">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
-            <td mat-cell *matCellDef="let order">
-              {{ order.clientName || "Não identificado" }}
-            </td>
-          </ng-container>
+        <!-- Coluna: Créditos Adquiridos -->
+        <ng-container matColumnDef="openingBalance">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">add_circle_outline</mat-icon>
+              Adquiridos
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order">
+            <span class="credits-badge credits-acquired">{{ order.openingBalance }}</span>
+          </td>
+        </ng-container>
 
-          <ng-container matColumnDef="openingBalance">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Créditos Adquiridos
-            </th>
-            <td mat-cell *matCellDef="let order">{{ order.openingBalance }}</td>
-          </ng-container>
+        <!-- Coluna: Créditos Utilizados -->
+        <ng-container matColumnDef="usedBalance">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">remove_circle_outline</mat-icon>
+              Utilizados
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order">
+            <span class="credits-badge credits-used">{{ order.usedBalance }}</span>
+          </td>
+        </ng-container>
 
-          <ng-container matColumnDef="usedBalance">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Créditos Utilizados
-            </th>
-            <td mat-cell *matCellDef="let order">{{ order.usedBalance }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="remainingBalance">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Créditos Remanescentes
-            </th>
-            <td mat-cell *matCellDef="let order">
+        <!-- Coluna: Créditos Remanescentes -->
+        <ng-container matColumnDef="remainingBalance">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">savings</mat-icon>
+              Remanescentes
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order">
+            <span class="credits-badge" [class.credits-zero]="order.remainingBalance === 0">
               {{ order.remainingBalance }}
-            </td>
-          </ng-container>
+            </span>
+          </td>
+        </ng-container>
 
-          <ng-container matColumnDef="daysRemaining">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
+        <!-- Coluna: Dias Restantes -->
+        <ng-container matColumnDef="daysRemaining">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">hourglass_empty</mat-icon>
               Dias Restantes
-            </th>
-            <td mat-cell *matCellDef="let order">{{ order.daysRemaining }}</td>
-          </ng-container>
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order">
+            <span class="days-badge" [class.days-critical]="order.daysRemaining <= 7 && order.daysRemaining > 0"
+                                     [class.days-zero]="order.daysRemaining === 0">
+              {{ order.daysRemaining }}d
+            </span>
+          </td>
+        </ng-container>
 
-          <ng-container matColumnDef="expirationDate">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              Data de Expiração
-            </th>
-            <td mat-cell *matCellDef="let order">
-              {{ order.expirationDate | date : "dd/MM/yyyy" }}
-            </td>
-          </ng-container>
+        <!-- Coluna: Data de Expiração -->
+        <ng-container matColumnDef="expirationDate">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">event_busy</mat-icon>
+              Expiração
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order" class="date-cell">
+            {{ order.expirationDate | date:'dd/MM/yyyy' }}
+          </td>
+        </ng-container>
 
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-            <td
-              mat-cell
-              *matCellDef="let order"
-              [ngClass]="{
-                'status-pending': order.status === 'Pendente',
-                'status-approved': order.status === 'Aprovado',
-                'status-rejected': order.status === 'Rejeitado'
-              }"
-            >
+        <!-- Coluna: Status -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">flag</mat-icon>
+              Status
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order">
+            <span class="status-chip"
+              [class.status-pendente]="order.status === 'Pendente'"
+              [class.status-aprovado]="order.status === 'Aprovado'"
+              [class.status-rejeitado]="order.status === 'Rejeitado'"
+              [class.status-expirado]="order.status === 'Expirado'">
               {{ order.status }}
-            </td>
-          </ng-container>
+            </span>
+          </td>
+        </ng-container>
 
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Ações</th>
-            <td mat-cell *matCellDef="let order">
-              <button
-                mat-icon-button
-                color="primary"
+        <!-- Coluna: Ações -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="actions-col">Ações</th>
+          <td mat-cell *matCellDef="let order" class="actions-col">
+            <div class="actions-cell">
+              <button mat-icon-button class="action-approve"
                 matTooltip="Aprovar Pedido"
-                *ngIf="
-                  order.status === 'Pendente' && userRole === 'admin_master'
-                "
-                (click)="approveOrder(order.id)"
-              >
-                <mat-icon>check</mat-icon>
+                *ngIf="order.status === 'Pendente' && userRole === 'admin_master'"
+                (click)="approveOrder(order.id)">
+                <mat-icon>check_circle</mat-icon>
               </button>
-              <button
-                mat-icon-button
-                color="warn"
+              <button mat-icon-button class="action-reject"
                 matTooltip="Rejeitar Pedido"
-                *ngIf="
-                  order.status === 'Pendente' && userRole === 'admin_master'
-                "
-                (click)="rejectOrder(order.id)"
-              >
-                <mat-icon>close</mat-icon>
+                *ngIf="order.status === 'Pendente' && userRole === 'admin_master'"
+                (click)="rejectOrder(order.id)">
+                <mat-icon>cancel</mat-icon>
               </button>
-            </td>
-          </ng-container>
+            </div>
+          </td>
+        </ng-container>
 
-          <tr
-            mat-header-row
-            *matHeaderRowDef="displayedColumns; sticky: true"
-          ></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-        </table>
-      </div>
-    </mat-card-content>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
+
+        <!-- Linha vazia -->
+        <tr class="mat-row no-data-row" *matNoDataRow>
+          <td class="mat-cell" [attr.colspan]="displayedColumns.length">
+            <div class="no-data">
+              <mat-icon>receipt_long</mat-icon>
+              <span>Nenhum pedido encontrado</span>
+            </div>
+          </td>
+        </tr>
+
+      </table>
+    </div>
 
     <!-- Paginação -->
     <mat-paginator
-      [pageSize]="5"
-      [pageSizeOptions]="[5, 10, 20]"
+      [pageSize]="10"
+      [pageSizeOptions]="[5, 10, 20, 50]"
       showFirstLastButtons
-    ></mat-paginator>
-  </mat-card>
+      class="orders-paginator">
+    </mat-paginator>
 
-  <!-- <div class="row">
-    <div class="col-md-6 text-end">
-      <button mat-flat-button color="primary" (click)="openNewOrderForm()">
-        Criar Novo Pedido
-      </button>
-    </div>
-  </div> -->
+  </div>
+
 </div>

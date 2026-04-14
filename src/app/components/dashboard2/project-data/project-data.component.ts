@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
-import { Firestore, collection, query, where, getDocs } from '@angular/fire/firestore';
+import { Firestore, collection, doc, query, where, getDocs, getDoc } from '@angular/fire/firestore';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 import { TablerIconsModule } from 'angular-tabler-icons';
@@ -46,20 +46,26 @@ export class AppProjectDataComponent implements OnInit {
       query(creditOrdersCollection, where('validityDate', '<=', expiryThreshold))
     );
 
-    const clientCollection = collection(this.firestore, 'clients');
-
     const results = await Promise.all(
-      querySnapshot.docs.map(async (doc) => {
-        const creditOrder = doc.data();
-        const clientSnapshot = await getDocs(
-          query(clientCollection, where('id', '==', creditOrder['clientId']))
-        );
+      querySnapshot.docs.map(async (orderDoc) => {
+        const creditOrder = orderDoc.data();
+        const clientId = creditOrder['clientId'];
 
-        const client = clientSnapshot.docs[0]?.data();
+        let clientName = 'Desconhecido';
+        let logo: string | null = null;
+
+        if (clientId) {
+          const clientRef = doc(this.firestore, 'clients', clientId);
+          const clientSnap = await getDoc(clientRef);
+          if (clientSnap.exists()) {
+            clientName = clientSnap.data()['companyName'] || 'Desconhecido';
+            logo = clientSnap.data()['logo'] || null;
+          }
+        }
 
         return {
-          clientName: client?.['companyName'] || 'Desconhecido',
-          logo: client?.['logo'] || null,
+          clientName,
+          logo,
           validityDate: new Date(creditOrder['validityDate'].seconds * 1000),
           credits: creditOrder['credits'],
           priority: this.getPriority(creditOrder['validityDate'].seconds),

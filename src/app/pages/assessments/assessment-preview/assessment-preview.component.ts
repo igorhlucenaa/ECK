@@ -10,24 +10,7 @@ import { SurveyModule } from 'survey-angular-ui';
   standalone: true,
   imports: [MaterialModule, CommonModule, SurveyModule],
   templateUrl: './assessment-preview.component.html',
-  styles: [
-    `
-      mat-dialog-content {
-        font-size: 14px;
-      }
-      h3 {
-        margin-top: 20px;
-      }
-      .container {
-        width: 100%;
-        margin: auto;
-      }
-
-      .text-end {
-        margin-top: 20px;
-      }
-    `,
-  ],
+  styleUrls: ['./assessment-preview.component.scss'],
 })
 export class AssessmentPreviewComponent implements OnInit {
   surveyModel: SurveyModel;
@@ -38,10 +21,12 @@ export class AssessmentPreviewComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Certifique-se de que 'data.surveyJSON' existe e contém JSON válido para o survey
     if (this.data.surveyJSON) {
       this.surveyModel = new SurveyModel(this.data.surveyJSON);
-      this.surveyModel.locale = 'pt'; // Configura a localização se necessário
+      this.surveyModel.locale = '';  // compatível com títulos em texto puro e localizados
+      this.surveyModel.showCompletedPage = false;
+      // Impede envio real — apenas fecha o dialog ao concluir
+      this.surveyModel.onComplete.add(() => this.dialogRef.close());
     }
   }
 

@@ -9,6 +9,7 @@ import {
   getDocs,
   query,
   where,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -25,16 +26,18 @@ import { ResendAssessmentModalComponent } from '../resend-assessment-modal/resen
 import { ParticipantsModalComponent } from '../participants-modal/participants-modal.component';
 import { ParticipantsComponent } from '../../assessments/participants/participants.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-projects-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, TranslateModule],
+  imports: [CommonModule, MaterialModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './projects-list.component.html',
   styleUrls: ['./projects-list.component.scss'],
 })
 export class ProjectsListComponent implements OnInit {
   displayedColumns: string[] = [
+    'select',
     'client',
     'name',
     'deadline',
@@ -49,6 +52,26 @@ export class ProjectsListComponent implements OnInit {
   clients: { id: string; name: string }[] = [];
   selectedClientId: string | null = null;
   isAdminMaster: boolean = false;
+  today = new Date();
+  loadingParticipantsProjectId: string | null = null;
+  selectedProjectIds = new Set<string>();
+
+  getInitial(name: string): string {
+    return name?.charAt(0)?.toUpperCase() || 'P';
+  }
+
+  getStatusClass(status: string): string {
+    const map: Record<string, string> = {
+      'Ativo': 'status-ativo',
+      'Inativo': 'status-inativo',
+      'Concluído': 'status-concluido',
+    };
+    return map[status] || 'status-inativo';
+  }
+
+  isOverdue(deadline: Date | null): boolean {
+    return !!deadline && deadline < this.today;
+  }
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -260,6 +283,56 @@ export class ProjectsListComponent implements OnInit {
     }
   }
 
+  // ─── Seleção em massa ────────────────────────────────────────
+  isAllProjectsSelected(): boolean {
+    const visible = this.dataSource.filteredData;
+    return visible.length > 0 && visible.every(p => this.selectedProjectIds.has(p.id));
+  }
+
+  isSomeProjectsSelected(): boolean {
+    return this.dataSource.filteredData.some(p => this.selectedProjectIds.has(p.id));
+  }
+
+  toggleAllProjects(checked: boolean): void {
+    if (checked) {
+      this.dataSource.filteredData.forEach(p => this.selectedProjectIds.add(p.id));
+    } else {
+      this.dataSource.filteredData.forEach(p => this.selectedProjectIds.delete(p.id));
+    }
+  }
+
+  toggleProjectSelect(id: string): void {
+    if (this.selectedProjectIds.has(id)) {
+      this.selectedProjectIds.delete(id);
+    } else {
+      this.selectedProjectIds.add(id);
+    }
+  }
+
+  deleteSelectedProjects(): void {
+    const count = this.selectedProjectIds.size;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: { message: this.translate.instant(`Tem certeza de que deseja excluir ${count} projeto(s)? Esta ação não pode ser desfeita.`) },
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      const ids = Array.from(this.selectedProjectIds);
+      try {
+        const batch = writeBatch(this.firestore);
+        ids.forEach(id => batch.delete(doc(this.firestore, `projects/${id}`)));
+        await batch.commit();
+        this.dataSource.data = this.dataSource.data.filter(p => !this.selectedProjectIds.has(p.id));
+        this.selectedProjectIds.clear();
+        this.snackBar.open(this.translate.instant('Projetos excluídos com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
+      } catch (error) {
+        console.error('Erro ao excluir projetos em massa:', error);
+        this.snackBar.open(this.translate.instant('Erro ao excluir projetos. Tente novamente.'), this.translate.instant('Fechar'), { duration: 3000 });
+      }
+    });
+  }
+
   deleteProject(projectId: string): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
@@ -322,15 +395,25 @@ export class ProjectsListComponent implements OnInit {
   }
 
   openResendModal(projectId: string, clientId: string): void {
+    this.loadingParticipantsProjectId = projectId;
+
     const dialogRef = this.dialog.open(ParticipantsComponent, {
-      width: '80%',
+      width: '95vw',
+      maxWidth: '95vw',
+      height: '90vh',
+      panelClass: 'participants-fullscreen-dialog',
       data: {
         projectId: projectId,
         clientId: clientId,
       },
     });
 
+    dialogRef.afterOpened().subscribe(() => {
+      this.loadingParticipantsProjectId = null;
+    });
+
     dialogRef.afterClosed().subscribe(() => {
+      this.loadingParticipantsProjectId = null;
       this.loadProjects();
     });
   }

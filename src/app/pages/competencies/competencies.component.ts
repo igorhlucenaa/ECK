@@ -2,13 +2,16 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { MaterialModule } from '../../material.module';
-import { Firestore, collection, getDocs, getDoc, addDoc, updateDoc, doc, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, query, where } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/apps/authentication/auth.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { CreateQuestionDialogComponent } from './create-question-dialog/create-question-dialog.component';
 import { Subject, takeUntil } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 
 // Interface igual ao reports
 interface Competencia {
@@ -31,7 +34,7 @@ interface Client {
 @Component({
   selector: 'app-competencies',
   standalone: true,
-  imports: [CommonModule, MaterialModule, ReactiveFormsModule, TranslateModule],
+  imports: [CommonModule, MaterialModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './competencies.component.html',
   styleUrls: ['./competencies.component.scss']
 })
@@ -82,6 +85,11 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   userClientId: string = '';
   isLoading = false;
 
+  // Estado do painel de edição
+  isEditorOpen = false;
+  isGroupEditorOpen = false;
+  showCompForm = false;
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -91,7 +99,9 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private translate: TranslateService,
     private cdr: ChangeDetectorRef,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private route: ActivatedRoute,
+    private confirmDialog: ConfirmDialogService
   ) {
     // Formulário igual ao reports (perguntasIds não é obrigatório quando não há avaliação)
     this.competenciaForm = this.fb.group({
@@ -112,6 +122,12 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     // Carregar grupos se cliente já estiver definido
     if (this.selectedClientId) {
       await this.loadCompetencyGroups(this.selectedClientId);
+    }
+
+    // Pré-selecionar avaliação se vier via query param (ex: redirecionado do Reports)
+    const assessmentIdParam = this.route.snapshot.queryParamMap.get('assessmentId');
+    if (assessmentIdParam && this.assessments.some(a => a.id === assessmentIdParam)) {
+      this.assessmentControl.setValue(assessmentIdParam);
     }
 
     // Configurar listener para mudanças no filtro de perguntas
@@ -726,16 +742,19 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       this.snackBar.open(this.t('Competência adicionada com sucesso!'), this.t('Fechar'), { duration: 3000 });
     }
 
+    this.showCompForm = false;
     this.cancelarEdicaoCompetencia();
     this.atualizarPerguntasBloqueadas();
 
-    // Usar setTimeout para evitar loops infinitos
+    // Salvar automaticamente no Firestore — sem necessidade de clicar "Salvar Grupo"
     setTimeout(() => {
+      this.saveCompetencyGroup();
       this.cdr.detectChanges();
     }, 0);
   }
 
   editarCompetencia(c: Competencia): void {
+    this.showCompForm = true;
     this.competenciaEditando = { ...c };
 
     // Garantir que perguntasIds é um array válido
@@ -832,7 +851,9 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     }, 0);
   }
 
-  removerCompetencia(c: Competencia): void {
+  async removerCompetencia(c: Competencia): Promise<void> {
+    const confirmado = await this.confirmDialog.confirmDelete(c.nome);
+    if (!confirmado) return;
     const idx = this.competencias.findIndex(comp => comp.id === c.id);
     if (idx > -1) {
       this.competencias.splice(idx, 1);
@@ -842,6 +863,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   }
 
   cancelarEdicaoCompetencia(): void {
+    this.showCompForm = false;
     this.competenciaEditando = { id: '', nome: '', descricao: '', perguntasIds: [] };
     this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
     this.perguntasCustomCache = []; // Limpar cache ao cancelar edição
@@ -934,14 +956,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         await this.onAssessmentChange();
       }
 
-      // Validar se há perguntas em todas as competências (apenas se houver competências)
-      if (this.competencias.length > 0) {
-        const competenciasSemPerguntas = this.competencias.filter(c => !c.perguntasIds || c.perguntasIds.length === 0);
-        if (competenciasSemPerguntas.length > 0) {
-          this.snackBar.open(this.t('Todas as competências devem ter pelo menos uma pergunta.'), this.t('Fechar'), { duration: 3000 });
-          return;
-        }
-      }
+      // Validação removida: competências sem perguntas são permitidas (usuário vincula depois)
 
       // Garantir que todas as competências têm nome e descrição válidos antes de salvar
       const competenciasParaSalvar = this.competencias.map(comp => ({
@@ -1120,8 +1135,17 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         this.cancelarEdicaoCompetencia();
       }
 
+      // Fechar editor de grupo após salvar
+      this.isGroupEditorOpen = false;
+
       // Atualizar lista de grupos
       await this.loadCompetencyGroups(this.selectedClientId);
+
+      // Se criou novo grupo, buscar o ID recém-criado e selecionar
+      if (!this.currentGroupId) {
+        const lastGroup = this.competencyGroups[this.competencyGroups.length - 1];
+        if (lastGroup) { this.currentGroupId = lastGroup.id; }
+      }
 
       // Forçar atualização da view para garantir que o dropdown seja atualizado
       setTimeout(() => {
@@ -1436,7 +1460,31 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     const total = this.allQuestions.length;
     const filtered = this.filteredQuestions.length;
     const openExcluded = total - filtered;
-    return `${filtered} questões disponíveis${openExcluded > 0 ? ` (${openExcluded} questões abertas excluídas)` : ''}`;
+    return `${filtered} questão${filtered !== 1 ? 'ões' : ''} disponível${filtered !== 1 ? 'eis' : ''}${openExcluded > 0 ? ` · ${openExcluded} aberta${openExcluded !== 1 ? 's' : ''} (não vinculável${openExcluded !== 1 ? 'eis' : ''})` : ''}`;
+  }
+
+  private readonly openTypes = ['comment', 'text', 'file', 'fileupload'];
+
+  getUnlinkedQuestions(): { id: string; title: string; type: string }[] {
+    const linkedIds = new Set<string>();
+    this.competencias.forEach(c => (c.perguntasIds || []).forEach(id => linkedIds.add(id)));
+    return this.allQuestions.filter(q => !linkedIds.has(q.id));
+  }
+
+  /** Perguntas que PODEM ser vinculadas mas ainda não foram */
+  getUnlinkedLinkable(): { id: string; title: string; type: string }[] {
+    return this.getUnlinkedQuestions().filter(q => !this.openTypes.includes(q.type));
+  }
+
+  /** Perguntas de tipo aberto — não vinculáveis a competências */
+  getUnlinkedOpen(): { id: string; title: string; type: string }[] {
+    return this.getUnlinkedQuestions().filter(q => this.openTypes.includes(q.type));
+  }
+
+  getLinkedQuestionsCount(): number {
+    const linkedIds = new Set<string>();
+    this.competencias.forEach(c => (c.perguntasIds || []).forEach(id => linkedIds.add(id)));
+    return linkedIds.size;
   }
 
   getQuestionTypeByIdSafe(questionId: string): string {
@@ -1465,6 +1513,103 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
   trackByPerguntaCustom(index: number, item: { id: string; title: string; type: string }): string {
     return item.id || `pergunta-${index}`;
+  }
+
+  getQuestionsForEditing(): { id: string; title: string; type: string }[] {
+    if (!this.competenciaEditando.id) return [];
+    return (this.competenciaEditando.perguntasIds || []).map(id => ({
+      id,
+      title: this.questionMap[id] || id,
+      type: this.getQuestionTypeByIdSafe(id)
+    }));
+  }
+
+  getQuestionTypeIcon(type: string): string {
+    const iconMap: { [key: string]: string } = {
+      // raw types
+      'rating': 'star_rate',
+      'radiogroup': 'radio_button_checked',
+      'checkbox': 'check_box',
+      'dropdown': 'arrow_drop_down_circle',
+      'text': 'short_text',
+      'comment': 'notes',
+      'file': 'attach_file',
+      'fileupload': 'attach_file',
+      'boolean': 'toggle_on',
+      // labels traduzidos (retrocompatibilidade)
+      'Avaliação': 'star_rate',
+      'Múltipla Escolha': 'radio_button_checked',
+      'Texto': 'short_text',
+      'Comentário': 'notes',
+      'Dropdown': 'arrow_drop_down_circle',
+      'Checkbox': 'check_box',
+      'Sim/Não': 'toggle_on'
+    };
+    return iconMap[type] || 'help_outline';
+  }
+
+  openEditQuestionDialog(questionId: string): void {
+    if (!this.selectedAssessmentId) {
+      this.snackBar.open(this.t('Selecione uma avaliação primeiro.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    const question = this.allQuestions.find(q => q.id === questionId);
+    if (!question) {
+      this.snackBar.open(this.t('Pergunta não encontrada.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+
+    const dialogRef = this.dialog.open(CreateQuestionDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
+      data: {
+        assessmentId: this.selectedAssessmentId,
+        existingQuestion: { id: question.id, title: question.title, type: question.type }
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result) {
+        this.questionMap[result.id] = result.title;
+        const idx = this.allQuestions.findIndex(q => q.id === result.id);
+        if (idx > -1) {
+          this.allQuestions[idx] = { ...this.allQuestions[idx], title: result.title, type: result.type };
+        }
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  desvincularPergunta(questionId: string): void {
+    this.competenciaEditando.perguntasIds = (this.competenciaEditando.perguntasIds || []).filter(id => id !== questionId);
+    const ctrl = this.competenciaForm.get('perguntasIds');
+    const current: string[] = ctrl?.value || [];
+    ctrl?.setValue(current.filter(id => id !== questionId));
+    this.cdr.detectChanges();
+  }
+
+  vincularPergunta(questionId: string): void {
+    const ctrl = this.competenciaForm.get('perguntasIds');
+    const current: string[] = ctrl?.value || [];
+    if (!current.includes(questionId)) {
+      ctrl?.setValue([...current, questionId]);
+      this.competenciaEditando.perguntasIds = [...(this.competenciaEditando.perguntasIds || []), questionId];
+      this.cdr.detectChanges();
+    }
+  }
+
+  getFormLinkedQuestions(): { id: string; title: string; type: string }[] {
+    const ids: string[] = this.competenciaForm.get('perguntasIds')?.value || [];
+    return ids.map(id => ({
+      id,
+      title: this.questionMap[id] || id,
+      type: this.getQuestionTypeByIdSafe(id)
+    }));
+  }
+
+  getAvailableToAdd(): { id: string; title: string; type: string }[] {
+    const selectedIds = new Set<string>(this.competenciaForm.get('perguntasIds')?.value || []);
+    return this.filteredQuestions.filter(q => !selectedIds.has(q.id) && !this.perguntasBloqueadas.has(q.id));
   }
 
   // Métodos para gerenciar perguntas custom
@@ -1496,31 +1641,54 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     });
   }
 
-  removerPerguntaCustom(perguntaId: string): void {
-    const index = this.customQuestions.findIndex(q => q.id === perguntaId);
-    if (index > -1) {
-      // Verificar se a pergunta está sendo usada em alguma competência
-      const estaEmUso = this.competencias.some(c => c.perguntasIds.includes(perguntaId));
-      if (estaEmUso) {
-        this.snackBar.open(this.t('Não é possível remover uma pergunta que está sendo usada em uma competência.'), this.t('Fechar'), { duration: 3000 });
-        return;
+  async removerPerguntaCustom(perguntaId: string): Promise<void> {
+    // Verificar se a pergunta está sendo usada em alguma competência
+    const estaEmUso = this.competencias.some(c => (c.perguntasIds || []).includes(perguntaId));
+    if (estaEmUso) {
+      this.snackBar.open(this.t('Não é possível remover uma pergunta que está vinculada a uma competência.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+
+    const textoPergunta = this.questionMap[perguntaId]
+      || this.allQuestions.find(q => q.id === perguntaId)?.title
+      || perguntaId;
+    const confirmado = await this.confirmDialog.confirmDelete(textoPergunta);
+    if (!confirmado) return;
+
+    try {
+      // Remover do surveyJSON da avaliação (fonte principal das perguntas)
+      if (this.selectedAssessmentId) {
+        const assessmentRef = doc(this.firestore, 'assessments', this.selectedAssessmentId);
+        const assessmentSnap = await getDoc(assessmentRef);
+        if (assessmentSnap.exists()) {
+          const surveyJSON = assessmentSnap.data()['surveyJSON'];
+          if (surveyJSON?.pages) {
+            surveyJSON.pages.forEach((page: any) => {
+              if (Array.isArray(page.elements)) {
+                page.elements = page.elements.filter((el: any) => el.name !== perguntaId);
+              }
+            });
+            await updateDoc(assessmentRef, { surveyJSON });
+          }
+        }
       }
 
-      this.customQuestions.splice(index, 1);
+      // Remover também de customQuestions (legado) se existir
+      const customIdx = this.customQuestions.findIndex(q => q.id === perguntaId);
+      if (customIdx > -1) this.customQuestions.splice(customIdx, 1);
 
-      // Remover das listas
+      // Atualizar listas locais
       const allIndex = this.allQuestions.findIndex(q => q.id === perguntaId);
-      if (allIndex > -1) {
-        this.allQuestions.splice(allIndex, 1);
-      }
+      if (allIndex > -1) this.allQuestions.splice(allIndex, 1);
 
       delete this.questionMap[perguntaId];
-      this.dynamicColumns = this.dynamicColumns.filter(id => id !== perguntaId);
-
-      // Atualizar filtro
       this.onQuestionFilterChange();
+      this.cdr.detectChanges();
 
       this.snackBar.open(this.t('Pergunta removida!'), this.t('Fechar'), { duration: 3000 });
+    } catch (error) {
+      console.error('Erro ao remover pergunta:', error);
+      this.snackBar.open(this.t('Erro ao remover pergunta.'), this.t('Fechar'), { duration: 3000 });
     }
   }
 
@@ -1605,7 +1773,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     }, 0);
   }
 
-  removerPerguntaCustomCompetencia(competenciaId: string, index: number): void {
+  async removerPerguntaCustomCompetencia(competenciaId: string, index: number): Promise<void> {
     // Se não há ID, usar o ID temporário da competência sendo editada
     let idParaUsar = competenciaId || this.competenciaEditando.id;
 
@@ -1628,16 +1796,21 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     }
 
     const perguntas = this.customQuestionsByCompetency[idParaUsar];
-    if (perguntas && index >= 0 && index < perguntas.length) {
-      perguntas.splice(index, 1);
-      // Atualizar cache e usar setTimeout para evitar loops infinitos
-      this.perguntasCustomCache = this.getPerguntasCustomCompetencia(idParaUsar);
-      setTimeout(() => {
-        this.cdr.detectChanges();
-      }, 0);
-    } else {
-      console.warn(`Não foi possível remover pergunta custom: index ${index} fora do range (0-${perguntas.length - 1})`);
+    if (!perguntas || index < 0 || index >= perguntas.length) {
+      console.warn(`Não foi possível remover pergunta custom: index ${index} fora do range (0-${perguntas?.length - 1})`);
+      return;
     }
+
+    const textoPergunta = perguntas[index]?.title || `Pergunta ${index + 1}`;
+    const confirmado = await this.confirmDialog.confirmDelete(textoPergunta);
+    if (!confirmado) return;
+
+    perguntas.splice(index, 1);
+    // Atualizar cache e usar setTimeout para evitar loops infinitos
+    this.perguntasCustomCache = this.getPerguntasCustomCompetencia(idParaUsar);
+    setTimeout(() => {
+      this.cdr.detectChanges();
+    }, 0);
   }
 
   atualizarPerguntaCustomCompetencia(competenciaId: string, index: number, campo: 'title' | 'type', valor: string): void {
@@ -1760,6 +1933,109 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     const perguntas = this.getPerguntasCustomCompetencia(competenciaId);
     return perguntas.some(q => q.id === perguntaId);
   }
+
+  // ─── Gerenciamento de grupos ─────────────────────────────────────────────
+
+  startNewGroup(): void {
+    this.currentGroupId = null;
+    this.groupNameControl.reset();
+    this.competencias = [];
+    this.customQuestions = [];
+    this.customQuestionsByCompetency = {};
+    this.assessmentControl.reset();
+    this.selectedAssessmentId = null;
+    this.assessmentNameControl.reset();
+    this.cancelarEdicaoCompetencia();
+    this.competencyGroupControl.reset();
+    this.isGroupEditorOpen = true;
+  }
+
+  editCompetencyGroup(group: any): void {
+    this.currentGroupId = group.id;
+    this.groupNameControl.setValue(group.name);
+    this.competencyGroupControl.setValue(group.id);
+
+    // Restaurar avaliação vinculada
+    if (group.assessmentId) {
+      this.selectedAssessmentId = group.assessmentId;
+      this.assessmentControl.setValue(group.assessmentId);
+    } else {
+      this.selectedAssessmentId = null;
+      this.assessmentControl.reset();
+    }
+
+    // Restaurar competências
+    this.competencias = (group.competencias || []).map((c: any) => ({
+      id: c.id,
+      nome: c.nome,
+      descricao: c.descricao || '',
+      perguntasIds: c.perguntasIds || []
+    }));
+
+    // Restaurar perguntas custom por competência
+    if (group.customQuestionsByCompetency) {
+      this.customQuestionsByCompetency = { ...group.customQuestionsByCompetency };
+    } else if (group.customQuestions && group.customQuestions.length > 0) {
+      this.customQuestions = group.customQuestions;
+    }
+
+    this.cancelarEdicaoCompetencia();
+    this.snackBar.open(`Editando grupo: ${group.name}`, 'OK', { duration: 2500 });
+  }
+
+  async deleteCompetencyGroup(group: any): Promise<void> {
+    const confirmado = await this.confirmDialog.confirmDelete(group.name);
+    if (!confirmado) return;
+
+    try {
+      await deleteDoc(doc(this.firestore, 'competencyGroups', group.id));
+
+      // Limpar estado se o grupo excluído era o atual
+      if (this.currentGroupId === group.id) {
+        this.startNewGroup();
+      }
+
+      // Recarregar lista de grupos
+      if (this.selectedClientId) {
+        await this.loadCompetencyGroups(this.selectedClientId);
+      }
+
+      this.snackBar.open(`Grupo "${group.name}" excluído com sucesso.`, 'OK', { duration: 3000 });
+    } catch (error) {
+      console.error('Erro ao excluir grupo:', error);
+      this.snackBar.open('Erro ao excluir grupo.', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  openGroupEditor(group?: any): void {
+    if (group) {
+      this.editCompetencyGroup(group);
+    } else {
+      this.startNewGroup();
+    }
+    this.isGroupEditorOpen = true;
+  }
+
+  closeGroupEditor(): void {
+    this.isGroupEditorOpen = false;
+  }
+
+  getGroupName(): string {
+    const group = this.competencyGroups.find(g => g.id === this.currentGroupId);
+    return group ? group.name : (this.groupNameControl.value || '');
+  }
+
+  getActiveGroup(): any {
+    return this.competencyGroups.find(g => g.id === this.currentGroupId) || null;
+  }
+
+  getAssessmentLabel(): string {
+    if (!this.selectedAssessmentId) return 'Sem avaliação vinculada';
+    const assessment = this.assessments.find(a => a.id === this.selectedAssessmentId);
+    return assessment ? assessment.name : 'Avaliação vinculada';
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Criar avaliação vazia (sem perguntas) - para quando o grupo é criado primeiro
   private async criarAvaliacaoVazia(assessmentName: string): Promise<string | null> {

@@ -25,11 +25,24 @@
       </div>
     </div>
     <div class="toolbar-right">
-      <button mat-raised-button color="warn" (click)="limparTudo()" matTooltip="Limpar tudo">
-        <mat-icon>delete_sweep</mat-icon>
-        Limpar
-      </button>
-      <button mat-raised-button color="primary" (click)="emitirMudancas()" matTooltip="Salvar configuração">
+      <!-- Indicador de contexto: o que está carregado -->
+      <div class="toolbar-save-context" *ngIf="savedLabel">
+        <mat-icon class="toolbar-save-context__icon">{{ hasUnsavedChanges ? 'edit_note' : 'check_circle' }}</mat-icon>
+        <span class="toolbar-save-context__label">{{ savedLabel }}</span>
+        <span class="toolbar-save-context__status" [class.toolbar-save-context__status--unsaved]="hasUnsavedChanges">
+          {{ hasUnsavedChanges ? 'Não salvo' : 'Salvo' }}
+        </span>
+      </div>
+      <div class="toolbar-save-context toolbar-save-context--empty" *ngIf="!savedLabel">
+        <mat-icon>info_outline</mat-icon>
+        <span>Nenhum template ou relatório carregado</span>
+      </div>
+      <!-- Botão salvar -->
+      <button mat-flat-button class="toolbar-save-btn"
+              [class.toolbar-save-btn--unsaved]="hasUnsavedChanges"
+              [disabled]="!savedLabel"
+              (click)="saveRequested.emit()"
+              [matTooltip]="!savedLabel ? 'Carregue um template ou relatório acima para salvar' : 'Salvar em: ' + savedLabel">
         <mat-icon>save</mat-icon>
         Salvar
       </button>
@@ -129,6 +142,20 @@
                 </div>
               </div>
               <div class="section-actions">
+                <!-- Indicador de paleta de cores (gráficos e tabelas) -->
+                <div *ngIf="['graficos', 'tabela', 'tabela_detalhada', 'destaques', 'competencia_detalhada'].includes(secao.tipo)"
+                     class="palette-badge"
+                     (click)="editarSecao(secao); $event.stopPropagation()"
+                     matTooltip="Clique para editar a paleta de cores">
+                  <mat-icon class="palette-badge__icon">palette</mat-icon>
+                  <div class="palette-badge__dots">
+                    <span *ngFor="let cor of paletasCores[secao['paletaCor'] || 'padrao']?.cores?.slice(0, 4)"
+                          class="palette-badge__dot"
+                          [style.background-color]="cor">
+                    </span>
+                  </div>
+                </div>
+
                 <button mat-icon-button
                         (click)="toggleVisibilidade(secao); $event.stopPropagation()"
                         [color]="secao.visivel ? 'primary' : ''"
@@ -152,6 +179,29 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Barra de salvar inferior -->
+  <div class="bottom-save-bar">
+    <div class="bottom-save-bar__context" *ngIf="savedLabel">
+      <mat-icon>{{ hasUnsavedChanges ? 'edit_note' : 'check_circle' }}</mat-icon>
+      <span>{{ savedLabel }}</span>
+      <span class="bottom-save-bar__status" [class.bottom-save-bar__status--unsaved]="hasUnsavedChanges">
+        {{ hasUnsavedChanges ? 'Alterações não salvas' : 'Salvo' }}
+      </span>
+    </div>
+    <div class="bottom-save-bar__context bottom-save-bar__context--empty" *ngIf="!savedLabel">
+      <mat-icon>info_outline</mat-icon>
+      <span>Nenhum template ou relatório carregado</span>
+    </div>
+    <button mat-flat-button class="bottom-save-bar__btn"
+            [class.bottom-save-bar__btn--unsaved]="hasUnsavedChanges"
+            [disabled]="!savedLabel"
+            (click)="saveRequested.emit()"
+            [matTooltip]="!savedLabel ? 'Carregue um template ou relatório acima para salvar' : 'Salvar em: ' + savedLabel">
+      <mat-icon>save</mat-icon>
+      Salvar
+    </button>
   </div>
 
   <!-- Painel de configuração lateral direito -->
@@ -209,6 +259,98 @@
         </mat-form-field>
       </div>
 
+      <!-- Paleta de cores para tabelas -->
+      <div *ngIf="['tabela', 'tabela_detalhada'].includes(secaoEditando.tipo)">
+        <div class="palette-picker">
+          <p class="palette-picker__label">Cor das Tabelas</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasCores | keyvalue"
+                 class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)"
+                 [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores"
+                      class="palette-card__swatch"
+                      [style.background-color]="cor">
+                </span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                        class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paletas de cores para destaques (altas e baixas) -->
+      <div *ngIf="secaoEditando.tipo === 'destaques'">
+        <div class="palette-picker">
+          <p class="palette-picker__label">Cor — Avaliações mais altas</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasCores | keyvalue"
+                 class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'verde') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)"
+                 [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores"
+                      class="palette-card__swatch"
+                      [style.background-color]="cor">
+                </span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'verde') === paleta.key"
+                        class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
+        <div class="palette-picker" style="margin-top: 16px;">
+          <p class="palette-picker__label">Cor — Avaliações mais baixas</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasCores | keyvalue"
+                 class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key"
+                 (click)="selecionarPaletaBaixas(paleta.key)"
+                 [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores"
+                      class="palette-card__swatch"
+                      [style.background-color]="cor">
+                </span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key"
+                        class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paleta de cores para análise detalhada -->
+      <div *ngIf="secaoEditando.tipo === 'competencia_detalhada'">
+        <div class="palette-picker">
+          <p class="palette-picker__label">Cor das Tabelas Detalhadas</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasCores | keyvalue"
+                 class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)"
+                 [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores"
+                      class="palette-card__swatch"
+                      [style.background-color]="cor">
+                </span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                        class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Tipo de gráfico (se aplicável) -->
       <div *ngIf="secaoEditando.tipo === 'graficos'">
         <mat-form-field appearance="outline" class="full-width">
@@ -221,6 +363,28 @@
             <mat-option value="barras-individuais">Barras Individuais</mat-option>
           </mat-select>
         </mat-form-field>
+
+        <!-- Paleta de cores -->
+        <div class="palette-picker">
+          <p class="palette-picker__label">Paleta de Cores</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasCores | keyvalue"
+                 class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'padrao') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)"
+                 [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores"
+                      class="palette-card__swatch"
+                      [style.background-color]="cor">
+                </span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'padrao') === paleta.key"
+                        class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Texto (se aplicável) - Rich Text Editor -->

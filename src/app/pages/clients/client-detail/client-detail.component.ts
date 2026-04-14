@@ -11,11 +11,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule, Location } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-client-detail',
   standalone: true,
-  imports: [MaterialModule, ReactiveFormsModule, RouterModule, CommonModule, TranslateModule],
+  imports: [MaterialModule, ReactiveFormsModule, RouterModule, CommonModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './client-detail.component.html',
   styleUrls: ['./client-detail.component.scss'],
 })

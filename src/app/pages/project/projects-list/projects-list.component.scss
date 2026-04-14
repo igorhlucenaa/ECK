@@ -1,0 +1,234 @@
+// ─── Wrapper ─────────────────────────────────────────────────
+.projects-wrapper {
+  padding: 28px 24px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+// ─── Card principal ──────────────────────────────────────────
+.projects-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(27, 45, 86, 0.08);
+  overflow: hidden;
+}
+
+// ─── Busca ───────────────────────────────────────────────────
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px 4px;
+  flex-wrap: wrap;
+
+  .search-field { flex: 1; min-width: 240px; }
+
+  .search-count {
+    font-size: 13px;
+    color: #8a8fa8;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+}
+
+// ─── Tabela ──────────────────────────────────────────────────
+.table-container { overflow-x: auto; }
+
+.projects-table {
+  width: 100%;
+
+  .mat-mdc-header-row {
+    background: #f5f7fa;
+    height: 48px;
+  }
+
+  .mat-mdc-header-cell {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e8edf3;
+    padding: 0 14px;
+  }
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .col-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+      color: #94a3b8;
+    }
+  }
+
+  .mat-mdc-row {
+    height: 64px;
+    transition: background 0.15s;
+    &:hover { background: #f0f5ff; }
+    &:not(:last-child) { border-bottom: 1px solid #f1f5f9; }
+  }
+
+  .mat-mdc-cell {
+    font-size: 13.5px;
+    color: #374151;
+    padding: 0 14px;
+    border-bottom: none;
+  }
+}
+
+// ─── Células ─────────────────────────────────────────────────
+.project-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.project-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1B2D56, #1B84FF);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.project-name {
+  font-weight: 600;
+  color: #1a1a2e;
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+
+.client-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(27, 132, 255, 0.08);
+  color: #1B84FF;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+// Status badges
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 3px;
+}
+.status-ativo    { background: rgba(76,175,80,0.12); color: #2e7d32; }
+.status-inativo  { background: rgba(158,158,158,0.15); color: #616161; }
+.status-concluido{ background: rgba(27,132,255,0.1);  color: #1565C0; }
+
+// Prazo
+.deadline-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #374151;
+
+  .deadline-icon {
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
+  }
+
+  &.deadline-overdue {
+    color: #dc2626;
+    font-weight: 600;
+    .deadline-icon { color: #dc2626; }
+  }
+}
+
+// Respostas
+.responses-cell { min-width: 140px; }
+
+.responses-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.responses-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.responses-pending {
+  font-size: 11px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.responses-bar {
+  height: 5px;
+  background: #e8edf3;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.responses-bar-fill {
+  height: 100%;
+  background: linear-gradient(to right, #1B84FF, #43CED7);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+  min-width: 4px;
+}
+
+// ─── Ações ───────────────────────────────────────────────────
+.actions-col {
+  text-align: center !important;
+  min-width: 220px;
+}
+
+.actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.action-users        { color: #0e9488 !important; }
+.action-mail         { color: #7c3aed !important; }
+.action-form         { color: #d97706 !important; }
+.action-participants { color: #0284c7 !important; }
+.action-edit         { color: #1B84FF !important; }
+.action-delete       { color: #ef4444 !important; }
+
+// ─── Vazio ───────────────────────────────────────────────────
+.no-data-cell { padding: 48px 24px !important; }
+
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+
+  mat-icon { font-size: 40px; width: 40px; height: 40px; }
+  span { font-size: 14px; font-weight: 500; }
+}
+
+// ─── Paginação ────────────────────────────────────────────────
+.projects-paginator {
+  border-top: 1px solid #f1f5f9;
+  padding: 4px 8px;
+}
+
+@media (max-width: 600px) {
+  .projects-wrapper { padding: 16px 12px; }
+}

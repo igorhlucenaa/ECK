@@ -1,176 +1,114 @@
-<div class="container my-4" data-tour="project-users-page">
-  <div class="row mb-3">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
-        <mat-icon>arrow_back</mat-icon> Voltar
-      </button>
-    </div>
-  </div>
+<div class="users-wrapper" data-tour="project-users-page">
 
-  <mat-card>
-    <mat-card-title class="p-3" style="padding: 20px"
-      >Usuários do Projeto</mat-card-title
-    >
-    <mat-card-content>
-      <!-- Campo de Busca -->
-      <mat-form-field appearance="outline" class="w-100 mb-3">
-        <mat-label>Buscar</mat-label>
-        <input
-          matInput
-          (keyup)="applyFilter($event)"
-          placeholder="Busque por nome, email ou tipo de usuário"
-        />
-        <button
-          mat-icon-button
-          matSuffix
-          *ngIf="searchValue"
-          (click)="searchValue = ''; applyFilter($event)"
-        >
+  <app-page-header
+    eyebrow="Projetos"
+    title="Usuários do Projeto"
+    subtitle="Membros vinculados a este projeto via grupos de usuários">
+
+    <button mat-button class="btn-back" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'Voltar' | translate }}
+    </button>
+
+  </app-page-header>
+
+  <!-- Card principal -->
+  <div class="users-card">
+
+    <!-- Barra de busca -->
+    <div class="search-bar">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Buscar usuário</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:20px;">search</mat-icon>
+        <input matInput (keyup)="applyFilter($event)" placeholder="Nome, e-mail ou tipo..." />
+        <button mat-icon-button matSuffix *ngIf="searchValue" (click)="searchValue=''; applyFilter($event)" matTooltip="Limpar">
           <mat-icon>close</mat-icon>
         </button>
       </mat-form-field>
-
-      <div class="table-responsive">
-        <table
-          mat-table
-          [dataSource]="dataSource"
-          matSort
-          class="mat-elevation-z8 w-100"
-          *ngIf="dataSource.data.length > 0"
-        >
-          <!-- Nome -->
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
-            <td mat-cell *matCellDef="let user">{{ user.name }}</td>
-          </ng-container>
-
-          <!-- E-mail -->
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>E-mail</th>
-            <td mat-cell *matCellDef="let user">{{ user.email }}</td>
-          </ng-container>
-
-          <!-- Tipo de Usuário -->
-          <ng-container matColumnDef="role">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Tipo</th>
-            <td mat-cell *matCellDef="let user">{{ user.role }}</td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let user; columns: displayedColumns"></tr>
-        </table>
+      <div class="search-count" *ngIf="dataSource.filteredData">
+        {{ dataSource.filteredData.length }} usuário{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
       </div>
+    </div>
 
-      <!-- Exibir mensagem quando não houver usuários -->
-      <div *ngIf="dataSource.data.length === 0" class="text-center p-4">
-        <mat-icon class="mb-2" style="font-size: 48px; color: gray"
-          >group_off</mat-icon
-        >
-        <p class="text-muted">Este projeto não possui usuários</p>
+    <!-- Tabela -->
+    <div class="table-container" *ngIf="dataSource.data.length > 0">
+      <table mat-table [dataSource]="dataSource" matSort class="users-table">
+
+        <!-- Nome -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">person</mat-icon>
+              {{ 'Nome' | translate }}
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let user">
+            <div class="user-cell">
+              <div class="user-avatar">{{ getInitial(user.name) }}</div>
+              <span class="user-name">{{ user.name }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- E-mail -->
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">mail_outline</mat-icon>
+              E-mail
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let user" class="email-cell">
+            {{ user.email }}
+          </td>
+        </ng-container>
+
+        <!-- Tipo -->
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">badge</mat-icon>
+              {{ 'Tipo' | translate }}
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let user">
+            <span class="role-badge" [ngClass]="getRoleClass(user.role)">
+              {{ getRoleLabel(user.role) }}
+            </span>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
+
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+            <div class="no-data">
+              <mat-icon>search_off</mat-icon>
+              <span>Nenhum usuário encontrado para a busca</span>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Estado vazio (sem dados do projeto) -->
+    <div class="empty-state" *ngIf="dataSource.data.length === 0">
+      <div class="empty-icon">
+        <mat-icon>group_off</mat-icon>
       </div>
+      <h3 class="empty-title">Nenhum usuário encontrado</h3>
+      <p class="empty-subtitle">Este projeto não possui usuários vinculados via grupos.</p>
+    </div>
 
-      <mat-paginator
-        *ngIf="dataSource.data.length > 0"
-        [pageSize]="5"
-        [pageSizeOptions]="[5, 10, 20]"
-        showFirstLastButtons
-      >
-      </mat-paginator>
-    </mat-card-content>
-  </mat-card>
+    <!-- Paginação -->
+    <mat-paginator
+      *ngIf="dataSource.data.length > 0"
+      [pageSize]="10"
+      [pageSizeOptions]="[5, 10, 20, 50]"
+      showFirstLastButtons
+      class="users-paginator"
+    ></mat-paginator>
+
+  </div>
 </div>
-
-<!-- <div class="container my-4">
-  <div class="row" style="margin-bottom: 10px">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
-        <mat-icon>arrow_back</mat-icon>
-        Voltar
-      </button>
-    </div>
-  </div>
-
-  <mat-card>
-    <mat-card-title style="margin: 15px"
-      >Grupos e Usuários do Projeto</mat-card-title
-    >
-    <mat-card-content>
-      <mat-form-field appearance="outline" class="w-100 mb-3">
-        <mat-label>Buscar</mat-label>
-        <input
-          matInput
-          (keyup)="applyFilter($event)"
-          placeholder="Busque por nome, cliente ou projeto"
-        />
-        <button
-          mat-icon-button
-          matSuffix
-          *ngIf="searchValue"
-          (click)="searchValue = ''; applyFilter($event)"
-        >
-          <mat-icon>close</mat-icon>
-        </button>
-      </mat-form-field>
-
-      <div class="table-responsive">
-        <table
-          mat-table
-          [dataSource]="dataSource"
-          matSort
-          class="mat-elevation-z8 w-100"
-        >
-          <ng-container matColumnDef="groupName">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Grupo</th>
-            <td mat-cell *matCellDef="let group">{{ group.clientName }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="clientName">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
-            <td mat-cell *matCellDef="let group">{{ group.name }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="projectNames">
-            <th mat-header-cell *matHeaderCellDef>Projetos</th>
-            <td mat-cell *matCellDef="let group">
-              <span *ngFor="let project of group.projectNames">
-                {{ project }}
-                <span *ngIf="!isLastProject(group.projectNames, project)"
-                  >,
-                </span>
-              </span>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Ações</th>
-            <td mat-cell *matCellDef="let group">
-              <button
-                mat-icon-button
-                color="primary"
-                matTooltip="Usuários do Grupo"
-                (click)="openUsersModal(group)"
-              >
-                <mat-icon>group</mat-icon>
-              </button>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="description">
-            <th mat-header-cell *matHeaderCellDef>Descrição</th>
-            <td mat-cell *matCellDef="let group">{{ group.description }}</td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let group; columns: displayedColumns"></tr>
-        </table>
-      </div>
-
-      <mat-paginator
-        [pageSize]="5"
-        [pageSizeOptions]="[5, 10, 20]"
-        showFirstLastButtons
-      >
-      </mat-paginator>
-    </mat-card-content>
-  </mat-card>
-</div> -->

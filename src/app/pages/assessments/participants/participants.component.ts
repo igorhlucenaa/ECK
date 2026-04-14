@@ -17,6 +17,8 @@ import {
   updateDoc,
   where,
   addDoc,
+  deleteDoc,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -34,10 +36,13 @@ import {
 } from '@angular/material/dialog';
 import { FormBuilder, Validators } from '@angular/forms';
 import { ParticipantsConfirmationDialogComponent } from './participants-confirmation-dialog/participants-confirmation-dialog.component';
+import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
 import { RelatorioPreviewDialogComponent } from '../../project/participants-modal/relatorio-preview-dialog.component';
 import { ReportGenerationModalComponent } from '../../project/report-generation-modal/report-generation-modal.component';
 import { Router } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 interface ModalData {
   projectId?: string;
@@ -91,7 +96,7 @@ interface Assessment {
 @Component({
   selector: 'app-participants',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './participants.component.html',
   styleUrls: ['./participants.component.scss'],
 })
@@ -123,7 +128,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   assessments: Assessment[] = [];
   selectedParticipants: UnifiedParticipant[] = [];
   isLoading: boolean = false;
-  isTableLoading: boolean = false;
+  // Inicia como true: spinner aparece no primeiro frame do dialog,
+  // antes mesmo de ngOnInit carregar os dados — evita cliques acidentais
+  isTableLoading: boolean = true;
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
   selectedTemplate: MailTemplate | any = null;
@@ -391,7 +398,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         if (data['projectId']) projectIds.add(data['projectId']);
       });
 
-      const projectsMap: { [key: string]: { name: string; clientId: string } } =
+      const projectsMap: { [key: string]: { name: string; clientId: string; assessmentId?: string } } =
         {};
       if (projectIds.size > 0) {
         const projectsPromises = Array.from(projectIds).map(
@@ -399,9 +406,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             const projectDoc = doc(this.firestore, 'projects', projectId);
             const projectSnapshot = await getDoc(projectDoc);
             if (projectSnapshot.exists()) {
+              const pd = projectSnapshot.data();
               projectsMap[projectId] = {
-                name: projectSnapshot.data()['name'] || 'Projeto Sem Nome',
-                clientId: projectSnapshot.data()['clientId'] || '',
+                name: pd['name'] || 'Projeto Sem Nome',
+                clientId: pd['clientId'] || '',
+                assessmentId: pd['assessmentId'] || undefined,
               };
             } else {
               projectsMap[projectId] = { name: 'N/A', clientId: '' };
@@ -464,6 +473,28 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           assessmentIdsToQuery = assessments;
         }
 
+        let resolvedAssessmentId: string | undefined =
+          assessments.length > 0
+            ? assessments[0]
+            : (selectedAssessmentId || projectsMap[projectId]?.assessmentId || undefined);
+
+        const processLinks = (linksSnapshot: any) => {
+          linksSnapshot.docs.forEach((linkDoc: any) => {
+            const linkData = linkDoc.data();
+            if (!resolvedAssessmentId && linkData['assessmentId']) {
+              resolvedAssessmentId = linkData['assessmentId'];
+            }
+            if (linkData['sentAt']) {
+              const linkSentAt = (linkData['sentAt'] as Timestamp).toDate();
+              if (!sentAt || linkSentAt > sentAt) sentAt = linkSentAt;
+            }
+            if (linkData['status'] === 'completed' && linkData['completedAt']) {
+              const linkCompletedAt = (linkData['completedAt'] as Timestamp).toDate();
+              if (!completedAt || linkCompletedAt > completedAt) completedAt = linkCompletedAt;
+            }
+          });
+        };
+
         if (assessmentIdsToQuery.length > 0) {
           const batchSize = 10;
           for (let i = 0; i < assessmentIdsToQuery.length; i += batchSize) {
@@ -474,26 +505,20 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
               where('assessmentId', 'in', batch)
             );
             const linksSnapshot = await getDocs(assessmentLinksQuery);
-
-            linksSnapshot.docs.forEach((linkDoc) => {
-              const linkData = linkDoc.data();
-              if (linkData['sentAt']) {
-                const linkSentAt = (linkData['sentAt'] as Timestamp).toDate();
-                if (!sentAt || linkSentAt > sentAt) sentAt = linkSentAt;
-              }
-              if (
-                linkData['status'] === 'completed' &&
-                linkData['completedAt']
-              ) {
-                const linkCompletedAt = (
-                  linkData['completedAt'] as Timestamp
-                ).toDate();
-                if (!completedAt || linkCompletedAt > completedAt)
-                  completedAt = linkCompletedAt;
-              }
-            });
+            processLinks(linksSnapshot);
           }
           status = this.determineStatus(sentAt, completedAt);
+        } else if (!resolvedAssessmentId) {
+          // Discovery: find any assessmentLinks for this participant
+          const discoveryQuery = query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('participantId', '==', participantId)
+          );
+          const discoverySnap = await getDocs(discoveryQuery);
+          if (!discoverySnap.empty) {
+            processLinks(discoverySnap);
+            status = this.determineStatus(sentAt, completedAt);
+          }
         }
 
         if (clientId) {
@@ -501,7 +526,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             id: participantId,
             name: participantData['name'] || 'Desconhecido',
             email: email,
-            assessmentId: assessments.length > 0 ? assessments[0] : undefined,
+            assessmentId: resolvedAssessmentId,
             sentAt: sentAt,
             completedAt: completedAt,
             status: status,
@@ -647,6 +672,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.applyFilter();
   }
 
+  getSelectedClientName(): string {
+    return this.clients.find(c => c.id === this.filterClient)?.name || '';
+  }
+
+  getSelectedProjectName(): string {
+    return this.filteredProjects.find(p => p.id === this.filterProject)?.name || '';
+  }
+
   onTemplateChange(): void {
     this.selectedTemplate =
       this.mailTemplates.find((t) => t.id === this.templateFormControl.value) ||
@@ -699,6 +732,31 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       (p) => this.applyEmailTypeFilter(p) && !p.completedAt
     );
     return eligibleParticipants.some((p) => p.selected) && !this.allSelected();
+  }
+
+  async deleteSelectedParticipants(): Promise<void> {
+    const count = this.selectedParticipants.length;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: { message: `Tem certeza de que deseja excluir ${count} participante(s)? Esta ação não pode ser desfeita.` },
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        const batch = writeBatch(this.firestore);
+        this.selectedParticipants.forEach(p => batch.delete(doc(this.firestore, `participants/${p.id}`)));
+        await batch.commit();
+        const removedIds = new Set(this.selectedParticipants.map(p => p.id));
+        this.dataSource.data = this.dataSource.data.filter(p => !removedIds.has(p.id));
+        this.selectedParticipants = [];
+        this.applyFilter();
+        this.snackBar.open('Participantes excluídos com sucesso!', 'Fechar', { duration: 3000 });
+      } catch (error) {
+        console.error('Erro ao excluir participantes em massa:', error);
+        this.snackBar.open('Erro ao excluir participantes. Tente novamente.', 'Fechar', { duration: 3000 });
+      }
+    });
   }
 
   async resendLinks(): Promise<void> {
@@ -1104,7 +1162,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   openAddParticipantModal(): void {
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
-      width: '500px',
+      width: '480px',
+      maxWidth: '95vw',
+      panelClass: 'add-participant-dialog',
       data: {
         clientId: this.filterClient || undefined,
         projectId: this.filterProject || undefined,
@@ -1151,6 +1211,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const dateA = a ? a.getTime() : 0;
     const dateB = b ? b.getTime() : 0;
     return (dateA - dateB) * (isAsc ? 1 : -1);
+  }
+
+  countByType(type: string): number {
+    return this.dataSource.filteredData.filter(p => p.type === type).length;
+  }
+
+  countByStatus(status: string): number {
+    return this.dataSource.filteredData.filter(p => (p.status || 'Não Enviado') === status).length;
   }
 
   generateReportForParticipant(participant: UnifiedParticipant) {

@@ -1,19 +1,10 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import {
-  AppBandwidthUsageComponent,
-  AppCurrentVisitsComponent,
-  AppDownloadCountComponent,
-  AppFavouriteContactsComponent,
-  AppFeedsComponent,
   AppNewsletterCampaign2Component,
   AppPieCardsComponent,
-  AppProfileCardComponent,
   AppProjectDataComponent,
-  AppRecentCommentsComponent,
   AppSalesOverview2Component,
-  AppTodoListComponent,
 } from 'src/app/components';
 import {
   Firestore,
@@ -22,41 +13,51 @@ import {
   where,
   getDocs,
 } from '@angular/fire/firestore';
+import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { ExportDialogComponent } from './export-dialog/export-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { NgApexchartsModule } from 'ng-apexcharts';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-dashboard3',
   standalone: true,
   imports: [
+    CommonModule,
     MaterialModule,
     AppPieCardsComponent,
     AppSalesOverview2Component,
-    AppCurrentVisitsComponent,
     AppProjectDataComponent,
-    AppProfileCardComponent,
-    AppBandwidthUsageComponent,
-    AppDownloadCountComponent,
-    AppFavouriteContactsComponent,
-    AppFeedsComponent,
-    AppRecentCommentsComponent,
-    AppTodoListComponent,
     AppNewsletterCampaign2Component,
+    AppPageHeaderComponent,
+    TranslateModule,
+    NgApexchartsModule,
+    MatProgressSpinnerModule,
   ],
   templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.scss'],
 })
 export class DashboardComponent implements OnInit {
-  constructor(private dialog: MatDialog, private cdr: ChangeDetectorRef) {}
+  isExporting = false;
+  isExportingTables = false;
+  exportLabel = '';
 
-  pieCardsData: { value: number; label: string; color: string }[] = [];
-  totalEvaluatedParticipants: number = 0;
-  activeProjects: number = 0;
-  totalCredits: number = 0;
-  creditOrdersData: { date: string; credits: number }[] = [];
-  creditUsageData: { month: string; used: number; remaining: number }[] = [];
+  userRole: string | null = null;
+  clientId: string | null = null;
+
+  pieCardsData: { value: number; label: string; color: string; icon: string }[] = [];
+  assessmentsData: { client: string; used: number; remaining: number }[] = [];
+  projectsByClientData: { client: string; projects: number }[] = [];
+  participantsByCategoryChart: any = null;
+  totalActiveProjects = 0;
 
   private firestore = inject(Firestore);
+  private authService = inject(AuthService);
+  private translate = inject(TranslateService);
 
   private headersMap: Record<string, { key: string; header: string }[]> = {
     clients: [
@@ -82,13 +83,6 @@ export class DashboardComponent implements OnInit {
       { key: 'clientId', header: 'Cliente' },
       { key: 'createdAt', header: 'Data de Criação' },
     ],
-    users: [
-      { key: 'name', header: 'Nome' },
-      { key: 'surname', header: 'Sobrenome' },
-      { key: 'email', header: 'E-mail' },
-      { key: 'role', header: 'Papel' },
-      { key: 'createdAt', header: 'Data de Criação' },
-    ],
     participants: [
       { key: 'name', header: 'Nome' },
       { key: 'email', header: 'E-mail' },
@@ -98,231 +92,296 @@ export class DashboardComponent implements OnInit {
       { key: 'createdAt', header: 'Data de Criação' },
     ],
   };
-  assessmentsData: { client: string; used: number; remaining: number }[] = [];
-
-  projectsByClientData: { client: string; projects: number }[] = [];
-  totalActiveProjects: number = 0;
 
   availableTables = [
-    { key: 'clients', label: 'Clientes' },
-    { key: 'projects', label: 'Projetos' },
+    { key: 'clients',      label: 'Clientes' },
+    { key: 'projects',     label: 'Projetos' },
     { key: 'creditOrders', label: 'Pedidos de Crédito' },
     { key: 'participants', label: 'Participantes' },
   ];
 
+  constructor(
+    private dialog: MatDialog,
+    private cdr: ChangeDetectorRef,
+    private snackBar: MatSnackBar,
+  ) {}
+
   async ngOnInit(): Promise<void> {
-    // Teste de collections
-    // const col = collection(this.firestore, 'assessmentLinks');
-
-    // const snap = await getDocs(col);
-
-    // let result = snap.docs.map((res) => res.data());
-    // console.log(result);
+    this.userRole = await this.authService.getCurrentUserRole();
+    this.clientId  = await this.authService.getCurrentClientId();
 
     const data = await this.fetchDashboardData();
-    this.creditOrdersData = await this.fetchCreditOrdersData();
     this.assessmentsData = await this.fetchAssessmentsData();
+    await this.buildParticipantsByCategoryChart();
 
-    this.cdr.detectChanges();
-    // await this.fetchProjectsByClient();
-    // Dados para os gráficos de pizza
     this.pieCardsData = [
-      { value: data.totalClients, label: 'Clientes', color: '#1e88e5' },
-      {
-        value: data.totalActiveProjects,
-        label: 'Projetos Ativos',
-        color: '#26c6da',
-      },
-      {
-        value: data.totalEvaluatedParticipants,
-        label: 'Avaliados',
-        color: '#fc4b6c',
-      },
-      {
-        value: data.totalCreditOrders,
-        label: 'Pedidos de Crédito',
-        color: '#ffb22b',
-      },
-      {
-        value: data.totalRemainingCredits,
-        label: 'Créditos Remanescentes',
-        color: '#4caf50',
-      }, // Novo KPI!
+      { value: data.totalClients,              label: this.translate.instant('Clientes'),             color: '#1B84FF', icon: 'business' },
+      { value: data.totalActiveProjects,       label: this.translate.instant('Projetos Ativos'),      color: '#26c6da', icon: 'folder_open' },
+      { value: data.totalAssessments,          label: this.translate.instant('Avaliações'),           color: '#7c3aed', icon: 'assignment_turned_in' },
+      { value: data.totalEvaluatedParticipants,label: this.translate.instant('Avaliados'),            color: '#fc4b6c', icon: 'groups' },
+      { value: data.totalCreditOrders,         label: this.translate.instant('Pedidos de Crédito'),   color: '#ffb22b', icon: 'receipt_long' },
+      { value: data.totalRemainingCredits,     label: this.translate.instant('Créditos Disponíveis'), color: '#4caf50', icon: 'toll' },
     ];
 
-    // Dados vazios (placeholder)
-    this.creditUsageData = [
-      { month: 'Jan', used: 0, remaining: 0 },
-      { month: 'Feb', used: 0, remaining: 0 },
-      { month: 'Mar', used: 0, remaining: 0 },
-      { month: 'Apr', used: 0, remaining: 0 },
-      { month: 'May', used: 0, remaining: 0 },
-    ];
-
-    // Outras métricas do dashboard
-    this.totalEvaluatedParticipants = data.totalEvaluatedParticipants;
-    this.activeProjects = data.totalProjects;
-    this.totalCredits = data.totalCredits;
+    this.cdr.markForCheck();
   }
 
-  private async fetchAssessmentsData(): Promise<
-    { client: string; used: number; remaining: number }[]
-  > {
-    const assessmentsCollection = collection(this.firestore, 'assessments');
-    const clientsCollection = collection(this.firestore, 'clients');
-
-    const assessmentsSnapshot = await getDocs(assessmentsCollection);
-    const clientsSnapshot = await getDocs(clientsCollection);
-
-    // Criar um mapa para associar clientId ao nome do cliente
-    const clientMap = new Map(
-      clientsSnapshot.docs.map((doc) => [doc.id, doc.data()['companyName']])
-    );
-
-    // Criar um mapa para contar avaliações por cliente
-    const assessmentsByClient = new Map<string, number>();
-
-    assessmentsSnapshot.docs.forEach((doc) => {
-      const clientId = doc.data()['clientId'];
-      if (clientId) {
-        assessmentsByClient.set(
-          clientId,
-          (assessmentsByClient.get(clientId) || 0) + 1
-        );
-      }
-    });
-
-    // Transformar os dados para o formato esperado
-    return Array.from(assessmentsByClient.entries()).map(
-      ([clientId, count]) => ({
-        client: clientMap.get(clientId) || 'Desconhecido',
-        used: count, // Número de avaliações cadastradas por cliente
-        remaining: 0, // Não usado aqui, mas mantido para compatibilidade com o gráfico
-      })
-    );
-  }
-
-  async generatePDF(): Promise<void> {
-    const dashboardElement = document.getElementById('dashboard-content');
-
-    if (!dashboardElement) {
-      console.error('Elemento do dashboard não encontrado.');
-      return;
-    }
-
-    const canvas = await html2canvas(dashboardElement, {
-      scrollY: -window.scrollY,
-    });
-    const imgData = canvas.toDataURL('image/png');
-
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgWidth = 210; // Largura da página A4 em mm
-    const pageHeight = 297; // Altura da página A4 em mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    let position = 0;
-
-    if (imgHeight > pageHeight) {
-      // Adicionar paginação, caso necessário
-      while (position < imgHeight) {
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, pageHeight);
-        position += pageHeight;
-
-        if (position < imgHeight) {
-          pdf.addPage();
-        }
-      }
-    } else {
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-    }
-
-    pdf.save('dashboard.pdf');
-  }
-
-  private async fetchCreditOrdersData(): Promise<
-    { date: string; credits: number }[]
-  > {
-    const creditOrdersCollection = collection(this.firestore, 'creditOrders');
-    const snapshot = await getDocs(creditOrdersCollection);
-
-    return snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        date: new Date(data['startDate'].seconds * 1000).toLocaleDateString(),
-        credits: data['credits'] || 0,
-      };
-    });
-  }
+  // ── Data loading ──────────────────────────────────────────────
 
   private async fetchDashboardData(): Promise<any> {
-    const clientsCollection = collection(this.firestore, 'clients');
-    const projectsCollection = collection(this.firestore, 'projects');
-    const creditOrdersCollection = collection(this.firestore, 'creditOrders');
-    const participantsCollection = collection(this.firestore, 'participants');
+    const clientsCol      = collection(this.firestore, 'clients');
+    const projectsCol     = collection(this.firestore, 'projects');
+    const creditOrdersCol = collection(this.firestore, 'creditOrders');
+    const participantsCol = collection(this.firestore, 'participants');
+    const assessmentsCol  = collection(this.firestore, 'assessments');
 
-    const clientsSnapshot = await getDocs(clientsCollection);
-    const projectsSnapshot = await getDocs(projectsCollection);
-    const creditOrdersSnapshot = await getDocs(creditOrdersCollection);
-    const participantsSnapshot = await getDocs(participantsCollection);
+    const isClient = this.userRole === 'admin_client' && this.clientId;
 
-    const evaluatedParticipants = participantsSnapshot.docs.filter(
-      (doc) => doc.data()['type'] === 'avaliado'
-    ).length;
+    const projectsQ     = isClient ? query(projectsCol,     where('clientId', '==', this.clientId)) : projectsCol;
+    const participantsQ = isClient ? query(participantsCol, where('clientId', '==', this.clientId)) : participantsCol;
+    const assessmentsQ  = isClient ? query(assessmentsCol,  where('clientId', '==', this.clientId)) : assessmentsCol;
 
-    const totalCredits = clientsSnapshot.docs.reduce((sum, doc) => {
-      const data = doc.data();
-      return sum + (data['credits'] || 0);
-    }, 0);
+    const [clientsSnap, projectsSnap, creditSnap, participantsSnap, assessmentsSnap] = await Promise.all([
+      getDocs(clientsCol),
+      getDocs(projectsQ),
+      getDocs(creditOrdersCol),
+      getDocs(participantsQ),
+      getDocs(assessmentsQ),
+    ]);
 
-    const activeProjects = projectsSnapshot.docs.filter(
-      (doc) => doc.data()['status'] === 'Ativo'
-    );
+    const evaluatedParticipants = participantsSnap.docs.filter(d => d.data()['type'] === 'avaliado').length;
+    const totalCredits = clientsSnap.docs.reduce((s, d) => s + (d.data()['credits'] || 0), 0);
+    const activeProjects = projectsSnap.docs.filter(d => d.data()['status'] === 'Ativo');
 
-    // Criar um mapa de clientes para contar projetos ativos
     const projectCountByClient = new Map<string, number>();
-
-    activeProjects.forEach((doc) => {
-      const clientId = doc.data()['clientId'];
-      if (clientId) {
-        projectCountByClient.set(
-          clientId,
-          (projectCountByClient.get(clientId) || 0) + 1
-        );
-      }
+    activeProjects.forEach(d => {
+      const id = d.data()['clientId'];
+      if (id) projectCountByClient.set(id, (projectCountByClient.get(id) || 0) + 1);
     });
 
-    // Transformar os dados para incluir o nome dos clientes e corrigir os nomes das propriedades
-    this.projectsByClientData = clientsSnapshot.docs.map((doc) => ({
-      client: doc.data()['companyName'], // Nome do cliente
-      projects: projectCountByClient.get(doc.id) || 0, // Número de projetos ativos do cliente
+    this.projectsByClientData = clientsSnap.docs.map(d => ({
+      client:   d.data()['companyName'],
+      projects: projectCountByClient.get(d.id) || 0,
     }));
 
     this.totalActiveProjects = activeProjects.length;
 
     let remainingCredits = 0;
-    clientsSnapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      const credits = data['credits'] || 0;
-      const validityDate = data['validityDate']
-        ? new Date(data['validityDate'].seconds * 1000)
-        : null;
-      const today = new Date();
-
-      // Apenas créditos não expirados são somados
-      if (!validityDate || validityDate > today) {
-        remainingCredits += credits;
-      }
+    const today = new Date();
+    clientsSnap.docs.forEach(d => {
+      const data = d.data();
+      const validityDate = data['validityDate'] ? new Date(data['validityDate'].seconds * 1000) : null;
+      if (!validityDate || validityDate > today) remainingCredits += (data['credits'] || 0);
     });
 
     return {
-      totalClients: clientsSnapshot.size || 0,
-      totalProjects: activeProjects || 0,
-      totalCreditOrders: creditOrdersSnapshot.size || 0,
-      totalEvaluatedParticipants: evaluatedParticipants || 0,
+      totalClients: clientsSnap.size,
+      totalActiveProjects: this.totalActiveProjects,
+      totalProjects: activeProjects,
+      totalCreditOrders: creditSnap.size,
+      totalEvaluatedParticipants: evaluatedParticipants,
       totalCredits,
       totalRemainingCredits: remainingCredits,
-      totalActiveProjects: this.totalActiveProjects,
+      totalAssessments: assessmentsSnap.size,
     };
+  }
+
+  private async fetchAssessmentsData(): Promise<{ client: string; used: number; remaining: number }[]> {
+    const assessmentsCol = collection(this.firestore, 'assessments');
+    const isClient = this.userRole === 'admin_client' && this.clientId;
+    const q = isClient ? query(assessmentsCol, where('clientId', '==', this.clientId)) : assessmentsCol;
+
+    const [assessmentsSnap, clientsSnap] = await Promise.all([
+      getDocs(q),
+      getDocs(collection(this.firestore, 'clients')),
+    ]);
+
+    const clientMap = new Map(clientsSnap.docs.map(d => [d.id, d.data()['companyName']]));
+    const byClient = new Map<string, number>();
+    assessmentsSnap.docs.forEach(d => {
+      const id = d.data()['clientId'];
+      if (id) byClient.set(id, (byClient.get(id) || 0) + 1);
+    });
+
+    return Array.from(byClient.entries()).map(([id, count]) => ({
+      client: clientMap.get(id) || 'Desconhecido',
+      used: count,
+      remaining: 0,
+    }));
+  }
+
+  private async buildParticipantsByCategoryChart(): Promise<void> {
+    const participantsCol = collection(this.firestore, 'participants');
+    const isClient = this.userRole === 'admin_client' && this.clientId;
+    const q = isClient ? query(participantsCol, where('clientId', '==', this.clientId)) : participantsCol;
+
+    const snap = await getDocs(q);
+    const byCategory = new Map<string, number>();
+
+    snap.docs.forEach(d => {
+      const cat = d.data()['category'] || d.data()['type'] || 'Outros';
+      byCategory.set(cat, (byCategory.get(cat) || 0) + 1);
+    });
+
+    if (byCategory.size === 0) return;
+
+    const labels = Array.from(byCategory.keys());
+    const values = Array.from(byCategory.values());
+
+    this.participantsByCategoryChart = {
+      series: values,
+      chart: {
+        type: 'donut',
+        height: 260,
+        toolbar: { show: false },
+        fontFamily: 'Poppins, sans-serif',
+      },
+      labels,
+      colors: ['#1B84FF', '#26c6da', '#fc4b6c', '#ffb22b', '#4caf50', '#7c3aed'],
+      legend: { position: 'bottom', fontFamily: 'Poppins, sans-serif', fontSize: '12px' },
+      dataLabels: { enabled: false },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '68%',
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                label: 'Total',
+                color: '#1e293b',
+                formatter: (w: any) => w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0),
+              },
+            },
+          },
+        },
+      },
+      stroke: { width: 2, colors: ['#fff'] },
+      tooltip: { theme: 'light' },
+    };
+  }
+
+  // ── Exports ───────────────────────────────────────────────────
+
+  async generatePDF(): Promise<void> {
+    if (this.isExporting) return;
+
+    const dashboardEl = document.getElementById('dashboard-content');
+    if (!dashboardEl) {
+      this.snackBar.open(this.translate.instant('Elemento do dashboard não encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
+      return;
+    }
+
+    this.isExporting = true;
+    this.exportLabel = this.translate.instant('Preparando impressão...');
+    this.cdr.markForCheck();
+
+    let iframe: HTMLIFrameElement | null = null;
+
+    try {
+      await new Promise(r => setTimeout(r, 100));
+
+      // ApexCharts renderiza em SVG — converter para img para preservar no clone
+      const canvases = Array.from(dashboardEl.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      const canvasDataUrls = canvases.map(c => {
+        try { return c.toDataURL('image/jpeg', 0.92); } catch { return ''; }
+      });
+
+      const clone = dashboardEl.cloneNode(true) as HTMLElement;
+
+      Array.from(clone.querySelectorAll('canvas')).forEach((clonedCanvas, i) => {
+        const dataUrl = canvasDataUrls[i];
+        if (!dataUrl) return;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.width  = canvases[i].style.width  || `${canvases[i].offsetWidth}px`;
+        img.style.height = canvases[i].style.height || `${canvases[i].offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+        clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
+      });
+
+      const angularStyles = Array.from(document.head.querySelectorAll('style'))
+        .map(s => s.innerHTML).join('\n');
+      const linkTags = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML).join('\n');
+
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;border:none;visibility:hidden;';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument!;
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="${window.location.origin}/">
+  ${linkTags}
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+    * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+    body { margin: 0; padding: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background: #fff; width: 186mm; }
+    #dashboard-content { width: 100%; }
+    table { border-collapse: collapse; }
+    img, svg { max-width: 100% !important; height: auto; }
+    ${angularStyles}
+  </style>
+</head>
+<body>
+  <div id="dashboard-content">${clone.innerHTML}</div>
+  <script>
+    (function() {
+      var bodyWidth = document.body.offsetWidth;
+      document.querySelectorAll('table').forEach(function(table) {
+        var natural = table.scrollWidth;
+        if (natural <= bodyWidth + 2) return;
+        var scale = bodyWidth / natural;
+        var origH = table.offsetHeight;
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'width:100%;overflow:hidden;display:block;';
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(table);
+        table.style.transformOrigin = 'top left';
+        table.style.transform = 'scale(' + scale + ')';
+        table.style.marginBottom = (origH * (scale - 1)) + 'px';
+      });
+    })();
+  <\/script>
+</body>
+</html>`);
+      iframeDoc.close();
+
+      await new Promise<void>((resolve) => {
+        const doPrint = () => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            window.removeEventListener('afterprint', finish);
+            try { iframe!.contentWindow?.removeEventListener('afterprint', finish); } catch {}
+            clearTimeout(safetyTimer);
+            resolve();
+          };
+          window.addEventListener('afterprint', finish);
+          try { iframe!.contentWindow?.addEventListener('afterprint', finish); } catch {}
+          const safetyTimer = setTimeout(finish, 2 * 60 * 1000);
+          iframe!.contentWindow?.focus();
+          iframe!.contentWindow?.print();
+        };
+        iframe!.addEventListener('load', () => setTimeout(doPrint, 400));
+      });
+
+      this.snackBar.open(this.translate.instant('Dashboard exportado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
+    } catch (err) {
+      console.error(err);
+      this.snackBar.open(this.translate.instant('Erro ao exportar o dashboard.'), this.translate.instant('Fechar'), { duration: 4000 });
+    } finally {
+      if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
+      this.isExporting = false;
+      this.exportLabel = '';
+      this.cdr.markForCheck();
+    }
   }
 
   openExportDialog(): void {
@@ -332,154 +391,102 @@ export class DashboardComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe(async (result) => {
-      if (result) {
-        const { selectedTable, selectedFormat } = result;
-
-        if (selectedFormat === 'excel') {
-          await this.exportToExcel(selectedTable.key, selectedTable.label);
-        } else if (selectedFormat === 'pdf') {
-          await this.exportToPDF(selectedTable.key, selectedTable.label);
-        }
+      if (!result) return;
+      const { selectedTable, selectedFormat } = result;
+      this.isExportingTables = true;
+      this.exportLabel = this.translate.instant('Exportando') + ' ' + selectedTable.label + '...';
+      this.cdr.markForCheck();
+      try {
+        if (selectedFormat === 'excel') await this.exportToExcel(selectedTable.key, selectedTable.label);
+        else if (selectedFormat === 'pdf') await this.exportToPDF(selectedTable.key, selectedTable.label);
+      } finally {
+        this.isExportingTables = false;
+        this.exportLabel = '';
+        this.cdr.markForCheck();
       }
     });
   }
 
-  // Função para exportar dados para Excel
-  private async exportToExcel(
-    tableKey: string,
-    tableLabel: string
-  ): Promise<void> {
+  private async exportToExcel(tableKey: string, tableLabel: string): Promise<void> {
     const data = await this.getFormattedData(tableKey);
     const headers = this.headersMap[tableKey] || [];
-
-    // Importar e configurar ExcelJS
     const ExcelJS = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(tableLabel);
 
-    // Adicionar cabeçalhos com estilos
-    const headerRow = worksheet.addRow(headers.map(({ header }) => header));
-    headerRow.eachCell((cell) => {
+    const headerRow = worksheet.addRow(headers.map(h => h.header));
+    headerRow.eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4CAF50' },
-      };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B84FF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' },
-      };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    // Adicionar dados
-    data.forEach((row) => {
-      const dataRow = worksheet.addRow(
-        headers.map(({ key }) => row[key] || '')
-      );
-      dataRow.eachCell((cell) => {
-        cell.border = {
-          top: { style: 'thin' },
-          left: { style: 'thin' },
-          bottom: { style: 'thin' },
-          right: { style: 'thin' },
-        };
+    data.forEach(row => {
+      const dataRow = worksheet.addRow(headers.map(h => row[h.key] || ''));
+      dataRow.eachCell(cell => {
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
       });
     });
 
-    // Ajustar largura das colunas
-    worksheet.columns = headers.map(() => ({ width: 20 }));
-
-    // Salvar arquivo
+    worksheet.columns = headers.map(() => ({ width: 22 }));
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `${tableLabel}.xlsx`;
     link.click();
+    URL.revokeObjectURL(link.href);
+    this.snackBar.open(this.translate.instant('Exportado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
   }
 
-  // Função para exportar dados para PDF
-  private async exportToPDF(
-    tableKey: string,
-    tableLabel: string
-  ): Promise<void> {
+  private async exportToPDF(tableKey: string, tableLabel: string): Promise<void> {
     const data = await this.getFormattedData(tableKey);
     const headers = this.headersMap[tableKey] || [];
-
-    // Importar jsPDF e autoTable
     const { default: jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
-
     const doc = new jsPDF();
-
-    // Adicionar título
-    doc.setFontSize(18);
-    doc.text(`${tableLabel}`, 14, 20);
-
-    // Configurar autoTable
+    doc.setFontSize(16);
+    doc.text(tableLabel, 14, 20);
     autoTable(doc, {
       startY: 30,
-      head: [headers.map(({ header }) => header)],
-      body: data.map((row) => headers.map(({ key }) => row[key] || '')),
+      head: [headers.map(h => h.header)],
+      body: data.map(row => headers.map(h => row[h.key] || '')),
       theme: 'grid',
-      headStyles: {
-        fillColor: [76, 175, 80],
-        textColor: 255,
-        fontStyle: 'bold',
-      },
+      headStyles: { fillColor: [27, 132, 255], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 50 },
       styles: { cellPadding: 3, fontSize: 10 },
     });
-
-    // Salvar arquivo
     doc.save(`${tableLabel}.pdf`);
+    this.snackBar.open(this.translate.instant('Exportado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
   }
 
-  private formatDate(timestamp: any): string {
-    if (!timestamp || !timestamp.seconds) return ''; // Se for indefinido, retorna vazio
-    const date = new Date(timestamp.seconds * 1000);
-    return isNaN(date.getTime()) ? '' : date.toLocaleDateString('pt-BR');
+  private formatDate(ts: any): string {
+    if (!ts?.seconds) return '';
+    const d = new Date(ts.seconds * 1000);
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
   }
 
   private async getFormattedData(tableKey: string): Promise<any[]> {
-    const collectionRef = collection(this.firestore, tableKey);
-    const snapshot = await getDocs(collectionRef);
-    let data = snapshot.docs.map((doc) => ({ ...doc.data() }));
+    const snap = await getDocs(collection(this.firestore, tableKey));
+    const [clientsSnap, projectsSnap] = await Promise.all([
+      getDocs(collection(this.firestore, 'clients')),
+      getDocs(collection(this.firestore, 'projects')),
+    ]);
+    const clientsMap  = new Map(clientsSnap.docs.map(d  => [d.id,  d.data()['companyName']]));
+    const projectsMap = new Map(projectsSnap.docs.map(d => [d.id, d.data()['name']]));
 
-    // Buscar nomes de clientes e projetos para substituição
-    const clientsSnapshot = await getDocs(
-      collection(this.firestore, 'clients')
-    );
-    const clientsMap = new Map(
-      clientsSnapshot.docs.map((doc) => [doc.id, doc.data()['companyName']])
-    );
-
-    const projectsSnapshot = await getDocs(
-      collection(this.firestore, 'projects')
-    );
-    const projectsMap = new Map(
-      projectsSnapshot.docs.map((doc) => [doc.id, doc.data()['name']])
-    );
-
-    // Substituir clientId, projectId e tratar datas corretamente
-    return data.map((item: any) => ({
-      ...item,
-      clientId: item.clientId
-        ? clientsMap.get(item.clientId) || 'Desconhecido'
-        : '',
-      projectId: item.projectId
-        ? projectsMap.get(item.projectId) || 'Desconhecido'
-        : '',
-      createdAt: this.formatDate(item.createdAt),
-      startDate: this.formatDate(item.startDate),
-      validityDate: this.formatDate(item.validityDate),
-      deadline: this.formatDate(item.deadline),
-    }));
+    return snap.docs.map(d => {
+      const item: any = { ...d.data() };
+      return {
+        ...item,
+        clientId:     item.clientId     ? clientsMap.get(item.clientId)   || 'Desconhecido' : '',
+        projectId:    item.projectId    ? projectsMap.get(item.projectId) || 'Desconhecido' : '',
+        createdAt:    this.formatDate(item.createdAt),
+        startDate:    this.formatDate(item.startDate),
+        validityDate: this.formatDate(item.validityDate),
+        deadline:     this.formatDate(item.deadline),
+      };
+    });
   }
 }

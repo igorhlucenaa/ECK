@@ -1,150 +1,181 @@
-<div class="container my-4">
-  <!-- Cabeçalho -->
-  <div class="row" style="margin-bottom: 10px">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
-        <mat-icon>arrow_back</mat-icon>
-        {{ 'Voltar' | translate }}
+<div class="list-wrapper">
+
+  <app-page-header
+    eyebrow="Projetos"
+    [title]="'Formulários de Avaliação' | translate"
+    subtitle="Gerencie os formulários de avaliação dos projetos"
+    data-tour="assessments-header">
+
+    <button mat-button class="btn-back" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'Voltar' | translate }}
+    </button>
+
+    <button mat-raised-button class="btn-action" (click)="createNewAssessment()" data-tour="assessments-create">
+      <mat-icon>add</mat-icon>
+      {{ 'Criar Formulário' | translate }}
+    </button>
+
+  </app-page-header>
+
+  <!-- Card principal -->
+  <div class="main-card">
+
+    <!-- Filtros -->
+    <div class="filters-row" data-tour="assessments-search">
+
+      <!-- Busca por nome -->
+      <mat-form-field appearance="outline" class="filter-search">
+        <mat-label>{{ 'Buscar por Nome' | translate }}</mat-label>
+        <mat-icon matPrefix class="filter-icon">search</mat-icon>
+        <input matInput [placeholder]="('Nome do formulário...' | translate)"
+          [(ngModel)]="searchValue" (ngModelChange)="applyFilters()" />
+        <button mat-icon-button matSuffix *ngIf="searchValue" (click)="searchValue = ''; applyFilters()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <!-- Filtro por cliente (oculto quando já filtrado por clientId) -->
+      <mat-form-field appearance="outline" class="filter-field" *ngIf="!clientId">
+        <mat-label>{{ 'Cliente' | translate }}</mat-label>
+        <mat-icon matPrefix class="filter-icon">business</mat-icon>
+        <mat-select [(ngModel)]="clientFilterValue" (ngModelChange)="applyFilters()">
+          <mat-option value="">Todos os clientes</mat-option>
+          <mat-option *ngFor="let c of clients" [value]="c.id">{{ c.companyName }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Filtro por criador -->
+      <mat-form-field appearance="outline" class="filter-field" *ngIf="creators.length > 0">
+        <mat-label>{{ 'Criador' | translate }}</mat-label>
+        <mat-icon matPrefix class="filter-icon">person</mat-icon>
+        <mat-select [(ngModel)]="creatorFilter" (ngModelChange)="applyFilters()">
+          <mat-option value="">Todos os criadores</mat-option>
+          <mat-option *ngFor="let c of creators" [value]="c.toLowerCase()">{{ c }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Filtro por data: De -->
+      <mat-form-field appearance="outline" class="filter-date">
+        <mat-label>{{ 'Criado de' | translate }}</mat-label>
+        <mat-icon matPrefix class="filter-icon">event</mat-icon>
+        <input matInput [matDatepicker]="pickerFrom" [(ngModel)]="dateFrom"
+          (dateChange)="applyFilters()" placeholder="DD/MM/AAAA" />
+        <mat-datepicker-toggle matSuffix [for]="pickerFrom"></mat-datepicker-toggle>
+        <mat-datepicker #pickerFrom></mat-datepicker>
+      </mat-form-field>
+
+      <!-- Filtro por data: Até -->
+      <mat-form-field appearance="outline" class="filter-date">
+        <mat-label>{{ 'Criado até' | translate }}</mat-label>
+        <mat-icon matPrefix class="filter-icon">event</mat-icon>
+        <input matInput [matDatepicker]="pickerTo" [(ngModel)]="dateTo"
+          (dateChange)="applyFilters()" placeholder="DD/MM/AAAA" />
+        <mat-datepicker-toggle matSuffix [for]="pickerTo"></mat-datepicker-toggle>
+        <mat-datepicker #pickerTo></mat-datepicker>
+      </mat-form-field>
+
+    </div>
+
+    <!-- Info bar: resultados + limpar filtros -->
+    <div class="filters-info">
+      <span class="results-count">
+        {{ dataSource.filteredData?.length || 0 }}
+        formulário{{ (dataSource.filteredData?.length || 0) !== 1 ? 's' : '' }} encontrado{{ (dataSource.filteredData?.length || 0) !== 1 ? 's' : '' }}
+      </span>
+      <button mat-stroked-button class="btn-clear-filters" *ngIf="hasActiveFilters" (click)="clearFilters()">
+        <mat-icon>filter_list_off</mat-icon>
+        Limpar filtros
       </button>
     </div>
+
+    <!-- Tabela -->
+    <div class="table-container" data-tour="assessments-table">
+      <table mat-table [dataSource]="dataSource" class="main-table" matSort>
+
+        <!-- Cliente -->
+        <ng-container matColumnDef="clientName">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Cliente' | translate }}</th>
+          <td mat-cell *matCellDef="let item" class="secondary-cell">
+            {{ item.clientName || 'Sem Cliente' }}
+          </td>
+        </ng-container>
+
+        <!-- Nome -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome do Formulário' | translate }}</th>
+          <td mat-cell *matCellDef="let item">
+            <div class="name-cell">
+              <div class="name-avatar">{{ (item.name || 'F').charAt(0).toUpperCase() }}</div>
+              <span class="name-text">{{ item.name }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Criado Por -->
+        <ng-container matColumnDef="createdBy">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Criado Por' | translate }}</th>
+          <td mat-cell *matCellDef="let item" class="secondary-cell">
+            {{ item.createdBy?.name || 'Desconhecido' }}
+          </td>
+        </ng-container>
+
+        <!-- Data de Criação -->
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Data de Criação' | translate }}</th>
+          <td mat-cell *matCellDef="let item" class="date-cell">
+            {{ item.createdAt | date:'dd/MM/yyyy' }}
+          </td>
+        </ng-container>
+
+        <!-- Respondidos -->
+        <ng-container matColumnDef="responses">
+          <th mat-header-cell *matHeaderCellDef>{{ 'Respondidos' | translate }}</th>
+          <td mat-cell *matCellDef="let item">
+            <span class="responses-badge">{{ item.responsesCount || 0 }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Ações -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
+          <td mat-cell *matCellDef="let item">
+            <button mat-icon-button class="action-preview"
+              [matTooltip]="'Pré-visualizar' | translate"
+              (click)="previewAssessment(item)">
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <button mat-icon-button class="action-edit"
+              [matTooltip]="'Editar' | translate"
+              (click)="editAssessment(item.id)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button class="action-delete"
+              [matTooltip]="'Excluir' | translate"
+              (click)="deleteAssessment(item.id)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+
+        <!-- Empty state -->
+        <tr class="mat-row" *matNoDataRow>
+          <td [attr.colspan]="displayedColumns.length">
+            <div class="empty-state">
+              <mat-icon>assignment</mat-icon>
+              <span>{{ 'Nenhum formulário encontrado.' | translate }}</span>
+            </div>
+          </td>
+        </tr>
+
+      </table>
+    </div>
+
+    <mat-paginator [pageSize]="10" [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons></mat-paginator>
+
   </div>
 
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>{{ 'Formulários de Avaliação' | translate }}</h2>
-    <button mat-flat-button color="primary" (click)="createNewAssessment()" data-tour="assessments-create">
-      <mat-icon>add</mat-icon>
-      {{ 'Criar Novo Formulário de Avaliação' | translate }}
-    </button>
-  </div>
-
-  <!-- Campos de Busca -->
-  <div class="d-flex gap-3 mb-3" data-tour="assessments-search">
-    <!-- Campo de Busca por Texto (somente nome) -->
-    <mat-form-field class="w-100" appearance="outline">
-      <mat-label>{{ 'Buscar por Nome' | translate }}</mat-label>
-      <input
-        matInput
-        [placeholder]="('Digite o nome da avaliação' | translate)"
-        [(ngModel)]="searchValue"
-        (ngModelChange)="applyFilter($event)"
-      />
-      <button
-        mat-icon-button
-        matSuffix
-        *ngIf="searchValue"
-        (click)="searchValue = ''; applyFilter($event)"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
-    </mat-form-field>
-  </div>
-
-  <!-- Tabela de Avaliações -->
-  <div class="table-responsive" data-tour="assessments-table">
-    <table
-      mat-table
-      [dataSource]="dataSource"
-      class="mat-elevation-z8 w-100"
-      matSort
-    >
-      <!-- Cliente -->
-      <ng-container matColumnDef="clientName">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Cliente' | translate }}</th>
-        <td mat-cell *matCellDef="let assessment">
-          {{ assessment.clientName || "Sem Cliente" }}
-        </td>
-      </ng-container>
-
-      <!-- Projeto -->
-      <!-- <ng-container matColumnDef="projectName">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Projeto</th>
-        <td mat-cell *matCellDef="let assessment">
-          {{ assessment.projectName || "Sem Projeto" }}
-        </td>
-      </ng-container> -->
-
-      <!-- Nome -->
-      <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>
-          {{ 'Nome do Formulário' | translate }}
-        </th>
-        <td mat-cell *matCellDef="let assessment">{{ assessment.name }}</td>
-      </ng-container>
-
-      <!-- Criado Por -->
-      <ng-container matColumnDef="createdBy">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Criado Por' | translate }}</th>
-        <td mat-cell *matCellDef="let assessment">
-          {{ assessment.createdBy.name || "Desconhecido" }}
-        </td>
-      </ng-container>
-
-      <!-- Criado Em -->
-      <ng-container matColumnDef="createdAt">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>
-          {{ 'Data de Criação' | translate }}
-        </th>
-        <td mat-cell *matCellDef="let assessment">
-          {{ assessment.createdAt | date : "short" }}
-        </td>
-      </ng-container>
-
-      <!-- Respondidas -->
-      <ng-container matColumnDef="responses">
-        <th mat-header-cell *matHeaderCellDef>{{ 'Respondidos' | translate }}</th>
-        <td mat-cell *matCellDef="let assessment" style="text-aling:center">
-          <strong>{{ assessment.responsesCount || 0 }}</strong>
-        </td>
-      </ng-container>
-
-      <!-- Ações -->
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
-        <td mat-cell *matCellDef="let assessment">
-          <!-- <button
-            mat-icon-button
-            color="primary"
-            matTooltip="Enviar Avaliação"
-            (click)="sendAssessment(assessment.id, assessment.clientId)"
-          >
-            <mat-icon>send</mat-icon>
-          </button> -->
-          <button
-            mat-icon-button
-            color="primary"
-            [matTooltip]="'Pré-visualizar' | translate"
-            (click)="previewAssessment(assessment)"
-          >
-            <mat-icon>visibility</mat-icon>
-          </button>
-          <button
-            mat-icon-button
-            color="primary"
-            [matTooltip]="'Editar' | translate"
-            (click)="editAssessment(assessment.id)"
-          >
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button
-            mat-icon-button
-            color="warn"
-            [matTooltip]="'Excluir' | translate"
-            (click)="deleteAssessment(assessment.id)"
-          >
-            <mat-icon>delete</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-    </table>
-  </div>
-
-  <!-- Paginação -->
-  <mat-paginator
-    [pageSize]="5"
-    [pageSizeOptions]="[5, 10, 20]"
-    showFirstLastButtons
-  ></mat-paginator>
 </div>

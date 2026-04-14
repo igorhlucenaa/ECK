@@ -1,37 +1,19 @@
-<div class="row">
-  <!-- Primeira linha: 3 colunas -->
+<div class="row g-3" style="margin-bottom: 24px;">
   <div
-    *ngFor="let chart of generateChartData(); let i = index"
+    *ngFor="let item of pieChartsData; let i = index"
     [ngClass]="{ 'col-lg-4 col-sm-6': i < 3, 'col-lg-6 col-sm-6': i >= 3 }"
   >
-    <mat-card class="cardWithShadow">
-      <mat-card-content class="p-x-24 p-y-16">
-        <div class="row justify-content-between">
-          <div class="col-6 d-flex align-items-center">
-            <div>
-              <mat-card-title class="f-s-20 f-w-500">
-                {{ pieChartsData[i]?.value }}
-              </mat-card-title>
-              <mat-card-subtitle class="f-s-14 f-w-400">
-                {{ pieChartsData[i]?.label }}
-              </mat-card-subtitle>
-            </div>
-          </div>
-          <div class="col-5 d-flex align-items-center">
-            <apx-chart
-              [series]="chart.series"
-              [chart]="chart.chart"
-              [labels]="chart.labels"
-              [colors]="chart.colors"
-              [plotOptions]="chart.plotOptions"
-              [dataLabels]="chart.dataLabels"
-              [tooltip]="chart.tooltip"
-              [legend]="chart.legend"
-            >
-            </apx-chart>
-          </div>
+    <mat-card class="cardWithShadow kpi-card">
+      <div class="kpi-accent-bar" [style.background-color]="item.color"></div>
+      <div class="kpi-content">
+        <div>
+          <div class="kpi-value" [style.color]="item.color">{{ item.value }}</div>
+          <div class="kpi-label">{{ item.label }}</div>
         </div>
-      </mat-card-content>
+        <div class="kpi-icon-bg" [style.background-color]="getIconBg(item.color)">
+          <mat-icon [style.color]="item.color" style="font-size: 22px; width: 22px; height: 22px;">{{ item.icon || 'bar_chart' }}</mat-icon>
+        </div>
+      </div>
     </mat-card>
   </div>
 </div>

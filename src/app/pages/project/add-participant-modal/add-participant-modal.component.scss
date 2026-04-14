@@ -1,0 +1,214 @@
+// ─── Header ──────────────────────────────────────────────────────
+.ap-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 20px 16px;
+  background: linear-gradient(135deg, #1B2D56 0%, #1B84FF 100%);
+  color: #fff;
+}
+
+.ap-header__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  transition: background 0.2s;
+
+  &--filled {
+    background: rgba(255, 255, 255, 0.28);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.ap-header__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ap-header__title {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 2px;
+  color: #fff;
+}
+
+.ap-header__sub {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ap-header__close {
+  color: rgba(255, 255, 255, 0.75) !important;
+  flex-shrink: 0;
+  &:hover { color: #fff !important; }
+}
+
+// ─── Loading / Empty ──────────────────────────────────────────────
+.ap-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 24px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.ap-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 36px 24px;
+  color: #94a3b8;
+  font-size: 13px;
+  mat-icon { font-size: 36px; width: 36px; height: 36px; color: #f59e0b; }
+  p { margin: 0; text-align: center; }
+}
+
+// ─── Body ─────────────────────────────────────────────────────────
+.ap-body {
+  padding: 20px 20px 8px !important;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+// ─── Context chips (cliente/projeto pré-definidos) ─────────────────
+.ap-context-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #f0f7ff;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+}
+
+.ap-context-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e40af;
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+
+  &--project {
+    color: #6366f1;
+  }
+}
+
+.ap-context-sep {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #94a3b8;
+}
+
+// ─── Divider ──────────────────────────────────────────────────────
+.ap-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 0 16px;
+}
+
+// ─── Fields ───────────────────────────────────────────────────────
+.ap-fields-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 4px;
+
+  .ap-field { flex: 1; }
+}
+
+.ap-field {
+  width: 100%;
+  margin-bottom: 4px;
+
+  &--full { width: 100%; }
+}
+
+.ap-prefix-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+  margin-right: 4px;
+}
+
+// ─── Category options ─────────────────────────────────────────────
+.ap-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ap-option__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &--avaliado   { background: #3b82f6; }
+  &--gestor     { background: #8b5cf6; }
+  &--par        { background: #06b6d4; }
+  &--subordinado { background: #f59e0b; }
+  &--outros     { background: #94a3b8; }
+}
+
+// ─── Actions ──────────────────────────────────────────────────────
+.ap-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px !important;
+  border-top: 1px solid #f1f5f9;
+}
+
+.ap-btn-cancel {
+  color: #64748b;
+  font-size: 13px;
+  &:hover { background: #f8fafc; }
+}
+
+.ap-btn-save {
+  background: linear-gradient(135deg, #1B2D56, #1B84FF) !important;
+  color: #fff !important;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 8px !important;
+  padding: 0 18px !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  mat-icon { font-size: 17px; width: 17px; height: 17px; }
+  &[disabled] { opacity: 0.55; }
+}
+
+.ap-spinner {
+  display: inline-block;
+  margin-right: 4px;
+}

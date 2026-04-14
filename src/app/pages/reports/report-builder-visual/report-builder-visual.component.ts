@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -14,6 +14,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Subject, takeUntil } from 'rxjs';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
+import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 
 // Interface local para evitar dependência circular
 type RelatorioSecaoTipo = 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari' | 'perguntas_abertas';
@@ -67,10 +68,13 @@ interface RelatorioSecaoSimplificada {
   templateUrl: './report-builder-visual.component.html',
   styleUrls: ['./report-builder-visual.component.scss']
 })
-export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
+export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestroy {
   @Input() relatorioConfiguracao: RelatorioSecaoSimplificada[] = [];
   @Input() competencias: any[] = [];
+  @Input() savedLabel: string = '';
+  @Input() hasUnsavedChanges: boolean = false;
   @Output() configuracaoChange = new EventEmitter<RelatorioSecaoSimplificada[]>();
+  @Output() saveRequested = new EventEmitter<void>();
 
   private destroy$ = new Subject<void>();
 
@@ -219,6 +223,28 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
   secaoEditando: RelatorioSecaoSimplificada | null = null;
   showConfigPanel = false;
 
+  paletasCores: { [key: string]: { nome: string; cores: string[] } } = {
+    'padrao':     { nome: 'Padrão',           cores: ['#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#424242'] },
+    'azul':       { nome: 'Azul',             cores: ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#0D47A1'] },
+    'verde':      { nome: 'Verde',            cores: ['#E8F5E8', '#A5D6A7', '#66BB6A', '#43A047', '#1B5E20'] },
+    'laranja':    { nome: 'Laranja',          cores: ['#FFF3E0', '#FFCC80', '#FF9800', '#F57C00', '#E65100'] },
+    'roxo':       { nome: 'Roxo',             cores: ['#F3E5F5', '#CE93D8', '#AB47BC', '#8E24AA', '#4A148C'] },
+    'vermelho':   { nome: 'Vermelho',         cores: ['#FFEBEE', '#EF9A9A', '#EF5350', '#E53935', '#B71C1C'] },
+    'teal':       { nome: 'Teal',             cores: ['#E0F2F1', '#80CBC4', '#26A69A', '#00897B', '#004D40'] },
+    'categorias': { nome: 'Categorias',       cores: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'] },
+    'personalizada': { nome: 'Personalizada', cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] }
+  };
+
+  selecionarPaleta(key: string): void {
+    if (!this.secaoEditando) return;
+    this.secaoEditando['paletaCor'] = key;
+  }
+
+  selecionarPaletaBaixas(key: string): void {
+    if (!this.secaoEditando) return;
+    this.secaoEditando['paletaCorBaixas'] = key;
+  }
+
   // Configuração do editor rich text
   editorConfig: AngularEditorConfig = {
     editable: true,
@@ -239,13 +265,21 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
 
   constructor(
     private fb: FormBuilder,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private confirmDialog: ConfirmDialogService
   ) {}
 
   ngOnInit(): void {
-    // Inicializar com configuração existente ou vazia
     this.canvasSections = [...this.relatorioConfiguracao];
     this.ordenarSecoes();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['relatorioConfiguracao'] && !changes['relatorioConfiguracao'].firstChange) {
+      this.canvasSections = [...this.relatorioConfiguracao];
+      this.ordenarSecoes();
+      this.fecharPainelConfig();
+    }
   }
 
   ngOnDestroy(): void {
@@ -290,6 +324,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
    * Adiciona uma nova seção baseada em um template
    */
   adicionarSecaoDoTemplate(template: SectionTemplate): void {
+    const tiposComCompetencias = ['graficos', 'tabela', 'tabela_detalhada', 'competencia_detalhada', 'grafico_defasagem', 'janela_johari'];
     const novaSecao: RelatorioSecaoSimplificada = {
       id: `${template.tipo}_${Date.now()}`,
       tipo: template.tipo,
@@ -297,7 +332,9 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
       texto: '',
       visivel: true,
       ordem: this.canvasSections.length + 1,
-      competenciasIds: [],
+      competenciasIds: tiposComCompetencias.includes(template.tipo)
+        ? this.competencias.map(c => c.id)
+        : [],
       tipoGrafico: template.tipo === 'graficos' ? 'barra' : undefined,
       paletaCor: 'padrao'
     };
@@ -328,7 +365,10 @@ export class ReportBuilderVisualComponent implements OnInit, OnDestroy {
   /**
    * Remove uma seção
    */
-  removerSecao(secao: RelatorioSecaoSimplificada): void {
+  async removerSecao(secao: RelatorioSecaoSimplificada): Promise<void> {
+    const nome = secao.titulo || this.getTemplatePorTipo(secao.tipo)?.nome || 'esta seção';
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
     const index = this.canvasSections.findIndex(s => s.id === secao.id);
     if (index > -1) {
       this.canvasSections.splice(index, 1);

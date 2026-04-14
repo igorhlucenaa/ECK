@@ -72,6 +72,77 @@ interface quicklinks {
   ],
   templateUrl: './header.component.html',
   encapsulation: ViewEncapsulation.None,
+  styles: [`
+    .lang-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      height: 36px;
+      padding: 0 12px 0 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.1);
+      min-width: unset;
+      transition: background 0.15s;
+    }
+    .lang-pill:hover { background: rgba(255,255,255,0.2); }
+    .lang-pill__inner {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+    }
+    .lang-flag-img {
+      width: 24px;
+      height: 16px;
+      border-radius: 3px;
+      object-fit: cover;
+      display: block;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    .lang-pill__code {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      color: inherit;
+      line-height: 1;
+    }
+    .lang-pill__arrow {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      line-height: 16px;
+      opacity: 0.6;
+    }
+    .lang-menu-item.mat-mdc-menu-item {
+      min-height: 48px;
+    }
+    .lang-menu-item .mdc-list-item__primary-text {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      gap: 10px;
+    }
+    .lang-flag-menu {
+      width: 26px;
+      height: 18px;
+      border-radius: 3px;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .lang-code-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: #1B84FF;
+      background: #e8f1ff;
+      border-radius: 5px;
+      padding: 2px 7px;
+      margin-left: auto;
+      letter-spacing: 0.5px;
+    }
+  `],
 })
 export class HeaderComponent implements OnInit {
   [x: string]: any;
@@ -86,26 +157,27 @@ export class HeaderComponent implements OnInit {
   public selectedLanguage: any = {
     language: 'Português',
     code: 'pt-BR',
-    type: 'PT-BR',
-    icon: '/assets/images/flag/icon-flag-pt-br.jpg',
+    type: 'PT',
+    icon: '/assets/images/flag/icon-flag-pt-br.svg',
   };
 
   public languages: any[] = [
     {
       language: 'Português',
       code: 'pt-BR',
-      type: 'PT-BR',
-      icon: '/assets/images/flag/icon-flag-pt-br.jpg',
+      type: 'PT',
+      icon: '/assets/images/flag/icon-flag-pt-br.svg',
     },
     {
       language: 'Español',
       code: 'es',
+      type: 'ES',
       icon: '/assets/images/flag/icon-flag-es.svg',
     },
     {
       language: 'English',
       code: 'en',
-      type: 'US',
+      type: 'EN',
       icon: '/assets/images/flag/icon-flag-en.svg',
     },
   ];

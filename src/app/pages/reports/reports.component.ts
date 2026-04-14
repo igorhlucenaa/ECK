@@ -1,10 +1,11 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { parseNumeric, exportToCSV, filterQuestionsByType, computeConsolidation, getQuestionTypeStats } from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
-import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { ReactiveFormsModule, FormControl, FormGroup, Validators, FormArray, FormBuilder } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { CommonModule, KeyValuePipe } from '@angular/common';
@@ -33,18 +34,22 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { ActivatedRoute } from '@angular/router';
 import { Input } from '@angular/core';
 import { Router } from '@angular/router';
+import { AppPageHeaderComponent } from '../../components/page-header/page-header.component';
 import { LoadingService } from '../../services/loading.service';
 import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
 import { AuthService } from '../../services/apps/authentication/auth.service';
 import { query, where } from '@angular/fire/firestore';
 import { JohariWindowChartComponent, JohariWindowData } from './charts/johari-window-chart/johari-window-chart.component';
 import { MatRadioModule } from '@angular/material/radio';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { GapChartComponent, GapChartDataItem } from './charts/gap-chart/gap-chart.component';
 import { ReportBuilderVisualComponent } from './report-builder-visual/report-builder-visual.component';
 import { SurveyDashboardComponent } from './survey-dashboard/survey-dashboard.component';
 import { Subject, from, of, takeUntil, tap, debounceTime, switchMap } from 'rxjs';
+import { ConfirmDialogService } from '../../shared/confirm-dialog/confirm-dialog.service';
 import { environment } from 'src/enviroments/environment';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 interface AssessmentOption {
   id: string;
@@ -123,6 +128,7 @@ interface TabelaAvaliacoesAltas {
     MatTableModule,
     MatButtonModule,
     MatSelectModule,
+    MatAutocompleteModule,
     MatOptionModule,
     MatFormFieldModule,
     ReactiveFormsModule,
@@ -142,10 +148,12 @@ interface TabelaAvaliacoesAltas {
     MatCheckboxModule,
     MatRadioModule,
     MatButtonToggleModule,
+    MatProgressSpinnerModule,
     GapChartComponent,
     JohariWindowChartComponent,
     ReportBuilderVisualComponent,
-    SurveyDashboardComponent
+    SurveyDashboardComponent,
+    AppPageHeaderComponent
   ],
   templateUrl: './reports.component.html',
   styleUrls: ['./reports.component.scss'],
@@ -312,7 +320,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Ir para aba de Visualização e exportar
-    this.selectedTabIndex = 3;
+    this.selectedTabIndex = 2;
 
     // Aguardar até que o preview esteja pronto (elemento presente e dados carregados)
     await this.waitForReportReady(8000);
@@ -339,6 +347,38 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   summaryCounts: any = {};
 
   assessmentControl = new FormControl('');
+  assessmentSearchControl = new FormControl('');
+  filteredAssessments: AssessmentOption[] = [];
+
+  builderHasUnsavedChanges = false;
+  isExporting = false;
+  exportingLabel = '';
+
+  get builderSavedLabel(): string {
+    if (this.selectedTemplateId.value) {
+      return this.savedTemplates.find(t => t.id === this.selectedTemplateId.value)?.name || '';
+    }
+    if (this.selectedReportId.value) {
+      return this.savedReports.find(r => r.id === this.selectedReportId.value)?.name || '';
+    }
+    return '';
+  }
+
+  async onBuilderSaveRequested(): Promise<void> {
+    if (this.selectedTemplateId.value) {
+      await this.atualizarTemplateNoFirebase();
+      this.builderHasUnsavedChanges = false;
+    } else if (this.selectedReportId.value) {
+      await this.atualizarRelatorioNoFirebase();
+      this.builderHasUnsavedChanges = false;
+    } else {
+      this.snackBar.open(
+        this.t('Carregue um template ou relatório nos cards acima antes de salvar.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+    }
+  }
 
   // Controle para seleção do avaliado
   avaliadoControl = new FormControl('');
@@ -353,6 +393,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   competencyGroups: any[] = [];
   competencyGroupControl = new FormControl('');
   groupNameControl = new FormControl('');
+
+  // Importar competências de outras avaliações/clientes
+  allAvailableGroups: { id: string; name: string; assessmentName: string; clientName: string; competencias: any[] }[] = [];
+  importGroupControl = new FormControl('');
+  importGroupLoading = false;
 
   // Controles para filtrar tipos de perguntas
   includeOpenQuestions = new FormControl(false);
@@ -564,7 +609,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     private authService: AuthService,
     private fb: FormBuilder,
     private reportsPdf: ReportsPdfService,
-    private pdfMakeService: ReportPdfMakeService
+    private pdfMakeService: ReportPdfMakeService,
+    private sanitizer: DomSanitizer,
+    private confirmDialog: ConfirmDialogService
   ) {
     this.dummyForm = this.fb.group({
       relatorioFormArray: this.fb.array([])
@@ -587,18 +634,25 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.carregarTemplatesSalvos();
 
 
+    this.assessmentSearchControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(term => {
+        const t = (term || '').toLowerCase();
+        this.filteredAssessments = this.assessments.filter(a =>
+          a.name.toLowerCase().includes(t)
+        );
+      });
+
+    // Sincroniza o campo de busca quando assessmentControl é setado externamente
     this.assessmentControl.valueChanges
-      .pipe(
-        tap((id: string | null) => this.onAssessmentChange()),
-        debounceTime(300),
-        switchMap((id: string | null) => {
-          if (id) {
-            return from(this.calcularMediasPorCompetencia());
-          }
-          return of(null);
-        }),
-        takeUntil(this.destroy$)
-      ).subscribe();
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(id => {
+        const name = this.displayAssessmentName(id);
+        if (name && this.assessmentSearchControl.value !== name) {
+          this.assessmentSearchControl.setValue(name, { emitEvent: false });
+          this.filteredAssessments = [...this.assessments];
+        }
+      });
     this.avaliadoControl.valueChanges
       .pipe(
         debounceTime(300),
@@ -740,108 +794,98 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       await this.carregarRelatorioSelecionado();
     }
 
-    // Só depois de carregar os templates, processar os queryParams
+    // Processar os queryParams após carregar templates
     this.route.queryParams.subscribe(async params => {
-      console.log('Query params recebidos:', params);
-      if (params['mode'] === 'individual') {
-        console.log('Modo individual ativado');
-        this.isIndividualMode = true;
-        this.individualParticipantId = params['participantId'];
-        this.individualParticipantName = params['participantName'];
-        this.individualTemplateId = params['templateId'];
-        this.individualTemplateName = params['templateName'];
+      if (params['mode'] !== 'individual') return;
 
-        console.log('Dados do participante:', {
-          id: this.individualParticipantId,
-          name: this.individualParticipantName,
-          templateId: this.individualTemplateId,
-          templateName: this.individualTemplateName
-        });
+      // 1. Flags do modo individual
+      this.isIndividualMode = true;
+      this.individualParticipantId = params['participantId'] || null;
+      this.individualParticipantName = params['participantName'] || null;
+      this.individualTemplateId = params['templateId'] || null;
+      this.individualTemplateName = params['templateName'] || null;
 
-        if (params['assessmentId']) {
-          console.log('AssessmentId encontrado:', params['assessmentId']);
-          this.selectedAssessmentId = params['assessmentId'];
-          this.assessmentControl.setValue(params['assessmentId']);
-
-          // Aguardar carregamento da assessment
-          await this.onAssessmentChange();
-
-          // Processar competências selecionadas
-          if (params['competencyIds']) {
-            try {
-              const competencyIds = JSON.parse(params['competencyIds']);
-              console.log('Competências selecionadas do modal:', competencyIds);
-
-              // Armazenar os IDs para aplicar depois que as competências forem carregadas
-              this.pendingCompetencyIds = competencyIds;
-            } catch (error) {
-              console.error('Erro ao processar competencyIds:', error);
-            }
-          }
-
-          // Aplicar template depois de ter as competências
-          if (params['templateId']) {
-            this.selectedTemplateId.setValue(params['templateId']);
-            await this.aplicarTemplateSelecionado();
-          }
-
-                   // Auto-gerar relatório se solicitado
-         if (params['autoGenerate'] === 'true') {
-           console.log('Auto-geração de relatório solicitada');
-
-           // Ir direto para a aba "Visualizar Relatório" se solicitado
-           if (params['aba'] === 'visualizar') {
-             this.selectedTabIndex = 3; // Tab "Visualizar Relatório"
-             console.log('Mudando para aba Visualizar Relatório');
-           }
-
-           // Aguardar mais tempo para garantir que tudo carregue
-           setTimeout(async () => {
-             try {
-               console.log('Tentando gerar PDF automaticamente...');
-               // Verificar se os dados estão carregados
-               if (this.isDataReady()) {
-                 await this.exportarRelatorioPDF();
-                 console.log('PDF gerado com sucesso!');
-               } else {
-                 console.log('Dados ainda não estão prontos, aguardando mais...');
-                 // Tentar novamente após mais 3 segundos
-                 setTimeout(async () => {
-                   if (this.isDataReady()) {
-                     await this.exportarRelatorioPDF();
-                     console.log('PDF gerado com sucesso na segunda tentativa!');
-                                       }
-                 }, 3000);
-               }
-             } catch (error) {
-               console.error('Erro ao gerar PDF automaticamente:', error);
-      this.snackBar.open(this.t('Erro ao gerar PDF automaticamente. Tente gerar manualmente.'), this.t('Fechar'), { duration: 5000 });
-             }
-           }, 5000); // Aguardar 5 segundos para tudo carregar
-         }
-        }
-        setTimeout(() => {
-          this.selectedTabIndex = 3; // Ir direto para a aba "Visualizar"
-        }, 100);
+      const assessmentId: string = params['assessmentId'];
+      if (!assessmentId) {
+        console.error('[Relatório Individual] assessmentId ausente nos queryParams', params);
+        return;
       }
+
+      // 2. Setar avaliação nos controles (sem disparar subscriptions)
+      this.selectedAssessmentId = assessmentId;
+      this.assessmentControl.setValue(assessmentId, { emitEvent: false });
+
+      // 3. Resolver e exibir nome da avaliação ANTES de carregar dados pesados
+      const assessmentName = await this.resolveAssessmentName(assessmentId);
+      this.assessmentSearchControl.setValue(assessmentName, { emitEvent: false });
+
+      // 4. Definir competências pendentes ANTES de onAssessmentChange
+      if (params['competencyIds']) {
+        try {
+          this.pendingCompetencyIds = JSON.parse(params['competencyIds']);
+        } catch (e) {
+          console.error('[Relatório Individual] Erro ao processar competencyIds:', e);
+        }
+      }
+
+      // 5. Carregar dados da avaliação e calcular médias
+      try {
+        await this.onAssessmentChange();
+        await this.calcularMediasPorCompetencia();
+      } catch (e) {
+        console.error('[Relatório Individual] Erro em onAssessmentChange:', e);
+      }
+
+      // 6. Filtrar pelo avaliado específico
+      if (this.individualParticipantName) {
+        this.selectedAvaliado = this.individualParticipantName;
+        this.avaliadoControl.setValue(this.individualParticipantName, { emitEvent: false });
+        this.invalidateCache();
+      }
+
+      // 7. Aplicar template (emitEvent: false evita duplo aplicarTemplateSelecionado)
+      if (params['templateId']) {
+        this.selectedTemplateId.setValue(params['templateId'], { emitEvent: false });
+        try {
+          await this.aplicarTemplateSelecionado();
+        } catch (e) {
+          console.error('[Relatório Individual] Erro ao aplicar template:', e);
+        }
+      }
+
+      // 8. Preencher competências em todas as seções compatíveis
+      if (this.competencias.length > 0) {
+        const compIds = this.competencias.map(c => c.id);
+        this.relatorioConfiguracao.forEach(sec => {
+          if (['resumo', 'graficos', 'tabela', 'tabela_detalhada', 'grafico_defasagem', 'competencia_detalhada'].includes(sec.tipo)) {
+            sec.competenciasIds = [...compIds];
+          }
+        });
+        this.atualizarFormArrayComConfiguracao();
+      }
+
+      // 9. Ir direto para a aba Visualizar Relatório
+      this.selectedTabIndex = 2;
+      this.cdr.markForCheck();
     });
 
     this.atualizarPerguntasBloqueadas();
 
-    this.assessmentControl.valueChanges.subscribe(id => {
-      this.selectedAssessmentId = id;
-      if (id) {
-        this.onAssessmentChange();
-        // Após carregar os dados, calculamos as médias
-        this.calcularMediasPorCompetencia();
-      } else {
-        // Limpa os dados se nenhuma avaliação for selecionada
-        this.dataSource = [];
-        this.competencias = [];
-        this.mediasPorCompetencia = [];
-      }
-      this.cdr.detectChanges(); // Garante a atualização da view
-    });
+    // Subscription única para seleção manual de avaliação pelo usuário
+    this.assessmentControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(async id => {
+        this.selectedAssessmentId = id;
+        if (id) {
+          await this.onAssessmentChange();
+          await this.calcularMediasPorCompetencia();
+        } else {
+          this.dataSource = [];
+          this.competencias = [];
+          this.mediasPorCompetencia = [];
+        }
+        this.cdr.detectChanges();
+      });
 
     this.selectedReportId.valueChanges.subscribe(id => {
       if (id) {
@@ -867,6 +911,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.loadingService.reset(); // garantir que overlay seja limpo ao sair da página
   }
 
   // Verificar se os dados estão prontos para gerar o PDF
@@ -885,8 +930,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const assessmentsSnap = await getDocs(collection(this.firestore, 'assessments'));
       this.assessments = assessmentsSnap.docs.map(doc => ({
         id: doc.id,
-        name: doc.data()['name'] || doc.id
+        name: doc.data()['name'] || doc.data()['surveyJSON']?.['title'] || doc.id
       }));
+      this.filteredAssessments = [...this.assessments];
     } catch (e) {
       console.error("Erro ao carregar avaliações:", e);
       this.snackBar.open(this.t('Falha ao carregar as avaliações.'), this.t('Fechar'), { duration: 3000 });
@@ -930,6 +976,44 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  displayAssessmentName(id: string | null): string {
+    if (!id) return '';
+    return this.assessments.find(a => a.id === id)?.name || '';
+  }
+
+  /** Resolve o nome da avaliação: tenta cache local primeiro, depois Firestore direto */
+  private async resolveAssessmentName(id: string): Promise<string> {
+    // Cache local: ignora entradas onde o "nome" é na verdade o próprio ID
+    const cached = this.assessments.find(a => a.id === id);
+    if (cached?.name && cached.name !== id) return cached.name;
+    try {
+      const snap = await getDoc(doc(this.firestore, 'assessments', id));
+      if (snap.exists()) {
+        const d = snap.data();
+        // Tenta name → surveyJSON.title → id (fallback final)
+        const name: string = d['name'] || d['surveyJSON']?.['title'] || id;
+        // Atualiza ou insere no cache
+        const idx = this.assessments.findIndex(a => a.id === id);
+        if (idx >= 0) {
+          this.assessments[idx].name = name;
+        } else {
+          this.assessments.push({ id, name });
+        }
+        this.filteredAssessments = [...this.assessments];
+        return name;
+      }
+    } catch (e) {
+      console.error('[resolveAssessmentName] Erro ao buscar nome da avaliação:', e);
+    }
+    return id;
+  }
+
+  onAssessmentSelected(id: string): void {
+    this.assessmentControl.setValue(id);
+    this.assessmentSearchControl.setValue(this.displayAssessmentName(id), { emitEvent: false });
+    this.filteredAssessments = [...this.assessments];
+  }
+
   async onAssessmentChange() {
     if (!this.selectedAssessmentId) {
       this.dataSource = [];
@@ -957,15 +1041,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.displayedColumns = [];
     this.questionMap = {};
 
-    // Limpar avaliados e resetar seleção
+    // Limpar avaliados (em modo individual preserva a seleção definida via query params)
     this.avaliadosDisponiveis = [];
-    this.selectedAvaliado = null;
-    this.avaliadoControl.setValue('');
+    if (!this.isIndividualMode) {
+      this.selectedAvaliado = null;
+      this.avaliadoControl.setValue('');
+    }
+
+    try {
     const assessmentRef = doc(this.firestore, 'assessments', this.selectedAssessmentId);
     const assessmentSnap = await getDoc(assessmentRef);
     if (!assessmentSnap.exists()) {
-      this.isLoading = false;
-      return;
+      return; // finally handles hide()
     }
     const assessmentData = assessmentSnap.data();
     console.log('📊 AssessmentData:', assessmentData);
@@ -976,8 +1063,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (!surveyJSON || !surveyJSON.pages) {
       console.log('❌ SurveyJSON não encontrado ou sem páginas');
-      this.isLoading = false;
-      return;
+      return; // finally handles hide()
     }
 
     // Extrair questões (rows) das perguntas do surveyJSON
@@ -1204,7 +1290,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.avaliadosDisponiveis = this.getAvaliadosDisponiveis();
     console.log('Avaliados disponíveis:', this.avaliadosDisponiveis);
 
-    this.loadingService.hide();
     this.performanceMonitor.endTimer('onAssessmentChange');
 
     // Mensagem informativa para modo individual
@@ -1270,6 +1355,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('  - DynamicColumns length:', this.dynamicColumns.length);
     console.log('  - QuestionMap keys:', Object.keys(this.questionMap).length);
     console.log('  - QuestionMap values:', Object.values(this.questionMap));
+
+    } catch (error) {
+      console.error('Erro ao carregar dados da avaliação:', error);
+      this.snackBar.open(
+        this.t('Erro ao carregar dados da avaliação. Tente novamente.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+    } finally {
+      // ✅ Sempre executado — garante que o loading nunca fique preso
+      this.loadingService.hide();
+      this.isLoading = false;
+      this.cdr.markForCheck();
+    }
   }
 
   exportCSV() {
@@ -1733,6 +1832,32 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return { domain };
   }
 
+  // Retorna as cores de cabeçalho da tabela baseadas na paleta da seção
+  getTableHeaderColors(secao: any): { primary: string; secondary: string; footer: string } {
+    const paletaKey = secao?.['paletaCor'] || 'azul';
+    const paleta = (this.paletasCores as any)[paletaKey] || this.paletasCores['azul'];
+    const cores = paleta.cores;
+    return {
+      primary:   cores[3] || '#1E88E5',
+      secondary: cores[2] || '#42A5F5',
+      footer:    cores[3] || '#1E88E5'
+    };
+  }
+
+  getDestaquesAltasColors(secao: any): { header: string; text: string } {
+    const paletaKey = secao?.['paletaCor'] || 'verde';
+    const paleta = (this.paletasCores as any)[paletaKey] || this.paletasCores['verde'];
+    const cores = paleta.cores;
+    return { header: cores[3] || '#558B2F', text: cores[3] || '#558B2F' };
+  }
+
+  getDestaquesBaixasColors(secao: any): { header: string; text: string } {
+    const paletaKey = secao?.['paletaCorBaixas'] || 'vermelho';
+    const paleta = (this.paletasCores as any)[paletaKey] || this.paletasCores['vermelho'];
+    const cores = paleta.cores;
+    return { header: cores[3] || '#C62828', text: cores[3] || '#C62828' };
+  }
+
   // Método para gerar tooltip informativo para cada cor
   getCorTooltip(secao: any, index: number): string {
     const paletaSelecionada = secao?.paletaCor || secao?.['paletaCor'] || 'padrao';
@@ -2147,40 +2272,31 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Por favor, dê um nome ao relatório.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
-    // Buscar nome da avaliação selecionada
-    const assessment = this.assessments.find(a => a.id === this.selectedAssessmentId);
 
-    // Logar conteúdo das seções antes de salvar
-    const secaoCapa = this.relatorioConfiguracao.find(s => s.tipo === 'capa');
-    if (secaoCapa && secaoCapa.texto) {
-      const texto = secaoCapa.texto;
-      console.log('💾 SALVANDO - Conteúdo da capa (primeiros 1000 chars):', texto.substring(0, 1000));
-      console.log('💾 SALVANDO - Tipo do conteúdo:', typeof texto);
-      console.log('💾 SALVANDO - Tamanho total:', texto.length);
-      console.log('💾 SALVANDO - Contém HTML:', texto.includes('<div') || texto.includes('<h3'));
-      console.log('💾 SALVANDO - Contém Markdown:', texto.includes('##') || texto.includes('**'));
-      console.log('💾 SALVANDO - Contém "Respondentes":', texto.toLowerCase().includes('respondentes'));
-      console.log('💾 SALVANDO - Contém "por Categoria":', texto.toLowerCase().includes('por categoria'));
-      console.log('💾 SALVANDO - Contém HTML entities:', texto.includes('&nbsp;') || texto.includes('&amp;') || texto.includes('&lt;') || texto.includes('&gt;'));
-
-      // Verificar estrutura específica
-      const temH3Respondentes = /<h3[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/h3>/i.test(texto);
-      console.log('💾 SALVANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
+    // Verificar nome duplicado
+    const nomeExistente = this.savedReports.find(
+      r => r.name.toLowerCase() === this.nomeRelatorioControl.value!.toLowerCase()
+    );
+    if (nomeExistente) {
+      this.snackBar.open(this.t('Já existe um relatório com este nome. Escolha outro nome ou carregue e atualize o existente.'), this.t('Fechar'), { duration: 4000 });
+      return;
     }
 
+    const assessment = this.assessments.find(a => a.id === this.selectedAssessmentId);
+    const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     const reportData = {
       nome: this.nomeRelatorioControl.value,
       assessmentId: this.selectedAssessmentId,
       assessmentName: assessment ? assessment.name : '',
-      competencias: this.competencias,
-      configuracao: this.relatorioConfiguracao,
+      competencias: sanitize(this.competencias),
+      configuracao: sanitize(this.relatorioConfiguracao),
       criadoEm: new Date()
     };
     try {
       const docRef = await addDoc(collection(this.firestore, 'reports'), reportData);
       this.snackBar.open(this.t('Relatório salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
-      this.nomeRelatorioControl.reset();
-      this.carregarRelatoriosSalvos(); // Atualiza a lista
+      this.selectedReportId.setValue(docRef.id);
+      this.carregarRelatoriosSalvos();
     } catch (e) {
       console.error('Erro ao salvar relatório: ', e);
       this.snackBar.open(this.t('Ocorreu um erro ao salvar o relatório.'), this.t('Fechar'), { duration: 3000 });
@@ -2195,6 +2311,39 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }));
   }
 
+  async atualizarRelatorioNoFirebase() {
+    if (!this.selectedReportId.value) {
+      this.snackBar.open(this.t('Selecione um relatório para atualizar.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    const nomeRelatorio = this.nomeRelatorioControl.value
+      || this.savedReports.find(r => r.id === this.selectedReportId.value)?.name
+      || '';
+    if (!nomeRelatorio) {
+      this.snackBar.open(this.t('Por favor, dê um nome ao relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    const assessment = this.assessments.find(a => a.id === this.selectedAssessmentId);
+    const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
+    const reportRef = doc(this.firestore, 'reports', this.selectedReportId.value);
+    const reportData = {
+      nome: nomeRelatorio,
+      assessmentId: this.selectedAssessmentId,
+      assessmentName: assessment ? assessment.name : '',
+      competencias: sanitize(this.competencias),
+      configuracao: sanitize(this.relatorioConfiguracao),
+      atualizadoEm: new Date()
+    };
+    try {
+      await setDoc(reportRef, reportData, { merge: true });
+      this.snackBar.open(this.t('Relatório atualizado com sucesso!'), this.t('Fechar'), { duration: 3000 });
+      this.carregarRelatoriosSalvos();
+    } catch (e) {
+      console.error('Erro ao atualizar relatório: ', e);
+      this.snackBar.open(this.t('Ocorreu um erro ao atualizar o relatório.'), this.t('Fechar'), { duration: 3000 });
+    }
+  }
+
   async carregarRelatorioSelecionado() {
     if (!this.selectedReportId.value) return;
       const reportRef = doc(this.firestore, 'reports', this.selectedReportId.value);
@@ -2202,7 +2351,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (reportSnap.exists()) {
         const reportData = reportSnap.data();
         this.relatorioConfiguracao = reportData['configuracao'] || [];
-      this.competencias = reportData['competencias'] || [];
+        this.competencias = reportData['competencias'] || [];
+
+        // Preencher automaticamente o nome do relatório no campo de nome
+        if (reportData['nome']) {
+          this.nomeRelatorioControl.setValue(reportData['nome']);
+        }
 
       // Logar conteúdo das seções após carregar
       const secaoCapa = this.relatorioConfiguracao.find(s => s.tipo === 'capa');
@@ -2234,6 +2388,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // Atualizar perguntas bloqueadas após carregar competências
       this.atualizarPerguntasBloqueadas();
         this.snackBar.open(this.t('Relatório carregado!'), this.t('Fechar'), { duration: 3000 });
+        this.builderHasUnsavedChanges = false;
     }
   }
 
@@ -2322,17 +2477,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
    * Handler para mudanças do componente visual
    */
   onConfiguracaoVisualChange(novaConfiguracao: any[]): void {
-    // Converter RelatorioSecaoSimplificada[] para RelatorioSecao[]
-    const configuracaoConvertida: RelatorioSecao[] = novaConfiguracao.map(sec => ({
-      ...sec,
-      tipo: sec.tipo as RelatorioSecao['tipo']
-    }));
-
-    this.relatorioConfiguracao = configuracaoConvertida;
     this.relatorioConfiguracao = novaConfiguracao;
     this.atualizarFormArrayComConfiguracao();
-    // Invalidar cache
     this.invalidateCache('secao-');
+    this.builderHasUnsavedChanges = true;
   }
 
   // Métodos auxiliares para UI das seções
@@ -2449,10 +2597,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
+    // Salvar configuração de seções com competenciasIds zerados — templates são reutilizáveis
+    // entre avaliações, então não devem fixar competências de uma avaliação específica.
+    const configuracaoSemCompetencias = sanitize(this.relatorioConfiguracao).map((sec: any) => ({
+      ...sec,
+      competenciasIds: []
+    }));
     const templateData = {
       nome: this.nomeTemplateControl.value,
-      configuracao: this.relatorioConfiguracao,
-      competencias: this.competencias,
+      configuracao: configuracaoSemCompetencias,
       criadoEm: new Date()
     };
     try {
@@ -2475,6 +2629,44 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }));
   }
 
+  async excluirRelatorio() {
+    const id = this.selectedReportId.value;
+    if (!id) {
+      this.snackBar.open(this.t('Selecione um relatório para excluir.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    const nome = this.savedReports.find(r => r.id === id)?.name || id;
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
+    try {
+      await deleteDoc(doc(this.firestore, 'reports', id));
+      this.snackBar.open(this.t('Relatório excluído com sucesso!'), this.t('Fechar'), { duration: 3000 });
+      this.selectedReportId.setValue('');
+      await this.carregarRelatoriosSalvos();
+    } catch {
+      this.snackBar.open(this.t('Erro ao excluir relatório.'), this.t('Fechar'), { duration: 3000 });
+    }
+  }
+
+  async excluirTemplate() {
+    const id = this.selectedTemplateId.value;
+    if (!id) {
+      this.snackBar.open(this.t('Selecione um template para excluir.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    const nome = this.savedTemplates.find(t => t.id === id)?.name || id;
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
+    try {
+      await deleteDoc(doc(this.firestore, 'reportTemplates', id));
+      this.snackBar.open(this.t('Template excluído com sucesso!'), this.t('Fechar'), { duration: 3000 });
+      this.selectedTemplateId.setValue('');
+      await this.carregarTemplatesSalvos();
+    } catch {
+      this.snackBar.open(this.t('Erro ao excluir template.'), this.t('Fechar'), { duration: 3000 });
+    }
+  }
+
   // Aplicar template selecionado ao relatório atual
   async aplicarTemplateSelecionado() {
     if (!this.selectedTemplateId.value) return;
@@ -2482,72 +2674,220 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const templateSnap = await getDoc(templateRef);
       if (templateSnap.exists()) {
         const templateData = templateSnap.data();
-        this.relatorioConfiguracao = templateData['configuracao'] || [];
+        // Carregar seções do template zerando competenciasIds — serão preenchidas
+        // pelas competências da avaliação atual, não do momento em que o template foi salvo
+        const secoes: RelatorioSecao[] = (templateData['configuracao'] || []).map((sec: any) => ({
+          ...sec,
+          competenciasIds: []
+        }));
+        this.relatorioConfiguracao = secoes;
 
-        // Aplicar competências do template apenas se não houver competências específicas selecionadas
-        if (this.competencias.length === 0) {
-          this.competencias = templateData['competencias'] || [];
+        // Preencher automaticamente o nome do template no campo de nome
+        if (templateData['nome']) {
+          this.nomeTemplateControl.setValue(templateData['nome']);
+        }
+
+        // Injetar as competências da avaliação atual em todas as seções que dependem delas
+        if (this.competencias.length > 0) {
+          const compIds = this.competencias.map(c => c.id);
+          this.relatorioConfiguracao.forEach(sec => {
+            if (['resumo', 'graficos', 'tabela', 'tabela_detalhada', 'grafico_defasagem', 'competencia_detalhada', 'janela_johari', 'perguntas_abertas'].includes(sec.tipo)) {
+              sec.competenciasIds = [...compIds];
+            }
+          });
         }
 
         this.atualizarFormArrayComConfiguracao();
         // Atualizar perguntas bloqueadas após carregar competências
         this.atualizarPerguntasBloqueadas();
         this.snackBar.open(this.t('Template aplicado!'), this.t('Fechar'), { duration: 2500 });
+        this.builderHasUnsavedChanges = false;
     }
   }
 
-  // Exportar relatório completo como PDF
+  // Exportar relatório como PDF capturando diretamente a pré-visualização (html2canvas)
   async exportarRelatorioPDF(): Promise<boolean> {
-    const jsPDFmod = await import('jspdf');
-    const { default: html2canvas } = await import('html2canvas');
-    const element = document.getElementById('report-preview');
-    if (!element) {
-      this.snackBar.open(this.t('Não foi possível encontrar o preview do relatório.'), this.t('Fechar'), { duration: 3000 });
+    if (this.isExporting) return false;
+
+    if (!this.isDataReady()) {
+      this.snackBar.open(this.t('Selecione uma avaliação antes de exportar.'), this.t('Fechar'), { duration: 4000 });
       return false;
     }
-    // Ativar modo exportação (oculta UI visível) e capturar o próprio preview em tela
-    const root = document.body;
-    root.classList.add('export-mode');
-    await new Promise(r => setTimeout(r, 50)); // pequeno delay para aplicar estilos
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-    root.classList.remove('export-mode');
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDFmod.jsPDF('p', 'mm', 'a4');
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const margin = 15; // margem em mm
-    const imgWidth = pageWidth - 2 * margin;
-    const imgHeight = canvas.height * imgWidth / canvas.width;
-    let heightLeft = imgHeight;
-    let position = margin;
 
-    // Fatiar a imagem verticalmente para evitar cortes de seções
-    const sliceHeight = (pageHeight - 2 * margin) * (canvas.width / imgWidth);
-    let y = 0;
-    let firstPage = true;
-    while (y < canvas.height) {
-      const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvas.width;
-      sliceCanvas.height = Math.min(sliceHeight, canvas.height - y);
-      const ctx = sliceCanvas.getContext('2d');
-      if (ctx) ctx.drawImage(canvas, 0, y, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
-      const sliceImg = sliceCanvas.toDataURL('image/png');
-      if (!firstPage) pdf.addPage();
-      pdf.addImage(sliceImg, 'PNG', margin, margin, imgWidth, sliceCanvas.height * imgWidth / canvas.width);
-      y += sliceHeight;
-      firstPage = false;
+    const previewEl = document.getElementById('report-preview');
+    if (!previewEl) {
+      this.snackBar.open(this.t('Vá para a aba "Visualizar" antes de exportar.'), this.t('Fechar'), { duration: 4000 });
+      return false;
     }
 
-    // Nome do arquivo baseado no modo
-    let fileName = 'relatorio-360.pdf';
-    if (this.isIndividualMode && this.individualParticipantName) {
-      const sanitizedName = this.individualParticipantName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
-      fileName = `relatorio-${sanitizedName}.pdf`;
-    }
+    this.isExporting = true;
+    this.exportingLabel = 'Preparando impressão...';
+    this.cdr.markForCheck();
 
-    pdf.save(fileName);
-    this.snackBar.open(this.t('PDF exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
-    return true;
+    let iframe: HTMLIFrameElement | null = null;
+
+    try {
+      await new Promise(r => setTimeout(r, 100));
+
+      // 1. Canvas elements não clonam seu conteúdo via innerHTML — converter para img
+      const canvases = Array.from(previewEl.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      const canvasDataUrls = canvases.map(c => {
+        try { return c.toDataURL('image/jpeg', 0.92); } catch { return ''; }
+      });
+
+      // 2. Clonar o preview (preserva atributos _ngcontent-* do Angular)
+      const clone = previewEl.cloneNode(true) as HTMLElement;
+
+      // 3. Substituir <canvas> por <img> no clone
+      Array.from(clone.querySelectorAll('canvas')).forEach((clonedCanvas, i) => {
+        const dataUrl = canvasDataUrls[i];
+        if (!dataUrl) return;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.width  = canvases[i].style.width  || `${canvases[i].offsetWidth}px`;
+        img.style.height = canvases[i].style.height || `${canvases[i].offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+        clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
+      });
+
+      // 4. Remover elementos de UI (botões, separadores, etc.)
+      clone.querySelectorAll('.ui-only').forEach(el => el.remove());
+
+      // 5. Coletar os <style> gerados pelo Angular (contêm seletores _ngcontent-* que batem com o clone)
+      const angularStyles = Array.from(document.head.querySelectorAll('style'))
+        .map(s => s.innerHTML).join('\n');
+
+      // 6. Coletar os <link rel="stylesheet"> externos
+      const linkTags = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML).join('\n');
+
+      // 7. Criar iframe isolado — documento contém APENAS o relatório,
+      //    então o browser pagina pela altura real do conteúdo
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;border:none;visibility:hidden;';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument!;
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="${window.location.origin}/">
+  ${linkTags}
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+
+    * {
+      box-sizing: border-box;
+      print-color-adjust: exact !important;
+      -webkit-print-color-adjust: exact !important;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Roboto, "Helvetica Neue", sans-serif;
+      background: #fff;
+      width: 186mm;
+    }
+    #report-preview {
+      width: 100%;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      zoom: 0.82;
+    }
+    .report-section {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin-bottom: 4mm;
+    }
+    h1 { font-size: 1.5em !important; margin: 3mm 0 2mm !important; }
+    h2 { font-size: 1.2em !important; margin: 2mm 0 1.5mm !important; }
+    h3 { font-size: 1.05em !important; margin: 2mm 0 1mm !important; }
+    p  { margin: 1.5mm 0 !important; }
+    td, th { padding: 4px 8px !important; }
+    /* Tabelas renderizam no tamanho natural — o script abaixo escala as que ultrapassarem */
+    table { border-collapse: collapse; }
+    /* Imagens e SVGs limitados à largura */
+    img, svg { max-width: 100% !important; height: auto; }
+    ${angularStyles}
+  </style>
+</head>
+<body>
+  <div id="report-preview">${clone.innerHTML}</div>
+  <script>
+    // Escala proporcional de tabelas que ultrapassam a largura do A4.
+    // transform: scale preserva a estrutura visual — não quebra células nem altera texto.
+    (function scaleOverflowingTables() {
+      var bodyWidth = document.body.offsetWidth;
+      document.querySelectorAll('table').forEach(function(table) {
+        var natural = table.scrollWidth;
+        if (natural <= bodyWidth + 2) return; // dentro do limite, nada a fazer
+
+        var scale    = bodyWidth / natural;
+        var origH    = table.offsetHeight;
+
+        // Envolve em um div que clipa o overflow de layout do transform
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'width:100%;overflow:hidden;display:block;';
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(table);
+
+        table.style.transformOrigin = 'top left';
+        table.style.transform       = 'scale(' + scale + ')';
+        // transform não afeta o layout box — compensar a altura excedente
+        table.style.marginBottom    = (origH * (scale - 1)) + 'px';
+      });
+    })();
+  <\/script>
+</body>
+</html>`);
+      iframeDoc.close();
+
+      // 8. Aguardar carregamento dos recursos e imprimir
+      await new Promise<void>((resolve) => {
+        const doPrint = () => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            // Remover listeners de ambas as janelas
+            window.removeEventListener('afterprint', finish);
+            try { iframe!.contentWindow?.removeEventListener('afterprint', finish); } catch {}
+            clearTimeout(safetyTimer);
+            resolve();
+          };
+
+          // Chrome dispara afterprint na janela principal; Firefox dispara no iframe
+          window.addEventListener('afterprint', finish);
+          try { iframe!.contentWindow?.addEventListener('afterprint', finish); } catch {}
+
+          // Segurança: se o browser não disparar afterprint (ex.: Safari antigo),
+          // encerra o loading em 2 minutos para não travar a UI
+          const safetyTimer = setTimeout(finish, 2 * 60 * 1000);
+
+          iframe!.contentWindow?.focus();
+          iframe!.contentWindow?.print();
+        };
+        // Delay para fontes e estilos externos carregarem
+        iframe!.addEventListener('load', () => setTimeout(doPrint, 400));
+      });
+
+      return true;
+
+    } catch (err: any) {
+      console.error('Erro ao imprimir:', err);
+      this.snackBar.open(this.t('Erro ao gerar PDF: ') + (err?.message || 'erro desconhecido'), this.t('Fechar'), { duration: 5000 });
+      return false;
+    } finally {
+      if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
+      this.isExporting = false;
+      this.exportingLabel = '';
+      this.cdr.markForCheck();
+    }
   }
 
   /**
@@ -2592,54 +2932,220 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // Exportar relatório como DOCX
+  // Exportar relatório como DOCX (geração nativa a partir dos dados — sem html2canvas)
   async exportarRelatorioDOCX(): Promise<void> {
-    let docxMod: any;
+    if (this.isExporting) return;
+    this.isExporting = true;
+    this.exportingLabel = 'Gerando DOCX...';
+    this.cdr.markForCheck();
+
     try {
-      docxMod = await import('docx');
-    } catch (e) {
-      this.snackBar.open(this.t('Pacote docx não encontrado. Instale com: npm i docx'), this.t('Fechar'), { duration: 4000 });
-      return;
-    }
-    const { Document, Packer, Paragraph, ImageRun } = docxMod;
-    const element = document.getElementById('report-preview');
-    if (!element) return;
+      const docxMod = await import('docx');
+      const {
+        Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+        WidthType, HeadingLevel, AlignmentType, BorderStyle, PageBreak
+      } = docxMod;
 
-    // Rasteriza o preview como imagem (ocultando UI) e insere no DOCX
-    const { default: html2canvas } = await import('html2canvas');
-    const root = document.body;
-    root.classList.add('export-mode');
-    await new Promise(r => setTimeout(r, 50));
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-    root.classList.remove('export-mode');
+      const nomePart = this.individualParticipantName || this.selectedAvaliado || 'Participante';
+      const grupos = this.getGrupos();
+      const secoesVisiveis = [...this.relatorioConfiguracao]
+        .filter((s: any) => s.visivel)
+        .sort((a: any, b: any) => a.ordem - b.ordem);
 
-    const dataUrl = canvas.toDataURL('image/png');
-    const base64 = dataUrl.split(',')[1];
-    const byteChars = atob(base64);
-    const byteNumbers = new Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-    const uint8Array = new Uint8Array(byteNumbers);
+      // ── helpers ──────────────────────────────────────────────────────────────
+      const hd = (text: string, level: any) => new Paragraph({ text, heading: level, spacing: { before: 300, after: 160 } });
+      const p = (text: string) => new Paragraph({ children: [new TextRun({ text })], spacing: { after: 120 } });
+      const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
+      const hr = () => new Paragraph({
+        border: { bottom: { color: 'CCCCCC', space: 1, style: BorderStyle.SINGLE, size: 6 } },
+        spacing: { after: 200 }
+      });
 
-    const image = new ImageRun({
-      data: uint8Array,
-      transformation: { width: 600, height: Math.round(600 * (canvas.height / canvas.width)) }
-    });
+      const cell = (text: string, bold = false, bg = 'FFFFFF') => new TableCell({
+        shading: { fill: bg, type: 'clear' as any },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text, bold, size: 18 })]
+        })]
+      });
 
-    const doc = new Document({
-      sections: [
-        {
-          properties: {},
-          children: [new Paragraph({ children: [image] })]
+      const buildTable = (headers: string[], rows: string[][]): any => new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            tableHeader: true,
+            children: headers.map(h => cell(h, true, '1B84FF'
+            ))
+          }),
+          ...rows.map((row, ri) => new TableRow({
+            children: row.map(v => cell(v, false, ri % 2 === 0 ? 'FFFFFF' : 'F5F8FF'))
+          }))
+        ]
+      });
+
+      const stripHtml = (html: string) => html ? html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+
+      // ── CAPA ────────────────────────────────────────────────────────────────
+      const children: any[] = [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 1200, after: 400 },
+          children: [new TextRun({ text: 'RELATÓRIO DE AVALIAÇÃO 360°', bold: true, size: 52, color: '1B84FF' })]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 200 },
+          children: [new TextRun({ text: nomePart, bold: true, size: 36 })]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 1200 },
+          children: [new TextRun({ text: `Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, size: 22, color: '666666' })]
+        }),
+        pageBreak()
+      ];
+
+      // ── SEÇÕES ──────────────────────────────────────────────────────────────
+      for (const secao of secoesVisiveis as any[]) {
+        if (secao.titulo) {
+          children.push(hd(secao.titulo, HeadingLevel.HEADING_2));
+          children.push(hr());
         }
-      ]
-    });
 
-    const blob = await Packer.toBlob(doc);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'relatorio-360.docx';
-    a.click();
-    URL.revokeObjectURL(a.href);
+        switch (secao.tipo) {
+          case 'capa':
+            // já foi tratado na capa acima
+            break;
+
+          case 'texto':
+          case 'introducao': {
+            const texto = stripHtml(secao.texto || '');
+            if (texto) children.push(p(texto));
+            break;
+          }
+
+          case 'resumo':
+          case 'tabela':
+          case 'tabela_detalhada': {
+            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
+            if (comps.length === 0) { children.push(p('Sem competências configuradas.')); break; }
+            const headers = ['Competência', ...grupos];
+            const rows = comps.map((comp: any) => [
+              comp.nome,
+              ...grupos.map((g: string) => {
+                const v = this.getMediaPorPerguntaEGrupo(comp, g);
+                return v !== null ? v.toFixed(2) : '-';
+              })
+            ]);
+            children.push(buildTable(headers, rows));
+            children.push(new Paragraph({ spacing: { after: 240 } }));
+            break;
+          }
+
+          case 'graficos': {
+            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
+            children.push(p(`Tipo de gráfico: ${secao.tipoGrafico || 'barra'}`));
+            if (comps.length === 0) { children.push(p('Sem competências configuradas.')); break; }
+            const headers = ['Competência', ...grupos];
+            const rows = comps.map((comp: any) => [
+              comp.nome,
+              ...grupos.map((g: string) => {
+                const v = this.getMediaPorPerguntaEGrupo(comp, g);
+                return v !== null ? v.toFixed(2) : '-';
+              })
+            ]);
+            children.push(buildTable(headers, rows));
+            children.push(new Paragraph({ spacing: { after: 240 } }));
+            break;
+          }
+
+          case 'competencia_detalhada': {
+            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
+            for (const comp of comps as any[]) {
+              children.push(hd(comp.nome, HeadingLevel.HEADING_3));
+              if (comp.descricao) children.push(p(comp.descricao));
+              const rows = grupos.map((g: string) => {
+                const v = this.getMediaPorPerguntaEGrupo(comp, g);
+                return [g, v !== null ? v.toFixed(2) : '-'];
+              });
+              children.push(buildTable(['Grupo Avaliador', 'Média'], rows));
+              children.push(new Paragraph({ spacing: { after: 200 } }));
+            }
+            break;
+          }
+
+          case 'destaques': {
+            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
+            const medias = comps.map((c: any) => {
+              const vals = grupos.map((g: string) => this.getMediaPorPerguntaEGrupo(c, g)).filter(v => v !== null) as number[];
+              const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+              return { nome: c.nome, avg };
+            }).filter(x => x.avg !== null).sort((a: any, b: any) => b.avg - a.avg);
+            if (medias.length) {
+              children.push(hd('Pontos Fortes', HeadingLevel.HEADING_3));
+              medias.slice(0, 3).forEach((m: any) => children.push(p(`• ${m.nome} — Média: ${m.avg.toFixed(2)}`)));
+              children.push(hd('Oportunidades de Melhoria', HeadingLevel.HEADING_3));
+              [...medias].reverse().slice(0, 3).forEach((m: any) => children.push(p(`• ${m.nome} — Média: ${m.avg.toFixed(2)}`)));
+            }
+            break;
+          }
+
+          case 'grafico_defasagem': {
+            const perguntas = secao.perguntasIds || [];
+            if (!perguntas.length) { children.push(p('Sem perguntas configuradas.')); break; }
+            const rows = perguntas.map((pId: string) => {
+              const titulo = this.questionMap[pId] || pId;
+              const dados = this.getDadosPerguntaDefasagem(pId);
+              return [
+                titulo,
+                dados?.selfScore !== null && dados?.selfScore !== undefined ? dados.selfScore.toFixed(2) : '-',
+                dados?.othersScore !== null && dados?.othersScore !== undefined ? dados.othersScore.toFixed(2) : '-',
+                dados?.gap !== null && dados?.gap !== undefined ? dados.gap.toFixed(2) : '-'
+              ];
+            });
+            children.push(buildTable(['Pergunta', 'Auto-avaliação', 'Outros', 'Gap'], rows));
+            break;
+          }
+
+          case 'perguntas_abertas': {
+            const dadosAbertas = this.getPerguntasAbertasData();
+            for (const item of dadosAbertas) {
+              children.push(hd(item.perguntaTitulo, HeadingLevel.HEADING_3));
+              const cats = this.getCategoriasOrdenadas(item.respostasPorCategoria);
+              for (const cat of cats) {
+                children.push(p(`${cat}:`));
+                (item.respostasPorCategoria[cat] || []).forEach((r: string) => children.push(p(`  • ${r}`)));
+              }
+              children.push(new Paragraph({ spacing: { after: 200 } }));
+            }
+            break;
+          }
+
+          default:
+            children.push(p(`[Seção "${secao.tipo}" não suportada no formato DOCX]`));
+        }
+      }
+
+      // ── Gerar arquivo ────────────────────────────────────────────────────────
+      const doc = new Document({ sections: [{ properties: {}, children }] });
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio-${nomePart.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      this.snackBar.open(this.t('DOCX exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
+    } catch (err) {
+      console.error('Erro ao exportar DOCX:', err);
+      this.snackBar.open(this.t('Erro ao gerar o DOCX.'), this.t('Fechar'), { duration: 3000 });
+    } finally {
+      this.isExporting = false;
+      this.exportingLabel = '';
+      this.cdr.markForCheck();
+    }
   }
 
   removerCompetencia(c: Competencia) {
@@ -3703,15 +4209,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Selecione um template para editar.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
-    if (!this.nomeTemplateControl.value) {
+    // Usa o nome do campo ou, se vazio, o nome do template já salvo
+    const nomeTemplate = this.nomeTemplateControl.value
+      || this.savedTemplates.find(t => t.id === this.selectedTemplateId.value)?.name
+      || '';
+    if (!nomeTemplate) {
       this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
     const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
+    // Sanitizar undefined antes de salvar no Firestore (JSON.parse/stringify remove undefined)
+    const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     const templateData = {
-      nome: this.nomeTemplateControl.value,
-      configuracao: this.relatorioConfiguracao,
-      competencias: this.competencias,
+      nome: nomeTemplate,
+      configuracao: sanitize(this.relatorioConfiguracao),
+      competencias: sanitize(this.competencias),
       atualizadoEm: new Date()
     };
     try {
@@ -3906,6 +4418,116 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  navigateToCompetencies(): void {
+    const extras = this.selectedAssessmentId
+      ? { queryParams: { assessmentId: this.selectedAssessmentId } }
+      : {};
+    this.router.navigate(['/competencies'], extras);
+  }
+
+  goToTab(index: number): void {
+    this.selectedTabIndex = index;
+    this.cdr.detectChanges();
+  }
+
+  isCompetenciaAtiva(id: string): boolean {
+    return this.competencias.some(c => c.id === id);
+  }
+
+  toggleCompetencia(comp: Competencia): void {
+    if (this.isCompetenciaAtiva(comp.id)) {
+      this.competencias = this.competencias.filter(c => c.id !== comp.id);
+    } else {
+      this.competencias = [...this.competencias, comp];
+    }
+    this.invalidateCache('secao-');
+    this.cdr.detectChanges();
+  }
+
+  selectAllCompetencias(): void {
+    this.competencias = [...this.allCompetencies];
+    this.invalidateCache('secao-');
+    this.cdr.detectChanges();
+  }
+
+  deselectAllCompetencias(): void {
+    this.competencias = [];
+    this.invalidateCache('secao-');
+    this.cdr.detectChanges();
+  }
+
+  async loadAllAvailableGroups(): Promise<void> {
+    if (this.allAvailableGroups.length > 0) return; // já carregado
+    this.importGroupLoading = true;
+    this.cdr.detectChanges();
+    try {
+      const snap = await getDocs(collection(this.firestore, 'competencyGroups'));
+      // Monta mapa de assessmentId → nome para exibição
+      const assessmentNames: { [id: string]: string } = {};
+      this.assessments.forEach(a => { assessmentNames[a.id] = a.name; });
+
+      this.allAvailableGroups = snap.docs
+        .map(d => {
+          const data = d.data();
+          const competencias: any[] = Array.isArray(data['competencias']) ? data['competencias'] : [];
+          return {
+            id: d.id,
+            name: data['name'] || 'Grupo sem nome',
+            assessmentName: assessmentNames[data['assessmentId']] || data['assessmentId'] || '—',
+            clientName: data['clientName'] || data['clientId'] || '—',
+            competencias
+          };
+        })
+        .filter(g => g.competencias.length > 0); // só grupos com competências
+    } catch (e) {
+      console.error('Erro ao carregar grupos disponíveis:', e);
+    }
+    this.importGroupLoading = false;
+    this.cdr.detectChanges();
+  }
+
+  getImportGroupHint(): string {
+    const group = this.allAvailableGroups.find(g => g.id === this.importGroupControl.value);
+    if (!group) return '';
+    const n = group.competencias.length;
+    return `${n} competência${n !== 1 ? 's' : ''} neste grupo — ${group.assessmentName}`;
+  }
+
+  importCompetenciasFromGroup(): void {
+    const groupId = this.importGroupControl.value;
+    if (!groupId) return;
+    const group = this.allAvailableGroups.find(g => g.id === groupId);
+    if (!group) return;
+
+    let added = 0;
+    group.competencias.forEach((c: any) => {
+      const compId = c.id || `${group.id}_${c.nome || c.name}`;
+      const jaExiste = this.allCompetencies.some(ac => ac.id === compId);
+      if (!jaExiste) {
+        const comp: Competencia = {
+          id: compId,
+          nome: c.nome || c.name || 'Competência sem nome',
+          descricao: c.descricao || c.description || '',
+          perguntasIds: c.perguntasIds || c.questionIds || []
+        };
+        this.allCompetencies = [...this.allCompetencies, comp];
+        this.competencias = [...this.competencias, comp];
+        added++;
+      }
+    });
+
+    this.importGroupControl.setValue('');
+    this.invalidateCache('secao-');
+    this.snackBar.open(
+      added > 0
+        ? `${added} competência${added !== 1 ? 's' : ''} importada${added !== 1 ? 's' : ''} de "${group.name}"`
+        : 'Todas as competências desse grupo já estão na lista.',
+      'Fechar',
+      { duration: 3500 }
+    );
+    this.cdr.detectChanges();
+  }
+
   // Métodos auxiliares para simplificar expressões no template
   getClientName(): string {
     const client = this.clients.find(c => c.id === this.selectedClientId);
@@ -4021,7 +4643,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Método para substituir variáveis dinâmicas na capa
+  safeHtml(html: string | undefined): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(html || '');
+  }
+
   getCapaComDadosDinamicos(textoOriginal: string | undefined): string {
+    if (!textoOriginal) return '';
+    const nomeAvaliado = this.selectedAvaliadoName || '';
+    const dataRelatorio = this.today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return textoOriginal
+      .replace(/\$%NOME_AVALIADO\$%/g, nomeAvaliado)
+      .replace(/\$%DATA_RELATORIO\$%/g, dataRelatorio);
+  }
+
+  _getCapaComDadosDinamicos_UNUSED(textoOriginal: string | undefined): string {
     if (!textoOriginal) {
       return '';
     }
@@ -4484,36 +5119,94 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async loadAllCompetencies(): Promise<void> {
     try {
-      const competenciesCollection = collection(this.firestore, 'competencies');
-      let competenciesSnapshot;
+      const seen = new Set<string>();
+      const result: Competencia[] = [];
 
-      // Se temos assessmentId, filtrar por ele
+      // ─── competencyGroups filtrado pelo assessmentId atual ────────────────
+      // Esta é a fonte principal: a página de Competências salva grupos em
+      // `competencyGroups` com assessmentId + array `competencias` contendo
+      // os perguntasIds que batem com as colunas do dataSource.
       if (this.selectedAssessmentId) {
-        const competenciesQuery = query(competenciesCollection, where('assessmentId', '==', this.selectedAssessmentId));
-        competenciesSnapshot = await getDocs(competenciesQuery);
-      } else {
-        competenciesSnapshot = await getDocs(competenciesCollection);
+        const groupsSnap = await getDocs(
+          query(
+            collection(this.firestore, 'competencyGroups'),
+            where('assessmentId', '==', this.selectedAssessmentId)
+          )
+        );
+        groupsSnap.docs.forEach(groupDoc => {
+          const groupData = groupDoc.data();
+          const competencias: any[] = Array.isArray(groupData['competencias']) ? groupData['competencias'] : [];
+          competencias.forEach((c: any) => {
+            const compId = c.id || `${groupDoc.id}_${c.nome || c.name}`;
+            if (!seen.has(compId)) {
+              seen.add(compId);
+              result.push({
+                id: compId,
+                nome: c.nome || c.name || 'Competência sem nome',
+                descricao: c.descricao || c.description || '',
+                perguntasIds: c.perguntasIds || c.questionIds || [],
+                groupId: groupDoc.id  // rastreia o grupo pai para matching com pendingCompetencyIds
+              } as any);
+            }
+          });
+        });
+        console.log('🎯 Grupos para esta avaliação:', groupsSnap.size, '→', result.length, 'competências');
       }
 
-      this.allCompetencies = competenciesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        nome: doc.data()['name'] || doc.data()['nome'] || 'Competência sem nome',
-        descricao: doc.data()['description'] || doc.data()['descricao'] || '',
-        perguntasIds: doc.data()['perguntasIds'] || doc.data()['questionIds'] || []
-      } as Competencia));
+      // ─── Fallback: competencies collection (formato competency-dialog) ────
+      // Se não encontrou nada via grupos, tenta a coleção individual.
+      if (result.length === 0) {
+        const competenciesSnap = await getDocs(collection(this.firestore, 'competencies'));
+        competenciesSnap.docs.forEach(docSnap => {
+          if (!seen.has(docSnap.id)) {
+            seen.add(docSnap.id);
+            const data = docSnap.data();
+            const questions: any[] = Array.isArray(data['questions']) ? data['questions'] : [];
+            const perguntasIds: string[] =
+              data['perguntasIds'] ||
+              data['questionIds'] ||
+              questions.map((q: any) => q.id || '').filter(Boolean);
 
-      console.log('🎯 Competências carregadas:', this.allCompetencies.length);
+            questions.forEach((q: any) => {
+              if (q.id && (q.text || q.title) && !this.questionMap[q.id]) {
+                this.questionMap[q.id] = q.text || q.title;
+              }
+            });
+
+            result.push({
+              id: docSnap.id,
+              nome: data['name'] || data['nome'] || 'Competência sem nome',
+              descricao: data['description'] || data['descricao'] || '',
+              perguntasIds
+            } as Competencia);
+          }
+        });
+        console.log('🎯 Fallback competencies collection:', result.length, 'competências');
+      }
+
+      this.allCompetencies = result;
+      console.log('🎯 Total competências disponíveis:', this.allCompetencies.length);
 
       // Aplicar competências pendentes se houver
       if (this.pendingCompetencyIds.length > 0) {
         console.log('🎯 Aplicando competências pendentes:', this.pendingCompetencyIds);
-        this.competencias = this.allCompetencies.filter((comp: Competencia) =>
-          this.pendingCompetencyIds.includes(comp.id)
+        // O modal envia IDs de documentos de competencyGroups (group IDs).
+        // loadAllCompetencies() cria sub-competências com comp.id = sub-competency ID e comp.groupId = group doc ID.
+        // Por isso buscamos match em ambos os campos.
+        this.competencias = (this.allCompetencies as any[]).filter((comp: any) =>
+          this.pendingCompetencyIds.includes(comp.id) ||
+          this.pendingCompetencyIds.includes(comp.groupId)
         );
-        console.log('🎯 Competências aplicadas:', this.competencias);
-
-        // Limpar IDs pendentes após aplicar
+        // Se ainda não encontrou nada, usar todas as competências da avaliação como fallback
+        if (this.competencias.length === 0) {
+          console.warn('🎯 pendingCompetencyIds não bateram com nenhuma sub-competência — usando todas:', this.allCompetencies.length);
+          this.competencias = [...this.allCompetencies];
+        }
+        console.log('🎯 Competências aplicadas:', this.competencias.length);
         this.pendingCompetencyIds = [];
+      } else if (this.competencias.length === 0) {
+        // Auto-selecionar todas as competências da avaliação para evitar configuração manual
+        this.competencias = [...this.allCompetencies];
       }
     } catch (error) {
       console.error('Erro ao carregar competências:', error);

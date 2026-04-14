@@ -1,64 +1,148 @@
-<div class="container my-4">
-  <div class="row" style="margin-bottom: 10px">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
-        <mat-icon>arrow_back</mat-icon>
-        {{ 'Voltar' | translate }}
-      </button>
-    </div>
+<div class="detail-wrapper">
+
+  <app-page-header
+    eyebrow="Gestão / Grupos"
+    [title]="group ? group.name : 'Detalhes do Grupo'"
+    subtitle="Informações e membros do grupo de usuários">
+
+    <button mat-button class="btn-back" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      Voltar
+    </button>
+
+    <button mat-raised-button class="btn-save" *ngIf="group" (click)="editGroup()">
+      <mat-icon>edit</mat-icon>
+      Editar Grupo
+    </button>
+
+  </app-page-header>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="isLoading">
+    <mat-spinner diameter="48"></mat-spinner>
+    <span>Carregando dados do grupo…</span>
   </div>
 
-  <div *ngIf="isLoading" class="text-center py-5">
-    <mat-spinner diameter="50" style="margin: 0 auto 16px;"></mat-spinner>
-    <p>{{ 'Carregando detalhes do grupo...' | translate }}</p>
-  </div>
-
+  <!-- Conteúdo -->
   <div *ngIf="!isLoading && group">
-    <mat-card>
-      <mat-card-title class="p-3">{{ 'Detalhes do Grupo' | translate }}</mat-card-title>
-      <mat-card-content>
-        <div class="d-flex flex-column gap-2">
-          <h3>{{ group.name }}</h3>
-          <p><strong>{{ 'Descrição' | translate }}:</strong> {{ group.description || ('N/A' | translate) }}</p>
-          <p><strong>{{ 'Cliente' | translate }}:</strong> {{ clientName || ('N/A' | translate) }}</p>
-          <p><strong>{{ 'Criado por' | translate }}:</strong> {{ group.createdBy || ('N/A' | translate) }}</p>
-        </div>
-        <div class="mt-4">
-          <button mat-flat-button color="primary" (click)="editGroup()">
-            <mat-icon>edit</mat-icon>
-            {{ 'Editar Grupo' | translate }}
-          </button>
-        </div>
-      </mat-card-content>
-    </mat-card>
 
-    <mat-card class="mt-4">
-      <mat-card-title class="p-3">{{ 'Membros do Grupo' | translate }} ({{ members.length }})</mat-card-title>
-      <mat-card-content>
-        <div class="table-responsive" *ngIf="members.length > 0">
-          <table mat-table [dataSource]="dataSource" class="mat-elevation-z8 w-100">
-            <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef>{{ 'Nome' | translate }}</th>
-              <td mat-cell *matCellDef="let m">{{ m.name }}</td>
-            </ng-container>
-            <ng-container matColumnDef="email">
-              <th mat-header-cell *matHeaderCellDef>{{ 'E-mail' | translate }}</th>
-              <td mat-cell *matCellDef="let m">{{ m.email }}</td>
-            </ng-container>
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
-              <td mat-cell *matCellDef="let m">
-                <button mat-icon-button color="primary" [routerLink]="['/users', m.id, 'details']" matTooltip="{{ 'Ver detalhes' | translate }}">
+    <!-- Card: Informações do Grupo -->
+    <div class="detail-card">
+      <div class="card-header">
+        <div class="card-icon">
+          <mat-icon>group_work</mat-icon>
+        </div>
+        <div>
+          <h3 class="card-title">Informações do Grupo</h3>
+          <p class="card-subtitle">Dados cadastrais do grupo de usuários</p>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="profile-hero">
+          <div class="profile-avatar">{{ (group.name || '?')[0].toUpperCase() }}</div>
+          <div class="profile-info">
+            <h2 class="profile-name">{{ group.name }}</h2>
+            <span class="client-badge">{{ clientName || '—' }}</span>
+          </div>
+        </div>
+
+        <div class="fields-grid">
+          <div class="field-item">
+            <mat-icon class="field-icon">notes</mat-icon>
+            <div>
+              <span class="field-label">Descrição</span>
+              <span class="field-value">{{ group.description || '—' }}</span>
+            </div>
+          </div>
+          <div class="field-item">
+            <mat-icon class="field-icon">person_outline</mat-icon>
+            <div>
+              <span class="field-label">Criado por</span>
+              <span class="field-value">{{ group.createdBy || '—' }}</span>
+            </div>
+          </div>
+          <div class="field-item">
+            <mat-icon class="field-icon">people</mat-icon>
+            <div>
+              <span class="field-label">Total de membros</span>
+              <span class="field-value">{{ members.length }} membro{{ members.length !== 1 ? 's' : '' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Membros -->
+    <div class="detail-card">
+      <div class="card-header">
+        <div class="card-icon card-icon--accent">
+          <mat-icon>people</mat-icon>
+        </div>
+        <div>
+          <h3 class="card-title">Membros do Grupo</h3>
+          <p class="card-subtitle">{{ members.length }} usuário{{ members.length !== 1 ? 's' : '' }} neste grupo</p>
+        </div>
+      </div>
+
+      <div class="table-container" *ngIf="members.length > 0">
+        <table mat-table [dataSource]="dataSource" class="members-table">
+
+          <!-- Nome -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>
+              <span class="col-header"><mat-icon class="col-icon">person</mat-icon>Usuário</span>
+            </th>
+            <td mat-cell *matCellDef="let m">
+              <div class="member-cell">
+                <div class="member-avatar">{{ (m.name || '?')[0].toUpperCase() }}</div>
+                <span class="member-name">{{ m.name }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- E-mail -->
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>
+              <span class="col-header"><mat-icon class="col-icon">email</mat-icon>E-mail</span>
+            </th>
+            <td mat-cell *matCellDef="let m" class="email-cell">{{ m.email }}</td>
+          </ng-container>
+
+          <!-- Ações -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef class="actions-col">Ações</th>
+            <td mat-cell *matCellDef="let m" class="actions-col">
+              <div class="actions-cell">
+                <button mat-icon-button class="action-view"
+                  [routerLink]="['/users', m.id, 'details']"
+                  matTooltip="{{ 'Ver detalhes' | translate }}">
                   <mat-icon>visibility</mat-icon>
                 </button>
-              </td>
-            </ng-container>
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-          </table>
-        </div>
-        <p *ngIf="members.length === 0" class="text-muted">{{ 'Nenhum membro no grupo.' | translate }}</p>
-      </mat-card-content>
-    </mat-card>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
+        </table>
+      </div>
+
+      <!-- Sem membros -->
+      <div class="no-members" *ngIf="members.length === 0">
+        <mat-icon>person_off</mat-icon>
+        <span>Nenhum membro neste grupo</span>
+      </div>
+
+    </div>
+
   </div>
+
+  <!-- Não encontrado -->
+  <div class="not-found" *ngIf="!isLoading && !group">
+    <mat-icon>group_off</mat-icon>
+    <span>Grupo não encontrado</span>
+    <button mat-stroked-button (click)="goBack()">Voltar</button>
+  </div>
+
 </div>

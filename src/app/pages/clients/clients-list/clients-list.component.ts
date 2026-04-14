@@ -16,6 +16,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { Router, RouterModule } from '@angular/router';
 import { AddClientDialogComponent } from '../add-client-dialog/add-client-dialog.component';
@@ -23,25 +24,27 @@ import { PhonePipe } from 'src/app/pipe/phone.pipe';
 import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
 import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { ToastService } from 'src/app/services/toast.service';
 
 @Component({
   selector: 'app-clients-list',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MaterialModule,
     RouterModule,
-    // PhonePipe, // not used in this template
     CnpjPipe,
-    RouterModule,
-    // ConfirmDialogComponent, // provided via dialog.open, not used in template
     TranslateModule,
+    AppPageHeaderComponent,
   ],
   templateUrl: './clients-list.component.html',
   styleUrls: ['./clients-list.component.scss'],
 })
 export class ClientsListComponent implements OnInit {
   displayedColumns: string[] = [
+    'select',
     'companyName',
     'sector',
     'cnpj',
@@ -49,7 +52,11 @@ export class ClientsListComponent implements OnInit {
     'actions',
   ];
   dataSource = new MatTableDataSource<any>();
-  searchValue: string = ''; // Adicionando a propriedade searchValue
+  searchValue: string = '';
+  cnpjFilter: string = '';
+  sectorFilter: string = '';
+  sectors: string[] = [];
+  selectedClientIds = new Set<string>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -59,7 +66,8 @@ export class ClientsListComponent implements OnInit {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private router: Router,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private toast: ToastService
   ) {}
 
   ngOnInit() {
@@ -89,20 +97,27 @@ export class ClientsListComponent implements OnInit {
       );
 
 
-      this.dataSource.data = clients; // Atualizar a tabela após o cálculo dos créditos
+      this.dataSource.data = clients;
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
 
+      // Extrair setores únicos para o filtro dropdown
+      this.sectors = [...new Set(
+        clients.map(c => c.sector).filter(s => s && s.trim() !== '')
+      )].sort();
+
       this.dataSource.filterPredicate = (data, filter) => {
-        const dataStr =
-          `${data.companyName} ${data.sector} ${data.cnpj} ${data.credits}`
-            .toLowerCase()
-            .trim();
-        return dataStr.includes(filter);
+        const f = JSON.parse(filter || '{}');
+        const nameMatch = !f.name || (data.companyName || '').toLowerCase().includes(f.name);
+        const cnpjMatch = !f.cnpj || (data.cnpj || '').replace(/\D/g, '').includes(f.cnpj);
+        const sectorMatch = !f.sector || data.sector === f.sector;
+        return nameMatch && cnpjMatch && sectorMatch;
       };
+
+      this.applyFilters();
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open(this.translate.instant('Erro ao carregar a lista de clientes. Tente novamente mais tarde.'), this.translate.instant('Fechar'), { duration: 3000 });
+      this.toast.error(this.translate.instant('Erro ao carregar a lista de clientes. Tente novamente mais tarde.'));
     }
   }
 
@@ -137,13 +152,27 @@ export class ClientsListComponent implements OnInit {
   }
 
   applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.searchValue = filterValue; // Atualizando a propriedade searchValue
-    this.dataSource.filter = filterValue.trim().toLowerCase();
+    this.searchValue = (event.target as HTMLInputElement).value;
+    this.applyFilters();
+  }
 
+  applyFilters() {
+    const filterObj = {
+      name: this.searchValue.trim().toLowerCase(),
+      cnpj: this.cnpjFilter.trim().replace(/\D/g, ''),
+      sector: this.sectorFilter
+    };
+    this.dataSource.filter = JSON.stringify(filterObj);
     if (this.dataSource.paginator) {
       this.dataSource.paginator.firstPage();
     }
+  }
+
+  clearFilters() {
+    this.searchValue = '';
+    this.cnpjFilter = '';
+    this.sectorFilter = '';
+    this.applyFilters();
   }
 
   deleteClient(id: string) {
@@ -193,7 +222,7 @@ export class ClientsListComponent implements OnInit {
             return deleteDoc(clientDocRef);
           })
           .then(() => {
-            this.snackBar.open(this.translate.instant('Cliente e dados relacionados excluídos com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
+            this.toast.success(this.translate.instant('Cliente e dados relacionados excluídos com sucesso.'));
             // Atualizar tabela
             this.dataSource.data = this.dataSource.data.filter(
               (client) => client.id !== id
@@ -204,8 +233,77 @@ export class ClientsListComponent implements OnInit {
               'Erro ao excluir cliente e dados relacionados:',
               error
             );
-            this.snackBar.open(this.translate.instant('Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.'), this.translate.instant('Fechar'), { duration: 3000 });
+            this.toast.error(this.translate.instant('Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.'));
           });
+      }
+    });
+  }
+
+  // ─── Seleção em massa ────────────────────────────────────────
+  isAllClientsSelected(): boolean {
+    const visible = this.dataSource.filteredData;
+    return visible.length > 0 && visible.every(c => this.selectedClientIds.has(c.id));
+  }
+
+  isSomeClientsSelected(): boolean {
+    return this.dataSource.filteredData.some(c => this.selectedClientIds.has(c.id));
+  }
+
+  toggleAllClients(checked: boolean): void {
+    if (checked) {
+      this.dataSource.filteredData.forEach(c => this.selectedClientIds.add(c.id));
+    } else {
+      this.dataSource.filteredData.forEach(c => this.selectedClientIds.delete(c.id));
+    }
+  }
+
+  toggleClientSelect(id: string): void {
+    if (this.selectedClientIds.has(id)) {
+      this.selectedClientIds.delete(id);
+    } else {
+      this.selectedClientIds.add(id);
+    }
+  }
+
+  deleteSelectedClients(): void {
+    const count = this.selectedClientIds.size;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: {
+        message: this.translate.instant(`Ao remover ${count} cliente(s), todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?`),
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      const ids = Array.from(this.selectedClientIds);
+      const projectsCol = collection(this.firestore, 'projects');
+      const groupsCol   = collection(this.firestore, 'userGroups');
+      const usersCol    = collection(this.firestore, 'users');
+
+      const deleteByQuery = async (q: any) => {
+        const snap = await getDocs(q);
+        if (snap.empty) return;
+        const batch = writeBatch(this.firestore);
+        snap.forEach((d: any) => batch.delete(d.ref));
+        await batch.commit();
+      };
+
+      try {
+        for (const id of ids) {
+          await Promise.all([
+            deleteByQuery(query(projectsCol, where('clientId', '==', id))),
+            deleteByQuery(query(groupsCol,   where('clientId', '==', id))),
+            deleteByQuery(query(usersCol,    where('client',   '==', id))),
+          ]);
+          await deleteDoc(doc(this.firestore, `clients/${id}`));
+        }
+        this.dataSource.data = this.dataSource.data.filter(c => !this.selectedClientIds.has(c.id));
+        this.selectedClientIds.clear();
+        this.toast.success(this.translate.instant('Clientes excluídos com sucesso.'));
+      } catch (error) {
+        console.error('Erro ao excluir clientes em massa:', error);
+        this.toast.error(this.translate.instant('Erro ao excluir clientes. Tente novamente.'));
       }
     });
   }
@@ -219,9 +317,7 @@ export class ClientsListComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.loadClients();
-        this.snackBar.open(this.translate.instant('Lista de clientes atualizada!'), this.translate.instant('Fechar'), {
-          duration: 3000,
-        });
+        this.toast.success(this.translate.instant('Lista de clientes atualizada!'));
       }
     });
   }

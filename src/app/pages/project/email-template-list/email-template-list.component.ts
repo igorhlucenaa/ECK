@@ -27,11 +27,12 @@ import {
   DuplicateTemplateDialogData,
 } from './duplicate-template-dialog/duplicate-template-dialog.component';
 import { TranslateModule } from '@ngx-translate/core';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-email-template-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, TranslateModule],
+  imports: [CommonModule, MaterialModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './email-template-list.component.html',
   styleUrls: ['./email-template-list.component.scss'],
 })
@@ -421,6 +422,20 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         });
       }
     }
+  }
+
+  getEmailTypeClass(emailType: string): string {
+    const map: Record<string, string> = {
+      cadastro: 'type-cadastro',
+      convite: 'type-convite',
+      conviteAvaliador: 'type-convite',
+      conviteRespondente: 'type-convite',
+      lembrete: 'type-lembrete',
+      lembreteAvaliador: 'type-lembrete',
+      lembreteRespondente: 'type-lembrete',
+      relatorioFinalizado: 'type-relatorio',
+    };
+    return map[emailType] || 'type-default';
   }
 
   goBack(): void {

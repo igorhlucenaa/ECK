@@ -68,39 +68,38 @@ interface ReportData {
 @Injectable({ providedIn: 'root' })
 export class ReportPdfMakeService {
 
+  /** Cache: carrega pdfmake + fontes apenas uma vez por sessão */
+  private pdfMakeLib: any = null;
+
+  private async loadPdfMake(): Promise<any> {
+    if (this.pdfMakeLib) return this.pdfMakeLib;
+
+    try {
+      // @ts-ignore
+      const [pdfMakeModule, pdfFontsModule] = await Promise.all([
+        import('pdfmake/build/pdfmake'),
+        import('pdfmake/build/vfs_fonts')
+      ]);
+      const lib = pdfMakeModule.default || pdfMakeModule;
+      const fonts = pdfFontsModule.default || pdfFontsModule;
+
+      if (fonts?.pdfMake?.vfs)       lib.vfs = fonts.pdfMake.vfs;
+      else if (fonts?.vfs)           lib.vfs = fonts.vfs;
+      else if (fonts?.default?.pdfMake?.vfs) lib.vfs = fonts.default.pdfMake.vfs;
+
+      this.pdfMakeLib = lib;
+      return lib;
+    } catch (e: any) {
+      throw new Error(`PDFMake não pôde ser carregado: ${e?.message || e}`);
+    }
+  }
+
   /**
    * Gera relatório completo em PDF usando PDFMake
    */
   async generateReport(data: ReportData): Promise<void> {
     try {
-      // Carregar PDFMake dinamicamente
-      let pdfMakeLib: any;
-      let pdfFontsLib: any;
-
-      try {
-        // Carregamento dinâmico do PDFMake
-        // @ts-ignore - PDFMake será carregado dinamicamente em runtime
-        const pdfMakeModule = await import('pdfmake/build/pdfmake');
-        // @ts-ignore - PDFMake será carregado dinamicamente em runtime
-        const pdfFontsModule = await import('pdfmake/build/vfs_fonts');
-
-        pdfMakeLib = pdfMakeModule.default || pdfMakeModule;
-        pdfFontsLib = pdfFontsModule.default || pdfFontsModule;
-      } catch (importError: any) {
-        const errorMsg = importError?.message || 'Erro desconhecido';
-        throw new Error(
-          `PDFMake não está instalado ou não pôde ser carregado. Execute: npm install pdfmake @types/pdfmake. Erro: ${errorMsg}`
-        );
-      }
-
-      // Configurar fontes
-      if (pdfFontsLib.pdfMake && pdfFontsLib.pdfMake.vfs) {
-        pdfMakeLib.vfs = pdfFontsLib.pdfMake.vfs;
-      } else if (pdfFontsLib.vfs) {
-        pdfMakeLib.vfs = pdfFontsLib.vfs;
-      } else if ((pdfFontsLib as any).default && (pdfFontsLib as any).default.pdfMake) {
-        pdfMakeLib.vfs = (pdfFontsLib as any).default.pdfMake.vfs;
-      }
+      const pdfMakeLib = await this.loadPdfMake();
 
       const docDefinition = {
         content: [],
@@ -127,10 +126,29 @@ export class ReportPdfMakeService {
         }
       }
 
-      // Gerar PDF
-      pdfMakeLib.createPdf(docDefinition as any).download(
-        `relatorio-360-${data.participantName || 'participante'}.pdf`
-      );
+      // Gerar PDF via Blob + anchor click (compatível com todos os navegadores)
+      const filename = `relatorio-${(data.participantName || 'participante').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.pdf`;
+      const blob: Blob = await Promise.race<Blob>([
+        new Promise<Blob>((resolve, reject) => {
+          try {
+            pdfMakeLib.createPdf(docDefinition as any).getBlob((b: Blob) => {
+              if (b && b.size > 0) resolve(b);
+              else reject(new Error('PDFMake retornou blob vazio'));
+            });
+          } catch (e) { reject(e); }
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout ao gerar PDF (30s)')), 30000)
+        )
+      ]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       throw error;
@@ -882,60 +900,27 @@ export class ReportPdfMakeService {
   /**
    * Tenta capturar gráfico ECharts do DOM usando getDataURL se disponível
    */
-  private async tryCaptureEChartsFromDOM(elementId: string): Promise<string | null> {
+  /**
+   * Tenta capturar gráfico ECharts via getDataURL (instantâneo, sem DOM capture).
+   * Retorna null imediatamente se o elemento/instância não estiver disponível.
+   */
+  private tryCaptureEChartsFromDOM(elementId: string): string | null {
     try {
       const element = document.getElementById(elementId);
       if (!element) return null;
-
-      // Tentar usar getDataURL do ECharts se disponível
       const echartsInstance = (element as any).__echarts_instance__;
       if (echartsInstance && typeof echartsInstance.getDataURL === 'function') {
-        await new Promise(resolve => setTimeout(resolve, 300)); // Aguardar renderização
-        return echartsInstance.getDataURL({
-          type: 'png',
-          pixelRatio: 2,
-          backgroundColor: '#FFFFFF'
-        });
+        return echartsInstance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#FFFFFF' });
       }
-
-      // Fallback: usar html2canvas
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#FFFFFF',
-        logging: false
-      });
-
-      return canvas.toDataURL('image/png');
-    } catch (error) {
-      console.warn('Não foi possível capturar gráfico do DOM:', error);
+      return null;
+    } catch {
       return null;
     }
   }
 
-  /**
-   * Captura gráfico ngx-charts do DOM
-   */
-  private async captureNgxChartFromDOM(element: HTMLElement | null): Promise<string | null> {
-    if (!element) return null;
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#FFFFFF',
-        logging: false
-      });
-
-      return canvas.toDataURL('image/png');
-    } catch (error) {
-      console.warn('Erro ao capturar ngx-chart:', error);
-      return null;
-    }
+  /** @deprecated Não mais utilizado — mantido para compatibilidade */
+  private captureNgxChartFromDOM(_element: HTMLElement | null): null {
+    return null;
   }
 
   /**
@@ -948,7 +933,7 @@ export class ReportPdfMakeService {
   ): Promise<string> {
     // Tentar capturar do DOM primeiro (se gráfico ECharts estiver renderizado)
     const chartId = `chart-bar-${title.replace(/\s+/g, '-').toLowerCase()}`;
-    const domImage = await this.tryCaptureEChartsFromDOM(chartId);
+    const domImage = this.tryCaptureEChartsFromDOM(chartId);
     if (domImage) return domImage;
 
     // Fallback: criar canvas manualmente
@@ -1045,7 +1030,7 @@ export class ReportPdfMakeService {
   ): Promise<string> {
     // Tentar capturar do DOM primeiro
     const chartId = `chart-radar-${labels.join('-').replace(/\s+/g, '-').toLowerCase()}`;
-    const domImage = await this.tryCaptureEChartsFromDOM(chartId);
+    const domImage = this.tryCaptureEChartsFromDOM(chartId);
     if (domImage) return domImage;
 
     // Fallback: criar canvas manualmente
@@ -1165,7 +1150,7 @@ export class ReportPdfMakeService {
   ): Promise<string> {
     // Tentar capturar do DOM primeiro
     const chartId = `chart-pie-${title.replace(/\s+/g, '-').toLowerCase()}`;
-    const domImage = await this.tryCaptureEChartsFromDOM(chartId);
+    const domImage = this.tryCaptureEChartsFromDOM(chartId);
     if (domImage) return domImage;
 
     // Fallback: criar canvas manualmente
