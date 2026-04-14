@@ -71,11 +71,32 @@ import { User } from '../users.component';
         <div class="udlg__row">
           <mat-icon>notifications</mat-icon>
           <div>
-            <span class="udlg__lbl">Notificação</span>
-            <span class="udlg__notif" [class.udlg__notif--sent]="data.notificationStatus === 'Enviado'">
-              <mat-icon>{{ data.notificationStatus === 'Enviado' ? 'check_circle' : 'schedule' }}</mat-icon>
+            <span class="udlg__lbl">Acesso</span>
+            <span class="udlg__notif"
+              [class.udlg__notif--accessed]="data.notificationStatus === 'Acessou'"
+              [class.udlg__notif--sent]="data.notificationStatus === 'Link Enviado'"
+              [class.udlg__notif--pending]="data.notificationStatus === 'Pendente'">
+              <mat-icon>{{
+                data.notificationStatus === 'Acessou' ? 'verified_user' :
+                data.notificationStatus === 'Link Enviado' ? 'mark_email_read' :
+                'schedule'
+              }}</mat-icon>
               {{ data.notificationStatus || 'Pendente' }}
             </span>
+          </div>
+        </div>
+        <div class="udlg__row" *ngIf="data.lastLoginAt">
+          <mat-icon>login</mat-icon>
+          <div>
+            <span class="udlg__lbl">Último acesso</span>
+            <span class="udlg__val">{{ data.lastLoginAt | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+        </div>
+        <div class="udlg__row" *ngIf="data.lastInviteSentAt">
+          <mat-icon>send</mat-icon>
+          <div>
+            <span class="udlg__lbl">Link enviado em</span>
+            <span class="udlg__val">{{ data.lastInviteSentAt | date:'dd/MM/yyyy HH:mm' }}</span>
           </div>
         </div>
 
@@ -221,7 +242,9 @@ import { User } from '../users.component';
       padding-top: 1px;
     }
     .udlg__notif mat-icon { font-size: 16px; width: 16px; height: 16px; }
-    .udlg__notif--sent { color: #16a34a; }
+    .udlg__notif--accessed { color: #15803d; }
+    .udlg__notif--sent     { color: #b45309; }
+    .udlg__notif--pending  { color: #94a3b8; }
 
     /* ── Footer ── */
     .udlg__footer {

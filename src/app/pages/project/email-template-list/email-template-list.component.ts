@@ -26,13 +26,14 @@ import {
   DuplicateTemplateDialogComponent,
   DuplicateTemplateDialogData,
 } from './duplicate-template-dialog/duplicate-template-dialog.component';
+import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-email-template-list',
   standalone: true,
-  imports: [CommonModule, MaterialModule, TranslateModule, AppPageHeaderComponent],
+  imports: [CommonModule, FormsModule, MaterialModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './email-template-list.component.html',
   styleUrls: ['./email-template-list.component.scss'],
 })
@@ -53,6 +54,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
   allTemplates: any[] = [];
   userRole: string = '';
   userClientId: string | null = null;
+  userClientIds: string[] = [];
 
   clients: any[] = [];
   clientFilter: string = '';
@@ -85,7 +87,8 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     }
 
     this.userRole = user.role;
-    this.userClientId = user.clientId;
+    this.userClientIds = await this.authService.getCurrentUserClientIds();
+    this.userClientId = this.userClientIds[0] || null;
 
     await this.loadClients();
     await this.loadTemplates();
@@ -129,12 +132,26 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
 
   private async loadClients(): Promise<void> {
     try {
-      const clientsCollection = collection(this.firestore, 'clients');
-      const snapshot = await getDocs(clientsCollection);
-      this.clients = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['companyName'],
-      }));
+      if (this.userRole === 'admin_client') {
+        // Carrega apenas os clientes vinculados ao admin_client
+        const snaps = await Promise.all(
+          this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
+        );
+        this.clients = snaps
+          .filter(d => d.exists())
+          .map(d => ({ id: d.id, name: d.data()!['companyName'] || '' }));
+
+        // Auto-seleciona o único cliente (ou o primeiro se houver mais de um)
+        if (this.clients.length === 1) {
+          this.clientFilter = this.clients[0].id;
+        }
+      } else {
+        const snapshot = await getDocs(collection(this.firestore, 'clients'));
+        this.clients = snapshot.docs.map((d) => ({
+          id: d.id,
+          name: d.data()['companyName'],
+        }));
+      }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
     }
@@ -154,25 +171,12 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         } else {
           queryConstraint = query(templatesCollection);
         }
-      } else if (this.userRole === 'admin_client' && this.userClientId) {
-        if (this.clientId) {
-          if (this.clientId === this.userClientId) {
-            queryConstraint = query(
-              templatesCollection,
-              where('clientId', 'in', [this.clientId, ''])
-            );
-          } else {
-            queryConstraint = query(
-              templatesCollection,
-              where('clientId', '==', '')
-            );
-          }
-        } else {
-          queryConstraint = query(
-            templatesCollection,
-            where('clientId', '==', this.userClientId)
-          );
-        }
+      } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+        // Filtra apenas templates dos clientes vinculados ao admin_client
+        queryConstraint = query(
+          templatesCollection,
+          where('clientId', 'in', this.userClientIds)
+        );
       } else {
         this.snackBar.open(
           'Você não tem permissão para visualizar templates.',
@@ -208,21 +212,19 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
   }
 
   applyFilter(): void {
-    const inputElement =
-      document.querySelector<HTMLInputElement>('#searchInput');
-    const filterValue = (inputElement?.value || '').trim().toLowerCase();
+    const filterValue = this.searchQuery.trim().toLowerCase();
 
     const filteredData = this.allTemplates.filter((data: any) => {
-      const matchesSearch =
-        data.name.toLowerCase().includes(filterValue) ||
-        data.subject.toLowerCase().includes(filterValue);
+      const matchesSearch = !filterValue ||
+        (data.name || '').toLowerCase().includes(filterValue) ||
+        (data.subject || '').toLowerCase().includes(filterValue);
 
       const matchesType = this.emailTypeFilter
-        ? data.emailType.toLowerCase() === this.emailTypeFilter.toLowerCase()
+        ? (data.emailType || '').toLowerCase() === this.emailTypeFilter.toLowerCase()
         : true;
 
       const matchesClient = this.clientFilter
-        ? data.clientName === this.clientFilter
+        ? data.clientId === this.clientFilter
         : true;
 
       return matchesSearch && matchesType && matchesClient;
@@ -234,15 +236,17 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     }
   }
 
-  onClientChange(event: any): void {
-    this.clientFilter = event.value;
+  onClientChange(clientId: string): void {
+    this.clientFilter = clientId;
     this.applyFilter();
   }
 
   clearFilters(): void {
     this.searchQuery = '';
     this.emailTypeFilter = '';
-    this.clientFilter = '';
+    this.clientFilter = (this.userRole === 'admin_client' && this.clients.length === 1)
+      ? this.clients[0].id
+      : '';
     this.applyFilter();
   }
 

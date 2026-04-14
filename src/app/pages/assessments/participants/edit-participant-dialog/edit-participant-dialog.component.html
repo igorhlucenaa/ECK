@@ -1,0 +1,42 @@
+<div class="epd">
+
+  <!-- Header -->
+  <div class="epd__header">
+    <div class="epd__header-icon">
+      <mat-icon>edit</mat-icon>
+    </div>
+    <div class="epd__header-text">
+      <h2>Editar Participante</h2>
+      <p>Altere o nome e/ou e-mail do participante</p>
+    </div>
+  </div>
+
+  <mat-dialog-content class="epd__body">
+    <mat-form-field appearance="outline" class="epd__field">
+      <mat-label>Nome</mat-label>
+      <mat-icon matPrefix class="epd__prefix-icon">person</mat-icon>
+      <input matInput [(ngModel)]="name" placeholder="Nome completo"
+             (keydown.enter)="confirm()" (keydown.escape)="dialogRef.close(null)" autofocus />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="epd__field">
+      <mat-label>E-mail</mat-label>
+      <mat-icon matPrefix class="epd__prefix-icon">email</mat-icon>
+      <input matInput [(ngModel)]="email" placeholder="email@exemplo.com" type="email"
+             (keydown.enter)="confirm()" (keydown.escape)="dialogRef.close(null)" />
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <!-- Actions -->
+  <div class="epd__actions">
+    <button mat-button class="epd__btn-cancel" (click)="dialogRef.close(null)">
+      <mat-icon>close</mat-icon>
+      Cancelar
+    </button>
+    <button mat-raised-button class="epd__btn-confirm" [disabled]="!isValid" (click)="confirm()">
+      <mat-icon>check</mat-icon>
+      Salvar
+    </button>
+  </div>
+
+</div>

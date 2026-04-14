@@ -93,69 +93,179 @@
       <email-editor [options]="{ locale: 'pt' }" [minHeight]="'0'" (ready)="onEditorReady()"></email-editor>
     </div>
 
-    <!-- Legenda de Variáveis Dinâmicas -->
+    <!-- Variáveis Dinâmicas -->
     <div class="vars-card">
+
       <div class="vars-card-header">
-        <mat-icon class="vars-header-icon">info_outline</mat-icon>
-        <h3 class="vars-card-title">{{ 'Variáveis Dinâmicas Disponíveis' | translate }}</h3>
+        <div class="vars-header-icon-wrap"><mat-icon>code</mat-icon></div>
+        <div>
+          <h3 class="vars-card-title">Variáveis Dinâmicas</h3>
+          <p class="vars-card-subtitle">Insira as variáveis abaixo no editor. Elas serão substituídas automaticamente no momento do envio.</p>
+        </div>
       </div>
 
-      <div class="vars-grid">
-
-        <div class="var-item">
-          <div class="var-icon var-icon--blue"><mat-icon>person</mat-icon></div>
-          <div class="var-body">
-            <code class="var-code">[$%Nome do usuário preenchido dinâmicamente$%]</code>
-            <p class="var-desc">{{ 'Substituído pelo nome do participante ao enviar.' | translate }}</p>
-          </div>
+      <!-- Grupo: Participante -->
+      <div class="vars-group">
+        <div class="vars-group-label">
+          <mat-icon>person_outline</mat-icon>
+          Participante
         </div>
+        <div class="vars-grid">
 
-        <div class="var-item">
-          <div class="var-icon var-icon--teal"><mat-icon>badge</mat-icon></div>
-          <div class="var-body">
-            <code class="var-code">[$%NOME_DO_AVALIADO$%]</code>
-            <p class="var-desc">{{ 'Substituído pelo nome de quem está sendo avaliado (e-mail ao avaliador).' | translate }}</p>
+          <div class="var-item var-item--blue">
+            <div class="var-header">
+              <div class="var-icon var-icon--blue"><mat-icon>person</mat-icon></div>
+              <span class="var-name">Nome do participante</span>
+            </div>
+            <div class="var-pill var-pill--blue">
+              <code class="var-pill__text" ngNonBindable>{{nome_participante}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{nome_participante}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Nome completo de quem receberá o e-mail.</p>
+            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
           </div>
-        </div>
 
-        <div class="var-item">
-          <div class="var-icon var-icon--amber"><mat-icon>event</mat-icon></div>
-          <div class="var-body">
-            <code class="var-code">[$%DATA DE EXPIRAÇÃO DO PROJETO$%]</code>
-            <p class="var-desc">{{ 'Substituído pela data limite do projeto (DD/MM/YYYY).' | translate }}</p>
+          <div class="var-item var-item--teal">
+            <div class="var-header">
+              <div class="var-icon var-icon--teal"><mat-icon>badge</mat-icon></div>
+              <span class="var-name">Nome do avaliado</span>
+            </div>
+            <div class="var-pill var-pill--teal">
+              <code class="var-pill__text" ngNonBindable>{{nome_avaliado}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{nome_avaliado}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Nome de quem está sendo avaliado (apenas em e-mails para o avaliador).</p>
+            <div class="var-tags">
+              <span class="var-tag var-tag--orange">Convite Avaliador</span>
+              <span class="var-tag var-tag--orange">Lembrete Avaliador</span>
+            </div>
           </div>
-        </div>
 
-        <div class="var-item">
-          <div class="var-icon var-icon--blue"><mat-icon>link</mat-icon></div>
-          <div class="var-body">
-            <code class="var-code">[LINK_AVALIACAO]</code>
-            <p class="var-desc">{{ 'Link da avaliação gerado automaticamente ao enviar.' | translate }}</p>
-          </div>
         </div>
-
-        <div class="var-item">
-          <div class="var-icon var-icon--purple"><mat-icon>description</mat-icon></div>
-          <div class="var-body">
-            <code class="var-code">[LINK_RELATORIO]</code>
-            <p class="var-desc">{{ 'Link do relatório (apenas para tipo: Relatório Finalizado).' | translate }}</p>
-          </div>
-        </div>
-
-        <div class="var-item">
-          <div class="var-icon var-icon--blue"><mat-icon>open_in_new</mat-icon></div>
-          <div class="var-body">
-            <span class="var-label">{{ 'Links no texto' | translate }}</span>
-            <p class="var-desc">{{ 'URLs com http:// ou https:// viram links clicáveis automaticamente.' | translate }}</p>
-          </div>
-        </div>
-
       </div>
 
-      <div class="vars-warning">
-        <mat-icon>warning</mat-icon>
-        <span>{{ 'Digite exatamente como mostrado, incluindo os símbolos $% e colchetes [].' | translate }}</span>
+      <!-- Grupo: Projeto -->
+      <div class="vars-group">
+        <div class="vars-group-label">
+          <mat-icon>folder_open</mat-icon>
+          Projeto &amp; Cliente
+        </div>
+        <div class="vars-grid">
+
+          <div class="var-item var-item--indigo">
+            <div class="var-header">
+              <div class="var-icon var-icon--indigo"><mat-icon>folder_open</mat-icon></div>
+              <span class="var-name">Nome do projeto</span>
+            </div>
+            <div class="var-pill var-pill--indigo">
+              <code class="var-pill__text" ngNonBindable>{{nome_projeto}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{nome_projeto}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Nome do projeto de avaliação selecionado.</p>
+            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+          </div>
+
+          <div class="var-item var-item--gray">
+            <div class="var-header">
+              <div class="var-icon var-icon--gray"><mat-icon>business</mat-icon></div>
+              <span class="var-name">Nome do cliente</span>
+            </div>
+            <div class="var-pill var-pill--gray">
+              <code class="var-pill__text" ngNonBindable>{{nome_cliente}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{nome_cliente}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Nome da empresa / cliente associado ao projeto.</p>
+            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+          </div>
+
+          <div class="var-item var-item--amber">
+            <div class="var-header">
+              <div class="var-icon var-icon--amber"><mat-icon>event</mat-icon></div>
+              <span class="var-name">Data de expiração</span>
+            </div>
+            <div class="var-pill var-pill--amber">
+              <code class="var-pill__text" ngNonBindable>{{data_expiracao}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{data_expiracao}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Data limite do projeto no formato DD/MM/AAAA.</p>
+            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+          </div>
+
+        </div>
       </div>
+
+      <!-- Grupo: Links -->
+      <div class="vars-group">
+        <div class="vars-group-label">
+          <mat-icon>link</mat-icon>
+          Links gerados automaticamente
+        </div>
+        <div class="vars-grid">
+
+          <div class="var-item var-item--green">
+            <div class="var-header">
+              <div class="var-icon var-icon--green"><mat-icon>link</mat-icon></div>
+              <span class="var-name">Link da avaliação</span>
+            </div>
+            <div class="var-pill var-pill--green">
+              <code class="var-pill__text">[LINK_AVALIACAO]</code>
+              <button class="var-pill__copy" (click)="copyVar('[LINK_AVALIACAO]')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">URL única de acesso ao formulário. Inserido automaticamente ao salvar o template.</p>
+            <div class="var-tags">
+              <span class="var-tag var-tag--blue">Convite</span>
+              <span class="var-tag var-tag--blue">Lembrete</span>
+            </div>
+          </div>
+
+          <div class="var-item var-item--purple">
+            <div class="var-header">
+              <div class="var-icon var-icon--purple"><mat-icon>description</mat-icon></div>
+              <span class="var-name">Link do relatório</span>
+            </div>
+            <div class="var-pill var-pill--purple">
+              <code class="var-pill__text">[LINK_RELATORIO]</code>
+              <button class="var-pill__copy" (click)="copyVar('[LINK_RELATORIO]')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">URL de acesso ao relatório finalizado do participante.</p>
+            <div class="var-tags">
+              <span class="var-tag var-tag--purple">Relatório Finalizado</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Exemplo de uso -->
+      <div class="vars-example">
+        <div class="vars-example__header">
+          <mat-icon>lightbulb_outline</mat-icon>
+          <span>Exemplo de uso no corpo do e-mail</span>
+        </div>
+        <pre class="vars-example__code" ngNonBindable>Olá, <span class="ex-var">{{nome_participante}}</span>!
+
+Você foi convidado(a) a avaliar <span class="ex-var">{{nome_avaliado}}</span>
+no projeto <span class="ex-var">{{nome_projeto}}</span>.
+
+Prazo: <span class="ex-var">{{data_expiracao}}</span>
+
+Acesse sua avaliação: <span class="ex-link">[LINK_AVALIACAO]</span></pre>
+      </div>
+
     </div>
 
     <!-- Bottom save bar -->

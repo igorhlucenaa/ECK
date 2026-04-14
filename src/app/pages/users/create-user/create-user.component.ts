@@ -29,8 +29,14 @@ import {
 } from '@angular/fire/firestore';
 import {
   Auth,
-  fetchSignInMethodsForEmail,
+  sendPasswordResetEmail,
+  ActionCodeSettings,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
 } from '@angular/fire/auth';
+import { FirebaseApp } from '@angular/fire/app';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { updateDoc, doc } from '@angular/fire/firestore';
@@ -76,6 +82,7 @@ export class CreateUserComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private auth: Auth,
+    private firebaseApp: FirebaseApp,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private router: Router,
     private authService: AuthService,
@@ -87,15 +94,20 @@ export class CreateUserComponent implements OnInit {
     this.loadClients().then(async () => {
       const userRole = await this.getCurrentUserRole();
 
+      // ADM Cliente não pode criar ou editar usuários — fecha o dialog imediatamente
       if (userRole === 'admin_client') {
-        this.roles = this.roles.filter((role) =>
-          ['admin_client', 'viewer'].includes(role.value)
+        this.snackBar.open(
+          this.translate.instant('ADM Cliente não possui permissão para criar ou editar usuários.'),
+          this.translate.instant('Fechar'),
+          { duration: 5000 }
         );
+        this.dialogRef.close(false);
+        return;
       }
 
       if (this.data?.user) {
         this.isEditMode = true;
-        this.prefillForm(this.data.user); // Carrega os valores no modo de edição
+        this.prefillForm(this.data.user);
       }
     });
   }
@@ -116,7 +128,7 @@ export class CreateUserComponent implements OnInit {
       surname: ['', Validators.required],
       email: ['', [Validators.required, Validators.email], [this.emailUniqueValidator()]],
       password: [''],
-      client: [''],
+      clients: [[] as string[]],
       project: [''],
       group: [''],
       role: ['', Validators.required],
@@ -168,33 +180,25 @@ export class CreateUserComponent implements OnInit {
   get emailCtrl() { return this.userForm.get('email')!; }
 
   private async prefillForm(user: any): Promise<void> {
+    // Suporta tanto campo legado `client` (string) quanto novo `clients` (array)
+    const existingClients: string[] = Array.isArray(user.clients)
+      ? user.clients
+      : user.client ? [user.client] : [];
 
-    // Obtém o ID do cliente correspondente ao nome (se necessário)
-    const clientId = this.clients.find(
-      (client) => client.name === user.client
-    )?.id;
-
-    if (clientId) {
-
-      // Aguarda o carregamento dos projetos e grupos
-      await this.onClientChange(clientId);
+    if (existingClients.length > 0) {
+      await this.onClientChange(existingClients[0]);
     }
 
-    // Após os dados serem carregados, preenche o formulário
     this.userForm.patchValue({
       name: user.name,
       surname: user.surname,
       email: user.email,
       role: user.role,
+      clients: existingClients,
     });
 
-    // Habilita campos desabilitados caso já estejam preenchidos
-    if (user.project) {
-      this.userForm.get('project')?.enable();
-    }
-    if (user.group) {
-      this.userForm.get('group')?.enable();
-    }
+    if (user.project) this.userForm.get('project')?.enable();
+    if (user.group) this.userForm.get('group')?.enable();
   }
 
   private async loadClients(): Promise<void> {
@@ -209,8 +213,8 @@ export class CreateUserComponent implements OnInit {
             name: 'Seu Cliente',
           },
         ];
-        this.userForm.get('client')?.setValue(clientId);
-        this.userForm.get('client')?.disable(); // Desabilita a seleção do cliente
+        this.userForm.get('clients')?.setValue([clientId]);
+        this.userForm.get('clients')?.disable();
       } else if (userRole === 'admin_master') {
         const clientsCollection = collection(this.firestore, 'clients');
         const snapshot = await getDocs(clientsCollection);
@@ -282,15 +286,21 @@ export class CreateUserComponent implements OnInit {
     }
 
     const userRole = await this.getCurrentUserRole();
-    const selectedRole = this.userForm.get('role')?.value;
 
-    if (userRole === 'admin_client' && !['viewer', 'admin_client'].includes(selectedRole)) {
-      this.snackBar.open(this.translate.instant('Você não tem permissão para atribuir este papel.'), this.translate.instant('Fechar'), { duration: 3000 });
+    // Bloqueia ADM Cliente — equivalente a HTTP 403
+    if (userRole === 'admin_client') {
+      this.snackBar.open(
+        this.translate.instant('Acesso negado (403): ADM Cliente não pode criar ou editar usuários.'),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+      this.dialogRef.close(false);
       return;
     }
 
     try {
-      const { name, surname, email, client, project, group, role } = this.userForm.value;
+      const { name, surname, email, project, group, role } = this.userForm.value;
+      const clients: string[] = this.userForm.get('clients')?.value || [];
       const emailLower = (email || '').toLowerCase().trim();
 
       if (this.isEditMode) {
@@ -300,7 +310,7 @@ export class CreateUserComponent implements OnInit {
 
         if (!querySnapshot.empty) {
           await updateDoc(querySnapshot.docs[0].ref, {
-            name, surname, email, emailLower, client, project, group, role,
+            name, surname, email, emailLower, clients, project, group, role,
             updatedAt: new Date(),
           });
           this.snackBar.open(this.translate.instant('Usuário atualizado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
@@ -308,7 +318,7 @@ export class CreateUserComponent implements OnInit {
           this.snackBar.open(this.translate.instant('Usuário não encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
         }
       } else {
-        // Verificação dupla no momento de salvar (segurança adicional)
+        // Verificação dupla no momento de salvar
         const [snapLower, snapEmail] = await Promise.all([
           getDocs(query(collection(this.firestore, 'users'), where('emailLower', '==', emailLower))),
           getDocs(query(collection(this.firestore, 'users'), where('email', '==', email))),
@@ -324,18 +334,78 @@ export class CreateUserComponent implements OnInit {
           return;
         }
 
+        // Cria documento Firestore
         await addDoc(collection(this.firestore, 'users'), {
-          name, surname, email, emailLower, client, project, group, role,
+          name, surname, email, emailLower, clients, project, group, role,
           status: 'active',
           createdAt: new Date(),
         });
-        this.snackBar.open(this.translate.instant('Usuário criado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
+
+        // Cria conta Firebase Auth via app secundário (sem deslogar o admin atual)
+        // e envia e-mail de boas-vindas com link para criação de senha (expira em 48h via Firebase Console)
+        await this.createAuthAndSendWelcomeEmail(email, name);
+
+        this.snackBar.open(
+          this.translate.instant('Usuário criado! E-mail de acesso enviado para {{email}}.', { email }),
+          this.translate.instant('Fechar'),
+          { duration: 5000 }
+        );
       }
 
       this.dialogRef.close(true);
     } catch (error) {
       console.error('Erro ao salvar usuário:', error);
       this.snackBar.open(this.translate.instant(this.isEditMode ? 'Erro ao atualizar usuário.' : 'Erro ao criar usuário.'), this.translate.instant('Fechar'), { duration: 3000 });
+    }
+  }
+
+  /**
+   * Cria conta Firebase Auth em um app secundário (não afeta a sessão do admin logado)
+   * e dispara o e-mail de redefinição de senha que serve como link de criação de acesso.
+   * O link expira conforme configurado no Firebase Console (recomendado: 48h).
+   */
+  private async createAuthAndSendWelcomeEmail(email: string, name: string): Promise<void> {
+    const appName = `welcome_${Date.now()}`;
+    const secondaryApp = initializeApp((this.firebaseApp as any).options, appName);
+    const secondaryAuth = getAuth(secondaryApp);
+
+    try {
+      // Senha temporária aleatória — usuário nunca a usa, pois receberá o link de criação
+      const tempPassword =
+        Math.random().toString(36).slice(2) +
+        Math.random().toString(36).toUpperCase().slice(2) +
+        '!8';
+
+      await createUserWithEmailAndPassword(secondaryAuth, email, tempPassword);
+      await firebaseSignOut(secondaryAuth);
+    } catch (err: any) {
+      if (err?.code !== 'auth/email-already-in-use') {
+        console.error('Erro ao criar conta Auth:', err?.message);
+        this.snackBar.open(
+          `Erro ao criar conta: ${err?.message}`,
+          this.translate.instant('Fechar'),
+          { duration: 6000 }
+        );
+        return;
+      }
+    } finally {
+      try { await deleteApp(secondaryApp); } catch {}
+    }
+
+    // Envia e-mail com link de criação/redefinição de senha (fora do try da conta secundária)
+    try {
+      const actionCodeSettings: ActionCodeSettings = {
+        url: `${window.location.origin}/authentication/login`,
+        handleCodeInApp: false,
+      };
+      await sendPasswordResetEmail(this.auth, email, actionCodeSettings);
+    } catch (err: any) {
+      console.error('Erro ao enviar e-mail de boas-vindas:', err?.code, err?.message);
+      this.snackBar.open(
+        `Conta criada, mas o e-mail não foi enviado: ${err?.message}`,
+        this.translate.instant('Fechar'),
+        { duration: 8000 }
+      );
     }
   }
 }

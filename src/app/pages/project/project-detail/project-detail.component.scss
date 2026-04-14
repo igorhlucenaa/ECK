@@ -144,10 +144,10 @@
   margin-right: 4px;
 }
 
-.status-option { font-weight: 500; }
-.status-ativo    { color: #2e7d32; }
-.status-inativo  { color: #616161; }
-.status-concluido{ color: #1565C0; }
+.status-option       { font-weight: 500; }
+.status-em-andamento { color: #1565C0; }
+.status-concluido    { color: #2e7d32; }
+.status-cancelado    { color: #c62828; }
 
 // ─── Bottom save bar ─────────────────────────────────────────
 .save-bar {

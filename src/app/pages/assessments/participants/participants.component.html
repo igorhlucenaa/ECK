@@ -215,6 +215,12 @@
 <ng-template #defaultMode>
   <div class="default-wrapper">
 
+    <!-- ── Overlay de inicialização ──────────────────────────── -->
+    <div class="init-overlay" *ngIf="isInitializing">
+      <mat-spinner [diameter]="52"></mat-spinner>
+      <p class="init-overlay__label">Carregando participantes...</p>
+    </div>
+
     <!-- Header -->
     <app-page-header
       eyebrow="Participantes"
@@ -237,6 +243,11 @@
       <button mat-raised-button class="btn-add" (click)="openAddParticipantModal()">
         <mat-icon>person_add</mat-icon>
         {{ 'Adicionar Participante' | translate }}
+      </button>
+
+      <button mat-button class="btn-action-secondary" *ngIf="!dialogRef" routerLink="/projects">
+        <mat-icon>arrow_back</mat-icon>
+        {{ 'Voltar' | translate }}
       </button>
 
       <button mat-icon-button class="btn-dialog-close" *ngIf="dialogRef" (click)="dialogRef.close()" [matTooltip]="'Fechar'">
@@ -450,7 +461,17 @@
     <!-- Contexto definido: loading, tabela, empty -->
     <ng-container *ngIf="filterClient && filterProject">
 
-    <!-- PLACEHOLDER — send-config-card antigo removido — agora fica no setup-card etapa 3 -->
+    <!-- ── Banner de créditos do cliente ─────────────────────── -->
+    <div class="credits-banner credits-banner--ok"
+         *ngIf="clientCredits !== null && clientCredits > 0">
+      <mat-icon>toll</mat-icon>
+      <span><strong>{{ clientCredits }}</strong> crédito{{ clientCredits !== 1 ? 's' : '' }} disponível{{ clientCredits !== 1 ? 'is' : '' }} para este cliente</span>
+    </div>
+    <div class="credits-banner credits-banner--zero"
+         *ngIf="clientCredits !== null && clientCredits === 0">
+      <mat-icon>warning</mat-icon>
+      <span><strong>Sem créditos disponíveis.</strong> O envio de convites está bloqueado. Adquira créditos em <strong>Pedidos de Crédito</strong>.</span>
+    </div>
 
     <!-- Loading -->
     <div class="send-loading" *ngIf="isTableLoading">
@@ -480,19 +501,54 @@
     <!-- Tabela -->
     <div class="table-card" [hidden]="isTableLoading || dataSource.data.length === 0">
 
+      <!-- Toolbar de atualização -->
+      <div class="table-refresh-bar">
+        <span class="table-refresh-bar__info" *ngIf="!isRefreshing">
+          {{ dataSource.filteredData.length }} participante{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
+        </span>
+        <span class="table-refresh-bar__info table-refresh-bar__info--loading" *ngIf="isRefreshing">
+          Atualizando...
+        </span>
+        <span class="table-refresh-bar__updated" *ngIf="lastRefreshed && !isRefreshing">
+          · atualizado às {{ lastRefreshed | date:'HH:mm:ss' }}
+        </span>
+        <span class="table-refresh-bar__spacer"></span>
+        <button class="table-refresh-bar__btn" (click)="refreshTable()" [disabled]="isRefreshing"
+                matTooltip="Atualizar dados em tempo real">
+          <mat-icon [class.spin]="isRefreshing">refresh</mat-icon>
+          Atualizar
+        </button>
+      </div>
+
       <table mat-table [dataSource]="dataSource" matSort class="participants-table" data-tour="participants-table">
 
         <ng-container matColumnDef="select">
           <th mat-header-cell *matHeaderCellDef>
-            <mat-checkbox (change)="toggleAll($event.checked)" [checked]="allSelected()" [indeterminate]="someSelected() && !allSelected()"></mat-checkbox>
+            <span [matTooltip]="!isSelectionReady ? selectionTooltip : ''"
+                  matTooltipPosition="right"
+                  style="display:inline-flex;cursor:default">
+              <mat-checkbox
+                [disabled]="!isSelectionReady"
+                [checked]="isSelectionReady && allSelected()"
+                [indeterminate]="isSelectionReady && someSelected() && !allSelected()"
+                (change)="isSelectionReady && toggleAll($event.checked)">
+              </mat-checkbox>
+            </span>
           </th>
           <td mat-cell *matCellDef="let participant">
-            <mat-checkbox [(ngModel)]="participant.selected" (ngModelChange)="updateSelection()"
-              [disabled]="participant.completedAt != null ||
-                (selectedTemplate?.emailType === 'conviteAvaliador' || selectedTemplate?.emailType === 'lembreteAvaliador'
-                  ? participant.type !== 'avaliador'
-                  : selectedTemplate?.emailType === 'cadastro' ? false : participant.type !== 'avaliado')">
-            </mat-checkbox>
+            <span [matTooltip]="!isSelectionReady ? selectionTooltip : ''"
+                  matTooltipPosition="right"
+                  style="display:inline-flex;cursor:default">
+              <mat-checkbox
+                [(ngModel)]="participant.selected"
+                (ngModelChange)="updateSelection()"
+                [disabled]="!isSelectionReady ||
+                  participant.completedAt != null ||
+                  (selectedTemplate?.emailType === 'conviteAvaliador' || selectedTemplate?.emailType === 'lembreteAvaliador'
+                    ? participant.type !== 'avaliador'
+                    : selectedTemplate?.emailType === 'cadastro' ? false : participant.type !== 'avaliado')">
+              </mat-checkbox>
+            </span>
           </td>
         </ng-container>
 
@@ -511,11 +567,6 @@
           </td>
         </ng-container>
 
-        <ng-container matColumnDef="email">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'E-mail' | translate }}</th>
-          <td mat-cell *matCellDef="let participant" class="email-cell">{{ participant.email }}</td>
-        </ng-container>
-
         <ng-container matColumnDef="type">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Tipo' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
@@ -529,6 +580,17 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Categoria' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
             <span class="category-text">{{ participant.category }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="cargo">
+          <th mat-header-cell *matHeaderCellDef>{{ 'Cargo / Setor' | translate }}</th>
+          <td mat-cell *matCellDef="let participant">
+            <div class="cargo-cell" *ngIf="participant.cargo || participant.setor">
+              <span class="cargo-text" *ngIf="participant.cargo">{{ participant.cargo }}</span>
+              <span class="setor-badge" *ngIf="participant.setor">{{ participant.setor }}</span>
+            </div>
+            <span *ngIf="!participant.cargo && !participant.setor" class="text-muted">—</span>
           </td>
         </ng-container>
 
@@ -549,33 +611,52 @@
               'status-respondido': participant.status === 'Respondido',
               'status-enviado': participant.status === 'Enviado (Pendente)',
               'status-nao-enviado': participant.status === 'Não Enviado' || !participant.status
-            }">{{ participant.status || 'Não Enviado' }}</span>
+            }" [matTooltip]="participant.status || 'Não Enviado'">
+              <mat-icon class="status-chip__icon">
+                {{ participant.status === 'Respondido' ? 'check_circle' : participant.status === 'Enviado (Pendente)' ? 'schedule' : 'radio_button_unchecked' }}
+              </mat-icon>
+              {{ participant.status === 'Respondido' ? 'Respondido' : participant.status === 'Enviado (Pendente)' ? 'Pendente' : 'Não enviado' }}
+            </span>
           </td>
         </ng-container>
 
-        <ng-container matColumnDef="sentAt">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Envio' | translate }}</th>
-          <td mat-cell *matCellDef="let participant" class="date-cell">
-            {{ participant.sentAt ? (participant.sentAt | date:'dd/MM/yy') : '—' }}
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="completedAt">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Resposta' | translate }}</th>
-          <td mat-cell *matCellDef="let participant" class="date-cell">
-            {{ participant.completedAt ? (participant.completedAt | date:'dd/MM/yy') : '—' }}
+        <ng-container matColumnDef="datas">
+          <th mat-header-cell *matHeaderCellDef>{{ 'Envio / Resposta' | translate }}</th>
+          <td mat-cell *matCellDef="let participant">
+            <div class="datas-cell">
+              <span class="datas-row" [class.datas-row--empty]="!participant.sentAt"
+                    [matTooltip]="participant.sentAt ? ('Enviado em ' + (participant.sentAt | date:'dd/MM/yyyy HH:mm')) : 'Não enviado'">
+                <mat-icon>send</mat-icon>
+                {{ participant.sentAt ? (participant.sentAt | date:'dd/MM/yy') : '—' }}
+              </span>
+              <span class="datas-row datas-row--resp" [class.datas-row--empty]="!participant.completedAt"
+                    [matTooltip]="participant.completedAt ? ('Respondido em ' + (participant.completedAt | date:'dd/MM/yyyy HH:mm')) : 'Aguardando resposta'">
+                <mat-icon>check_circle</mat-icon>
+                {{ participant.completedAt ? (participant.completedAt | date:'dd/MM/yy') : '—' }}
+              </span>
+              <span class="datas-row datas-row--credit" *ngIf="participant.completedAt"
+                    matTooltip="1 crédito consumido ao responder">
+                <mat-icon>toll</mat-icon>
+                1 crédito
+              </span>
+            </div>
           </td>
         </ng-container>
 
         <ng-container matColumnDef="relatorio">
           <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
-            <button mat-icon-button class="action-report"
-              (click)="generateReportForParticipant(participant)"
-              [matTooltip]="'Gerar Relatório' | translate"
-              *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'">
-              <mat-icon>description</mat-icon>
-            </button>
+            <div class="actions-cell-row">
+              <button mat-icon-button class="action-edit" matTooltip="Editar participante"
+                      (click)="openEditParticipantDialog(participant); $event.stopPropagation()">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button class="action-report"
+                *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
+                (click)="generateReportForParticipant(participant)" matTooltip="Gerar Relatório">
+                <mat-icon>description</mat-icon>
+              </button>
+            </div>
           </td>
         </ng-container>
 

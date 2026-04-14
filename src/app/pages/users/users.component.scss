@@ -78,24 +78,65 @@
   white-space: nowrap;
 }
 
+// ─── Status filter group ──────────────────────────────────────
+.status-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.status-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+
+  &:hover { background: #e2e8f0; }
+
+  &.active {
+    background: #fff;
+    color: #1B84FF;
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(27, 45, 86, 0.1);
+  }
+
+  &--blocked.active {
+    color: #dc2626;
+  }
+}
+
 // ─── Table ────────────────────────────────────────────────────
-.table-container { overflow-x: auto; }
+.table-container { overflow-x: hidden; }
 
 .users-table {
   width: 100%;
-  table-layout: fixed;
 
-  // Column widths
-  ::ng-deep .mat-column-select           { width: 48px; }
-  ::ng-deep .mat-column-name             { width: 150px; }
-  ::ng-deep .mat-column-surname          { width: 110px; }
-  ::ng-deep .mat-column-email            { width: 200px; }
-  ::ng-deep .mat-column-client           { width: 90px; }
-  ::ng-deep .mat-column-projects         { width: 90px; }
-  ::ng-deep .mat-column-group            { width: 90px; }
-  ::ng-deep .mat-column-role             { width: 95px; }
-  ::ng-deep .mat-column-notificationStatus { width: 110px; }
-  ::ng-deep .mat-column-actions          { width: 130px; }
+  // Coluna select fixa; name cresce; demais auto
+  ::ng-deep .mat-column-select              { width: 44px; flex-shrink: 0; }
+  ::ng-deep .mat-column-name                { min-width: 160px; }
+  ::ng-deep .mat-column-email               { min-width: 0; }
+  ::ng-deep .mat-column-client              { width: 80px; }
+  ::ng-deep .mat-column-projects            { width: 90px; }
+  ::ng-deep .mat-column-group               { width: 90px; }
+  ::ng-deep .mat-column-role                { width: 88px; }
+  ::ng-deep .mat-column-notificationStatus  { width: 120px; }
+  ::ng-deep .mat-column-actions             { width: 160px; }
 
   .mat-mdc-header-row {
     background: #f8faff;
@@ -108,13 +149,14 @@
     color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 0 16px;
+    padding: 0 10px;
     white-space: nowrap;
     border-bottom: none;
+    overflow: hidden;
   }
 
   .mat-mdc-row {
-    height: 52px;
+    height: 56px;
     border-bottom: 1px solid #f1f5f9;
     transition: background 0.15s;
   }
@@ -122,10 +164,21 @@
   .table-row:hover { background: #f8faff; }
 
   .mat-mdc-cell {
-    padding: 8px 16px;
-    font-size: 13.5px;
+    padding: 8px 10px;
+    font-size: 13px;
     color: #1a1a2e;
     border-bottom: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // e-mail não trunca — permite quebra de linha em telas menores
+  ::ng-deep .mat-column-email .mat-mdc-cell {
+    white-space: normal;
+    word-break: break-all;
+    font-size: 12.5px;
+    color: #64748b;
   }
 }
 
@@ -159,12 +212,42 @@
   justify-content: center;
   flex-shrink: 0;
 
-  &--group {
-    background: #0e7490;
+  &--group { background: #0e7490; }
+
+  &--blocked {
+    background: #f1f5f9;
+    color: #94a3b8;
   }
 }
 
+.avatar-lock-icon {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.user-name-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .user-name { font-weight: 500; }
+
+.blocked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 20px;
+  padding: 1px 7px;
+  line-height: 1.4;
+  mat-icon { font-size: 11px; width: 11px; height: 11px; }
+}
 
 .email-cell { color: #64748b; font-size: 13px; }
 
@@ -231,50 +314,53 @@
 .notif-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
+  gap: 5px;
+  padding: 4px 10px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
+  cursor: default;
+  white-space: nowrap;
 
   mat-icon { font-size: 13px; width: 13px; height: 13px; }
 
-  &.notif-sent {
+  &.notif-accessed {
     background: #f0fdf4;
-    color: #16a34a;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+  }
+  &.notif-link-sent {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
   }
   &.notif-pending {
-    background: #f1f5f9;
-    color: #64748b;
+    background: #f8fafc;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
   }
 }
 
-// ─── Groups table — layout compacto sem scroll ────────────────
+// ─── Groups table ─────────────────────────────────────────────
 .groups-table {
-  table-layout: fixed;
+  ::ng-deep .mat-column-select    { width: 44px; }
+  ::ng-deep .mat-column-client    { width: 140px; }
+  ::ng-deep .mat-column-name      { min-width: 160px; }
+  ::ng-deep .mat-column-createdBy { width: 130px; }
+  ::ng-deep .mat-column-actions   { width: 120px; }
 
-  ::ng-deep .mat-column-select      { width: 48px; }
-  ::ng-deep .mat-column-client      { width: 150px; }
-  ::ng-deep .mat-column-name        { width: 220px; }
-  ::ng-deep .mat-column-createdBy   { width: 140px; }
-  ::ng-deep .mat-column-actions     { width: 145px; }
-  // description: sem width = ocupa o espaço restante
-
-  // Truncar texto nas colunas de texto
   .mat-mdc-cell:not(.actions-col):not(.select-col) {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  // Célula de ações com padding reduzido para caber 3 botões
   .actions-col.mat-mdc-cell {
     padding: 4px 6px !important;
     overflow: visible !important;
     white-space: nowrap;
   }
 
-  // Célula do nome do grupo — impede que o user-cell quebre linha
   .user-cell {
     flex-wrap: nowrap;
     min-width: 0;
@@ -312,7 +398,7 @@
 
 // ─── Actions ──────────────────────────────────────────────────
 .actions-col {
-  width: 130px;
+  width: 160px;
   overflow: visible !important;
   white-space: nowrap;
 }
@@ -323,19 +409,38 @@
   gap: 0;
 }
 
-.action-view  { color: #8b5cf6 !important; &:hover { background: #faf5ff !important; } }
-.action-edit  { color: #1B84FF !important;  &:hover { background: #eff6ff !important; } }
-.action-delete{ color: #dc2626 !important;  &:hover { background: #fef2f2 !important; } }
-.action-email { color: #0e9488 !important;  &:hover { background: #f0fdfa !important; } }
-.action-locked {
-  color: #cbd5e1 !important;
-  cursor: not-allowed !important;
-  opacity: 0.5;
+.action-group {
+  display: inline-flex;
+  align-items: center;
 }
+
+.action-group--secondary {
+  padding-left: 4px;
+  margin-left: 2px;
+  border-left: 1px solid #e8edf3;
+}
+
+// Reaproveita o estilo padrão de mat-icon-button — sem quebrar MDC
+// Apenas redefine cor do ícone e hover background
+.action-btn--view   { color: #94a3b8; &:hover { color: #8b5cf6 !important; background: #faf5ff !important; } }
+.action-btn--edit   { color: #94a3b8; &:hover { color: #1B84FF !important; background: #eff6ff !important; } }
+.action-btn--delete { color: #94a3b8; &:hover { color: #dc2626 !important; background: #fef2f2 !important; } }
+.action-btn--invite { color: #94a3b8; &:hover { color: #0e9488 !important; background: #f0fdfa !important; } }
+.action-btn--block  { color: #94a3b8; &:hover { color: #f59e0b !important; background: #fffbeb !important; } }
+.action-btn--unblock{ color: #16a34a;  &:hover { background: #f0fdf4 !important; } }
+.action-btn--locked { color: #cbd5e1; opacity: 0.4; pointer-events: none; }
 
 // Duplicate email row highlight
 .row-duplicate-email { background: #FAEEDA !important; }
 .row-duplicate-email:hover { background: #f5dfc0 !important; }
+
+// Blocked user row
+.row-blocked {
+  opacity: 0.6;
+  background: #fafafa !important;
+  .user-name, .mat-mdc-cell { color: #94a3b8 !important; }
+}
+.row-blocked:hover { background: #f3f4f6 !important; }
 
 // ─── Permissions Panel ────────────────────────────────────────
 .permissions-panel {

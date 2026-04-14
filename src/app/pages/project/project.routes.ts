@@ -10,89 +10,93 @@ import { QuestionnaireFormComponent } from './questionnaire-list/questionnaire-f
 import { QuestionnairePreviewComponent } from './questionnaire-list/preview-questionnaire/preview-questionnaire.component';
 import { AssessmentListComponent } from '../assessments/assessment-list/assessment-list.component';
 
+// admin_master: acesso total a todos os projetos (visualizar, criar, editar, excluir)
+// admin_client: acessa e visualiza apenas os projetos do próprio cliente (sem criar/editar/excluir)
+const ALLOWED = ['admin_master', 'admin_client'];
+
 export const ProjectsRoutes: Routes = [
   {
     path: '',
     component: ProjectsListComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' }, // Apenas admin_client pode acessar
+    data: { role: ALLOWED },
   },
   {
     path: 'new',
     component: ProjectDetailComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' }, // Apenas admin_client pode criar
+    data: { role: ALLOWED },
   },
   {
     path: ':id/edit',
     component: ProjectDetailComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' }, // Apenas admin_client pode editar
+    data: { role: ALLOWED },
   },
   {
     path: ':id/users',
     component: ProjectUsersComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' },
+    data: { role: ALLOWED },
   },
   {
     path: ':id/:idProject/templates',
     component: EmailTemplateListComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' },
+    data: { role: ALLOWED },
   },
   {
     path: ':id/templates/new',
     component: EmailTemplateFormComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' },
+    data: { role: ALLOWED },
   },
   {
     path: 'default-template/new',
     component: EmailTemplateFormComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' },
+    data: { role: ALLOWED },
   },
   {
     path: ':id/templates/:templateId/edit',
     component: EmailTemplateFormComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' },
+    data: { role: ALLOWED },
   },
   {
     path: 'default-template/:templateId/edit',
     component: EmailTemplateFormComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' }, // Garantir que apenas o admin_client possa editar templates
+    data: { role: ALLOWED },
   },
   {
     path: ':id/questionnaires',
     component: QuestionnaireListComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' }, // Apenas admin_client pode visualizar os questionários
+    data: { role: ALLOWED },
   },
   {
     path: ':id/questionnaires/new',
     component: QuestionnaireFormComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' }, // Apenas admin_client pode criar questionários
+    data: { role: ALLOWED },
   },
   {
     path: ':id/questionnaires/:questionnaireId/edit',
     component: QuestionnaireFormComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' }, // Apenas admin_client pode editar questionários
+    data: { role: ALLOWED },
   },
   {
     path: ':id/questionnaires/:questionnaireId/preview',
     component: QuestionnairePreviewComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' },
+    data: { role: ALLOWED },
   },
   {
     path: 'assessments/:id',
     component: AssessmentListComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_client' },
+    data: { role: ALLOWED },
   },
 ];

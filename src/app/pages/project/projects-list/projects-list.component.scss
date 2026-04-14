@@ -21,6 +21,7 @@
   padding: 20px 24px 4px;
   flex-wrap: wrap;
 
+  .client-filter-field { min-width: 200px; max-width: 280px; }
   .search-field { flex: 1; min-width: 240px; }
 
   .search-count {
@@ -127,9 +128,66 @@
   font-weight: 600;
   margin-top: 3px;
 }
-.status-ativo    { background: rgba(76,175,80,0.12); color: #2e7d32; }
-.status-inativo  { background: rgba(158,158,158,0.15); color: #616161; }
-.status-concluido{ background: rgba(27,132,255,0.1);  color: #1565C0; }
+.status-em-andamento { background: rgba(27,132,255,0.1);   color: #1565C0; }
+.status-concluido    { background: rgba(76,175,80,0.12);   color: #2e7d32; }
+.status-cancelado    { background: rgba(239,68,68,0.1);    color: #c62828; }
+// legados (migração suave)
+.status-ativo        { background: rgba(27,132,255,0.1);   color: #1565C0; }
+.status-inativo      { background: rgba(239,68,68,0.1);    color: #c62828; }
+
+// ─── Chips de filtro de status ────────────────────────────────
+.status-filter-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  transition: all 0.15s;
+
+  &:hover { border-color: #94a3b8; }
+
+  &--active {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+    color: #1e293b;
+  }
+
+  &--em-andamento.status-chip--active {
+    background: rgba(27,132,255,0.1);
+    border-color: #1B84FF;
+    color: #1565C0;
+  }
+
+  &--concluido.status-chip--active {
+    background: rgba(76,175,80,0.12);
+    border-color: #4caf50;
+    color: #2e7d32;
+  }
+
+  &--cancelado.status-chip--active {
+    background: rgba(239,68,68,0.1);
+    border-color: #ef4444;
+    color: #c62828;
+  }
+}
+
+// ─── Botão cancelar ────────────────────────────────────────────
+.action-cancel {
+  color: #94a3b8;
+  &:hover { color: #c62828; background: rgba(239,68,68,0.08); }
+}
 
 // Prazo
 .deadline-cell {

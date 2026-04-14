@@ -6,12 +6,14 @@ import { CommonModule } from '@angular/common';
 import {
   Firestore,
   doc,
+  getDoc,
   updateDoc,
   query,
   where,
+  orderBy,
   getDocs,
   collection,
-} from '@angular/fire/firestore'; // Adicionado para acessar o Firestore diretamente, se necessário
+} from '@angular/fire/firestore';
 
 // Defina a interface para o objeto Assessment retornado pelo SurveyService
 interface Assessment {
@@ -77,12 +79,60 @@ export class AssessmentComponent implements OnInit {
     if (assessment && assessment.surveyJSON) {
       this.surveyJSON = assessment.surveyJSON;
 
+      // Substituir {{nome_avaliado}} pelo nome do avaliado correto
+      let surveyJSONFinal = this.surveyJSON;
+      try {
+        let avaliadoName = '';
+
+        const participantRef = doc(this.firestore, `participants/${participantId}`);
+        const participantSnap = await getDoc(participantRef);
+        console.log('[nome_avaliado] participantId:', participantId, 'exists:', participantSnap.exists());
+
+        if (participantSnap.exists()) {
+          const participantData = participantSnap.data();
+          const participantType: string = participantData['type'] || '';
+          console.log('[nome_avaliado] type:', participantType, 'name:', participantData['name']);
+
+          if (participantType === 'avaliador') {
+            const linkQuery = query(
+              collection(this.firestore, 'assessmentLinks'),
+              where('participantId', '==', participantId),
+              where('assessmentId', '==', assessmentId)
+            );
+            const linkSnap = await getDocs(linkQuery);
+            console.log('[nome_avaliado] links found:', linkSnap.size, linkSnap.docs.map(d => d.data()));
+            if (!linkSnap.empty) {
+              const avaliadoId: string = linkSnap.docs[0].data()['avaliadoId'] || '';
+              console.log('[nome_avaliado] avaliadoId:', avaliadoId);
+              if (avaliadoId) {
+                const avaliadoSnap = await getDoc(doc(this.firestore, `participants/${avaliadoId}`));
+                if (avaliadoSnap.exists()) {
+                  avaliadoName = avaliadoSnap.data()['name'] || avaliadoSnap.data()['nome'] || '';
+                }
+              }
+            }
+          } else {
+            avaliadoName = participantData['name'] || participantData['nome'] || '';
+          }
+        }
+
+        console.log('[nome_avaliado] avaliadoName resolvido:', avaliadoName);
+        const jsonStr = JSON.stringify(surveyJSONFinal)
+          .replace(/\{\{nome_avaliado\}\}/g, avaliadoName);
+        surveyJSONFinal = JSON.parse(jsonStr);
+      } catch (e) {
+        console.warn('Não foi possível substituir {{nome_avaliado}}:', e);
+      }
+
       // Carregar o tema do atributo 'theme' do documento, se existir
       const theme: any = assessment['theme']; // Usando any para flexibilidade
 
-       // Log para depuração
+      const survey = new Survey.Model(surveyJSONFinal);
 
-      const survey = new Survey.Model(this.surveyJSON);
+      // Configurar locale pelo idioma do navegador (pt, en, es)
+      const browserLang = navigator.language?.split('-')[0]?.toLowerCase();
+      const supportedLocales = ['pt', 'en', 'es'];
+      survey.locale = supportedLocales.includes(browserLang) ? browserLang : 'pt';
 
       // Aplicar o tema salvo, se existir, com validação para versão 1.12.23
       if (theme && theme.cssVariables) {
@@ -158,10 +208,9 @@ export class AssessmentComponent implements OnInit {
 
   async onSurveyCompleted(sender: Survey.SurveyModel): Promise<void> {
     const surveyData = sender.data;
-    
+
     if (this.assessmentId && this.token && this.participantId) {
       try {
-        // Chama o método do SurveyService para completar a avaliação
         await this.surveyService.completeAssessment(
           this.assessmentId,
           this.participantId,
@@ -169,11 +218,13 @@ export class AssessmentComponent implements OnInit {
           surveyData
         );
 
-        // Atualiza o status em assessmentLinks para 'completed'
         await this.updateAssessmentLinkStatus(
           this.assessmentId,
           this.participantId
         );
+
+        // Deduz 1 crédito do cliente ao registrar a resposta
+        await this.deductClientCredit(this.participantId);
 
         this.surveyCompleted = true;
       } catch (error) {
@@ -181,6 +232,77 @@ export class AssessmentComponent implements OnInit {
       }
     } else {
       console.warn('Faltam parâmetros para salvar a conclusão.');
+    }
+  }
+
+  private async deductClientCredit(participantId: string): Promise<void> {
+    try {
+      // Busca o participante para obter o clientId
+      const participantRef = doc(this.firestore, `participants/${participantId}`);
+      const participantSnap = await getDoc(participantRef);
+      if (!participantSnap.exists()) return;
+
+      const participantData = participantSnap.data();
+
+      // Verificar se crédito já foi deduzido para este participante (evitar dupla dedução)
+      if (participantData['creditDeducted'] === true) return;
+
+      // Obter clientId — direto no participante ou via projeto
+      let clientId: string = participantData['clientId'] || '';
+      if (!clientId && participantData['projectId']) {
+        const projectSnap = await getDoc(doc(this.firestore, `projects/${participantData['projectId']}`));
+        if (projectSnap.exists()) clientId = projectSnap.data()['clientId'] || '';
+      }
+      if (!clientId) return;
+
+      const clientRef = doc(this.firestore, `clients/${clientId}`);
+      const clientSnap = await getDoc(clientRef);
+      if (!clientSnap.exists()) return;
+
+      const currentCredits: number = clientSnap.data()['credits'] || 0;
+      const currentUsed: number = clientSnap.data()['creditsUsed'] || 0;
+
+      // FIFO: deduz do pedido aprovado mais antigo com remainingCredits > 0
+      // Ordena em memória para não depender de índice em createdAt
+      const ordersSnap = await getDocs(query(
+        collection(this.firestore, 'creditOrders'),
+        where('clientId', '==', clientId),
+        where('status', '==', 'Aprovado')
+      ));
+      const sortedOrders = ordersSnap.docs.slice().sort((a, b) => {
+        const tA = a.data()['createdAt']?.toMillis?.() ?? 0;
+        const tB = b.data()['createdAt']?.toMillis?.() ?? 0;
+        return tA - tB;
+      });
+
+      // Verifica se há algum pedido com créditos disponíveis
+      const hasAvailableOrder = sortedOrders.some(d =>
+        (d.data()['remainingCredits'] ?? d.data()['credits'] ?? 0) > 0
+      );
+      if (!hasAvailableOrder) return;
+
+      for (const orderDoc of sortedOrders) {
+        const remaining: number = orderDoc.data()['remainingCredits'] ?? orderDoc.data()['credits'] ?? 0;
+        if (remaining > 0) {
+          await updateDoc(doc(this.firestore, `creditOrders/${orderDoc.id}`), {
+            remainingCredits: remaining - 1,
+          });
+          break;
+        }
+      }
+
+      // Atualiza totais do cliente (Math.max evita valor negativo caso haja dessincronização)
+      await updateDoc(clientRef, {
+        credits: Math.max(0, currentCredits - 1),
+        creditsUsed: currentUsed + 1,
+      });
+
+      // Marca o participante para evitar dupla dedução
+      await updateDoc(participantRef, { creditDeducted: true });
+
+    } catch (error) {
+      // Não bloqueia a conclusão da avaliação em caso de erro
+      console.error('Erro ao deduzir crédito do cliente:', error);
     }
   }
 

@@ -74,6 +74,11 @@ export class CreateQuestionDialogComponent implements OnInit {
     return this.questionForm.get('options') as FormArray;
   }
 
+  getSelectedTypeLabel(): string {
+    const type = this.questionForm.get('type')?.value;
+    return this.questionTypes.find(t => t.value === type)?.label || '';
+  }
+
   onQuestionTypeChange(type: string): void {
     this.questionForm.patchValue({ type });
 
@@ -149,10 +154,14 @@ export class CreateQuestionDialogComponent implements OnInit {
             element.isRequired = formValue.required || false;
 
             if (formValue.type === 'rating') {
-              element.rateMin = 1;
-              element.rateMax = 5;
+              element.rateValues = [
+                { value: 1, text: '1' }, { value: 2, text: '2' },
+                { value: 3, text: '3' }, { value: 4, text: '4' },
+                { value: 5, text: '5' }, { value: '?', text: '?' }
+              ];
               element.minRateDescription = { pt: 'Discordo Totalmente' };
               element.maxRateDescription = { pt: 'Concordo Totalmente' };
+              delete element.rateMin; delete element.rateMax;
               delete element.choices;
             } else if (['radiogroup', 'dropdown', 'checkbox'].includes(formValue.type)) {
               element.choices = (formValue.options || []).filter((opt: string) => opt && opt.trim() !== '');
@@ -196,8 +205,11 @@ export class CreateQuestionDialogComponent implements OnInit {
         };
 
         if (formValue.type === 'rating') {
-          newQuestionElement.rateMin = 1;
-          newQuestionElement.rateMax = 5;
+          newQuestionElement.rateValues = [
+            { value: 1, text: '1' }, { value: 2, text: '2' },
+            { value: 3, text: '3' }, { value: 4, text: '4' },
+            { value: 5, text: '5' }, { value: '?', text: '?' }
+          ];
           newQuestionElement.minRateDescription = { pt: 'Discordo Totalmente' };
           newQuestionElement.maxRateDescription = { pt: 'Concordo Totalmente' };
         } else if (['radiogroup', 'dropdown', 'checkbox'].includes(formValue.type) && formValue.options?.length > 0) {

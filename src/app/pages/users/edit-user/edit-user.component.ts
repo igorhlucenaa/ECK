@@ -73,7 +73,7 @@ export class EditUserComponent implements OnInit {
       surname: ['', Validators.required],
       email: [{ value: '', disabled: true }],
       role: ['', Validators.required],
-      client: [''],
+      clients: [[] as string[]],
     });
   }
 
@@ -106,12 +106,17 @@ export class EditUserComponent implements OnInit {
       this.userInitial = (data['name'] || '?')[0].toUpperCase();
       this.userName = `${data['name'] || ''} ${data['surname'] || ''}`.trim();
 
+      // Retrocompatibilidade: lê campo legado 'client' ou novo 'clients'
+      const existingClients: string[] = Array.isArray(data['clients'])
+        ? data['clients']
+        : data['client'] ? [data['client']] : [];
+
       this.userForm.patchValue({
         name: data['name'] || '',
         surname: data['surname'] || '',
         email: data['email'] || '',
         role: data['role'] || '',
-        client: data['client'] || '',
+        clients: existingClients,
       });
     } catch {
       this.snackBar.open(this.translate.instant('Erro ao carregar usuário.'), this.translate.instant('Fechar'), { duration: 3000 });
@@ -125,12 +130,12 @@ export class EditUserComponent implements OnInit {
     if (this.userForm.invalid || this.isSaving) return;
     this.isSaving = true;
     try {
-      const { name, surname, role, client } = this.userForm.value;
+      const { name, surname, role, clients } = this.userForm.value;
       await updateDoc(doc(this.firestore, `users/${this.userId}`), {
         name,
         surname,
         role,
-        client,
+        clients: clients || [],
         updatedAt: new Date(),
       });
       this.snackBar.open(this.translate.instant('Usuário atualizado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
@@ -142,9 +147,12 @@ export class EditUserComponent implements OnInit {
     }
   }
 
-  get clientName(): string {
-    const id = this.userForm?.get('client')?.value;
-    return this.clients.find(c => c.id === id)?.name || '—';
+  get clientNames(): string {
+    const ids: string[] = this.userForm?.get('clients')?.value || [];
+    if (!ids.length) return '—';
+    return ids
+      .map(id => this.clients.find(c => c.id === id)?.name || id)
+      .join(', ');
   }
 
   goBack(): void {

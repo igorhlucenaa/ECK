@@ -50,8 +50,8 @@
           <div class="eu-profile-info__row">
             <mat-icon>business</mat-icon>
             <div>
-              <span class="eu-profile-info__label">Cliente</span>
-              <span class="eu-profile-info__val">{{ clientName }}</span>
+              <span class="eu-profile-info__label">Clientes</span>
+              <span class="eu-profile-info__val">{{ clientNames }}</span>
             </div>
           </div>
         </div>
@@ -123,14 +123,14 @@
           <!-- Vínculo -->
           <p class="eu-section-label">Vínculo com Cliente</p>
           <mat-form-field appearance="outline" class="eu-field eu-field--full">
-            <mat-label>Cliente</mat-label>
+            <mat-label>Clientes</mat-label>
             <mat-icon matPrefix>business</mat-icon>
-            <mat-select formControlName="client">
-              <mat-option value="">Nenhum</mat-option>
+            <mat-select formControlName="clients" multiple>
               <mat-option *ngFor="let client of clients" [value]="client.id">
                 {{ client.name }}
               </mat-option>
             </mat-select>
+            <mat-hint>Selecione um ou mais clientes</mat-hint>
           </mat-form-field>
 
         </form>

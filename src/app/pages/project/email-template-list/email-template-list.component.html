@@ -23,10 +23,32 @@
 
     <!-- Filtros -->
     <div class="filters-bar">
+
+      <!-- Busca por texto -->
+      <mat-form-field appearance="outline" class="filter-field filter-search">
+        <mat-label>{{ 'Buscar' | translate }}</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;font-size:20px;margin-right:4px;">search</mat-icon>
+        <input matInput [(ngModel)]="searchQuery" (ngModelChange)="applyFilter()" placeholder="Nome ou assunto..." />
+      </mat-form-field>
+
+      <!-- Cliente — oculto para admin_client com 1 cliente -->
+      <mat-form-field appearance="outline" class="filter-field"
+                      *ngIf="userRole === 'admin_master' || clients.length > 1">
+        <mat-label>{{ 'Cliente' | translate }}</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;font-size:18px;margin-right:4px;">business</mat-icon>
+        <mat-select [(ngModel)]="clientFilter" (ngModelChange)="onClientChange($event)">
+          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option *ngFor="let client of clients" [value]="client.id">
+            {{ client.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Tipo de Notificação -->
       <mat-form-field appearance="outline" class="filter-field">
         <mat-label>Tipo de Notificação</mat-label>
         <mat-icon matPrefix style="color:#8a8fa8;font-size:18px;margin-right:4px;">notifications</mat-icon>
-        <mat-select (selectionChange)="onEmailTypeChange($event)">
+        <mat-select [(ngModel)]="emailTypeFilter" (ngModelChange)="applyFilter()">
           <mat-option value="">{{ 'Todos' | translate }}</mat-option>
           <mat-option value="cadastro">{{ 'Cadastro do Usuário' | translate }}</mat-option>
           <mat-option value="conviteAvaliador">{{ 'Convite - Avaliador' | translate }}</mat-option>
@@ -34,23 +56,6 @@
           <mat-option value="lembreteAvaliador">{{ 'Lembrete - Avaliador' | translate }}</mat-option>
           <mat-option value="lembreteRespondente">{{ 'Lembrete - Avaliado' | translate }}</mat-option>
         </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="filter-field">
-        <mat-label>{{ 'Cliente' | translate }}</mat-label>
-        <mat-icon matPrefix style="color:#8a8fa8;font-size:18px;margin-right:4px;">business</mat-icon>
-        <mat-select (selectionChange)="onClientChange($event)">
-          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
-          <mat-option *ngFor="let client of clients" [value]="client.name">
-            {{ client.name }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="filter-field filter-search">
-        <mat-label>{{ 'Buscar' | translate }}</mat-label>
-        <mat-icon matPrefix style="color:#8a8fa8;font-size:20px;margin-right:4px;">search</mat-icon>
-        <input matInput id="searchInput" (keyup)="applyFilter()" placeholder="Nome ou assunto..." />
       </mat-form-field>
 
       <button mat-stroked-button class="btn-clear" (click)="clearFilters()">

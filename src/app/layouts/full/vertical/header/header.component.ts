@@ -142,6 +142,15 @@ interface quicklinks {
       margin-left: auto;
       letter-spacing: 0.5px;
     }
+    .role-badge-header {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
   `],
 })
 export class HeaderComponent implements OnInit {
@@ -183,6 +192,7 @@ export class HeaderComponent implements OnInit {
   ];
   userName: string | null = null;
   userEmail: string | null = null;
+  userRole: string | null = null;
 
   constructor(
     private settings: CoreService,
@@ -210,6 +220,32 @@ export class HeaderComponent implements OnInit {
     this.authService.getCurrentUserEmail().then((email) => {
       this.userEmail = email;
     });
+
+    this.authService.getCurrentUserRole().then((role) => {
+      this.userRole = role;
+    });
+  }
+
+  get roleBadgeLabel(): string {
+    switch (this.userRole) {
+      case 'admin_master': return 'MASTER';
+      case 'admin_client': return 'ADM CLIENTE';
+      case 'viewer':       return 'VISUALIZADOR';
+      default:             return '';
+    }
+  }
+
+  get roleBadgeStyle(): string {
+    switch (this.userRole) {
+      case 'admin_master':
+        return 'background:#1B2D56;color:#fff;';
+      case 'admin_client':
+        return 'background:#eff6ff;color:#2563EB;border:1px solid #bfdbfe;';
+      case 'viewer':
+        return 'background:#f8fafc;color:#6B7280;border:1px solid #e2e8f0;';
+      default:
+        return 'display:none;';
+    }
   }
   options = this.settings.getOptions();
 

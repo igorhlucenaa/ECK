@@ -19,113 +19,106 @@
 
   <form [formGroup]="form" (ngSubmit)="saveForm()">
 
-    <!-- Card: Informações -->
+    <!-- ── Card: Informações ──────────────────────────────────── -->
     <div class="info-card">
-      <div class="card-header">
-        <div class="card-icon">
-          <mat-icon>info_outline</mat-icon>
+
+      <div class="info-card__header">
+        <div class="info-card__icon">
+          <mat-icon>tune</mat-icon>
         </div>
-        <div>
-          <h3 class="card-title">Informações do Formulário</h3>
-          <p class="card-subtitle">Dados gerais, cliente e competências</p>
+        <span class="info-card__title">Configurações do formulário</span>
+        <div class="info-card__ok" *ngIf="form.get('clientId')?.value">
+          <mat-icon>check_circle</mat-icon>
+          Cliente selecionado
         </div>
       </div>
 
-      <div class="card-body">
+      <div class="info-card__body">
+        <div class="info-grid">
 
-        <!-- Linha 1: Título + Descrição -->
-        <div class="fields-row">
-          <mat-form-field appearance="outline" class="field-name">
-            <mat-label>Título do Formulário</mat-label>
-            <mat-icon matPrefix class="field-icon">title</mat-icon>
-            <input matInput formControlName="name" placeholder="Digite o título" />
-            <mat-error *ngIf="form.get('name')?.invalid">O título é obrigatório.</mat-error>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="field-desc">
-            <mat-label>Descrição</mat-label>
-            <mat-icon matPrefix class="field-icon">notes</mat-icon>
-            <textarea matInput formControlName="description" rows="1" placeholder="Digite a descrição"></textarea>
-          </mat-form-field>
-        </div>
-
-        <!-- Linha 2: Cliente -->
-        <div class="fields-row">
-          <mat-form-field appearance="outline" class="field-client">
-            <mat-label>Cliente</mat-label>
-            <mat-icon matPrefix class="field-icon">business</mat-icon>
-            <mat-select formControlName="clientId" (selectionChange)="onClientChange($event)">
-              <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
-            </mat-select>
-            <mat-error *ngIf="form.get('clientId')?.invalid">O cliente é obrigatório.</mat-error>
-          </mat-form-field>
-        </div>
-
-        <!-- Grupo de Competências -->
-        <div class="fields-row" *ngIf="form.get('clientId')?.value && competencyGroups.length > 0">
-          <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Grupo de Competências</mat-label>
-            <mat-icon matPrefix class="field-icon">folder_special</mat-icon>
-            <mat-select [value]="selectedGroupId" (selectionChange)="onCompetencyGroupChange($event.value)">
-              <mat-option [value]="''">Nenhum grupo selecionado</mat-option>
-              <mat-option *ngFor="let group of competencyGroups" [value]="group.id">
-                {{ group.name }} ({{ group.competencias?.length || 0 }} competências)
-              </mat-option>
-            </mat-select>
-            <mat-hint>Selecione um grupo para carregar todas as competências automaticamente.</mat-hint>
-          </mat-form-field>
-        </div>
-
-        <!-- Competências + Toggle -->
-        <div class="fields-row competencies-row" *ngIf="form.get('clientId')?.value && competencies.length > 0">
-          <mat-form-field appearance="outline" class="field-competencies">
-            <mat-label>Competências</mat-label>
-            <mat-icon matPrefix class="field-icon">psychology</mat-icon>
-            <mat-select formControlName="competencyIds" multiple>
-              <mat-option *ngFor="let competency of competencies" [value]="competency.id">
-                {{ competency.name }}
-              </mat-option>
-            </mat-select>
-            <mat-hint>Selecione uma ou mais competências para gerar o formulário.</mat-hint>
-          </mat-form-field>
-
-          <div class="toggle-wrapper">
-            <mat-slide-toggle color="primary" formControlName="mixQuestions">
-              Misturar perguntas
-            </mat-slide-toggle>
+          <!-- Título -->
+          <div class="info-field info-field--span2">
+            <label class="info-field__label"><mat-icon>title</mat-icon>Título do Formulário<span class="req">*</span></label>
+            <input class="info-field__input" formControlName="name" placeholder="Ex: Avaliação de Liderança 2026" />
+            <span class="info-field__error" *ngIf="form.get('name')?.invalid && form.get('name')?.touched">Título obrigatório</span>
           </div>
+
+          <!-- Descrição -->
+          <div class="info-field info-field--span2">
+            <label class="info-field__label"><mat-icon>notes</mat-icon>Descrição</label>
+            <input class="info-field__input" formControlName="description" placeholder="Opcional — descreva o objetivo desta avaliação" />
+          </div>
+
+          <!-- Cliente -->
+          <div class="info-field">
+            <label class="info-field__label"><mat-icon>business</mat-icon>Cliente<span class="req">*</span></label>
+            <mat-form-field appearance="outline" class="info-select-field">
+              <mat-select formControlName="clientId" (selectionChange)="onClientChange($event)">
+                <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <!-- Grupo de Competências -->
+          <div class="info-field" *ngIf="form.get('clientId')?.value && competencyGroups.length > 0">
+            <label class="info-field__label"><mat-icon>folder_special</mat-icon>Grupo de Competências</label>
+            <mat-form-field appearance="outline" class="info-select-field">
+              <mat-select [value]="selectedGroupId" (selectionChange)="onCompetencyGroupChange($event.value)">
+                <mat-option [value]="''">— Nenhum —</mat-option>
+                <mat-option *ngFor="let group of competencyGroups" [value]="group.id">
+                  {{ group.name }} ({{ group.competencias?.length || 0 }})
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <!-- Competências -->
+          <div class="info-field info-field--comp" *ngIf="form.get('clientId')?.value && competencies.length > 0">
+            <label class="info-field__label"><mat-icon>psychology</mat-icon>Competências</label>
+            <div class="info-comp-row">
+              <mat-form-field appearance="outline" class="info-select-field">
+                <mat-select formControlName="competencyIds" multiple>
+                  <mat-option *ngFor="let competency of competencies" [value]="competency.id">{{ competency.name }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <div class="toggle-pill">
+                <mat-slide-toggle color="primary" formControlName="mixQuestions"></mat-slide-toggle>
+                <span>Misturar</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Listas salvas -->
+          <ng-container *ngIf="form.get('clientId')?.value && competencyLists.length > 0">
+            <div class="info-field">
+              <label class="info-field__label"><mat-icon>list_alt</mat-icon>Lista salva</label>
+              <mat-form-field appearance="outline" class="info-select-field">
+                <mat-select (selectionChange)="onCompetencyListChange($event.value)">
+                  <mat-option *ngFor="let list of competencyLists" [value]="list.id">{{ list.name }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="info-field">
+              <label class="info-field__label"><mat-icon>add_box</mat-icon>Salvar como lista</label>
+              <div class="info-comp-row">
+                <input class="info-field__input" #listName placeholder="Nome da nova lista" />
+                <button mat-icon-button class="btn-list-save" type="button"
+                        (click)="saveCurrentSelectionAsList(listName.value)" matTooltip="Salvar lista">
+                  <mat-icon>save</mat-icon>
+                </button>
+              </div>
+            </div>
+          </ng-container>
+
         </div>
-
-        <!-- Listas salvas -->
-        <div class="fields-row" *ngIf="form.get('clientId')?.value && competencyLists.length > 0">
-          <mat-form-field appearance="outline" class="field-list">
-            <mat-label>Listas de competências salvas</mat-label>
-            <mat-icon matPrefix class="field-icon">list_alt</mat-icon>
-            <mat-select (selectionChange)="onCompetencyListChange($event.value)">
-              <mat-option *ngFor="let list of competencyLists" [value]="list.id">{{ list.name }}</mat-option>
-            </mat-select>
-            <mat-hint>Carregue rapidamente uma seleção pré-salva.</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="field-list-name">
-            <mat-label>Nome da nova lista</mat-label>
-            <mat-icon matPrefix class="field-icon">add_box</mat-icon>
-            <input matInput #listName placeholder="Ex.: Liderança + Comunicação" />
-          </mat-form-field>
-
-          <button mat-stroked-button class="btn-save-list" type="button" (click)="saveCurrentSelectionAsList(listName.value)">
-            <mat-icon>save</mat-icon>
-            Salvar lista
-          </button>
-        </div>
-
       </div>
     </div>
 
-    <!-- Card: Construtor -->
+    <!-- ── Card: Construtor ───────────────────────────────────── -->
     <div class="builder-card">
       <div class="card-header">
-        <div class="card-icon card-icon--accent">
+        <div class="card-icon">
           <mat-icon>build</mat-icon>
         </div>
         <div>
@@ -133,7 +126,6 @@
           <p class="card-subtitle">Adicione e configure as perguntas da avaliação</p>
         </div>
       </div>
-
       <div class="builder-body" *ngIf="creatorModel">
         <survey-creator [model]="creatorModel"></survey-creator>
       </div>

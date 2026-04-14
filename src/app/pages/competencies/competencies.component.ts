@@ -61,6 +61,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
   // Clientes
   clients: Client[] = [];
+  filteredClients: Client[] = [];
+  clientSearchControl = new FormControl('');
   selectedClientId: string | null = null;
   clientControl = new FormControl('');
 
@@ -77,18 +79,18 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   // Cache para perguntas custom da competência sendo editada (para evitar recálculos)
   perguntasCustomCache: { id: string; title: string; type: string }[] = [];
 
-  // Nome da avaliação a ser criada (se não houver avaliação selecionada)
-  assessmentNameControl = new FormControl('');
 
   // Controles de UI
   userRole: string = '';
   userClientId: string = '';
+  userClientIds: string[] = [];
   isLoading = false;
 
   // Estado do painel de edição
   isEditorOpen = false;
   isGroupEditorOpen = false;
   showCompForm = false;
+  hasUnsavedChanges = false;
 
   private destroy$ = new Subject<void>();
 
@@ -118,6 +120,16 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     await this.loadUserData();
     await this.loadClients();
     await this.loadAssessments();
+
+    this.filteredClients = [...this.clients];
+    this.clientSearchControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(search => {
+        const s = (search || '').toLowerCase();
+        this.filteredClients = this.clients.filter(c =>
+          c.companyName.toLowerCase().includes(s)
+        );
+      });
 
     // Carregar grupos se cliente já estiver definido
     if (this.selectedClientId) {
@@ -198,9 +210,10 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     const currentUser = await this.authService.getCurrentUser();
     if (currentUser) {
       this.userRole = currentUser.role;
-      this.userClientId = currentUser.clientId || '';
+      this.userClientIds = await this.authService.getCurrentUserClientIds();
+      this.userClientId = this.userClientIds[0] || '';
 
-      // Se for admin_client, define o cliente automaticamente
+      // Se for admin_client, define o primeiro cliente automaticamente
       if (this.userRole === 'admin_client' && this.userClientId) {
         this.selectedClientId = this.userClientId;
         this.clientControl.setValue(this.userClientId);
@@ -217,15 +230,14 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
           id: doc.id,
           companyName: doc.data()['companyName'] || 'Cliente sem nome'
         }));
-      } else if (this.userRole === 'admin_client' && this.userClientId) {
-        // Para admin_client, carrega apenas seu próprio cliente
-        const clientDoc = await getDoc(doc(this.firestore, 'clients', this.userClientId));
-        if (clientDoc.exists()) {
-          this.clients = [{
-            id: this.userClientId,
-            companyName: clientDoc.data()['companyName'] || 'Cliente sem nome'
-          }];
-        }
+      } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+        // Para admin_client, carrega apenas os clientes vinculados
+        const docs = await Promise.all(
+          this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
+        );
+        this.clients = docs
+          .filter(d => d.exists())
+          .map(d => ({ id: d.id, companyName: d.data()!['companyName'] || 'Cliente sem nome' }));
       }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
@@ -358,14 +370,9 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   }
 
   salvarCompetencia(): void {
-    console.log('🟢 SALVAR COMPETÊNCIA - INÍCIO');
-    console.log('  - competenciaEditando.id:', this.competenciaEditando.id);
-    console.log('  - Nome no form:', this.competenciaForm.get('nome')?.value);
-    console.log('  - Stack trace:', new Error().stack);
-
+    this.hasUnsavedChanges = true;
     // Validar cliente primeiro (obrigatório quando não há avaliação)
     if (!this.selectedAssessmentId && !this.selectedClientId) {
-      console.log('  ❌ Cliente não selecionado');
       this.snackBar.open(this.t('Selecione um cliente antes de criar competências.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
@@ -857,8 +864,10 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     const idx = this.competencias.findIndex(comp => comp.id === c.id);
     if (idx > -1) {
       this.competencias.splice(idx, 1);
+      this.hasUnsavedChanges = true;
       this.snackBar.open(this.t('Competência removida!'), this.t('Fechar'), { duration: 3000 });
       this.atualizarPerguntasBloqueadas();
+      setTimeout(() => { this.saveCompetencyGroup(); }, 0);
     }
   }
 
@@ -932,29 +941,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     }
 
     try {
-      let assessmentIdFinal = this.selectedAssessmentId;
-
-      // Se não há avaliação selecionada, criar uma nova automaticamente (apenas se não estiver editando um grupo existente)
-      if (!this.selectedAssessmentId && !this.currentGroupId) {
-        // Criar avaliação vazia com o nome do grupo
-        const assessmentName = this.assessmentNameControl.value || this.groupNameControl.value || 'Avaliação de Competências';
-        assessmentIdFinal = await this.criarAvaliacaoVazia(assessmentName);
-
-        if (!assessmentIdFinal) {
-          this.snackBar.open(this.t('Erro ao criar avaliação.'), this.t('Fechar'), { duration: 3000 });
-          return;
-        }
-
-        // Atualizar seleção de avaliação
-        this.selectedAssessmentId = assessmentIdFinal;
-        this.assessmentControl.setValue(assessmentIdFinal);
-
-        // Recarregar avaliações para incluir a nova
-        await this.loadAssessments();
-
-        // Carregar as perguntas da avaliação criada
-        await this.onAssessmentChange();
-      }
+      const assessmentIdFinal = this.selectedAssessmentId;
 
       // Validação removida: competências sem perguntas são permitidas (usuário vincula depois)
 
@@ -1116,13 +1103,11 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       if (this.currentGroupId) {
         const groupDocRef = doc(this.firestore, 'competencyGroups', this.currentGroupId);
         await updateDoc(groupDocRef, groupData);
-        console.log('✅ GRUPO ATUALIZADO COM SUCESSO!');
-        console.log('  - ID do documento:', this.currentGroupId);
+        this.hasUnsavedChanges = false;
         this.snackBar.open(this.t('Grupo atualizado com sucesso!'), this.t('Fechar'), { duration: 3000 });
       } else {
         const docRef = await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
-        console.log('✅ GRUPO CRIADO COM SUCESSO!');
-        console.log('  - ID do documento:', docRef.id);
+        this.hasUnsavedChanges = false;
         this.snackBar.open(this.t('Grupo salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
       }
 
@@ -1938,20 +1923,49 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
   startNewGroup(): void {
     this.currentGroupId = null;
+    this.hasUnsavedChanges = false;
     this.groupNameControl.reset();
     this.competencias = [];
     this.customQuestions = [];
     this.customQuestionsByCompetency = {};
     this.assessmentControl.reset();
     this.selectedAssessmentId = null;
-    this.assessmentNameControl.reset();
     this.cancelarEdicaoCompetencia();
     this.competencyGroupControl.reset();
     this.isGroupEditorOpen = true;
   }
 
+  onClientSelectClose(): void {
+    this.clientSearchControl.setValue('');
+    this.filteredClients = [...this.clients];
+  }
+
+  async confirmAndExit(): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      type: 'warning',
+      title: 'Sair sem salvar?',
+      message: 'Há alterações não salvas neste grupo. Se sair agora, as mudanças serão perdidas.',
+      confirmText: 'Sair sem salvar',
+      cancelText: 'Cancelar',
+    });
+    if (confirmed) {
+      this.clearGroupSelection();
+    }
+  }
+
+  clearGroupSelection(): void {
+    this.currentGroupId = null;
+    this.hasUnsavedChanges = false;
+    this.competencias = [];
+    this.customQuestions = [];
+    this.customQuestionsByCompetency = {};
+    this.cancelarEdicaoCompetencia();
+    this.isGroupEditorOpen = false;
+  }
+
   editCompetencyGroup(group: any): void {
     this.currentGroupId = group.id;
+    this.hasUnsavedChanges = false;
     this.groupNameControl.setValue(group.name);
     this.competencyGroupControl.setValue(group.id);
 
@@ -2036,177 +2050,5 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-
-  // Criar avaliação vazia (sem perguntas) - para quando o grupo é criado primeiro
-  private async criarAvaliacaoVazia(assessmentName: string): Promise<string | null> {
-    try {
-      const currentUser = await this.authService.getCurrentUser();
-      if (!currentUser) {
-        this.snackBar.open(this.t('Erro ao obter usuário autenticado.'), this.t('Fechar'), { duration: 3000 });
-        return null;
-      }
-
-      // Criar surveyJSON vazio (sem perguntas ainda)
-      const surveyJSON = {
-        title: {
-          pt: assessmentName
-        },
-        pages: [
-          {
-            name: 'pagina1',
-            title: {
-              pt: 'Perguntas'
-            },
-            elements: []
-          }
-        ],
-        locale: 'pt'
-      };
-
-      // Criar a avaliação no Firestore
-      const assessmentData = {
-        name: assessmentName,
-        description: `Avaliação criada automaticamente para o grupo: ${this.groupNameControl.value}`,
-        clientId: this.selectedClientId,
-        surveyJSON: surveyJSON,
-        createdBy: {
-          name: currentUser.name,
-          email: currentUser.email,
-          role: currentUser.role
-        },
-        createdAt: new Date()
-      };
-
-      const assessmentsCollection = collection(this.firestore, 'assessments');
-      const docRef = await addDoc(assessmentsCollection, assessmentData);
-
-      this.snackBar.open(this.t('Avaliação criada com sucesso! Agora você pode adicionar perguntas.'), this.t('Fechar'), { duration: 4000 });
-
-      return docRef.id;
-    } catch (error) {
-      console.error('Erro ao criar avaliação vazia:', error);
-      this.snackBar.open(this.t('Erro ao criar avaliação.'), this.t('Fechar'), { duration: 3000 });
-      return null;
-    }
-  }
-
-  // Criar avaliação a partir das competências e suas perguntas custom
-  private async criarAvaliacaoDasCompetencias(): Promise<string | null> {
-    try {
-      const currentUser = await this.authService.getCurrentUser();
-      if (!currentUser) {
-        this.snackBar.open(this.t('Erro ao obter usuário autenticado.'), this.t('Fechar'), { duration: 3000 });
-        return null;
-      }
-
-      // Coletar todas as perguntas de todas as competências
-      const todasPerguntas: Array<{ id: string; title: string; type: string; competencyId: string }> = [];
-
-      this.competencias.forEach(comp => {
-        // Se a competência tem perguntas custom, usar elas
-        const perguntasCustom = this.customQuestionsByCompetency[comp.id] || [];
-
-        if (perguntasCustom.length > 0) {
-          perguntasCustom.forEach(q => {
-            todasPerguntas.push({
-              id: q.id,
-              title: q.title,
-              type: q.type,
-              competencyId: comp.id
-            });
-          });
-        } else if (comp.perguntasIds && comp.perguntasIds.length > 0) {
-          // Se não tem custom, mas tem perguntasIds, tentar criar perguntas básicas
-          comp.perguntasIds.forEach((perguntaId, idx) => {
-            todasPerguntas.push({
-              id: perguntaId,
-              title: `Pergunta ${idx + 1} - ${comp.nome}`,
-              type: 'rating',
-              competencyId: comp.id
-            });
-          });
-        }
-      });
-
-      if (todasPerguntas.length === 0) {
-        this.snackBar.open(this.t('Nenhuma pergunta encontrada nas competências.'), this.t('Fechar'), { duration: 3000 });
-        return null;
-      }
-
-      // Criar surveyJSON com as perguntas organizadas por competência
-      const pages: any[] = [];
-
-      // Opção 1: Uma página por competência
-      this.competencias.forEach(comp => {
-        const perguntasCompetencia = todasPerguntas.filter(p => p.competencyId === comp.id);
-        if (perguntasCompetencia.length > 0) {
-          const elements = perguntasCompetencia.map(p => {
-            const element: any = {
-              name: p.id,
-              type: p.type || 'rating',
-              title: {
-                pt: p.title || `Pergunta de ${comp.nome}`
-              }
-            };
-
-            // Configurações específicas por tipo
-            if (p.type === 'rating') {
-              element.rateMin = 1;
-              element.rateMax = 5;
-              element.minRateDescription = { pt: 'Discordo Totalmente' };
-              element.maxRateDescription = { pt: 'Concordo Totalmente' };
-            }
-
-            return element;
-          });
-
-          pages.push({
-            name: `pagina_${comp.id}`,
-            title: {
-              pt: comp.nome
-            },
-            description: {
-              pt: comp.descricao || ''
-            },
-            elements: elements
-          });
-        }
-      });
-
-      // Criar o surveyJSON completo
-      const surveyJSON = {
-        title: {
-          pt: this.assessmentNameControl.value || 'Avaliação de Competências'
-        },
-        pages: pages,
-        locale: 'pt'
-      };
-
-      // Criar a avaliação no Firestore
-      const assessmentData = {
-        name: this.assessmentNameControl.value || 'Avaliação de Competências',
-        description: `Avaliação criada automaticamente a partir do grupo de competências: ${this.groupNameControl.value}`,
-        clientId: this.selectedClientId,
-        surveyJSON: surveyJSON,
-        createdBy: {
-          name: currentUser.name,
-          email: currentUser.email,
-          role: currentUser.role
-        },
-        createdAt: new Date()
-      };
-
-      const assessmentsCollection = collection(this.firestore, 'assessments');
-      const docRef = await addDoc(assessmentsCollection, assessmentData);
-
-      this.snackBar.open(this.t('Avaliação criada automaticamente com sucesso!'), this.t('Fechar'), { duration: 3000 });
-
-      return docRef.id;
-    } catch (error) {
-      console.error('Erro ao criar avaliação:', error);
-      this.snackBar.open(this.t('Erro ao criar avaliação.'), this.t('Fechar'), { duration: 3000 });
-      return null;
-    }
-  }
 }
 

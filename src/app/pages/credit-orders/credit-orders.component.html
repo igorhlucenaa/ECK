@@ -74,33 +74,6 @@
     <div class="table-container">
       <table mat-table [dataSource]="dataSource" matSort class="orders-table">
 
-        <!-- Coluna: Ref. Pedido -->
-        <ng-container matColumnDef="id">
-          <th mat-header-cell *matHeaderCellDef>
-            <span class="col-header">
-              <mat-icon class="col-icon">tag</mat-icon>
-              Referência
-            </span>
-          </th>
-          <td mat-cell *matCellDef="let order">
-            <span class="ref-cell">{{ order.id | slice:0:8 }}…</span>
-          </td>
-        </ng-container>
-
-        <!-- Coluna: Data do Pedido -->
-        <ng-container matColumnDef="createdAt">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>
-            <span class="col-header">
-              <mat-icon class="col-icon">calendar_today</mat-icon>
-              Data do Pedido
-            </span>
-          </th>
-          <td mat-cell *matCellDef="let order" class="date-cell">
-            {{ order.createdAt | date:'dd/MM/yyyy' }}
-            <span class="date-time">{{ order.createdAt | date:'HH:mm' }}</span>
-          </td>
-        </ng-container>
-
         <!-- Coluna: Cliente -->
         <ng-container matColumnDef="clientName">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
@@ -112,78 +85,11 @@
           <td mat-cell *matCellDef="let order">
             <div class="company-cell">
               <div class="company-avatar">{{ (order.clientName || '?')[0].toUpperCase() }}</div>
-              <span class="company-name">{{ order.clientName || 'Não identificado' }}</span>
+              <div class="company-info">
+                <span class="company-name">{{ order.clientName || 'Não identificado' }}</span>
+                <span class="company-date">Pedido em {{ order.createdAt | date:'dd/MM/yyyy' }}</span>
+              </div>
             </div>
-          </td>
-        </ng-container>
-
-        <!-- Coluna: Créditos Adquiridos -->
-        <ng-container matColumnDef="openingBalance">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>
-            <span class="col-header">
-              <mat-icon class="col-icon">add_circle_outline</mat-icon>
-              Adquiridos
-            </span>
-          </th>
-          <td mat-cell *matCellDef="let order">
-            <span class="credits-badge credits-acquired">{{ order.openingBalance }}</span>
-          </td>
-        </ng-container>
-
-        <!-- Coluna: Créditos Utilizados -->
-        <ng-container matColumnDef="usedBalance">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>
-            <span class="col-header">
-              <mat-icon class="col-icon">remove_circle_outline</mat-icon>
-              Utilizados
-            </span>
-          </th>
-          <td mat-cell *matCellDef="let order">
-            <span class="credits-badge credits-used">{{ order.usedBalance }}</span>
-          </td>
-        </ng-container>
-
-        <!-- Coluna: Créditos Remanescentes -->
-        <ng-container matColumnDef="remainingBalance">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>
-            <span class="col-header">
-              <mat-icon class="col-icon">savings</mat-icon>
-              Remanescentes
-            </span>
-          </th>
-          <td mat-cell *matCellDef="let order">
-            <span class="credits-badge" [class.credits-zero]="order.remainingBalance === 0">
-              {{ order.remainingBalance }}
-            </span>
-          </td>
-        </ng-container>
-
-        <!-- Coluna: Dias Restantes -->
-        <ng-container matColumnDef="daysRemaining">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>
-            <span class="col-header">
-              <mat-icon class="col-icon">hourglass_empty</mat-icon>
-              Dias Restantes
-            </span>
-          </th>
-          <td mat-cell *matCellDef="let order">
-            <span class="days-badge" [class.days-critical]="order.daysRemaining <= 7 && order.daysRemaining > 0"
-                                     [class.days-zero]="order.daysRemaining === 0">
-              {{ order.daysRemaining }}d
-            </span>
-          </td>
-        </ng-container>
-
-        <!-- Coluna: Data de Expiração -->
-        <ng-container matColumnDef="expirationDate">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>
-            <span class="col-header">
-              <mat-icon class="col-icon">event_busy</mat-icon>
-              Expiração
-            </span>
-          </th>
-          <td mat-cell *matCellDef="let order" class="date-cell">
-            {{ order.expirationDate | date:'dd/MM/yyyy' }}
           </td>
         </ng-container>
 
@@ -201,8 +107,97 @@
               [class.status-aprovado]="order.status === 'Aprovado'"
               [class.status-rejeitado]="order.status === 'Rejeitado'"
               [class.status-expirado]="order.status === 'Expirado'">
+              <mat-icon class="status-icon">
+                {{ order.status === 'Pendente' ? 'schedule' :
+                   order.status === 'Aprovado' ? 'check_circle' :
+                   order.status === 'Rejeitado' ? 'cancel' : 'event_busy' }}
+              </mat-icon>
               {{ order.status }}
             </span>
+          </td>
+        </ng-container>
+
+        <!-- Coluna: Créditos — grupo visual com mini header -->
+        <ng-container matColumnDef="openingBalance">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">add_circle_outline</mat-icon>
+              Adquiridos
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order" class="credit-col">
+            <span class="credits-badge credits-acquired">{{ order.openingBalance }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="usedBalance">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">remove_circle_outline</mat-icon>
+              Utilizados
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order" class="credit-col">
+            <span class="credits-badge credits-used">{{ order.usedBalance }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="remainingBalance">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">savings</mat-icon>
+              Saldo
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order" class="credit-col">
+            <span class="credits-badge" [class.credits-zero]="order.remainingBalance === 0 && order.status === 'Aprovado'">
+              {{ order.remainingBalance }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Coluna: Data de Expiração -->
+        <ng-container matColumnDef="expirationDate">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">event</mat-icon>
+              Validade
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order">
+            <span class="expiry-date-val">{{ order.expirationDate | date:'dd/MM/yyyy' }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Coluna: Dias Restantes -->
+        <ng-container matColumnDef="daysRemaining">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">hourglass_empty</mat-icon>
+              Prazo
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order" class="credit-col">
+            <span class="days-badge"
+              [class.days-ok]="order.daysRemaining > 7"
+              [class.days-critical]="order.daysRemaining <= 7 && order.daysRemaining > 0"
+              [class.days-zero]="order.daysRemaining === 0">
+              {{ order.daysRemaining }}d
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Coluna: Data do Pedido -->
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">calendar_today</mat-icon>
+              Criado em
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let order" class="date-cell">
+            {{ order.createdAt | date:'dd/MM/yyyy' }}
+            <span class="date-time">{{ order.createdAt | date:'HH:mm' }}</span>
           </td>
         </ng-container>
 
@@ -210,7 +205,9 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef class="actions-col">Ações</th>
           <td mat-cell *matCellDef="let order" class="actions-col">
-            <div class="actions-cell">
+
+            <!-- Modo normal -->
+            <div class="actions-cell" *ngIf="editingExpirationId !== order.id">
               <button mat-icon-button class="action-approve"
                 matTooltip="Aprovar Pedido"
                 *ngIf="order.status === 'Pendente' && userRole === 'admin_master'"
@@ -223,7 +220,29 @@
                 (click)="rejectOrder(order.id)">
                 <mat-icon>cancel</mat-icon>
               </button>
+              <button mat-icon-button class="action-extend"
+                matTooltip="Prorrogar validade"
+                *ngIf="userRole === 'admin_master'"
+                (click)="startEditExpiration(order.id, order.expirationDate)">
+                <mat-icon>edit_calendar</mat-icon>
+              </button>
             </div>
+
+            <!-- Modo edição de data -->
+            <div class="actions-cell actions-cell--editing" *ngIf="editingExpirationId === order.id">
+              <input type="date" class="date-edit-input"
+                [ngModel]="editingExpirationDateStr"
+                (ngModelChange)="setEditingDate($event)" />
+              <button mat-icon-button class="action-approve" matTooltip="Salvar"
+                (click)="saveExpirationDate(order.id)">
+                <mat-icon>check</mat-icon>
+              </button>
+              <button mat-icon-button class="action-cancel" matTooltip="Cancelar"
+                (click)="cancelEditExpiration()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
           </td>
         </ng-container>
 

@@ -4272,34 +4272,37 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   async loadClients(): Promise<void> {
     try {
       const userRole = await this.authService.getCurrentUserRole();
-      const clientId = await this.authService.getCurrentClientId();
-
       const clientsCollection = collection(this.firestore, 'clients');
-      let clientsSnapshot;
 
-      if (userRole === 'admin_client' && clientId) {
-        // Admin de cliente específico - só carrega seu cliente
-        clientsSnapshot = await getDocs(
-          query(clientsCollection, where('__name__', '==', clientId))
+      if (userRole === 'admin_client') {
+        const clientIds = await this.authService.getCurrentUserClientIds();
+        if (clientIds.length === 0) {
+          this.clients = [];
+          return;
+        }
+        const docs = await Promise.all(
+          clientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
         );
-        // Se for admin_client, já seleciona automaticamente o cliente
-        this.selectedClientId = clientId;
-        this.clientControl.setValue(clientId);
-        await this.loadCompetencyGroups(clientId);
+        this.clients = docs
+          .filter(d => d.exists())
+          .map(d => ({ id: d.id, name: d.data()!['companyName'] || 'Cliente sem nome' }));
+
+        // Auto-seleciona o primeiro cliente vinculado
+        const firstId = this.clients[0]?.id;
+        if (firstId) {
+          this.selectedClientId = firstId;
+          this.clientControl.setValue(firstId);
+          await this.loadCompetencyGroups(firstId);
+        }
       } else if (userRole === 'admin_master') {
-        // Admin master - carrega todos os clientes
-        clientsSnapshot = await getDocs(clientsCollection);
+        const clientsSnapshot = await getDocs(clientsCollection);
+        this.clients = clientsSnapshot.docs.map((d) => ({
+          id: d.id,
+          name: d.data()['companyName'] || 'Cliente sem nome',
+        }));
       } else {
-        console.warn('Usuário não tem permissão para acessar clientes.');
         this.clients = [];
-        return;
       }
-
-      this.clients = clientsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['companyName'] || 'Cliente sem nome',
-      }));
-
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open(this.t('Erro ao carregar clientes.'), this.t('Fechar'), {
