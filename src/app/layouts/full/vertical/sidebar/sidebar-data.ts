@@ -1,4 +1,4 @@
-import { NavItem } from './nav-item/nav-item';
+﻿import { NavItem } from './nav-item/nav-item';
 
 export const navItems: NavItem[] = [
   // ─── Seção admin_master / admin_client ───────────────────────
@@ -40,6 +40,12 @@ export const navItems: NavItem[] = [
         displayName: 'Modelos de E-mail',
         iconName: 'solar:mailbox-bold-duotone',
         route: '/mail-templates',
+        role: ['admin_master', 'admin_client'],
+      },
+      {
+        displayName: 'Lembretes Automáticos',
+        iconName: 'solar:bell-bing-bold-duotone',
+        route: '/settings',
         role: ['admin_master', 'admin_client'],
       },
       {

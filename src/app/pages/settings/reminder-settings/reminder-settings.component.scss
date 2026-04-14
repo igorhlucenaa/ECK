@@ -1,0 +1,112 @@
+.settings-card {
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.loading-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 26px 0;
+}
+
+.empty-message {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.client-field {
+  min-width: 320px;
+}
+
+.run-meta {
+  font-size: 12px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.meta-title {
+  font-weight: 600;
+}
+
+.meta-value {
+  margin-top: 2px;
+}
+
+mat-slide-toggle {
+  display: block;
+  margin: 6px 0 16px;
+}
+
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.weekday-section {
+  margin-top: 6px;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.weekday-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.weekday-subtitle {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.weekday-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.weekday-grid {
+  margin-top: 10px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.summary-box {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.actions {
+  margin-top: 18px;
+}

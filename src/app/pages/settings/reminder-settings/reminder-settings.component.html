@@ -1,0 +1,153 @@
+<app-page-header
+  title="Lembretes Automáticos"
+  eyebrow="Configurações"
+  subtitle="Programe o reenvio para pendentes com intervalo, horário, dias da semana e templates."
+></app-page-header>
+
+<mat-card class="settings-card" *ngIf="!isLoading && clients.length === 0">
+  <p class="empty-message">
+    Nenhum cliente disponível para configurar lembretes.
+  </p>
+</mat-card>
+
+<mat-card class="settings-card" *ngIf="clients.length > 0">
+  <div class="loading-wrap" *ngIf="isLoading">
+    <mat-spinner diameter="32"></mat-spinner>
+  </div>
+
+  <form [formGroup]="form" *ngIf="!isLoading">
+    <div class="header-row">
+      <mat-form-field appearance="outline" class="client-field" *ngIf="isAdminMaster">
+        <mat-label>Cliente</mat-label>
+        <mat-select
+          [value]="selectedClientId"
+          (selectionChange)="onClientChange($event.value)"
+        >
+          <mat-option *ngFor="let client of clients" [value]="client.id">
+            {{ client.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div class="run-meta" *ngIf="lastRunAt">
+        <div class="meta-title">Último processamento</div>
+        <div class="meta-value">{{ lastRunAt | date: 'dd/MM/yyyy HH:mm' }}</div>
+      </div>
+    </div>
+
+    <mat-slide-toggle formControlName="enabled">
+      Ativar lembretes automáticos para participantes pendentes
+    </mat-slide-toggle>
+
+    <div class="fields-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Intervalo de envio (dias)</mat-label>
+        <input matInput type="number" min="1" max="365" formControlName="intervalDays" />
+        <mat-hint>Exemplo: 3 = envio a cada 3 dias.</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Horário de disparo</mat-label>
+        <input matInput type="time" formControlName="sendTime" />
+        <mat-hint>Formato 24h (HH:mm).</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Timezone</mat-label>
+        <mat-select formControlName="timezone">
+          <mat-option *ngFor="let tz of timezoneOptions" [value]="tz">
+            {{ tz }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Máximo de lembretes por participante</mat-label>
+        <input matInput type="number" min="0" max="1000" formControlName="maxReminders" />
+        <mat-hint>Use 0 para enviar sem limite.</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <div class="weekday-section">
+      <div class="weekday-title">Dias da semana para envio</div>
+      <div class="weekday-subtitle">
+        Se nenhum dia for selecionado, o envio roda todos os dias.
+      </div>
+
+      <div class="weekday-actions">
+        <button mat-stroked-button type="button" (click)="selectBusinessDays()">
+          Dias úteis
+        </button>
+        <button mat-stroked-button type="button" (click)="selectAllDays()">
+          Todos os dias
+        </button>
+      </div>
+
+      <div class="weekday-grid">
+        <mat-checkbox
+          *ngFor="let day of weekdayOptions"
+          [checked]="isWeekdaySelected(day.value)"
+          (change)="toggleWeekday(day.value, $event.checked)"
+        >
+          {{ day.label }}
+        </mat-checkbox>
+      </div>
+    </div>
+
+    <div class="templates-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Template padrão de lembrete</mat-label>
+        <mat-select formControlName="templateIdDefault">
+          <mat-option value="">
+            Usar o template original enviado no convite
+          </mat-option>
+          <mat-option *ngFor="let template of templates" [value]="template.id">
+            {{ template.name }} {{ template.scope === 'client' ? '(Cliente)' : '(Padrão)' }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Template para avaliados</mat-label>
+        <mat-select formControlName="templateIdAvaliado">
+          <mat-option value="">
+            Usar template padrão de lembrete
+          </mat-option>
+          <mat-option *ngFor="let template of templates" [value]="template.id">
+            {{ template.name }} {{ template.scope === 'client' ? '(Cliente)' : '(Padrão)' }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Template para avaliadores</mat-label>
+        <mat-select formControlName="templateIdAvaliador">
+          <mat-option value="">
+            Usar template padrão de lembrete
+          </mat-option>
+          <mat-option *ngFor="let template of templates" [value]="template.id">
+            {{ template.name }} {{ template.scope === 'client' ? '(Cliente)' : '(Padrão)' }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="summary-box" *ngIf="lastRunSummary">
+      <div><strong>Enviados:</strong> {{ lastRunSummary.sent }}</div>
+      <div><strong>Pulados:</strong> {{ lastRunSummary.skipped }}</div>
+      <div><strong>Erros:</strong> {{ lastRunSummary.errors }}</div>
+    </div>
+
+    <div class="actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="saveSettings()"
+        [disabled]="isSaving"
+      >
+        {{ isSaving ? 'Salvando...' : 'Salvar configurações' }}
+      </button>
+    </div>
+  </form>
+</mat-card>
