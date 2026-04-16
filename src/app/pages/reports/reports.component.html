@@ -1025,6 +1025,9 @@
                     <mat-chip *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)" [matTooltip]="comp.descricao">
                       <mat-icon matChipAvatar>psychology</mat-icon>
                       {{ comp.nome }}
+                      <ng-container *ngIf="isTipoGraficoPizza(getTipoGraficoControl(i).value)">
+                         {{ getMediaCompetenciaNoGraficoPizza(secao, comp) | number:'1.2-2' }}
+                      </ng-container>
                     </mat-chip>
                   </mat-chip-set>
                 </div>
@@ -1067,6 +1070,7 @@
                         [results]="dadosPizza"
                         [view]="[600,400]"
                         [legend]="true"
+                        [legendTitle]="'Legenda'"
                         [labels]="true"
                         [doughnut]="false"
                         [scheme]="getColorSchemeParaSecao(secao)">
@@ -1082,6 +1086,7 @@
                           [results]="getCompetenciaPieData(comp)"
                           [view]="[300,250]"
                           [legend]="true"
+                          [legendTitle]="'Legenda'"
                           [labels]="true"
                           [doughnut]="false"
                           [scheme]="getColorSchemeParaSecao(secao)">

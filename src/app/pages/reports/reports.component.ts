@@ -1923,6 +1923,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return result;
   }
 
+  isTipoGraficoPizza(tipoGrafico?: string): boolean {
+    return tipoGrafico === 'pizza-comparativa' || tipoGrafico === 'pizza-individual';
+  }
+
+  getMediaCompetenciaNoGraficoPizza(secao: any, competencia: Competencia): number {
+    const item = this.getSecaoPieData(secao).find((d: any) => d.name === competencia.nome);
+    return typeof item?.value === 'number' && !isNaN(item.value) ? item.value : 0;
+  }
+
   // Métodos para gráficos individuais por característica
   getCompetenciaStackedData(comp: Competencia) {
     const grupos = this.getGrupos();
