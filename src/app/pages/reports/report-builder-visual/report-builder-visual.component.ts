@@ -45,6 +45,14 @@ interface RelatorioSecaoSimplificada {
   [key: string]: any;
 }
 
+type TipoGraficoRelatorio =
+  | 'barra'
+  | 'radar'
+  | 'pizza-comparativa'
+  | 'pizza-individual'
+  | 'barras-individuais'
+  | 'janela_johari';
+
 @Component({
   selector: 'app-report-builder-visual',
   standalone: true,
@@ -235,6 +243,24 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
     'personalizada': { nome: 'Personalizada', cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] }
   };
 
+  private readonly tipoGraficoLabels: Record<TipoGraficoRelatorio, string> = {
+    barra: 'Barras Comparativas',
+    radar: 'Radar',
+    'pizza-comparativa': 'Pizza Comparativa',
+    'pizza-individual': 'Pizza Individual',
+    'barras-individuais': 'Barras Individuais',
+    janela_johari: 'Janela de Johari',
+  };
+
+  private readonly templateIdPorTipoGrafico: Record<TipoGraficoRelatorio, string> = {
+    barra: 'graficos-barra',
+    radar: 'graficos-radar',
+    'pizza-comparativa': 'graficos-pizza',
+    'pizza-individual': 'graficos-pizza',
+    'barras-individuais': 'graficos-barra',
+    janela_johari: 'johari',
+  };
+
   selecionarPaleta(key: string): void {
     if (!this.secaoEditando) return;
     this.secaoEditando['paletaCor'] = key;
@@ -270,13 +296,13 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   ) {}
 
   ngOnInit(): void {
-    this.canvasSections = [...this.relatorioConfiguracao];
+    this.canvasSections = this.normalizarSecoes([...this.relatorioConfiguracao]);
     this.ordenarSecoes();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['relatorioConfiguracao'] && !changes['relatorioConfiguracao'].firstChange) {
-      this.canvasSections = [...this.relatorioConfiguracao];
+      this.canvasSections = this.normalizarSecoes([...this.relatorioConfiguracao]);
       this.ordenarSecoes();
       this.fecharPainelConfig();
     }
@@ -325,6 +351,10 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
    */
   adicionarSecaoDoTemplate(template: SectionTemplate): void {
     const tiposComCompetencias = ['graficos', 'tabela', 'tabela_detalhada', 'competencia_detalhada', 'grafico_defasagem', 'janela_johari'];
+    const tipoGraficoPadrao = template.tipo === 'graficos'
+      ? this.getTipoGraficoPadraoPorTemplate(template)
+      : undefined;
+
     const novaSecao: RelatorioSecaoSimplificada = {
       id: `${template.tipo}_${Date.now()}`,
       tipo: template.tipo,
@@ -335,7 +365,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
       competenciasIds: tiposComCompetencias.includes(template.tipo)
         ? this.competencias.map(c => c.id)
         : [],
-      tipoGrafico: template.tipo === 'graficos' ? 'barra' : undefined,
+      tipoGrafico: tipoGraficoPadrao,
       paletaCor: 'padrao'
     };
 
@@ -358,7 +388,11 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
    * Edita uma seção
    */
   editarSecao(secao: RelatorioSecaoSimplificada): void {
-    this.secaoEditando = { ...secao };
+    const secaoNormalizada = { ...secao };
+    if (secaoNormalizada.tipo === 'graficos') {
+      secaoNormalizada.tipoGrafico = this.resolverTipoGraficoSecao(secaoNormalizada);
+    }
+    this.secaoEditando = secaoNormalizada;
     this.showConfigPanel = true;
   }
 
@@ -366,7 +400,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
    * Remove uma seção
    */
   async removerSecao(secao: RelatorioSecaoSimplificada): Promise<void> {
-    const nome = secao.titulo || this.getTemplatePorTipo(secao.tipo)?.nome || 'esta seção';
+    const nome = secao.titulo || this.getNomeTipoSecao(secao) || 'esta seção';
     const confirmado = await this.confirmDialog.confirmDelete(nome);
     if (!confirmado) return;
     const index = this.canvasSections.findIndex(s => s.id === secao.id);
@@ -448,11 +482,82 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
     return this.sectionTemplates.find(t => t.tipo === tipo);
   }
 
+  private getTemplatePorId(id: string): SectionTemplate | undefined {
+    return this.sectionTemplates.find(t => t.id === id);
+  }
+
+  private getTemplatePorSecao(secao: RelatorioSecaoSimplificada): SectionTemplate | undefined {
+    if (secao.tipo === 'graficos') {
+      const tipoGrafico = this.resolverTipoGraficoSecao(secao);
+      const templateId = this.templateIdPorTipoGrafico[tipoGrafico];
+      return this.getTemplatePorId(templateId) || this.getTemplatePorTipo(secao.tipo);
+    }
+    return this.getTemplatePorTipo(secao.tipo);
+  }
+
+  private getTipoGraficoPadraoPorTemplate(template: SectionTemplate): TipoGraficoRelatorio {
+    switch (template.id) {
+      case 'graficos-radar':
+        return 'radar';
+      case 'graficos-pizza':
+        return 'pizza-comparativa';
+      case 'johari':
+        return 'janela_johari';
+      default:
+        return 'barra';
+    }
+  }
+
+  private inferirTipoGraficoPorTitulo(titulo?: string): TipoGraficoRelatorio {
+    const nome = (titulo || '').toLowerCase();
+
+    if (nome.includes('johari')) return 'janela_johari';
+    if (nome.includes('pizza') && nome.includes('individual')) return 'pizza-individual';
+    if (nome.includes('pizza')) return 'pizza-comparativa';
+    if (nome.includes('radar')) return 'radar';
+    if (nome.includes('barras') && nome.includes('individual')) return 'barras-individuais';
+
+    return 'barra';
+  }
+
+  private resolverTipoGraficoSecao(secao: RelatorioSecaoSimplificada): TipoGraficoRelatorio {
+    const valorAtual = secao.tipoGrafico as TipoGraficoRelatorio | undefined;
+    if (valorAtual && this.tipoGraficoLabels[valorAtual]) {
+      return valorAtual;
+    }
+    return this.inferirTipoGraficoPorTitulo(secao.titulo);
+  }
+
+  private normalizarSecoes(secoes: RelatorioSecaoSimplificada[]): RelatorioSecaoSimplificada[] {
+    return secoes.map(secao => {
+      if (secao.tipo !== 'graficos') {
+        return secao;
+      }
+
+      return {
+        ...secao,
+        tipoGrafico: this.resolverTipoGraficoSecao(secao),
+      };
+    });
+  }
+
+  /**
+   * Nome exibido do tipo da seção no card.
+   * Para seções de gráficos, usa o tipo de gráfico selecionado.
+   */
+  getNomeTipoSecao(secao: RelatorioSecaoSimplificada): string {
+    if (secao.tipo === 'graficos') {
+      const tipoGrafico = this.resolverTipoGraficoSecao(secao);
+      return this.tipoGraficoLabels[tipoGrafico] || 'Gráficos';
+    }
+    return this.getTemplatePorTipo(secao.tipo)?.nome || 'Seção';
+  }
+
   /**
    * Obtém cor de uma seção
    */
   getCorSecao(secao: RelatorioSecaoSimplificada): string {
-    const template = this.getTemplatePorTipo(secao.tipo);
+    const template = this.getTemplatePorSecao(secao);
     return template?.cor || '#757575';
   }
 
@@ -460,7 +565,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
    * Obtém ícone de uma seção
    */
   getIconeSecao(secao: RelatorioSecaoSimplificada): string {
-    const template = this.getTemplatePorTipo(secao.tipo);
+    const template = this.getTemplatePorSecao(secao);
     return template?.icone || 'description';
   }
 

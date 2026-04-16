@@ -625,7 +625,7 @@
                         <span class="rp-section-card__name">{{ secaoCtrl.get('titulo')?.value }}</span>
                       </mat-checkbox>
                       <mat-chip [style.background]="getTipoSecaoColor(secaoCtrl.get('tipo')?.value)" [style.color]="'white'">
-                        {{ getTipoSecaoLabel(secaoCtrl.get('tipo')?.value) }}
+                        {{ getTipoSecaoLabel(secaoCtrl.get('tipo')?.value, secaoCtrl.get('tipoGrafico')?.value) }}
                       </mat-chip>
                       <mat-chip *ngIf="hasCompetenciasSelecionadas(secaoCtrl)" color="accent">
                         {{ getCompetenciaCountText(getCompetenciasIdsValue(secaoCtrl)) }}

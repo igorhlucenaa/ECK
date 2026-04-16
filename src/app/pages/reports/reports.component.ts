@@ -2501,12 +2501,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  getTipoSecaoLabel(tipo: string): string {
+  getTipoSecaoLabel(tipo: string, tipoGrafico?: string): string {
+    if (tipo === 'graficos') {
+      return this.getTipoGraficoLabel(tipoGrafico);
+    }
+
     switch (tipo) {
       case 'capa': return 'Capa';
       case 'introducao': return 'Introdução';
       case 'resumo': return 'Resumo de Competências';
-      case 'graficos': return 'Gráficos Customizados';
       case 'grafico_defasagem': return 'Gráfico de Defasagem (Gap)';
       case 'tabela': return 'Tabela de Consolidação';
       case 'competencia_detalhada': return 'Tabela por Competência';
@@ -2515,6 +2518,24 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'texto': return 'Bloco de Texto';
       case 'perguntas_abertas': return 'Perguntas Abertas';
       default: return 'Desconhecido';
+    }
+  }
+
+  private getTipoGraficoLabel(tipoGrafico?: string): string {
+    switch (tipoGrafico) {
+      case 'radar':
+        return 'Radar';
+      case 'pizza-comparativa':
+        return 'Pizza Comparativa';
+      case 'pizza-individual':
+        return 'Pizza Individual';
+      case 'barras-individuais':
+        return 'Barras Individuais';
+      case 'janela_johari':
+        return 'Janela de Johari';
+      case 'barra':
+      default:
+        return 'Barras Comparativas';
     }
   }
 

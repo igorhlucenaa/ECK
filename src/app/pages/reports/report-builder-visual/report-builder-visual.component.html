@@ -133,7 +133,7 @@
                   <div class="section-title">{{ secao.titulo || 'Sem título' }}</div>
                   <div class="section-meta">
                     <mat-chip [style.background-color]="getCorSecao(secao)" [style.color]="'white'">
-                      {{ getTemplatePorTipo(secao.tipo)?.nome }}
+                      {{ getNomeTipoSecao(secao) }}
                     </mat-chip>
                     <mat-chip *ngIf="contarCompetencias(secao) > 0" color="accent">
                       {{ contarCompetencias(secao) }} competência(s)
