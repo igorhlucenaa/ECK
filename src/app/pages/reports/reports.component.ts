@@ -2512,6 +2512,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'resumo': return '#AB47BC';
       case 'graficos': return '#FFA726';
       case 'grafico_defasagem': return '#FF7043';
+      case 'janela_johari': return '#607D8B';
       case 'tabela': return '#EF5350';
       case 'competencia_detalhada': return '#EF5350';
       case 'destaques': return '#FFCA28';
@@ -2532,6 +2533,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'introducao': return 'Introdução';
       case 'resumo': return 'Resumo de Competências';
       case 'grafico_defasagem': return 'Gráfico de Defasagem (Gap)';
+      case 'janela_johari': return 'Janela de Johari';
       case 'tabela': return 'Tabela de Consolidação';
       case 'competencia_detalhada': return 'Tabela por Competência';
       case 'destaques': return 'Pontos de Destaque';

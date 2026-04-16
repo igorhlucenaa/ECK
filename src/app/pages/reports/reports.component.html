@@ -1355,6 +1355,20 @@
               </ng-template>
             </div>
 
+            <div *ngSwitchCase="'janela_johari'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataJohari" style="margin-top: 20px;">
+                <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+              </div>
+              <ng-template #noDataJohari>
+                <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
+                  <mat-icon style="font-size: 48px; width: 48px; height: 48px;">view_quilt</mat-icon>
+                  <p>Selecione uma ou mais competências para gerar a Janela de Johari.</p>
+                </div>
+              </ng-template>
+            </div>
+
             <div *ngSwitchCase="'perguntas_abertas'">
               <h2>{{ secao.titulo }}</h2>
               <div [innerHTML]="safeHtml(secao.texto)"></div>
