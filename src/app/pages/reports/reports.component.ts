@@ -1849,13 +1849,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Retorna as cores de cabeçalho da tabela baseadas na paleta da seção
   getTableHeaderColors(secao: any): { primary: string; secondary: string; footer: string } {
-    const paletaKey = secao?.['paletaCor'] || 'azul';
-    const paleta = (this.paletasCores as any)[paletaKey] || this.paletasCores['azul'];
-    const cores = paleta.cores;
+    // Usa a mesma fonte de verdade de cores da seção para respeitar
+    // paletas personalizadas e seleção dinâmica do usuário.
+    const domain = this.getColorSchemeParaSecao(secao)?.domain || [];
+    const cores = Array.isArray(domain) && domain.length > 0
+      ? domain
+      : this.paletasCores['azul'].cores;
+
     return {
-      primary:   cores[3] || '#1E88E5',
-      secondary: cores[2] || '#42A5F5',
-      footer:    cores[3] || '#1E88E5'
+      primary:   cores[3] || cores[0] || '#1E88E5',
+      secondary: cores[2] || cores[1] || cores[0] || '#42A5F5',
+      footer:    cores[3] || cores[0] || '#1E88E5'
     };
   }
 

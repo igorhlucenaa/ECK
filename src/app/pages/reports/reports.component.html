@@ -1195,13 +1195,6 @@
                     <div style="margin-bottom: 20px;">
                       <h3>{{ comp.nome }}</h3>
                       <p style="color: #666; font-style: italic;">{{ comp.descricao }}</p>
-                      <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
-                        <mat-label>Texto introdutório para {{ comp.nome }}</mat-label>
-                        <textarea matInput placeholder="Digite um texto explicativo para esta competência..." rows="3"
-                                  [value]="getOrInitTextoCompetencia(secao, comp)"
-                                  (input)="atualizarTextoCompetencia(secao, comp.id, $event)">
-                        </textarea>
-                      </mat-form-field>
                     </div>
                     <div style="overflow-x: auto;">
                       <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
