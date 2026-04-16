@@ -165,6 +165,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private debugMode = false;
   /** Exibe botões de debug apenas em desenvolvimento */
   readonly showDebugButtons = !environment.production;
+  private readonly GRUPO_AVALIADO = 'Avaliado(a)';
+  private readonly LABEL_MEDIA_GERAL = 'Média geral (com autoavaliação)';
+  private readonly LABEL_MEDIA_SEM_AUTO = 'Média sem autoavaliação';
   // Cache de participantes para evitar múltiplas idas ao Firestore
   private participantsCache: Map<string, any> = new Map<string, any>();
 
@@ -1696,6 +1699,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // 🚀 PERFORMANCE: Métodos utilitários para gráficos dinâmicos na visualização do relatório
+  private calcularMediaCompetenciaPorGrupos(competencia: Competencia, grupos: string[]): number | null {
+    let somaTotal = 0;
+    let contadorTotal = 0;
+
+    grupos.forEach(grupo => {
+      const media = this.getMediaPorPerguntaEGrupo(competencia, grupo);
+      if (media !== null && !isNaN(media)) {
+        somaTotal += media;
+        contadorTotal++;
+      }
+    });
+
+    return contadorTotal > 0 ? somaTotal / contadorTotal : null;
+  }
+
   getSecaoStackedData(secao: any) {
     const competenciasSelecionadas = this.getCompetenciasSelecionadasParaGraficos(secao);
     const grupos = this.getGrupos();
@@ -1749,25 +1767,24 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       });
 
-      // Adicionar "Resultado final" (média ponderada de todos os grupos)
-      let somaTotal = 0;
-      let contadorTotal = 0;
-
-      grupos.forEach(grupo => {
-        const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-        if (media !== null && !isNaN(media)) {
-          somaTotal += media;
-          contadorTotal++;
-        }
-      });
-
-      if (contadorTotal > 0) {
-        const mediaFinal = somaTotal / contadorTotal;
+      const mediaGeral = this.calcularMediaCompetenciaPorGrupos(comp, grupos);
+      if (mediaGeral !== null) {
         result.push({
-          name: `${comp.nome} - Resultado Final`,
-          value: mediaFinal,
+          name: `${comp.nome} - ${this.LABEL_MEDIA_GERAL}`,
+          value: mediaGeral,
           competencia: comp.nome,
-          grupo: 'Resultado Final'
+          grupo: this.LABEL_MEDIA_GERAL
+        });
+      }
+
+      const gruposSemAuto = grupos.filter(grupo => grupo !== this.GRUPO_AVALIADO);
+      const mediaSemAuto = this.calcularMediaCompetenciaPorGrupos(comp, gruposSemAuto);
+      if (mediaSemAuto !== null) {
+        result.push({
+          name: `${comp.nome} - ${this.LABEL_MEDIA_SEM_AUTO}`,
+          value: mediaSemAuto,
+          competencia: comp.nome,
+          grupo: this.LABEL_MEDIA_SEM_AUTO
         });
       }
     });
@@ -1790,23 +1807,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    // Adicionar resultado final (média geral) para a competência
-    let somaTotal = 0;
-    let contadorTotal = 0;
-
-    grupos.forEach(grupo => {
-      const media = this.getMediaPorPerguntaEGrupo(competencia, grupo);
-      if (media !== null && !isNaN(media)) {
-        somaTotal += media;
-        contadorTotal++;
-      }
-    });
-
-    if (contadorTotal > 0) {
-      const mediaFinal = somaTotal / contadorTotal;
+    const mediaGeral = this.calcularMediaCompetenciaPorGrupos(competencia, grupos);
+    if (mediaGeral !== null) {
       data.push({
-        name: 'Resultado Final',
-        value: mediaFinal
+        name: this.LABEL_MEDIA_GERAL,
+        value: mediaGeral
+      });
+    }
+
+    const gruposSemAuto = grupos.filter(grupo => grupo !== this.GRUPO_AVALIADO);
+    const mediaSemAuto = this.calcularMediaCompetenciaPorGrupos(competencia, gruposSemAuto);
+    if (mediaSemAuto !== null) {
+      data.push({
+        name: this.LABEL_MEDIA_SEM_AUTO,
+        value: mediaSemAuto
       });
     }
 
@@ -1817,7 +1831,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   getSecaoBarraComparativaColorScheme(secao: any) {
     const grupos = this.getGrupos();
     const coresCategorias = this.paletasCores.categorias.cores;
-    const corResultadoFinal = '#FF6B35'; // Cor especial para resultado final
+    const corMediaGeral = '#FF6B35';
+    const corMediaSemAuto = '#8E24AA';
 
     const domain: string[] = [];
 
@@ -1826,8 +1841,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       domain.push(coresCategorias[index % coresCategorias.length]);
     });
 
-    // Cor para resultado final
-    domain.push(corResultadoFinal);
+    domain.push(corMediaGeral);
+    domain.push(corMediaSemAuto);
 
     return { domain };
   }
@@ -1869,7 +1884,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (index < grupos.length) {
         return `${grupos[index]}: ${coresCategorias[index % coresCategorias.length]}`;
       } else if (index === grupos.length) {
-        return `Resultado Final: #FF6B35`;
+        return `${this.LABEL_MEDIA_GERAL}: #FF6B35`;
+      } else if (index === grupos.length + 1) {
+        return `${this.LABEL_MEDIA_SEM_AUTO}: #8E24AA`;
       }
     }
 
@@ -2140,8 +2157,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Grupos encontrados nos dados
     const gruposEncontrados = Array.from(this.dataIndexes.participantsByCategory.keys());
 
-    // Combinar grupos padrão com grupos encontrados, removendo duplicatas
-    const todosGrupos = [...new Set([...gruposPadrao, ...gruposEncontrados])];
+    // Combinar grupos padrão com grupos encontrados, normalizando nomenclatura
+    const todosGrupos = [...new Set(
+      [...gruposPadrao, ...gruposEncontrados]
+        .map(grupo => this.mapCategoriaToGrupo(grupo))
+        .filter(Boolean)
+    )];
 
     return todosGrupos;
   }
