@@ -244,9 +244,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Base');
 
-    const fileName = this.isIndividualMode && this.individualParticipantName
-      ? `base_${this.individualParticipantName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.xlsx`
-      : 'base_respostas.xlsx';
+    const fileName = this.getExportFileName('xlsx');
 
     XLSX.writeFile(workbook, fileName);
     this.snackBar.open(this.translate.instant('Base exportada com sucesso!'), this.translate.instant('Fechar'), { duration: 2500 });
@@ -579,7 +577,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   savedTemplates: { id: string, name: string }[] = [];
   selectedTemplateId = new FormControl('');
 
-  // 🚀 PERFORMANCE: Cache para cálculos pesados
+  // �Ys? PERFORMANCE: Cache para cálculos pesados
   private calculosCache = new Map<string, any>();
   private dataIndexes = {
     participantsByCategory: new Map<string, any[]>(),
@@ -677,10 +675,31 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return (this as any)['translate'] ? (this as any)['translate'].instant(key) : key;
   }
 
-  // 🚀 PERFORMANCE: Sistema de cache
+  private sanitizeFileNamePart(value: string | null | undefined, fallback: string): string {
+    const sanitized = (value || '')
+      .replace(/[\\/:*?"<>|]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return sanitized || fallback;
+  }
+
+  private getExportBaseName(): string {
+    const participantName = this.sanitizeFileNamePart(
+      this.individualParticipantName || this.selectedAvaliado,
+      'Participante'
+    );
+    const clientName = this.sanitizeFileNamePart(this.getClientName(), 'Cliente');
+    return `${participantName}_Relatório Feedback 360_${clientName}`;
+  }
+
+  private getExportFileName(extension: 'pdf' | 'docx' | 'xlsx'): string {
+    return `${this.getExportBaseName()}.${extension}`;
+  }
+
+  // �Ys? PERFORMANCE: Sistema de cache
   private getCachedCalculation<T>(key: string, calculationFn: () => T): T {
     if (!this.calculosCache.has(key)) {
-      console.log(`📊 Calculando e armazenando no cache: ${key}`);
+      console.log(`�Y"S Calculando e armazenando no cache: ${key}`);
       this.calculosCache.set(key, calculationFn());
     }
     return this.calculosCache.get(key);
@@ -691,17 +710,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // Invalidar apenas chaves que correspondem ao padrão
       const keysToDelete = Array.from(this.calculosCache.keys()).filter(key => key.includes(pattern));
       keysToDelete.forEach(key => this.calculosCache.delete(key));
-      console.log(`🗑️ Cache invalidado para padrão: ${pattern} (${keysToDelete.length} entradas)`);
+      console.log(`Cache invalidado para padrão: ${pattern} (${keysToDelete.length} entradas)`);
     } else {
       // Invalidar todo o cache
       this.calculosCache.clear();
-      console.log('🗑️ Cache completamente invalidado');
+      console.log('Cache completamente invalidado');
     }
   }
 
-  // 🚀 PERFORMANCE: Indexação de dados
+  // �Ys? PERFORMANCE: Indexação de dados
   private createDataIndexes() {
-    console.log('🔍 Criando índices de dados...');
+    console.log('�Y"� Criando índices de dados...');
 
     this.dataIndexes.participantsByCategory.clear();
     this.dataIndexes.responsesByParticipant.clear();
@@ -724,10 +743,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.dataIndexes.responsesByParticipant.set(participantId, row);
     });
 
-    console.log(`✅ Índices criados: ${this.dataIndexes.participantsByCategory.size} categorias, ${this.dataIndexes.responsesByParticipant.size} participantes`);
+    console.log(`�o. Índices criados: ${this.dataIndexes.participantsByCategory.size} categorias, ${this.dataIndexes.responsesByParticipant.size} participantes`);
   }
 
-  // 🚀 PERFORMANCE: TrackBy functions
+  // �Ys? PERFORMANCE: TrackBy functions
   trackBySection(index: number, section: RelatorioSecao): string {
     return section.id + '-' + section.ordem + '-' + section.visivel;
   }
@@ -744,13 +763,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return questionId;
   }
 
-  // 🚀 PERFORMANCE: Método para exibir relatório de performance
+  // �Ys? PERFORMANCE: Método para exibir relatório de performance
   showPerformanceReport(): void {
     this.performanceMonitor.logPerformanceReport();
   }
 
     debugCores(secao: any, i: number): void {
-    console.group(`🎨 DEBUG CORES - Seção ${i} (${secao.id})`);
+    console.group(`�YZ� DEBUG CORES - Seção ${i} (${secao.id})`);
     console.log('Configuração da seção:', secao);
     console.log('Paleta selecionada:', secao?.paletaCor || secao?.['paletaCor']);
     console.log('Cores personalizadas:', secao?.coresPersonalizadas || secao?.['coresPersonalizadas']);
@@ -765,11 +784,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Teste: forçar mudança para personalizada
     if (secao['paletaCor'] !== 'personalizada') {
-      console.log('🔧 Testando mudança para paleta personalizada...');
+      console.log('�Y"� Testando mudança para paleta personalizada...');
       paletaControl.setValue('personalizada');
       this.onPaletaCorChange(secao, i);
     } else {
-      console.log('🔧 Testando adição de nova cor...');
+      console.log('�Y"� Testando adição de nova cor...');
       this.adicionarCorPersonalizada(secao, i);
     }
 
@@ -993,7 +1012,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const snap = await getDoc(doc(this.firestore, 'assessments', id));
       if (snap.exists()) {
         const d = snap.data();
-        // Tenta name → surveyJSON.title → id (fallback final)
+        // Tenta name �?' surveyJSON.title �?' id (fallback final)
         const name: string = d['name'] || d['surveyJSON']?.['title'] || id;
         // Atualiza ou insere no cache
         const idx = this.assessments.findIndex(a => a.id === id);
@@ -1023,7 +1042,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.displayedColumns = [];
       this.dynamicColumns = [];
       this.questionMap = {};
-      console.log('❌ Nenhuma avaliação selecionada');
+      console.log('�O Nenhuma avaliação selecionada');
       return;
     }
 
@@ -1032,12 +1051,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Carregar todas as competências disponíveis
     await this.loadAllCompetencies();
-    console.log('🧹 QuestionMap limpo');
-    console.log('✅ Avaliação selecionada:', this.selectedAssessmentId);
-    console.log('✅ Modo individual:', this.isIndividualMode);
-    console.log('✅ Participante ID:', this.individualParticipantId);
+    console.log('�Y�� QuestionMap limpo');
+    console.log('�o. Avaliação selecionada:', this.selectedAssessmentId);
+    console.log('�o. Modo individual:', this.isIndividualMode);
+    console.log('�o. Participante ID:', this.individualParticipantId);
 
-    // 🚀 PERFORMANCE: Monitorar tempo de carregamento
+    // �Ys? PERFORMANCE: Monitorar tempo de carregamento
     this.performanceMonitor.startTimer('onAssessmentChange');
     this.loadingService.show('Carregando dados da avaliação...');
     this.dataSource = [];
@@ -1058,32 +1077,32 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return; // finally handles hide()
     }
     const assessmentData = assessmentSnap.data();
-    console.log('📊 AssessmentData:', assessmentData);
+    console.log('�Y"S AssessmentData:', assessmentData);
 
     const surveyJSON = assessmentData['surveyJSON'];
-    console.log('📊 SurveyJSON encontrado:', !!surveyJSON);
-    console.log('📊 SurveyJSON:', surveyJSON);
+    console.log('�Y"S SurveyJSON encontrado:', !!surveyJSON);
+    console.log('�Y"S SurveyJSON:', surveyJSON);
 
     if (!surveyJSON || !surveyJSON.pages) {
-      console.log('❌ SurveyJSON não encontrado ou sem páginas');
+      console.log('�O SurveyJSON não encontrado ou sem páginas');
       return; // finally handles hide()
     }
 
     // Extrair questões (rows) das perguntas do surveyJSON
     const questions: any[] = [];
-    console.log('🔍 Extraindo questões do surveyJSON:', surveyJSON);
-    console.log('🔍 Páginas encontradas:', surveyJSON.pages?.length || 0);
+    console.log('�Y"� Extraindo questões do surveyJSON:', surveyJSON);
+    console.log('�Y"� Páginas encontradas:', surveyJSON.pages?.length || 0);
 
     surveyJSON.pages.forEach((page: any, pageIndex: number) => {
-      console.log(`🔍 Processando página ${pageIndex}:`, page);
+      console.log(`�Y"� Processando página ${pageIndex}:`, page);
       if (page.elements) {
-        console.log(`🔍 Elementos na página ${pageIndex}:`, page.elements.length);
+        console.log(`�Y"� Elementos na página ${pageIndex}:`, page.elements.length);
         page.elements.forEach((element: any, elementIndex: number) => {
-          console.log(`🔍 Elemento ${elementIndex}:`, element);
+          console.log(`�Y"� Elemento ${elementIndex}:`, element);
 
           // Para elementos do tipo matrix, extrair as rows (questões)
           if (element.type === 'matrix' && element.rows && Array.isArray(element.rows)) {
-            console.log(`✅ Matriz encontrada: ${element.name} com ${element.rows.length} questões`);
+            console.log(`�o. Matriz encontrada: ${element.name} com ${element.rows.length} questões`);
 
             element.rows.forEach((row: any, rowIndex: number) => {
               if (row.value && row.text) {
@@ -1109,13 +1128,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
                 });
 
                 this.questionMap[questionId] = questionText;
-                console.log(`📝 Questão extraída: ${questionId} = "${questionText}"`);
+                console.log(`�Y"� Questão extraída: ${questionId} = "${questionText}"`);
               }
             });
           }
           // Para outros tipos de perguntas, capturar TODOS os tipos agora
           else if (element.name) {
-            console.log(`✅ Pergunta encontrada: ${element.name} - ${JSON.stringify(element.title)} (tipo: ${element.type})`);
+            console.log(`�o. Pergunta encontrada: ${element.name} - ${JSON.stringify(element.title)} (tipo: ${element.type})`);
 
             // Garantir que o título seja uma string válida
             let questionTitle = '';
@@ -1138,15 +1157,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             });
 
             this.questionMap[element.name] = questionTitle;
-            console.log(`📝 QuestionMap[${element.name}] = "${questionTitle}" (tipo: ${element.type})`);
-            console.log(`   └─ Extraído de: ${JSON.stringify(element.title)}`);
+            console.log(`�Y"� QuestionMap[${element.name}] = "${questionTitle}" (tipo: ${element.type})`);
+            console.log(`   �""�"? Extraído de: ${JSON.stringify(element.title)}`);
           }
         });
       }
     });
 
-    console.log('📊 Questões extraídas:', questions);
-    console.log('📊 QuestionMap:', this.questionMap);
+    console.log('�Y"S Questões extraídas:', questions);
+    console.log('�Y"S QuestionMap:', this.questionMap);
 
     // Armazenar todas as perguntas
     this.allQuestions = questions;
@@ -1158,8 +1177,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.displayedColumns = ['data', 'categoria', 'avaliado', 'dataAvaliacao', ...this.filteredQuestions.map(q => q.id)];
     this.dynamicColumns = this.filteredQuestions.map(q => q.id);
 
-    this.debugLog('📊 DynamicColumns populado:', this.dynamicColumns);
-    this.debugLog('📊 DisplayedColumns:', this.displayedColumns);
+    this.debugLog('�Y"S DynamicColumns populado:', this.dynamicColumns);
+    this.debugLog('�Y"S DisplayedColumns:', this.displayedColumns);
 
     // Carregar resultados
     const resultsSnap = await getDocs(collection(this.firestore, `assessments/${this.selectedAssessmentId}/results`));
@@ -1169,7 +1188,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     for (const resultDoc of resultsSnap.docs) {
       const resultData = resultDoc.data();
       this.debugLog('Resultado individual:', resultData);
-      this.debugLog('🔍 Estrutura completa do resultData:', {
+      this.debugLog('�Y"� Estrutura completa do resultData:', {
         keys: Object.keys(resultData),
         hasSurveyData: 'surveyData' in resultData,
         surveyDataType: resultData['surveyData'] ? typeof resultData['surveyData'] : 'undefined',
@@ -1226,7 +1245,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           // Adicionar respostas às perguntas
           if (resultData['surveyData']) {
-            this.debugLog(`🔍 Processando surveyData para participante ${participantData['name']}:`, {
+            this.debugLog(`�Y"� Processando surveyData para participante ${participantData['name']}:`, {
               surveyDataKeys: Object.keys(resultData['surveyData']),
               surveyDataValues: resultData['surveyData'],
               questionsToProcess: questions.map(q => q.id)
@@ -1236,7 +1255,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
               let resposta: any = null;
 
               // Suporte a estrutura aninhada: perguntaX -> Row N -> "Column M"
-              // Ex.: question.id = "pergunta4_Row 1" → baseId = "pergunta4", rowKey = "Row 1"
+              // Ex.: question.id = "pergunta4_Row 1" �?' baseId = "pergunta4", rowKey = "Row 1"
               const matrixMatch = question.id.match(/^(pergunta\d+)_Row\s*(\d+)$/);
               if (matrixMatch) {
                 const baseId = matrixMatch[1];
@@ -1254,14 +1273,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
               row[question.id] = resposta ?? null;
 
-              this.debugLog(`  📝 Pergunta ${question.id}:`, {
+              this.debugLog(`  �Y"� Pergunta ${question.id}:`, {
                 resposta,
                 tipo: typeof resposta,
                 valorFinal: row[question.id]
               });
             });
           } else {
-            this.debugLog(`❌ Sem surveyData para participante ${participantData['name']}:`, {
+            this.debugLog(`�O Sem surveyData para participante ${participantData['name']}:`, {
               resultDataKeys: Object.keys(resultData),
               hasSurveyData: 'surveyData' in resultData
             });
@@ -1317,7 +1336,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           // Debug: Verificar dados no modo individual
       if (this.isIndividualMode) {
-        console.log('🔍 DEBUG MODO INDIVIDUAL:');
+        console.log('�Y"� DEBUG MODO INDIVIDUAL:');
         console.log('  - Total de participantes:', this.dataSource.length);
         console.log('  - Participantes por categoria:');
         const categorias: { [key: string]: any[] } = {};
@@ -1346,15 +1365,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Forçar detecção de mudanças
-    console.log('🔄 Forçando detecção de mudanças...');
-    console.log('🔄 DynamicColumns final:', this.dynamicColumns);
-    console.log('🔄 QuestionMap final:', this.questionMap);
+    console.log('�Y"" Forçando detecção de mudanças...');
+    console.log('�Y"" DynamicColumns final:', this.dynamicColumns);
+    console.log('�Y"" QuestionMap final:', this.questionMap);
 
     // Forçar detecção de mudanças do Angular
     this.cdr.detectChanges();
 
     // Verificação final
-    console.log('✅ Verificação final:');
+    console.log('�o. Verificação final:');
     console.log('  - DynamicColumns length:', this.dynamicColumns.length);
     console.log('  - QuestionMap keys:', Object.keys(this.questionMap).length);
     console.log('  - QuestionMap values:', Object.values(this.questionMap));
@@ -1367,7 +1386,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         { duration: 4000 }
       );
     } finally {
-      // ✅ Sempre executado — garante que o loading nunca fique preso
+      // �o. Sempre executado �?" garante que o loading nunca fique preso
       this.loadingService.hide();
       this.isLoading = false;
       this.cdr.markForCheck();
@@ -1537,26 +1556,26 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Logar conteúdo do texto antes de atualizar (especialmente para capa)
     if (secao.tipo === 'capa' && formValue.texto) {
       const texto = formValue.texto;
-      console.log('✏️ EDITANDO - Conteúdo do texto do form (primeiros 1000 chars):', texto?.substring(0, 1000));
-      console.log('✏️ EDITANDO - Tipo do conteúdo:', typeof texto);
-      console.log('✏️ EDITANDO - Tamanho total:', texto?.length);
-      console.log('✏️ EDITANDO - Contém HTML:', texto?.includes('<div') || texto?.includes('<h3'));
-      console.log('✏️ EDITANDO - Contém Markdown:', texto?.includes('##') || texto?.includes('**'));
-      console.log('✏️ EDITANDO - Contém "Respondentes":', texto?.toLowerCase().includes('respondentes'));
-      console.log('✏️ EDITANDO - Contém "por Categoria":', texto?.toLowerCase().includes('por categoria'));
-      console.log('✏️ EDITANDO - Contém HTML entities:', texto?.includes('&nbsp;') || texto?.includes('&amp;') || texto?.includes('&lt;') || texto?.includes('&gt;'));
+      console.log('�o�️ EDITANDO - Conteúdo do texto do form (primeiros 1000 chars):', texto?.substring(0, 1000));
+      console.log('�o�️ EDITANDO - Tipo do conteúdo:', typeof texto);
+      console.log('�o�️ EDITANDO - Tamanho total:', texto?.length);
+      console.log('�o�️ EDITANDO - Contém HTML:', texto?.includes('<div') || texto?.includes('<h3'));
+      console.log('�o�️ EDITANDO - Contém Markdown:', texto?.includes('##') || texto?.includes('**'));
+      console.log('�o�️ EDITANDO - Contém "Respondentes":', texto?.toLowerCase().includes('respondentes'));
+      console.log('�o�️ EDITANDO - Contém "por Categoria":', texto?.toLowerCase().includes('por categoria'));
+      console.log('�o�️ EDITANDO - Contém HTML entities:', texto?.includes('&nbsp;') || texto?.includes('&amp;') || texto?.includes('&lt;') || texto?.includes('&gt;'));
 
       // Verificar estrutura específica da seção de categorias
       const temH3Respondentes = /<h3[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/h3>/i.test(texto);
       const temDivRespondentes = /<div[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/div>/i.test(texto);
-      console.log('✏️ EDITANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
-      console.log('✏️ EDITANDO - Tem DIV com "Respondentes por Categoria":', temDivRespondentes);
+      console.log('�o�️ EDITANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
+      console.log('�o�️ EDITANDO - Tem DIV com "Respondentes por Categoria":', temDivRespondentes);
 
       // Extrair trecho onde deveria estar a seção
       const indice = texto.toLowerCase().indexOf('respondentes');
       if (indice >= 0) {
         const trecho = texto.substring(Math.max(0, indice - 100), Math.min(texto.length, indice + 800));
-        console.log('✏️ EDITANDO - Trecho encontrado (índice', indice, '):', trecho);
+        console.log('�o�️ EDITANDO - Trecho encontrado (índice', indice, '):', trecho);
       }
     }
 
@@ -1577,12 +1596,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // 🚀 PERFORMANCE: Invalidar cache quando configuração da seção muda
+    // �Ys? PERFORMANCE: Invalidar cache quando configuração da seção muda
     this.invalidateCache(`secao-${secao.id}`);
 
     // Logar conteúdo após atualizar
     if (secao.tipo === 'capa') {
-      console.log('✏️ EDITANDO - Conteúdo da seção após atualizar (primeiros 500 chars):', secao.texto?.substring(0, 500));
+      console.log('�o�️ EDITANDO - Conteúdo da seção após atualizar (primeiros 500 chars):', secao.texto?.substring(0, 500));
     }
   }
 
@@ -1646,7 +1665,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           let soma = 0;
           let count = 0;
 
-          // 🚀 PERFORMANCE: Usar índice para buscar dados por categoria
+          // �Ys? PERFORMANCE: Usar índice para buscar dados por categoria
           const indicesGrupo = this.dataIndexes.participantsByCategory.get(grupo) || [];
 
           for (const index of indicesGrupo) {
@@ -1698,7 +1717,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  // 🚀 PERFORMANCE: Métodos utilitários para gráficos dinâmicos na visualização do relatório
+  // �Ys? PERFORMANCE: Métodos utilitários para gráficos dinâmicos na visualização do relatório
   private calcularMediaCompetenciaPorGrupos(competencia: Competencia, grupos: string[]): number | null {
     let somaTotal = 0;
     let contadorTotal = 0;
@@ -2188,8 +2207,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Características selecionadas para a seção de gráficos
   getCompetenciasSelecionadasParaGraficos(secao: any): Competencia[] {
     const result = (!secao || !secao.competenciasIds) ? [] : this.competencias.filter(c => secao.competenciasIds.includes(c.id));
-    // console.log('🔍 getCompetenciasSelecionadasParaGraficos() - secao:', secao);
-    // console.log('🔍 getCompetenciasSelecionadasParaGraficos() - result:', result);
+    // console.log('�Y"� getCompetenciasSelecionadasParaGraficos() - secao:', secao);
+    // console.log('�Y"� getCompetenciasSelecionadasParaGraficos() - result:', result);
     return result;
   }
 
@@ -2228,7 +2247,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           // Aplicar o mesmo processamento usado em getRespostasParaPerguntaEGrupo
           if (typeof valor === 'string') {
             if (valor.includes('Column')) {
-              // Formato: "Column 1" → 1
+              // Formato: "Column 1" �?' 1
               const match = valor.match(/Column (\d+)/);
               if (match) {
                 valor = parseInt(match[1]);
@@ -2396,24 +2415,24 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const secaoCapa = this.relatorioConfiguracao.find(s => s.tipo === 'capa');
       if (secaoCapa && secaoCapa.texto) {
         const texto = secaoCapa.texto;
-        console.log('📥 CARREGANDO - Conteúdo da capa (primeiros 1000 chars):', texto.substring(0, 1000));
-        console.log('📥 CARREGANDO - Tipo do conteúdo:', typeof texto);
-        console.log('📥 CARREGANDO - Tamanho total:', texto.length);
-        console.log('📥 CARREGANDO - Contém HTML:', texto.includes('<div') || texto.includes('<h3'));
-        console.log('📥 CARREGANDO - Contém Markdown:', texto.includes('##') || texto.includes('**'));
-        console.log('📥 CARREGANDO - Contém "Respondentes":', texto.toLowerCase().includes('respondentes'));
-        console.log('📥 CARREGANDO - Contém "por Categoria":', texto.toLowerCase().includes('por categoria'));
-        console.log('📥 CARREGANDO - Contém HTML entities:', texto.includes('&nbsp;') || texto.includes('&amp;') || texto.includes('&lt;') || texto.includes('&gt;'));
+        console.log('�Y"� CARREGANDO - Conteúdo da capa (primeiros 1000 chars):', texto.substring(0, 1000));
+        console.log('�Y"� CARREGANDO - Tipo do conteúdo:', typeof texto);
+        console.log('�Y"� CARREGANDO - Tamanho total:', texto.length);
+        console.log('�Y"� CARREGANDO - Contém HTML:', texto.includes('<div') || texto.includes('<h3'));
+        console.log('�Y"� CARREGANDO - Contém Markdown:', texto.includes('##') || texto.includes('**'));
+        console.log('�Y"� CARREGANDO - Contém "Respondentes":', texto.toLowerCase().includes('respondentes'));
+        console.log('�Y"� CARREGANDO - Contém "por Categoria":', texto.toLowerCase().includes('por categoria'));
+        console.log('�Y"� CARREGANDO - Contém HTML entities:', texto.includes('&nbsp;') || texto.includes('&amp;') || texto.includes('&lt;') || texto.includes('&gt;'));
 
         // Verificar estrutura específica
         const temH3Respondentes = /<h3[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/h3>/i.test(texto);
-        console.log('📥 CARREGANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
+        console.log('�Y"� CARREGANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
 
         // Extrair trecho onde deveria estar a seção
         const indice = texto.toLowerCase().indexOf('respondentes');
         if (indice >= 0) {
           const trecho = texto.substring(Math.max(0, indice - 100), Math.min(texto.length, indice + 800));
-          console.log('📥 CARREGANDO - Trecho encontrado (índice', indice, '):', trecho);
+          console.log('�Y"� CARREGANDO - Trecho encontrado (índice', indice, '):', trecho);
         }
       }
 
@@ -2655,7 +2674,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
-    // Salvar configuração de seções com competenciasIds zerados — templates são reutilizáveis
+    // Salvar configuração de seções com competenciasIds zerados �?" templates são reutilizáveis
     // entre avaliações, então não devem fixar competências de uma avaliação específica.
     const configuracaoSemCompetencias = sanitize(this.relatorioConfiguracao).map((sec: any) => ({
       ...sec,
@@ -2731,7 +2750,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const templateSnap = await getDoc(templateRef);
       if (templateSnap.exists()) {
         const templateData = templateSnap.data();
-        // Carregar seções do template zerando competenciasIds — serão preenchidas
+        // Carregar seções do template zerando competenciasIds �?" serão preenchidas
         // pelas competências da avaliação atual, não do momento em que o template foi salvo
         const secoes: RelatorioSecao[] = (templateData['configuracao'] || []).map((sec: any) => ({
           ...sec,
@@ -2762,7 +2781,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // Exportar relatório como PDF capturando diretamente a pré-visualização (html2canvas)
+  // Exportar relatório como PDF com download direto (sem janela de impressão)
   async exportarRelatorioPDF(): Promise<boolean> {
     if (this.isExporting) return false;
 
@@ -2771,176 +2790,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return false;
     }
 
-    const previewEl = document.getElementById('report-preview');
-    if (!previewEl) {
-      this.snackBar.open(this.t('Vá para a aba "Visualizar" antes de exportar.'), this.t('Fechar'), { duration: 4000 });
-      return false;
-    }
-
     this.isExporting = true;
-    this.exportingLabel = 'Preparando impressão...';
+    this.exportingLabel = 'Gerando PDF...';
     this.cdr.markForCheck();
 
-    let iframe: HTMLIFrameElement | null = null;
-
     try {
-      await new Promise(r => setTimeout(r, 100));
-
-      // 1. Canvas elements não clonam seu conteúdo via innerHTML — converter para img
-      const canvases = Array.from(previewEl.querySelectorAll('canvas')) as HTMLCanvasElement[];
-      const canvasDataUrls = canvases.map(c => {
-        try { return c.toDataURL('image/jpeg', 0.92); } catch { return ''; }
-      });
-
-      // 2. Clonar o preview (preserva atributos _ngcontent-* do Angular)
-      const clone = previewEl.cloneNode(true) as HTMLElement;
-
-      // 3. Substituir <canvas> por <img> no clone
-      Array.from(clone.querySelectorAll('canvas')).forEach((clonedCanvas, i) => {
-        const dataUrl = canvasDataUrls[i];
-        if (!dataUrl) return;
-        const img = document.createElement('img');
-        img.src = dataUrl;
-        img.style.width  = canvases[i].style.width  || `${canvases[i].offsetWidth}px`;
-        img.style.height = canvases[i].style.height || `${canvases[i].offsetHeight}px`;
-        img.style.maxWidth = '100%';
-        img.style.display = 'block';
-        clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
-      });
-
-      // 4. Remover elementos de UI (botões, separadores, etc.)
-      clone.querySelectorAll('.ui-only').forEach(el => el.remove());
-
-      // 5. Coletar os <style> gerados pelo Angular (contêm seletores _ngcontent-* que batem com o clone)
-      const angularStyles = Array.from(document.head.querySelectorAll('style'))
-        .map(s => s.innerHTML).join('\n');
-
-      // 6. Coletar os <link rel="stylesheet"> externos
-      const linkTags = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
-        .map(l => l.outerHTML).join('\n');
-
-      // 7. Criar iframe isolado — documento contém APENAS o relatório,
-      //    então o browser pagina pela altura real do conteúdo
-      iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;border:none;visibility:hidden;';
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentDocument!;
-      iframeDoc.open();
-      iframeDoc.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <base href="${window.location.origin}/">
-  ${linkTags}
-  <style>
-    @page { size: A4 portrait; margin: 10mm 12mm; }
-
-    * {
-      box-sizing: border-box;
-      print-color-adjust: exact !important;
-      -webkit-print-color-adjust: exact !important;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: Roboto, "Helvetica Neue", sans-serif;
-      background: #fff;
-      width: 186mm;
-    }
-    #report-preview {
-      width: 100%;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-      padding: 0 !important;
-      background: transparent !important;
-      zoom: 0.82;
-    }
-    .report-section {
-      break-inside: avoid;
-      page-break-inside: avoid;
-      margin-bottom: 4mm;
-    }
-    h1 { font-size: 1.5em !important; margin: 3mm 0 2mm !important; }
-    h2 { font-size: 1.2em !important; margin: 2mm 0 1.5mm !important; }
-    h3 { font-size: 1.05em !important; margin: 2mm 0 1mm !important; }
-    p  { margin: 1.5mm 0 !important; }
-    td, th { padding: 4px 8px !important; }
-    /* Tabelas renderizam no tamanho natural — o script abaixo escala as que ultrapassarem */
-    table { border-collapse: collapse; }
-    /* Imagens e SVGs limitados à largura */
-    img, svg { max-width: 100% !important; height: auto; }
-    ${angularStyles}
-  </style>
-</head>
-<body>
-  <div id="report-preview">${clone.innerHTML}</div>
-  <script>
-    // Escala proporcional de tabelas que ultrapassam a largura do A4.
-    // transform: scale preserva a estrutura visual — não quebra células nem altera texto.
-    (function scaleOverflowingTables() {
-      var bodyWidth = document.body.offsetWidth;
-      document.querySelectorAll('table').forEach(function(table) {
-        var natural = table.scrollWidth;
-        if (natural <= bodyWidth + 2) return; // dentro do limite, nada a fazer
-
-        var scale    = bodyWidth / natural;
-        var origH    = table.offsetHeight;
-
-        // Envolve em um div que clipa o overflow de layout do transform
-        var wrap = document.createElement('div');
-        wrap.style.cssText = 'width:100%;overflow:hidden;display:block;';
-        table.parentNode.insertBefore(wrap, table);
-        wrap.appendChild(table);
-
-        table.style.transformOrigin = 'top left';
-        table.style.transform       = 'scale(' + scale + ')';
-        // transform não afeta o layout box — compensar a altura excedente
-        table.style.marginBottom    = (origH * (scale - 1)) + 'px';
-      });
-    })();
-  <\/script>
-</body>
-</html>`);
-      iframeDoc.close();
-
-      // 8. Aguardar carregamento dos recursos e imprimir
-      await new Promise<void>((resolve) => {
-        const doPrint = () => {
-          let done = false;
-          const finish = () => {
-            if (done) return;
-            done = true;
-            // Remover listeners de ambas as janelas
-            window.removeEventListener('afterprint', finish);
-            try { iframe!.contentWindow?.removeEventListener('afterprint', finish); } catch {}
-            clearTimeout(safetyTimer);
-            resolve();
-          };
-
-          // Chrome dispara afterprint na janela principal; Firefox dispara no iframe
-          window.addEventListener('afterprint', finish);
-          try { iframe!.contentWindow?.addEventListener('afterprint', finish); } catch {}
-
-          // Segurança: se o browser não disparar afterprint (ex.: Safari antigo),
-          // encerra o loading em 2 minutos para não travar a UI
-          const safetyTimer = setTimeout(finish, 2 * 60 * 1000);
-
-          iframe!.contentWindow?.focus();
-          iframe!.contentWindow?.print();
-        };
-        // Delay para fontes e estilos externos carregarem
-        iframe!.addEventListener('load', () => setTimeout(doPrint, 400));
-      });
-
+      const reportData = this.pdfMakeService.prepareReportDataFromComponent(this);
+      await this.pdfMakeService.generateReport(reportData, this.getExportFileName('pdf'));
+      this.snackBar.open(this.t('PDF gerado com sucesso!'), this.t('Fechar'), { duration: 3000 });
       return true;
-
     } catch (err: any) {
-      console.error('Erro ao imprimir:', err);
+      console.error('Erro ao gerar PDF:', err);
       this.snackBar.open(this.t('Erro ao gerar PDF: ') + (err?.message || 'erro desconhecido'), this.t('Fechar'), { duration: 5000 });
       return false;
     } finally {
-      if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
       this.isExporting = false;
       this.exportingLabel = '';
       this.cdr.markForCheck();
@@ -2952,44 +2815,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
    * Gera PDF nativo com melhor qualidade e performance
    */
   async exportarRelatorioPDFMake(): Promise<void> {
-    try {
-      // Verificar se há dados
-      if (!this.isDataReady()) {
-        this.snackBar.open(
-          this.t('Por favor, selecione uma avaliação e aguarde o carregamento dos dados.'),
-          this.t('Fechar'),
-          { duration: 3000 }
-        );
-        return;
-      }
-
-      this.loadingService.show('Gerando PDF com PDFMake...');
-
-      // Preparar dados do componente para o serviço PDFMake
-      const reportData = this.pdfMakeService.prepareReportDataFromComponent(this);
-
-      // Gerar PDF
-      await this.pdfMakeService.generateReport(reportData);
-
-      this.loadingService.hide();
-      this.snackBar.open(
-        this.t('PDF gerado com sucesso usando PDFMake!'),
-        this.t('Fechar'),
-        { duration: 3000 }
-      );
-    } catch (error: any) {
-      this.loadingService.hide();
-      console.error('Erro ao gerar PDF com PDFMake:', error);
-      const errorMessage = error.message || 'Erro desconhecido';
-      this.snackBar.open(
-        this.t('Erro ao gerar PDF: ') + errorMessage,
-        this.t('Fechar'),
-        { duration: 5000 }
-      );
-    }
+    await this.exportarRelatorioPDF();
   }
 
-  // Exportar relatório como DOCX (geração nativa a partir dos dados — sem html2canvas)
+  // Exportar relat�rio como DOCX (gera��o nativa a partir dos dados - sem html2canvas)
   async exportarRelatorioDOCX(): Promise<void> {
     if (this.isExporting) return;
     this.isExporting = true;
@@ -3009,7 +2838,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         .filter((s: any) => s.visivel)
         .sort((a: any, b: any) => a.ordem - b.ordem);
 
-      // ── helpers ──────────────────────────────────────────────────────────────
+      // �"?�"? helpers �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
       const hd = (text: string, level: any) => new Paragraph({ text, heading: level, spacing: { before: 300, after: 160 } });
       const p = (text: string) => new Paragraph({ children: [new TextRun({ text })], spacing: { after: 120 } });
       const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
@@ -3042,7 +2871,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       const stripHtml = (html: string) => html ? html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
 
-      // ── CAPA ────────────────────────────────────────────────────────────────
+      // �"?�"? CAPA �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
       const children: any[] = [
         new Paragraph({
           alignment: AlignmentType.CENTER,
@@ -3062,7 +2891,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         pageBreak()
       ];
 
-      // ── SEÇÕES ──────────────────────────────────────────────────────────────
+      // �"?�"? SE�?�.ES �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
       for (const secao of secoesVisiveis as any[]) {
         if (secao.titulo) {
           children.push(hd(secao.titulo, HeadingLevel.HEADING_2));
@@ -3183,13 +3012,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       }
 
-      // ── Gerar arquivo ────────────────────────────────────────────────────────
+      // �"?�"? Gerar arquivo �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
       const doc = new Document({ sections: [{ properties: {}, children }] });
       const blob = await Packer.toBlob(doc);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `relatorio-${nomePart.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.docx`;
+      a.download = this.getExportFileName('docx');
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -3324,7 +3153,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Método para gerar tabela detalhada de competência com distribuição de notas
   gerarTabelaCompetencia(competencia: Competencia): TabelaCompetencia {
-    console.log(`🔍 gerarTabelaCompetencia:`, {
+    console.log(`�Y"� gerarTabelaCompetencia:`, {
       competencia: competencia.nome,
       selectedAssessmentId: this.selectedAssessmentId,
       selectedAvaliado: this.selectedAvaliado,
@@ -3338,7 +3167,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (!this.selectedAssessmentId || !this.dataSource.length) {
-      console.log(`❌ Dados insuficientes: assessmentId=${this.selectedAssessmentId}, dataSource=${this.dataSource.length}`);
+      console.log(`�O Dados insuficientes: assessmentId=${this.selectedAssessmentId}, dataSource=${this.dataSource.length}`);
       return {
         competencia,
         linhas: [],
@@ -3347,7 +3176,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const grupos = this.getGrupos();
-    console.log(`📊 Grupos disponíveis:`, grupos);
+    console.log(`�Y"S Grupos disponíveis:`, grupos);
     const linhas: LinhaTabela[] = [];
 
     // Para cada pergunta da competência, calcular distribuição de notas
@@ -3376,24 +3205,24 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         perguntaTexto = `Pergunta ${perguntaId}`;
       }
 
-      console.log(`\n📝 Processando pergunta: ${perguntaId} - "${perguntaTexto}"`);
+      console.log(`\n�Y"� Processando pergunta: ${perguntaId} - "${perguntaTexto}"`);
       const categorias: DadosCategoria[] = [];
 
       grupos.forEach(grupo => {
         // Se um avaliado específico foi selecionado, usar dados filtrados
         let respostasGrupo: number[];
         if (this.selectedAvaliado) {
-          console.log(`  🎯 Usando filtro para avaliado específico: ${this.selectedAvaliado}`);
+          console.log(`  �YZ� Usando filtro para avaliado específico: ${this.selectedAvaliado}`);
           respostasGrupo = this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, this.selectedAvaliado);
         } else {
-          console.log(`  🌐 Usando dados de todos os avaliados`);
+          console.log(`  �YO� Usando dados de todos os avaliados`);
           respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
         }
 
         const distribuicao = this.calcularDistribuicaoNotas(respostasGrupo);
         const media = this.calcularMediaDistribuicao(distribuicao);
 
-        console.log(`  📊 Grupo "${grupo}": ${respostasGrupo.length} respostas, média: ${media.toFixed(2)}`);
+        console.log(`  �Y"S Grupo "${grupo}": ${respostasGrupo.length} respostas, média: ${media.toFixed(2)}`);
 
         categorias.push({
           categoria: grupo,
@@ -3428,7 +3257,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const distribuicao = this.calcularDistribuicaoNotas(todasRespostasGrupo);
       const media = this.calcularMediaDistribuicao(distribuicao);
 
-      console.log(`📊 Média geral grupo "${grupo}": ${media.toFixed(2)} (${todasRespostasGrupo.length} respostas)`);
+      console.log(`�Y"S Média geral grupo "${grupo}": ${media.toFixed(2)} (${todasRespostasGrupo.length} respostas)`);
 
       return {
         categoria: grupo,
@@ -3444,7 +3273,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       mediasGerais
     };
 
-    console.log(`✅ Tabela gerada com sucesso:`, {
+    console.log(`�o. Tabela gerada com sucesso:`, {
       totalLinhas: resultado.linhas.length,
       totalMediasGerais: resultado.mediasGerais.length
     });
@@ -3456,7 +3285,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private getRespostasParaPerguntaEGrupo(perguntaId: string, grupo: string): number[] {
     const respostas: number[] = [];
 
-    this.debugLog(`🔍 getRespostasParaPerguntaEGrupo:`, {
+    this.debugLog(`�Y"� getRespostasParaPerguntaEGrupo:`, {
       perguntaId,
       grupo,
       totalDataSource: this.dataSource.length
@@ -3464,9 +3293,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Se o grupo for 'Todos', processar todos os dados
     if (grupo === 'Todos') {
-      this.debugLog(`  🌐 Processando grupo 'Todos'`);
+      this.debugLog(`  �YO� Processando grupo 'Todos'`);
       this.dataSource.forEach((participant, index) => {
-        this.debugLog(`  📋 Participante ${index}:`, {
+        this.debugLog(`  �Y"< Participante ${index}:`, {
           categoria: participant?.categoria,
           avaliado: participant?.avaliado,
           temPergunta: participant && participant[perguntaId] !== undefined,
@@ -3480,37 +3309,37 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           if (typeof valor === 'string') {
             // Se for string, tentar extrair número
             if (valor.includes('Column')) {
-              // Formato: "Column 1" → 1
+              // Formato: "Column 1" �?' 1
               const match = valor.match(/Column (\d+)/);
               if (match) {
                 valor = parseInt(match[1]);
-                this.debugLog(`    🔄 String "Column" convertida para: ${valor}`);
+                this.debugLog(`    �Y"" String "Column" convertida para: ${valor}`);
               }
             } else {
               // Tentar converter string diretamente para número
               valor = parseFloat(valor);
-              this.debugLog(`    🔄 String convertida para: ${valor}`);
+              this.debugLog(`    �Y"" String convertida para: ${valor}`);
             }
           }
 
           const valorNumerico = Number(valor);
           if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
             respostas.push(valorNumerico);
-            this.debugLog(`    ➕ Valor válido adicionado: ${valorNumerico}`);
+            this.debugLog(`    �z. Valor válido adicionado: ${valorNumerico}`);
           } else {
-            this.debugLog(`    ❌ Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
+            this.debugLog(`    �O Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
           }
         } else {
-          this.debugLog(`    ❌ Participante ${index}: sem pergunta ou participante inválido`);
+          this.debugLog(`    �O Participante ${index}: sem pergunta ou participante inválido`);
         }
       });
     } else {
       // Processar grupo específico - usar filtro direto no dataSource
-      this.debugLog(`  🎯 Processando grupo específico: "${grupo}"`);
+      this.debugLog(`  �YZ� Processando grupo específico: "${grupo}"`);
       this.dataSource.forEach((participant, index) => {
         // Verificar se o participante pertence ao grupo especificado
         const categoriaParticipante = this.mapCategoriaToGrupo(participant.categoria);
-        this.debugLog(`  📋 Participante ${index}:`, {
+        this.debugLog(`  �Y"< Participante ${index}:`, {
           categoria: participant?.categoria,
           categoriaMapeada: categoriaParticipante,
           avaliado: participant?.avaliado,
@@ -3526,37 +3355,37 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           if (typeof valor === 'string') {
             // Se for string, tentar extrair número
             if (valor.includes('Column')) {
-              // Formato: "Column 1" → 1
+              // Formato: "Column 1" �?' 1
               const match = valor.match(/Column (\d+)/);
               if (match) {
                 valor = parseInt(match[1]);
-                this.debugLog(`    🔄 String "Column" convertida para: ${valor}`);
+                this.debugLog(`    �Y"" String "Column" convertida para: ${valor}`);
               }
             } else {
               // Tentar converter string diretamente para número
               valor = parseFloat(valor);
-              this.debugLog(`    🔄 String convertida para: ${valor}`);
+              this.debugLog(`    �Y"" String convertida para: ${valor}`);
             }
           }
 
           const valorNumerico = Number(valor);
           if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
             respostas.push(valorNumerico);
-            this.debugLog(`    ➕ Valor válido adicionado: ${valorNumerico}`);
+            this.debugLog(`    �z. Valor válido adicionado: ${valorNumerico}`);
           } else {
-            this.debugLog(`    ❌ Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
+            this.debugLog(`    �O Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
           }
         } else {
           if (categoriaParticipante !== grupo) {
-            this.debugLog(`    ❌ Participante ${index}: não pertence ao grupo "${grupo}" (é "${categoriaParticipante}")`);
+            this.debugLog(`    �O Participante ${index}: não pertence ao grupo "${grupo}" (é "${categoriaParticipante}")`);
           } else {
-            this.debugLog(`    ❌ Participante ${index}: sem pergunta "${perguntaId}"`);
+            this.debugLog(`    �O Participante ${index}: sem pergunta "${perguntaId}"`);
           }
         }
       });
     }
 
-    this.debugLog(`📊 Total de respostas encontradas para "${perguntaId}" no grupo "${grupo}": ${respostas.length} - [${respostas.join(', ')}]`);
+    this.debugLog(`�Y"S Total de respostas encontradas para "${perguntaId}" no grupo "${grupo}": ${respostas.length} - [${respostas.join(', ')}]`);
     return respostas;
   }
 
@@ -3564,7 +3393,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private getRespostasParaPerguntaEGrupoEAvaliado(perguntaId: string, grupo: string, avaliadoSelecionado: string): number[] {
     const respostas: number[] = [];
 
-    console.log(`🔍 getRespostasParaPerguntaEGrupoEAvaliado:`, {
+    console.log(`�Y"� getRespostasParaPerguntaEGrupoEAvaliado:`, {
       perguntaId,
       grupo,
       avaliadoSelecionado,
@@ -3578,13 +3407,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (participant && participant['avaliado'] === avaliadoSelecionado && participant[perguntaId] !== undefined) {
           let valor = participant[perguntaId];
 
-          console.log(`  ✅ Participante ${index}: avaliado="${participant['avaliado']}", pergunta=${perguntaId}, valor="${valor}"`);
+          console.log(`  �o. Participante ${index}: avaliado="${participant['avaliado']}", pergunta=${perguntaId}, valor="${valor}"`);
 
           // Tratar diferentes formatos de dados
           if (typeof valor === 'string') {
             // Se for string, tentar extrair número
             if (valor.includes('Column')) {
-              // Formato: "Column 1" → 1
+              // Formato: "Column 1" �?' 1
               const match = valor.match(/Column (\d+)/);
               if (match) {
                 valor = parseInt(match[1]);
@@ -3598,13 +3427,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           const valorNumerico = Number(valor);
           if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
             respostas.push(valorNumerico);
-            console.log(`    ➕ Valor válido adicionado: ${valorNumerico}`);
+            console.log(`    �z. Valor válido adicionado: ${valorNumerico}`);
           } else {
-            console.log(`    ❌ Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
+            console.log(`    �O Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
           }
         } else {
           if (participant) {
-            console.log(`  ❌ Participante ${index}: avaliado="${participant['avaliado']}", temPergunta=${participant[perguntaId] !== undefined}`);
+            console.log(`  �O Participante ${index}: avaliado="${participant['avaliado']}", temPergunta=${participant[perguntaId] !== undefined}`);
           }
         }
       });
@@ -3618,13 +3447,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             participant[perguntaId] !== undefined) {
           let valor = participant[perguntaId];
 
-          console.log(`  ✅ Participante ${index}: grupo="${categoriaParticipante}", avaliado="${participant['avaliado']}", pergunta=${perguntaId}, valor="${valor}"`);
+          console.log(`  �o. Participante ${index}: grupo="${categoriaParticipante}", avaliado="${participant['avaliado']}", pergunta=${perguntaId}, valor="${valor}"`);
 
           // Tratar diferentes formatos de dados
           if (typeof valor === 'string') {
             // Se for string, tentar extrair número
             if (valor.includes('Column')) {
-              // Formato: "Column 1" → 1
+              // Formato: "Column 1" �?' 1
               const match = valor.match(/Column (\d+)/);
               if (match) {
                 valor = parseInt(match[1]);
@@ -3638,19 +3467,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           const valorNumerico = Number(valor);
           if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
             respostas.push(valorNumerico);
-            console.log(`    ➕ Valor válido adicionado: ${valorNumerico}`);
+            console.log(`    �z. Valor válido adicionado: ${valorNumerico}`);
           } else {
-            console.log(`    ❌ Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
+            console.log(`    �O Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
           }
         } else {
           if (participant) {
-            console.log(`  ❌ Participante ${index}: grupo="${categoriaParticipante}", avaliado="${participant['avaliado']}", temPergunta=${participant[perguntaId] !== undefined}`);
+            console.log(`  �O Participante ${index}: grupo="${categoriaParticipante}", avaliado="${participant['avaliado']}", temPergunta=${participant[perguntaId] !== undefined}`);
           }
         }
       });
     }
 
-    console.log(`📊 Total de respostas encontradas: ${respostas.length} - [${respostas.join(', ')}]`);
+    console.log(`�Y"S Total de respostas encontradas: ${respostas.length} - [${respostas.join(', ')}]`);
     return respostas;
   }
 
@@ -3820,15 +3649,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Debug method for avaliações mais altas
   debugAvaliacoesAltasSimples(): void {
-    console.group('🔍 DEBUG AVALIAÇÕES MAIS ALTAS');
+    console.group('�Y"� DEBUG AVALIA�?�.ES MAIS ALTAS');
 
-    console.log('📊 Dados básicos:');
+    console.log('�Y"S Dados básicos:');
     console.log('- Total de registros:', this.dataSource.length);
     console.log('- Competências:', this.competencias.length);
 
     if (this.competencias.length > 0) {
       const primeiraComp = this.competencias[0];
-      console.log('🧪 Testando primeira competência:', primeiraComp.nome);
+      console.log('�Y�� Testando primeira competência:', primeiraComp.nome);
       console.log('- Perguntas:', primeiraComp.perguntasIds);
 
       if (primeiraComp.perguntasIds.length > 0) {
@@ -3848,7 +3677,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Testar método completo
     const tabelaAltas = this.gerarTabelaAvaliacoesAltas(5);
-    console.log('📋 Resultado da tabela de avaliações altas:');
+    console.log('�Y"< Resultado da tabela de avaliações altas:');
     console.log('- Total de items:', tabelaAltas.totalItems);
     console.log('- Items retornados:', tabelaAltas.items.length);
     console.log('- Primeiros 3 items:', tabelaAltas.items.slice(0, 3));
@@ -3858,17 +3687,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Debug method for detailed table
   debugTabelaDetalhada(): void {
-    console.group('🔍 DEBUG TABELA DETALHADA');
+    console.group('�Y"� DEBUG TABELA DETALHADA');
 
     // Informações básicas
-    console.log('📊 Dados básicos:');
+    console.log('�Y"S Dados básicos:');
     console.log('- Total de registros no dataSource:', this.dataSource.length);
     console.log('- Assessment selecionado:', this.selectedAssessmentId);
     console.log('- Competências cadastradas:', this.competencias.length);
 
     // Amostra dos dados
     if (this.dataSource.length > 0) {
-      console.log('📋 Amostra dos dados (primeiro registro):');
+      console.log('�Y"< Amostra dos dados (primeiro registro):');
       const sample = this.dataSource[0];
       console.log('- Estrutura do primeiro registro:', Object.keys(sample));
       console.log('- Categoria:', sample.categoria);
@@ -3879,16 +3708,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Categorias encontradas
     const categoriasOriginais = [...new Set(this.dataSource.map(row => row.categoria))];
     const categoriasMapeadas = [...new Set(this.dataSource.map(row => this.mapCategoriaToGrupo(row.categoria)))];
-    console.log('🏷️ Categorias:');
+    console.log('�Y��️ Categorias:');
     console.log('- Categorias originais:', categoriasOriginais);
     console.log('- Categorias mapeadas:', categoriasMapeadas);
 
     // Grupos retornados
     const grupos = this.getGrupos();
-    console.log('👥 Grupos retornados por getGrupos():', grupos);
+    console.log('Grupos retornados por getGrupos():', grupos);
 
     // Índices criados
-    console.log('📇 Índices criados:');
+    console.log('Índices criados:');
     console.log('- Participantes por categoria:', this.dataIndexes.participantsByCategory);
     grupos.forEach(grupo => {
       const indices = this.dataIndexes.participantsByCategory.get(grupo) || [];
@@ -3905,7 +3734,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Teste com primeira competência
     if (this.competencias.length > 0) {
       const comp = this.competencias[0];
-      console.log('🧪 Teste com primeira competência:', comp.nome);
+      console.log('�Y�� Teste com primeira competência:', comp.nome);
       console.log('- Perguntas da competência:', comp.perguntasIds);
 
       // Teste de respostas para primeira pergunta
@@ -3921,7 +3750,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       // Gerar tabela completa
       const tabela = this.gerarTabelaCompetencia(comp);
-      console.log('📊 Tabela gerada:', tabela);
+      console.log('�Y"S Tabela gerada:', tabela);
     }
 
     console.groupEnd();
@@ -3987,7 +3816,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Método de teste simples para verificar dados
   testarDados(): void {
-    console.group('🧪 TESTE SIMPLES DE DADOS');
+    console.group('�Y�� TESTE SIMPLES DE DADOS');
 
     console.log('Total de registros:', this.dataSource.length);
 
@@ -4300,20 +4129,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Método de debug para testar extração de questões
   debugPerguntas() {
-    console.group('🔍 DEBUG QUESTÕES');
+    console.group('�Y"� DEBUG QUEST�.ES');
     console.log('DynamicColumns:', this.dynamicColumns);
     console.log('QuestionMap:', this.questionMap);
     console.log('SelectedAssessmentId:', this.selectedAssessmentId);
     console.log('Assessments:', this.assessments);
 
     // Debug detalhado do questionMap
-    console.log('🔍 QuestionMap detalhado:');
+    console.log('�Y"� QuestionMap detalhado:');
     Object.keys(this.questionMap).forEach(key => {
       console.log(`  ${key}: "${this.questionMap[key]}" (tipo: ${typeof this.questionMap[key]})`);
     });
 
     // Debug das opções do dropdown
-    console.log('🔍 Opções do dropdown:');
+    console.log('�Y"� Opções do dropdown:');
     this.dynamicColumns.forEach(q => {
       const title = this.questionMap[q];
       console.log(`  ${q}: "${title}" (tipo: ${typeof title})`);
@@ -4323,7 +4152,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // =============================================
-  // MÉTODOS PARA GERENCIAMENTO DE CLIENTES E GRUPOS DE COMPETÊNCIAS
+  // M�?TODOS PARA GERENCIAMENTO DE CLIENTES E GRUPOS DE COMPET�SNCIAS
   // =============================================
 
   async loadClients(): Promise<void> {
@@ -4452,7 +4281,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         // Carregar perguntas custom por competência se existirem
         if (groupData['customQuestionsByCompetency'] && typeof groupData['customQuestionsByCompetency'] === 'object') {
           this.customQuestionsByCompetency = { ...groupData['customQuestionsByCompetency'] };
-          console.log('✅ Perguntas custom carregadas do grupo:', Object.keys(this.customQuestionsByCompetency).length, 'competências');
+          console.log('�o. Perguntas custom carregadas do grupo:', Object.keys(this.customQuestionsByCompetency).length, 'competências');
         } else {
           this.customQuestionsByCompetency = {};
         }
@@ -4522,7 +4351,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.detectChanges();
     try {
       const snap = await getDocs(collection(this.firestore, 'competencyGroups'));
-      // Monta mapa de assessmentId → nome para exibição
+      // Monta mapa de assessmentId �?' nome para exibição
       const assessmentNames: { [id: string]: string } = {};
       this.assessments.forEach(a => { assessmentNames[a.id] = a.name; });
 
@@ -4722,27 +4551,27 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Logar o conteúdo recebido com mais detalhes
-    console.log('🔄 PROCESSANDO - Conteúdo recebido (primeiros 1000 chars):', textoOriginal.substring(0, 1000));
-    console.log('🔄 PROCESSANDO - Tipo do conteúdo:', typeof textoOriginal);
-    console.log('🔄 PROCESSANDO - Tamanho total:', textoOriginal.length);
-    console.log('🔄 PROCESSANDO - Contém HTML:', textoOriginal.includes('<div') || textoOriginal.includes('<h3'));
-    console.log('🔄 PROCESSANDO - Contém Markdown:', textoOriginal.includes('##') || textoOriginal.includes('**'));
-    console.log('🔄 PROCESSANDO - Contém HTML entities:', textoOriginal.includes('&nbsp;') || textoOriginal.includes('&amp;') || textoOriginal.includes('&lt;') || textoOriginal.includes('&gt;'));
+    console.log('�Y"" PROCESSANDO - Conteúdo recebido (primeiros 1000 chars):', textoOriginal.substring(0, 1000));
+    console.log('�Y"" PROCESSANDO - Tipo do conteúdo:', typeof textoOriginal);
+    console.log('�Y"" PROCESSANDO - Tamanho total:', textoOriginal.length);
+    console.log('�Y"" PROCESSANDO - Contém HTML:', textoOriginal.includes('<div') || textoOriginal.includes('<h3'));
+    console.log('�Y"" PROCESSANDO - Contém Markdown:', textoOriginal.includes('##') || textoOriginal.includes('**'));
+    console.log('�Y"" PROCESSANDO - Contém HTML entities:', textoOriginal.includes('&nbsp;') || textoOriginal.includes('&amp;') || textoOriginal.includes('&lt;') || textoOriginal.includes('&gt;'));
 
     // Verificar se o texto contém a seção de categorias de forma mais robusta
     const textoLower = textoOriginal.toLowerCase();
     const temRespondentes = textoLower.includes('respondentes');
     const temPorCategoria = textoLower.includes('por categoria');
     const temRespondentesPorCategoria = textoLower.includes('respondentes por categoria');
-    console.log('🔄 PROCESSANDO - Contém "respondentes":', temRespondentes);
-    console.log('🔄 PROCESSANDO - Contém "por categoria":', temPorCategoria);
-    console.log('🔄 PROCESSANDO - Contém "respondentes por categoria":', temRespondentesPorCategoria);
+    console.log('�Y"" PROCESSANDO - Contém "respondentes":', temRespondentes);
+    console.log('�Y"" PROCESSANDO - Contém "por categoria":', temPorCategoria);
+    console.log('�Y"" PROCESSANDO - Contém "respondentes por categoria":', temRespondentesPorCategoria);
 
     // Verificar estrutura HTML específica
     const temH3Respondentes = /<h3[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/h3>/i.test(textoOriginal);
     const temDivRespondentes = /<div[^>]*>[\s\S]*?[Rr]espondentes[\s\S]*?por[\s\S]*?[Cc]ategoria[\s\S]*?<\/div>/i.test(textoOriginal);
-    console.log('🔄 PROCESSANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
-    console.log('🔄 PROCESSANDO - Tem DIV com "Respondentes por Categoria":', temDivRespondentes);
+    console.log('�Y"" PROCESSANDO - Tem H3 com "Respondentes por Categoria":', temH3Respondentes);
+    console.log('�Y"" PROCESSANDO - Tem DIV com "Respondentes por Categoria":', temDivRespondentes);
 
     // Obter informações dinâmicas
     const nomeAvaliado = this.selectedAvaliadoName || 'Não informado';
@@ -4774,7 +4603,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const temFlexColumn = /flex-direction:\s*column/i.test(textoOriginal);
     const temSpanInline = /display:\s*inline-block/i.test(textoOriginal);
 
-    console.log('🔍 Análise da seção "Respondentes por Categoria":');
+    console.log('�Y"� Análise da seção "Respondentes por Categoria":');
     console.log('  - Encontrada (regex 1):', temEstruturaCategorias1);
     console.log('  - Encontrada (regex 2):', temEstruturaCategorias2);
     console.log('  - Encontrada (includes):', temEstruturaCategorias3);
@@ -4787,7 +4616,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const indiceCategoria = textoOriginal.toLowerCase().indexOf('respondentes');
     if (indiceCategoria >= 0) {
       const trechoCategoria = textoOriginal.substring(Math.max(0, indiceCategoria - 50), Math.min(textoOriginal.length, indiceCategoria + 500));
-      console.log('  - 📋 Trecho HTML encontrado:', trechoCategoria);
+      console.log('  - �Y"< Trecho HTML encontrado:', trechoCategoria);
     }
 
     // Substituir variáveis dinâmicas no texto
@@ -4812,7 +4641,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       // Verificar se já tem a seção de respondentes por categoria (case-insensitive)
       if (temEstruturaCategorias) {
-        console.log('  - 🔄 Substituindo seção existente...');
+        console.log('  - �Y"" Substituindo seção existente...');
 
         // Estrutura nova com layout vertical
         const estruturaNova = `<div style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
@@ -4836,28 +4665,28 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         // Tentar substituir usando regex mais específicos primeiro
         if (regexSecaoCompleta.test(textoProcessado)) {
-          console.log('    ✅ Padrão 1 (seção completa)');
+          console.log('    �o. Padrão 1 (seção completa)');
           textoProcessado = textoProcessado.replace(regexSecaoCompleta, estruturaNova);
           substituido = true;
         } else if (regexSecaoHorizontal.test(textoProcessado)) {
-          console.log('    ✅ Padrão 2 (seção horizontal)');
+          console.log('    �o. Padrão 2 (seção horizontal)');
           textoProcessado = textoProcessado.replace(regexSecaoHorizontal, estruturaNova);
           substituido = true;
         } else if (regexSecaoGenerica.test(textoProcessado)) {
-          console.log('    ✅ Padrão 3 (seção genérica)');
+          console.log('    �o. Padrão 3 (seção genérica)');
           textoProcessado = textoProcessado.replace(regexSecaoGenerica, estruturaNova);
           substituido = true;
         }
 
         if (!substituido) {
-          console.log('    ⚠️ Nenhum regex fez match, tentando abordagem alternativa...');
+          console.log('    �s�️ Nenhum regex fez match, tentando abordagem alternativa...');
 
           // Abordagem alternativa: encontrar o índice da seção e substituir manualmente
           const regexTitulo = /<h3[^>]*>[\s\S]*?Respondentes\s+por\s+Categoria[\s\S]*?<\/h3>/gi;
           const matchTitulo = regexTitulo.exec(textoProcessado);
 
           if (matchTitulo) {
-            console.log('    📍 Título encontrado na posição:', matchTitulo.index);
+            console.log('    �Y"� Título encontrado na posição:', matchTitulo.index);
             const inicioTitulo = matchTitulo.index;
 
             // Encontrar o início do div pai que contém o h3
@@ -4885,7 +4714,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             }
 
             if (nivelDiv === 0 && fimDiv > inicioTitulo) {
-              console.log('    ✅ Div completo encontrado e substituído');
+              console.log('    �o. Div completo encontrado e substituído');
               textoProcessado = textoProcessado.substring(0, inicioDiv) + estruturaNova + textoProcessado.substring(fimDiv);
               substituido = true;
             }
@@ -4893,7 +4722,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           // Se ainda não foi substituído, tentar substituir apenas os estilos inline-block
           if (!substituido) {
-            console.log('    ⚠️ Substituindo estilos inline-block...');
+            console.log('    �s�️ Substituindo estilos inline-block...');
             // Substituir spans inline-block por divs verticais
             textoProcessado = textoProcessado.replace(
               /<span[^>]*style="[^"]*display:\s*inline-block[^"]*"[^>]*>/gi,
@@ -4918,7 +4747,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         }
       } else {
-        console.log('  - ⚠️ Seção não encontrada, adicionando nova seção...');
+        console.log('  - �s�️ Seção não encontrada, adicionando nova seção...');
         // Adicionar informações dinâmicas ao final se não estiverem presentes
         textoProcessado = textoProcessado.replace(
           /<\/div>\s*<\/div>\s*$/,
@@ -4945,7 +4774,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const indiceCategoriaFinal = textoProcessado.toLowerCase().indexOf('respondentes');
       if (indiceCategoriaFinal >= 0) {
         const trechoCategoriaFinal = textoProcessado.substring(Math.max(0, indiceCategoriaFinal - 50), Math.min(textoProcessado.length, indiceCategoriaFinal + 500));
-        console.log('  - 📋 Trecho final:', trechoCategoriaFinal);
+        console.log('  - �Y"< Trecho final:', trechoCategoriaFinal);
       }
     }
 
@@ -5025,7 +4854,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           <div style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); padding: 25px; border-radius: 12px; margin: 30px 0; border-left: 5px solid #9c27b0; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
             <h3 style="margin: 0 0 20px 0; color: #7b1fa2; font-size: 22px; display: flex; align-items: center;">
-              <span style="background: #9c27b0; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 16px;">🎯</span>
+              <span style="background: #9c27b0; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 16px;">★</span>
               Objetivos da Avaliação
             </h3>
             <ul style="margin: 0; padding-left: 25px; font-size: 16px; line-height: 1.8;">
@@ -5075,7 +4904,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // =============================================
-  // MÉTODOS PARA FILTRAGEM DE TIPOS DE PERGUNTAS
+  // M�?TODOS PARA FILTRAGEM DE TIPOS DE PERGUNTAS
   // =============================================
 
   applyQuestionFilter(): void {
@@ -5087,10 +4916,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const includeOpen = !!this.includeOpenQuestions.value;
     this.filteredQuestions = filterQuestionsByType(this.allQuestions as any, includeOpen) as any;
 
-    console.log(`🔍 Filtro aplicado - Incluir abertas: ${includeOpen}`);
-    console.log(`📊 Perguntas totais: ${this.allQuestions.length}`);
-    console.log(`📊 Perguntas filtradas: ${this.filteredQuestions.length}`);
-    console.log('📊 Perguntas por tipo:', this.getQuestionTypeStats());
+    console.log(`�Y"� Filtro aplicado - Incluir abertas: ${includeOpen}`);
+    console.log(`�Y"S Perguntas totais: ${this.allQuestions.length}`);
+    console.log(`�Y"S Perguntas filtradas: ${this.filteredQuestions.length}`);
+    console.log('�Y"S Perguntas por tipo:', this.getQuestionTypeStats());
   }
 
   getQuestionTypeStats(): any { return getQuestionTypeStats(this.allQuestions as any); }
@@ -5104,7 +4933,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Forçar detecção de mudanças
     this.cdr.detectChanges();
 
-    console.log('📊 Filtro alterado - Perguntas disponíveis:', this.dynamicColumns.length);
+    console.log('�Y"S Filtro alterado - Perguntas disponíveis:', this.dynamicColumns.length);
   }
 
   getQuestionTypeLabel(type: string): string {
@@ -5145,19 +4974,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
     debugTiposPerguntas(): void {
-    console.group('🔍 DEBUG: Tipos de Perguntas');
+    console.group('�Y"� DEBUG: Tipos de Perguntas');
 
-    console.log('📊 Total de perguntas:', this.allQuestions.length);
-    console.log('📊 Perguntas filtradas:', this.filteredQuestions.length);
-    console.log('📊 Incluir abertas:', this.includeOpenQuestions.value);
+    console.log('�Y"S Total de perguntas:', this.allQuestions.length);
+    console.log('�Y"S Perguntas filtradas:', this.filteredQuestions.length);
+    console.log('�Y"S Incluir abertas:', this.includeOpenQuestions.value);
 
-    console.log('\n📈 Estatísticas por tipo:');
+    console.log('\n�Y"^ Estatísticas por tipo:');
     const stats = this.getQuestionTypeStats();
     Object.entries(stats).forEach(([type, count]) => {
       console.log(`  ${type}: ${count} perguntas - ${this.getQuestionTypeLabel(type)}`);
     });
 
-    console.log('\n📝 Perguntas por tipo:');
+    console.log('\n�Y"� Perguntas por tipo:');
     const grouped = this.allQuestions.reduce((acc: any, q) => {
       if (!acc[q.type]) acc[q.type] = [];
       acc[q.type].push(q);
@@ -5168,7 +4997,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       console.log(`\n${type} (${questions.length}):`);
       questions.forEach((q: any) => {
         const isFiltered = this.filteredQuestions.some(fq => fq.id === q.id);
-        console.log(`  ${isFiltered ? '✅' : '❌'} ${q.id}: ${q.title}`);
+        console.log(`  ${isFiltered ? '�o.' : '�O'} ${q.id}: ${q.title}`);
       });
     });
 
@@ -5182,7 +5011,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const seen = new Set<string>();
       const result: Competencia[] = [];
 
-      // ─── competencyGroups filtrado pelo assessmentId atual ────────────────
+      // �"?�"?�"? competencyGroups filtrado pelo assessmentId atual �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
       // Esta é a fonte principal: a página de Competências salva grupos em
       // `competencyGroups` com assessmentId + array `competencias` contendo
       // os perguntasIds que batem com as colunas do dataSource.
@@ -5210,10 +5039,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           });
         });
-        console.log('🎯 Grupos para esta avaliação:', groupsSnap.size, '→', result.length, 'competências');
+        console.log('Grupos para esta avaliação:', groupsSnap.size, '->', result.length, 'competências');
       }
 
-      // ─── Fallback: competencies collection (formato competency-dialog) ────
+      // �"?�"?�"? Fallback: competencies collection (formato competency-dialog) �"?�"?�"?�"?
       // Se não encontrou nada via grupos, tenta a coleção individual.
       if (result.length === 0) {
         const competenciesSnap = await getDocs(collection(this.firestore, 'competencies'));
@@ -5241,15 +5070,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             } as Competencia);
           }
         });
-        console.log('🎯 Fallback competencies collection:', result.length, 'competências');
+        console.log('�YZ� Fallback competencies collection:', result.length, 'competências');
       }
 
       this.allCompetencies = result;
-      console.log('🎯 Total competências disponíveis:', this.allCompetencies.length);
+      console.log('�YZ� Total competências disponíveis:', this.allCompetencies.length);
 
       // Aplicar competências pendentes se houver
       if (this.pendingCompetencyIds.length > 0) {
-        console.log('🎯 Aplicando competências pendentes:', this.pendingCompetencyIds);
+        console.log('�YZ� Aplicando competências pendentes:', this.pendingCompetencyIds);
         // O modal envia IDs de documentos de competencyGroups (group IDs).
         // loadAllCompetencies() cria sub-competências com comp.id = sub-competency ID e comp.groupId = group doc ID.
         // Por isso buscamos match em ambos os campos.
@@ -5259,10 +5088,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         );
         // Se ainda não encontrou nada, usar todas as competências da avaliação como fallback
         if (this.competencias.length === 0) {
-          console.warn('🎯 pendingCompetencyIds não bateram com nenhuma sub-competência — usando todas:', this.allCompetencies.length);
+          console.warn('�YZ� pendingCompetencyIds não bateram com nenhuma sub-competência �?" usando todas:', this.allCompetencies.length);
           this.competencias = [...this.allCompetencies];
         }
-        console.log('🎯 Competências aplicadas:', this.competencias.length);
+        console.log('�YZ� Competências aplicadas:', this.competencias.length);
         this.pendingCompetencyIds = [];
       } else if (this.competencias.length === 0) {
         // Auto-selecionar todas as competências da avaliação para evitar configuração manual
@@ -5301,9 +5130,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Método de debug específico para investigar dados da tabela de competência
   debugTabelaCompetencia(competencia: Competencia): void {
-    console.group(`🔍 DEBUG TABELA COMPETÊNCIA: ${competencia.nome}`);
+    console.group(`�Y"� DEBUG TABELA COMPET�SNCIA: ${competencia.nome}`);
 
-    console.log('📊 Dados básicos:', {
+    console.log('�Y"S Dados básicos:', {
       competencia: competencia.nome,
       perguntasIds: competencia.perguntasIds,
       selectedAssessmentId: this.selectedAssessmentId,
@@ -5312,13 +5141,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     if (!this.dataSource.length) {
-      console.log('❌ DataSource vazio!');
+      console.log('�O DataSource vazio!');
       console.groupEnd();
       return;
     }
 
     // Mostrar estrutura dos primeiros participantes
-    console.log('📋 Estrutura dos primeiros 3 participantes:');
+    console.log('�Y"< Estrutura dos primeiros 3 participantes:');
     this.dataSource.slice(0, 3).forEach((participant, index) => {
       console.log(`  Participante ${index}:`, {
         avaliado: participant['avaliado'],
@@ -5333,19 +5162,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Verificar dados específicos para a competência
     const grupos = this.getGrupos();
-    console.log('🏷️ Grupos disponíveis:', grupos);
+    console.log('�Y��️ Grupos disponíveis:', grupos);
 
     competencia.perguntasIds.forEach(perguntaId => {
-      console.group(`📝 Pergunta: ${perguntaId}`);
+      console.group(`�Y"� Pergunta: ${perguntaId}`);
 
       // Verificar dados para cada grupo
       grupos.forEach(grupo => {
         if (this.selectedAvaliado) {
           const respostas = this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, this.selectedAvaliado);
-          console.log(`  🎯 Grupo "${grupo}" + Avaliado "${this.selectedAvaliado}": ${respostas.length} respostas - [${respostas.join(', ')}]`);
+          console.log(`  �YZ� Grupo "${grupo}" + Avaliado "${this.selectedAvaliado}": ${respostas.length} respostas - [${respostas.join(', ')}]`);
         } else {
           const respostas = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
-          console.log(`  🌐 Grupo "${grupo}" (todos): ${respostas.length} respostas - [${respostas.join(', ')}]`);
+          console.log(`  �YO� Grupo "${grupo}" (todos): ${respostas.length} respostas - [${respostas.join(', ')}]`);
         }
       });
 
@@ -5354,7 +5183,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Verificar se há dados para o avaliado selecionado
     if (this.selectedAvaliado) {
-      console.group(`🎯 VERIFICAÇÃO ESPECÍFICA PARA AVALIADO: ${this.selectedAvaliado}`);
+      console.group(`�YZ� VERIFICA�?�fO ESPECÍFICA PARA AVALIADO: ${this.selectedAvaliado}`);
 
       const participantesDoAvaliado = this.dataSource.filter(p => p['avaliado'] === this.selectedAvaliado);
       console.log(`  Total de participantes com este nome: ${participantesDoAvaliado.length}`);
@@ -5384,29 +5213,29 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const cacheKey = `tabela-competencia-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}`;
 
     return this.getCachedCalculation(cacheKey, () => {
-      console.log(`🔄 Gerando tabela para competência: ${competencia.nome} (cache: ${cacheKey})`);
+      console.log(`�Y"" Gerando tabela para competência: ${competencia.nome} (cache: ${cacheKey})`);
       return this.gerarTabelaCompetencia(competencia);
     });
   }
 
   // Método de debug para verificar estrutura dos dados
   debugEstruturaDados(): void {
-    console.log('🔍 DEBUG ESTRUTURA DOS DADOS');
-    console.log('📊 Total de registros:', this.dataSource.length);
+    console.log('�Y"� DEBUG ESTRUTURA DOS DADOS');
+    console.log('�Y"S Total de registros:', this.dataSource.length);
 
     if (this.dataSource.length > 0) {
       const primeiroRegistro = this.dataSource[0];
-      console.log('📋 Primeiro registro completo:', primeiroRegistro);
+      console.log('�Y"< Primeiro registro completo:', primeiroRegistro);
 
       // Listar todas as chaves disponíveis
       const todasChaves = Object.keys(primeiroRegistro);
-      console.log('🔑 Todas as chaves disponíveis:', todasChaves);
+      console.log('Todas as chaves disponíveis:', todasChaves);
 
       // Filtrar chaves que parecem ser perguntas
       const chavesPerguntas = todasChaves.filter(chave =>
         chave.startsWith('pergunta') || chave.includes('Row') || chave.includes('Column')
       );
-      console.log('❓ Chaves que parecem ser perguntas:', chavesPerguntas);
+      console.log('Chaves que parecem ser perguntas:', chavesPerguntas);
 
       // Verificar valores das primeiras perguntas
       chavesPerguntas.slice(0, 5).forEach(chave => {
@@ -5417,15 +5246,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // Verificar se as perguntas da competência existem
       if (this.competencias.length > 0) {
         const primeiraComp = this.competencias[0];
-        console.log('🏆 Primeira competência:', primeiraComp);
-        console.log('📝 IDs das perguntas:', primeiraComp.perguntasIds);
+        console.log('�Y�? Primeira competência:', primeiraComp);
+        console.log('�Y"� IDs das perguntas:', primeiraComp.perguntasIds);
 
         // Verificar se cada pergunta existe nos dados
         primeiraComp.perguntasIds.forEach(perguntaId => {
           const existe = this.dataSource.some(registro =>
             registro[perguntaId] !== undefined
           );
-          console.log(`  ${perguntaId}: ${existe ? '✅ EXISTE' : '❌ NÃO EXISTE'}`);
+          console.log(`  ${perguntaId}: ${existe ? '�o. EXISTE' : '�O N�fO EXISTE'}`);
 
           if (existe) {
             const valores = this.dataSource.map(registro => registro[perguntaId]).filter(v => v !== undefined);
@@ -5583,14 +5412,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
     private getDadosPerguntaDefasagem(perguntaId: string): { selfScore: number | null; othersScore: number | null; gap: number | null } | null {
-    console.log(`🔍 Buscando dados para pergunta: ${perguntaId}`);
+    console.log(`�Y"� Buscando dados para pergunta: ${perguntaId}`);
 
     if (!this.dataSource || this.dataSource.length === 0) {
-      console.log('❌ dataSource vazio ou nulo');
+      console.log('�O dataSource vazio ou nulo');
       return null;
     }
 
-    console.log(`📊 dataSource tem ${this.dataSource.length} linhas`);
+    console.log(`�Y"S dataSource tem ${this.dataSource.length} linhas`);
 
     // Coletar todas as respostas para esta pergunta específica
     const respostasSelf: number[] = [];
@@ -5599,23 +5428,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.dataSource.forEach((row, index) => {
       if (row[perguntaId] !== undefined) {
         const valor = this.parseLikertAnswer(row[perguntaId]);
-        console.log(`📝 Linha ${index}: categoria=${row.categoria}, perguntaId=${perguntaId}, valor=${row[perguntaId]}, parseado=${valor}`);
+        console.log(`�Y"� Linha ${index}: categoria=${row.categoria}, perguntaId=${perguntaId}, valor=${row[perguntaId]}, parseado=${valor}`);
 
         if (valor !== null) {
           if (row.categoria === 'Avaliado') {
             respostasSelf.push(valor);
-            console.log(`✅ Adicionado à autoavaliação: ${valor}`);
+            console.log(`�o. Adicionado à autoavaliação: ${valor}`);
           } else {
             respostasOutros.push(valor);
-            console.log(`✅ Adicionado aos outros: ${valor}`);
+            console.log(`�o. Adicionado aos outros: ${valor}`);
           }
         }
       } else {
-        console.log(`❌ Linha ${index}: perguntaId ${perguntaId} não encontrada`);
+        console.log(`�O Linha ${index}: perguntaId ${perguntaId} não encontrada`);
       }
     });
 
-    console.log(`📊 Respostas coletadas - Self: ${respostasSelf.length}, Outros: ${respostasOutros.length}`);
+    console.log(`�Y"S Respostas coletadas - Self: ${respostasSelf.length}, Outros: ${respostasOutros.length}`);
 
     // Calcular médias
     const selfScore = respostasSelf.length > 0 ? respostasSelf.reduce((a, b) => a + b, 0) / respostasSelf.length : null;
@@ -5623,29 +5452,29 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const gap = (selfScore !== null && othersScore !== null) ? (selfScore - othersScore) : null;
 
-    console.log(`🎯 Resultado final - Self: ${selfScore}, Outros: ${othersScore}, Gap: ${gap}`);
+    console.log(`�YZ� Resultado final - Self: ${selfScore}, Outros: ${othersScore}, Gap: ${gap}`);
 
     return { selfScore, othersScore, gap };
   }
 
     public getGapChartDataForCompetency(competencyId: string): GapChartDataItem[] {
-    console.log(`🔍 getGapChartDataForCompetency chamado para competência: ${competencyId}`);
+    console.log(`�Y"� getGapChartDataForCompetency chamado para competência: ${competencyId}`);
 
     const competencia = this.competencias.find(c => c.id === competencyId);
     if (!competencia || !competencia.perguntasIds) {
-      console.log('❌ Competência não encontrada ou sem perguntas');
+      console.log('�O Competência não encontrada ou sem perguntas');
       return [];
     }
 
-    console.log(`✅ Competência encontrada: ${competencia.nome} com ${competencia.perguntasIds.length} perguntas`);
+    console.log(`�o. Competência encontrada: ${competencia.nome} com ${competencia.perguntasIds.length} perguntas`);
 
     const dadosPorPergunta: GapChartDataItem[] = [];
 
     competencia.perguntasIds.forEach((perguntaId, index) => {
-      console.log(`📝 Processando pergunta ${index + 1}/${competencia.perguntasIds.length}: ${perguntaId}`);
+      console.log(`�Y"� Processando pergunta ${index + 1}/${competencia.perguntasIds.length}: ${perguntaId}`);
 
       const perguntaTexto = this.questionMap[perguntaId] || perguntaId;
-      console.log(`📋 Texto da pergunta: ${perguntaTexto}`);
+      console.log(`�Y"< Texto da pergunta: ${perguntaTexto}`);
 
       const dadosPergunta = this.getDadosPerguntaDefasagem(perguntaId);
 
@@ -5657,19 +5486,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           gap: dadosPergunta.gap
         };
 
-        console.log(`✅ Item criado:`, item);
+        console.log(`�o. Item criado:`, item);
         dadosPorPergunta.push(item);
       } else {
-        console.log(`❌ Dados não encontrados para pergunta ${perguntaId}`);
+        console.log(`�O Dados não encontrados para pergunta ${perguntaId}`);
       }
     });
 
-    console.log(`📊 Total de itens criados: ${dadosPorPergunta.length}`);
+    console.log(`�Y"S Total de itens criados: ${dadosPorPergunta.length}`);
     const resultado = dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
 
-    console.log(`🎯 Resultado final ordenado:`, resultado);
+    console.log(`�YZ� Resultado final ordenado:`, resultado);
     return resultado;
   }
 
   ngAfterViewInit(): void { }
 }
+

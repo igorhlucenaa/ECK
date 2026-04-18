@@ -41,6 +41,7 @@ interface RelatorioSecao {
 
 interface ReportData {
   participantName?: string;
+  clientName?: string;
   participantEmail?: string;
   projectName?: string;
   startDate?: string;
@@ -94,10 +95,24 @@ export class ReportPdfMakeService {
     }
   }
 
+  private sanitizeFileNamePart(value: string | null | undefined, fallback: string): string {
+    const sanitized = (value || '')
+      .replace(/[\\/:*?"<>|]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return sanitized || fallback;
+  }
+
+  private buildDefaultFileName(data: ReportData): string {
+    const participantName = this.sanitizeFileNamePart(data.participantName, 'Participante');
+    const clientName = this.sanitizeFileNamePart(data.clientName, 'Cliente');
+    return `${participantName}_Relatório Feedback 360_${clientName}.pdf`;
+  }
+
   /**
    * Gera relatório completo em PDF usando PDFMake
    */
-  async generateReport(data: ReportData): Promise<void> {
+  async generateReport(data: ReportData, fileName?: string): Promise<void> {
     try {
       const pdfMakeLib = await this.loadPdfMake();
 
@@ -127,7 +142,7 @@ export class ReportPdfMakeService {
       }
 
       // Gerar PDF via Blob + anchor click (compatível com todos os navegadores)
-      const filename = `relatorio-${(data.participantName || 'participante').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.pdf`;
+      const filename = fileName || this.buildDefaultFileName(data);
       const blob: Blob = await Promise.race<Blob>([
         new Promise<Blob>((resolve, reject) => {
           try {
@@ -1485,6 +1500,7 @@ export class ReportPdfMakeService {
   prepareReportDataFromComponent(component: any): ReportData {
     return {
       participantName: component.individualParticipantName || component.selectedAvaliado || 'Participante',
+      clientName: component.getClientName ? component.getClientName() : '',
       participantEmail: component.individualParticipantEmail || '',
       projectName: component.selectedProjectName || 'Projeto',
       startDate: component.startDate || '',
