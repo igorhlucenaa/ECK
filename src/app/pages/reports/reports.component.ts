@@ -205,6 +205,27 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return null;
   }
 
+  private formatOpenAnswerForExport(answer: unknown): string {
+    if (answer === null || answer === undefined) return '';
+
+    if (typeof answer === 'string') {
+      return answer.trim();
+    }
+
+    if (Array.isArray(answer)) {
+      return answer.map(item => String(item ?? '').trim()).filter(Boolean).join(' | ');
+    }
+
+    if (typeof answer === 'object') {
+      const entries = Object.entries(answer as Record<string, unknown>)
+        .map(([key, value]) => `${key}: ${String(value ?? '').trim()}`)
+        .filter(item => !item.endsWith(':'));
+      return entries.join(' | ');
+    }
+
+    return String(answer).trim();
+  }
+
   // Exporta base de dados plana (uma linha por resposta por pergunta)
   exportarBaseExcel(): void {
     if (!this.dataSource || this.dataSource.length === 0) {
@@ -214,23 +235,62 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Coletar perguntas visíveis (ou todas)
     const perguntasIds: string[] = this.allQuestions?.map(q => q.id) || Object.keys(this.questionMap || {});
+    const openTypes = new Set(['text', 'comment', 'multipletext']);
+    const tipoPerguntaPorId = new Map((this.allQuestions || []).map(q => [q.id, (q.type || '').toLowerCase()]));
+    const competenciaPorPergunta = new Map<string, string>();
+
+    for (const comp of this.competencias || []) {
+      for (const perguntaId of comp.perguntasIds || []) {
+        if (!competenciaPorPergunta.has(perguntaId)) {
+          competenciaPorPergunta.set(perguntaId, comp.nome);
+        }
+      }
+    }
+
+    const resolverCompetenciaPorPergunta = (perguntaId: string): string => {
+      if (competenciaPorPergunta.has(perguntaId)) {
+        return competenciaPorPergunta.get(perguntaId) || '';
+      }
+
+      for (const [idBase, nomeComp] of competenciaPorPergunta.entries()) {
+        if (perguntaId.startsWith(`${idBase}_`) || idBase.startsWith(`${perguntaId}_`)) {
+          return nomeComp;
+        }
+      }
+
+      return '';
+    };
 
     const linhas: any[] = [];
     for (const row of this.dataSource) {
       for (const perguntaId of perguntasIds) {
         if (!(perguntaId in row)) continue;
         const valorOriginal = row[perguntaId];
-        const valor = this.parseLikertAnswer(valorOriginal);
-        if (valor === null) continue;
+        const tipoPergunta = tipoPerguntaPorId.get(perguntaId) || '';
+
+        let respostaExportacao: number | string | null = null;
+        if (openTypes.has(tipoPergunta)) {
+          const texto = this.formatOpenAnswerForExport(valorOriginal);
+          if (!texto) continue;
+          respostaExportacao = texto;
+        } else {
+          const valorLikert = this.parseLikertAnswer(valorOriginal);
+          if (valorLikert === null) continue;
+          respostaExportacao = valorLikert;
+        }
 
         linhas.push({
           AssessmentId: this.selectedAssessmentId || '',
           Data: row['dataAvaliacao'] || '',
+          Horário: row['horarioAvaliacao'] || '',
           Categoria: row['categoria'] || '',
           Avaliado: row['avaliado'] || '',
+          Cargo: row['cargo'] || '',
+          'Área/Setor': row['setor'] || '',
+          Competência: resolverCompetenciaPorPergunta(perguntaId),
           PerguntaId: perguntaId,
           Pergunta: this.questionMap[perguntaId] || perguntaId,
-          Resposta: valor,
+          Resposta: respostaExportacao,
         });
       }
     }
@@ -1233,13 +1293,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         if (shouldInclude) {
+          const completedAtDate: Date | null = resultData['completedAt']?.toDate
+            ? resultData['completedAt'].toDate()
+            : null;
+
           const row: any = {
             data: '',
             categoria: participantData['category'] || 'N/A',
             avaliado: participantData['name'] || 'N/A',
             tipo: participantData['type'] || 'avaliado', // 'avaliado' | 'avaliador' para filtrar lista
-            dataAvaliacao: resultData['completedAt'] ?
-              new Date(resultData['completedAt'].toDate()).toLocaleDateString('pt-BR') : 'N/A',
+            dataAvaliacao: completedAtDate ? completedAtDate.toLocaleDateString('pt-BR') : 'N/A',
+            horarioAvaliacao: completedAtDate ? completedAtDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+            cargo: participantData['cargo'] || '',
+            setor: participantData['setor'] || '',
             isTargetParticipant: isTargetParticipant // Marcar se é o participante alvo
           };
 
