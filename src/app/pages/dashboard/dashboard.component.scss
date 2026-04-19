@@ -846,7 +846,7 @@
 
   ::ng-deep .mat-column-clientName { width: 150px; }
   ::ng-deep .mat-column-name       { min-width: 160px; }
-  ::ng-deep .mat-column-responseRate { width: 160px; }
+  ::ng-deep .mat-column-responseRate { width: 180px; }
   ::ng-deep .mat-column-deadline   { width: 120px; }
   ::ng-deep .mat-column-status     { width: 130px; }
 }
@@ -862,7 +862,19 @@
 .col-rate {
   display: flex;
   align-items: center;
-  gap: 8px;
+}
+
+.rate-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 160px;
+
+  &__top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
 .rate-bar {
@@ -890,6 +902,12 @@
   color: #64748b;
   white-space: nowrap;
   min-width: 32px;
+}
+
+.rate-count {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
 }
 
 // Prazo

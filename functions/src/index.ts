@@ -23,7 +23,9 @@ function getDb(): admin.firestore.Firestore {
 
 interface ReminderSettingsDoc {
   clientId?: string;
+  projectId?: string;
   enabled?: boolean;
+  startDate?: admin.firestore.Timestamp;
   intervalDays?: number;
   maxReminders?: number;
   templateId?: string;
@@ -44,6 +46,7 @@ interface ReminderRunStats {
 interface ProcessRemindersOptions {
   now?: Date;
   targetClientIds?: string[];
+  targetProjectIds?: string[];
   trigger: 'schedule' | 'manual_http';
 }
 
@@ -154,6 +157,51 @@ function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
   return result;
+}
+
+/**
+ * Calcula o próximo disparo respeitando sendTime e timezone configurados.
+ * Ex: base=14/04 22:06, intervalDays=1, sendTime="20:50", tz="America/Sao_Paulo"
+ * → resultado: 15/04 20:50 horário de Sao Paulo (= 15/04 23:50 UTC)
+ * Usa formatToParts para extrair hora/minuto sem depender de separadores do locale.
+ */
+function buildNextReminderAt(
+  base: Date,
+  intervalDays: number,
+  sendTime: string,
+  timezone: string
+): admin.firestore.Timestamp {
+  const targetDay = new Date(base.getTime() + intervalDays * 86400000);
+
+  // Data do dia alvo no timezone configurado (extrai year/month/day individualmente)
+  const dateFmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+  });
+  const dp = dateFmt.formatToParts(targetDay);
+  const year  = dp.find((p) => p.type === 'year')?.value  ?? '2000';
+  const month = dp.find((p) => p.type === 'month')?.value ?? '01';
+  const day   = dp.find((p) => p.type === 'day')?.value   ?? '01';
+  const datePart = `${year}-${month}-${day}`; // "YYYY-MM-DD"
+
+  // Offset do timezone: hora/minuto do meio-dia UTC convertido para o timezone alvo
+  const noonUtc = new Date(`${datePart}T12:00:00Z`);
+  const timeFmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone, hour: 'numeric', minute: '2-digit', hour12: false,
+  });
+  const tp = timeFmt.formatToParts(noonUtc);
+  const tzH = Number(tp.find((p) => p.type === 'hour')?.value   ?? '0');
+  const tzM = Number(tp.find((p) => p.type === 'minute')?.value ?? '0');
+  const offsetMin = tzH * 60 + tzM - 720; // ex: -180 para UTC-3
+
+  // sendTime em minutos desde meia-noite local
+  const [sh, sm] = sendTime.split(':').map(Number);
+  const sendMin = sh * 60 + sm;
+
+  // UTC = local − offset
+  const utcMin = sendMin - offsetMin;
+
+  const dayStartUtc = new Date(`${datePart}T00:00:00Z`).getTime();
+  return admin.firestore.Timestamp.fromDate(new Date(dayStartUtc + utcMin * 60000));
 }
 
 function pad2(value: number): string {
@@ -595,23 +643,27 @@ function resolveTemplateIdForParticipant(
 }
 
 async function persistReminderRunStats(
-  statsByClient: Map<string, ReminderRunStats>,
-  scheduleByClient: Map<string, ScheduleState>
+  statsByDocId: Map<string, ReminderRunStats>,
+  scheduleByDocId: Map<string, ScheduleState>,
+  settingsByDocId: Map<string, ReminderSettingsDoc>
 ): Promise<void> {
   const updates: Array<Promise<admin.firestore.WriteResult>> = [];
 
-  for (const [clientId, stats] of statsByClient.entries()) {
-    const scheduleState = scheduleByClient.get(clientId);
+  for (const [docId, stats] of statsByDocId.entries()) {
+    const scheduleState = scheduleByDocId.get(docId);
+    const setting = settingsByDocId.get(docId);
     const payload: Record<string, unknown> = {
-      clientId,
       lastRunAt: admin.firestore.FieldValue.serverTimestamp(),
       lastRunSummary: stats,
     };
+    if (setting?.clientId) payload.clientId = setting.clientId;
+    if (setting?.projectId) payload.projectId = setting.projectId;
     if (scheduleState?.canRun && scheduleState.windowKey) {
       payload.lastRunWindowKey = scheduleState.windowKey;
     }
 
-    updates.push(getDb().collection('reminderSettings').doc(clientId).set(payload, { merge: true }));
+    // Grava no doc correto: {clientId}_{projectId}
+    updates.push(getDb().collection('reminderSettings').doc(docId).set(payload, { merge: true }));
   }
 
   await Promise.all(updates);
@@ -623,8 +675,13 @@ async function processPendingAssessmentReminders(
   const now = options.now || new Date();
   const targetClientIds = new Set(
     (options.targetClientIds || [])
-      .map((clientId) => normalizeOptionalString(clientId))
-      .filter((clientId): clientId is string => !!clientId)
+      .map((id) => normalizeOptionalString(id))
+      .filter((id): id is string => !!id)
+  );
+  const targetProjectIds = new Set(
+    (options.targetProjectIds || [])
+      .map((id) => normalizeOptionalString(id))
+      .filter((id): id is string => !!id)
   );
 
   const settingsSnap = await getDb()
@@ -637,18 +694,26 @@ async function processPendingAssessmentReminders(
     return;
   }
 
-  const settingsByClient = new Map<string, ReminderSettingsDoc>();
-  const statsByClient = new Map<string, ReminderRunStats>();
-  const scheduleByClient = new Map<string, ScheduleState>();
+  // Chave: "{clientId}_{projectId}" — um projeto por entrada
+  const settingsByDocId = new Map<string, ReminderSettingsDoc>();
+  const statsByDocId = new Map<string, ReminderRunStats>();
+  const scheduleByDocId = new Map<string, ScheduleState>();
 
   settingsSnap.docs.forEach((docSnap: admin.firestore.QueryDocumentSnapshot) => {
     const raw = (docSnap.data() || {}) as ReminderSettingsDoc;
-    const clientId = normalizeOptionalString(raw.clientId) || docSnap.id;
-    if (!clientId) return;
-    if (targetClientIds.size > 0 && !targetClientIds.has(clientId)) return;
+    const clientId = normalizeOptionalString(raw.clientId);
+    const projectId = normalizeOptionalString(raw.projectId);
 
+    // Ignora docs sem clientId ou sem projectId (formato legado)
+    if (!clientId || !projectId) return;
+
+    if (targetClientIds.size > 0 && !targetClientIds.has(clientId)) return;
+    if (targetProjectIds.size > 0 && !targetProjectIds.has(projectId)) return;
+
+    const docId = `${clientId}_${projectId}`;
     const normalized: ReminderSettingsDoc = {
       clientId,
+      projectId,
       enabled: true,
       intervalDays: sanitizeIntervalDays(raw.intervalDays, 3),
       maxReminders: Number(raw.maxReminders || 0),
@@ -661,20 +726,20 @@ async function processPendingAssessmentReminders(
       lastRunWindowKey: normalizeOptionalString(raw.lastRunWindowKey),
     };
 
-    settingsByClient.set(clientId, normalized);
-    statsByClient.set(clientId, { sent: 0, skipped: 0, errors: 0 });
-    scheduleByClient.set(clientId, buildScheduleState(normalized, now));
+    settingsByDocId.set(docId, normalized);
+    statsByDocId.set(docId, { sent: 0, skipped: 0, errors: 0 });
+    scheduleByDocId.set(docId, buildScheduleState(normalized, now));
   });
 
-  if (!settingsByClient.size) {
-    console.log('Nenhum cliente valido com lembrete habilitado para este gatilho.');
+  if (!settingsByDocId.size) {
+    console.log('Nenhum projeto valido com lembrete habilitado para este gatilho.');
     return;
   }
 
-  const hasClientToRun = Array.from(scheduleByClient.values()).some((state) => state.canRun);
-  if (!hasClientToRun) {
-    await persistReminderRunStats(statsByClient, scheduleByClient);
-    console.log('Fora da janela de execucao para todos os clientes.');
+  const hasAnyToRun = Array.from(scheduleByDocId.values()).some((state) => state.canRun);
+  if (!hasAnyToRun) {
+    await persistReminderRunStats(statsByDocId, scheduleByDocId, settingsByDocId);
+    console.log('Fora da janela de execucao para todos os projetos.');
     return;
   }
 
@@ -684,7 +749,7 @@ async function processPendingAssessmentReminders(
     .get();
 
   if (pendingLinksSnap.empty) {
-    await persistReminderRunStats(statsByClient, scheduleByClient);
+    await persistReminderRunStats(statsByDocId, scheduleByDocId, settingsByDocId);
     console.log('Sem assessmentLinks pendentes para lembrete.');
     return;
   }
@@ -701,7 +766,6 @@ async function processPendingAssessmentReminders(
     if (participantCache.has(participantId)) {
       return participantCache.get(participantId);
     }
-
     const participantDoc = await getDb().collection('participants').doc(participantId).get();
     const data = participantDoc.exists
       ? ((participantDoc.data() || {}) as Record<string, unknown>)
@@ -726,15 +790,26 @@ async function processPendingAssessmentReminders(
     const projectId = normalizeOptionalString(participantData?.projectId);
     if (!projectId) return undefined;
 
-    if (projectClientCache.has(projectId)) {
-      return projectClientCache.get(projectId);
-    }
+    if (projectClientCache.has(projectId)) return projectClientCache.get(projectId);
 
     const projectDoc = await getDb().collection('projects').doc(projectId).get();
-    const projectData = (projectDoc.data() || {}) as Record<string, unknown>;
-    const fromProject = normalizeOptionalString(projectData.clientId);
+    const fromProject = normalizeOptionalString((projectDoc.data() || {}).clientId);
     projectClientCache.set(projectId, fromProject);
     return fromProject;
+  };
+
+  const resolveProjectId = async (
+    linkData: Record<string, unknown>
+  ): Promise<string | undefined> => {
+    const fromLink = normalizeOptionalString(linkData.projectId);
+    if (fromLink) return fromLink;
+
+    // Fallback: lê projectId do participante (links criados antes da correção)
+    const participantId = normalizeOptionalString(linkData.participantId);
+    if (!participantId) return undefined;
+
+    const participantData = await getParticipantData(participantId);
+    return normalizeOptionalString(participantData?.projectId);
   };
 
   for (const linkDoc of pendingLinksSnap.docs) {
@@ -742,24 +817,23 @@ async function processPendingAssessmentReminders(
     const participantId = normalizeOptionalString(linkData.participantId);
     const assessmentId = normalizeOptionalString(linkData.assessmentId);
 
-    if (!participantId || !assessmentId) {
-      continue;
-    }
+    if (!participantId || !assessmentId) continue;
 
     const clientId = await resolveClientId(linkData);
-    if (!clientId) {
-      continue;
-    }
-    if (targetClientIds.size > 0 && !targetClientIds.has(clientId)) {
-      continue;
-    }
+    if (!clientId) continue;
+    if (targetClientIds.size > 0 && !targetClientIds.has(clientId)) continue;
 
-    const setting = settingsByClient.get(clientId);
-    const stats = statsByClient.get(clientId);
-    const scheduleState = scheduleByClient.get(clientId);
-    if (!setting || !stats || !scheduleState) {
-      continue;
-    }
+    // Obtém projectId do link ou, se ausente, do documento do participante (compatibilidade retroativa)
+    const projectId = await resolveProjectId(linkData);
+    if (!projectId) continue;
+    if (targetProjectIds.size > 0 && !targetProjectIds.has(projectId)) continue;
+
+    // Busca as configurações pelo docId correto: {clientId}_{projectId}
+    const docId = `${clientId}_${projectId}`;
+    const setting = settingsByDocId.get(docId);
+    const stats = statsByDocId.get(docId);
+    const scheduleState = scheduleByDocId.get(docId);
+    if (!setting || !stats || !scheduleState) continue;
 
     if (!scheduleState.canRun) {
       stats.skipped += 1;
@@ -806,6 +880,10 @@ async function processPendingAssessmentReminders(
     }
 
     const intervalDays = sanitizeIntervalDays(setting.intervalDays, 3);
+    const sendTime = normalizeTime(setting.sendTime, '09:00');
+    const timezone = (setting.timezone && isValidTimeZone(setting.timezone))
+      ? setting.timezone
+      : 'America/Fortaleza';
     const token = normalizeOptionalString(linkData.token) || generateSecureToken();
     const avaliadoId = normalizeOptionalString(linkData.avaliadoId);
 
@@ -822,6 +900,9 @@ async function processPendingAssessmentReminders(
         emailUser,
       });
 
+      // nextReminderAt respeita sendTime e timezone configurados
+      const nextReminderAt = buildNextReminderAt(now, intervalDays, sendTime, timezone);
+
       await linkDoc.ref.set(
         {
           clientId: sendResult.clientId || clientId,
@@ -832,7 +913,7 @@ async function processPendingAssessmentReminders(
           reminderCount: admin.firestore.FieldValue.increment(1),
           lastReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
           lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
-          nextReminderAt: admin.firestore.Timestamp.fromDate(addDays(now, intervalDays)),
+          nextReminderAt,
           lastReminderError: admin.firestore.FieldValue.delete(),
         },
         { merge: true }
@@ -847,6 +928,7 @@ async function processPendingAssessmentReminders(
         participantId,
         assessmentId,
         clientId,
+        projectId,
         error: err.message,
       });
 
@@ -861,10 +943,10 @@ async function processPendingAssessmentReminders(
     }
   }
 
-  await persistReminderRunStats(statsByClient, scheduleByClient);
+  await persistReminderRunStats(statsByDocId, scheduleByDocId, settingsByDocId);
 
-  const summary = Array.from(statsByClient.entries()).map(([clientId, stats]) => ({
-    clientId,
+  const summary = Array.from(statsByDocId.entries()).map(([docId, stats]) => ({
+    docId,
     ...stats,
   }));
   console.log('Resumo de envio de lembretes:', {
@@ -965,11 +1047,13 @@ export const triggerPendingAssessmentReminders = onRequest(
       res.status(400).send({ error: 'Campo obrigatorio ausente: clientId.' });
       return;
     }
+    const projectId = normalizeOptionalString(req.body?.projectId);
 
     try {
       await processPendingAssessmentReminders({
         trigger: 'manual_http',
         targetClientIds: [clientId],
+        ...(projectId ? { targetProjectIds: [projectId] } : {}),
       });
       res.status(200).send({ success: true });
     } catch (error) {

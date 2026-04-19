@@ -19,7 +19,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { Router } from '@angular/router';
 import { CommonModule, Location } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
@@ -33,7 +33,7 @@ import { AppPageHeaderComponent } from 'src/app/components/page-header/page-head
 @Component({
   selector: 'app-projects-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, MaterialModule, TranslateModule, AppPageHeaderComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MaterialModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './projects-list.component.html',
   styleUrls: ['./projects-list.component.scss'],
 })
@@ -46,6 +46,8 @@ export class ProjectsListComponent implements OnInit {
   clientId: any;
   clientsMap: { [key: string]: string } = {};
   clients: { id: string; name: string }[] = [];
+  clientsFiltered: { id: string; name: string }[] = [];
+  clientSearchCtrl = new FormControl('');
   selectedClientId: string | null = null;
   isAdminMaster: boolean = false;
   userClientIds: string[] = [];
@@ -148,6 +150,11 @@ export class ProjectsListComponent implements OnInit {
 
       if (this.isAdminMaster) {
         await this.loadClients();
+        this.clientsFiltered = [...this.clients];
+        this.clientSearchCtrl.valueChanges.subscribe(s => {
+          const q = (s || '').toLowerCase();
+          this.clientsFiltered = this.clients.filter(c => c.name.toLowerCase().includes(q));
+        });
       } else if (this.userClientIds.length > 0) {
         // admin_client: popula clientsMap apenas com os clientes vinculados
         await Promise.all(this.userClientIds.map(async (id) => {
@@ -157,6 +164,11 @@ export class ProjectsListComponent implements OnInit {
       }
       this.loadProjects();
     });
+  }
+
+  resetClientSearch(): void {
+    this.clientSearchCtrl.setValue('', { emitEvent: false });
+    this.clientsFiltered = [...this.clients];
   }
 
   private async loadClients(): Promise<void> {

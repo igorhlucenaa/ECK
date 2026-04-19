@@ -24,9 +24,17 @@
       <mat-form-field appearance="outline" class="client-filter-field" *ngIf="isAdminMaster && clients.length > 0">
         <mat-label>Filtrar por cliente</mat-label>
         <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:18px;">business</mat-icon>
-        <mat-select [(ngModel)]="selectedClientId" (selectionChange)="onClientChange()">
+        <mat-select [(ngModel)]="selectedClientId" (selectionChange)="onClientChange()"
+                    (closed)="resetClientSearch()">
+          <div class="client-search-wrap">
+            <mat-icon class="client-search-icon">search</mat-icon>
+            <input class="client-search-input" [formControl]="clientSearchCtrl"
+                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   (keydown)="$event.stopPropagation()" />
+          </div>
           <mat-option [value]="null">Todos os clientes</mat-option>
-          <mat-option *ngFor="let c of clients" [value]="c.id">{{ c.name }}</mat-option>
+          <mat-option *ngFor="let c of clientsFiltered" [value]="c.id">{{ c.name }}</mat-option>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
         </mat-select>
       </mat-form-field>
 

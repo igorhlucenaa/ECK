@@ -196,6 +196,15 @@
             <div class="actions-cell">
               <button
                 mat-icon-button
+                class="action-templates"
+                [routerLink]="['/projects', client.id, 'templates']"
+                [queryParams]="{fromClient: client.id}"
+                matTooltip="Ver modelos de e-mail"
+              >
+                <mat-icon>mail_outline</mat-icon>
+              </button>
+              <button
+                mat-icon-button
                 class="action-edit"
                 (click)="openAddClientDialog(client)"
                 matTooltip="Editar cliente"

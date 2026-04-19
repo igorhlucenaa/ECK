@@ -22,11 +22,17 @@
       <mat-form-field appearance="outline" class="filter-field filter-field--client">
         <mat-label>Cliente</mat-label>
         <mat-icon matPrefix class="search-prefix-icon">business</mat-icon>
-        <mat-select [(ngModel)]="selectedClient" (selectionChange)="applyFilter()">
+        <mat-select [(ngModel)]="selectedClient" (selectionChange)="applyFilter()"
+                    (closed)="resetClientSearch()">
+          <div class="client-search-wrap">
+            <mat-icon class="client-search-icon">search</mat-icon>
+            <input class="client-search-input" [formControl]="clientSearchCtrl"
+                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   (keydown)="$event.stopPropagation()" />
+          </div>
           <mat-option value="">Todos os clientes</mat-option>
-          <mat-option *ngFor="let client of clientsList" [value]="client.id">
-            {{ client.name }}
-          </mat-option>
+          <mat-option *ngFor="let client of clientsFiltered" [value]="client.id">{{ client.name }}</mat-option>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
         </mat-select>
         <button mat-icon-button matSuffix *ngIf="selectedClient"
           (click)="selectedClient = ''; applyFilter(); $event.stopPropagation()" matTooltip="Limpar">

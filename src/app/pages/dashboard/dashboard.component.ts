@@ -511,9 +511,10 @@ export class DashboardComponent implements OnInit {
       const pid = data['projectId'];
       if (!pid) return;
       const entry = map.get(pid) || { total: 0, responded: 0, withInvite: 0 };
-      // total e responded baseados em quem tem link (avaliadores), não em tipo de participante
+      // total = TODOS os participantes do projeto (com ou sem convite)
+      // Assim, novos participantes adicionados derrubam o percentual imediatamente
+      entry.total++;
       if (withInviteIds.has(d.id)) {
-        entry.total++;
         entry.withInvite++;
         if (completedIds.has(d.id)) entry.responded++;
       }

@@ -72,6 +72,15 @@ interface UnifiedParticipant {
   avaliadoId?: string;
   cargo?: string;
   setor?: string;
+  // Dados de lembrete automático
+  reminderCount?: number;
+  nextReminderAt?: Date;
+  lastReminderAt?: Date;
+  reminderEnabled?: boolean;
+  maxReminders?: number;
+  intervalDays?: number;
+  reminderSendTime?: string;
+  reminderTimezone?: string;
 }
 
 interface Client {
@@ -115,6 +124,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'cargo',
     'projectName',
     'status',
+    'lembrete',
     'datas',
     'relatorio',
   ];
@@ -483,18 +493,40 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       });
 
       const clientsMap: { [key: string]: string } = {};
+      // Chave: clientId (nível cliente) ou `${clientId}_${projectId}` (nível projeto)
+      const reminderSettingsMap: { [key: string]: { enabled: boolean; intervalDays: number; maxReminders: number; sendTime: string; timezone: string } } = {};
+
+      // Carrega dados dos clientes
       if (clientIds.size > 0) {
-        const clientsPromises = Array.from(clientIds).map(async (clientId) => {
-          const clientDoc = doc(this.firestore, 'clients', clientId);
-          const clientSnapshot = await getDoc(clientDoc);
-          if (clientSnapshot.exists()) {
-            clientsMap[clientId] =
-              clientSnapshot.data()['companyName'] || 'Cliente Sem Nome';
-          } else {
-            clientsMap[clientId] = 'N/A';
+        await Promise.all(Array.from(clientIds).map(async (clientId) => {
+          const clientSnapshot = await getDoc(doc(this.firestore, 'clients', clientId));
+          clientsMap[clientId] = clientSnapshot.exists()
+            ? (clientSnapshot.data()['companyName'] || 'Cliente Sem Nome')
+            : 'N/A';
+        }));
+      }
+
+      // Carrega configurações de lembrete por projeto (chave: `${clientId}_${projectId}`)
+      const projectClientCombos = Array.from(projectIds)
+        .map(pid => ({ projectId: pid, clientId: projectsMap[pid]?.clientId }))
+        .filter(c => c.clientId);
+
+      if (projectClientCombos.length > 0) {
+        await Promise.all(projectClientCombos.map(async ({ projectId, clientId }) => {
+          const docKey = `${clientId}_${projectId}`;
+          try {
+            const remDoc = await getDoc(doc(this.firestore, 'reminderSettings', docKey));
+            reminderSettingsMap[docKey] = remDoc.exists() ? {
+              enabled: !!remDoc.data()['enabled'],
+              intervalDays: Number(remDoc.data()['intervalDays'] || 3),
+              maxReminders: Number(remDoc.data()['maxReminders'] || 0),
+              sendTime: String(remDoc.data()['sendTime'] || '09:00'),
+              timezone: String(remDoc.data()['timezone'] || 'America/Fortaleza'),
+            } : { enabled: false, intervalDays: 3, maxReminders: 0, sendTime: '09:00', timezone: 'America/Fortaleza' };
+          } catch {
+            reminderSettingsMap[docKey] = { enabled: false, intervalDays: 3, maxReminders: 0, sendTime: '09:00', timezone: 'America/Fortaleza' };
           }
-        });
-        await Promise.all(clientsPromises);
+        }));
       }
 
       const participants: UnifiedParticipant[] = [];
@@ -516,6 +548,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         let sentAt: Date | undefined;
         let completedAt: Date | undefined;
         let status: string = 'Não Enviado';
+        let reminderCount: number = 0;
+        let nextReminderAt: Date | undefined;
+        let lastReminderAt: Date | undefined;
 
         const selectedAssessmentId = this.assessmentFormControl.value;
         let assessmentIdsToQuery: string[] = [];
@@ -544,6 +579,17 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             if (linkData['status'] === 'completed' && linkData['completedAt']) {
               const linkCompletedAt = (linkData['completedAt'] as Timestamp).toDate();
               if (!completedAt || linkCompletedAt > completedAt) completedAt = linkCompletedAt;
+            }
+            // Dados de lembrete (do link mais recente com dados de lembrete)
+            const rc = Number(linkData['reminderCount'] || 0);
+            if (rc > reminderCount) reminderCount = rc;
+            if (linkData['nextReminderAt']) {
+              const nra = (linkData['nextReminderAt'] as Timestamp).toDate();
+              if (!nextReminderAt || nra < nextReminderAt) nextReminderAt = nra;
+            }
+            if (linkData['lastReminderSentAt']) {
+              const lrs = (linkData['lastReminderSentAt'] as Timestamp).toDate();
+              if (!lastReminderAt || lrs > lastReminderAt) lastReminderAt = lrs;
             }
           });
         };
@@ -593,6 +639,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             avaliadoId: participantData['avaliadoId'] || undefined,
             cargo: participantData['cargo'] || undefined,
             setor: participantData['setor'] || undefined,
+            reminderCount,
+            nextReminderAt,
+            lastReminderAt,
+            reminderEnabled: reminderSettingsMap[`${clientId}_${projectId}`]?.enabled ?? false,
+            maxReminders: reminderSettingsMap[`${clientId}_${projectId}`]?.maxReminders ?? 0,
+            intervalDays: reminderSettingsMap[`${clientId}_${projectId}`]?.intervalDays ?? 3,
+            reminderSendTime: reminderSettingsMap[`${clientId}_${projectId}`]?.sendTime ?? '09:00',
+            reminderTimezone: reminderSettingsMap[`${clientId}_${projectId}`]?.timezone ?? 'America/Fortaleza',
           });
         }
       }
@@ -704,6 +758,89 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     if (completedAt) return 'Respondido';
     if (sentAt) return 'Enviado (Pendente)';
     return 'Não Enviado';
+  }
+
+  getReminderTooltip(p: UnifiedParticipant): string {
+    if (!p.reminderEnabled) return 'Lembretes automáticos não configurados para este cliente';
+    if (p.maxReminders && p.maxReminders > 0 && (p.reminderCount ?? 0) >= p.maxReminders) {
+      return `Limite de ${p.maxReminders} lembrete(s) atingido`;
+    }
+
+    const lines: string[] = [];
+
+    // Data do próximo disparo (lida diretamente do Firestore via nextReminderAt)
+    const nextDate = p.nextReminderAt;
+
+    if (nextDate) {
+      const now    = new Date();
+      const diffMs = nextDate.getTime() - now.getTime();
+      const diffH  = Math.round(diffMs / 3_600_000);
+      const diffD  = Math.floor(diffMs / 86_400_000);
+
+      let quando: string;
+      if (diffMs < 0) {
+        quando = 'Aguardando próximo ciclo de processamento';
+      } else if (diffH < 1) {
+        quando = 'Em menos de 1 hora';
+      } else if (diffH < 24) {
+        quando = `Em ~${diffH}h`;
+      } else {
+        quando = `Em ${diffD} dia${diffD !== 1 ? 's' : ''}`;
+      }
+
+      const fmt = nextDate.toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+      lines.push(`Próximo disparo: ${fmt} (${quando})`);
+    } else {
+      lines.push('Próximo disparo: não agendado');
+    }
+
+    // Último lembrete enviado
+    if (p.lastReminderAt) {
+      const fmt = p.lastReminderAt.toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+      lines.push(`Último enviado: ${fmt}`);
+    }
+
+    // Contagem
+    const countLabel = p.maxReminders && p.maxReminders > 0
+      ? `${p.reminderCount ?? 0} de ${p.maxReminders} lembrete(s) enviado(s)`
+      : `${p.reminderCount ?? 0} lembrete(s) enviado(s)`;
+    lines.push(countLabel);
+
+    if (p.intervalDays) lines.push(`Intervalo: a cada ${p.intervalDays} dia(s)`);
+
+    return lines.join('\n');
+  }
+
+  /** Calcula próximo disparo respeitando sendTime e timezone (mesmo algoritmo do reminder-settings). */
+  private calcNextReminderDate(base: Date, intervalDays: number, sendTime: string, timezone: string): Date {
+    const targetDay = new Date(base.getTime() + intervalDays * 86400000);
+    const dateFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    const dp = dateFmt.formatToParts(targetDay);
+    const year  = dp.find(p => p.type === 'year')?.value  ?? '2000';
+    const month = dp.find(p => p.type === 'month')?.value ?? '01';
+    const day   = dp.find(p => p.type === 'day')?.value   ?? '01';
+    const datePart = `${year}-${month}-${day}`;
+
+    const noonUtc = new Date(`${datePart}T12:00:00Z`);
+    const timeFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, hour: 'numeric', minute: '2-digit', hour12: false,
+    });
+    const tp = timeFmt.formatToParts(noonUtc);
+    const tzH = Number(tp.find(p => p.type === 'hour')?.value   ?? '0');
+    const tzM = Number(tp.find(p => p.type === 'minute')?.value ?? '0');
+    const offsetMin = tzH * 60 + tzM - 720;
+
+    const [sh, sm] = sendTime.split(':').map(Number);
+    const utcMin = sh * 60 + sm - offsetMin;
+    return new Date(new Date(`${datePart}T00:00:00Z`).getTime() + utcMin * 60000);
   }
 
   onClientChange(): void {

@@ -814,3 +814,66 @@
   color: #cbd5e1;
   font-size: 12px;
 }
+
+// ─── Coluna Lembrete ──────────────────────────────────────────
+.col-header-lembrete {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+}
+
+.reminder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+
+  mat-icon { font-size: 13px; width: 13px; height: 13px; }
+
+  &--done {
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+  }
+  &--waiting {
+    background: #f8fafc;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
+  }
+  &--off {
+    background: #f8fafc;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
+  }
+  &--limit {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+  }
+  &--active {
+    background: #eff6ff;
+    color: #1B84FF;
+    border: 1px solid #bfdbfe;
+    cursor: help;
+    transition: background 0.15s;
+    &:hover { background: #dbeafe; }
+  }
+  &--limit {
+    cursor: help;
+  }
+}
+
+// Tooltip multi-linha para lembretes
+// (precisa estar em styles globais ou com ::ng-deep — usamos ::ng-deep aqui)
+::ng-deep .reminder-tooltip {
+  white-space: pre-line !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+  max-width: 280px !important;
+}

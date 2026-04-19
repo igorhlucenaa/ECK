@@ -325,15 +325,20 @@
           </ng-container>
 
           <ng-container matColumnDef="responseRate">
-            <th mat-header-cell *matHeaderCellDef>{{ '% Resposta' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Progresso' | translate }}</th>
             <td mat-cell *matCellDef="let row" class="col-rate">
-              <div class="rate-bar">
-                <div class="rate-bar__fill" [style.width.%]="row.responseRate"
-                     [class.rate-bar__fill--low]="row.responseRate < 40"
-                     [class.rate-bar__fill--mid]="row.responseRate >= 40 && row.responseRate < 80"
-                     [class.rate-bar__fill--high]="row.responseRate >= 80"></div>
+              <div class="rate-cell">
+                <div class="rate-cell__top">
+                  <div class="rate-bar">
+                    <div class="rate-bar__fill" [style.width.%]="row.responseRate"
+                         [class.rate-bar__fill--low]="row.responseRate < 40"
+                         [class.rate-bar__fill--mid]="row.responseRate >= 40 && row.responseRate < 80"
+                         [class.rate-bar__fill--high]="row.responseRate >= 80"></div>
+                  </div>
+                  <span class="rate-label">{{ row.responseRate }}%</span>
+                </div>
+                <span class="rate-count">{{ row.respondedParticipants }} / {{ row.totalParticipants }} responderam</span>
               </div>
-              <span class="rate-label">{{ row.responseRate }}%</span>
             </td>
           </ng-container>
 
@@ -688,15 +693,20 @@
 
           <!-- % Resposta -->
           <ng-container matColumnDef="responseRate">
-            <th mat-header-cell *matHeaderCellDef>{{ '% Resposta' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Progresso' | translate }}</th>
             <td mat-cell *matCellDef="let row" class="col-rate">
-              <div class="rate-bar">
-                <div class="rate-bar__fill" [style.width.%]="row.responseRate"
-                     [class.rate-bar__fill--low]="row.responseRate < 40"
-                     [class.rate-bar__fill--mid]="row.responseRate >= 40 && row.responseRate < 80"
-                     [class.rate-bar__fill--high]="row.responseRate >= 80"></div>
+              <div class="rate-cell">
+                <div class="rate-cell__top">
+                  <div class="rate-bar">
+                    <div class="rate-bar__fill" [style.width.%]="row.responseRate"
+                         [class.rate-bar__fill--low]="row.responseRate < 40"
+                         [class.rate-bar__fill--mid]="row.responseRate >= 40 && row.responseRate < 80"
+                         [class.rate-bar__fill--high]="row.responseRate >= 80"></div>
+                  </div>
+                  <span class="rate-label">{{ row.responseRate }}%</span>
+                </div>
+                <span class="rate-count">{{ row.respondedParticipants }} / {{ row.totalParticipants }} responderam</span>
               </div>
-              <span class="rate-label">{{ row.responseRate }}%</span>
             </td>
           </ng-container>
 

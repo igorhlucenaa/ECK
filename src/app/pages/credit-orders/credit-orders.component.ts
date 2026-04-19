@@ -25,7 +25,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
@@ -61,6 +61,7 @@ export interface Order {
     MatOptionModule,
     RouterModule,
     FormsModule,
+    ReactiveFormsModule,
     TranslateModule,
     AppPageHeaderComponent,
   ],
@@ -88,6 +89,8 @@ export class CreditOrdersComponent implements OnInit {
   selectedStatus: string = '';
   originalData: Order[] = [];
   clientsList: { id: string; name: string }[] = [];
+  clientsFiltered: { id: string; name: string }[] = [];
+  clientSearchCtrl = new FormControl('');
   selectedClient: string = '';
 
   editingExpirationId: string | null = null;
@@ -136,6 +139,11 @@ export class CreditOrdersComponent implements OnInit {
         id: doc.id,
         name: doc.data()['companyName'] || 'Não identificado',
       }));
+      this.clientsFiltered = [...this.clientsList];
+      this.clientSearchCtrl.valueChanges.subscribe(s => {
+        const q = (s || '').toLowerCase();
+        this.clientsFiltered = this.clientsList.filter(c => c.name.toLowerCase().includes(q));
+      });
 
       if (this.userRole === 'admin_master') {
         await this.expireOrders();
@@ -205,6 +213,11 @@ export class CreditOrdersComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  resetClientSearch(): void {
+    this.clientSearchCtrl.setValue('', { emitEvent: false });
+    this.clientsFiltered = [...this.clientsList];
   }
 
   applyFilter(): void {

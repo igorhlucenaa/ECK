@@ -287,6 +287,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Garantir dados base carregados
     await this.loadClients();
+    this.initClientSearch();
     await this.loadAssessments();
     await this.carregarRelatoriosSalvos();
     await this.carregarTemplatesSalvos();
@@ -354,6 +355,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   isExporting = false;
   exportingLabel = '';
 
+  // ── Geração em Lote ─────────────────────────────────────────────
+  batchPanelOpen = false;
+  batchSelectedParticipants = new Set<string>();
+  batchExcludedCategories = new Set<string>();
+  availableCategoriesForBatch: { grupo: string; totalCount: number }[] = [];
+  isBatchGenerating = false;
+  batchProgress = 0;
+  batchTotal = 0;
+  batchCurrentName = '';
+  batchErrors: { name: string; error: string }[] = [];
+  batchShowEvaluatorConfig = false;
+  readonly ANONYMITY_THRESHOLD = 3;
+
   get builderSavedLabel(): string {
     if (this.selectedTemplateId.value) {
       return this.savedTemplates.find(t => t.id === this.selectedTemplateId.value)?.name || '';
@@ -387,8 +401,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   clientControl = new FormControl('');
 
+  // Filtros de Cliente e Projeto no topo do relatório
+  filterClientControl = new FormControl('');
+  filterProjectControl = new FormControl('');
+  filterProjects: { id: string; name: string; assessmentId?: string }[] = [];
+  allAssessmentsByProject = new Map<string, string>(); // projectId → assessmentId
+
   // Controles para cliente e grupos de competências
   clients: any[] = [];
+  clientsFiltered: any[] = [];
+  clientSearchCtrl = new FormControl('');
   selectedClientId: string | null = null;
   competencyGroups: any[] = [];
   competencyGroupControl = new FormControl('');
@@ -783,6 +805,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Carregar clientes, avaliações e templates primeiro
     await this.loadClients();
+    this.initClientSearch();
     await this.loadAssessments();
     await this.carregarRelatoriosSalvos();
     await this.carregarTemplatesSalvos(); // <-- Carrega os templates
@@ -811,6 +834,37 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
+      // 1b. Popular filtros sequenciais quando vindo de Projetos → Participantes
+      const clientIdParam: string | null = params['clientId'] || null;
+      const projectIdParam: string | null = params['projectId'] || null;
+
+      if (clientIdParam) {
+        this.filterClientControl.setValue(clientIdParam, { emitEvent: false });
+        try {
+          const projectsSnap = await getDocs(
+            query(collection(this.firestore, 'projects'), where('clientId', '==', clientIdParam))
+          );
+          this.filterProjects = projectsSnap.docs
+            .filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status'] || ''))
+            .map(d => ({
+              id: d.id,
+              name: d.data()['name'] || '—',
+              assessmentId: d.data()['assessmentId'] || undefined,
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+          this.allAssessmentsByProject.clear();
+          this.filterProjects.forEach(p => {
+            if (p.assessmentId) this.allAssessmentsByProject.set(p.id, p.assessmentId);
+          });
+        } catch (e) {
+          console.error('[Relatório Individual] Erro ao carregar projetos:', e);
+        }
+      }
+
+      if (projectIdParam) {
+        this.filterProjectControl.setValue(projectIdParam, { emitEvent: false });
+      }
+
       // 2. Setar avaliação nos controles (sem disparar subscriptions)
       this.selectedAssessmentId = assessmentId;
       this.assessmentControl.setValue(assessmentId, { emitEvent: false });
@@ -818,6 +872,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // 3. Resolver e exibir nome da avaliação ANTES de carregar dados pesados
       const assessmentName = await this.resolveAssessmentName(assessmentId);
       this.assessmentSearchControl.setValue(assessmentName, { emitEvent: false });
+
+      // Garantir que filteredAssessments contenha esta avaliação (para o filtro sequencial)
+      if (!this.filteredAssessments.find(a => a.id === assessmentId)) {
+        this.filteredAssessments = [{ id: assessmentId, name: assessmentName }];
+      }
 
       // 4. Definir competências pendentes ANTES de onAssessmentChange
       if (params['competencyIds']) {
@@ -1601,7 +1660,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Mapeamento de categorias do banco para os grupos do relatório
-  private mapCategoriaToGrupo(categoria: string): string {
+  mapCategoriaToGrupo(categoria: string): string {
     if (!categoria) return 'Outros';
     const map: { [key: string]: string } = {
       'Avaliado': 'Avaliado(a)',
@@ -2492,6 +2551,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'graficos': return '#FFA726';
       case 'grafico_defasagem': return '#FF7043';
       case 'tabela': return '#EF5350';
+      case 'tabela_detalhada': return '#00897B';
       case 'competencia_detalhada': return '#EF5350';
       case 'destaques': return '#FFCA28';
       case 'custom': return '#8D6E63';
@@ -2506,15 +2566,28 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'capa': return 'Capa';
       case 'introducao': return 'Introdução';
       case 'resumo': return 'Resumo de Competências';
-      case 'graficos': return 'Gráficos Customizados';
+      case 'graficos': return 'Gráfico';
       case 'grafico_defasagem': return 'Gráfico de Defasagem (Gap)';
       case 'tabela': return 'Tabela de Consolidação';
+      case 'tabela_detalhada': return 'Tabela de Distribuição';
       case 'competencia_detalhada': return 'Tabela por Competência';
       case 'destaques': return 'Pontos de Destaque';
       case 'custom': return 'Customizado';
       case 'texto': return 'Bloco de Texto';
       case 'perguntas_abertas': return 'Perguntas Abertas';
       default: return 'Desconhecido';
+    }
+  }
+
+  getTipoGraficoLabel(tipoGrafico: string): string {
+    switch (tipoGrafico) {
+      case 'barra': return 'Barras Comparativas';
+      case 'radar': return 'Radar Comparativo';
+      case 'pizza-comparativa': return 'Pizza Comparativa';
+      case 'pizza-individual': return 'Pizza Individual';
+      case 'barras-individuais': return 'Barras Individuais';
+      case 'janela_johari': return 'Janela de Johari';
+      default: return 'Gráfico';
     }
   }
 
@@ -4269,6 +4342,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // MÉTODOS PARA GERENCIAMENTO DE CLIENTES E GRUPOS DE COMPETÊNCIAS
   // =============================================
 
+  private initClientSearch(): void {
+    this.clientsFiltered = [...this.clients];
+    this.clientSearchCtrl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(s => {
+        const q = (s || '').toLowerCase();
+        this.clientsFiltered = this.clients.filter(c => c.name.toLowerCase().includes(q));
+      });
+  }
+
+  resetClientSearch(): void {
+    this.clientSearchCtrl.setValue('', { emitEvent: false });
+    this.clientsFiltered = [...this.clients];
+  }
+
   async loadClients(): Promise<void> {
     try {
       const userRole = await this.authService.getCurrentUserRole();
@@ -4318,6 +4406,538 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.competencyGroupControl.reset();
       this.cdr.detectChanges();
     }
+  }
+
+  // ── Geração em Lote ─────────────────────────────────────────────
+
+  toggleBatchPanel(): void {
+    this.batchPanelOpen = !this.batchPanelOpen;
+    if (this.batchPanelOpen) {
+      this.batchSelectedParticipants = new Set(this.avaliadosDisponiveis);
+      this.buildAvailableCategoriesForBatch();
+    }
+  }
+
+  toggleBatchParticipant(name: string): void {
+    if (this.batchSelectedParticipants.has(name)) {
+      this.batchSelectedParticipants.delete(name);
+    } else {
+      this.batchSelectedParticipants.add(name);
+    }
+    this.buildAvailableCategoriesForBatch();
+    this.cdr.detectChanges();
+  }
+
+  get batchSelectedCount(): number {
+    return this.batchSelectedParticipants.size;
+  }
+
+  get allBatchSelected(): boolean {
+    return this.avaliadosDisponiveis.length > 0 &&
+      this.avaliadosDisponiveis.every(a => this.batchSelectedParticipants.has(a));
+  }
+
+  toggleAllBatchParticipants(): void {
+    if (this.allBatchSelected) {
+      this.batchSelectedParticipants.clear();
+    } else {
+      this.batchSelectedParticipants = new Set(this.avaliadosDisponiveis);
+    }
+    this.buildAvailableCategoriesForBatch();
+    this.cdr.detectChanges();
+  }
+
+  buildAvailableCategoriesForBatch(): void {
+    const countMap = new Map<string, number>();
+    for (const avaliado of this.batchSelectedParticipants) {
+      for (const row of this.dataSource) {
+        if (row['avaliado'] !== avaliado) continue;
+        const grupo = this.mapCategoriaToGrupo(row['categoria']);
+        if (grupo === 'Avaliado(a)') continue;
+        countMap.set(grupo, (countMap.get(grupo) || 0) + 1);
+      }
+    }
+    this.availableCategoriesForBatch = Array.from(countMap.entries())
+      .map(([grupo, totalCount]) => ({ grupo, totalCount }))
+      .sort((a, b) => a.grupo.localeCompare(b.grupo, 'pt-BR'));
+  }
+
+  toggleBatchCategoryExclusion(grupo: string): void {
+    if (this.batchExcludedCategories.has(grupo)) {
+      this.batchExcludedCategories.delete(grupo);
+    } else {
+      this.batchExcludedCategories.add(grupo);
+    }
+    this.cdr.detectChanges();
+  }
+
+  isCategoryExcluded(grupo: string): boolean {
+    return this.batchExcludedCategories.has(grupo);
+  }
+
+  getAnonymityWarnings(): { avaliado: string; grupo: string; count: number }[] {
+    const warnings: { avaliado: string; grupo: string; count: number }[] = [];
+    for (const avaliado of this.batchSelectedParticipants) {
+      const countMap = new Map<string, number>();
+      for (const row of this.dataSource) {
+        if (row['avaliado'] !== avaliado) continue;
+        const grupo = this.mapCategoriaToGrupo(row['categoria']);
+        if (grupo === 'Avaliado(a)') continue;
+        if (!this.batchExcludedCategories.has(grupo)) {
+          countMap.set(grupo, (countMap.get(grupo) || 0) + 1);
+        }
+      }
+      for (const [grupo, count] of countMap.entries()) {
+        if (count > 0 && count < this.ANONYMITY_THRESHOLD) {
+          warnings.push({ avaliado, grupo, count });
+        }
+      }
+    }
+    return warnings;
+  }
+
+  async generateBatchReports(): Promise<void> {
+    if (this.isBatchGenerating || this.batchSelectedParticipants.size === 0) return;
+    if (!this.selectedAssessmentId || this.competencias.length === 0) {
+      this.snackBar.open(
+        this.t('Configure as competências antes de gerar relatórios em lote.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return;
+    }
+
+    this.isBatchGenerating = true;
+    this.batchErrors = [];
+    const participants = Array.from(this.batchSelectedParticipants);
+    this.batchTotal = participants.length;
+    this.batchProgress = 0;
+    this.cdr.detectChanges();
+
+    const originalDataSource = this.dataSource;
+    const originalSelectedAvaliado = this.selectedAvaliado;
+
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      for (let i = 0; i < participants.length; i++) {
+        const avaliado = participants[i];
+        this.batchProgress = i;
+        this.batchCurrentName = avaliado;
+        this.cdr.detectChanges();
+        await new Promise(r => setTimeout(r, 0)); // yield to UI
+
+        try {
+          this.selectedAvaliado = avaliado;
+
+          if (this.batchExcludedCategories.size > 0) {
+            this.dataSource = originalDataSource.filter(row => {
+              if (row['avaliado'] !== avaliado) return true;
+              const grupo = this.mapCategoriaToGrupo(row['categoria']);
+              return !this.batchExcludedCategories.has(grupo);
+            });
+          } else {
+            this.dataSource = originalDataSource;
+          }
+
+          this.invalidateCache();
+          const reportData = this.pdfMakeService.prepareReportDataFromComponent(this);
+          const blob = await this.pdfMakeService.generateReportBlob(reportData);
+          const filename = `relatorio-${avaliado.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.pdf`;
+          zip.file(filename, blob);
+        } catch (err: any) {
+          this.batchErrors.push({ name: avaliado, error: err?.message || 'Erro desconhecido' });
+        }
+      }
+
+      this.batchProgress = participants.length;
+      this.cdr.detectChanges();
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const assessmentName = (this.assessments.find(a => a.id === this.selectedAssessmentId)?.name || 'relatorios')
+        .replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+      const zipFilename = `relatorios-${assessmentName}.zip`;
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = zipFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      const successCount = participants.length - this.batchErrors.length;
+      this.snackBar.open(
+        this.batchErrors.length > 0
+          ? `${successCount} relatório(s) gerado(s). ${this.batchErrors.length} erro(s).`
+          : `${successCount} relatório(s) empacotados em ${zipFilename}!`,
+        this.t('Fechar'),
+        { duration: 6000 }
+      );
+    } catch (err: any) {
+      console.error('Erro na geração em lote:', err);
+      this.snackBar.open(
+        `Erro na geração em lote: ${err?.message || 'Erro desconhecido'}`,
+        this.t('Fechar'),
+        { duration: 5000 }
+      );
+    } finally {
+      this.dataSource = originalDataSource;
+      this.selectedAvaliado = originalSelectedAvaliado;
+      this.invalidateCache();
+      this.isBatchGenerating = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  /**
+   * Geração em lote usando html2canvas + jsPDF (PDF de imagem).
+   * Não usa PDFMake nem abre diálogos de impressão — renderiza o DOM
+   * de cada avaliado, captura como imagem e monta o PDF página a página.
+   */
+  async generateBatchReportsPDF(): Promise<void> {
+    if (this.isBatchGenerating || this.batchSelectedParticipants.size === 0) return;
+    if (!this.selectedAssessmentId || this.competencias.length === 0) {
+      this.snackBar.open(this.t('Configure as competências antes de gerar relatórios em lote.'), this.t('Fechar'), { duration: 4000 });
+      return;
+    }
+
+    this.isBatchGenerating = true;
+    this.batchErrors = [];
+    const participants = Array.from(this.batchSelectedParticipants);
+    this.batchTotal = participants.length;
+    this.batchProgress = 0;
+    this.cdr.detectChanges();
+
+    const originalAvaliado = this.selectedAvaliado;
+    const originalDataSource = this.dataSource;
+    let iframe: HTMLIFrameElement | null = null;
+
+    try {
+      // ── Fase 1: capturar o HTML de cada participante ────────────────────────
+      // Usa o mesmo processo do exportarRelatorioPDF: clona o #report-preview,
+      // converte <canvas> em <img> e remove elementos de UI.
+      const htmlBlocks: string[] = [];
+
+      for (let i = 0; i < participants.length; i++) {
+        const avaliado = participants[i];
+        this.batchProgress = i;
+        this.batchCurrentName = avaliado;
+
+        // Aplica filtro de categorias se houver exclusões
+        this.selectedAvaliado = avaliado;
+        if (this.batchExcludedCategories.size > 0) {
+          this.dataSource = originalDataSource.filter(row => {
+            if (row['avaliado'] !== avaliado) return true;
+            return !this.batchExcludedCategories.has(this.mapCategoriaToGrupo(row['categoria']));
+          });
+        } else {
+          this.dataSource = originalDataSource;
+        }
+        this.invalidateCache();
+        this.cdr.detectChanges();
+        // Aguarda DOM + gráficos renderizarem
+        await new Promise(r => setTimeout(r, 800));
+
+        try {
+          const previewEl = document.getElementById('report-preview');
+          if (!previewEl) throw new Error('Elemento #report-preview não encontrado');
+
+          // Converter <canvas> → <img> (canvas não é clonável via cloneNode)
+          const canvases = Array.from(previewEl.querySelectorAll('canvas')) as HTMLCanvasElement[];
+          const canvasDataUrls = canvases.map(c => {
+            try { return c.toDataURL('image/jpeg', 0.92); } catch { return ''; }
+          });
+
+          const clone = previewEl.cloneNode(true) as HTMLElement;
+          Array.from(clone.querySelectorAll('canvas')).forEach((clonedCanvas, j) => {
+            const dataUrl = canvasDataUrls[j];
+            if (!dataUrl) return;
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.width  = canvases[j].style.width  || `${canvases[j].offsetWidth}px`;
+            img.style.height = canvases[j].style.height || `${canvases[j].offsetHeight}px`;
+            img.style.maxWidth = '100%';
+            img.style.display = 'block';
+            clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
+          });
+
+          clone.querySelectorAll('.ui-only').forEach(el => el.remove());
+
+          htmlBlocks.push(clone.innerHTML);
+        } catch (err: any) {
+          this.batchErrors.push({ name: avaliado, error: err?.message || 'Erro desconhecido' });
+        }
+      }
+
+      if (htmlBlocks.length === 0) {
+        this.snackBar.open('Nenhum relatório pôde ser capturado.', this.t('Fechar'), { duration: 4000 });
+        return;
+      }
+
+      this.batchProgress = participants.length;
+      this.cdr.detectChanges();
+
+      // ── Fase 2: montar único iframe com todos os relatórios ────────────────
+      // Idêntico ao exportarRelatorioPDF — mesmos estilos, mesma estrutura.
+      // Cada participante é separado por page-break-after para o browser
+      // paginar corretamente ao imprimir/salvar como PDF.
+      const angularStyles = Array.from(document.head.querySelectorAll('style'))
+        .map(s => s.innerHTML).join('\n');
+      const linkTags = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML).join('\n');
+
+      const combinedBody = htmlBlocks.map((html, idx) => {
+        const isLast = idx === htmlBlocks.length - 1;
+        return `<div class="rp-batch-report"${isLast ? '' : ' style="page-break-after:always;"'}>${html}</div>`;
+      }).join('\n');
+
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;border:none;visibility:hidden;';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument!;
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="${window.location.origin}/">
+  ${linkTags}
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+    * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+    body { margin: 0; padding: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background: #fff; width: 186mm; }
+    .rp-batch-report {
+      width: 100%;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      zoom: 0.82;
+    }
+    .report-section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 4mm; }
+    h1 { font-size: 1.5em !important; margin: 3mm 0 2mm !important; }
+    h2 { font-size: 1.2em !important; margin: 2mm 0 1.5mm !important; }
+    h3 { font-size: 1.05em !important; margin: 2mm 0 1mm !important; }
+    p  { margin: 1.5mm 0 !important; }
+    td, th { padding: 4px 8px !important; }
+    table { border-collapse: collapse; }
+    img, svg { max-width: 100% !important; height: auto; }
+    ${angularStyles}
+  </style>
+</head>
+<body>
+  ${combinedBody}
+  <script>
+    (function scaleOverflowingTables() {
+      var bodyWidth = document.body.offsetWidth;
+      document.querySelectorAll('table').forEach(function(table) {
+        var natural = table.scrollWidth;
+        if (natural <= bodyWidth + 2) return;
+        var scale    = bodyWidth / natural;
+        var origH    = table.offsetHeight;
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'width:100%;overflow:hidden;display:block;';
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(table);
+        table.style.transformOrigin = 'top left';
+        table.style.transform       = 'scale(' + scale + ')';
+        table.style.marginBottom    = (origH * (scale - 1)) + 'px';
+      });
+    })();
+  <\/script>
+</body>
+</html>`);
+      iframeDoc.close();
+
+      // ── Fase 3: imprimir ────────────────────────────────────────────────────
+      await new Promise<void>((resolve) => {
+        const doPrint = () => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            window.removeEventListener('afterprint', finish);
+            try { iframe!.contentWindow?.removeEventListener('afterprint', finish); } catch {}
+            clearTimeout(safetyTimer);
+            resolve();
+          };
+          window.addEventListener('afterprint', finish);
+          try { iframe!.contentWindow?.addEventListener('afterprint', finish); } catch {}
+          const safetyTimer = setTimeout(finish, 5 * 60 * 1000);
+          iframe!.contentWindow?.focus();
+          iframe!.contentWindow?.print();
+        };
+        iframe!.addEventListener('load', () => setTimeout(doPrint, 400));
+      });
+
+      const ok = htmlBlocks.length;
+      this.snackBar.open(
+        this.batchErrors.length > 0
+          ? `${ok} relatório(s) impressos. ${this.batchErrors.length} erro(s).`
+          : `${ok} relatório(s) prontos — salve como PDF na janela de impressão!`,
+        this.t('Fechar'),
+        { duration: 6000 }
+      );
+    } catch (err: any) {
+      console.error('Erro na geração em lote:', err);
+      this.snackBar.open(`Erro: ${err?.message || 'desconhecido'}`, this.t('Fechar'), { duration: 5000 });
+    } finally {
+      if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
+      this.selectedAvaliado = originalAvaliado;
+      this.dataSource = originalDataSource;
+      this.invalidateCache();
+      this.isBatchGenerating = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  // ── Filtros de Cliente/Projeto no topo ─────────────────────────
+
+  async onFilterClientChange(): Promise<void> {
+    const clientId = this.filterClientControl.value;
+    this.filterProjectControl.setValue('');
+    this.filterProjects = [];
+
+    // Limpa avaliação ao mudar de cliente
+    this.assessmentControl.setValue('', { emitEvent: false });
+    this.assessmentSearchControl.setValue('', { emitEvent: false });
+    this.filteredAssessments = [];
+
+    if (!clientId) return;
+
+    try {
+      const projectsSnap = await getDocs(
+        query(collection(this.firestore, 'projects'), where('clientId', '==', clientId))
+      );
+      this.filterProjects = projectsSnap.docs
+        .filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status'] || ''))
+        .map(d => ({
+          id: d.id,
+          name: d.data()['name'] || '—',
+          assessmentId: d.data()['assessmentId'] || undefined,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+      // Monta mapa projectId → assessmentId
+      this.allAssessmentsByProject.clear();
+      this.filterProjects.forEach(p => {
+        if (p.assessmentId) this.allAssessmentsByProject.set(p.id, p.assessmentId);
+      });
+
+      this.cdr.detectChanges();
+    } catch (e) {
+      console.error('Erro ao carregar projetos para filtro:', e);
+    }
+  }
+
+  getFilterClientLabel(): string {
+    return this.clients.find(c => c.id === this.filterClientControl.value)?.name || '';
+  }
+
+  getFilterProjectLabel(): string {
+    return this.filterProjects.find(p => p.id === this.filterProjectControl.value)?.name || '';
+  }
+
+  clearFilterContext(): void {
+    this.filterClientControl.setValue('');
+    this.filterProjectControl.setValue('');
+    this.filterProjects = [];
+    this.filteredAssessments = [];
+    this.assessmentControl.setValue('', { emitEvent: false });
+    this.assessmentSearchControl.setValue('', { emitEvent: false });
+  }
+
+  async onFilterProjectChange(): Promise<void> {
+    const projectId = this.filterProjectControl.value;
+
+    // Sempre limpa a seleção de avaliação ao trocar de projeto
+    this.assessmentControl.setValue('', { emitEvent: false });
+    this.assessmentSearchControl.setValue('', { emitEvent: false });
+    this.filteredAssessments = [];
+
+    if (!projectId) {
+      this.cdr.detectChanges();
+      return;
+    }
+
+    try {
+      // Fonte 1: assessments que têm projectId diretamente (forma mais confiável)
+      const byProjectSnap = await getDocs(
+        query(collection(this.firestore, 'assessments'), where('projectId', '==', projectId))
+      );
+
+      const found = new Map<string, AssessmentOption>();
+      byProjectSnap.docs.forEach(d => {
+        const name = d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id;
+        found.set(d.id, { id: d.id, name });
+      });
+
+      // Fonte 2: project.assessmentId (vínculo manual via detalhes do projeto)
+      const project = this.filterProjects.find(p => p.id === projectId);
+      let linkedAssessmentId = project?.assessmentId;
+
+      if (!linkedAssessmentId) {
+        const projectDoc = await getDoc(doc(this.firestore, 'projects', projectId));
+        if (projectDoc.exists()) {
+          linkedAssessmentId = projectDoc.data()['assessmentId'] || '';
+          if (project && linkedAssessmentId) project.assessmentId = linkedAssessmentId;
+        }
+      }
+
+      if (linkedAssessmentId && !found.has(linkedAssessmentId)) {
+        // Busca a avaliação vinculada se ainda não está no mapa
+        let linked = this.assessments.find(a => a.id === linkedAssessmentId);
+        if (!linked) {
+          const snap = await getDoc(doc(this.firestore, 'assessments', linkedAssessmentId));
+          if (snap.exists()) {
+            const d = snap.data();
+            linked = { id: linkedAssessmentId, name: d['name'] || d['surveyJSON']?.['title'] || linkedAssessmentId };
+          }
+        }
+        if (linked) found.set(linked.id, linked);
+      }
+
+      // Atualiza cache global e popula dropdown
+      found.forEach(a => {
+        if (!this.assessments.find(x => x.id === a.id)) this.assessments.push(a);
+      });
+
+      if (found.size > 0) {
+        this.filteredAssessments = Array.from(found.values());
+      } else {
+        // Nenhum vínculo direto encontrado: mostra todas as avaliações do cliente
+        const clientId = this.filterClientControl.value;
+        if (clientId) {
+          const clientSnap = await getDocs(
+            query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
+          );
+          this.filteredAssessments = clientSnap.docs.map(d => ({
+            id: d.id,
+            name: d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id,
+          }));
+          this.filteredAssessments.forEach(a => {
+            if (!this.assessments.find(x => x.id === a.id)) this.assessments.push(a);
+          });
+        } else {
+          this.filteredAssessments = [...this.assessments];
+        }
+      }
+
+      // Auto-seleciona se houver exatamente uma avaliação
+      if (this.filteredAssessments.length === 1) {
+        const only = this.filteredAssessments[0];
+        this.assessmentSearchControl.setValue(only.name, { emitEvent: false });
+        this.assessmentControl.setValue(only.id);
+      }
+    } catch (e) {
+      console.error('[onFilterProjectChange] Erro ao carregar avaliações do projeto:', e);
+      this.filteredAssessments = [...this.assessments];
+    }
+
+    this.cdr.detectChanges();
   }
 
   async loadCompetencyGroups(clientId: string): Promise<void> {

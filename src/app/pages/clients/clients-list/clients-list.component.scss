@@ -234,13 +234,9 @@
   width: 100px;
 }
 
-.action-edit {
-  color: #1B84FF !important;
-}
-
-.action-delete {
-  color: #ef4444 !important;
-}
+.action-templates { color: #0e9488 !important; }
+.action-edit      { color: #1B84FF !important; }
+.action-delete    { color: #ef4444 !important; }
 
 // ─── Estado vazio ────────────────────────────────────────────
 .no-data-row td {

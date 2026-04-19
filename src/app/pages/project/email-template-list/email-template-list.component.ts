@@ -59,6 +59,9 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
   clients: any[] = [];
   clientFilter: string = '';
 
+  projects: any[] = [];
+  projectFilter: string = '';
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -91,6 +94,13 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     this.userClientId = this.userClientIds[0] || null;
 
     await this.loadClients();
+
+    // Se veio de rota com clientId, pré-seleciona o filtro visual e carrega projetos
+    if (this.clientId) {
+      this.clientFilter = this.clientId;
+      await this.loadProjects(this.clientId);
+    }
+
     await this.loadTemplates();
   }
 
@@ -236,14 +246,49 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     }
   }
 
-  onClientChange(clientId: string): void {
+  async onClientChange(clientId: string): Promise<void> {
     this.clientFilter = clientId;
+    this.projectFilter = '';
+    this.projects = [];
+    if (clientId) {
+      await this.loadProjects(clientId);
+    }
     this.applyFilter();
+  }
+
+  private async loadProjects(clientId: string): Promise<void> {
+    try {
+      const snap = await getDocs(
+        query(collection(this.firestore, 'projects'), where('clientId', '==', clientId))
+      );
+      this.projects = snap.docs
+        .filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status'] || ''))
+        .map(d => ({ id: d.id, name: d.data()['name'] || '—' }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    } catch (e) {
+      console.error('Erro ao carregar projetos:', e);
+    }
+  }
+
+  onProjectChange(projectId: string): void {
+    this.projectFilter = projectId;
+  }
+
+  /** clientId efetivo para o envio: rota tem prioridade, senão usa o filtro */
+  get effectiveClientId(): string | null {
+    return this.clientId || this.clientFilter || null;
+  }
+
+  /** projectId efetivo para o envio: rota tem prioridade, senão usa o filtro */
+  get effectiveProjectId(): string | null {
+    return this.projectId || this.projectFilter || null;
   }
 
   clearFilters(): void {
     this.searchQuery = '';
     this.emailTypeFilter = '';
+    this.projectFilter = '';
+    this.projects = [];
     this.clientFilter = (this.userRole === 'admin_client' && this.clients.length === 1)
       ? this.clients[0].id
       : '';

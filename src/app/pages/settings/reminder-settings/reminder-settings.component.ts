@@ -1,14 +1,22 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import {
+  DocumentData,
+  FieldValue,
   Firestore,
+  QueryDocumentSnapshot,
+  Timestamp,
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
+  query,
   setDoc,
+  where,
+  writeBatch,
 } from '@angular/fire/firestore';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { MaterialModule } from 'src/app/material.module';
@@ -16,6 +24,11 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { environment } from 'src/enviroments/environment';
 
 interface ClientOption {
+  id: string;
+  name: string;
+}
+
+interface ProjectOption {
   id: string;
   name: string;
 }
@@ -48,6 +61,7 @@ interface WeekdayOption {
 export class ReminderSettingsComponent implements OnInit {
   readonly form = this.fb.group({
     enabled: this.fb.nonNullable.control(false),
+    startDate: this.fb.control<Date | null>(null, [Validators.required]),
     intervalDays: this.fb.nonNullable.control(3, [
       Validators.required,
       Validators.min(1),
@@ -61,6 +75,14 @@ export class ReminderSettingsComponent implements OnInit {
     templateIdAvaliado: this.fb.nonNullable.control(''),
     templateIdAvaliador: this.fb.nonNullable.control(''),
   });
+
+  readonly today: Date = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+
+  readonly filterStartDates = (d: Date | null): boolean => !d || d >= this.today;
 
   readonly weekdayOptions: WeekdayOption[] = [
     { value: 1, label: 'Seg' },
@@ -84,8 +106,13 @@ export class ReminderSettingsComponent implements OnInit {
   userRole = '';
   userEmail = '';
   clients: ClientOption[] = [];
+  clientsFiltered: ClientOption[] = [];
+  clientSearchCtrl = new FormControl('');
+  projects: ProjectOption[] = [];
   templates: TemplateOption[] = [];
   selectedClientId = '';
+  selectedProjectId = '';
+  isLoadingProjects = false;
 
   isLoading = true;
   isSaving = false;
@@ -104,11 +131,29 @@ export class ReminderSettingsComponent implements OnInit {
     return this.userRole === 'admin_master';
   }
 
+  /** Chave do documento Firestore: sempre por projeto */
+  get settingsDocId(): string {
+    return `${this.selectedClientId}_${this.selectedProjectId}`;
+  }
+
+  get selectedClientName(): string {
+    return this.clients.find(c => c.id === this.selectedClientId)?.name || '';
+  }
+
+  get selectedProjectName(): string {
+    return this.projects.find(p => p.id === this.selectedProjectId)?.name || '';
+  }
+
   async ngOnInit(): Promise<void> {
     this.userRole = (await this.authService.getCurrentUserRole()) || '';
     this.userEmail = (await this.authService.getCurrentUserEmail()) || '';
 
     await this.loadClients();
+    this.resetClientSearch();
+    this.clientSearchCtrl.valueChanges.subscribe(s => {
+      const q = (s || '').toLowerCase();
+      this.clientsFiltered = this.clients.filter(c => c.name.toLowerCase().includes(q));
+    });
 
     if (!this.clients.length) {
       this.isLoading = false;
@@ -116,8 +161,11 @@ export class ReminderSettingsComponent implements OnInit {
     }
 
     this.selectedClientId = this.clients[0].id;
-    await this.loadTemplates(this.selectedClientId);
-    await this.loadSettings(this.selectedClientId);
+    // Carrega projetos e templates; settings só carregam depois que o usuário selecionar um projeto
+    await Promise.all([
+      this.loadTemplates(this.selectedClientId),
+      this.loadProjects(this.selectedClientId),
+    ]);
     this.isLoading = false;
   }
 
@@ -144,15 +192,56 @@ export class ReminderSettingsComponent implements OnInit {
   async onClientChange(clientId: string): Promise<void> {
     if (!clientId) return;
     this.selectedClientId = clientId;
+    this.selectedProjectId = '';
+    this.projects = [];
+    // Limpa o formulário ao trocar de cliente (nenhum projeto selecionado ainda)
+    this.form.reset({ enabled: false, startDate: null, intervalDays: 3, maxReminders: 0, sendTime: '09:00', timezone: 'America/Fortaleza', weekdays: [], templateIdDefault: '', templateIdAvaliado: '', templateIdAvaliador: '' });
+    this.lastRunAt = null;
+    this.lastRunSummary = null;
     this.isLoading = true;
-    await this.loadTemplates(clientId);
-    await this.loadSettings(clientId);
+    await Promise.all([
+      this.loadTemplates(clientId),
+      this.loadProjects(clientId),
+    ]);
     this.isLoading = false;
   }
 
+  async onProjectChange(projectId: string): Promise<void> {
+    this.selectedProjectId = projectId;
+    if (!projectId) {
+      // Sem projeto selecionado: limpa o formulário
+      this.form.reset({ enabled: false, startDate: null, intervalDays: 3, maxReminders: 0, sendTime: '09:00', timezone: 'America/Fortaleza', weekdays: [], templateIdDefault: '', templateIdAvaliado: '', templateIdAvaliador: '' });
+      this.lastRunAt = null;
+      this.lastRunSummary = null;
+      return;
+    }
+    this.isLoading = true;
+    await this.loadSettings();
+    this.isLoading = false;
+  }
+
+  private async loadProjects(clientId: string): Promise<void> {
+    if (!clientId) { this.projects = []; return; }
+    this.isLoadingProjects = true;
+    try {
+      const snap = await getDocs(
+        query(collection(this.firestore, 'projects'), where('clientId', '==', clientId))
+      );
+      this.projects = snap.docs
+        .filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status'] || ''))
+        .map(d => ({ id: d.id, name: String(d.data()['name'] || 'Projeto sem nome') }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    } catch (e) {
+      console.error('Erro ao carregar projetos:', e);
+      this.projects = [];
+    } finally {
+      this.isLoadingProjects = false;
+    }
+  }
+
   async saveSettings(): Promise<void> {
-    if (!this.selectedClientId) {
-      this.snackBar.open('Selecione um cliente para salvar as configuracoes.', 'Fechar', {
+    if (!this.selectedClientId || !this.selectedProjectId) {
+      this.snackBar.open('Selecione um cliente e um projeto para salvar as configuracoes.', 'Fechar', {
         duration: 3000,
       });
       return;
@@ -179,11 +268,20 @@ export class ReminderSettingsComponent implements OnInit {
       return;
     }
 
+    const startDateValue = this.form.controls.startDate.value;
+    if (!startDateValue) {
+      this.snackBar.open('Selecione a data de início dos lembretes.', 'Fechar', { duration: 3000 });
+      return;
+    }
+    const startDate = new Date(startDateValue);
+    startDate.setHours(0, 0, 0, 0);
+
     this.isSaving = true;
     try {
       const payload = {
         clientId: this.selectedClientId,
         enabled: this.form.controls.enabled.value,
+        startDate: Timestamp.fromDate(startDate),
         intervalDays: this.toPositiveInt(this.form.controls.intervalDays.value, 3),
         maxReminders: Math.max(0, Number(this.form.controls.maxReminders.value || 0)),
         sendTime,
@@ -196,11 +294,26 @@ export class ReminderSettingsComponent implements OnInit {
         updatedBy: this.userEmail || 'system',
       };
 
-      await setDoc(doc(this.firestore, 'reminderSettings', this.selectedClientId), payload, {
-        merge: true,
-      });
+      const payloadWithScope = { ...payload, projectId: this.selectedProjectId };
 
-      await this.triggerImmediateReminderProcessing(this.selectedClientId);
+      await setDoc(
+        doc(this.firestore, 'reminderSettings', this.settingsDocId),
+        payloadWithScope,
+        { merge: true }
+      );
+
+      await this.propagateSettingsToLinks(
+        this.selectedClientId,
+        this.selectedProjectId,
+        payload.enabled,
+        startDate,
+        payload.intervalDays,
+        payload.maxReminders,
+        sendTime,
+        payload.timezone
+      );
+
+      await this.triggerImmediateReminderProcessing(this.selectedClientId, this.selectedProjectId);
 
       this.snackBar.open('Configuracoes de lembrete salvas com sucesso.', 'Fechar', {
         duration: 3000,
@@ -213,6 +326,158 @@ export class ReminderSettingsComponent implements OnInit {
     } finally {
       this.isSaving = false;
     }
+  }
+
+  /**
+   * Retorna o instante UTC correspondente a `sendTime` no `timezone` do dia
+   * que fica `offsetDays` dias após `base` (adição em ms, sem arredondar para
+   * meia-noite, de forma que cruzamentos de DST sejam tratados corretamente).
+   * Usa formatToParts para ser imune a separadores de locale.
+   */
+  private buildOccurrenceAt(base: Date, offsetDays: number, sendTime: string, timezone: string): Date {
+    const targetDay = new Date(base.getTime() + offsetDays * 86_400_000);
+
+    const dateFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    const dp = dateFmt.formatToParts(targetDay);
+    const year  = dp.find(p => p.type === 'year')?.value  ?? '2000';
+    const month = dp.find(p => p.type === 'month')?.value ?? '01';
+    const day   = dp.find(p => p.type === 'day')?.value   ?? '01';
+    const datePart = `${year}-${month}-${day}`;
+
+    // Offset UTC: verificamos o que o meio-dia UTC parece no timezone alvo
+    const noonUtc = new Date(`${datePart}T12:00:00Z`);
+    const timeFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, hour: 'numeric', minute: '2-digit', hour12: false,
+    });
+    const tp = timeFmt.formatToParts(noonUtc);
+    const tzH = Number(tp.find(p => p.type === 'hour')?.value   ?? '0');
+    const tzM = Number(tp.find(p => p.type === 'minute')?.value ?? '0');
+    const offsetMin = tzH * 60 + tzM - 720; // ex: -180 para UTC-3
+
+    const [sh, sm] = sendTime.split(':').map(Number);
+    const utcMin = sh * 60 + sm - offsetMin;
+    const dayStartUtc = new Date(`${datePart}T00:00:00Z`).getTime();
+    return new Date(dayStartUtc + utcMin * 60_000);
+  }
+
+  /**
+   * Encontra o próximo disparo futuro em O(1):
+   * - Se lastSent existe: próxima ocorrência a partir de lastSent + intervalDays
+   * - Se não: primeira ocorrência a partir de startDate (disparo no próprio startDate)
+   * - Se o resultado ainda estiver no passado, salta para frente pelo número mínimo
+   *   de intervalos necessários para ultrapassar `now`.
+   */
+  private computeNextReminder(
+    lastSent: Date | null,
+    startDate: Date,
+    intervalDays: number,
+    sendTime: string,
+    timezone: string,
+    now: Date,
+  ): Date {
+    // Âncora e offset inicial
+    const anchor      = lastSent ?? startDate;
+    const firstOffset = lastSent ? intervalDays : 0; // sem lastSent → dispara no próprio startDate
+
+    let next = this.buildOccurrenceAt(anchor, firstOffset, sendTime, timezone);
+
+    if (next > now) return next;
+
+    // Salta direto para o slot futuro mais próximo (O(1))
+    const msPerInterval = intervalDays * 86_400_000;
+    const gap   = now.getTime() - next.getTime();
+    const extra = Math.ceil(gap / msPerInterval);          // quantos intervalos a pular
+    next = this.buildOccurrenceAt(anchor, firstOffset + intervalDays * extra, sendTime, timezone);
+
+    // Margem de segurança para bordas de DST
+    if (next <= now) {
+      next = this.buildOccurrenceAt(anchor, firstOffset + intervalDays * (extra + 1), sendTime, timezone);
+    }
+
+    return next;
+  }
+
+  private async propagateSettingsToLinks(
+    clientId: string,
+    projectId: string,
+    enabled: boolean,
+    startDate: Date,
+    intervalDays: number,
+    maxReminders: number,
+    sendTime: string,
+    timezone: string,
+  ): Promise<void> {
+    try {
+      // Busca links por clientId+projectId (novos) E por assessmentId (legados sem esses campos).
+      // Ambas as queries rodam em paralelo; o resultado é deduplicado por ID de documento.
+      const projectSnap = await getDoc(doc(this.firestore, 'projects', projectId));
+      const assessmentId: string | null = projectSnap.exists()
+        ? (projectSnap.data()['assessmentId'] || null)
+        : null;
+
+      const [newSnap, oldSnap] = await Promise.all([
+        getDocs(query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('clientId', '==', clientId),
+          where('projectId', '==', projectId),
+          where('status', '==', 'pending'),
+        )),
+        assessmentId
+          ? getDocs(query(
+              collection(this.firestore, 'assessmentLinks'),
+              where('assessmentId', '==', assessmentId),
+              where('status', '==', 'pending'),
+            ))
+          : Promise.resolve(null),
+      ]);
+
+      const docsMap = new Map<string, QueryDocumentSnapshot<DocumentData>>();
+      newSnap.docs.forEach(d => docsMap.set(d.id, d));
+      oldSnap?.docs.forEach(d => docsMap.set(d.id, d));
+
+      if (docsMap.size === 0) return;
+
+      const now   = new Date();
+      const BATCH = 400;
+      let batch   = writeBatch(this.firestore);
+      let ops     = 0;
+
+      for (const linkDoc of docsMap.values()) {
+        const data: DocumentData = linkDoc.data();
+        const reminderCount: number = data['reminderCount'] ?? 0;
+        const update: { [field: string]: FieldValue | Timestamp } = {};
+
+        if (!enabled) {
+          update['nextReminderAt'] = deleteField();
+        } else if (maxReminders > 0 && reminderCount >= maxReminders) {
+          update['nextReminderAt'] = deleteField();
+        } else {
+          // Usa lastReminderSentAt quando disponível (mantém cadência real);
+          // caso contrário ancora em startDate (configura a partir do zero).
+          const lastSent = this.toDate(data['lastReminderSentAt']);
+          const next     = this.computeNextReminder(lastSent, startDate, intervalDays, sendTime, timezone, now);
+          update['nextReminderAt'] = Timestamp.fromDate(next);
+        }
+
+        batch.update(linkDoc.ref, update);
+        if (++ops >= BATCH) {
+          await batch.commit();
+          batch = writeBatch(this.firestore);
+          ops   = 0;
+        }
+      }
+
+      if (ops > 0) await batch.commit();
+    } catch (error) {
+      console.error('Erro ao propagar configurações para assessmentLinks:', error);
+    }
+  }
+
+  resetClientSearch(): void {
+    this.clientSearchCtrl.setValue('', { emitEvent: false });
+    this.clientsFiltered = [...this.clients];
   }
 
   private async loadClients(): Promise<void> {
@@ -252,17 +517,20 @@ export class ReminderSettingsComponent implements OnInit {
     }
   }
 
-  private async triggerImmediateReminderProcessing(clientId: string): Promise<void> {
+  private async triggerImmediateReminderProcessing(clientId: string, projectId?: string): Promise<void> {
     const triggerUrl = environment.functions?.triggerPendingAssessmentRemindersUrl;
     if (!triggerUrl) {
       return;
     }
 
     try {
+      const body: Record<string, string> = { clientId };
+      if (projectId) body['projectId'] = projectId;
+
       const response = await fetch(triggerUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -308,9 +576,11 @@ export class ReminderSettingsComponent implements OnInit {
     }
   }
 
-  private async loadSettings(clientId: string): Promise<void> {
+  private async loadSettings(): Promise<void> {
     try {
-      const settingsDoc = await getDoc(doc(this.firestore, 'reminderSettings', clientId));
+      // Carrega exclusivamente a config do projeto selecionado
+      const settingsDoc = await getDoc(doc(this.firestore, 'reminderSettings', this.settingsDocId));
+
       this.form.reset({
         enabled: false,
         intervalDays: 3,
@@ -332,6 +602,7 @@ export class ReminderSettingsComponent implements OnInit {
       const data = settingsDoc.data() || {};
       this.form.patchValue({
         enabled: !!data['enabled'],
+        startDate: this.toDate(data['startDate']),
         intervalDays: this.toPositiveInt(data['intervalDays'], 3),
         maxReminders: Math.max(0, Number(data['maxReminders'] || 0)),
         sendTime: this.normalizeTime(data['sendTime']) || '09:00',

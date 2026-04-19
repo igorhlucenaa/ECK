@@ -39,9 +39,17 @@
       <mat-form-field appearance="outline" class="filter-field" *ngIf="!clientId">
         <mat-label>{{ 'Cliente' | translate }}</mat-label>
         <mat-icon matPrefix class="filter-icon">business</mat-icon>
-        <mat-select [(ngModel)]="clientFilterValue" (ngModelChange)="applyFilters()">
+        <mat-select [(ngModel)]="clientFilterValue" (ngModelChange)="applyFilters()"
+                    (closed)="resetClientSearch()">
+          <div class="client-search-wrap">
+            <mat-icon class="client-search-icon">search</mat-icon>
+            <input class="client-search-input" [formControl]="clientSearchCtrl"
+                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   (keydown)="$event.stopPropagation()" />
+          </div>
           <mat-option value="">Todos os clientes</mat-option>
-          <mat-option *ngFor="let c of clients" [value]="c.id">{{ c.companyName }}</mat-option>
+          <mat-option *ngFor="let c of clientsFiltered" [value]="c.id">{{ c.companyName }}</mat-option>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
         </mat-select>
       </mat-form-field>
 

@@ -46,6 +46,12 @@ export const ProjectsRoutes: Routes = [
     data: { role: ALLOWED },
   },
   {
+    path: ':id/templates',
+    component: EmailTemplateListComponent,
+    canActivate: [AuthGuard],
+    data: { role: ALLOWED },
+  },
+  {
     path: ':id/templates/new',
     component: EmailTemplateFormComponent,
     canActivate: [AuthGuard],

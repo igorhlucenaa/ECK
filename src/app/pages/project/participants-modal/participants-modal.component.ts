@@ -28,7 +28,6 @@ import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
-import { ReportGenerationModalComponent } from '../report-generation-modal/report-generation-modal.component';
 import { Timestamp } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
 import { AddParticipantModalComponent } from '../add-participant-modal/add-participant-modal.component';
@@ -795,6 +794,8 @@ export class ParticipantsModalComponent implements OnInit {
           await setDoc(assessmentLinkDoc, {
             assessmentId: assessment.id,
             participantId: participant.id,
+            clientId: this.data.clientId,
+            projectId: this.data.projectId,
             sentAt: new Date(),
             status: 'pending',
             emailTemplate: template.id,
@@ -805,6 +806,8 @@ export class ParticipantsModalComponent implements OnInit {
           await updateDoc(
             doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
             {
+              clientId: this.data.clientId,
+              projectId: this.data.projectId,
               sentAt: new Date(),
               emailTemplate: template.id,
               status:
@@ -1009,25 +1012,20 @@ export class ParticipantsModalComponent implements OnInit {
       return;
     }
 
-    // Abrir o modal de seleção de template e competências
-    const dialogRef = this.dialog.open(ReportGenerationModalComponent, {
-      width: '700px',
-      maxWidth: '90vw',
-      data: {
-        participant: participant,
+    // Fechar todos os modais e navegar direto para a página de relatórios.
+    // As competências são auto-selecionadas pela página de relatórios.
+    this.dialog.closeAll();
+
+    this.router.navigate(['/reports'], {
+      queryParams: {
+        mode: 'individual',
+        clientId: participant.clientId || this.data.clientId,
         projectId: this.data.projectId,
         assessmentId: selectedAssessmentId,
-        clientId: participant.clientId
-      },
-      disableClose: false
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result && result.success) {
-        console.log('Relatório configurado:', result);
-        // O modal já navegou para a página de reports
-        // Fechar este modal também
-        this.dialogRef.close();
+        participantId: participant.id,
+        participantName: participant.name,
+        autoGenerate: 'true',
+        aba: 'visualizar'
       }
     });
   }
