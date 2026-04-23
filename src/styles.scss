@@ -291,6 +291,35 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   overflow-y: auto;
 }
 
+/* Send history dialog */
+.send-history-panel .mat-mdc-dialog-container,
+.send-history-panel .mdc-dialog__container {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
+.send-history-panel .mdc-dialog__surface {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
+.send-history-panel .mat-mdc-dialog-content {
+  padding: 0 !important;
+}
+
+/* Disparar Convites modal — remove Material dialog padding/overflow */
+.participants-modal-dialog .mat-mdc-dialog-container {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+.participants-modal-dialog .mdc-dialog__surface {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
 /* Invisible dialog styles for headless report generation */
 .invisible-dialog .mat-dialog-container {
   background: transparent !important;
@@ -314,6 +343,186 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
    The hidden <input type="color"> must exist in layout so the
    browser can position the native color picker near the toolbar.
    ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   BUSCA DE CLIENTE — campo de pesquisa dentro de mat-select
+   Aplicável em todas as páginas que têm dropdown de cliente.
+   ═══════════════════════════════════════════════════════════════ */
+.client-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px;
+  border-bottom: 1px solid #f1f5f9;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
+}
+
+.client-search-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.client-search-input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #1e293b;
+  background: transparent;
+  width: 100%;
+
+  &::placeholder { color: #94a3b8; }
+}
+
+.client-search-empty {
+  padding: 12px 16px;
+  font-size: 12.5px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU DE CRÉDITOS RESERVADOS (si-credits-menu)
+   ═══════════════════════════════════════════════════════════════ */
+.si-credits-menu .mat-mdc-menu-content {
+  padding: 0 !important;
+  min-width: 280px;
+  max-width: 340px;
+}
+
+.si-credits-menu__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+
+  mat-icon { font-size: 17px; width: 17px; height: 17px; color: #f59e0b; }
+}
+
+.si-credits-menu__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+}
+
+.si-credits-menu__label {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.si-credits-menu__val {
+  font-size: 13px;
+  font-weight: 700;
+  &--avail    { color: #166534; }
+  &--reserved { color: #5b21b6; }
+  &--used     { color: #1e40af; }
+}
+
+.si-credits-menu__section {
+  padding: 8px 0 4px;
+}
+
+.si-credits-menu__section-title {
+  display: block;
+  padding: 4px 16px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.si-credits-menu__participant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  transition: background 0.12s;
+
+  &:hover { background: #f8fafc; }
+}
+
+.si-credits-menu__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &--used { background: linear-gradient(135deg, #1e40af, #3b82f6); }
+}
+
+.si-credits-menu__pinfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.si-credits-menu__pname {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.si-credits-menu__pemail {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.si-credits-menu__pstatus {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: #f1f5f9;
+  color: #64748b;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &--pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  &--used {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+}
+
+.si-credits-menu__empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  font-size: 12.5px;
+  color: #94a3b8;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; color: #22c55e; }
+}
+
 ae-toolbar input[type="color"] {
   display: block !important;
   opacity: 0 !important;

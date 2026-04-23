@@ -686,6 +686,207 @@
   &--expanded  { background: #f8fafc; }
 }
 
+// ─── Créditos v2 — tabela de colunas ─────────────────────────
+.credits-table-wrap {
+  padding: 0;
+}
+
+.credits-col-header {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 100px 110px 110px 100px 40px;
+  gap: 0;
+  padding: 8px 20px;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+
+  &__client {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+  }
+
+  &__num {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+
+    &--used     { color: #b45309; }
+    &--reserved { color: #7c3aed; }
+    &--avail    { color: #16a34a; }
+  }
+
+  &__status, &__expand {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    text-align: center;
+  }
+}
+
+.credits-row-v2 {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 100px 110px 110px 100px 40px;
+  align-items: center;
+  gap: 0;
+  padding: 11px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.12s;
+
+  &:hover { background: #f8fafc; }
+  &--zero { background: #fff8f8 !important; }
+  &--clickable { cursor: pointer; }
+  &--expanded  { background: #f8fafc; }
+
+  &__client {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  &__avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1B2D56, #1B84FF);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  &__status {
+    display: flex;
+    justify-content: center;
+  }
+
+  &__expand {
+    display: flex;
+    justify-content: center;
+  }
+}
+
+.credits-num {
+  font-size: 15px;
+  font-weight: 700;
+
+  &--used     { color: #b45309; }
+  &--reserved { color: #7c3aed; }
+  &--avail    { color: #16a34a; }
+
+  &__icon {
+    font-size: 13px !important;
+    width: 13px !important;
+    height: 13px !important;
+    color: #7c3aed;
+    vertical-align: middle;
+  }
+}
+
+.credits-chevron {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+
+// ─── Filtro de projetos ───────────────────────────────────────
+.projects-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+
+  &__search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 180px;
+    height: 36px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0 10px;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      color: #94a3b8;
+    }
+
+    input {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 13px;
+      color: #1e293b;
+      flex: 1;
+      &::placeholder { color: #94a3b8; }
+    }
+  }
+
+  &__clear {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    padding: 0;
+    color: #94a3b8;
+    mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  }
+
+  &__select {
+    width: 150px;
+
+    ::ng-deep .mat-mdc-form-field-infix {
+      padding-top: 6px !important;
+      padding-bottom: 6px !important;
+      min-height: unset !important;
+    }
+
+    ::ng-deep .mdc-text-field--outlined {
+      height: 36px !important;
+    }
+  }
+
+  &__count {
+    font-size: 12px;
+    color: #64748b;
+    white-space: nowrap;
+    margin-left: auto;
+  }
+}
+
 // ── Detalhe de projetos (expand inline) ──────────────────────
 .credits-projects-detail {
   background: #f8fafc;
@@ -711,10 +912,40 @@
   }
 }
 
+// ── Sub-cabeçalho de colunas nos projetos expandidos ─────────
+.credits-project-cols-header {
+  display: grid;
+  grid-template-columns: 1fr 80px 80px;
+  gap: 8px;
+  padding: 4px 0 6px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 4px;
+
+  &__name {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+  }
+
+  &__val {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+
+    &--used     { color: #b45309; }
+    &--reserved { color: #7c3aed; }
+  }
+}
+
 .credits-project-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 80px 80px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 5px 0;
 
   &:not(:last-child) {
@@ -722,30 +953,50 @@
   }
 
   &__dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #f59e0b;
-    flex-shrink: 0;
+    display: none; // dot replaced by grid layout
   }
 
   &__name {
-    flex: 1;
     font-size: 13px;
     color: #334155;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__used {
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    font-weight: 600;
+    justify-content: center;
+    gap: 3px;
+    font-size: 13px;
+    font-weight: 700;
     color: #b45309;
-    background: rgba(245, 158, 11, 0.08);
-    padding: 2px 8px;
-    border-radius: 999px;
+
+    &--zero { color: #cbd5e1; text-align: center; font-size: 13px; }
+
+    mat-icon {
+      font-size: 13px;
+      width: 13px;
+      height: 13px;
+    }
+  }
+
+  &__reserved {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #7c3aed;
+
+    &--zero { color: #cbd5e1; text-align: center; font-size: 13px; }
 
     mat-icon {
       font-size: 13px;
@@ -760,7 +1011,7 @@
     height: 14px !important;
     color: #d97706;
     vertical-align: middle;
-    margin-right: 2px;
+    flex-shrink: 0;
   }
 
   // Linha de projeto órfão (excluído ou sem projeto)
@@ -769,15 +1020,9 @@
     border-radius: 6px;
     padding: 5px 6px;
 
-    .credits-project-item__dot { background: #d97706; }
-
     .credits-project-item__name {
       color: #92400e;
       font-style: italic;
-      cursor: default;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
     }
   }
 }
@@ -846,7 +1091,7 @@
 
   ::ng-deep .mat-column-clientName { width: 150px; }
   ::ng-deep .mat-column-name       { min-width: 160px; }
-  ::ng-deep .mat-column-responseRate { width: 160px; }
+  ::ng-deep .mat-column-responseRate { width: 180px; }
   ::ng-deep .mat-column-deadline   { width: 120px; }
   ::ng-deep .mat-column-status     { width: 130px; }
 }
@@ -862,7 +1107,19 @@
 .col-rate {
   display: flex;
   align-items: center;
-  gap: 8px;
+}
+
+.rate-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 160px;
+
+  &__top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
 .rate-bar {
@@ -890,6 +1147,12 @@
   color: #64748b;
   white-space: nowrap;
   min-width: 32px;
+}
+
+.rate-count {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
 }
 
 // Prazo

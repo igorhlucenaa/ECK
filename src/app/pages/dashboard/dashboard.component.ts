@@ -17,6 +17,7 @@ import {
   getDoc,
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { ExportDialogComponent } from './export-dialog/export-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
@@ -58,6 +59,7 @@ export interface ProjectRow {
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MaterialModule,
     RouterModule,
     AppPieCardsComponent,
@@ -91,14 +93,19 @@ export class DashboardComponent implements OnInit {
   alerts: AlertItem[] = [];
   alertLevelFilter  = 'all';
   alertClientFilter = 'all';
+  alertSearchQuery  = '';
   alertPageIndex    = 0;
   alertPageSize     = 6;
 
   get filteredAlerts(): AlertItem[] {
+    const q = this.alertSearchQuery.trim().toLowerCase();
     return this.alerts.filter(a => {
       const matchLevel  = this.alertLevelFilter  === 'all' || a.level      === this.alertLevelFilter;
       const matchClient = this.alertClientFilter === 'all' || a.clientName === this.alertClientFilter;
-      return matchLevel && matchClient;
+      const matchSearch = !q || a.title.toLowerCase().includes(q)
+        || a.description.toLowerCase().includes(q)
+        || (a.clientName || '').toLowerCase().includes(q);
+      return matchLevel && matchClient && matchSearch;
     });
   }
 
@@ -116,6 +123,8 @@ export class DashboardComponent implements OnInit {
     this.alertClientFilter = value;
     this.alertPageIndex = 0;
   }
+
+  onAlertSearch(): void { this.alertPageIndex = 0; }
 
   onAlertPage(event: PageEvent): void {
     this.alertPageIndex = event.pageIndex;
@@ -141,27 +150,46 @@ export class DashboardComponent implements OnInit {
     clientId: string;
     clientName: string;
     credits: number;
+    reservedCredits: number;
     creditsUsed: number;
-    projects: { projectId: string; projectName: string; used: number; orphan: boolean }[];
+    projects: { projectId: string; projectName: string; used: number; reserved: number; orphan: boolean }[];
     expanded: boolean;
   }[] = [];
-  creditPageIndex = 0;
-  creditPageSize  = 8;
+  creditPageIndex   = 0;
+  creditPageSize    = 8;
+  creditSearchQuery = '';
+  creditStatusFilter = '';   // 'zero' | 'low' | 'ok' | ''
 
   get totalCredits(): number { return this.clientCreditRows.reduce((s, r) => s + r.credits, 0); }
+  get totalReservedCredits(): number { return this.clientCreditRows.reduce((s, r) => s + r.reservedCredits, 0); }
   get totalCreditsUsed(): number { return this.clientCreditRows.reduce((s, r) => s + r.creditsUsed, 0); }
-  get pagedCreditRows() {
-    const start = this.creditPageIndex * this.creditPageSize;
-    return this.clientCreditRows.slice(start, start + this.creditPageSize);
+
+  get filteredCreditRows() {
+    const q = this.creditSearchQuery.trim().toLowerCase();
+    return this.clientCreditRows.filter(r => {
+      const matchSearch = !q || r.clientName.toLowerCase().includes(q);
+      const matchStatus = !this.creditStatusFilter ||
+        (this.creditStatusFilter === 'zero' && r.credits === 0) ||
+        (this.creditStatusFilter === 'low'  && r.credits > 0 && r.credits < 5) ||
+        (this.creditStatusFilter === 'ok'   && r.credits >= 5);
+      return matchSearch && matchStatus;
+    });
   }
 
-  toggleCreditRow(row: any): void {
-    row.expanded = !row.expanded;
+  get pagedCreditRows() {
+    const start = this.creditPageIndex * this.creditPageSize;
+    return this.filteredCreditRows.slice(start, start + this.creditPageSize);
   }
+
+  toggleCreditRow(row: any): void { row.expanded = !row.expanded; }
+
   onCreditPage(event: PageEvent): void {
     this.creditPageIndex = event.pageIndex;
     this.creditPageSize  = event.pageSize;
   }
+
+  onCreditSearch(): void { this.creditPageIndex = 0; }
+  onCreditStatusFilter(v: string): void { this.creditStatusFilter = v; this.creditPageIndex = 0; }
 
   // ── Projects table ────────────────────────────────────────
   projectRows: ProjectRow[] = [];
@@ -169,16 +197,37 @@ export class DashboardComponent implements OnInit {
   clientProjectCols = ['name', 'responseRate', 'deadline', 'status'];
   projectPageIndex = 0;
   projectPageSize  = 8;
+  projectSearchQuery = '';
+  projectClientFilter = '';
+  projectStatusFilter = '';
+
+  get uniqueProjectClients(): string[] {
+    return [...new Set(this.projectRows.map(r => r.clientName).filter(Boolean))].sort();
+  }
+
+  get filteredProjectRows(): ProjectRow[] {
+    const q = this.projectSearchQuery.trim().toLowerCase();
+    return this.projectRows.filter(r => {
+      const matchSearch = !q || r.name.toLowerCase().includes(q) || r.clientName.toLowerCase().includes(q);
+      const matchClient = !this.projectClientFilter || r.clientName === this.projectClientFilter;
+      const matchStatus = !this.projectStatusFilter || r.status === this.projectStatusFilter;
+      return matchSearch && matchClient && matchStatus;
+    });
+  }
 
   get pagedProjectRows(): ProjectRow[] {
     const start = this.projectPageIndex * this.projectPageSize;
-    return this.projectRows.slice(start, start + this.projectPageSize);
+    return this.filteredProjectRows.slice(start, start + this.projectPageSize);
   }
 
   onProjectPage(event: PageEvent): void {
     this.projectPageIndex = event.pageIndex;
     this.projectPageSize  = event.pageSize;
   }
+
+  onProjectSearch(): void { this.projectPageIndex = 0; }
+  onProjectClientFilter(v: string): void { this.projectClientFilter = v; this.projectPageIndex = 0; }
+  onProjectStatusFilter(v: string): void { this.projectStatusFilter = v; this.projectPageIndex = 0; }
 
   // ── Funnel (master only) ──────────────────────────────────
   funnelData = { created: 0, invitesSent: 0, completed: 0 };
@@ -317,8 +366,10 @@ export class DashboardComponent implements OnInit {
     ];
 
     // Credits per client — com breakdown por projeto
-    // Monta mapa: clientId → Map<projectId | '__sem_projeto__', usedCount>
     const UNKNOWN_PROJECT = '__sem_projeto__';
+
+    // Mapa de utilizados: clientId → Map<projectId, count>
+    // Fonte: assessmentLinks completed, enriquecido com clientId do participante
     const usedByClientProject = new Map<string, Map<string, number>>();
     participantsSnap.docs.forEach(pDoc => {
       const data = pDoc.data();
@@ -332,13 +383,35 @@ export class DashboardComponent implements OnInit {
       }
     });
 
+    // Mapa de reservados: clientId → Map<projectId, count>
+    // Fonte: assessmentLinks com creditReserved=true e status=pending (computado localmente,
+    // não usa clients.reservedCredits que pode estar desatualizado)
+    const reservedByClientProject = new Map<string, Map<string, number>>();
+    pendingLinkSnap.docs.forEach(linkDoc => {
+      const data = linkDoc.data();
+      if (!data['creditReserved']) return;
+      const clientId = data['clientId'] as string;
+      if (!clientId) return;
+      const projectId = (data['projectId'] as string) || UNKNOWN_PROJECT;
+      if (!reservedByClientProject.has(clientId)) reservedByClientProject.set(clientId, new Map());
+      const proj = reservedByClientProject.get(clientId)!;
+      proj.set(projectId, (proj.get(projectId) || 0) + 1);
+    });
+
     const projectsNameMap = new Map(projectsSnap.docs.map(d => [d.id, (d.data()['name'] as string) || '—']));
 
     this.clientCreditRows = clientsSnap.docs
       .map(d => {
-        const projMap = usedByClientProject.get(d.id) || new Map<string, number>();
-        const projects = Array.from(projMap.entries())
-          .map(([projectId, used]) => {
+        const usedMap      = usedByClientProject.get(d.id)     || new Map<string, number>();
+        const reservedMap  = reservedByClientProject.get(d.id) || new Map<string, number>();
+
+        // União de todos os projetos com qualquer atividade de crédito
+        const allProjectIds = new Set([...usedMap.keys(), ...reservedMap.keys()]);
+
+        const projects = Array.from(allProjectIds)
+          .map(projectId => {
+            const used     = usedMap.get(projectId)     || 0;
+            const reserved = reservedMap.get(projectId) || 0;
             let projectName: string;
             let orphan = false;
             if (projectId === UNKNOWN_PROJECT) {
@@ -346,20 +419,22 @@ export class DashboardComponent implements OnInit {
               orphan = true;
             } else {
               const found = projectsNameMap.get(projectId);
-              projectName = found ?? `Projeto excluído`;
+              projectName = found ?? 'Projeto excluído';
               orphan = !found;
             }
-            return { projectId, projectName, used, orphan };
+            return { projectId, projectName, used, reserved, orphan };
           })
-          .sort((a, b) => b.used - a.used);
+          .sort((a, b) => (b.used + b.reserved) - (a.used + a.reserved));
 
-        // creditsUsed calculado da mesma fonte que o breakdown (consistência garantida)
-        const creditsUsedCalc = projects.reduce((s, p) => s + p.used, 0);
+        // Totais computados localmente (consistência garantida)
+        const creditsUsedCalc     = projects.reduce((s, p) => s + p.used,     0);
+        const reservedCreditsCalc = projects.reduce((s, p) => s + p.reserved, 0);
 
         return {
           clientId: d.id,
           clientName: (d.data()['companyName'] as string) || '—',
           credits: (d.data()['credits'] as number) || 0,
+          reservedCredits: reservedCreditsCalc,   // ← computado de links reais, não do campo Firestore
           creditsUsed: creditsUsedCalc,
           projects,
           expanded: false,
@@ -511,9 +586,10 @@ export class DashboardComponent implements OnInit {
       const pid = data['projectId'];
       if (!pid) return;
       const entry = map.get(pid) || { total: 0, responded: 0, withInvite: 0 };
-      // total e responded baseados em quem tem link (avaliadores), não em tipo de participante
+      // total = TODOS os participantes do projeto (com ou sem convite)
+      // Assim, novos participantes adicionados derrubam o percentual imediatamente
+      entry.total++;
       if (withInviteIds.has(d.id)) {
-        entry.total++;
         entry.withInvite++;
         if (completedIds.has(d.id)) entry.responded++;
       }
@@ -767,6 +843,7 @@ export class DashboardComponent implements OnInit {
 
   deadlineLabel(row: ProjectRow): string {
     if (!row.deadline) return '—';
+    if (row.status === 'concluido') return row.deadline.toLocaleDateString('pt-BR');
     if (row.daysUntilDeadline < 0) return `${Math.abs(row.daysUntilDeadline)}d atrasado`;
     if (row.daysUntilDeadline === 0) return 'Hoje';
     if (row.daysUntilDeadline <= 7) return `${row.daysUntilDeadline}d restante(s)`;

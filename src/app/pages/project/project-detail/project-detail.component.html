@@ -23,7 +23,7 @@
   <!-- Loading overlay -->
   <div class="loading-state" *ngIf="isLoading && isEditMode">
     <mat-spinner diameter="36"></mat-spinner>
-    <span>Carregando dados do projeto...</span>
+    <span>{{ 'Carregando dados do projeto...' | translate }}</span>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="saveProject()" *ngIf="!isLoading || !isEditMode">
@@ -36,8 +36,8 @@
             <mat-icon>folder_open</mat-icon>
           </div>
           <div>
-            <h3 class="form-card-title">Dados do Projeto</h3>
-            <p class="form-card-subtitle">Informações gerais de identificação</p>
+            <h3 class="form-card-title">{{ 'Dados do Projeto' | translate }}</h3>
+            <p class="form-card-subtitle">{{ 'Informações gerais de identificação' | translate }}</p>
           </div>
         </div>
 
@@ -53,37 +53,37 @@
               </mat-option>
             </mat-select>
             <mat-error *ngIf="form.get('clientId')?.hasError('required')">
-              O cliente é obrigatório.
+              {{ 'O cliente é obrigatório.' | translate }}
             </mat-error>
           </mat-form-field>
 
           <!-- Nome -->
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Nome do Projeto</mat-label>
+            <mat-label>{{ 'Nome do Projeto' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">title</mat-icon>
-            <input matInput formControlName="name" placeholder="Ex: Avaliação 360° — Q1 2025" />
+            <input matInput formControlName="name" [placeholder]="'Ex: Avaliação 360° — Q1 2025' | translate" />
             <mat-error *ngIf="form.get('name')?.hasError('required')">
-              O nome é obrigatório.
+              {{ 'O nome é obrigatório.' | translate }}
             </mat-error>
           </mat-form-field>
 
           <!-- Responsável -->
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Responsável</mat-label>
+            <mat-label>{{ 'Responsável' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">person</mat-icon>
-            <input matInput formControlName="responsible" placeholder="Nome do responsável pelo projeto" />
+            <input matInput formControlName="responsible" [placeholder]="'Nome do responsável pelo projeto' | translate" />
           </mat-form-field>
 
           <!-- Formulário a utilizar -->
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Formulário a utilizar</mat-label>
+            <mat-label>{{ 'Formulário a utilizar' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">assignment</mat-icon>
             <mat-select formControlName="assessmentId">
               <mat-option value="">— Nenhum —</mat-option>
               <mat-option *ngFor="let a of assessments" [value]="a.id">{{ a.name }}</mat-option>
             </mat-select>
-            <mat-hint *ngIf="!form.get('clientId')?.value">Selecione um cliente para ver os formulários disponíveis</mat-hint>
-            <mat-hint *ngIf="form.get('clientId')?.value && assessments.length === 0">Nenhum formulário disponível para este cliente</mat-hint>
+            <mat-hint *ngIf="!form.get('clientId')?.value">{{ 'Selecione um cliente para ver os formulários disponíveis' | translate }}</mat-hint>
+            <mat-hint *ngIf="form.get('clientId')?.value && assessments.length === 0">{{ 'Nenhum formulário disponível para este cliente' | translate }}</mat-hint>
           </mat-form-field>
 
         </div>
@@ -96,8 +96,8 @@
             <mat-icon>group_work</mat-icon>
           </div>
           <div>
-            <h3 class="form-card-title">Grupos de Usuários</h3>
-            <p class="form-card-subtitle">Grupos de usuários que participarão deste projeto</p>
+            <h3 class="form-card-title">{{ 'Grupos de Usuários' | translate }}</h3>
+            <p class="form-card-subtitle">{{ 'Grupos de usuários que participarão deste projeto' | translate }}</p>
           </div>
           <span class="participants-badge" *ngIf="usersInGroups.length > 0">
             {{ usersInGroups.length }} usuário{{ usersInGroups.length !== 1 ? 's' : '' }}
@@ -113,28 +113,28 @@
                 {{ group.name }}
               </mat-option>
             </mat-select>
-            <mat-hint *ngIf="groups.length === 0">Nenhum grupo disponível. Crie grupos de usuários primeiro.</mat-hint>
+            <mat-hint *ngIf="groups.length === 0">{{ 'Nenhum grupo disponível. Crie grupos de usuários primeiro.' | translate }}</mat-hint>
             <mat-error *ngIf="form.get('groupIds')?.hasError('required')">
-              Pelo menos um grupo é obrigatório.
+              {{ 'Pelo menos um grupo é obrigatório.' | translate }}
             </mat-error>
           </mat-form-field>
 
           <!-- Atalho para gerenciar usuários e grupos sem sair da página -->
           <div class="participants-shortcut">
             <mat-icon class="participants-shortcut__icon">info_outline</mat-icon>
-            <span class="participants-shortcut__text">Precisa cadastrar usuários ou criar grupos?</span>
+            <span class="participants-shortcut__text">{{ 'Precisa cadastrar usuários ou criar grupos?' | translate }}</span>
             <button mat-button color="primary" type="button"
                     class="participants-shortcut__btn"
                     (click)="openUsersDialog()">
               <mat-icon>open_in_new</mat-icon>
-              Gerenciar Usuários e Grupos
+              {{ 'Gerenciar Usuários e Grupos' | translate }}
             </button>
           </div>
 
           <!-- Preview de usuários deduplcados -->
           <div class="users-preview" *ngIf="usersInGroups.length > 0">
             <div class="users-preview__header">
-              <span class="users-preview__label">Usuários incluídos</span>
+              <span class="users-preview__label">{{ 'Usuários incluídos' | translate }}</span>
               <span class="users-preview__count">{{ usersInGroups.length }} usuário{{ usersInGroups.length !== 1 ? 's' : '' }} único{{ usersInGroups.length !== 1 ? 's' : '' }}</span>
             </div>
             <div class="users-chips">
@@ -159,8 +159,8 @@
             <mat-icon>tune</mat-icon>
           </div>
           <div>
-            <h3 class="form-card-title">Configurações</h3>
-            <p class="form-card-subtitle">Prazo e status</p>
+            <h3 class="form-card-title">{{ 'Configurações' | translate }}</h3>
+            <p class="form-card-subtitle">{{ 'Prazo e status' | translate }}</p>
           </div>
         </div>
 
@@ -183,17 +183,17 @@
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="flex-1">
-              <mat-label>Status</mat-label>
+              <mat-label>{{ 'Status' | translate }}</mat-label>
               <mat-icon matPrefix class="field-icon">toggle_on</mat-icon>
               <mat-select formControlName="status">
                 <mat-option value="Em andamento">
-                  <span class="status-option status-em-andamento">● Em andamento</span>
+                  <span class="status-option status-em-andamento">● {{ 'Em andamento' | translate }}</span>
                 </mat-option>
                 <mat-option value="Concluído">
-                  <span class="status-option status-concluido">● Concluído</span>
+                  <span class="status-option status-concluido">● {{ 'Concluído' | translate }}</span>
                 </mat-option>
                 <mat-option value="Cancelado">
-                  <span class="status-option status-cancelado">● Cancelado</span>
+                  <span class="status-option status-cancelado">● {{ 'Cancelado' | translate }}</span>
                 </mat-option>
               </mat-select>
             </mat-form-field>

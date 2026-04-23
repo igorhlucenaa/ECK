@@ -40,35 +40,110 @@
 
 <!-- ===================== CONFIG STRIP ===================== -->
 <div class="rp-config-strip">
-  <div class="rp-config-selectors">
+
+  <!-- ── Fluxo sequencial: Cliente → Projeto → Avaliação → Avaliado ── -->
+  <div class="rp-sequential-filter" *ngIf="!isIndividualMode">
+
+    <!-- Passo 1: Cliente -->
+    <div class="rp-seq-step" [class.rp-seq-step--done]="!!filterClientControl.value">
+      <div class="rp-seq-step__num">1</div>
+      <mat-form-field appearance="outline" class="rp-seq-field">
+        <mat-label>Cliente</mat-label>
+        <mat-icon matPrefix>business</mat-icon>
+        <mat-select [formControl]="filterClientControl" (selectionChange)="onFilterClientChange()" (closed)="resetClientSearch()">
+          <div class="client-search-wrap">
+            <mat-icon class="client-search-icon">search</mat-icon>
+            <input class="client-search-input" [formControl]="clientSearchCtrl"
+                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   (keydown)="$event.stopPropagation()" />
+          </div>
+          <mat-option value="">— Selecione um cliente —</mat-option>
+          <mat-option *ngFor="let c of clientsFiltered" [value]="c.id">{{ c.name }}</mat-option>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-icon class="rp-seq-arrow" *ngIf="filterClientControl.value">chevron_right</mat-icon>
+
+    <!-- Passo 2: Projeto (aparece após selecionar cliente) -->
+    <div class="rp-seq-step" [class.rp-seq-step--done]="!!filterProjectControl.value"
+         *ngIf="filterClientControl.value">
+      <div class="rp-seq-step__num">2</div>
+      <mat-form-field appearance="outline" class="rp-seq-field">
+        <mat-label>Projeto</mat-label>
+        <mat-icon matPrefix>folder_open</mat-icon>
+        <mat-select [formControl]="filterProjectControl" (selectionChange)="onFilterProjectChange()"
+                    [disabled]="filterProjects.length === 0">
+          <mat-option value="">— Selecione um projeto —</mat-option>
+          <mat-option *ngFor="let p of filterProjects" [value]="p.id">{{ p.name }}</mat-option>
+        </mat-select>
+        <mat-hint *ngIf="filterProjects.length === 0 && filterClientControl.value">Nenhum projeto ativo</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <mat-icon class="rp-seq-arrow" *ngIf="filterProjectControl.value">chevron_right</mat-icon>
+
+    <!-- Passo 3: Avaliação (aparece após selecionar projeto) -->
+    <div class="rp-seq-step" [class.rp-seq-step--done]="!!assessmentControl.value"
+         *ngIf="filterProjectControl.value">
+      <div class="rp-seq-step__num">3</div>
+      <mat-form-field appearance="outline" class="rp-seq-field">
+        <mat-label>Avaliação</mat-label>
+        <mat-icon matPrefix>assignment</mat-icon>
+        <mat-select [formControl]="assessmentControl"
+                    [disabled]="filteredAssessments.length === 0">
+          <mat-option value="">— Selecione a avaliação —</mat-option>
+          <mat-option *ngFor="let a of filteredAssessments" [value]="a.id">{{ a.name }}</mat-option>
+        </mat-select>
+        <mat-hint *ngIf="filteredAssessments.length === 0">Nenhuma avaliação vinculada</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <!-- Passo 4: Avaliado (aparece após selecionar avaliação, quando há avaliados) -->
+    <ng-container *ngIf="assessmentControl.value && avaliadosDisponiveis.length > 0">
+      <mat-icon class="rp-seq-arrow">chevron_right</mat-icon>
+      <div class="rp-seq-step" [class.rp-seq-step--done]="!!selectedAvaliado">
+        <div class="rp-seq-step__num">4</div>
+        <mat-form-field appearance="outline" class="rp-seq-field">
+          <mat-label>Avaliado</mat-label>
+          <mat-icon matPrefix>person_search</mat-icon>
+          <mat-select [formControl]="avaliadoControl" (selectionChange)="onAvaliadoChange()">
+            <mat-option value="">Todos os avaliados</mat-option>
+            <mat-option *ngFor="let avaliado of avaliadosDisponiveis" [value]="avaliado">{{ avaliado }}</mat-option>
+          </mat-select>
+          <mat-hint>Opcional — relatório individual</mat-hint>
+        </mat-form-field>
+      </div>
+    </ng-container>
+
+    <!-- Botão limpar (aparece quando há algo selecionado) -->
+    <button mat-icon-button class="rp-seq-clear"
+            *ngIf="filterClientControl.value"
+            matTooltip="Limpar seleção"
+            (click)="clearFilterContext()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Modo individual: campo de avaliação (readonly) -->
+  <div class="rp-config-selectors" *ngIf="isIndividualMode">
     <mat-form-field class="rp-selector" appearance="outline">
-      <mat-label>{{ 'Selecione a avaliação' | translate }}</mat-label>
+      <mat-label>{{ 'Avaliação' | translate }}</mat-label>
       <mat-icon matPrefix>assignment</mat-icon>
-      <input matInput
-             [formControl]="assessmentSearchControl"
-             [matAutocomplete]="assessmentAuto"
-             [readonly]="isIndividualMode"
-             placeholder="Buscar avaliação...">
-      <mat-icon matSuffix *ngIf="assessmentControl.value && !isIndividualMode" (click)="assessmentControl.setValue(''); assessmentSearchControl.setValue(''); filteredAssessments = assessments" style="cursor:pointer;color:#94a3b8">close</mat-icon>
-      <mat-autocomplete #assessmentAuto="matAutocomplete" (optionSelected)="onAssessmentSelected($event.option.value)">
-        <mat-option *ngFor="let a of filteredAssessments" [value]="a.id">{{ a.name }}</mat-option>
-        <mat-option *ngIf="filteredAssessments.length === 0" disabled>Nenhuma avaliação encontrada</mat-option>
-      </mat-autocomplete>
+      <input matInput [formControl]="assessmentSearchControl" [readonly]="true" placeholder="Avaliação carregada automaticamente">
     </mat-form-field>
 
-    <mat-form-field class="rp-selector" appearance="outline" *ngIf="avaliadosDisponiveis.length > 0 || isIndividualMode">
-      <mat-label>{{ 'Selecione o avaliado' | translate }}</mat-label>
+    <mat-form-field class="rp-selector" appearance="outline">
+      <mat-label>{{ 'Avaliado' | translate }}</mat-label>
       <mat-icon matPrefix>person_search</mat-icon>
-      <mat-select [formControl]="avaliadoControl" (selectionChange)="onAvaliadoChange()" [disabled]="isIndividualMode">
-        <mat-option value="">{{ 'Todos os avaliados' | translate }}</mat-option>
-        <mat-option *ngFor="let avaliado of avaliadosDisponiveis" [value]="avaliado">{{ avaliado }}</mat-option>
+      <mat-select [formControl]="avaliadoControl" [disabled]="true">
         <mat-option *ngIf="isIndividualMode && individualParticipantName" [value]="individualParticipantName">{{ individualParticipantName }}</mat-option>
       </mat-select>
-      <mat-hint *ngIf="!isIndividualMode">{{ 'Selecione um avaliado específico para visualizar dados individuais' | translate }}</mat-hint>
     </mat-form-field>
   </div>
 
-  <!-- Selected avaliado indicator (só no modo normal — modo individual já tem o banner roxo) -->
+  <!-- Selected avaliado indicator (só no modo normal) -->
   <div class="rp-avaliado-indicator" *ngIf="selectedAvaliado && !isIndividualMode">
     <div class="rp-avaliado-indicator__left">
       <div class="rp-avaliado-indicator__icon">
@@ -740,8 +815,11 @@
                         </div>
 
                         <p class="rp-palette-label">{{ 'Paleta de cores' | translate }}</p>
+
+                        <!-- Grupo: Gradientes -->
+                        <p class="rp-palette-group-label">Gradientes</p>
                         <div class="rp-palette-grid">
-                          <div *ngFor="let paleta of paletasCores | keyvalue"
+                          <div *ngFor="let paleta of paletasGradiente"
                                class="rp-palette-card"
                                [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
                                (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
@@ -754,9 +832,47 @@
                             </div>
                             <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
                             <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
-                                      class="rp-palette-card__check">
-                              check_circle
-                            </mat-icon>
+                                      class="rp-palette-card__check">check_circle</mat-icon>
+                          </div>
+                        </div>
+
+                        <!-- Grupo: Cores Sólidas -->
+                        <p class="rp-palette-group-label">Cores Sólidas</p>
+                        <div class="rp-palette-grid">
+                          <div *ngFor="let paleta of paletasFlat"
+                               class="rp-palette-card"
+                               [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                               (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
+                               [matTooltip]="paleta.value.nome">
+                            <div class="rp-palette-card__swatches">
+                              <span *ngFor="let cor of paleta.value.cores.slice(0, 5)"
+                                    class="rp-palette-card__swatch"
+                                    [style.background-color]="cor">
+                              </span>
+                            </div>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                                      class="rp-palette-card__check">check_circle</mat-icon>
+                          </div>
+                        </div>
+
+                        <!-- Grupo: Especiais -->
+                        <p class="rp-palette-group-label">Especiais</p>
+                        <div class="rp-palette-grid">
+                          <div *ngFor="let paleta of paletasEspecial"
+                               class="rp-palette-card"
+                               [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                               (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
+                               [matTooltip]="paleta.value.nome">
+                            <div class="rp-palette-card__swatches">
+                              <span *ngFor="let cor of paleta.value.cores.slice(0, 5)"
+                                    class="rp-palette-card__swatch"
+                                    [style.background-color]="cor">
+                              </span>
+                            </div>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                                      class="rp-palette-card__check">check_circle</mat-icon>
                           </div>
                         </div>
 
@@ -925,16 +1041,118 @@
 
       <!-- Export actions bar -->
       <div class="rp-export-bar ui-only">
-        <button mat-flat-button color="accent" (click)="exportarRelatorioPDF()" [disabled]="isExporting">
-          <mat-icon>picture_as_pdf</mat-icon> {{ 'Exportar PDF' | translate }}
+        <!-- Individual -->
+        <button mat-flat-button color="accent" (click)="exportarRelatorioPDF()" [disabled]="isExporting || isBatchGenerating">
+          <mat-icon>picture_as_pdf</mat-icon> Exportar PDF individual
         </button>
-        <button mat-flat-button color="primary" (click)="exportarBaseExcel()" [disabled]="isExporting">
+        <button mat-flat-button color="primary" (click)="exportarBaseExcel()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>grid_on</mat-icon> {{ 'Exportar base (Excel)' | translate }}
         </button>
-        <button mat-flat-button color="primary" (click)="exportarRelatorioDOCX()" [disabled]="isExporting">
+        <button mat-flat-button color="primary" (click)="exportarRelatorioDOCX()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>description</mat-icon> {{ 'Exportar DOCX' | translate }}
         </button>
       </div>
+
+      <!-- ── GERAÇÃO EM LOTE (somente na tab Visualizar) ── -->
+      <div class="rp-batch-panel ui-only"
+           *ngIf="!isIndividualMode && avaliadosDisponiveis.length > 0">
+
+        <button mat-stroked-button class="rp-batch-trigger"
+                (click)="toggleBatchPanel()"
+                [class.rp-batch-trigger--open]="batchPanelOpen"
+                [disabled]="isBatchGenerating">
+          <mat-icon>layers</mat-icon>
+          Geração em Lote
+          <span class="rp-batch-trigger__count" *ngIf="batchSelectedCount > 0">
+            {{ batchSelectedCount }} selecionado(s)
+          </span>
+          <mat-icon class="rp-batch-trigger__chevron">{{ batchPanelOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+
+        <div class="rp-batch-body" *ngIf="batchPanelOpen">
+
+          <!-- Seleção de participantes -->
+          <div class="rp-batch-section">
+            <div class="rp-batch-section__header">
+              <mat-icon>people</mat-icon>
+              <span>Participantes</span>
+              <button mat-button class="rp-batch-selall" (click)="toggleAllBatchParticipants()">
+                {{ allBatchSelected ? 'Desmarcar todos' : 'Selecionar todos' }}
+              </button>
+            </div>
+            <div class="rp-batch-participants">
+              <label *ngFor="let avaliado of avaliadosDisponiveis" class="rp-batch-participant">
+                <input type="checkbox"
+                       [checked]="batchSelectedParticipants.has(avaliado)"
+                       (change)="toggleBatchParticipant(avaliado)" />
+                <span class="rp-batch-participant__name">{{ avaliado }}</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Categorias de avaliadores -->
+          <div class="rp-batch-section rp-batch-section--evaluators" *ngIf="availableCategoriesForBatch.length > 0">
+            <div class="rp-batch-section__header rp-batch-section__header--clickable"
+                 (click)="batchShowEvaluatorConfig = !batchShowEvaluatorConfig">
+              <mat-icon>filter_list</mat-icon>
+              <span>Avaliadores incluídos</span>
+              <span class="rp-batch-excluded-badge" *ngIf="batchExcludedCategories.size > 0">
+                {{ batchExcludedCategories.size }} categoria(s) excluída(s)
+              </span>
+              <mat-icon class="rp-batch-trigger__chevron" style="margin-left:auto">
+                {{ batchShowEvaluatorConfig ? 'expand_less' : 'expand_more' }}
+              </mat-icon>
+            </div>
+            <div class="rp-batch-evaluators" *ngIf="batchShowEvaluatorConfig">
+              <label *ngFor="let cat of availableCategoriesForBatch" class="rp-batch-evaluator">
+                <input type="checkbox"
+                       [checked]="!isCategoryExcluded(cat.grupo)"
+                       (change)="toggleBatchCategoryExclusion(cat.grupo)" />
+                <span class="rp-batch-evaluator__name">{{ cat.grupo }}</span>
+                <span class="rp-batch-evaluator__count">{{ cat.totalCount }} resposta(s)</span>
+              </label>
+              <div class="rp-batch-anonymity-warnings" *ngIf="getAnonymityWarnings().length > 0">
+                <div class="rp-batch-anonymity-warn" *ngFor="let w of getAnonymityWarnings()">
+                  <mat-icon>warning</mat-icon>
+                  <span><strong>{{ w.avaliado }}</strong> — <strong>{{ w.grupo }}</strong>: {{ w.count }} resposta(s)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Erros da última execução -->
+          <div class="rp-batch-errors" *ngIf="batchErrors.length > 0">
+            <div class="rp-batch-error" *ngFor="let e of batchErrors">
+              <mat-icon>error_outline</mat-icon>
+              <span><strong>{{ e.name }}</strong>: {{ e.error }}</span>
+            </div>
+          </div>
+
+          <!-- Progresso -->
+          <div class="rp-batch-progress-inline" *ngIf="isBatchGenerating">
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Gerando {{ batchProgress + 1 }}/{{ batchTotal }}: <strong>{{ batchCurrentName }}</strong></span>
+            <div class="rp-batch-progress-bar-wrap" style="flex:1">
+              <div class="rp-batch-progress-bar"
+                   [style.width.%]="batchTotal > 0 ? (batchProgress / batchTotal) * 100 : 0"></div>
+            </div>
+            <span>{{ batchTotal > 0 ? ((batchProgress / batchTotal) * 100 | number:'1.0-0') : 0 }}%</span>
+          </div>
+
+          <!-- Botão gerar -->
+          <div class="rp-batch-actions">
+            <button mat-flat-button color="primary"
+                    class="rp-batch-generate-btn"
+                    [disabled]="batchSelectedCount === 0 || isBatchGenerating || competencias.length === 0"
+                    (click)="generateBatchReportsPDF()">
+              <mat-icon>download</mat-icon>
+              Gerar {{ batchSelectedCount }} PDF(s) em lote → ZIP
+            </button>
+            <span class="rp-batch-hint" *ngIf="competencias.length === 0">Configure as competências primeiro</span>
+          </div>
+
+        </div><!-- /rp-batch-body -->
+      </div><!-- /rp-batch-panel -->
 
       <!-- Export loading overlay -->
       <div class="rp-export-overlay" *ngIf="isExporting">

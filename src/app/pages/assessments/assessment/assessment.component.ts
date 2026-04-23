@@ -8,9 +8,10 @@ import {
   doc,
   getDoc,
   updateDoc,
+  runTransaction,
+  increment,
   query,
   where,
-  orderBy,
   getDocs,
   collection,
 } from '@angular/fire/firestore';
@@ -36,6 +37,7 @@ export class AssessmentComponent implements OnInit {
   assessmentId: string | null = null;
   surveyCompleted = false;
   alreadyCompleted = false;
+  linkCancelled = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -59,13 +61,35 @@ export class AssessmentComponent implements OnInit {
     assessmentId: string,
     participantId: string
   ): Promise<void> {
+    // Verifica se o link foi cancelado
+    const linkQuery = query(
+      collection(this.firestore, 'assessmentLinks'),
+      where('assessmentId', '==', assessmentId),
+      where('participantId', '==', participantId)
+    );
+    const linkSnap = await getDocs(linkQuery);
+
+    // Sem link nenhum = link inválido ou nunca enviado → bloqueia acesso
+    if (linkSnap.empty) {
+      this.linkCancelled = true;
+      return;
+    }
+
+    // Todos os links cancelados/expirados → bloqueia acesso
+    const statuses = linkSnap.docs.map(d => d.data()['status'] as string);
+    const allInactive = statuses.every(s => s === 'cancelled' || s === 'expired');
+    if (allInactive) {
+      this.linkCancelled = true;
+      return;
+    }
+
     this.alreadyCompleted = await this.surveyService.checkIfAssessmentCompleted(
       assessmentId,
       participantId
     );
 
     if (this.alreadyCompleted) {
-            return;
+      return;
     }
 
     await this.loadSurvey(assessmentId, participantId);
@@ -218,13 +242,8 @@ export class AssessmentComponent implements OnInit {
           surveyData
         );
 
-        await this.updateAssessmentLinkStatus(
-          this.assessmentId,
-          this.participantId
-        );
-
-        // Deduz 1 crédito do cliente ao registrar a resposta
-        await this.deductClientCredit(this.participantId);
+        // Marca link como completed + deduz crédito atomicamente (idempotente)
+        await this.deductAndMarkCompleted(this.assessmentId, this.participantId);
 
         this.surveyCompleted = true;
       } catch (error) {
@@ -235,106 +254,90 @@ export class AssessmentComponent implements OnInit {
     }
   }
 
-  private async deductClientCredit(participantId: string): Promise<void> {
-    try {
-      // Busca o participante para obter o clientId
-      const participantRef = doc(this.firestore, `participants/${participantId}`);
-      const participantSnap = await getDoc(participantRef);
-      if (!participantSnap.exists()) return;
-
-      const participantData = participantSnap.data();
-
-      // Verificar se crédito já foi deduzido para este participante (evitar dupla dedução)
-      if (participantData['creditDeducted'] === true) return;
-
-      // Obter clientId — direto no participante ou via projeto
-      let clientId: string = participantData['clientId'] || '';
-      if (!clientId && participantData['projectId']) {
-        const projectSnap = await getDoc(doc(this.firestore, `projects/${participantData['projectId']}`));
-        if (projectSnap.exists()) clientId = projectSnap.data()['clientId'] || '';
-      }
-      if (!clientId) return;
-
-      const clientRef = doc(this.firestore, `clients/${clientId}`);
-      const clientSnap = await getDoc(clientRef);
-      if (!clientSnap.exists()) return;
-
-      const currentCredits: number = clientSnap.data()['credits'] || 0;
-      const currentUsed: number = clientSnap.data()['creditsUsed'] || 0;
-
-      // FIFO: deduz do pedido aprovado mais antigo com remainingCredits > 0
-      // Ordena em memória para não depender de índice em createdAt
-      const ordersSnap = await getDocs(query(
-        collection(this.firestore, 'creditOrders'),
-        where('clientId', '==', clientId),
-        where('status', '==', 'Aprovado')
-      ));
-      const sortedOrders = ordersSnap.docs.slice().sort((a, b) => {
-        const tA = a.data()['createdAt']?.toMillis?.() ?? 0;
-        const tB = b.data()['createdAt']?.toMillis?.() ?? 0;
-        return tA - tB;
-      });
-
-      // Verifica se há algum pedido com créditos disponíveis
-      const hasAvailableOrder = sortedOrders.some(d =>
-        (d.data()['remainingCredits'] ?? d.data()['credits'] ?? 0) > 0
-      );
-      if (!hasAvailableOrder) return;
-
-      for (const orderDoc of sortedOrders) {
-        const remaining: number = orderDoc.data()['remainingCredits'] ?? orderDoc.data()['credits'] ?? 0;
-        if (remaining > 0) {
-          await updateDoc(doc(this.firestore, `creditOrders/${orderDoc.id}`), {
-            remainingCredits: remaining - 1,
-          });
-          break;
-        }
-      }
-
-      // Atualiza totais do cliente (Math.max evita valor negativo caso haja dessincronização)
-      await updateDoc(clientRef, {
-        credits: Math.max(0, currentCredits - 1),
-        creditsUsed: currentUsed + 1,
-      });
-
-      // Marca o participante para evitar dupla dedução
-      await updateDoc(participantRef, { creditDeducted: true });
-
-    } catch (error) {
-      // Não bloqueia a conclusão da avaliação em caso de erro
-      console.error('Erro ao deduzir crédito do cliente:', error);
-    }
-  }
-
-  // Método para atualizar o status em assessmentLinks
-  private async updateAssessmentLinkStatus(
+  /**
+   * Operação atômica e idempotente que:
+   * 1. Marca assessmentLinks.status = 'completed'
+   * 2. Marca participants.creditDeducted = true
+   * 3. Move crédito: reservedCredits-1 + creditsUsed+1 (novo sistema)
+   *    ou credits-1 + creditsUsed+1 (legado sem reserva)
+   *
+   * Não faz FIFO incremental nos creditOrders — isso fica exclusivamente
+   * em sincronizarCreditosClientes / onAssessmentCompleted (Cloud Function).
+   *
+   * CORREÇÃO 4: sem FIFO incremental  |  CORREÇÃO 5: runTransaction idempotente
+   */
+  private async deductAndMarkCompleted(
     assessmentId: string,
     participantId: string
   ): Promise<void> {
     try {
-      const assessmentLinksQuery = query(
+      const participantRef = doc(this.firestore, `participants/${participantId}`);
+
+      // ── Resolve refs FORA da transação (queries não permitidas dentro) ──
+
+      // clientId — direto no participante ou via projeto
+      const pSnap = await getDoc(participantRef);
+      if (!pSnap.exists()) return;
+      const pData = pSnap.data();
+
+      let clientId: string = pData['clientId'] || '';
+      if (!clientId && pData['projectId']) {
+        const projSnap = await getDoc(doc(this.firestore, `projects/${pData['projectId']}`));
+        if (projSnap.exists()) clientId = projSnap.data()['clientId'] || '';
+      }
+      if (!clientId) return;
+
+      const clientRef = doc(this.firestore, `clients/${clientId}`);
+
+      // assessmentLink doc ref (query fora da transação)
+      const linkQ = query(
         collection(this.firestore, 'assessmentLinks'),
         where('assessmentId', '==', assessmentId),
         where('participantId', '==', participantId)
       );
-      const snapshot = await getDocs(assessmentLinksQuery);
-
-      if (!snapshot.empty) {
-        const linkDoc = doc(
-          this.firestore,
-          'assessmentLinks',
-          snapshot.docs[0].id
-        );
-        await updateDoc(linkDoc, {
-          status: 'completed',
-          completedAt: new Date(), // Opcional: adicionar timestamp de conclusão
-        });
-              } else {
-        console.warn('Nenhum document link encontrado para atualização.');
+      const linkSnap = await getDocs(linkQ);
+      if (linkSnap.empty) {
+        console.warn('Nenhum assessmentLink encontrado — conclusão não registrada.');
+        return;
       }
+      const linkDocRef = doc(this.firestore, 'assessmentLinks', linkSnap.docs[0].id);
+
+      // ── Transação atômica ────────────────────────────────────────────────
+      await runTransaction(this.firestore, async (t) => {
+        const freshParticipant = await t.get(participantRef);
+        if (!freshParticipant.exists()) return;
+
+        const freshLink = await t.get(linkDocRef);
+        const creditWasReserved =
+          freshLink.exists() && freshLink.data()?.['creditReserved'] === true;
+
+        // Sempre marca o link como completed
+        t.update(linkDocRef, { status: 'completed', completedAt: new Date() });
+
+        // Idempotência: se já deduziu, apenas o link update é necessário
+        if (freshParticipant.data()['creditDeducted'] === true) return;
+
+        // Marca participante — impede re-execução em caso de retry
+        t.update(participantRef, { creditDeducted: true });
+
+        // Deduz do cliente via FieldValue.increment (atômico, sem ler o valor atual)
+        if (creditWasReserved) {
+          // Novo sistema: crédito já foi debitado de credits no disparo → move reserved→used
+          t.update(clientRef, {
+            reservedCredits: increment(-1),
+            creditsUsed:     increment(1),
+          });
+        } else {
+          // Legado: crédito nunca foi reservado → desconta de credits agora
+          t.update(clientRef, {
+            credits:     increment(-1),
+            creditsUsed: increment(1),
+          });
+        }
+      });
     } catch (error) {
-      console.error('Erro ao atualizar status em assessmentLinks:', error);
-      throw error; // Repropaga o erro para tratamento no onSurveyCompleted
+      // Não bloqueia a exibição da tela de conclusão
+      console.error('Erro ao registrar conclusão e deduzir crédito:', error);
     }
   }
 }

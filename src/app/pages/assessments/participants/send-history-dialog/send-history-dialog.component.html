@@ -1,0 +1,136 @@
+<div class="shd-root">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <div class="shd-header">
+    <div class="shd-header__avatar">
+      <mat-icon>history</mat-icon>
+    </div>
+    <div class="shd-header__text">
+      <h2 class="shd-header__title">Histórico de Envios</h2>
+      <p class="shd-header__sub">{{ data.participant.name }} &bull; {{ data.participant.email }}</p>
+    </div>
+    <button mat-icon-button class="shd-header__close" (click)="close()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- ── Stats strip ────────────────────────────────────────── -->
+  <div class="shd-stats" *ngIf="!isLoading">
+    <div class="shd-stat">
+      <span class="shd-stat__value">{{ totalSent }}</span>
+      <span class="shd-stat__label">E-mail{{ totalSent !== 1 ? 's' : '' }} enviado{{ totalSent !== 1 ? 's' : '' }}</span>
+    </div>
+    <div class="shd-stat-sep"></div>
+    <div class="shd-stat" *ngIf="totalErrors > 0">
+      <span class="shd-stat__value shd-stat__value--err">{{ totalErrors }}</span>
+      <span class="shd-stat__label">Falha{{ totalErrors !== 1 ? 's' : '' }}</span>
+    </div>
+    <div class="shd-stat-sep" *ngIf="totalErrors > 0"></div>
+    <div class="shd-stat">
+      <span class="shd-stat__value shd-stat__value--cat">{{ data.participant.category }}</span>
+      <span class="shd-stat__label">Categoria</span>
+    </div>
+    <div class="shd-stat-sep"></div>
+    <div class="shd-stat">
+      <span class="shd-stat__chip"
+        [class.shd-stat__chip--done]="data.participant.status === 'Respondido'"
+        [class.shd-stat__chip--pending]="data.participant.status === 'Enviado (Pendente)'"
+        [class.shd-stat__chip--none]="data.participant.status === 'Não Enviado' || !data.participant.status">
+        {{ data.participant.status || 'Não Enviado' }}
+      </span>
+      <span class="shd-stat__label">Status</span>
+    </div>
+  </div>
+
+  <!-- ── Next reminder banner ───────────────────────────────── -->
+  <div class="shd-next-banner" *ngIf="!isLoading && nextReminderDate && data.participant.status !== 'Respondido'">
+    <mat-icon class="shd-next-banner__icon">schedule</mat-icon>
+    <div class="shd-next-banner__text">
+      <span class="shd-next-banner__label">Próximo lembrete agendado</span>
+      <span class="shd-next-banner__date">{{ formatDate(nextReminderDate) }} &mdash; {{ futureRelativeTime(nextReminderDate) }}</span>
+    </div>
+    <span class="shd-next-banner__badge" *ngIf="data.participant.reminderCount !== undefined && data.participant.maxReminders">
+      {{ data.participant.reminderCount }}/{{ data.participant.maxReminders }} lembretes
+    </span>
+  </div>
+
+  <div class="shd-next-banner shd-next-banner--off"
+       *ngIf="!isLoading && !nextReminderDate && !hasReminderConfig && data.participant.status !== 'Respondido'">
+    <mat-icon class="shd-next-banner__icon">notifications_off</mat-icon>
+    <span class="shd-next-banner__label">Nenhum lembrete automático configurado para este projeto</span>
+  </div>
+
+  <!-- ── Body ──────────────────────────────────────────────── -->
+  <mat-dialog-content class="shd-body">
+
+    <!-- Loading -->
+    <div class="shd-loading" *ngIf="isLoading">
+      <mat-spinner [diameter]="36"></mat-spinner>
+      <span>Carregando histórico...</span>
+    </div>
+
+    <!-- Empty state -->
+    <div class="shd-empty" *ngIf="!isLoading && history.length === 0">
+      <mat-icon>mail_outline</mat-icon>
+      <p>Nenhum envio registrado ainda.</p>
+      <span>O histórico detalhado é gravado a partir do próximo envio.</span>
+    </div>
+
+    <!-- Timeline -->
+    <div class="shd-timeline" *ngIf="!isLoading && history.length > 0">
+      <div class="shd-item" *ngFor="let entry of history; let i = index; let last = last">
+
+        <!-- Connector line -->
+        <div class="shd-item__line" *ngIf="!last"></div>
+
+        <!-- Icon -->
+        <div class="shd-item__icon"
+             [class.shd-item__icon--invite]="entry.type === 'convite'"
+             [class.shd-item__icon--reminder]="entry.type === 'lembrete' && entry.status === 'enviado'"
+             [class.shd-item__icon--error]="entry.status === 'erro'">
+          <mat-icon>
+            {{ entry.status === 'erro' ? 'error_outline' : entry.type === 'convite' ? 'mail' : 'notifications' }}
+          </mat-icon>
+        </div>
+
+        <!-- Content -->
+        <div class="shd-item__content">
+          <div class="shd-item__row">
+            <span class="shd-item__label">{{ entry.sequenceLabel }}</span>
+            <span class="shd-item__badge"
+                  [class.shd-item__badge--ok]="entry.status === 'enviado'"
+                  [class.shd-item__badge--err]="entry.status === 'erro'">
+              <mat-icon>{{ entry.status === 'enviado' ? 'check_circle' : 'cancel' }}</mat-icon>
+              {{ entry.status === 'enviado' ? 'Enviado' : 'Falhou' }}
+            </span>
+          </div>
+          <div class="shd-item__date" *ngIf="toDate(entry.sentAt)">
+            <mat-icon>access_time</mat-icon>
+            {{ formatDate(entry.sentAt) }}
+            <span class="shd-item__relative">{{ relativeTime(entry.sentAt) }}</span>
+          </div>
+          <div class="shd-item__date" *ngIf="!toDate(entry.sentAt)">
+            <mat-icon>access_time</mat-icon>
+            Data não registrada
+          </div>
+          <div class="shd-item__error" *ngIf="entry.status === 'erro' && entry.error">
+            <mat-icon>warning</mat-icon>
+            {{ entry.error }}
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </mat-dialog-content>
+
+  <!-- ── Footer ────────────────────────────────────────────── -->
+  <div class="shd-footer">
+    <span class="shd-footer__hint" *ngIf="!isLoading && history.length > 0">
+      <mat-icon>info_outline</mat-icon>
+      Histórico detalhado gravado a partir da versão mais recente do sistema
+    </span>
+    <button mat-button class="shd-footer__close" (click)="close()">Fechar</button>
+  </div>
+
+</div>

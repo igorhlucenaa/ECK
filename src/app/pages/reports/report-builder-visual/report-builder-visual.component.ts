@@ -231,17 +231,46 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   secaoEditando: RelatorioSecaoSimplificada | null = null;
   showConfigPanel = false;
 
-  paletasCores: { [key: string]: { nome: string; cores: string[] } } = {
-    'padrao':     { nome: 'Padrão',           cores: ['#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#424242'] },
-    'azul':       { nome: 'Azul',             cores: ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#0D47A1'] },
-    'verde':      { nome: 'Verde',            cores: ['#E8F5E8', '#A5D6A7', '#66BB6A', '#43A047', '#1B5E20'] },
-    'laranja':    { nome: 'Laranja',          cores: ['#FFF3E0', '#FFCC80', '#FF9800', '#F57C00', '#E65100'] },
-    'roxo':       { nome: 'Roxo',             cores: ['#F3E5F5', '#CE93D8', '#AB47BC', '#8E24AA', '#4A148C'] },
-    'vermelho':   { nome: 'Vermelho',         cores: ['#FFEBEE', '#EF9A9A', '#EF5350', '#E53935', '#B71C1C'] },
-    'teal':       { nome: 'Teal',             cores: ['#E0F2F1', '#80CBC4', '#26A69A', '#00897B', '#004D40'] },
-    'categorias': { nome: 'Categorias',       cores: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'] },
-    'personalizada': { nome: 'Personalizada', cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] }
+  paletasCores: { [key: string]: { nome: string; cores: string[]; tipo: 'gradiente' | 'flat' | 'especial' } } = {
+    // ── GRADIENTES ──────────────────────────────────────────────────────────
+    'padrao':      { nome: 'Padrão (Cinza)',       tipo: 'gradiente', cores: ['#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#424242'] },
+    'azul':        { nome: 'Azul Profissional',    tipo: 'gradiente', cores: ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#0D47A1'] },
+    'verde':       { nome: 'Verde Sucesso',         tipo: 'gradiente', cores: ['#E8F5E8', '#A5D6A7', '#66BB6A', '#43A047', '#1B5E20'] },
+    'laranja':     { nome: 'Laranja Energia',       tipo: 'gradiente', cores: ['#FFF3E0', '#FFCC80', '#FF9800', '#F57C00', '#E65100'] },
+    'roxo':        { nome: 'Roxo Criativo',         tipo: 'gradiente', cores: ['#F3E5F5', '#CE93D8', '#AB47BC', '#8E24AA', '#4A148C'] },
+    'vermelho':    { nome: 'Vermelho Impacto',      tipo: 'gradiente', cores: ['#FFEBEE', '#EF9A9A', '#EF5350', '#E53935', '#B71C1C'] },
+    'teal':        { nome: 'Teal Moderno',          tipo: 'gradiente', cores: ['#E0F2F1', '#80CBC4', '#26A69A', '#00897B', '#004D40'] },
+    'indigo':      { nome: 'Índigo Elegante',       tipo: 'gradiente', cores: ['#E8EAF6', '#9FA8DA', '#5C6BC0', '#3949AB', '#1A237E'] },
+    'coral':       { nome: 'Coral & Rosê',          tipo: 'gradiente', cores: ['#FCE4EC', '#F48FB1', '#EC407A', '#C2185B', '#880E4F'] },
+    'dourado':     { nome: 'Dourado & Âmbar',       tipo: 'gradiente', cores: ['#FFFDE7', '#FFE082', '#FFCA28', '#FFA000', '#E65100'] },
+    'esmeralda':   { nome: 'Esmeralda',             tipo: 'gradiente', cores: ['#ECFDF5', '#A7F3D0', '#34D399', '#059669', '#064E3B'] },
+    'marinho':     { nome: 'Azul Marinho',          tipo: 'gradiente', cores: ['#DBEAFE', '#93C5FD', '#3B82F6', '#1D4ED8', '#1E3A5F'] },
+    'slate':       { nome: 'Cinza Azulado',         tipo: 'gradiente', cores: ['#F1F5F9', '#94A3B8', '#64748B', '#334155', '#0F172A'] },
+    // ── CORES SÓLIDAS ───────────────────────────────────────────────────────
+    'flat_material':    { nome: 'Material Flat',       tipo: 'flat', cores: ['#F44336', '#2196F3', '#4CAF50', '#FF9800', '#9C27B0'] },
+    'flat_pastel':      { nome: 'Pastel Suave',        tipo: 'flat', cores: ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#B5EAD7', '#C7CEEA'] },
+    'flat_terra':       { nome: 'Tons de Terra',       tipo: 'flat', cores: ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51'] },
+    'flat_vibrante':    { nome: 'Ultra Vibrante',      tipo: 'flat', cores: ['#EF476F', '#FFD166', '#06D6A0', '#118AB2', '#9B59B6'] },
+    'flat_nordico':     { nome: 'Nórdico & Frio',      tipo: 'flat', cores: ['#2C3E50', '#457B9D', '#A8DADC', '#CDB4DB', '#F4ACB7'] },
+    'flat_tropico':     { nome: 'Tropical',            tipo: 'flat', cores: ['#D62246', '#F79D65', '#FFE66D', '#4ECDC4', '#1A535C'] },
+    'flat_retro':       { nome: 'Retrô',               tipo: 'flat', cores: ['#E07A5F', '#3D405B', '#F2CC8F', '#81B29A', '#F4F1DE'] },
+    'flat_neon':        { nome: 'Neon',                tipo: 'flat', cores: ['#FF0080', '#00FFFF', '#00FF41', '#FF6600', '#7B00FF'] },
+    // ── ESPECIAIS ───────────────────────────────────────────────────────────
+    'categorias':    { nome: 'Categorias Distintas', tipo: 'especial', cores: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'] },
+    'personalizada': { nome: 'Personalizada',        tipo: 'especial', cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] },
   };
+
+  readonly paletasGradiente = Object.entries(this.paletasCores)
+    .filter(([, v]) => v.tipo === 'gradiente')
+    .map(([key, value]) => ({ key, value }));
+
+  readonly paletasFlat = Object.entries(this.paletasCores)
+    .filter(([, v]) => v.tipo === 'flat')
+    .map(([key, value]) => ({ key, value }));
+
+  readonly paletasEspecial = Object.entries(this.paletasCores)
+    .filter(([, v]) => v.tipo === 'especial')
+    .map(([key, value]) => ({ key, value }));
 
   private readonly tipoGraficoLabels: Record<TipoGraficoRelatorio, string> = {
     barra: 'Barras Comparativas',

@@ -110,6 +110,55 @@ export class ReportPdfMakeService {
   }
 
   /**
+   * Constrói o docDefinition compartilhado entre generateReport e generateReportBlob
+   */
+  private async buildDocDefinition(data: ReportData): Promise<any> {
+    const docDefinition = {
+      content: [] as any[],
+      styles: this.getStyles(),
+      defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.5 },
+      pageMargins: [40, 60, 40, 60],
+      header: this.buildHeader(data),
+      footer: this.buildFooter,
+    };
+
+    const secoesOrdenadas = [...data.relatorioConfiguracao]
+      .filter(s => s.visivel)
+      .sort((a, b) => a.ordem - b.ordem);
+
+    for (const secao of secoesOrdenadas) {
+      const conteudo = await this.buildSection(secao, data);
+      if (conteudo && conteudo.length > 0) {
+        docDefinition.content.push(...conteudo);
+      }
+    }
+
+    return docDefinition;
+  }
+
+  /**
+   * Gera relatório e retorna como Blob (usado para geração em lote / ZIP)
+   */
+  async generateReportBlob(data: ReportData): Promise<Blob> {
+    const pdfMakeLib = await this.loadPdfMake();
+    const docDefinition = await this.buildDocDefinition(data);
+
+    return Promise.race<Blob>([
+      new Promise<Blob>((resolve, reject) => {
+        try {
+          pdfMakeLib.createPdf(docDefinition).getBlob((b: Blob) => {
+            if (b && b.size > 0) resolve(b);
+            else reject(new Error('PDFMake retornou blob vazio'));
+          });
+        } catch (e) { reject(e); }
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout ao gerar PDF (30s)')), 30000)
+      ),
+    ]);
+  }
+
+  /**
    * Gera relatório completo em PDF usando PDFMake
    */
   async generateReport(data: ReportData, fileName?: string): Promise<void> {

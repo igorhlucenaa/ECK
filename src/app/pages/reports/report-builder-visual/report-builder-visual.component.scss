@@ -491,6 +491,17 @@
     margin: 0 0 10px;
   }
 
+  &__group {
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    margin: 10px 0 6px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
   &__grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

@@ -24,9 +24,17 @@
       <mat-form-field appearance="outline" class="client-filter-field" *ngIf="isAdminMaster && clients.length > 0">
         <mat-label>Filtrar por cliente</mat-label>
         <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:18px;">business</mat-icon>
-        <mat-select [(ngModel)]="selectedClientId" (selectionChange)="onClientChange()">
+        <mat-select [(ngModel)]="selectedClientId" (selectionChange)="onClientChange()"
+                    (closed)="resetClientSearch()">
+          <div class="client-search-wrap">
+            <mat-icon class="client-search-icon">search</mat-icon>
+            <input class="client-search-input" [formControl]="clientSearchCtrl"
+                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   (keydown)="$event.stopPropagation()" />
+          </div>
           <mat-option [value]="null">Todos os clientes</mat-option>
-          <mat-option *ngFor="let c of clients" [value]="c.id">{{ c.name }}</mat-option>
+          <mat-option *ngFor="let c of clientsFiltered" [value]="c.id">{{ c.name }}</mat-option>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
         </mat-select>
       </mat-form-field>
 
@@ -156,44 +164,52 @@
           <th mat-header-cell *matHeaderCellDef class="actions-col" data-tour="projects-actions">{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let p" class="actions-col">
             <div class="actions-cell">
-              <!-- Disponível para todos -->
-              <button mat-icon-button class="action-users" (click)="goToProjectUsers(p.id)" [matTooltip]="'Usuários do projeto' | translate">
-                <mat-icon>groups</mat-icon>
-              </button>
-              <button mat-icon-button class="action-participants"
+
+              <!-- Participantes — botão primário visível -->
+              <button class="act-btn act-btn--primary"
                       (click)="openResendModal(p.id, p.clientId)"
                       [matTooltip]="'Participantes' | translate"
                       [disabled]="loadingParticipantsProjectId === p.id">
-                <mat-spinner *ngIf="loadingParticipantsProjectId === p.id" diameter="20"></mat-spinner>
+                <mat-spinner *ngIf="loadingParticipantsProjectId === p.id" diameter="16"></mat-spinner>
                 <mat-icon *ngIf="loadingParticipantsProjectId !== p.id">supervisor_account</mat-icon>
               </button>
 
-              <!-- Somente admin_master -->
-              <button mat-icon-button class="action-mail" *ngIf="isAdminMaster"
-                      (click)="goToProjectTemplates(p.clientId, p.id)"
-                      [matTooltip]="'Modelos de e-mail' | translate">
-                <mat-icon>mail</mat-icon>
+              <!-- Disparar convites — botão primário visível (admin_master + cliente_admin) -->
+              <button class="act-btn act-btn--send" *ngIf="isAdminMaster || isClienteAdmin"
+                      (click)="openSendInvitesModal(p.clientId, p.id, p.name)"
+                      [matTooltip]="'Disparar Convites / Lembretes' | translate">
+                <mat-icon>send</mat-icon>
               </button>
-              <button mat-icon-button class="action-form" *ngIf="isAdminMaster"
-                      (click)="goToProjectQuestionnaires(p.clientId)"
-                      [matTooltip]="'Formulário de Avaliação' | translate">
-                <mat-icon>assignment</mat-icon>
+
+              <!-- Menu de ações secundárias (admin_master + cliente_admin) -->
+              <button *ngIf="isAdminMaster || isClienteAdmin" class="act-btn act-btn--more" [matMenuTriggerFor]="actionsMenu">
+                <mat-icon>more_horiz</mat-icon>
               </button>
-              <button mat-icon-button class="action-edit" *ngIf="isAdminMaster"
-                      (click)="openProjectForm(p.id)"
-                      [matTooltip]="'Editar Projeto' | translate">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button class="action-cancel" *ngIf="isAdminMaster && p.status !== 'Cancelado'"
-                      (click)="cancelProject(p.id)"
-                      [matTooltip]="'Cancelar Projeto' | translate">
-                <mat-icon>block</mat-icon>
-              </button>
-              <button mat-icon-button class="action-delete" *ngIf="isAdminMaster"
-                      (click)="deleteProject(p.id)"
-                      [matTooltip]="'Excluir Projeto' | translate">
-                <mat-icon>delete_outline</mat-icon>
-              </button>
+
+              <mat-menu #actionsMenu="matMenu" class="proj-actions-menu">
+                <button mat-menu-item (click)="goToProjectUsers(p.id)">
+                  <mat-icon class="menu-icon menu-icon--neutral">groups</mat-icon>
+                  <span>Usuários do projeto</span>
+                </button>
+                <button mat-menu-item (click)="goToProjectQuestionnaires(p.clientId)">
+                  <mat-icon class="menu-icon menu-icon--neutral">assignment</mat-icon>
+                  <span>Formulário de avaliação</span>
+                </button>
+                <button mat-menu-item (click)="openProjectForm(p.id)">
+                  <mat-icon class="menu-icon menu-icon--neutral">edit</mat-icon>
+                  <span>Editar projeto</span>
+                </button>
+                <mat-divider *ngIf="isAdminMaster"></mat-divider>
+                <button mat-menu-item *ngIf="isAdminMaster && p.status !== 'Cancelado'" (click)="cancelProject(p.id)" class="menu-item--warn">
+                  <mat-icon class="menu-icon menu-icon--warn">block</mat-icon>
+                  <span>Cancelar projeto</span>
+                </button>
+                <button mat-menu-item *ngIf="isAdminMaster" (click)="deleteProject(p.id)" class="menu-item--danger">
+                  <mat-icon class="menu-icon menu-icon--danger">delete_outline</mat-icon>
+                  <span>Excluir projeto</span>
+                </button>
+              </mat-menu>
+
             </div>
           </td>
         </ng-container>

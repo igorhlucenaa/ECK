@@ -1,153 +1,319 @@
+<div class="rs-wrapper">
+
 <app-page-header
   title="Lembretes Automáticos"
   eyebrow="Configurações"
-  subtitle="Programe o reenvio para pendentes com intervalo, horário, dias da semana e templates."
+  subtitle="Programe o reenvio automático para participantes pendentes com intervalo, horário, dias e templates."
 ></app-page-header>
 
-<mat-card class="settings-card" *ngIf="!isLoading && clients.length === 0">
-  <p class="empty-message">
-    Nenhum cliente disponível para configurar lembretes.
-  </p>
+<!-- Estado vazio -->
+<mat-card class="rs-empty-card" *ngIf="!isLoading && clients.length === 0">
+  <mat-icon>notifications_off</mat-icon>
+  <p>Nenhum cliente disponível para configurar lembretes.</p>
 </mat-card>
 
-<mat-card class="settings-card" *ngIf="clients.length > 0">
-  <div class="loading-wrap" *ngIf="isLoading">
-    <mat-spinner diameter="32"></mat-spinner>
+<ng-container *ngIf="clients.length > 0">
+  <div class="rs-main-card">
+
+  <!-- Loading -->
+  <div class="rs-loading" *ngIf="isLoading">
+    <mat-spinner diameter="36"></mat-spinner>
+    <span>Carregando configurações...</span>
   </div>
 
-  <form [formGroup]="form" *ngIf="!isLoading">
-    <div class="header-row">
-      <mat-form-field appearance="outline" class="client-field" *ngIf="isAdminMaster">
-        <mat-label>Cliente</mat-label>
-        <mat-select
-          [value]="selectedClientId"
-          (selectionChange)="onClientChange($event.value)"
-        >
-          <mat-option *ngFor="let client of clients" [value]="client.id">
-            {{ client.name }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+  <!-- ── CABEÇALHO: sempre visível (cliente + projeto) ── -->
+  <div class="rs-header-bar" *ngIf="!isLoading">
 
-      <div class="run-meta" *ngIf="lastRunAt">
-        <div class="meta-title">Último processamento</div>
-        <div class="meta-value">{{ lastRunAt | date: 'dd/MM/yyyy HH:mm' }}</div>
+    <!-- Seletor de cliente -->
+    <mat-form-field appearance="outline" class="rs-client-field" *ngIf="clients.length > 1">
+      <mat-label>Cliente</mat-label>
+      <mat-icon matPrefix>business</mat-icon>
+      <mat-select [value]="selectedClientId" (selectionChange)="onClientChange($event.value)"
+                  (closed)="resetClientSearch()">
+        <div class="client-search-wrap">
+          <mat-icon class="client-search-icon">search</mat-icon>
+          <input class="client-search-input" [formControl]="clientSearchCtrl"
+                 placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                 (keydown)="$event.stopPropagation()" />
+        </div>
+        <mat-option *ngFor="let client of clientsFiltered" [value]="client.id">{{ client.name }}</mat-option>
+        <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Label fixo para admin_client com único cliente vinculado -->
+    <div class="rs-client-badge" *ngIf="clients.length === 1">
+      <mat-icon>business</mat-icon>
+      <span>{{ clients[0].name }}</span>
+    </div>
+
+    <!-- Seletor de projeto -->
+    <mat-form-field appearance="outline" class="rs-project-field" *ngIf="selectedClientId">
+      <mat-label>Projeto</mat-label>
+      <mat-icon matPrefix>folder_open</mat-icon>
+      <mat-select [value]="selectedProjectId" (selectionChange)="onProjectChange($event.value)">
+        <mat-option value="">— Selecione um projeto —</mat-option>
+        <mat-option *ngFor="let p of projects" [value]="p.id">{{ p.name }}</mat-option>
+      </mat-select>
+      <mat-hint *ngIf="isLoadingProjects">Carregando projetos...</mat-hint>
+      <mat-hint *ngIf="!isLoadingProjects && projects.length === 0">Nenhum projeto ativo</mat-hint>
+    </mat-form-field>
+
+    <!-- Badge de escopo (somente quando projeto selecionado) -->
+    <div class="rs-scope-badge rs-scope-badge--project" *ngIf="selectedProjectId">
+      <mat-icon>folder_open</mat-icon>
+      <div>
+        <span class="rs-scope-badge__label">Configurando</span>
+        <span class="rs-scope-badge__value">{{ selectedProjectName }}</span>
       </div>
     </div>
 
-    <mat-slide-toggle formControlName="enabled">
-      Ativar lembretes automáticos para participantes pendentes
-    </mat-slide-toggle>
-
-    <div class="fields-grid">
-      <mat-form-field appearance="outline">
-        <mat-label>Intervalo de envio (dias)</mat-label>
-        <input matInput type="number" min="1" max="365" formControlName="intervalDays" />
-        <mat-hint>Exemplo: 3 = envio a cada 3 dias.</mat-hint>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Horário de disparo</mat-label>
-        <input matInput type="time" formControlName="sendTime" />
-        <mat-hint>Formato 24h (HH:mm).</mat-hint>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Timezone</mat-label>
-        <mat-select formControlName="timezone">
-          <mat-option *ngFor="let tz of timezoneOptions" [value]="tz">
-            {{ tz }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Máximo de lembretes por participante</mat-label>
-        <input matInput type="number" min="0" max="1000" formControlName="maxReminders" />
-        <mat-hint>Use 0 para enviar sem limite.</mat-hint>
-      </mat-form-field>
-    </div>
-
-    <div class="weekday-section">
-      <div class="weekday-title">Dias da semana para envio</div>
-      <div class="weekday-subtitle">
-        Se nenhum dia for selecionado, o envio roda todos os dias.
-      </div>
-
-      <div class="weekday-actions">
-        <button mat-stroked-button type="button" (click)="selectBusinessDays()">
-          Dias úteis
-        </button>
-        <button mat-stroked-button type="button" (click)="selectAllDays()">
-          Todos os dias
-        </button>
-      </div>
-
-      <div class="weekday-grid">
-        <mat-checkbox
-          *ngFor="let day of weekdayOptions"
-          [checked]="isWeekdaySelected(day.value)"
-          (change)="toggleWeekday(day.value, $event.checked)"
-        >
-          {{ day.label }}
-        </mat-checkbox>
+    <div class="rs-last-run" *ngIf="lastRunAt">
+      <div class="rs-last-run__icon"><mat-icon>history</mat-icon></div>
+      <div>
+        <div class="rs-last-run__label">Último processamento</div>
+        <div class="rs-last-run__value">{{ lastRunAt | date: 'dd/MM/yyyy HH:mm' }}</div>
       </div>
     </div>
+  </div>
 
-    <div class="templates-grid">
-      <mat-form-field appearance="outline">
-        <mat-label>Template padrão de lembrete</mat-label>
-        <mat-select formControlName="templateIdDefault">
-          <mat-option value="">
-            Usar o template original enviado no convite
-          </mat-option>
-          <mat-option *ngFor="let template of templates" [value]="template.id">
-            {{ template.name }} {{ template.scope === 'client' ? '(Cliente)' : '(Padrão)' }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+  <!-- Placeholder: sem projeto selecionado -->
+  <div class="rs-no-project" *ngIf="!isLoading && !selectedProjectId">
+    <mat-icon>folder_open</mat-icon>
+    <p>Selecione um projeto acima para configurar os lembretes automáticos.</p>
+    <span *ngIf="selectedClientId && projects.length === 0 && !isLoadingProjects">Este cliente não possui projetos ativos.</span>
+  </div>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Template para avaliados</mat-label>
-        <mat-select formControlName="templateIdAvaliado">
-          <mat-option value="">
-            Usar template padrão de lembrete
-          </mat-option>
-          <mat-option *ngFor="let template of templates" [value]="template.id">
-            {{ template.name }} {{ template.scope === 'client' ? '(Cliente)' : '(Padrão)' }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+  <form [formGroup]="form" *ngIf="!isLoading && selectedProjectId">
 
-      <mat-form-field appearance="outline">
-        <mat-label>Template para avaliadores</mat-label>
-        <mat-select formControlName="templateIdAvaliador">
-          <mat-option value="">
-            Usar template padrão de lembrete
-          </mat-option>
-          <mat-option *ngFor="let template of templates" [value]="template.id">
-            {{ template.name }} {{ template.scope === 'client' ? '(Cliente)' : '(Padrão)' }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+    <!-- ── TOGGLE PRINCIPAL ── -->
+    <div class="rs-toggle-card" [class.rs-toggle-card--active]="form.controls.enabled.value">
+      <div class="rs-toggle-card__left">
+        <div class="rs-toggle-card__icon">
+          <mat-icon>{{ form.controls.enabled.value ? 'notifications_active' : 'notifications_off' }}</mat-icon>
+        </div>
+        <div>
+          <div class="rs-toggle-card__title">Lembretes automáticos</div>
+          <div class="rs-toggle-card__sub">
+            {{ form.controls.enabled.value
+              ? 'Ativo — participantes pendentes receberão lembretes automaticamente'
+              : 'Inativo — nenhum lembrete será enviado automaticamente' }}
+          </div>
+        </div>
+      </div>
+      <mat-slide-toggle formControlName="enabled"></mat-slide-toggle>
     </div>
 
-    <div class="summary-box" *ngIf="lastRunSummary">
-      <div><strong>Enviados:</strong> {{ lastRunSummary.sent }}</div>
-      <div><strong>Pulados:</strong> {{ lastRunSummary.skipped }}</div>
-      <div><strong>Erros:</strong> {{ lastRunSummary.errors }}</div>
+    <!-- ── SEÇÃO 1: Agendamento ── -->
+    <div class="rs-section">
+      <div class="rs-section__header rs-section__header--blue">
+        <mat-icon>schedule</mat-icon>
+        <span>Agendamento</span>
+      </div>
+      <div class="rs-section__body">
+        <div class="rs-fields-grid">
+
+          <div class="rs-field-card">
+            <div class="rs-field-card__icon rs-field-card__icon--green">
+              <mat-icon>event</mat-icon>
+            </div>
+            <mat-form-field appearance="outline" class="rs-field-full">
+              <mat-label>Data de início dos lembretes</mat-label>
+              <input matInput [matDatepicker]="startDatePicker" formControlName="startDate"
+                     [min]="today" [matDatepickerFilter]="filterStartDates" />
+              <mat-datepicker-toggle matSuffix [for]="startDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #startDatePicker></mat-datepicker>
+              <mat-hint>Primeiro lembrete será disparado nesta data (ou depois, se já passou)</mat-hint>
+              <mat-error *ngIf="form.controls.startDate.hasError('required')">Selecione a data de início</mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="rs-field-card">
+            <div class="rs-field-card__icon rs-field-card__icon--blue">
+              <mat-icon>repeat</mat-icon>
+            </div>
+            <mat-form-field appearance="outline" class="rs-field-full">
+              <mat-label>Intervalo entre lembretes</mat-label>
+              <input matInput type="number" min="1" max="365" formControlName="intervalDays" />
+              <span matSuffix class="rs-suffix">dias</span>
+              <mat-hint>Ex: 3 = reenvia a cada 3 dias após o último envio</mat-hint>
+            </mat-form-field>
+          </div>
+
+          <div class="rs-field-card">
+            <div class="rs-field-card__icon rs-field-card__icon--purple">
+              <mat-icon>access_time</mat-icon>
+            </div>
+            <mat-form-field appearance="outline" class="rs-field-full">
+              <mat-label>Horário de disparo</mat-label>
+              <input matInput type="time" formControlName="sendTime" />
+              <mat-hint>Formato 24h (HH:mm)</mat-hint>
+            </mat-form-field>
+          </div>
+
+          <div class="rs-field-card">
+            <div class="rs-field-card__icon rs-field-card__icon--teal">
+              <mat-icon>public</mat-icon>
+            </div>
+            <mat-form-field appearance="outline" class="rs-field-full">
+              <mat-label>Fuso horário</mat-label>
+              <mat-select formControlName="timezone">
+                <mat-option *ngFor="let tz of timezoneOptions" [value]="tz">{{ tz }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="rs-field-card">
+            <div class="rs-field-card__icon rs-field-card__icon--amber">
+              <mat-icon>block</mat-icon>
+            </div>
+            <mat-form-field appearance="outline" class="rs-field-full">
+              <mat-label>Máximo de lembretes por participante</mat-label>
+              <input matInput type="number" min="0" max="1000" formControlName="maxReminders" />
+              <mat-hint>0 = sem limite de reenvios</mat-hint>
+            </mat-form-field>
+          </div>
+
+        </div>
+      </div>
     </div>
 
-    <div class="actions">
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        (click)="saveSettings()"
-        [disabled]="isSaving"
-      >
+    <!-- ── SEÇÃO 2: Dias da semana ── -->
+    <div class="rs-section">
+      <div class="rs-section__header rs-section__header--indigo">
+        <mat-icon>date_range</mat-icon>
+        <span>Dias da semana</span>
+      </div>
+      <div class="rs-section__body">
+        <p class="rs-section__hint">
+          Selecione os dias em que o lembrete pode ser disparado.
+          <strong>Nenhum dia selecionado = todos os dias.</strong>
+        </p>
+
+        <div class="rs-weekday-actions">
+          <button mat-stroked-button type="button" (click)="selectBusinessDays()" class="rs-weekday-btn">
+            <mat-icon>work</mat-icon> Dias úteis
+          </button>
+          <button mat-stroked-button type="button" (click)="selectAllDays()" class="rs-weekday-btn">
+            <mat-icon>calendar_today</mat-icon> Todos os dias
+          </button>
+        </div>
+
+        <div class="rs-weekday-grid">
+          <button
+            *ngFor="let day of weekdayOptions"
+            type="button"
+            class="rs-day-btn"
+            [class.rs-day-btn--selected]="isWeekdaySelected(day.value)"
+            (click)="toggleWeekday(day.value, !isWeekdaySelected(day.value))">
+            {{ day.label }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SEÇÃO 3: Templates de e-mail ── -->
+    <div class="rs-section">
+      <div class="rs-section__header rs-section__header--green">
+        <mat-icon>mail_outline</mat-icon>
+        <span>Templates de e-mail</span>
+      </div>
+      <div class="rs-section__body">
+        <p class="rs-section__hint">
+          Defina qual template será usado para cada tipo de participante. A hierarquia é:
+          <strong>avaliado/avaliador → padrão → template original do convite</strong>.
+        </p>
+
+        <div class="rs-templates-grid">
+
+          <div class="rs-template-card">
+            <div class="rs-template-card__label">
+              <mat-icon>mail</mat-icon> Template padrão
+            </div>
+            <mat-form-field appearance="outline" class="rs-field-full">
+              <mat-label>Selecione um template</mat-label>
+              <mat-select formControlName="templateIdDefault">
+                <mat-option value="">Usar template original do convite</mat-option>
+                <mat-option *ngFor="let t of templates" [value]="t.id">
+                  {{ t.name }}
+                  <span class="rs-scope-badge" [class.rs-scope-badge--client]="t.scope === 'client'">
+                    {{ t.scope === 'client' ? 'Cliente' : 'Global' }}
+                  </span>
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="rs-template-card rs-template-card--avaliado">
+            <div class="rs-template-card__label">
+              <mat-icon>person</mat-icon> Para avaliados
+            </div>
+            <mat-form-field appearance="outline" class="rs-field-full">
+              <mat-label>Template para avaliados</mat-label>
+              <mat-select formControlName="templateIdAvaliado">
+                <mat-option value="">Usar template padrão de lembrete</mat-option>
+                <mat-option *ngFor="let t of templates" [value]="t.id">
+                  {{ t.name }}
+                  <span class="rs-scope-badge" [class.rs-scope-badge--client]="t.scope === 'client'">
+                    {{ t.scope === 'client' ? 'Cliente' : 'Global' }}
+                  </span>
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="rs-template-card rs-template-card--avaliador">
+            <div class="rs-template-card__label">
+              <mat-icon>people</mat-icon> Para avaliadores
+            </div>
+            <mat-form-field appearance="outline" class="rs-field-full">
+              <mat-label>Template para avaliadores</mat-label>
+              <mat-select formControlName="templateIdAvaliador">
+                <mat-option value="">Usar template padrão de lembrete</mat-option>
+                <mat-option *ngFor="let t of templates" [value]="t.id">
+                  {{ t.name }}
+                  <span class="rs-scope-badge" [class.rs-scope-badge--client]="t.scope === 'client'">
+                    {{ t.scope === 'client' ? 'Cliente' : 'Global' }}
+                  </span>
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Resumo do último run ── -->
+    <div class="rs-run-summary" *ngIf="lastRunSummary">
+      <div class="rs-run-summary__title"><mat-icon>summarize</mat-icon> Resultado do último envio</div>
+      <div class="rs-run-summary__stats">
+        <div class="rs-run-stat rs-run-stat--sent">
+          <div class="rs-run-stat__num">{{ lastRunSummary.sent }}</div>
+          <div class="rs-run-stat__lbl">Enviados</div>
+        </div>
+        <div class="rs-run-stat rs-run-stat--skipped">
+          <div class="rs-run-stat__num">{{ lastRunSummary.skipped }}</div>
+          <div class="rs-run-stat__lbl">Pulados</div>
+        </div>
+        <div class="rs-run-stat rs-run-stat--error">
+          <div class="rs-run-stat__num">{{ lastRunSummary.errors }}</div>
+          <div class="rs-run-stat__lbl">Erros</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Ação ── -->
+    <div class="rs-actions">
+      <button mat-flat-button color="primary" type="button" (click)="saveSettings()" [disabled]="isSaving" class="rs-save-btn">
+        <mat-icon>{{ isSaving ? 'hourglass_top' : 'save' }}</mat-icon>
         {{ isSaving ? 'Salvando...' : 'Salvar configurações' }}
       </button>
     </div>
+
   </form>
-</mat-card>
+
+  </div><!-- /rs-main-card -->
+</ng-container>
+
+</div><!-- /rs-wrapper -->

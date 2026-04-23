@@ -79,7 +79,7 @@ export class ClientsListComponent implements OnInit {
     this.isAdminMaster = role === 'admin_master';
     this.userClientIds = await this.authService.getCurrentUserClientIds();
     if (!this.isAdminMaster) {
-      this.displayedColumns = ['companyName', 'sector', 'cnpj', 'credits'];
+      this.displayedColumns = ['companyName', 'sector', 'cnpj', 'credits', 'actions'];
     }
     this.loadClients();
   }

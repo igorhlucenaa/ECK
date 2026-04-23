@@ -1,139 +1,164 @@
-<div class="blank-layout-container justify-content-center">
-  <div class="position-relative row w-100 h-100">
-    <div class="col-lg-7 col-xl-8 bg-gredient p-0">
-      <div class="p-24 h-100">
-        <a [routerLink]="['/starter']">
-          <img
-            *ngIf="options.theme === 'light'"
-            src="./assets/images/logos/eck-consulting.svg"
-            class="align-middle m-2"
-            style="max-width: 135px"
-            alt="logo"
-          />
-          <img
-            *ngIf="options.theme === 'dark'"
-            src="./assets/images/logos/eck-consulting.svg"
-            class="align-middle m-2"
-            alt="logo"
-            style="max-width: 135px"
-          />
-        </a>
-        <div
-          class="align-items-center justify-content-center img-height d-none d-lg-flex"
-        >
-          <img
-            src="/assets/images/backgrounds/login-bg.png"
-            alt="Tela de login"
-            style="max-width: 500px"
-          />
+<div class="login-root">
+
+  <!-- ===== LEFT PANEL ===== -->
+  <div class="login-left">
+    <div class="left-grid"></div>
+
+    <!-- Logo -->
+    <div class="left-logo">
+      <img src="/assets/images/logos/eck-branco.svg" alt="ECK Consulting" />
+    </div>
+
+    <!-- Center content -->
+    <div class="left-center">
+
+      <h1 class="left-headline">
+        Avaliação<br /><em>360°</em> para<br />times de alta<br />performance
+      </h1>
+
+      <p class="left-sub">
+        Gerencie avaliações, acompanhe o desenvolvimento das pessoas e gere
+        relatórios completos em um único lugar.
+      </p>
+
+      <div class="left-features">
+        <div class="left-feature-item">
+          <div class="feature-icon">
+            <mat-icon>bar_chart</mat-icon>
+          </div>
+          <span class="feature-text">Dashboards e relatórios em tempo real</span>
+        </div>
+        <div class="left-feature-item">
+          <div class="feature-icon">
+            <mat-icon>track_changes</mat-icon>
+          </div>
+          <span class="feature-text">Avaliação por competências e comportamentos</span>
+        </div>
+        <div class="left-feature-item">
+          <div class="feature-icon">
+            <mat-icon>shield</mat-icon>
+          </div>
+          <span class="feature-text">Acesso seguro por perfis e permissões</span>
         </div>
       </div>
     </div>
-    <div class="col-lg-5 col-xl-4 p-0">
-      <div
-        class="p-32 d-flex align-items-start align-items-lg-center justify-content-center h-100"
-      >
-        <div class="row justify-content-center w-100">
-          <div class="col-lg-9 max-width-form">
-            <h4 class="f-w-700 f-s-24 m-0">Bem-vindo!</h4>
-            <span class="f-s-14 d-block mat-body-1 m-t-8"
-              >Por favor, faça login para continuar</span
-            >
 
-            <form class="m-t-30" [formGroup]="form" (ngSubmit)="submit()">
-              <!-- Campo de e-mail -->
-              <mat-label class="mat-subtitle-2 f-s-14 f-w-600 m-b-12 d-block"
-                >E-mail</mat-label
-              >
-              <mat-form-field
-                appearance="outline"
-                class="w-100"
-                color="primary"
-              >
-                <input
-                  matInput
-                  formControlName="uname"
-                  placeholder="Digite seu e-mail"
-                />
-                <mat-error *ngIf="f['uname'].touched && f['uname'].invalid">
-                  <div *ngIf="f['uname'].errors?.['required']">
-                    O e-mail é obrigatório.
-                  </div>
-                  <div *ngIf="f['uname'].errors?.['email']">
-                    Por favor, insira um e-mail válido.
-                  </div>
-                </mat-error>
-              </mat-form-field>
+    <!-- Bottom -->
+    <div class="left-bottom">
+      <span class="left-footer-text">© {{ currentYear }} ECK Consulting · Todos os direitos reservados</span>
+    </div>
 
-              <!-- Campo de senha -->
-              <mat-label class="mat-subtitle-2 f-s-14 f-w-600 m-b-12 d-block"
-                >Senha</mat-label
-              >
-              <mat-form-field
-                appearance="outline"
-                class="w-100"
-                color="primary"
-              >
-                <input
-                  matInput
-                  type="password"
-                  formControlName="password"
-                  placeholder="Digite sua senha"
-                />
-                <mat-error
-                  *ngIf="f['password'].touched && f['password'].invalid"
-                >
-                  <div *ngIf="f['password'].errors?.['required']">
-                    A senha é obrigatória.
-                  </div>
-                  <div *ngIf="f['password'].errors?.['minlength']">
-                    A senha deve ter pelo menos 6 caracteres.
-                  </div>
-                </mat-error>
-              </mat-form-field>
+    <!-- Decorative side card -->
+    <div class="left-card-deco"></div>
+  </div>
 
-              <!-- Checkbox e link de recuperação -->
-              <!-- <div class="d-flex align-items-center m-b-12">
-                <mat-checkbox formControlName="rememberMe" color="primary"
-                  >Lembrar-me</mat-checkbox
-                >
-                <a
-                  [routerLink]="['/forgot-password']"
-                  class="text-primary f-w-600 text-decoration-none m-l-auto f-s-14"
-                >
-                  Esqueceu a senha?
-                </a>
-              </div> -->
+  <!-- ===== RIGHT PANEL ===== -->
+  <div class="login-right">
+    <div class="login-card">
 
-              <!-- Botão de envio -->
-              <button
-                mat-flat-button
-                color="primary"
-                class="w-100"
-                [disabled]="!form.valid || isLoading"
-              >
-                <span *ngIf="isLoading">Carregando...</span>
-                <span *ngIf="!isLoading">Entrar</span>
-              </button>
-            </form>
-
-            <!-- Mensagem de erro -->
-            <p class="text-error m-t-12" *ngIf="errorMessage">
-              {{ errorMessage }}
-            </p>
-
-            <!-- <span class="d-block f-w-500 d-block m-t-24"
-              >Novo por aqui?
-              <a
-                [routerLink]="['/register']"
-                class="text-decoration-none text-primary f-w-500 f-s-14"
-              >
-                Crie uma conta
-              </a>
-            </span> -->
-          </div>
+      <!-- Header -->
+      <div class="login-card-header">
+        <div class="login-welcome-label">
+          <span>✦</span>
+          <span>Acesso à plataforma</span>
         </div>
+        <h2 class="login-title">Bem-vindo de volta</h2>
+        <p class="login-subtitle">
+          Insira suas credenciais para acessar a plataforma ECK.
+        </p>
       </div>
+
+      <!-- Form -->
+      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+
+        <!-- E-mail field -->
+        <div class="form-field-group">
+          <label class="form-label">E-mail</label>
+          <mat-form-field appearance="outline" color="primary">
+            <input
+              matInput
+              formControlName="uname"
+              placeholder="seu@email.com"
+              autocomplete="email"
+              type="email"
+            />
+            <mat-icon matPrefix style="color:#94a3b8;font-size:18px;margin-right:4px;">mail_outline</mat-icon>
+            <mat-error *ngIf="f['uname'].touched && f['uname'].errors?.['required']">
+              O e-mail é obrigatório.
+            </mat-error>
+            <mat-error *ngIf="f['uname'].touched && f['uname'].errors?.['email']">
+              Insira um e-mail válido.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Password field -->
+        <div class="form-field-group">
+          <label class="form-label">Senha</label>
+          <mat-form-field appearance="outline" color="primary">
+            <input
+              matInput
+              formControlName="password"
+              [type]="hidePassword ? 'password' : 'text'"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            />
+            <mat-icon matPrefix style="color:#94a3b8;font-size:18px;margin-right:4px;">lock_outline</mat-icon>
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              (click)="hidePassword = !hidePassword"
+              style="color:#94a3b8;"
+              tabindex="-1"
+            >
+              <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            <mat-error *ngIf="f['password'].touched && f['password'].errors?.['required']">
+              A senha é obrigatória.
+            </mat-error>
+            <mat-error *ngIf="f['password'].touched && f['password'].errors?.['minlength']">
+              Mínimo 6 caracteres.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Error message -->
+        <div class="login-error" *ngIf="errorMessage">
+          <span class="error-icon">⚠</span>
+          <span>{{ errorMessage }}</span>
+        </div>
+
+        <!-- Submit button -->
+        <button
+          mat-flat-button
+          class="login-btn"
+          type="submit"
+          [disabled]="isLoading"
+        >
+          <span class="btn-inner">
+            <span class="btn-spinner" *ngIf="isLoading"></span>
+            <span>{{ isLoading ? 'Autenticando...' : 'Entrar na plataforma' }}</span>
+            <span class="btn-arrow" *ngIf="!isLoading">→</span>
+          </span>
+        </button>
+
+      </form>
+
+      <!-- Footer -->
+      <div class="login-card-footer">
+        <div class="footer-divider">
+          <div class="footer-divider-line"></div>
+          <span class="footer-divider-text">ECK Consulting</span>
+          <div class="footer-divider-line"></div>
+        </div>
+        <p class="login-footer-copy">
+          Problemas para acessar? Entre em contato com o
+          <a href="mailto:contato@eckconsulting.com.br">suporte</a>.
+        </p>
+      </div>
+
     </div>
   </div>
+
 </div>

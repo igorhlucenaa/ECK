@@ -26,7 +26,7 @@ import { MaterialModule } from 'src/app/material.module';
 import { CommonModule, Location } from '@angular/common';
 import { ParticipantResponsesModalComponent } from './participant-responses-modal/participant-responses-modal.component';
 import { SendAssessmentModalComponent } from './send-assessment-modal/send-assessment-modal.component';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
@@ -75,7 +75,7 @@ interface MailTemplate {
 @Component({
   selector: 'app-assessment-list',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, TranslateModule, AppPageHeaderComponent],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './assessment-list.component.html',
   styleUrls: ['./assessment-list.component.scss'],
 })
@@ -96,6 +96,8 @@ export class AssessmentListComponent implements OnInit {
   dateFrom: Date | null = null;
   dateTo: Date | null = null;
   clients: Client[] = [];
+  clientsFiltered: Client[] = [];
+  clientSearchCtrl = new FormControl('');
   creators: string[] = [];
   projects: Project[] = [];
   clientId: string | null = null;
@@ -160,6 +162,11 @@ export class AssessmentListComponent implements OnInit {
         this.loadAssessments(),
         this.loadMailTemplates(),
       ]).then(() => {
+        this.clientsFiltered = [...this.clients];
+        this.clientSearchCtrl.valueChanges.subscribe(s => {
+          const q = (s || '').toLowerCase();
+          this.clientsFiltered = this.clients.filter(c => c.companyName.toLowerCase().includes(q));
+        });
         this.buildCreators();
         this.applyFilters();
       });
@@ -249,6 +256,11 @@ export class AssessmentListComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  resetClientSearch(): void {
+    this.clientSearchCtrl.setValue('', { emitEvent: false });
+    this.clientsFiltered = [...this.clients];
   }
 
   async loadClients(): Promise<void> {

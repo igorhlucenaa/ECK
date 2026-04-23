@@ -80,7 +80,6 @@ export const navItems: NavItem[] = [
     role: ['admin_master', 'admin_client'],
   },
 
-
   // {
   //   displayName: 'Projetos',
   //   iconName: 'solar:bill-list-bold-duotone',

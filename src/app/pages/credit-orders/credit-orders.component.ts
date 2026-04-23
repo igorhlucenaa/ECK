@@ -14,6 +14,7 @@ import {
   query,
   orderBy,
   where,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -25,7 +26,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
@@ -61,6 +62,7 @@ export interface Order {
     MatOptionModule,
     RouterModule,
     FormsModule,
+    ReactiveFormsModule,
     TranslateModule,
     AppPageHeaderComponent,
   ],
@@ -88,6 +90,8 @@ export class CreditOrdersComponent implements OnInit {
   selectedStatus: string = '';
   originalData: Order[] = [];
   clientsList: { id: string; name: string }[] = [];
+  clientsFiltered: { id: string; name: string }[] = [];
+  clientSearchCtrl = new FormControl('');
   selectedClient: string = '';
 
   editingExpirationId: string | null = null;
@@ -136,6 +140,11 @@ export class CreditOrdersComponent implements OnInit {
         id: doc.id,
         name: doc.data()['companyName'] || 'Não identificado',
       }));
+      this.clientsFiltered = [...this.clientsList];
+      this.clientSearchCtrl.valueChanges.subscribe(s => {
+        const q = (s || '').toLowerCase();
+        this.clientsFiltered = this.clientsList.filter(c => c.name.toLowerCase().includes(q));
+      });
 
       if (this.userRole === 'admin_master') {
         await this.expireOrders();
@@ -205,6 +214,11 @@ export class CreditOrdersComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  resetClientSearch(): void {
+    this.clientSearchCtrl.setValue('', { emitEvent: false });
+    this.clientsFiltered = [...this.clientsList];
   }
 
   applyFilter(): void {
@@ -327,34 +341,24 @@ export class CreditOrdersComponent implements OnInit {
         throw new Error('Pedido não encontrado.');
       }
 
-      const creditsToDeduct = orderData['credits'];
+      const clientId: string = orderData['clientId'];
 
       // Exclui o pedido
       await deleteDoc(orderDoc);
-
-      // Deduz os créditos do cliente
-      const clientDoc = doc(this.firestore, `clients/${orderData['clientId']}`);
-      const clientSnapshot = await getDoc(clientDoc);
-      const clientData = clientSnapshot.data();
-
-      if (clientData) {
-        const currentCredits = clientData['credits'] || 0;
-        await updateDoc(clientDoc, {
-          credits: Math.max(0, currentCredits - creditsToDeduct),
-        });
-      }
 
       // Atualiza a tabela localmente
       this.dataSource.data = this.dataSource.data.filter(
         (order) => order.id !== orderId
       );
 
+      // Recalcula credits/creditsUsed/reservedCredits a partir dos dados reais
+      // (inclui FIFO + reservas ativas) — não usa o valor bruto do pedido excluído
+      await this.sincronizarCreditosCliente(clientId);
+
       this.snackBar.open(
-        'Pedido excluído e créditos deduzidos com sucesso!',
+        'Pedido excluído e créditos atualizados com sucesso!',
         'Fechar',
-        {
-          duration: 3000,
-        }
+        { duration: 3000 }
       );
     } catch (error) {
       console.error('Erro ao excluir pedido:', error);
@@ -364,42 +368,148 @@ export class CreditOrdersComponent implements OnInit {
     }
   }
 
+  /**
+   * Sincroniza créditos de UM único cliente a partir das fontes de verdade.
+   * Usado pelo deleteOrder e pela Cloud Function onAssessmentCompleted.
+   * Para sincronização de todos os clientes use sincronizarCreditosClientes().
+   */
+  private async sincronizarCreditosCliente(clientId: string): Promise<void> {
+    try {
+      const now = new Date();
+
+      // 1. Pedidos aprovados válidos para este cliente, ordenados FIFO
+      const ordersSnap = await getDocs(
+        query(
+          collection(this.firestore, 'creditOrders'),
+          where('clientId', '==', clientId),
+          where('status', '==', 'Aprovado')
+        )
+      );
+      const orders = ordersSnap.docs
+        .filter(d => {
+          const v = d.data()['validityDate']?.toDate();
+          return !v || v >= now;
+        })
+        .sort((a, b) =>
+          (a.data()['createdAt']?.toMillis?.() ?? 0) -
+          (b.data()['createdAt']?.toMillis?.() ?? 0)
+        )
+        .map(d => ({ id: d.id, credits: (d.data()['credits'] as number) || 0 }));
+
+      // 2. Links concluídos deste cliente (clientId armazenado no link)
+      const completedSnap = await getDocs(
+        query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('clientId', '==', clientId),
+          where('status', '==', 'completed')
+        )
+      );
+      const used = completedSnap.size;
+
+      // 3. Links pendentes com crédito reservado deste cliente
+      const reservedSnap = await getDocs(
+        query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('clientId', '==', clientId),
+          where('creditReserved', '==', true),
+          where('status', '==', 'pending')
+        )
+      );
+      const reserved = reservedSnap.size;
+
+      // 4. FIFO: atualiza remainingCredits por pedido
+      let toDeduct = used;
+      for (const order of orders) {
+        const consumed = Math.min(toDeduct, order.credits);
+        const remaining = order.credits - consumed;
+        toDeduct -= consumed;
+        await updateDoc(doc(this.firestore, `creditOrders/${order.id}`), {
+          remainingCredits: remaining,
+        });
+      }
+
+      // 5. Atualiza o cliente com os três campos
+      const purchased = orders.reduce((s, o) => s + o.credits, 0);
+      const available = Math.max(0, purchased - used - reserved);
+      await updateDoc(doc(this.firestore, `clients/${clientId}`), {
+        credits: available,
+        creditsUsed: used,
+        reservedCredits: reserved,
+      });
+    } catch (error) {
+      console.error(`Erro ao sincronizar créditos do cliente ${clientId}:`, error);
+    }
+  }
+
   private async expireOrders(): Promise<void> {
     try {
       const ordersCollection = collection(this.firestore, 'creditOrders');
       const ordersSnapshot = await getDocs(ordersCollection);
 
       const now = new Date();
-      const expiredOrders: {
-        orderId: string;
-        clientId: string;
-        creditsToDeduct: number;
-      }[] = [];
+      const expiredOrders: { orderId: string; clientId: string }[] = [];
 
-      // Filtra pedidos expirados
-      ordersSnapshot.docs.forEach((doc) => {
-        const orderData = doc.data();
+      ordersSnapshot.docs.forEach((d) => {
+        const orderData = d.data();
         const validityDate = orderData['validityDate']?.toDate();
-
-        if (
-          validityDate &&
-          validityDate < now &&
-          orderData['status'] === 'Aprovado'
-        ) {
-          expiredOrders.push({
-            orderId: doc.id,
-            clientId: orderData['clientId'],
-            creditsToDeduct: orderData['credits'] || 0,
-          });
+        if (validityDate && validityDate < now && orderData['status'] === 'Aprovado') {
+          expiredOrders.push({ orderId: d.id, clientId: orderData['clientId'] });
         }
       });
 
       if (expiredOrders.length === 0) return;
 
-      // Atualiza pedidos expirados (créditos serão recalculados pela sincronização)
+      // ── Batch 1: marca pedidos como Expirado ────────────────────────────
+      const orderBatch = writeBatch(this.firestore);
       for (const { orderId } of expiredOrders) {
-        const orderDoc = doc(this.firestore, `creditOrders/${orderId}`);
-        await updateDoc(orderDoc, { status: 'Expirado', remainingCredits: 0 });
+        orderBatch.update(doc(this.firestore, `creditOrders/${orderId}`), {
+          status: 'Expirado',
+          remainingCredits: 0,
+        });
+      }
+      await orderBatch.commit();
+
+      // ── Por cliente afetado: cancela links pendentes reservados ─────────
+      const affectedClientIds = new Set(
+        expiredOrders.map(o => o.clientId).filter(Boolean)
+      );
+
+      for (const clientId of affectedClientIds) {
+        // Busca links pending com creditReserved=true para este cliente
+        const pendingSnap = await getDocs(
+          query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('clientId', '==', clientId),
+            where('status', '==', 'pending'),
+            where('creditReserved', '==', true)
+          )
+        );
+
+        if (pendingSnap.empty) continue;
+
+        // Batch 2: cancela cada link reservado
+        const linkBatch = writeBatch(this.firestore);
+        for (const linkDoc of pendingSnap.docs) {
+          linkBatch.update(doc(this.firestore, 'assessmentLinks', linkDoc.id), {
+            status: 'expired',
+            creditReserved: false,
+            expiredAt: new Date(),
+          });
+        }
+        await linkBatch.commit();
+
+        // Devolve os créditos reservados ao cliente imediatamente
+        // (sincronizarCreditosClientes vai confirmar os valores exatos depois)
+        const expiredCount = pendingSnap.size;
+        const clientDocRef = doc(this.firestore, `clients/${clientId}`);
+        const clientSnap = await getDoc(clientDocRef);
+        if (clientSnap.exists()) {
+          const d = clientSnap.data();
+          await updateDoc(clientDocRef, {
+            credits:        (d['credits']        || 0) + expiredCount,
+            reservedCredits: Math.max(0, (d['reservedCredits'] || 0) - expiredCount),
+          });
+        }
       }
     } catch (error) {
       console.error('Erro ao processar pedidos expirados:', error);
@@ -468,12 +578,12 @@ export class CreditOrdersComponent implements OnInit {
     try {
       const now = new Date();
 
-      // 1. Pedidos aprovados — busca sem orderBy para incluir docs sem createdAt indexado
+      // 1. Pedidos aprovados — sem orderBy para incluir docs sem createdAt indexado
       const ordersSnap = await getDocs(
         query(collection(this.firestore, 'creditOrders'), where('status', '==', 'Aprovado'))
       );
 
-      // Agrupa pedidos válidos por cliente ordenados por createdAt ASC em memória (FIFO)
+      // Agrupa pedidos válidos por cliente, ordenados por createdAt ASC (FIFO)
       const ordersByClient = new Map<string, { id: string; credits: number }[]>();
       const sortedOrderDocs = ordersSnap.docs.slice().sort((a, b) => {
         const tA = a.data()['createdAt']?.toMillis?.() ?? 0;
@@ -490,7 +600,8 @@ export class CreditOrdersComponent implements OnInit {
         ordersByClient.get(clientId)!.push({ id: d.id, credits: data['credits'] || 0 });
       });
 
-      // 2. Créditos usados: conta assessmentLinks completed por cliente
+      // 2. Créditos usados: assessmentLinks completed por cliente
+      //    Links recentes têm clientId direto; legados resolvem via participante.
       const completedLinksSnap = await getDocs(
         query(collection(this.firestore, 'assessmentLinks'), where('status', '==', 'completed'))
       );
@@ -498,40 +609,69 @@ export class CreditOrdersComponent implements OnInit {
       const participantClientCache = new Map<string, string>();
 
       for (const linkDoc of completedLinksSnap.docs) {
-        const participantId = linkDoc.data()['participantId'];
-        if (!participantId) continue;
+        const linkData = linkDoc.data();
+        let clientId: string | undefined = linkData['clientId'];
 
-        let clientId = participantClientCache.get(participantId);
         if (!clientId) {
-          const pSnap = await getDoc(doc(this.firestore, `participants/${participantId}`));
-          clientId = pSnap.exists() ? pSnap.data()['clientId'] : undefined;
-          if (clientId) participantClientCache.set(participantId, clientId);
+          // Fallback para links legados sem clientId armazenado
+          const participantId = linkData['participantId'];
+          if (!participantId) continue;
+          clientId = participantClientCache.get(participantId);
+          if (!clientId) {
+            const pSnap = await getDoc(doc(this.firestore, `participants/${participantId}`));
+            clientId = pSnap.exists() ? pSnap.data()['clientId'] : undefined;
+            if (clientId) participantClientCache.set(participantId, clientId);
+          }
         }
         if (!clientId) continue;
         usedByClient.set(clientId, (usedByClient.get(clientId) || 0) + 1);
       }
 
-      // 3. Distribui créditos usados via FIFO nos pedidos e atualiza remainingCredits por pedido
+      // 3. Créditos reservados: assessmentLinks pending com creditReserved=true por cliente
+      const reservedLinksSnap = await getDocs(
+        query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('creditReserved', '==', true),
+          where('status', '==', 'pending')
+        )
+      );
+      const reservedByClient = new Map<string, number>();
+      reservedLinksSnap.docs.forEach(d => {
+        const clientId = d.data()['clientId'] as string;
+        if (!clientId) return;
+        reservedByClient.set(clientId, (reservedByClient.get(clientId) || 0) + 1);
+      });
+
+      // 4. FIFO: distribui créditos usados nos pedidos e atualiza remainingCredits
       for (const [clientId, orders] of ordersByClient.entries()) {
         let toDeduct = usedByClient.get(clientId) || 0;
         for (const order of orders) {
           const consumed = Math.min(toDeduct, order.credits);
           const remaining = order.credits - consumed;
           toDeduct -= consumed;
-          const orderRef = doc(this.firestore, `creditOrders/${order.id}`);
-          await updateDoc(orderRef, { remainingCredits: remaining });
+          await updateDoc(doc(this.firestore, `creditOrders/${order.id}`), {
+            remainingCredits: remaining,
+          });
         }
       }
 
-      // 4. Atualiza cada cliente com os valores recalculados
-      const allClientIds = new Set([...ordersByClient.keys(), ...usedByClient.keys()]);
+      // 5. Atualiza cada cliente: credits = comprado − usado − reservado
+      const allClientIds = new Set([
+        ...ordersByClient.keys(),
+        ...usedByClient.keys(),
+        ...reservedByClient.keys(),
+      ]);
       for (const clientId of allClientIds) {
-        const orders = ordersByClient.get(clientId) || [];
+        const orders   = ordersByClient.get(clientId)  || [];
         const purchased = orders.reduce((sum, o) => sum + o.credits, 0);
-        const used = usedByClient.get(clientId) || 0;
-        const available = Math.max(0, purchased - used);
-        const clientDocRef = doc(this.firestore, `clients/${clientId}`);
-        await updateDoc(clientDocRef, { credits: available, creditsUsed: used });
+        const used      = usedByClient.get(clientId)    || 0;
+        const reserved  = reservedByClient.get(clientId) || 0;
+        const available = Math.max(0, purchased - used - reserved);
+        await updateDoc(doc(this.firestore, `clients/${clientId}`), {
+          credits: available,
+          creditsUsed: used,
+          reservedCredits: reserved,
+        });
       }
     } catch (error) {
       console.error('Erro ao sincronizar créditos:', error);

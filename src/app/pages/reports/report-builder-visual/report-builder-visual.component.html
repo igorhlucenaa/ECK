@@ -263,21 +263,40 @@
       <div *ngIf="['tabela', 'tabela_detalhada'].includes(secaoEditando.tipo)">
         <div class="palette-picker">
           <p class="palette-picker__label">Cor das Tabelas</p>
+          <p class="palette-picker__group">Gradientes</p>
           <div class="palette-picker__grid">
-            <div *ngFor="let paleta of paletasCores | keyvalue"
-                 class="palette-card"
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
                  [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
-                 (click)="selecionarPaleta(paleta.key)"
-                 [matTooltip]="paleta.value.nome">
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
               <div class="palette-card__swatches">
-                <span *ngFor="let cor of paleta.value.cores"
-                      class="palette-card__swatch"
-                      [style.background-color]="cor">
-                </span>
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
               </div>
               <span class="palette-card__name">{{ paleta.value.nome }}</span>
-              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
-                        class="palette-card__check">check_circle</mat-icon>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cores Sólidas</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasFlat" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
             </div>
           </div>
         </div>
@@ -287,41 +306,79 @@
       <div *ngIf="secaoEditando.tipo === 'destaques'">
         <div class="palette-picker">
           <p class="palette-picker__label">Cor — Avaliações mais altas</p>
+          <p class="palette-picker__group">Gradientes</p>
           <div class="palette-picker__grid">
-            <div *ngFor="let paleta of paletasCores | keyvalue"
-                 class="palette-card"
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
                  [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'verde') === paleta.key"
-                 (click)="selecionarPaleta(paleta.key)"
-                 [matTooltip]="paleta.value.nome">
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
               <div class="palette-card__swatches">
-                <span *ngFor="let cor of paleta.value.cores"
-                      class="palette-card__swatch"
-                      [style.background-color]="cor">
-                </span>
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
               </div>
               <span class="palette-card__name">{{ paleta.value.nome }}</span>
-              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'verde') === paleta.key"
-                        class="palette-card__check">check_circle</mat-icon>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'verde') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cores Sólidas</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasFlat" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'verde') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'verde') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'verde') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'verde') === paleta.key" class="palette-card__check">check_circle</mat-icon>
             </div>
           </div>
         </div>
         <div class="palette-picker" style="margin-top: 16px;">
           <p class="palette-picker__label">Cor — Avaliações mais baixas</p>
+          <p class="palette-picker__group">Gradientes</p>
           <div class="palette-picker__grid">
-            <div *ngFor="let paleta of paletasCores | keyvalue"
-                 class="palette-card"
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
                  [class.palette-card--selected]="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key"
-                 (click)="selecionarPaletaBaixas(paleta.key)"
-                 [matTooltip]="paleta.value.nome">
+                 (click)="selecionarPaletaBaixas(paleta.key)" [matTooltip]="paleta.value.nome">
               <div class="palette-card__swatches">
-                <span *ngFor="let cor of paleta.value.cores"
-                      class="palette-card__swatch"
-                      [style.background-color]="cor">
-                </span>
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
               </div>
               <span class="palette-card__name">{{ paleta.value.nome }}</span>
-              <mat-icon *ngIf="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key"
-                        class="palette-card__check">check_circle</mat-icon>
+              <mat-icon *ngIf="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cores Sólidas</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasFlat" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key"
+                 (click)="selecionarPaletaBaixas(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key"
+                 (click)="selecionarPaletaBaixas(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key" class="palette-card__check">check_circle</mat-icon>
             </div>
           </div>
         </div>
@@ -331,21 +388,40 @@
       <div *ngIf="secaoEditando.tipo === 'competencia_detalhada'">
         <div class="palette-picker">
           <p class="palette-picker__label">Cor das Tabelas Detalhadas</p>
+          <p class="palette-picker__group">Gradientes</p>
           <div class="palette-picker__grid">
-            <div *ngFor="let paleta of paletasCores | keyvalue"
-                 class="palette-card"
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
                  [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
-                 (click)="selecionarPaleta(paleta.key)"
-                 [matTooltip]="paleta.value.nome">
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
               <div class="palette-card__swatches">
-                <span *ngFor="let cor of paleta.value.cores"
-                      class="palette-card__swatch"
-                      [style.background-color]="cor">
-                </span>
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
               </div>
               <span class="palette-card__name">{{ paleta.value.nome }}</span>
-              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
-                        class="palette-card__check">check_circle</mat-icon>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cores Sólidas</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasFlat" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
             </div>
           </div>
         </div>
@@ -367,21 +443,40 @@
         <!-- Paleta de cores -->
         <div class="palette-picker">
           <p class="palette-picker__label">Paleta de Cores</p>
+          <p class="palette-picker__group">Gradientes</p>
           <div class="palette-picker__grid">
-            <div *ngFor="let paleta of paletasCores | keyvalue"
-                 class="palette-card"
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
                  [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'padrao') === paleta.key"
-                 (click)="selecionarPaleta(paleta.key)"
-                 [matTooltip]="paleta.value.nome">
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
               <div class="palette-card__swatches">
-                <span *ngFor="let cor of paleta.value.cores"
-                      class="palette-card__swatch"
-                      [style.background-color]="cor">
-                </span>
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
               </div>
               <span class="palette-card__name">{{ paleta.value.nome }}</span>
-              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'padrao') === paleta.key"
-                        class="palette-card__check">check_circle</mat-icon>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'padrao') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cores Sólidas</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasFlat" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'padrao') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'padrao') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'padrao') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'padrao') === paleta.key" class="palette-card__check">check_circle</mat-icon>
             </div>
           </div>
         </div>
