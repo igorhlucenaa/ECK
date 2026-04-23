@@ -263,8 +263,8 @@
 
       <div class="setup-card__header">
         <mat-icon>settings</mat-icon>
-        <span>Configuração</span>
-        <span class="setup-card__hint">Siga as etapas para visualizar participantes e enviar e-mails</span>
+        <span>{{ 'Configuração' | translate }}</span>
+        <span class="setup-card__hint">{{ 'Siga as etapas para visualizar participantes e enviar e-mails' | translate }}</span>
       </div>
 
       <div class="setup-steps">
@@ -279,17 +279,17 @@
           </div>
           <div class="setup-step__body">
             <div class="setup-step__label">
-              <span class="setup-step__title">Cliente</span>
-              <span class="setup-step__required">obrigatório</span>
+              <span class="setup-step__title">{{ 'Cliente' | translate }}</span>
+              <span class="setup-step__required">{{ 'obrigatório' | translate }}</span>
             </div>
             <mat-form-field appearance="outline" class="w-full setup-field">
-              <mat-label>Selecione o cliente</mat-label>
+              <mat-label>{{ 'Selecione o cliente' | translate }}</mat-label>
               <mat-icon matPrefix class="filter-icon">business</mat-icon>
               <mat-select [(ngModel)]="filterClient" (ngModelChange)="onClientChange()" [disabled]="isClientDisabled">
-                <mat-option value="">— Nenhum —</mat-option>
+                <mat-option value="">{{ '— Nenhum —' | translate }}</mat-option>
                 <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
               </mat-select>
-              <mat-hint *ngIf="!filterClient">Selecione para avançar para a próxima etapa</mat-hint>
+              <mat-hint *ngIf="!filterClient">{{ 'Selecione para avançar para a próxima etapa' | translate }}</mat-hint>
               <mat-hint *ngIf="filterClient" style="color:#10b981">✓ {{ getSelectedClientName() }}</mat-hint>
             </mat-form-field>
           </div>
@@ -308,18 +308,18 @@
           </div>
           <div class="setup-step__body">
             <div class="setup-step__label">
-              <span class="setup-step__title">Projeto</span>
-              <span class="setup-step__required">obrigatório</span>
-              <span class="setup-step__locked-hint" *ngIf="!filterClient">Selecione o cliente primeiro</span>
+              <span class="setup-step__title">{{ 'Projeto' | translate }}</span>
+              <span class="setup-step__required">{{ 'obrigatório' | translate }}</span>
+              <span class="setup-step__locked-hint" *ngIf="!filterClient">{{ 'Selecione o cliente primeiro' | translate }}</span>
             </div>
             <mat-form-field appearance="outline" class="w-full setup-field">
-              <mat-label>Selecione o projeto</mat-label>
+              <mat-label>{{ 'Selecione o projeto' | translate }}</mat-label>
               <mat-icon matPrefix class="filter-icon">folder_open</mat-icon>
               <mat-select [(ngModel)]="filterProject" (ngModelChange)="onProjectChange()" [disabled]="isProjectDisabled || !filterClient">
-                <mat-option value="">— Nenhum —</mat-option>
+                <mat-option value="">{{ '— Nenhum —' | translate }}</mat-option>
                 <mat-option *ngFor="let project of filteredProjects" [value]="project.id">{{ project.name }}</mat-option>
               </mat-select>
-              <mat-hint *ngIf="filterClient && !filterProject">Escolha o projeto para carregar os participantes</mat-hint>
+              <mat-hint *ngIf="filterClient && !filterProject">{{ 'Escolha o projeto para carregar os participantes' | translate }}</mat-hint>
               <mat-hint *ngIf="filterProject" style="color:#10b981">✓ {{ getSelectedProjectName() }}</mat-hint>
             </mat-form-field>
           </div>
@@ -338,9 +338,9 @@
           </div>
           <div class="setup-step__body">
             <div class="setup-step__label">
-              <span class="setup-step__title">Configuração de Envio</span>
-              <span class="setup-step__tag">necessário para enviar e-mails</span>
-              <span class="setup-step__locked-hint" *ngIf="!filterProject">Selecione o projeto primeiro</span>
+              <span class="setup-step__title">{{ 'Configuração de Envio' | translate }}</span>
+              <span class="setup-step__tag">{{ 'necessário para enviar e-mails' | translate }}</span>
+              <span class="setup-step__locked-hint" *ngIf="!filterProject">{{ 'Selecione o projeto primeiro' | translate }}</span>
             </div>
             <div class="setup-send-fields">
               <mat-form-field appearance="outline" class="setup-field flex-1">
@@ -351,8 +351,8 @@
                     {{ template.name }} — {{ getFriendlyEmailType(template.emailType) }}
                   </mat-option>
                 </mat-select>
-                <mat-hint *ngIf="!filterProject">Selecione o projeto primeiro</mat-hint>
-                <mat-hint *ngIf="filterProject && !mailTemplates.length">Nenhum modelo disponível para este cliente</mat-hint>
+                <mat-hint *ngIf="!filterProject">{{ 'Selecione o projeto primeiro' | translate }}</mat-hint>
+                <mat-hint *ngIf="filterProject && !mailTemplates.length">{{ 'Nenhum modelo disponível para este cliente' | translate }}</mat-hint>
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="setup-field flex-1"
@@ -362,7 +362,7 @@
                 <mat-select [formControl]="assessmentFormControl" required [disabled]="!filterProject">
                   <mat-option *ngFor="let assessment of assessments" [value]="assessment.id">{{ assessment.name }}</mat-option>
                 </mat-select>
-                <mat-error *ngIf="assessmentFormControl.hasError('required')">Selecione uma avaliação.</mat-error>
+                <mat-error *ngIf="assessmentFormControl.hasError('required')">{{ 'Selecione uma avaliação.' | translate }}</mat-error>
               </mat-form-field>
             </div>
           </div>
@@ -381,17 +381,17 @@
         </div>
       </div>
       <div class="context-banner__stats" *ngIf="!isTableLoading">
-        <div class="ctx-stat"><strong>{{ dataSource.filteredData.length }}</strong><span>total</span></div>
+        <div class="ctx-stat"><strong>{{ dataSource.filteredData.length }}</strong><span>{{ 'total' | translate }}</span></div>
         <div class="ctx-sep"></div>
-        <div class="ctx-stat ctx-stat--blue"><strong>{{ countByType('avaliado') }}</strong><span>avaliados</span></div>
+        <div class="ctx-stat ctx-stat--blue"><strong>{{ countByType('avaliado') }}</strong><span>{{ 'avaliados' | translate }}</span></div>
         <div class="ctx-sep"></div>
-        <div class="ctx-stat ctx-stat--indigo"><strong>{{ countByType('avaliador') }}</strong><span>avaliadores</span></div>
+        <div class="ctx-stat ctx-stat--indigo"><strong>{{ countByType('avaliador') }}</strong><span>{{ 'avaliadores' | translate }}</span></div>
         <div class="ctx-sep"></div>
-        <div class="ctx-stat ctx-stat--green"><strong>{{ countByStatus('Respondido') }}</strong><span>respondidos</span></div>
+        <div class="ctx-stat ctx-stat--green"><strong>{{ countByStatus('Respondido') }}</strong><span>{{ 'respondidos' | translate }}</span></div>
         <div class="ctx-sep"></div>
-        <div class="ctx-stat ctx-stat--amber"><strong>{{ countByStatus('Enviado (Pendente)') }}</strong><span>pendentes</span></div>
+        <div class="ctx-stat ctx-stat--amber"><strong>{{ countByStatus('Enviado (Pendente)') }}</strong><span>{{ 'pendentes' | translate }}</span></div>
         <div class="ctx-sep"></div>
-        <div class="ctx-stat ctx-stat--gray"><strong>{{ countByStatus('Não Enviado') }}</strong><span>não enviados</span></div>
+        <div class="ctx-stat ctx-stat--gray"><strong>{{ countByStatus('Não Enviado') }}</strong><span>{{ 'não enviados' | translate }}</span></div>
       </div>
     </div>
 
@@ -427,11 +427,11 @@
             <mat-icon matPrefix class="filter-icon">group</mat-icon>
             <mat-select [(ngModel)]="filterCategory" (ngModelChange)="applyFilter()">
               <mat-option value="">{{ 'Todas' | translate }}</mat-option>
-              <mat-option value="Avaliado">Avaliado</mat-option>
-              <mat-option value="Gestor">Gestor</mat-option>
-              <mat-option value="Par">Par</mat-option>
-              <mat-option value="Subordinado">Subordinado</mat-option>
-              <mat-option value="Outros">Outros</mat-option>
+              <mat-option value="Avaliado">{{ 'Avaliado' | translate }}</mat-option>
+              <mat-option value="Gestor">{{ 'Gestor' | translate }}</mat-option>
+              <mat-option value="Par">{{ 'Par' | translate }}</mat-option>
+              <mat-option value="Subordinado">{{ 'Subordinado' | translate }}</mat-option>
+              <mat-option value="Outros">{{ 'Outros' | translate }}</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -440,9 +440,9 @@
             <mat-icon matPrefix class="filter-icon">tune</mat-icon>
             <mat-select [(ngModel)]="filterStatus" (ngModelChange)="applyFilter()">
               <mat-option value="">{{ 'Todos' | translate }}</mat-option>
-              <mat-option value="Não Enviado">Não Enviado</mat-option>
-              <mat-option value="Enviado (Pendente)">Enviado (Pendente)</mat-option>
-              <mat-option value="Respondido">Respondido</mat-option>
+              <mat-option value="Não Enviado">{{ 'Não Enviado' | translate }}</mat-option>
+              <mat-option value="Enviado (Pendente)">{{ 'Enviado (Pendente)' | translate }}</mat-option>
+              <mat-option value="Respondido">{{ 'Respondido' | translate }}</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
@@ -454,8 +454,8 @@
       <div class="no-context-state__icon">
         <mat-icon>groups</mat-icon>
       </div>
-      <h4>Selecione o cliente e o projeto</h4>
-      <p>Complete as etapas acima para visualizar os participantes e gerenciar os envios de e-mail.</p>
+      <h4>{{ 'Selecione o cliente e o projeto' | translate }}</h4>
+      <p>{{ 'Complete as etapas acima para visualizar os participantes e gerenciar os envios de e-mail.' | translate }}</p>
     </div>
 
     <!-- Contexto definido: loading, tabela, empty -->
@@ -480,57 +480,57 @@
       <mat-menu #reservedMenu="matMenu" class="si-credits-menu">
         <div class="si-credits-menu__header" (click)="$event.stopPropagation()">
           <mat-icon>toll</mat-icon>
-          <span>Créditos — este projeto</span>
+          <span>{{ 'Créditos — este projeto' | translate }}</span>
         </div>
 
         <!-- Resumo -->
         <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__label">Disponíveis (cliente)</span>
+          <span class="si-credits-menu__label">{{ 'Disponíveis (cliente)' | translate }}</span>
           <span class="si-credits-menu__val si-credits-menu__val--avail">{{ clientCredits }}</span>
         </div>
         <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__label">Reservados (este projeto)</span>
+          <span class="si-credits-menu__label">{{ 'Reservados (este projeto)' | translate }}</span>
           <span class="si-credits-menu__val si-credits-menu__val--reserved">{{ reservedParticipants.length }}</span>
         </div>
         <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__label">Utilizados (este projeto)</span>
+          <span class="si-credits-menu__label">{{ 'Utilizados (este projeto)' | translate }}</span>
           <span class="si-credits-menu__val si-credits-menu__val--used">{{ usedParticipants.length }}</span>
         </div>
 
         <!-- Reservados -->
         <mat-divider></mat-divider>
         <div class="si-credits-menu__section" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__section-title">🔒 Reservados — aguardando resposta</span>
+          <span class="si-credits-menu__section-title">🔒 {{ 'Reservados — aguardando resposta' | translate }}</span>
           <div class="si-credits-menu__participant" *ngFor="let p of reservedParticipants">
             <div class="si-credits-menu__avatar">{{ p.name.charAt(0).toUpperCase() }}</div>
             <div class="si-credits-menu__pinfo">
               <span class="si-credits-menu__pname">{{ p.name }}</span>
               <span class="si-credits-menu__pemail">{{ p.email }}</span>
             </div>
-            <span class="si-credits-menu__pstatus si-credits-menu__pstatus--pending">Pendente</span>
+            <span class="si-credits-menu__pstatus si-credits-menu__pstatus--pending">{{ 'Pendente' | translate }}</span>
           </div>
           <div class="si-credits-menu__empty" *ngIf="reservedParticipants.length === 0">
-            <mat-icon>check_circle</mat-icon><span>Nenhum reservado neste projeto</span>
+            <mat-icon>check_circle</mat-icon><span>{{ 'Nenhum reservado neste projeto' | translate }}</span>
           </div>
         </div>
 
         <!-- Utilizados -->
         <mat-divider *ngIf="usedParticipants.length > 0"></mat-divider>
         <div class="si-credits-menu__section" *ngIf="usedParticipants.length > 0" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__section-title">✅ Utilizados — já responderam</span>
+          <span class="si-credits-menu__section-title">✅ {{ 'Utilizados — já responderam' | translate }}</span>
           <div class="si-credits-menu__participant" *ngFor="let p of usedParticipants">
             <div class="si-credits-menu__avatar si-credits-menu__avatar--used">{{ p.name.charAt(0).toUpperCase() }}</div>
             <div class="si-credits-menu__pinfo">
               <span class="si-credits-menu__pname">{{ p.name }}</span>
               <span class="si-credits-menu__pemail">{{ p.completedAt | date:'dd/MM/yy HH:mm' }}</span>
             </div>
-            <span class="si-credits-menu__pstatus si-credits-menu__pstatus--used">Respondido</span>
+            <span class="si-credits-menu__pstatus si-credits-menu__pstatus--used">{{ 'Respondido' | translate }}</span>
           </div>
         </div>
       </mat-menu>
       <div class="credits-summary-bar__warn" *ngIf="clientCredits === 0">
         <mat-icon>warning</mat-icon>
-        <span>Sem créditos — envio bloqueado</span>
+        <span>{{ 'Sem créditos — envio bloqueado' | translate }}</span>
       </div>
     </div>
 
@@ -568,16 +568,16 @@
           {{ dataSource.filteredData.length }} participante{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
         </span>
         <span class="table-refresh-bar__info table-refresh-bar__info--loading" *ngIf="isRefreshing">
-          Atualizando...
+          {{ 'Atualizando...' | translate }}
         </span>
         <span class="table-refresh-bar__updated" *ngIf="lastRefreshed && !isRefreshing">
-          · atualizado às {{ lastRefreshed | date:'HH:mm:ss' }}
+          · {{ 'atualizado às' | translate }} {{ lastRefreshed | date:'HH:mm:ss' }}
         </span>
         <span class="table-refresh-bar__spacer"></span>
         <button class="table-refresh-bar__btn" (click)="refreshTable()" [disabled]="isRefreshing"
-                matTooltip="Atualizar dados em tempo real">
+                [matTooltip]="'Atualizar dados em tempo real' | translate">
           <mat-icon [class.spin]="isRefreshing">refresh</mat-icon>
-          Atualizar
+          {{ 'Atualizar' | translate }}
         </button>
       </div>
 
@@ -676,7 +676,7 @@
               <mat-icon class="status-chip__icon">
                 {{ participant.status === 'Respondido' ? 'check_circle' : participant.status === 'Enviado (Pendente)' ? 'schedule' : 'radio_button_unchecked' }}
               </mat-icon>
-              {{ participant.status === 'Respondido' ? 'Respondido' : participant.status === 'Enviado (Pendente)' ? 'Pendente' : 'Não enviado' }}
+              {{ participant.status === 'Respondido' ? ('Respondido' | translate) : participant.status === 'Enviado (Pendente)' ? ('Pendente' | translate) : ('Não enviado' | translate) }}
             </span>
           </td>
         </ng-container>
@@ -686,25 +686,25 @@
           <th mat-header-cell *matHeaderCellDef>
             <span class="col-header-lembrete">
               <mat-icon>notifications</mat-icon>
-              Lembrete
+              {{ 'Lembrete' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let participant">
             <!-- Respondido: sem lembrete pendente -->
             <ng-container *ngIf="participant.status === 'Respondido'">
               <span class="reminder-chip reminder-chip--done"
-                    matTooltip="Avaliação respondida — nenhum lembrete pendente">
+                    [matTooltip]="'Avaliação respondida — nenhum lembrete pendente' | translate">
                 <mat-icon>check_circle</mat-icon>
-                Concluído
+                {{ 'Concluído' | translate }}
               </span>
             </ng-container>
 
             <!-- Não enviado: aguardando envio inicial -->
             <ng-container *ngIf="participant.status !== 'Respondido' && participant.status === 'Não Enviado'">
               <span class="reminder-chip reminder-chip--waiting"
-                    matTooltip="Convite ainda não enviado — lembretes iniciam após o primeiro envio">
+                    [matTooltip]="'Convite ainda não enviado — lembretes iniciam após o primeiro envio' | translate">
                 <mat-icon>hourglass_empty</mat-icon>
-                Aguarda envio
+                {{ 'Aguarda envio' | translate }}
               </span>
             </ng-container>
 
@@ -713,9 +713,9 @@
               <!-- Sem configuração de lembrete -->
               <ng-container *ngIf="!participant.reminderEnabled">
                 <span class="reminder-chip reminder-chip--off"
-                      matTooltip="Lembretes automáticos não configurados para este cliente">
+                      [matTooltip]="'Lembretes automáticos não configurados para este cliente' | translate">
                   <mat-icon>notifications_off</mat-icon>
-                  Sem config.
+                  {{ 'Sem config.' | translate }}
                 </span>
               </ng-container>
 
@@ -738,7 +738,7 @@
                   <span *ngIf="participant.nextReminderAt">
                     {{ participant.nextReminderAt | date:'dd/MM HH:mm' }}
                   </span>
-                  <span *ngIf="!participant.nextReminderAt">Em breve</span>
+                  <span *ngIf="!participant.nextReminderAt">{{ 'Em breve' | translate }}</span>
                 </span>
               </ng-container>
             </ng-container>
@@ -750,24 +750,24 @@
           <td mat-cell *matCellDef="let participant">
             <div class="datas-cell">
               <span class="datas-row" [class.datas-row--empty]="!participant.sentAt"
-                    [matTooltip]="participant.sentAt ? ('Enviado em ' + (participant.sentAt | date:'dd/MM/yyyy HH:mm')) : 'Não enviado'">
+                    [matTooltip]="participant.sentAt ? (('Enviado em' | translate) + ' ' + (participant.sentAt | date:'dd/MM/yyyy HH:mm')) : ('Não enviado' | translate)">
                 <mat-icon>send</mat-icon>
                 {{ participant.sentAt ? (participant.sentAt | date:'dd/MM/yy') : '—' }}
               </span>
               <span class="datas-row datas-row--resp" [class.datas-row--empty]="!participant.completedAt"
-                    [matTooltip]="participant.completedAt ? ('Respondido em ' + (participant.completedAt | date:'dd/MM/yyyy HH:mm')) : 'Aguardando resposta'">
+                    [matTooltip]="participant.completedAt ? (('Respondido em' | translate) + ' ' + (participant.completedAt | date:'dd/MM/yyyy HH:mm')) : ('Aguardando resposta' | translate)">
                 <mat-icon>check_circle</mat-icon>
                 {{ participant.completedAt ? (participant.completedAt | date:'dd/MM/yy') : '—' }}
               </span>
               <span class="datas-row datas-row--credit" *ngIf="participant.completedAt"
-                    matTooltip="1 crédito consumido ao responder">
+                    [matTooltip]="'1 crédito consumido ao responder' | translate">
                 <mat-icon>toll</mat-icon>
-                1 crédito
+                {{ '1 crédito' | translate }}
               </span>
               <span class="datas-row datas-row--reserved" *ngIf="participant.creditReserved && !participant.completedAt"
-                    matTooltip="1 crédito reservado para este participante">
+                    [matTooltip]="'1 crédito reservado para este participante' | translate">
                 <mat-icon>lock_outline</mat-icon>
-                1 reservado
+                {{ '1 reservado' | translate }}
               </span>
             </div>
           </td>
@@ -777,25 +777,25 @@
           <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
             <div class="actions-cell-row">
-              <button class="act-btn act-btn--neutral" matTooltip="Editar participante"
+              <button class="act-btn act-btn--neutral" [matTooltip]="'Editar participante' | translate"
                       (click)="openEditParticipantDialog(participant); $event.stopPropagation()">
                 <mat-icon>edit</mat-icon>
               </button>
               <button class="act-btn act-btn--history"
                 *ngIf="participant.status !== 'Não Enviado'"
                 (click)="openSendHistory(participant); $event.stopPropagation()"
-                matTooltip="Histórico de envios">
+                [matTooltip]="'Histórico de envios' | translate">
                 <mat-icon>history</mat-icon>
               </button>
               <button class="act-btn act-btn--cancel"
                 *ngIf="participant.status === 'Enviado (Pendente)'"
                 (click)="cancelSend(participant); $event.stopPropagation()"
-                matTooltip="Cancelar envio e liberar crédito">
+                [matTooltip]="'Cancelar envio e liberar crédito' | translate">
                 <mat-icon>cancel</mat-icon>
               </button>
               <button class="act-btn act-btn--report"
                 *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
-                (click)="generateReportForParticipant(participant)" matTooltip="Gerar Relatório">
+                (click)="generateReportForParticipant(participant)" [matTooltip]="'Gerar Relatório' | translate">
                 <mat-icon>description</mat-icon>
               </button>
             </div>

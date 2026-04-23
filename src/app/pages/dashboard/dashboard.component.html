@@ -51,7 +51,7 @@
     <div class="dash-block-header">
       <span class="dash-block-label">{{ 'Visão Geral' | translate }}</span>
       <button mat-icon-button class="dash-info-btn"
-              matTooltip="Indicadores rápidos da plataforma: número de clientes ativos, projetos em andamento e avaliações pendentes de resposta."
+              [matTooltip]="'Indicadores rápidos da plataforma: número de clientes ativos, projetos em andamento e avaliações pendentes de resposta.' | translate"
               matTooltipPosition="right" matTooltipClass="dash-tooltip">
         <mat-icon>info_outline</mat-icon>
       </button>
@@ -69,7 +69,7 @@
           <p class="dash-card__sub">{{ 'Utilizados e disponíveis — clientes críticos no topo' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                matTooltip="Créditos consumidos = respostas de avaliação recebidas. Disponíveis = saldo restante para novos envios."
+                [matTooltip]="'Créditos consumidos = respostas de avaliação recebidas. Disponíveis = saldo restante para novos envios.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -77,17 +77,17 @@
         <div class="credits-totals">
           <div class="credits-totals__item credits-totals__item--used">
             <span class="credits-totals__num">{{ totalCreditsUsed }}</span>
-            <span class="credits-totals__lbl">Utilizados</span>
+            <span class="credits-totals__lbl">{{ 'Utilizados' | translate }}</span>
           </div>
           <div class="credits-totals__sep"></div>
           <div class="credits-totals__item" style="color:#f59e0b;">
             <span class="credits-totals__num">{{ totalReservedCredits }}</span>
-            <span class="credits-totals__lbl">Reservados</span>
+            <span class="credits-totals__lbl">{{ 'Reservados' | translate }}</span>
           </div>
           <div class="credits-totals__sep"></div>
           <div class="credits-totals__item credits-totals__item--available">
             <span class="credits-totals__num">{{ totalCredits }}</span>
-            <span class="credits-totals__lbl">Disponíveis</span>
+            <span class="credits-totals__lbl">{{ 'Disponíveis' | translate }}</span>
           </div>
         </div>
       </div>
@@ -97,18 +97,18 @@
         <div class="projects-filter-bar__search">
           <mat-icon>search</mat-icon>
           <input [(ngModel)]="creditSearchQuery" (ngModelChange)="onCreditSearch()"
-                 placeholder="Buscar por cliente…" />
+                 [placeholder]="'Buscar por cliente…' | translate" />
           <button *ngIf="creditSearchQuery" (click)="creditSearchQuery=''; onCreditSearch()" class="projects-filter-bar__clear">
             <mat-icon>close</mat-icon>
           </button>
         </div>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
-          <mat-label>Status</mat-label>
+          <mat-label>{{ 'Status' | translate }}</mat-label>
           <mat-select [value]="creditStatusFilter" (selectionChange)="onCreditStatusFilter($event.value)">
-            <mat-option value="">Todos</mat-option>
-            <mat-option value="zero">Sem créditos</mat-option>
-            <mat-option value="low">Baixo (&lt; 5)</mat-option>
-            <mat-option value="ok">Ativo (≥ 5)</mat-option>
+            <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+            <mat-option value="zero">{{ 'Sem créditos' | translate }}</mat-option>
+            <mat-option value="low">{{ 'Baixo (< 5)' | translate }}</mat-option>
+            <mat-option value="ok">{{ 'Ativo (≥ 5)' | translate }}</mat-option>
           </mat-select>
         </mat-form-field>
         <span class="projects-filter-bar__count">
@@ -121,11 +121,11 @@
 
           <!-- Cabeçalho de colunas -->
           <div class="credits-col-header">
-            <div class="credits-col-header__client">Cliente</div>
-            <div class="credits-col-header__num credits-col-header__num--used">Utilizados</div>
-            <div class="credits-col-header__num credits-col-header__num--reserved">Reservados</div>
-            <div class="credits-col-header__num credits-col-header__num--avail">Disponíveis</div>
-            <div class="credits-col-header__status">Status</div>
+            <div class="credits-col-header__client">{{ 'Cliente' | translate }}</div>
+            <div class="credits-col-header__num credits-col-header__num--used">{{ 'Utilizados' | translate }}</div>
+            <div class="credits-col-header__num credits-col-header__num--reserved">{{ 'Reservados' | translate }}</div>
+            <div class="credits-col-header__num credits-col-header__num--avail">{{ 'Disponíveis' | translate }}</div>
+            <div class="credits-col-header__status">{{ 'Status' | translate }}</div>
             <div class="credits-col-header__expand"></div>
           </div>
 
@@ -161,7 +161,7 @@
                       [class.credits-status-badge--zero]="r.credits === 0"
                       [class.credits-status-badge--low]="r.credits > 0 && r.credits < 5"
                       [class.credits-status-badge--ok]="r.credits >= 5">
-                  {{ r.credits === 0 ? 'Sem créditos' : r.credits < 5 ? 'Baixo' : 'Ativo' }}
+                  {{ r.credits === 0 ? ('Sem créditos' | translate) : r.credits < 5 ? ('Baixo' | translate) : ('Ativo' | translate) }}
                 </span>
               </div>
 
@@ -176,14 +176,14 @@
             <div class="credits-projects-detail" *ngIf="r.expanded && r.projects.length > 0">
               <div class="credits-projects-detail__header">
                 <mat-icon>folder_open</mat-icon>
-                Créditos por projeto
+                {{ 'Créditos por projeto' | translate }}
               </div>
 
               <!-- sub-cabeçalho de colunas -->
               <div class="credits-project-cols-header">
-                <span class="credits-project-cols-header__name">Projeto</span>
-                <span class="credits-project-cols-header__val credits-project-cols-header__val--used">Utilizados</span>
-                <span class="credits-project-cols-header__val credits-project-cols-header__val--reserved">Reservados</span>
+                <span class="credits-project-cols-header__name">{{ 'Projeto' | translate }}</span>
+                <span class="credits-project-cols-header__val credits-project-cols-header__val--used">{{ 'Utilizados' | translate }}</span>
+                <span class="credits-project-cols-header__val credits-project-cols-header__val--reserved">{{ 'Reservados' | translate }}</span>
               </div>
 
               <div class="credits-project-item" *ngFor="let p of r.projects"
@@ -212,7 +212,7 @@
         </div>
         <div class="dash-empty" *ngIf="filteredCreditRows.length === 0">
           <mat-icon>toll</mat-icon>
-          <span>{{ clientCreditRows.length === 0 ? 'Nenhum cliente encontrado' : 'Nenhum cliente para o filtro selecionado' }}</span>
+          <span>{{ clientCreditRows.length === 0 ? ('Nenhum cliente encontrado' | translate) : ('Nenhum cliente para o filtro selecionado' | translate) }}</span>
         </div>
       </div>
 
@@ -238,7 +238,7 @@
           <span class="alerts-section__subtitle">{{ 'Itens que requerem atenção imediata ou acompanhamento' | translate }}</span>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                matTooltip="Notificações geradas automaticamente pelo sistema. Crítico (vermelho): prazo vencido com respostas pendentes. Atenção (laranja): prazo em até 7 dias com respostas incompletas. Aviso (azul): cliente sem créditos."
+                [matTooltip]="'Notificações geradas automaticamente pelo sistema. Crítico (vermelho): prazo vencido com respostas pendentes. Atenção (laranja): prazo em até 7 dias com respostas incompletas. Aviso (azul): cliente sem créditos.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -261,21 +261,21 @@
           <div class="alerts-filter-chips">
             <button class="filter-chip" [class.filter-chip--active]="alertLevelFilter === 'all'"
                     (click)="onAlertLevelFilter('all')">
-              Todos <span class="filter-chip__count">{{ alerts.length }}</span>
+              {{ 'Todos' | translate }} <span class="filter-chip__count">{{ alerts.length }}</span>
             </button>
             <button class="filter-chip filter-chip--danger" [class.filter-chip--active]="alertLevelFilter === 'danger'"
                     (click)="onAlertLevelFilter('danger')">
-              <mat-icon>error_outline</mat-icon> Crítico
+              <mat-icon>error_outline</mat-icon> {{ 'Crítico' | translate }}
               <span class="filter-chip__count">{{ alertCountByLevel('danger') }}</span>
             </button>
             <button class="filter-chip filter-chip--warning" [class.filter-chip--active]="alertLevelFilter === 'warning'"
                     (click)="onAlertLevelFilter('warning')">
-              <mat-icon>warning_amber</mat-icon> Atenção
+              <mat-icon>warning_amber</mat-icon> {{ 'Atenção' | translate }}
               <span class="filter-chip__count">{{ alertCountByLevel('warning') }}</span>
             </button>
             <button class="filter-chip filter-chip--info" [class.filter-chip--active]="alertLevelFilter === 'info'"
                     (click)="onAlertLevelFilter('info')">
-              <mat-icon>info_outline</mat-icon> Aviso
+              <mat-icon>info_outline</mat-icon> {{ 'Aviso' | translate }}
               <span class="filter-chip__count">{{ alertCountByLevel('info') }}</span>
             </button>
           </div>
@@ -286,15 +286,15 @@
           <div class="projects-filter-bar__search">
             <mat-icon>search</mat-icon>
             <input [(ngModel)]="alertSearchQuery" (ngModelChange)="onAlertSearch()"
-                   placeholder="Buscar por projeto ou descrição…" />
+                   [placeholder]="'Buscar por projeto ou descrição…' | translate" />
             <button *ngIf="alertSearchQuery" (click)="alertSearchQuery=''; onAlertSearch()" class="projects-filter-bar__clear">
               <mat-icon>close</mat-icon>
             </button>
           </div>
           <mat-form-field class="alerts-client-filter" appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Filtrar por cliente</mat-label>
+            <mat-label>{{ 'Filtrar por cliente' | translate }}</mat-label>
             <mat-select [value]="alertClientFilter" (selectionChange)="onAlertClientFilter($event.value)">
-              <mat-option value="all">Todos os clientes</mat-option>
+              <mat-option value="all">{{ 'Todos os clientes' | translate }}</mat-option>
               <mat-option *ngFor="let c of alertClients" [value]="c">{{ c }}</mat-option>
             </mat-select>
           </mat-form-field>
@@ -376,7 +376,7 @@
           <p class="dash-card__sub">{{ 'Ordenados por criticidade — atrasados e em risco no topo' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                matTooltip="Lista de projetos ativos e recentes de todos os clientes. Ordenados por criticidade: atrasados aparecem primeiro, depois os em risco, em andamento e concluídos. A barra mostra o percentual de avaliados que já responderam."
+                [matTooltip]="'Lista de projetos ativos e recentes de todos os clientes. Ordenados por criticidade: atrasados aparecem primeiro, depois os em risco, em andamento e concluídos. A barra mostra o percentual de avaliados que já responderam.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -387,26 +387,26 @@
         <div class="projects-filter-bar__search">
           <mat-icon>search</mat-icon>
           <input [(ngModel)]="projectSearchQuery" (ngModelChange)="onProjectSearch()"
-                 placeholder="Buscar por projeto ou cliente…" />
+                 [placeholder]="'Buscar por projeto ou cliente…' | translate" />
           <button *ngIf="projectSearchQuery" (click)="projectSearchQuery=''; onProjectSearch()" class="projects-filter-bar__clear">
             <mat-icon>close</mat-icon>
           </button>
         </div>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
-          <mat-label>Cliente</mat-label>
+          <mat-label>{{ 'Cliente' | translate }}</mat-label>
           <mat-select [value]="projectClientFilter" (selectionChange)="onProjectClientFilter($event.value)">
-            <mat-option value="">Todos</mat-option>
+            <mat-option value="">{{ 'Todos' | translate }}</mat-option>
             <mat-option *ngFor="let c of uniqueProjectClients" [value]="c">{{ c }}</mat-option>
           </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
-          <mat-label>Status</mat-label>
+          <mat-label>{{ 'Status' | translate }}</mat-label>
           <mat-select [value]="projectStatusFilter" (selectionChange)="onProjectStatusFilter($event.value)">
-            <mat-option value="">Todos</mat-option>
-            <mat-option value="atrasado">Atrasado</mat-option>
-            <mat-option value="em_risco">Em risco</mat-option>
-            <mat-option value="em_andamento">Em andamento</mat-option>
-            <mat-option value="concluido">Concluído</mat-option>
+            <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+            <mat-option value="atrasado">{{ 'Atrasado' | translate }}</mat-option>
+            <mat-option value="em_risco">{{ 'Em risco' | translate }}</mat-option>
+            <mat-option value="em_andamento">{{ 'Em andamento' | translate }}</mat-option>
+            <mat-option value="concluido">{{ 'Concluído' | translate }}</mat-option>
           </mat-select>
         </mat-form-field>
         <span class="projects-filter-bar__count">{{ filteredProjectRows.length }} projeto{{ filteredProjectRows.length !== 1 ? 's' : '' }}</span>
@@ -438,7 +438,7 @@
                   </div>
                   <span class="rate-label">{{ row.responseRate }}%</span>
                 </div>
-                <span class="rate-count">{{ row.respondedParticipants }} / {{ row.totalParticipants }} responderam</span>
+                <span class="rate-count">{{ row.respondedParticipants }} / {{ row.totalParticipants }} {{ 'responderam' | translate }}</span>
               </div>
             </td>
           </ng-container>
@@ -467,7 +467,7 @@
 
         <div class="dash-empty" *ngIf="filteredProjectRows.length === 0">
           <mat-icon>folder_open</mat-icon>
-          <span>{{ projectRows.length === 0 ? 'Nenhum projeto em andamento' : 'Nenhum projeto para o filtro selecionado' }}</span>
+          <span>{{ projectRows.length === 0 ? ('Nenhum projeto em andamento' | translate) : ('Nenhum projeto para o filtro selecionado' | translate) }}</span>
         </div>
       </div>
       <mat-paginator
@@ -491,14 +491,14 @@
           <p class="dash-card__sub">{{ 'Progresso dos projetos ativos por etapa' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                matTooltip="Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados."
+                [matTooltip]="'Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
       </div>
       <div class="funnel-client-filter" *ngIf="funnelClientOptions.length > 1">
         <mat-form-field appearance="outline" class="funnel-filter-field">
-          <mat-label>Filtrar por cliente</mat-label>
+          <mat-label>{{ 'Filtrar por cliente' | translate }}</mat-label>
           <mat-select [value]="funnelClientFilter" (selectionChange)="onFunnelClientFilter($event.value)">
             <mat-option *ngFor="let opt of funnelClientOptions" [value]="opt.id">{{ opt.name }}</mat-option>
           </mat-select>
@@ -534,7 +534,7 @@
             <p class="dash-card__sub">{{ 'Distribuição de projetos ativos entre os clientes' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  matTooltip="Gráfico de barras mostrando quantos projetos com status Ativo cada cliente possui. Permite identificar quais clientes estão mais ativos na plataforma."
+                  [matTooltip]="'Gráfico de barras mostrando quantos projetos com status Ativo cada cliente possui. Permite identificar quais clientes estão mais ativos na plataforma.' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>
@@ -554,7 +554,7 @@
             <p class="dash-card__sub">{{ 'Distribuição de todos os projetos por status atual' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  matTooltip="Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado."
+                  [matTooltip]="'Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>
@@ -588,7 +588,7 @@
             <p class="dash-card__sub">{{ 'Distribuição dos participantes por tipo de avaliador' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  matTooltip="Gráfico em rosca mostrando a distribuição de todos os participantes cadastrados por categoria (ex: Avaliado, Gestor, Par, Subordinado). Ajuda a entender o perfil dos avaliadores na plataforma."
+                  [matTooltip]="'Gráfico em rosca mostrando a distribuição de todos os participantes cadastrados por categoria (ex: Avaliado, Gestor, Par, Subordinado). Ajuda a entender o perfil dos avaliadores na plataforma.' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>
@@ -623,7 +623,7 @@
             <p class="dash-card__sub">{{ 'Pedidos com validade nos próximos 30 dias' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  matTooltip="Lista de pedidos de crédito que vencem nos próximos 30 dias. Créditos vencidos não podem mais ser utilizados — acompanhe para renovar antes do prazo."
+                  [matTooltip]="'Lista de pedidos de crédito que vencem nos próximos 30 dias. Créditos vencidos não podem mais ser utilizados — acompanhe para renovar antes do prazo.' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>
@@ -646,7 +646,7 @@
     <div class="dash-block-header">
       <span class="dash-block-label">{{ 'Visão Geral' | translate }}</span>
       <button mat-icon-button class="dash-info-btn"
-              matTooltip="Indicadores rápidos da sua empresa: projetos ativos, avaliações em andamento (convites enviados mas não respondidos), total de participantes avaliados e créditos disponíveis para criar novas avaliações."
+              [matTooltip]="'Indicadores rápidos da sua empresa: projetos ativos, avaliações em andamento (convites enviados mas não respondidos), total de participantes avaliados e créditos disponíveis para criar novas avaliações.' | translate"
               matTooltipPosition="right" matTooltipClass="dash-tooltip">
         <mat-icon>info_outline</mat-icon>
       </button>
@@ -666,7 +666,7 @@
           <span class="alerts-section__subtitle">{{ 'Itens que requerem atenção imediata ou acompanhamento' | translate }}</span>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                matTooltip="Notificações automáticas da sua empresa. Crítico: prazo vencido com respostas pendentes. Atenção: prazo em até 7 dias com respostas incompletas. Aviso: sem créditos disponíveis."
+                [matTooltip]="'Notificações automáticas da sua empresa. Crítico: prazo vencido com respostas pendentes. Atenção: prazo em até 7 dias com respostas incompletas. Aviso: sem créditos disponíveis.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -688,21 +688,21 @@
         <div class="alerts-filter-chips">
           <button class="filter-chip" [class.filter-chip--active]="alertLevelFilter === 'all'"
                   (click)="onAlertLevelFilter('all')">
-            Todos <span class="filter-chip__count">{{ alerts.length }}</span>
+            {{ 'Todos' | translate }} <span class="filter-chip__count">{{ alerts.length }}</span>
           </button>
           <button class="filter-chip filter-chip--danger" [class.filter-chip--active]="alertLevelFilter === 'danger'"
                   (click)="onAlertLevelFilter('danger')">
-            <mat-icon>error_outline</mat-icon> Crítico
+            <mat-icon>error_outline</mat-icon> {{ 'Crítico' | translate }}
             <span class="filter-chip__count">{{ alertCountByLevel('danger') }}</span>
           </button>
           <button class="filter-chip filter-chip--warning" [class.filter-chip--active]="alertLevelFilter === 'warning'"
                   (click)="onAlertLevelFilter('warning')">
-            <mat-icon>warning_amber</mat-icon> Atenção
+            <mat-icon>warning_amber</mat-icon> {{ 'Atenção' | translate }}
             <span class="filter-chip__count">{{ alertCountByLevel('warning') }}</span>
           </button>
           <button class="filter-chip filter-chip--info" [class.filter-chip--active]="alertLevelFilter === 'info'"
                   (click)="onAlertLevelFilter('info')">
-            <mat-icon>info_outline</mat-icon> Aviso
+            <mat-icon>info_outline</mat-icon> {{ 'Aviso' | translate }}
             <span class="filter-chip__count">{{ alertCountByLevel('info') }}</span>
           </button>
         </div>
@@ -778,7 +778,7 @@
           <p class="dash-card__sub">{{ 'Projetos da sua empresa ordenados por criticidade' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                matTooltip="Lista de projetos da sua empresa, ordenados por criticidade. Atrasados e em risco aparecem primeiro. A barra mostra o percentual de avaliados que já responderam a avaliação."
+                [matTooltip]="'Lista de projetos da sua empresa, ordenados por criticidade. Atrasados e em risco aparecem primeiro. A barra mostra o percentual de avaliados que já responderam a avaliação.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -789,19 +789,19 @@
         <div class="projects-filter-bar__search">
           <mat-icon>search</mat-icon>
           <input [(ngModel)]="projectSearchQuery" (ngModelChange)="onProjectSearch()"
-                 placeholder="Buscar por projeto…" />
+                 [placeholder]="'Buscar por projeto…' | translate" />
           <button *ngIf="projectSearchQuery" (click)="projectSearchQuery=''; onProjectSearch()" class="projects-filter-bar__clear">
             <mat-icon>close</mat-icon>
           </button>
         </div>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
-          <mat-label>Status</mat-label>
+          <mat-label>{{ 'Status' | translate }}</mat-label>
           <mat-select [value]="projectStatusFilter" (selectionChange)="onProjectStatusFilter($event.value)">
-            <mat-option value="">Todos</mat-option>
-            <mat-option value="atrasado">Atrasado</mat-option>
-            <mat-option value="em_risco">Em risco</mat-option>
-            <mat-option value="em_andamento">Em andamento</mat-option>
-            <mat-option value="concluido">Concluído</mat-option>
+            <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+            <mat-option value="atrasado">{{ 'Atrasado' | translate }}</mat-option>
+            <mat-option value="em_risco">{{ 'Em risco' | translate }}</mat-option>
+            <mat-option value="em_andamento">{{ 'Em andamento' | translate }}</mat-option>
+            <mat-option value="concluido">{{ 'Concluído' | translate }}</mat-option>
           </mat-select>
         </mat-form-field>
         <span class="projects-filter-bar__count">{{ filteredProjectRows.length }} projeto{{ filteredProjectRows.length !== 1 ? 's' : '' }}</span>
@@ -922,7 +922,7 @@
             <p class="dash-card__sub">{{ 'Distribuição dos participantes da empresa' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  matTooltip="Gráfico em rosca mostrando a distribuição dos participantes da sua empresa por categoria (ex: Avaliado, Gestor, Par, Subordinado)."
+                  [matTooltip]="'Gráfico em rosca mostrando a distribuição dos participantes da sua empresa por categoria (ex: Avaliado, Gestor, Par, Subordinado).' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>
@@ -957,7 +957,7 @@
             <p class="dash-card__sub">{{ 'Pedidos de crédito com validade nos próximos 30 dias' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  matTooltip="Pedidos de crédito que vencem nos próximos 30 dias. Créditos vencidos não podem ser utilizados — entre em contato com a ECK para renovar antes do prazo."
+                  [matTooltip]="'Pedidos de crédito que vencem nos próximos 30 dias. Créditos vencidos não podem ser utilizados — entre em contato com a ECK para renovar antes do prazo.' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>

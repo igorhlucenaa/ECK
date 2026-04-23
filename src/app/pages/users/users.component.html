@@ -1,11 +1,11 @@
 <div class="users-wrapper">
 
   <app-page-header
-    eyebrow="Gestão"
+    [eyebrow]="'Gestão' | translate"
     [title]="'Usuários e Grupos' | translate"
-    subtitle="Gerencie os usuários e grupos de usuários da plataforma">
+    [subtitle]="'Gerencie os usuários e grupos de usuários da plataforma' | translate">
 
-    <button mat-icon-button *ngIf="dialogRef" (click)="dialogRef.close()" matTooltip="Fechar">
+    <button mat-icon-button *ngIf="dialogRef" (click)="dialogRef.close()" [matTooltip]="'Fechar' | translate">
       <mat-icon>close</mat-icon>
     </button>
 
@@ -28,15 +28,15 @@
           <div class="status-filter-group">
             <button class="status-filter-btn" [class.active]="statusFilter === 'all'"
               (click)="applyStatusFilter('all')">
-              <mat-icon>people</mat-icon> Todos
+              <mat-icon>people</mat-icon> {{ 'Todos' | translate }}
             </button>
             <button class="status-filter-btn" [class.active]="statusFilter === 'active'"
               (click)="applyStatusFilter('active')">
-              <mat-icon>check_circle</mat-icon> Ativos
+              <mat-icon>check_circle</mat-icon> {{ 'Ativos' | translate }}
             </button>
             <button class="status-filter-btn status-filter-btn--blocked" [class.active]="statusFilter === 'blocked'"
               (click)="applyStatusFilter('blocked')">
-              <mat-icon>lock</mat-icon> Bloqueados
+              <mat-icon>lock</mat-icon> {{ 'Bloqueados' | translate }}
             </button>
           </div>
 
@@ -58,10 +58,10 @@
           <mat-expansion-panel-header>
             <mat-panel-title class="permissions-panel__title">
               <mat-icon>shield</mat-icon>
-              Perfis e Permissões
+              {{ 'Perfis e Permissões' | translate }}
             </mat-panel-title>
             <mat-panel-description class="permissions-panel__desc">
-              O que cada perfil pode fazer na plataforma
+              {{ 'O que cada perfil pode fazer na plataforma' | translate }}
             </mat-panel-description>
           </mat-expansion-panel-header>
 
@@ -70,58 +70,58 @@
             <!-- Master -->
             <div class="perm-card perm-card--master">
               <div class="perm-card__header">
-                <span class="perm-badge perm-badge--master">Master</span>
-                <span class="perm-card__subtitle">Acesso total ao sistema</span>
+                <span class="perm-badge perm-badge--master">{{ 'Master' | translate }}</span>
+                <span class="perm-card__subtitle">{{ 'Acesso total ao sistema' | translate }}</span>
               </div>
               <ul class="perm-list">
-                <li><mat-icon>check_circle</mat-icon>Gerenciar todos os clientes e projetos</li>
-                <li><mat-icon>check_circle</mat-icon>Criar e excluir avaliações</li>
-                <li><mat-icon>check_circle</mat-icon>Gerenciar usuários Admin Cliente e Visualizadores</li>
-                <li><mat-icon>check_circle</mat-icon>Visualizar todos os relatórios</li>
-                <li><mat-icon>check_circle</mat-icon>Gerenciar grupos de usuários</li>
-                <li><mat-icon>check_circle</mat-icon>Configurar competências e templates</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Gerenciar todos os clientes e projetos' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Criar e excluir avaliações' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Gerenciar usuários Admin Cliente e Visualizadores' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar todos os relatórios' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Gerenciar grupos de usuários' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Configurar competências e templates' | translate }}</li>
               </ul>
               <div class="perm-card__note perm-card__note--locked">
-                <mat-icon>lock</mat-icon> Não pode ser editado ou excluído por outros usuários
+                <mat-icon>lock</mat-icon> {{ 'Não pode ser editado ou excluído por outros usuários' | translate }}
               </div>
             </div>
 
             <!-- Admin Cliente -->
             <div class="perm-card perm-card--admin">
               <div class="perm-card__header">
-                <span class="perm-badge perm-badge--admin">Admin Cliente</span>
-                <span class="perm-card__subtitle">Gestão da própria empresa</span>
+                <span class="perm-badge perm-badge--admin">{{ 'Admin Cliente' | translate }}</span>
+                <span class="perm-card__subtitle">{{ 'Gestão da própria empresa' | translate }}</span>
               </div>
               <ul class="perm-list">
-                <li><mat-icon>check_circle</mat-icon>Visualizar projetos da própria empresa</li>
-                <li><mat-icon>check_circle</mat-icon>Criar e gerenciar participantes dos projetos</li>
-                <li><mat-icon>check_circle</mat-icon>Criar e gerenciar grupos de usuários</li>
-                <li><mat-icon>check_circle</mat-icon>Visualizar avaliações vinculadas à empresa</li>
-                <li><mat-icon>check_circle</mat-icon>Acessar relatórios da própria empresa</li>
-                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>Não cria, edita ou exclui usuários</li>
-                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>Não acessa dados de outros clientes</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar projetos da própria empresa' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Criar e gerenciar participantes dos projetos' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Criar e gerenciar grupos de usuários' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar avaliações vinculadas à empresa' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Acessar relatórios da própria empresa' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Não cria, edita ou exclui usuários' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Não acessa dados de outros clientes' | translate }}</li>
               </ul>
               <div class="perm-card__note perm-card__note--info">
-                <mat-icon>info</mat-icon> Acesso restrito aos dados da própria empresa
+                <mat-icon>info</mat-icon> {{ 'Acesso restrito aos dados da própria empresa' | translate }}
               </div>
             </div>
 
             <!-- Visualizador -->
             <div class="perm-card perm-card--viewer">
               <div class="perm-card__header">
-                <span class="perm-badge perm-badge--viewer">Visualizador</span>
-                <span class="perm-card__subtitle">Acesso de leitura</span>
+                <span class="perm-badge perm-badge--viewer">{{ 'Visualizador' | translate }}</span>
+                <span class="perm-card__subtitle">{{ 'Acesso de leitura' | translate }}</span>
               </div>
               <ul class="perm-list">
-                <li><mat-icon>check_circle</mat-icon>Visualizar avaliações atribuídas</li>
-                <li><mat-icon>check_circle</mat-icon>Responder avaliações 360°</li>
-                <li><mat-icon>check_circle</mat-icon>Ver seu próprio relatório</li>
-                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>Sem acesso ao painel de gestão</li>
-                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>Sem acesso a usuários ou grupos</li>
-                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>Sem acesso a configurações</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar avaliações atribuídas' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Responder avaliações 360°' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Ver seu próprio relatório' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso ao painel de gestão' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso a usuários ou grupos' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso a configurações' | translate }}</li>
               </ul>
               <div class="perm-card__note perm-card__note--info">
-                <mat-icon>info</mat-icon> Acesso restrito à experiência de avaliação
+                <mat-icon>info</mat-icon> {{ 'Acesso restrito à experiência de avaliação' | translate }}
               </div>
             </div>
 
@@ -135,10 +135,10 @@
           <span>usuário{{ selectedUserIds.size !== 1 ? 's' : '' }} selecionado{{ selectedUserIds.size !== 1 ? 's' : '' }}</span>
           <span class="bulk-spacer"></span>
           <button mat-button (click)="toggleAllUsers(false)">
-            <mat-icon>deselect</mat-icon> Limpar seleção
+            <mat-icon>deselect</mat-icon> {{ 'Limpar seleção' | translate }}
           </button>
           <button mat-flat-button color="warn" (click)="deleteSelectedUsers()">
-            <mat-icon>delete_sweep</mat-icon> Excluir selecionados
+            <mat-icon>delete_sweep</mat-icon> {{ 'Excluir selecionados' | translate }}
           </button>
         </div>
 
@@ -167,7 +167,7 @@
             <!-- Nome + Sobrenome -->
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                <span class="col-header"><mat-icon class="col-icon">person</mat-icon>Usuário</span>
+                <span class="col-header"><mat-icon class="col-icon">person</mat-icon>{{ 'Usuário' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let user">
                 <div class="user-cell">
@@ -178,7 +178,7 @@
                   <div class="user-name-col">
                     <span class="user-name">{{ user.name }} {{ user.surname }}</span>
                     <span class="blocked-badge" *ngIf="user.blocked">
-                      <mat-icon>lock</mat-icon> Bloqueado
+                      <mat-icon>lock</mat-icon> {{ 'Bloqueado' | translate }}
                     </span>
                   </div>
                 </div>
@@ -188,7 +188,7 @@
             <!-- E-mail -->
             <ng-container matColumnDef="email">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                <span class="col-header"><mat-icon class="col-icon">email</mat-icon>E-mail</span>
+                <span class="col-header"><mat-icon class="col-icon">email</mat-icon>{{ 'E-mail' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let user" class="email-cell">{{ user.email }}</td>
             </ng-container>
@@ -196,7 +196,7 @@
             <!-- Cliente -->
             <ng-container matColumnDef="client">
               <th mat-header-cell *matHeaderCellDef>
-                <span class="col-header"><mat-icon class="col-icon">business</mat-icon>Cliente</span>
+                <span class="col-header"><mat-icon class="col-icon">business</mat-icon>{{ 'Cliente' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let user">
                 <button class="link-chip" *ngIf="user.clients?.length > 0"
@@ -211,7 +211,7 @@
             <!-- Projetos -->
             <ng-container matColumnDef="projects">
               <th mat-header-cell *matHeaderCellDef>
-                <span class="col-header"><mat-icon class="col-icon">folder</mat-icon>Projetos</span>
+                <span class="col-header"><mat-icon class="col-icon">folder</mat-icon>{{ 'Projetos' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let user">
                 <button class="link-chip link-chip--project" *ngIf="user.projects.length > 0"
@@ -226,7 +226,7 @@
             <!-- Grupos -->
             <ng-container matColumnDef="group">
               <th mat-header-cell *matHeaderCellDef>
-                <span class="col-header"><mat-icon class="col-icon">groups</mat-icon>Grupos</span>
+                <span class="col-header"><mat-icon class="col-icon">groups</mat-icon>{{ 'Grupos' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let user">
                 <button class="link-chip link-chip--group" *ngIf="user.groups.length > 0"
@@ -241,7 +241,7 @@
             <!-- Papel -->
             <ng-container matColumnDef="role">
               <th mat-header-cell *matHeaderCellDef>
-                <span class="col-header"><mat-icon class="col-icon">security</mat-icon>Perfil</span>
+                <span class="col-header"><mat-icon class="col-icon">security</mat-icon>{{ 'Perfil' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let user">
                 <span class="role-badge"
@@ -261,7 +261,7 @@
             <!-- Status de Notificação -->
             <ng-container matColumnDef="notificationStatus">
               <th mat-header-cell *matHeaderCellDef>
-                <span class="col-header"><mat-icon class="col-icon">notifications</mat-icon>Acesso</span>
+                <span class="col-header"><mat-icon class="col-icon">notifications</mat-icon>{{ 'Acesso' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let user">
                 <span class="notif-chip"
@@ -285,57 +285,66 @@
 
             <!-- Ações -->
             <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef class="actions-col">Ações</th>
+              <th mat-header-cell *matHeaderCellDef class="actions-col">{{ 'Ações' | translate }}</th>
               <td mat-cell *matCellDef="let user" class="actions-col">
                 <div class="actions-cell">
 
-                  <div class="action-group">
-                    <!-- Ver detalhes -->
-                    <button mat-icon-button class="action-btn action-btn--view"
-                      (click)="openUserDetails(user)"
-                      matTooltip="Ver detalhes">
-                      <mat-icon>person_search</mat-icon>
-                    </button>
+                  <!-- Ver detalhes -->
+                  <button class="act-btn act-btn--view"
+                    (click)="openUserDetails(user)"
+                    [matTooltip]="'Ver detalhes' | translate">
+                    <mat-icon>person_search</mat-icon>
+                  </button>
 
-                    <!-- Editar e Excluir: apenas admin_master -->
-                    <ng-container *ngIf="currentUserRole === 'admin_master'">
-                      <button mat-icon-button class="action-btn"
-                        [class.action-btn--edit]="canEdit(user)"
-                        [class.action-btn--locked]="!canEdit(user)"
-                        (click)="editUser(user)"
-                        [disabled]="!canEdit(user)"
-                        [matTooltip]="getEditTooltip(user)">
-                        <mat-icon>{{ canEdit(user) ? 'edit' : 'lock' }}</mat-icon>
-                      </button>
-                      <button mat-icon-button class="action-btn"
-                        [class.action-btn--delete]="canDelete(user)"
-                        [class.action-btn--locked]="!canDelete(user)"
-                        [disabled]="!canDelete(user)"
-                        (click)="canDelete(user) && deleteUser(user)"
-                        [matTooltip]="getDeleteTooltip(user)">
-                        <mat-icon>{{ canDelete(user) ? 'delete_outline' : 'lock' }}</mat-icon>
-                      </button>
-                    </ng-container>
-                  </div>
+                  <!-- Enviar link de acesso / redefinição de senha -->
+                  <button class="act-btn act-btn--send"
+                    (click)="sendEmailNotification(user)"
+                    [matTooltip]="'Enviar link de criação / redefinição de senha' | translate">
+                    <mat-icon>key</mat-icon>
+                  </button>
 
-                  <div class="action-group action-group--secondary">
+                  <!-- Mais ações -->
+                  <button class="act-btn act-btn--more"
+                    [matMenuTriggerFor]="userActionsMenu">
+                    <mat-icon>more_horiz</mat-icon>
+                  </button>
+
+                  <mat-menu #userActionsMenu="matMenu">
+
                     <!-- Bloquear / Desbloquear -->
-                    <button mat-icon-button *ngIf="canBlock(user)"
-                      class="action-btn"
-                      [class.action-btn--block]="!user.blocked"
-                      [class.action-btn--unblock]="user.blocked"
-                      [matTooltip]="user.blocked ? 'Desbloquear acesso' : 'Bloquear acesso'"
-                      (click)="toggleBlockUser(user)">
-                      <mat-icon>{{ user.blocked ? 'lock_open' : 'lock' }}</mat-icon>
+                    <button mat-menu-item *ngIf="canBlock(user)"
+                      (click)="toggleBlockUser(user)"
+                      [class.menu-item--warn]="!user.blocked">
+                      <mat-icon class="menu-icon"
+                        [class.menu-icon--warn]="!user.blocked"
+                        [class.menu-icon--success]="user.blocked">
+                        {{ user.blocked ? 'lock_open' : 'lock' }}
+                      </mat-icon>
+                      <span>{{ (user.blocked ? 'Desbloquear acesso' : 'Bloquear acesso') | translate }}</span>
                     </button>
 
-                    <!-- Enviar link de criação / redefinição de senha -->
-                    <button mat-icon-button class="action-btn action-btn--invite"
-                      (click)="sendEmailNotification(user)"
-                      matTooltip="Enviar link de criação / redefinição de senha">
-                      <mat-icon>key</mat-icon>
+                    <!-- Editar (admin_master) -->
+                    <button mat-menu-item *ngIf="currentUserRole === 'admin_master'"
+                      (click)="editUser(user)"
+                      [disabled]="!canEdit(user)"
+                      [matTooltip]="!canEdit(user) ? getEditTooltip(user) : ''">
+                      <mat-icon class="menu-icon menu-icon--neutral">edit</mat-icon>
+                      <span>{{ 'Editar usuário' | translate }}</span>
                     </button>
-                  </div>
+
+                    <mat-divider *ngIf="currentUserRole === 'admin_master'"></mat-divider>
+
+                    <!-- Excluir (admin_master) -->
+                    <button mat-menu-item *ngIf="currentUserRole === 'admin_master'"
+                      (click)="canDelete(user) && deleteUser(user)"
+                      [disabled]="!canDelete(user)"
+                      class="menu-item--danger"
+                      [matTooltip]="!canDelete(user) ? getDeleteTooltip(user) : ''">
+                      <mat-icon class="menu-icon menu-icon--danger">delete_outline</mat-icon>
+                      <span>{{ 'Excluir usuário' | translate }}</span>
+                    </button>
+
+                  </mat-menu>
 
                 </div>
               </td>
@@ -350,7 +359,7 @@
               <td class="mat-cell" [attr.colspan]="displayedUserColumns.length">
                 <div class="no-data">
                   <mat-icon>manage_accounts</mat-icon>
-                  <span>Nenhum usuário encontrado</span>
+                  <span>{{ 'Nenhum usuário encontrado' | translate }}</span>
                 </div>
               </td>
             </tr>
@@ -390,10 +399,10 @@
           <span>grupo{{ selectedGroupIds.size !== 1 ? 's' : '' }} selecionado{{ selectedGroupIds.size !== 1 ? 's' : '' }}</span>
           <span class="bulk-spacer"></span>
           <button mat-button (click)="toggleAllGroups(false)">
-            <mat-icon>deselect</mat-icon> Limpar seleção
+            <mat-icon>deselect</mat-icon> {{ 'Limpar seleção' | translate }}
           </button>
           <button mat-flat-button color="warn" (click)="deleteSelectedGroups()">
-            <mat-icon>delete_sweep</mat-icon> Excluir selecionados
+            <mat-icon>delete_sweep</mat-icon> {{ 'Excluir selecionados' | translate }}
           </button>
         </div>
 
@@ -421,7 +430,7 @@
             <!-- Nome do Grupo -->
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                <span class="col-header"><mat-icon class="col-icon">group_work</mat-icon>Grupo</span>
+                <span class="col-header"><mat-icon class="col-icon">group_work</mat-icon>{{ 'Grupo' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let group">
                 <div class="user-cell">
@@ -434,7 +443,7 @@
             <!-- Cliente -->
             <ng-container matColumnDef="client">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                <span class="col-header"><mat-icon class="col-icon">business</mat-icon>Cliente</span>
+                <span class="col-header"><mat-icon class="col-icon">business</mat-icon>{{ 'Cliente' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let group">
                 <span class="client-tag">{{ group.client }}</span>
@@ -444,7 +453,7 @@
             <!-- Descrição -->
             <ng-container matColumnDef="description">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                <span class="col-header"><mat-icon class="col-icon">notes</mat-icon>Descrição</span>
+                <span class="col-header"><mat-icon class="col-icon">notes</mat-icon>{{ 'Descrição' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let group" class="desc-cell">{{ group.description || '—' }}</td>
             </ng-container>
@@ -452,33 +461,42 @@
             <!-- Criado por -->
             <ng-container matColumnDef="createdBy">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                <span class="col-header"><mat-icon class="col-icon">person_outline</mat-icon>Criado por</span>
+                <span class="col-header"><mat-icon class="col-icon">person_outline</mat-icon>{{ 'Criado por' | translate }}</span>
               </th>
               <td mat-cell *matCellDef="let group">{{ group.createdBy || '—' }}</td>
             </ng-container>
 
             <!-- Ações -->
             <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef class="actions-col">Ações</th>
+              <th mat-header-cell *matHeaderCellDef class="actions-col">{{ 'Ações' | translate }}</th>
               <td mat-cell *matCellDef="let group" class="actions-col">
                 <div class="actions-cell">
-                  <div class="action-group">
-                    <button mat-icon-button class="action-btn action-btn--view"
-                      (click)="openGroupDetails(group)"
-                      matTooltip="{{ 'Ver detalhes' | translate }}">
-                      <mat-icon>visibility</mat-icon>
+
+                  <!-- Ver detalhes -->
+                  <button class="act-btn act-btn--view"
+                    (click)="openGroupDetails(group)"
+                    matTooltip="{{ 'Ver detalhes' | translate }}">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+
+                  <!-- Mais ações -->
+                  <button class="act-btn act-btn--more"
+                    [matMenuTriggerFor]="groupActionsMenu">
+                    <mat-icon>more_horiz</mat-icon>
+                  </button>
+
+                  <mat-menu #groupActionsMenu="matMenu">
+                    <button mat-menu-item (click)="editGroup(group)">
+                      <mat-icon class="menu-icon menu-icon--neutral">edit</mat-icon>
+                      <span>{{ 'Editar grupo' | translate }}</span>
                     </button>
-                    <button mat-icon-button class="action-btn action-btn--edit"
-                      (click)="editGroup(group)"
-                      matTooltip="{{ 'Editar' | translate }}">
-                      <mat-icon>edit</mat-icon>
+                    <mat-divider></mat-divider>
+                    <button mat-menu-item (click)="deleteGroup(group)" class="menu-item--danger">
+                      <mat-icon class="menu-icon menu-icon--danger">delete_outline</mat-icon>
+                      <span>{{ 'Excluir grupo' | translate }}</span>
                     </button>
-                    <button mat-icon-button class="action-btn action-btn--delete"
-                      (click)="deleteGroup(group)"
-                      matTooltip="{{ 'Excluir' | translate }}">
-                      <mat-icon>delete_outline</mat-icon>
-                    </button>
-                  </div>
+                  </mat-menu>
+
                 </div>
               </td>
             </ng-container>
@@ -490,7 +508,7 @@
               <td class="mat-cell" [attr.colspan]="displayedGroupColumns.length">
                 <div class="no-data">
                   <mat-icon>group_off</mat-icon>
-                  <span>Nenhum grupo encontrado</span>
+                  <span>{{ 'Nenhum grupo encontrado' | translate }}</span>
                 </div>
               </td>
             </tr>

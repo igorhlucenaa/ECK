@@ -136,7 +136,7 @@
   ::ng-deep .mat-column-group               { width: 90px; }
   ::ng-deep .mat-column-role                { width: 88px; }
   ::ng-deep .mat-column-notificationStatus  { width: 120px; }
-  ::ng-deep .mat-column-actions             { width: 160px; }
+  ::ng-deep .mat-column-actions             { width: 110px; }
 
   .mat-mdc-header-row {
     background: #f8faff;
@@ -355,7 +355,7 @@
   ::ng-deep .mat-column-client    { width: 140px; }
   ::ng-deep .mat-column-name      { min-width: 160px; }
   ::ng-deep .mat-column-createdBy { width: 130px; }
-  ::ng-deep .mat-column-actions   { width: 120px; }
+  ::ng-deep .mat-column-actions   { width: 90px; }
 
   .mat-mdc-cell:not(.actions-col):not(.select-col) {
     white-space: nowrap;
@@ -406,37 +406,90 @@
 
 // ─── Actions ──────────────────────────────────────────────────
 .actions-col {
-  width: 160px;
+  text-align: center !important;
+  min-width: 110px;
   overflow: visible !important;
   white-space: nowrap;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .actions-cell {
   display: flex;
   align-items: center;
-  gap: 0;
+  justify-content: center;
+  gap: 4px;
 }
 
-.action-group {
+// ── Botão base (mesmo padrão do projects-list) ────────────────
+.act-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    line-height: 17px;
+  }
+
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  // Ver detalhes
+  &--view:hover:not(:disabled) {
+    background: #faf5ff;
+    border-color: #d8b4fe;
+    color: #8b5cf6;
+    box-shadow: 0 2px 8px rgba(139,92,246,0.12);
+  }
+
+  // Enviar link — destaque azul (igual ao send do projects)
+  &--send {
+    background: #1B84FF;
+    border-color: #1B84FF;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(27,132,255,0.25);
+
+    &:hover {
+      background: #1565c0;
+      border-color: #1565c0;
+      box-shadow: 0 3px 12px rgba(27,132,255,0.38);
+    }
+  }
+
+  // Mais opções ⋯
+  &--more:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #374151;
+  }
 }
 
-.action-group--secondary {
-  padding-left: 4px;
-  margin-left: 2px;
-  border-left: 1px solid #e8edf3;
+// ── Menu de ações ─────────────────────────────────────────────
+.menu-icon {
+  font-size: 17px !important;
+  width: 17px !important;
+  height: 17px !important;
+  margin-right: 10px;
+
+  &--neutral { color: #64748b; }
+  &--warn    { color: #f59e0b; }
+  &--success { color: #16a34a; }
+  &--danger  { color: #ef4444; }
 }
 
-// Reaproveita o estilo padrão de mat-icon-button — sem quebrar MDC
-// Apenas redefine cor do ícone e hover background
-.action-btn--view   { color: #94a3b8; &:hover { color: #8b5cf6 !important; background: #faf5ff !important; } }
-.action-btn--edit   { color: #94a3b8; &:hover { color: #1B84FF !important; background: #eff6ff !important; } }
-.action-btn--delete { color: #94a3b8; &:hover { color: #dc2626 !important; background: #fef2f2 !important; } }
-.action-btn--invite { color: #94a3b8; &:hover { color: #0e9488 !important; background: #f0fdfa !important; } }
-.action-btn--block  { color: #94a3b8; &:hover { color: #f59e0b !important; background: #fffbeb !important; } }
-.action-btn--unblock{ color: #16a34a;  &:hover { background: #f0fdf4 !important; } }
-.action-btn--locked { color: #cbd5e1; opacity: 0.4; pointer-events: none; }
+.menu-item--warn span   { color: #b45309; }
+.menu-item--danger span { color: #dc2626; }
 
 // Duplicate email row highlight
 .row-duplicate-email { background: #FAEEDA !important; }

@@ -1,14 +1,14 @@
 <div class="orders-wrapper">
 
   <app-page-header
-    eyebrow="Financeiro"
-    title="Pedidos de Crédito"
-    subtitle="Gerencie os pedidos de crédito dos clientes"
+    [eyebrow]="'Financeiro' | translate"
+    [title]="'Pedidos de Crédito' | translate"
+    [subtitle]="'Gerencie os pedidos de crédito dos clientes' | translate"
     data-tour="orders-header">
 
     <button mat-raised-button class="btn-action" (click)="openNewOrderForm()" data-tour="orders-add">
       <mat-icon>add_circle</mat-icon>
-      Criar Novo Pedido
+      {{ 'Criar Novo Pedido' | translate }}
     </button>
 
   </app-page-header>
@@ -20,46 +20,46 @@
     <div class="search-bar">
 
       <mat-form-field appearance="outline" class="filter-field filter-field--client">
-        <mat-label>Cliente</mat-label>
+        <mat-label>{{ 'Cliente' | translate }}</mat-label>
         <mat-icon matPrefix class="search-prefix-icon">business</mat-icon>
         <mat-select [(ngModel)]="selectedClient" (selectionChange)="applyFilter()"
                     (closed)="resetClientSearch()">
           <div class="client-search-wrap">
             <mat-icon class="client-search-icon">search</mat-icon>
             <input class="client-search-input" [formControl]="clientSearchCtrl"
-                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   [placeholder]="'Buscar cliente...' | translate" (click)="$event.stopPropagation()"
                    (keydown)="$event.stopPropagation()" />
           </div>
-          <mat-option value="">Todos os clientes</mat-option>
+          <mat-option value="">{{ 'Todos os clientes' | translate }}</mat-option>
           <mat-option *ngFor="let client of clientsFiltered" [value]="client.id">{{ client.name }}</mat-option>
-          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">{{ 'Nenhum cliente encontrado' | translate }}</div>
         </mat-select>
         <button mat-icon-button matSuffix *ngIf="selectedClient"
-          (click)="selectedClient = ''; applyFilter(); $event.stopPropagation()" matTooltip="Limpar">
+          (click)="selectedClient = ''; applyFilter(); $event.stopPropagation()" [matTooltip]="'Limpar' | translate">
           <mat-icon>close</mat-icon>
         </button>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="filter-field filter-field--status">
-        <mat-label>Status</mat-label>
+        <mat-label>{{ 'Status' | translate }}</mat-label>
         <mat-icon matPrefix class="search-prefix-icon">toggle_on</mat-icon>
         <mat-select [(ngModel)]="selectedStatus" (selectionChange)="applyFilter()">
-          <mat-option value="">Todos os status</mat-option>
-          <mat-option value="Pendente">Pendente</mat-option>
-          <mat-option value="Aprovado">Aprovado</mat-option>
-          <mat-option value="Rejeitado">Rejeitado</mat-option>
-          <mat-option value="Expirado">Expirado</mat-option>
+          <mat-option value="">{{ 'Todos os status' | translate }}</mat-option>
+          <mat-option value="Pendente">{{ 'Pendente' | translate }}</mat-option>
+          <mat-option value="Aprovado">{{ 'Aprovado' | translate }}</mat-option>
+          <mat-option value="Rejeitado">{{ 'Rejeitado' | translate }}</mat-option>
+          <mat-option value="Expirado">{{ 'Expirado' | translate }}</mat-option>
         </mat-select>
         <button mat-icon-button matSuffix *ngIf="selectedStatus"
-          (click)="selectedStatus = ''; applyFilter(); $event.stopPropagation()" matTooltip="Limpar">
+          (click)="selectedStatus = ''; applyFilter(); $event.stopPropagation()" [matTooltip]="'Limpar' | translate">
           <mat-icon>close</mat-icon>
         </button>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="filter-field filter-field--search">
-        <mat-label>Buscar</mat-label>
+        <mat-label>{{ 'Buscar' | translate }}</mat-label>
         <mat-icon matPrefix class="search-prefix-icon">search</mat-icon>
-        <input matInput (keyup)="applyTextFilter($event)" placeholder="Nome do cliente..." />
+        <input matInput (keyup)="applyTextFilter($event)" [placeholder]="'Nome do cliente...' | translate" />
       </mat-form-field>
 
       <div class="search-bar__right">
@@ -67,7 +67,7 @@
                 *ngIf="selectedClient || selectedStatus"
                 (click)="resetFilters()">
           <mat-icon>filter_list_off</mat-icon>
-          Limpar filtros
+          {{ 'Limpar filtros' | translate }}
         </button>
         <div class="search-count">
           {{ dataSource.filteredData.length }} resultado{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
@@ -85,15 +85,15 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             <span class="col-header">
               <mat-icon class="col-icon">business</mat-icon>
-              Cliente
+              {{ 'Cliente' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let order">
             <div class="company-cell">
               <div class="company-avatar">{{ (order.clientName || '?')[0].toUpperCase() }}</div>
               <div class="company-info">
-                <span class="company-name">{{ order.clientName || 'Não identificado' }}</span>
-                <span class="company-date">Pedido em {{ order.createdAt | date:'dd/MM/yyyy' }}</span>
+                <span class="company-name">{{ order.clientName || ('Não identificado' | translate) }}</span>
+                <span class="company-date">{{ 'Pedido em' | translate }} {{ order.createdAt | date:'dd/MM/yyyy' }}</span>
               </div>
             </div>
           </td>
@@ -104,7 +104,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             <span class="col-header">
               <mat-icon class="col-icon">flag</mat-icon>
-              Status
+              {{ 'Status' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let order">
@@ -128,7 +128,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             <span class="col-header">
               <mat-icon class="col-icon">add_circle_outline</mat-icon>
-              Adquiridos
+              {{ 'Adquiridos' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let order" class="credit-col">
@@ -140,7 +140,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             <span class="col-header">
               <mat-icon class="col-icon">remove_circle_outline</mat-icon>
-              Utilizados
+              {{ 'Utilizados' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let order" class="credit-col">
@@ -152,7 +152,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             <span class="col-header">
               <mat-icon class="col-icon">savings</mat-icon>
-              Saldo
+              {{ 'Saldo' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let order" class="credit-col">
@@ -167,7 +167,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             <span class="col-header">
               <mat-icon class="col-icon">event</mat-icon>
-              Validade
+              {{ 'Validade' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let order">
@@ -180,7 +180,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             <span class="col-header">
               <mat-icon class="col-icon">hourglass_empty</mat-icon>
-              Prazo
+              {{ 'Prazo' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let order" class="credit-col">
@@ -198,7 +198,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             <span class="col-header">
               <mat-icon class="col-icon">calendar_today</mat-icon>
-              Criado em
+              {{ 'Criado em' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let order" class="date-cell">
@@ -209,25 +209,25 @@
 
         <!-- Coluna: Ações -->
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef class="actions-col">Ações</th>
+          <th mat-header-cell *matHeaderCellDef class="actions-col">{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let order" class="actions-col">
 
             <!-- Modo normal -->
             <div class="actions-cell" *ngIf="editingExpirationId !== order.id">
               <button mat-icon-button class="action-approve"
-                matTooltip="Aprovar Pedido"
+                [matTooltip]="'Aprovar Pedido' | translate"
                 *ngIf="order.status === 'Pendente' && userRole === 'admin_master'"
                 (click)="approveOrder(order.id)">
                 <mat-icon>check_circle</mat-icon>
               </button>
               <button mat-icon-button class="action-reject"
-                matTooltip="Rejeitar Pedido"
+                [matTooltip]="'Rejeitar Pedido' | translate"
                 *ngIf="order.status === 'Pendente' && userRole === 'admin_master'"
                 (click)="rejectOrder(order.id)">
                 <mat-icon>cancel</mat-icon>
               </button>
               <button mat-icon-button class="action-extend"
-                matTooltip="Prorrogar validade"
+                [matTooltip]="'Prorrogar validade' | translate"
                 *ngIf="userRole === 'admin_master'"
                 (click)="startEditExpiration(order.id, order.expirationDate)">
                 <mat-icon>edit_calendar</mat-icon>
@@ -239,11 +239,11 @@
               <input type="date" class="date-edit-input"
                 [ngModel]="editingExpirationDateStr"
                 (ngModelChange)="setEditingDate($event)" />
-              <button mat-icon-button class="action-approve" matTooltip="Salvar"
+              <button mat-icon-button class="action-approve" [matTooltip]="'Salvar' | translate"
                 (click)="saveExpirationDate(order.id)">
                 <mat-icon>check</mat-icon>
               </button>
-              <button mat-icon-button class="action-cancel" matTooltip="Cancelar"
+              <button mat-icon-button class="action-cancel" [matTooltip]="'Cancelar' | translate"
                 (click)="cancelEditExpiration()">
                 <mat-icon>close</mat-icon>
               </button>
@@ -260,7 +260,7 @@
           <td class="mat-cell" [attr.colspan]="displayedColumns.length">
             <div class="no-data">
               <mat-icon>receipt_long</mat-icon>
-              <span>Nenhum pedido encontrado</span>
+              <span>{{ 'Nenhum pedido encontrado' | translate }}</span>
             </div>
           </td>
         </tr>
