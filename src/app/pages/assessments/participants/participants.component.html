@@ -462,15 +462,76 @@
     <ng-container *ngIf="filterClient && filterProject">
 
     <!-- ── Banner de créditos do cliente ─────────────────────── -->
-    <div class="credits-banner credits-banner--ok"
-         *ngIf="clientCredits !== null && clientCredits > 0">
-      <mat-icon>toll</mat-icon>
-      <span><strong>{{ clientCredits }}</strong> crédito{{ clientCredits !== 1 ? 's' : '' }} disponível{{ clientCredits !== 1 ? 'is' : '' }} para este cliente</span>
-    </div>
-    <div class="credits-banner credits-banner--zero"
-         *ngIf="clientCredits !== null && clientCredits === 0">
-      <mat-icon>warning</mat-icon>
-      <span><strong>Sem créditos disponíveis.</strong> O envio de convites está bloqueado. Adquira créditos em <strong>Pedidos de Crédito</strong>.</span>
+    <div class="credits-summary-bar" *ngIf="clientCredits !== null">
+      <div class="credits-summary-bar__item credits-summary-bar__item--available"
+           [class.credits-summary-bar__item--zero]="clientCredits === 0">
+        <mat-icon>toll</mat-icon>
+        <span><strong>{{ clientCredits }}</strong> disponíve{{ clientCredits !== 1 ? 'is' : 'l' }}</span>
+      </div>
+      <div class="credits-summary-bar__sep" *ngIf="reservedParticipants.length > 0">·</div>
+      <button class="credits-summary-bar__item credits-summary-bar__item--reserved credits-summary-bar__item--btn"
+           *ngIf="reservedParticipants.length > 0"
+           [matMenuTriggerFor]="reservedMenu">
+        <mat-icon>lock_outline</mat-icon>
+        <strong>{{ reservedParticipants.length }}</strong> reservado{{ reservedParticipants.length !== 1 ? 's' : '' }}
+        <mat-icon style="font-size:14px;width:14px;height:14px;margin-left:2px;">expand_more</mat-icon>
+      </button>
+
+      <mat-menu #reservedMenu="matMenu" class="si-credits-menu">
+        <div class="si-credits-menu__header" (click)="$event.stopPropagation()">
+          <mat-icon>toll</mat-icon>
+          <span>Créditos — este projeto</span>
+        </div>
+
+        <!-- Resumo -->
+        <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
+          <span class="si-credits-menu__label">Disponíveis (cliente)</span>
+          <span class="si-credits-menu__val si-credits-menu__val--avail">{{ clientCredits }}</span>
+        </div>
+        <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
+          <span class="si-credits-menu__label">Reservados (este projeto)</span>
+          <span class="si-credits-menu__val si-credits-menu__val--reserved">{{ reservedParticipants.length }}</span>
+        </div>
+        <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
+          <span class="si-credits-menu__label">Utilizados (este projeto)</span>
+          <span class="si-credits-menu__val si-credits-menu__val--used">{{ usedParticipants.length }}</span>
+        </div>
+
+        <!-- Reservados -->
+        <mat-divider></mat-divider>
+        <div class="si-credits-menu__section" (click)="$event.stopPropagation()">
+          <span class="si-credits-menu__section-title">🔒 Reservados — aguardando resposta</span>
+          <div class="si-credits-menu__participant" *ngFor="let p of reservedParticipants">
+            <div class="si-credits-menu__avatar">{{ p.name.charAt(0).toUpperCase() }}</div>
+            <div class="si-credits-menu__pinfo">
+              <span class="si-credits-menu__pname">{{ p.name }}</span>
+              <span class="si-credits-menu__pemail">{{ p.email }}</span>
+            </div>
+            <span class="si-credits-menu__pstatus si-credits-menu__pstatus--pending">Pendente</span>
+          </div>
+          <div class="si-credits-menu__empty" *ngIf="reservedParticipants.length === 0">
+            <mat-icon>check_circle</mat-icon><span>Nenhum reservado neste projeto</span>
+          </div>
+        </div>
+
+        <!-- Utilizados -->
+        <mat-divider *ngIf="usedParticipants.length > 0"></mat-divider>
+        <div class="si-credits-menu__section" *ngIf="usedParticipants.length > 0" (click)="$event.stopPropagation()">
+          <span class="si-credits-menu__section-title">✅ Utilizados — já responderam</span>
+          <div class="si-credits-menu__participant" *ngFor="let p of usedParticipants">
+            <div class="si-credits-menu__avatar si-credits-menu__avatar--used">{{ p.name.charAt(0).toUpperCase() }}</div>
+            <div class="si-credits-menu__pinfo">
+              <span class="si-credits-menu__pname">{{ p.name }}</span>
+              <span class="si-credits-menu__pemail">{{ p.completedAt | date:'dd/MM/yy HH:mm' }}</span>
+            </div>
+            <span class="si-credits-menu__pstatus si-credits-menu__pstatus--used">Respondido</span>
+          </div>
+        </div>
+      </mat-menu>
+      <div class="credits-summary-bar__warn" *ngIf="clientCredits === 0">
+        <mat-icon>warning</mat-icon>
+        <span>Sem créditos — envio bloqueado</span>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -703,6 +764,11 @@
                 <mat-icon>toll</mat-icon>
                 1 crédito
               </span>
+              <span class="datas-row datas-row--reserved" *ngIf="participant.creditReserved && !participant.completedAt"
+                    matTooltip="1 crédito reservado para este participante">
+                <mat-icon>lock_outline</mat-icon>
+                1 reservado
+              </span>
             </div>
           </td>
         </ng-container>
@@ -711,11 +777,23 @@
           <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
             <div class="actions-cell-row">
-              <button mat-icon-button class="action-edit" matTooltip="Editar participante"
+              <button class="act-btn act-btn--neutral" matTooltip="Editar participante"
                       (click)="openEditParticipantDialog(participant); $event.stopPropagation()">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button class="action-report"
+              <button class="act-btn act-btn--history"
+                *ngIf="participant.status !== 'Não Enviado'"
+                (click)="openSendHistory(participant); $event.stopPropagation()"
+                matTooltip="Histórico de envios">
+                <mat-icon>history</mat-icon>
+              </button>
+              <button class="act-btn act-btn--cancel"
+                *ngIf="participant.status === 'Enviado (Pendente)'"
+                (click)="cancelSend(participant); $event.stopPropagation()"
+                matTooltip="Cancelar envio e liberar crédito">
+                <mat-icon>cancel</mat-icon>
+              </button>
+              <button class="act-btn act-btn--report"
                 *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
                 (click)="generateReportForParticipant(participant)" matTooltip="Gerar Relatório">
                 <mat-icon>description</mat-icon>

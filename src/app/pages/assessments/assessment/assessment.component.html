@@ -1,10 +1,23 @@
-<div *ngIf="!alreadyCompleted">
+<div *ngIf="linkCancelled" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;background:#f8faff;padding:40px;">
+  <div style="background:#fff;border-radius:16px;padding:48px 40px;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+    <div style="font-size:64px;margin-bottom:16px;">⛔</div>
+    <h2 style="font-size:24px;font-weight:700;color:#0f1b35;margin:0 0 12px;">Link cancelado</h2>
+    <p style="font-size:15px;color:#64748b;line-height:1.6;margin:0;">
+      O envio desta avaliação foi cancelado pelo administrador.<br>
+      Não será possível preencher o formulário neste momento.<br><br>
+      Se isso parecer um erro, entre em contato com o responsável pelo projeto.
+    </p>
+  </div>
+</div>
+
+<div *ngIf="!linkCancelled && !alreadyCompleted">
   <div id="surveyContainer"></div>
   <div *ngIf="surveyCompleted" style="text-align: center; margin-top: 20px">
     <p>Obrigado por completar a avaliação!</p>
   </div>
 </div>
-<div *ngIf="alreadyCompleted" style="text-align: center; margin-top: 20px">
+
+<div *ngIf="!linkCancelled && alreadyCompleted" style="text-align: center; margin-top: 20px">
   <p style="font-weight: bold; font-size: 30px">
     Esta avaliação já foi concluída. Obrigado pela sua participação!
   </p>

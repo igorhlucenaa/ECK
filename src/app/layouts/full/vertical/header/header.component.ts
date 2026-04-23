@@ -497,9 +497,19 @@ export class HeaderComponent implements OnInit {
   imports: [RouterModule, MaterialModule, TablerIconsModule, FormsModule],
   templateUrl: 'search-dialog.component.html',
 })
-export class AppSearchDialogComponent {
+export class AppSearchDialogComponent implements OnInit {
   searchText: string = '';
-  navItems = navItems;
+  navItemsData: any[] = [];
 
-  navItemsData = navItems.filter((navitem) => navitem.displayName);
+  constructor(private authService: AuthService) {}
+
+  async ngOnInit(): Promise<void> {
+    const role = await this.authService.getCurrentUserRole();
+    this.navItemsData = navItems.filter((item) => {
+      if (!item.displayName) return false;
+      if (!item.role) return true;
+      const roles = Array.isArray(item.role) ? item.role : [item.role];
+      return role && roles.includes(role);
+    });
+  }
 }

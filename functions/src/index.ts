@@ -1,5 +1,6 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import { randomBytes } from 'crypto';
@@ -915,6 +916,12 @@ async function processPendingAssessmentReminders(
           lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
           nextReminderAt,
           lastReminderError: admin.firestore.FieldValue.delete(),
+          emailHistory: admin.firestore.FieldValue.arrayUnion({
+            type: 'lembrete',
+            sentAt: admin.firestore.Timestamp.fromDate(now),
+            status: 'enviado',
+            templateId: templateId || '',
+          }),
         },
         { merge: true }
       );
@@ -937,6 +944,12 @@ async function processPendingAssessmentReminders(
           clientId,
           lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
           lastReminderError: err.message || 'Falha desconhecida ao enviar lembrete.',
+          emailHistory: admin.firestore.FieldValue.arrayUnion({
+            type: 'lembrete',
+            sentAt: admin.firestore.Timestamp.fromDate(now),
+            status: 'erro',
+            error: err.message || 'Falha desconhecida',
+          }),
         },
         { merge: true }
       );
@@ -1014,6 +1027,78 @@ export const sendEmail = onRequest(
   }
 );
 
+/**
+ * Sincroniza credits / creditsUsed / reservedCredits de UM cliente
+ * a partir das fontes de verdade (creditOrders + assessmentLinks).
+ * Chamada pelo trigger onAssessmentCompleted para manter o estado
+ * sempre atualizado sem depender da abertura da tela de Pedidos.
+ */
+async function sincronizarCreditosCliente(clientId: string): Promise<void> {
+  const db = getDb();
+  const now = new Date();
+
+  // 1. Pedidos aprovados válidos deste cliente, ordenados FIFO
+  const ordersSnap = await db
+    .collection('creditOrders')
+    .where('clientId', '==', clientId)
+    .where('status', '==', 'Aprovado')
+    .get();
+
+  const orders = ordersSnap.docs
+    .filter(d => {
+      const v = (d.data()['validityDate'] as admin.firestore.Timestamp | undefined)?.toDate();
+      return !v || v >= now;
+    })
+    .sort((a, b) => {
+      const tA = (a.data()['createdAt'] as admin.firestore.Timestamp | undefined)?.toMillis() ?? 0;
+      const tB = (b.data()['createdAt'] as admin.firestore.Timestamp | undefined)?.toMillis() ?? 0;
+      return tA - tB;
+    })
+    .map(d => ({ id: d.id, credits: (d.data()['credits'] as number) || 0 }));
+
+  // 2. Links concluídos deste cliente
+  const completedSnap = await db
+    .collection('assessmentLinks')
+    .where('clientId', '==', clientId)
+    .where('status', '==', 'completed')
+    .get();
+  const used = completedSnap.size;
+
+  // 3. Links pendentes com crédito reservado deste cliente
+  const reservedSnap = await db
+    .collection('assessmentLinks')
+    .where('clientId', '==', clientId)
+    .where('creditReserved', '==', true)
+    .where('status', '==', 'pending')
+    .get();
+  const reserved = reservedSnap.size;
+
+  // 4. Calcula saldo disponível
+  const purchased = orders.reduce((sum, o) => sum + o.credits, 0);
+  const available = Math.max(0, purchased - used - reserved);
+
+  // 5. FIFO: atualiza remainingCredits por pedido + cliente num único batch
+  const batch = db.batch();
+
+  let toDeduct = used;
+  for (const order of orders) {
+    const consumed = Math.min(toDeduct, order.credits);
+    const remaining = order.credits - consumed;
+    toDeduct -= consumed;
+    batch.update(db.collection('creditOrders').doc(order.id), {
+      remainingCredits: remaining,
+    });
+  }
+
+  batch.update(db.collection('clients').doc(clientId), {
+    credits:        available,
+    creditsUsed:    used,
+    reservedCredits: reserved,
+  });
+
+  await batch.commit();
+}
+
 export const sendPendingAssessmentReminders = onSchedule(
   {
     region: 'us-central1',
@@ -1062,6 +1147,42 @@ export const triggerPendingAssessmentReminders = onRequest(
       res.status(500).send({
         error: `Erro ao processar lembretes: ${err.message || 'Erro desconhecido'}`,
       });
+    }
+  }
+);
+
+/**
+ * CORREÇÃO 7 — Trigger Firestore: sincroniza créditos do cliente imediatamente
+ * ao concluir uma avaliação, sem depender da abertura da tela de Pedidos.
+ *
+ * Dispara quando assessmentLinks/{linkId}.status muda para 'completed'.
+ * Executa sincronizarCreditosCliente() apenas para o clientId do link,
+ * mantendo o recálculo focado e eficiente.
+ */
+export const onAssessmentCompleted = onDocumentUpdated(
+  {
+    document: 'assessmentLinks/{linkId}',
+    region: 'us-central1',
+  },
+  async (event) => {
+    const before = event.data?.before.data() as Record<string, unknown> | undefined;
+    const after  = event.data?.after.data()  as Record<string, unknown> | undefined;
+
+    if (!before || !after) return;
+    if (before['status'] === 'completed' || after['status'] !== 'completed') return;
+
+    const clientId = normalizeOptionalString(after['clientId']);
+    if (!clientId) {
+      console.warn('onAssessmentCompleted: clientId ausente no link', event.params.linkId);
+      return;
+    }
+
+    try {
+      await sincronizarCreditosCliente(clientId);
+      console.log('onAssessmentCompleted: créditos sincronizados para cliente', clientId);
+    } catch (error) {
+      const err = error as Error;
+      console.error('onAssessmentCompleted: erro ao sincronizar créditos:', err.message);
     }
   }
 );

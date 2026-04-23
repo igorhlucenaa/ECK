@@ -45,6 +45,14 @@ interface RelatorioSecaoSimplificada {
   [key: string]: any;
 }
 
+type TipoGraficoRelatorio =
+  | 'barra'
+  | 'radar'
+  | 'pizza-comparativa'
+  | 'pizza-individual'
+  | 'barras-individuais'
+  | 'janela_johari';
+
 @Component({
   selector: 'app-report-builder-visual',
   standalone: true,
@@ -223,16 +231,63 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   secaoEditando: RelatorioSecaoSimplificada | null = null;
   showConfigPanel = false;
 
-  paletasCores: { [key: string]: { nome: string; cores: string[] } } = {
-    'padrao':     { nome: 'Padrão',           cores: ['#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#424242'] },
-    'azul':       { nome: 'Azul',             cores: ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#0D47A1'] },
-    'verde':      { nome: 'Verde',            cores: ['#E8F5E8', '#A5D6A7', '#66BB6A', '#43A047', '#1B5E20'] },
-    'laranja':    { nome: 'Laranja',          cores: ['#FFF3E0', '#FFCC80', '#FF9800', '#F57C00', '#E65100'] },
-    'roxo':       { nome: 'Roxo',             cores: ['#F3E5F5', '#CE93D8', '#AB47BC', '#8E24AA', '#4A148C'] },
-    'vermelho':   { nome: 'Vermelho',         cores: ['#FFEBEE', '#EF9A9A', '#EF5350', '#E53935', '#B71C1C'] },
-    'teal':       { nome: 'Teal',             cores: ['#E0F2F1', '#80CBC4', '#26A69A', '#00897B', '#004D40'] },
-    'categorias': { nome: 'Categorias',       cores: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'] },
-    'personalizada': { nome: 'Personalizada', cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] }
+  paletasCores: { [key: string]: { nome: string; cores: string[]; tipo: 'gradiente' | 'flat' | 'especial' } } = {
+    // ── GRADIENTES ──────────────────────────────────────────────────────────
+    'padrao':      { nome: 'Padrão (Cinza)',       tipo: 'gradiente', cores: ['#E0E0E0', '#BDBDBD', '#9E9E9E', '#757575', '#424242'] },
+    'azul':        { nome: 'Azul Profissional',    tipo: 'gradiente', cores: ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#0D47A1'] },
+    'verde':       { nome: 'Verde Sucesso',         tipo: 'gradiente', cores: ['#E8F5E8', '#A5D6A7', '#66BB6A', '#43A047', '#1B5E20'] },
+    'laranja':     { nome: 'Laranja Energia',       tipo: 'gradiente', cores: ['#FFF3E0', '#FFCC80', '#FF9800', '#F57C00', '#E65100'] },
+    'roxo':        { nome: 'Roxo Criativo',         tipo: 'gradiente', cores: ['#F3E5F5', '#CE93D8', '#AB47BC', '#8E24AA', '#4A148C'] },
+    'vermelho':    { nome: 'Vermelho Impacto',      tipo: 'gradiente', cores: ['#FFEBEE', '#EF9A9A', '#EF5350', '#E53935', '#B71C1C'] },
+    'teal':        { nome: 'Teal Moderno',          tipo: 'gradiente', cores: ['#E0F2F1', '#80CBC4', '#26A69A', '#00897B', '#004D40'] },
+    'indigo':      { nome: 'Índigo Elegante',       tipo: 'gradiente', cores: ['#E8EAF6', '#9FA8DA', '#5C6BC0', '#3949AB', '#1A237E'] },
+    'coral':       { nome: 'Coral & Rosê',          tipo: 'gradiente', cores: ['#FCE4EC', '#F48FB1', '#EC407A', '#C2185B', '#880E4F'] },
+    'dourado':     { nome: 'Dourado & Âmbar',       tipo: 'gradiente', cores: ['#FFFDE7', '#FFE082', '#FFCA28', '#FFA000', '#E65100'] },
+    'esmeralda':   { nome: 'Esmeralda',             tipo: 'gradiente', cores: ['#ECFDF5', '#A7F3D0', '#34D399', '#059669', '#064E3B'] },
+    'marinho':     { nome: 'Azul Marinho',          tipo: 'gradiente', cores: ['#DBEAFE', '#93C5FD', '#3B82F6', '#1D4ED8', '#1E3A5F'] },
+    'slate':       { nome: 'Cinza Azulado',         tipo: 'gradiente', cores: ['#F1F5F9', '#94A3B8', '#64748B', '#334155', '#0F172A'] },
+    // ── CORES SÓLIDAS ───────────────────────────────────────────────────────
+    'flat_material':    { nome: 'Material Flat',       tipo: 'flat', cores: ['#F44336', '#2196F3', '#4CAF50', '#FF9800', '#9C27B0'] },
+    'flat_pastel':      { nome: 'Pastel Suave',        tipo: 'flat', cores: ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#B5EAD7', '#C7CEEA'] },
+    'flat_terra':       { nome: 'Tons de Terra',       tipo: 'flat', cores: ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51'] },
+    'flat_vibrante':    { nome: 'Ultra Vibrante',      tipo: 'flat', cores: ['#EF476F', '#FFD166', '#06D6A0', '#118AB2', '#9B59B6'] },
+    'flat_nordico':     { nome: 'Nórdico & Frio',      tipo: 'flat', cores: ['#2C3E50', '#457B9D', '#A8DADC', '#CDB4DB', '#F4ACB7'] },
+    'flat_tropico':     { nome: 'Tropical',            tipo: 'flat', cores: ['#D62246', '#F79D65', '#FFE66D', '#4ECDC4', '#1A535C'] },
+    'flat_retro':       { nome: 'Retrô',               tipo: 'flat', cores: ['#E07A5F', '#3D405B', '#F2CC8F', '#81B29A', '#F4F1DE'] },
+    'flat_neon':        { nome: 'Neon',                tipo: 'flat', cores: ['#FF0080', '#00FFFF', '#00FF41', '#FF6600', '#7B00FF'] },
+    // ── ESPECIAIS ───────────────────────────────────────────────────────────
+    'categorias':    { nome: 'Categorias Distintas', tipo: 'especial', cores: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'] },
+    'personalizada': { nome: 'Personalizada',        tipo: 'especial', cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] },
+  };
+
+  readonly paletasGradiente = Object.entries(this.paletasCores)
+    .filter(([, v]) => v.tipo === 'gradiente')
+    .map(([key, value]) => ({ key, value }));
+
+  readonly paletasFlat = Object.entries(this.paletasCores)
+    .filter(([, v]) => v.tipo === 'flat')
+    .map(([key, value]) => ({ key, value }));
+
+  readonly paletasEspecial = Object.entries(this.paletasCores)
+    .filter(([, v]) => v.tipo === 'especial')
+    .map(([key, value]) => ({ key, value }));
+
+  private readonly tipoGraficoLabels: Record<TipoGraficoRelatorio, string> = {
+    barra: 'Barras Comparativas',
+    radar: 'Radar',
+    'pizza-comparativa': 'Pizza Comparativa',
+    'pizza-individual': 'Pizza Individual',
+    'barras-individuais': 'Barras Individuais',
+    janela_johari: 'Janela de Johari',
+  };
+
+  private readonly templateIdPorTipoGrafico: Record<TipoGraficoRelatorio, string> = {
+    barra: 'graficos-barra',
+    radar: 'graficos-radar',
+    'pizza-comparativa': 'graficos-pizza',
+    'pizza-individual': 'graficos-pizza',
+    'barras-individuais': 'graficos-barra',
+    janela_johari: 'johari',
   };
 
   selecionarPaleta(key: string): void {
@@ -270,13 +325,13 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   ) {}
 
   ngOnInit(): void {
-    this.canvasSections = [...this.relatorioConfiguracao];
+    this.canvasSections = this.normalizarSecoes([...this.relatorioConfiguracao]);
     this.ordenarSecoes();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['relatorioConfiguracao'] && !changes['relatorioConfiguracao'].firstChange) {
-      this.canvasSections = [...this.relatorioConfiguracao];
+      this.canvasSections = this.normalizarSecoes([...this.relatorioConfiguracao]);
       this.ordenarSecoes();
       this.fecharPainelConfig();
     }
@@ -325,6 +380,10 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
    */
   adicionarSecaoDoTemplate(template: SectionTemplate): void {
     const tiposComCompetencias = ['graficos', 'tabela', 'tabela_detalhada', 'competencia_detalhada', 'grafico_defasagem', 'janela_johari'];
+    const tipoGraficoPadrao = template.tipo === 'graficos'
+      ? this.getTipoGraficoPadraoPorTemplate(template)
+      : undefined;
+
     const novaSecao: RelatorioSecaoSimplificada = {
       id: `${template.tipo}_${Date.now()}`,
       tipo: template.tipo,
@@ -335,7 +394,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
       competenciasIds: tiposComCompetencias.includes(template.tipo)
         ? this.competencias.map(c => c.id)
         : [],
-      tipoGrafico: template.tipo === 'graficos' ? 'barra' : undefined,
+      tipoGrafico: tipoGraficoPadrao,
       paletaCor: 'padrao'
     };
 
@@ -358,7 +417,11 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
    * Edita uma seção
    */
   editarSecao(secao: RelatorioSecaoSimplificada): void {
-    this.secaoEditando = { ...secao };
+    const secaoNormalizada = { ...secao };
+    if (secaoNormalizada.tipo === 'graficos') {
+      secaoNormalizada.tipoGrafico = this.resolverTipoGraficoSecao(secaoNormalizada);
+    }
+    this.secaoEditando = secaoNormalizada;
     this.showConfigPanel = true;
   }
 
@@ -366,7 +429,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
    * Remove uma seção
    */
   async removerSecao(secao: RelatorioSecaoSimplificada): Promise<void> {
-    const nome = secao.titulo || this.getTemplatePorTipo(secao.tipo)?.nome || 'esta seção';
+    const nome = secao.titulo || this.getNomeTipoSecao(secao) || 'esta seção';
     const confirmado = await this.confirmDialog.confirmDelete(nome);
     if (!confirmado) return;
     const index = this.canvasSections.findIndex(s => s.id === secao.id);
@@ -448,11 +511,82 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
     return this.sectionTemplates.find(t => t.tipo === tipo);
   }
 
+  private getTemplatePorId(id: string): SectionTemplate | undefined {
+    return this.sectionTemplates.find(t => t.id === id);
+  }
+
+  private getTemplatePorSecao(secao: RelatorioSecaoSimplificada): SectionTemplate | undefined {
+    if (secao.tipo === 'graficos') {
+      const tipoGrafico = this.resolverTipoGraficoSecao(secao);
+      const templateId = this.templateIdPorTipoGrafico[tipoGrafico];
+      return this.getTemplatePorId(templateId) || this.getTemplatePorTipo(secao.tipo);
+    }
+    return this.getTemplatePorTipo(secao.tipo);
+  }
+
+  private getTipoGraficoPadraoPorTemplate(template: SectionTemplate): TipoGraficoRelatorio {
+    switch (template.id) {
+      case 'graficos-radar':
+        return 'radar';
+      case 'graficos-pizza':
+        return 'pizza-comparativa';
+      case 'johari':
+        return 'janela_johari';
+      default:
+        return 'barra';
+    }
+  }
+
+  private inferirTipoGraficoPorTitulo(titulo?: string): TipoGraficoRelatorio {
+    const nome = (titulo || '').toLowerCase();
+
+    if (nome.includes('johari')) return 'janela_johari';
+    if (nome.includes('pizza') && nome.includes('individual')) return 'pizza-individual';
+    if (nome.includes('pizza')) return 'pizza-comparativa';
+    if (nome.includes('radar')) return 'radar';
+    if (nome.includes('barras') && nome.includes('individual')) return 'barras-individuais';
+
+    return 'barra';
+  }
+
+  private resolverTipoGraficoSecao(secao: RelatorioSecaoSimplificada): TipoGraficoRelatorio {
+    const valorAtual = secao.tipoGrafico as TipoGraficoRelatorio | undefined;
+    if (valorAtual && this.tipoGraficoLabels[valorAtual]) {
+      return valorAtual;
+    }
+    return this.inferirTipoGraficoPorTitulo(secao.titulo);
+  }
+
+  private normalizarSecoes(secoes: RelatorioSecaoSimplificada[]): RelatorioSecaoSimplificada[] {
+    return secoes.map(secao => {
+      if (secao.tipo !== 'graficos') {
+        return secao;
+      }
+
+      return {
+        ...secao,
+        tipoGrafico: this.resolverTipoGraficoSecao(secao),
+      };
+    });
+  }
+
+  /**
+   * Nome exibido do tipo da seção no card.
+   * Para seções de gráficos, usa o tipo de gráfico selecionado.
+   */
+  getNomeTipoSecao(secao: RelatorioSecaoSimplificada): string {
+    if (secao.tipo === 'graficos') {
+      const tipoGrafico = this.resolverTipoGraficoSecao(secao);
+      return this.tipoGraficoLabels[tipoGrafico] || 'Gráficos';
+    }
+    return this.getTemplatePorTipo(secao.tipo)?.nome || 'Seção';
+  }
+
   /**
    * Obtém cor de uma seção
    */
   getCorSecao(secao: RelatorioSecaoSimplificada): string {
-    const template = this.getTemplatePorTipo(secao.tipo);
+    const template = this.getTemplatePorSecao(secao);
     return template?.cor || '#757575';
   }
 
@@ -460,7 +594,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
    * Obtém ícone de uma seção
    */
   getIconeSecao(secao: RelatorioSecaoSimplificada): string {
-    const template = this.getTemplatePorTipo(secao.tipo);
+    const template = this.getTemplatePorSecao(secao);
     return template?.icone || 'description';
   }
 

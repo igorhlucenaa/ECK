@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { CoreService } from 'src/app/services/core.service';
 import {
   FormGroup,
@@ -24,22 +24,23 @@ import { NgIf } from '@angular/common';
     ReactiveFormsModule,
   ],
   templateUrl: './side-login.component.html',
+  styleUrls: ['./side-login.component.scss'],
 })
 export class AppSideLoginComponent {
   options = this.settings.getOptions();
   form = new FormGroup({
-    uname: new FormControl('', [Validators.required, Validators.email]), // E-mail
+    uname: new FormControl('', [Validators.required, Validators.email]),
     password: new FormControl('', [
       Validators.required,
       Validators.minLength(6),
-    ]), // Senha
-    rememberMe: new FormControl(false), // Lembrar-me
+    ]),
+    rememberMe: new FormControl(false),
   });
 
-
-
-  errorMessage: string = ''; // Mensagens de erro
-  isLoading: boolean = false; // Indicador de carregamento
+  errorMessage: string = '';
+  isLoading: boolean = false;
+  hidePassword = true;
+  currentYear = new Date().getFullYear();
 
   constructor(
     private settings: CoreService,
@@ -53,23 +54,42 @@ export class AppSideLoginComponent {
 
   async submit() {
     if (this.form.invalid) {
+      this.form.markAllAsTouched();
       this.errorMessage = 'Preencha os campos corretamente.';
       return;
     }
 
     this.isLoading = true;
-    this.errorMessage = ''; // Limpa mensagens anteriores
+    this.errorMessage = '';
 
     const { uname, password, rememberMe } = this.form.value;
 
     try {
-      // Realiza login e delega redirecionamento ao serviço
       await this.authService.login(uname!, password!, !!rememberMe);
     } catch (error: any) {
-      this.errorMessage =
-        error.message || 'Erro ao realizar login. Tente novamente.';
+      this.errorMessage = this.getFriendlyLoginError(error);
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  private getFriendlyLoginError(error: any): string {
+    const code: string = error?.code || '';
+    switch (code) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.';
+      case 'auth/invalid-email':
+        return 'O e-mail informado não é válido.';
+      case 'auth/user-disabled':
+        return 'Esta conta foi desativada. Entre em contato com o administrador.';
+      case 'auth/too-many-requests':
+        return 'Muitas tentativas incorretas. Aguarde alguns minutos e tente novamente.';
+      case 'auth/network-request-failed':
+        return 'Falha na conexão. Verifique sua internet e tente novamente.';
+      default:
+        return 'Não foi possível realizar o login. Tente novamente.';
     }
   }
 }

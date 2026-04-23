@@ -183,11 +183,8 @@
   }
 }
 
-// ─── Botão cancelar ────────────────────────────────────────────
-.action-cancel {
-  color: #94a3b8;
-  &:hover { color: #c62828; background: rgba(239,68,68,0.08); }
-}
+// ─── (legacy — mantido para não quebrar outros contextos) ──────
+.action-cancel { color: #94a3b8; }
 
 // Prazo
 .deadline-cell {
@@ -250,22 +247,88 @@
 // ─── Ações ───────────────────────────────────────────────────
 .actions-col {
   text-align: center !important;
-  min-width: 220px;
+  min-width: 140px;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
 }
 
 .actions-cell {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 4px;
 }
 
-.action-users        { color: #0e9488 !important; }
-.action-mail         { color: #7c3aed !important; }
-.action-form         { color: #d97706 !important; }
-.action-participants { color: #0284c7 !important; }
-.action-edit         { color: #1B84FF !important; }
-.action-delete       { color: #ef4444 !important; }
+// ── Botão base ────────────────────────────────────────────────
+.act-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    line-height: 17px;
+  }
+
+  mat-spinner { margin: 0 auto; }
+
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  // Participantes
+  &--primary:hover:not(:disabled) {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1B84FF;
+    box-shadow: 0 2px 8px rgba(27,132,255,0.12);
+  }
+
+  // Disparar convites — destaque
+  &--send {
+    background: #1B84FF;
+    border-color: #1B84FF;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(27,132,255,0.25);
+
+    &:hover {
+      background: #1565c0;
+      border-color: #1565c0;
+      box-shadow: 0 3px 12px rgba(27,132,255,0.38);
+    }
+  }
+
+  // Mais opções ⋯
+  &--more:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #374151;
+  }
+}
+
+// ── Menu dropdown ─────────────────────────────────────────────
+.menu-icon {
+  font-size: 17px !important;
+  width: 17px !important;
+  height: 17px !important;
+  margin-right: 10px;
+
+  &--neutral { color: #64748b; }
+  &--warn    { color: #f59e0b; }
+  &--danger  { color: #ef4444; }
+}
+
+.menu-item--warn span  { color: #b45309; }
+.menu-item--danger span { color: #dc2626; }
 
 // ─── Vazio ───────────────────────────────────────────────────
 .no-data-cell { padding: 48px 24px !important; }

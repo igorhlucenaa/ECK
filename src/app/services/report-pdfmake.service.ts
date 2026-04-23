@@ -41,6 +41,7 @@ interface RelatorioSecao {
 
 interface ReportData {
   participantName?: string;
+  clientName?: string;
   participantEmail?: string;
   projectName?: string;
   startDate?: string;
@@ -92,6 +93,20 @@ export class ReportPdfMakeService {
     } catch (e: any) {
       throw new Error(`PDFMake não pôde ser carregado: ${e?.message || e}`);
     }
+  }
+
+  private sanitizeFileNamePart(value: string | null | undefined, fallback: string): string {
+    const sanitized = (value || '')
+      .replace(/[\\/:*?"<>|]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return sanitized || fallback;
+  }
+
+  private buildDefaultFileName(data: ReportData): string {
+    const participantName = this.sanitizeFileNamePart(data.participantName, 'Participante');
+    const clientName = this.sanitizeFileNamePart(data.clientName, 'Cliente');
+    return `${participantName}_Relatório Feedback 360_${clientName}.pdf`;
   }
 
   /**
@@ -146,10 +161,50 @@ export class ReportPdfMakeService {
   /**
    * Gera relatório completo em PDF usando PDFMake
    */
-  async generateReport(data: ReportData): Promise<void> {
+  async generateReport(data: ReportData, fileName?: string): Promise<void> {
     try {
-      const blob = await this.generateReportBlob(data);
-      const filename = `relatorio-${(data.participantName || 'participante').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.pdf`;
+      const pdfMakeLib = await this.loadPdfMake();
+
+      const docDefinition = {
+        content: [],
+        styles: this.getStyles(),
+        defaultStyle: {
+          font: 'Roboto',
+          fontSize: 10,
+          lineHeight: 1.5
+        },
+        pageMargins: [40, 60, 40, 60],
+        header: this.buildHeader(data),
+        footer: this.buildFooter
+      };
+
+      // Processar seções na ordem definida
+      const secoesOrdenadas = [...data.relatorioConfiguracao]
+        .filter(s => s.visivel)
+        .sort((a, b) => a.ordem - b.ordem);
+
+      for (const secao of secoesOrdenadas) {
+        const conteudoSecao = await this.buildSection(secao, data);
+        if (conteudoSecao && conteudoSecao.length > 0) {
+          (docDefinition.content as any[]).push(...conteudoSecao);
+        }
+      }
+
+      // Gerar PDF via Blob + anchor click (compatível com todos os navegadores)
+      const filename = fileName || this.buildDefaultFileName(data);
+      const blob: Blob = await Promise.race<Blob>([
+        new Promise<Blob>((resolve, reject) => {
+          try {
+            pdfMakeLib.createPdf(docDefinition as any).getBlob((b: Blob) => {
+              if (b && b.size > 0) resolve(b);
+              else reject(new Error('PDFMake retornou blob vazio'));
+            });
+          } catch (e) { reject(e); }
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout ao gerar PDF (30s)')), 30000)
+        )
+      ]);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1494,6 +1549,7 @@ export class ReportPdfMakeService {
   prepareReportDataFromComponent(component: any): ReportData {
     return {
       participantName: component.individualParticipantName || component.selectedAvaliado || 'Participante',
+      clientName: component.getClientName ? component.getClientName() : '',
       participantEmail: component.individualParticipantEmail || '',
       projectName: component.selectedProjectName || 'Projeto',
       startDate: component.startDate || '',

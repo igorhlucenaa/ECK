@@ -19,6 +19,8 @@ import {
   addDoc,
   deleteDoc,
   writeBatch,
+  arrayUnion,
+  runTransaction,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -41,6 +43,7 @@ import { LinkEvaluateeModalComponent, LinkEvaluateeModalResult } from './link-ev
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
 import { RelatorioPreviewDialogComponent } from '../../project/participants-modal/relatorio-preview-dialog.component';
+import { SendHistoryDialogComponent } from './send-history-dialog/send-history-dialog.component';
 import { ReportGenerationModalComponent } from '../../project/report-generation-modal/report-generation-modal.component';
 import { Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
@@ -72,6 +75,7 @@ interface UnifiedParticipant {
   avaliadoId?: string;
   cargo?: string;
   setor?: string;
+  creditReserved?: boolean;
   // Dados de lembrete automático
   reminderCount?: number;
   nextReminderAt?: Date;
@@ -144,7 +148,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   selectedParticipants: UnifiedParticipant[] = [];
   isLoading: boolean = false;
   isInitializing: boolean = true; // overlay de tela cheia durante carregamento inicial
-  clientCredits: number | null = null; // saldo disponível do cliente selecionado
+  clientCredits: number | null = null;
+  clientReservedCredits: number | null = null;
   // Inicia como true: spinner aparece no primeiro frame do dialog,
   // antes mesmo de ngOnInit carregar os dados — evita cliques acidentais
   isTableLoading: boolean = true;
@@ -275,6 +280,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     }
 
     if (this.isEmailSendingMode) {
+      this.displayedColumns = [
+        'select', 'name', 'email', 'type', 'category',
+        'projectName', 'status', 'sentAt', 'completedAt',
+      ];
       this.filterClient = this.data!.clientId!;
       this.isClientDisabled = true;
       this.filterProject = this.data!.projectId || '';
@@ -396,6 +405,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         name: d['companyName'] || 'Cliente Sem Nome',
         credits: d['credits'] || 0,
         creditsUsed: d['creditsUsed'] || 0,
+        reservedCredits: d['reservedCredits'] || 0,
       }));
       if (this.filterClient) {
         this.updateClientCredits(this.filterClient);
@@ -409,6 +419,23 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   updateClientCredits(clientId: string): void {
     const client = (this.clients as any[]).find(c => c.id === clientId);
     this.clientCredits = client ? (client.credits ?? 0) : null;
+    this.clientReservedCredits = client ? (client.reservedCredits ?? 0) : null;
+  }
+
+  get reservedParticipantNames(): string[] {
+    return this.dataSource.data
+      .filter(p => p.creditReserved && !p.completedAt)
+      .map(p => p.name);
+  }
+
+  /** Participantes com crédito reservado (envio pendente, não responderam) */
+  get reservedParticipants() {
+    return this.dataSource.data.filter(p => p.creditReserved && !p.completedAt);
+  }
+
+  /** Participantes que responderam (crédito consumido) */
+  get usedParticipants() {
+    return this.dataSource.data.filter(p => !!p.completedAt);
   }
 
   async loadProjects(): Promise<void> {
@@ -565,10 +592,17 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           assessments.length > 0
             ? assessments[0]
             : (selectedAssessmentId || projectsMap[projectId]?.assessmentId || undefined);
+        let creditReserved = false;
 
         const processLinks = (linksSnapshot: any) => {
           linksSnapshot.docs.forEach((linkDoc: any) => {
             const linkData = linkDoc.data();
+            const linkStatus: string = linkData['status'] || '';
+
+            // Links cancelados ou expirados não contribuem para nenhum estado —
+            // sem eles, determineStatus retorna 'Não Enviado' corretamente.
+            if (linkStatus === 'cancelled' || linkStatus === 'expired') return;
+
             if (!resolvedAssessmentId && linkData['assessmentId']) {
               resolvedAssessmentId = linkData['assessmentId'];
             }
@@ -576,7 +610,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
               const linkSentAt = (linkData['sentAt'] as Timestamp).toDate();
               if (!sentAt || linkSentAt > sentAt) sentAt = linkSentAt;
             }
-            if (linkData['status'] === 'completed' && linkData['completedAt']) {
+            if (linkStatus === 'completed' && linkData['completedAt']) {
               const linkCompletedAt = (linkData['completedAt'] as Timestamp).toDate();
               if (!completedAt || linkCompletedAt > completedAt) completedAt = linkCompletedAt;
             }
@@ -590,6 +624,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             if (linkData['lastReminderSentAt']) {
               const lrs = (linkData['lastReminderSentAt'] as Timestamp).toDate();
               if (!lastReminderAt || lrs > lastReminderAt) lastReminderAt = lrs;
+            }
+            if (linkData['creditReserved'] === true) {
+              creditReserved = true;
             }
           });
         };
@@ -639,6 +676,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             avaliadoId: participantData['avaliadoId'] || undefined,
             cargo: participantData['cargo'] || undefined,
             setor: participantData['setor'] || undefined,
+            creditReserved,
             reminderCount,
             nextReminderAt,
             lastReminderAt,
@@ -1016,17 +1054,47 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.isLoading = true;
     this.isTableLoading = true;
     try {
-      // ── Verificar créditos do cliente antes de enviar ──────────
+      // ── Verificar e reservar créditos do cliente ──────────────
       const clientId = this.filterClient || this.data?.clientId;
+      let clientRef: any = null;
+      let creditsToReserve = 0; // contados durante o loop
+      let currentClientCredits = 0;
+      let currentReservedCredits = 0;
+
       if (clientId) {
-        const clientSnap = await getDoc(doc(this.firestore, `clients/${clientId}`));
+        clientRef = doc(this.firestore, `clients/${clientId}`);
+
+        // CORREÇÃO 8: leitura direta do Firestore — nunca usa estado local em cache
+        const clientSnap = await getDoc(clientRef);
         if (clientSnap.exists()) {
-          const availableCredits: number = clientSnap.data()['credits'] || 0;
-          // Conta quantos participantes ainda não responderam (cada resposta consome 1 crédito)
-          const pendingCount = this.selectedParticipants.filter(p => !p.completedAt).length;
-          if (availableCredits < pendingCount) {
+          const clientData = clientSnap.data() as Record<string, any>;
+          currentClientCredits = clientData['credits'] || 0;
+          currentReservedCredits = clientData['reservedCredits'] || 0;
+
+          // Descobre quais participantes JÁ têm crédito reservado
+          const pendingParticipants = this.selectedParticipants.filter(p => !p.completedAt);
+          const assessmentIdForCheck = this.assessmentFormControl.value;
+          let alreadyReservedCount = 0;
+          for (const p of pendingParticipants) {
+            // Filtra pelo assessmentId do envio atual para não contar reservas de outras avaliações
+            const existConstraints: any[] = [
+              where('participantId', '==', p.id),
+            ];
+            if (assessmentIdForCheck) {
+              existConstraints.push(where('assessmentId', '==', assessmentIdForCheck));
+            }
+            const existQ = query(collection(this.firestore, 'assessmentLinks'), ...existConstraints);
+            const existSnap = await getDocs(existQ);
+            const hasReservation = existSnap.docs.some(
+              d => d.data()['creditReserved'] === true && d.data()['status'] !== 'cancelled'
+            );
+            if (hasReservation) alreadyReservedCount++;
+          }
+
+          const newCreditsNeeded = pendingParticipants.length - alreadyReservedCount;
+          if (currentClientCredits < newCreditsNeeded) {
             this.snackBar.open(
-              `Créditos insuficientes. Disponíveis: ${availableCredits} — necessários: ${pendingCount}. Adquira mais créditos para continuar.`,
+              `Créditos insuficientes. Disponíveis: ${currentClientCredits} — necessários: ${newCreditsNeeded}. Adquira mais créditos para continuar.`,
               'Fechar',
               { duration: 6000 }
             );
@@ -1137,6 +1205,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const avaliadoNameCache = new Map<string, string>();
       const sendEmailUrl = (await import('src/enviroments/environment')).environment.functions.sendEmailUrl;
 
+      // Carrega configurações de lembrete do projeto uma única vez antes do loop
+      const reminderClientId = this.filterClient || this.selectedParticipants[0]?.clientId || '';
+      const reminderSettings = await this.loadReminderSettingsForProject(reminderClientId, projectIdForDeadline || '');
+
       // Envio sequencial: cada participante recebe template com variáveis próprias
       for (const participant of this.selectedParticipants) {
         // Resolver nome do avaliado (para e-mails de avaliador)
@@ -1186,31 +1258,59 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         );
         const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
 
+        const inviteHistoryEntry = {
+          type: 'convite',
+          sentAt: new Date(),
+          status: 'enviado',
+          templateId: selectedTemplateId,
+        };
+
         if (existingLinksSnapshot.empty) {
           const assessmentLinkDoc = doc(collection(this.firestore, 'assessmentLinks'));
           const linkData: any = {
             assessmentId: selectedAssessmentId,
             participantId: participant.id,
+            clientId: participant.clientId,
+            projectId: participant.projectId,
             sentAt: new Date(),
             status: 'pending',
             emailTemplate: selectedTemplateId,
             participantEmail: participant.email,
+            emailHistory: [inviteHistoryEntry],
+            creditReserved: true,
           };
           if (participant.type === 'avaliador' && participant.avaliadoId) {
             linkData['avaliadoId'] = participant.avaliadoId;
           }
+          if (reminderSettings) {
+            linkData['nextReminderAt'] = Timestamp.fromDate(
+              this.computeNextReminderAt(reminderSettings.startDate, reminderSettings.intervalDays, reminderSettings.sendTime, reminderSettings.timezone)
+            );
+          }
           await setDoc(assessmentLinkDoc, linkData);
+          if (!participant.completedAt) creditsToReserve++;
         } else {
           const existingLinkDoc = existingLinksSnapshot.docs[0];
+          const existingData = existingLinkDoc.data();
+          const isPending = existingData['status'] !== 'completed';
+          const alreadyReserved = existingData['creditReserved'] === true && existingData['status'] !== 'cancelled';
           const updateData: any = {
             sentAt: new Date(),
             emailTemplate: selectedTemplateId,
-            status: existingLinkDoc.data()['status'] === 'completed' ? 'completed' : 'pending',
+            status: isPending ? 'pending' : 'completed',
+            emailHistory: arrayUnion(inviteHistoryEntry),
+            creditReserved: true,
           };
           if (participant.type !== 'avaliado' && participant.avaliadoId) {
             updateData['avaliadoId'] = participant.avaliadoId;
           }
+          if (isPending && !existingData['nextReminderAt'] && reminderSettings) {
+            updateData['nextReminderAt'] = Timestamp.fromDate(
+              this.computeNextReminderAt(reminderSettings.startDate, reminderSettings.intervalDays, reminderSettings.sendTime, reminderSettings.timezone)
+            );
+          }
           await updateDoc(doc(this.firestore, 'assessmentLinks', existingLinkDoc.id), updateData);
+          if (!participant.completedAt && !alreadyReserved) creditsToReserve++;
         }
 
         const participantRef = doc(this.firestore, 'participants', participant.id);
@@ -1225,8 +1325,34 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
       await updateDoc(templateRef, { content: originalContent });
 
+      // ── CORREÇÃO 2: Reservar créditos em transação atômica ─────────────
+      // runTransaction garante que a leitura + verificação + escrita ocorrem
+      // sem race condition, mesmo com dois processos paralelos para o mesmo cliente.
+      if (clientRef && creditsToReserve > 0) {
+        await runTransaction(this.firestore, async (t) => {
+          const latestSnap = await t.get(clientRef!);
+          if (!latestSnap.exists()) throw new Error('Cliente não encontrado.');
+
+          const latestData = latestSnap.data() as Record<string, any>;
+          const latestCredits: number = latestData['credits'] || 0;
+
+          if (latestCredits < creditsToReserve) {
+            throw new Error(
+              `Créditos insuficientes no momento da reserva: ` +
+              `${latestCredits} disponíveis, ${creditsToReserve} necessários.`
+            );
+          }
+
+          t.update(clientRef!, {
+            credits:         latestCredits - creditsToReserve,
+            reservedCredits: (latestData['reservedCredits'] || 0) + creditsToReserve,
+          });
+        });
+      }
+      // ────────────────────────────────────────────────────────────────────
+
       this.snackBar.open(
-        `E-mails enviados para ${this.selectedParticipants.length} participantes!`,
+        `E-mails enviados para ${this.selectedParticipants.length} participantes! ${creditsToReserve > 0 ? `(${creditsToReserve} crédito${creditsToReserve !== 1 ? 's' : ''} reservado${creditsToReserve !== 1 ? 's' : ''})` : ''}`,
         'Fechar',
         { duration: 3000 }
       );
@@ -1440,6 +1566,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         await updateDoc(doc(this.firestore, `participants/${participant.id}`), updates);
         if (updates['name']) participant.name = updates['name'];
         if (updates['email']) participant.email = updates['email'];
+        // Força re-render da tabela: MatTableDataSource detecta mudança só por referência de array
+        this.dataSource.data = [...this.dataSource.data];
         this.snackBar.open('Participante atualizado com sucesso!', 'Fechar', { duration: 2500 });
       } catch (e) {
         this.snackBar.open('Erro ao atualizar participante.', 'Fechar', { duration: 3000 });
@@ -1525,6 +1653,15 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     return this.dataSource.filteredData.filter(p => (p.status || 'Não Enviado') === status).length;
   }
 
+  openSendHistory(participant: UnifiedParticipant): void {
+    this.dialog.open(SendHistoryDialogComponent, {
+      width: '560px',
+      maxWidth: '95vw',
+      panelClass: 'send-history-panel',
+      data: { participant },
+    });
+  }
+
   generateReportForParticipant(participant: UnifiedParticipant) {
     // Abrir o modal de geração para escolher competências e gerar PDF em background (sem navegação)
     const dialogRef = this.dialog.open(ReportGenerationModalComponent, {
@@ -1544,5 +1681,177 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         this.snackBar.open('Relatório gerado com sucesso!', 'Fechar', { duration: 3000 });
       }
     });
+  }
+
+  async cancelSend(participant: UnifiedParticipant): Promise<void> {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: { message: `Deseja cancelar o envio para ${participant.name}? O crédito reservado será liberado.` },
+    });
+    const confirmed = await dialogRef.afterClosed().toPromise();
+    if (!confirmed) return;
+
+    // ── Atualização otimista: UI responde imediatamente ──────
+    const prevStatus = participant.status;
+    const prevSentAt = participant.sentAt;
+    const prevCreditReserved = participant.creditReserved;
+    const hadCredit = participant.creditReserved === true;
+
+    participant.status = 'Não Enviado';
+    participant.sentAt = undefined;
+    participant.creditReserved = false;
+    if (hadCredit) {
+      if (this.clientCredits !== null) this.clientCredits += 1;
+      if (this.clientReservedCredits !== null) this.clientReservedCredits = Math.max(0, this.clientReservedCredits - 1);
+    }
+    this.dataSource.data = [...this.dataSource.data];
+    this.applyFilter();
+    // ─────────────────────────────────────────────────────────
+
+    try {
+      const cancelConstraints: any[] = [
+        where('participantId', '==', participant.id),
+        where('status', '==', 'pending'),
+      ];
+      if (participant.assessmentId) {
+        cancelConstraints.push(where('assessmentId', '==', participant.assessmentId));
+      }
+      const linkQuery = query(collection(this.firestore, 'assessmentLinks'), ...cancelConstraints);
+      const linkSnap = await getDocs(linkQuery);
+      if (linkSnap.empty) {
+        // Rollback: nenhum link pendente encontrado — desfaz atualização otimista
+        participant.status = prevStatus;
+        participant.sentAt = prevSentAt;
+        participant.creditReserved = prevCreditReserved;
+        if (hadCredit) {
+          if (this.clientCredits !== null) this.clientCredits -= 1;
+          if (this.clientReservedCredits !== null) this.clientReservedCredits += 1;
+        }
+        this.dataSource.data = [...this.dataSource.data];
+        this.snackBar.open('Nenhum envio pendente encontrado.', 'Fechar', { duration: 3000 });
+        return;
+      }
+
+      const linkDoc = linkSnap.docs[0];
+      const linkData = linkDoc.data();
+      const creditWasReserved = linkData['creditReserved'] === true;
+      const clientIdForCancel = linkData['clientId'] || participant.clientId;
+
+      await updateDoc(doc(this.firestore, 'assessmentLinks', linkDoc.id), {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        creditReserved: false,
+      });
+
+      if (creditWasReserved && clientIdForCancel) {
+        const clientRef = doc(this.firestore, `clients/${clientIdForCancel}`);
+        const clientSnap = await getDoc(clientRef);
+        if (clientSnap.exists()) {
+          const d = clientSnap.data();
+          await updateDoc(clientRef, {
+            credits: (d['credits'] || 0) + 1,
+            reservedCredits: Math.max(0, (d['reservedCredits'] || 0) - 1),
+          });
+        }
+      }
+
+      this.snackBar.open('Envio cancelado e crédito liberado.', 'Fechar', { duration: 3000 });
+    } catch (e) {
+      // Rollback em caso de erro
+      participant.status = prevStatus;
+      participant.sentAt = prevSentAt;
+      participant.creditReserved = prevCreditReserved;
+      if (hadCredit) {
+        if (this.clientCredits !== null) this.clientCredits -= 1;
+        if (this.clientReservedCredits !== null) this.clientReservedCredits += 1;
+      }
+      this.dataSource.data = [...this.dataSource.data];
+      console.error('Erro ao cancelar envio:', e);
+      this.snackBar.open('Erro ao cancelar envio.', 'Fechar', { duration: 3000 });
+    }
+  }
+
+  /** Carrega as configurações de lembrete ativas para o projeto. */
+  private async loadReminderSettingsForProject(clientId: string, projectId: string): Promise<{
+    startDate: Date;
+    intervalDays: number;
+    sendTime: string;
+    timezone: string;
+    maxReminders: number;
+  } | null> {
+    if (!clientId || !projectId) return null;
+    try {
+      const docId = `${clientId}_${projectId}`;
+      const snap = await getDoc(doc(this.firestore, 'reminderSettings', docId));
+      if (!snap.exists()) return null;
+      const d = snap.data();
+      if (!d['enabled']) return null;
+
+      const startDate: Date | null = d['startDate']?.toDate?.() ?? null;
+      if (!startDate) return null;
+
+      return {
+        startDate,
+        intervalDays: Math.max(1, Number(d['intervalDays'] || 3)),
+        sendTime: String(d['sendTime'] || '09:00'),
+        timezone: String(d['timezone'] || 'America/Fortaleza'),
+        maxReminders: Math.max(0, Number(d['maxReminders'] || 0)),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Calcula o próximo instante de disparo de lembrete para um participante
+   * novo (sem histórico de envios).
+   */
+  private computeNextReminderAt(
+    startDate: Date,
+    intervalDays: number,
+    sendTime: string,
+    timezone: string,
+  ): Date {
+    const now = new Date();
+    let next = this.buildReminderOccurrence(startDate, 0, sendTime, timezone);
+
+    if (next > now) return next;
+
+    const msPerInterval = intervalDays * 86_400_000;
+    const extra = Math.ceil((now.getTime() - next.getTime()) / msPerInterval);
+    next = this.buildReminderOccurrence(startDate, intervalDays * extra, sendTime, timezone);
+
+    if (next <= now) {
+      next = this.buildReminderOccurrence(startDate, intervalDays * (extra + 1), sendTime, timezone);
+    }
+
+    return next;
+  }
+
+  private buildReminderOccurrence(base: Date, offsetDays: number, sendTime: string, timezone: string): Date {
+    const targetDay = new Date(base.getTime() + offsetDays * 86_400_000);
+
+    const dateFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    const dp = dateFmt.formatToParts(targetDay);
+    const year  = dp.find(p => p.type === 'year')?.value  ?? '2000';
+    const month = dp.find(p => p.type === 'month')?.value ?? '01';
+    const day   = dp.find(p => p.type === 'day')?.value   ?? '01';
+    const datePart = `${year}-${month}-${day}`;
+
+    const noonUtc = new Date(`${datePart}T12:00:00Z`);
+    const timeFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, hour: 'numeric', minute: '2-digit', hour12: false,
+    });
+    const tp = timeFmt.formatToParts(noonUtc);
+    const tzH = Number(tp.find(p => p.type === 'hour')?.value   ?? '0');
+    const tzM = Number(tp.find(p => p.type === 'minute')?.value ?? '0');
+    const offsetMin = tzH * 60 + tzM - 720;
+
+    const [sh, sm] = sendTime.split(':').map(Number);
+    const utcMin = sh * 60 + sm - offsetMin;
+    const dayStartUtc = new Date(`${datePart}T00:00:00Z`).getTime();
+    return new Date(dayStartUtc + utcMin * 60_000);
   }
 }

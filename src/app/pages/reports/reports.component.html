@@ -700,9 +700,7 @@
                         <span class="rp-section-card__name">{{ secaoCtrl.get('titulo')?.value }}</span>
                       </mat-checkbox>
                       <mat-chip [style.background]="getTipoSecaoColor(secaoCtrl.get('tipo')?.value)" [style.color]="'white'">
-                        {{ secaoCtrl.get('tipo')?.value === 'graficos'
-                            ? getTipoGraficoLabel(secaoCtrl.get('tipoGrafico')?.value)
-                            : getTipoSecaoLabel(secaoCtrl.get('tipo')?.value) }}
+                        {{ getTipoSecaoLabel(secaoCtrl.get('tipo')?.value, secaoCtrl.get('tipoGrafico')?.value) }}
                       </mat-chip>
                       <mat-chip *ngIf="hasCompetenciasSelecionadas(secaoCtrl)" color="accent">
                         {{ getCompetenciaCountText(getCompetenciasIdsValue(secaoCtrl)) }}
@@ -817,8 +815,11 @@
                         </div>
 
                         <p class="rp-palette-label">{{ 'Paleta de cores' | translate }}</p>
+
+                        <!-- Grupo: Gradientes -->
+                        <p class="rp-palette-group-label">Gradientes</p>
                         <div class="rp-palette-grid">
-                          <div *ngFor="let paleta of paletasCores | keyvalue"
+                          <div *ngFor="let paleta of paletasGradiente"
                                class="rp-palette-card"
                                [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
                                (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
@@ -831,9 +832,47 @@
                             </div>
                             <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
                             <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
-                                      class="rp-palette-card__check">
-                              check_circle
-                            </mat-icon>
+                                      class="rp-palette-card__check">check_circle</mat-icon>
+                          </div>
+                        </div>
+
+                        <!-- Grupo: Cores Sólidas -->
+                        <p class="rp-palette-group-label">Cores Sólidas</p>
+                        <div class="rp-palette-grid">
+                          <div *ngFor="let paleta of paletasFlat"
+                               class="rp-palette-card"
+                               [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                               (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
+                               [matTooltip]="paleta.value.nome">
+                            <div class="rp-palette-card__swatches">
+                              <span *ngFor="let cor of paleta.value.cores.slice(0, 5)"
+                                    class="rp-palette-card__swatch"
+                                    [style.background-color]="cor">
+                              </span>
+                            </div>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                                      class="rp-palette-card__check">check_circle</mat-icon>
+                          </div>
+                        </div>
+
+                        <!-- Grupo: Especiais -->
+                        <p class="rp-palette-group-label">Especiais</p>
+                        <div class="rp-palette-grid">
+                          <div *ngFor="let paleta of paletasEspecial"
+                               class="rp-palette-card"
+                               [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                               (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
+                               [matTooltip]="paleta.value.nome">
+                            <div class="rp-palette-card__swatches">
+                              <span *ngFor="let cor of paleta.value.cores.slice(0, 5)"
+                                    class="rp-palette-card__swatch"
+                                    [style.background-color]="cor">
+                              </span>
+                            </div>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                                      class="rp-palette-card__check">check_circle</mat-icon>
                           </div>
                         </div>
 
@@ -875,7 +914,7 @@
                         <mat-icon>forum</mat-icon>
                         <span>{{ 'Perguntas Abertas' | translate }}</span>
                       </div>
-                      <p>{{ 'Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado, Gestor, Par, Subordinado, Outros).' | translate }}</p>
+                      <p>{{ 'Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado(a), Gestor(es), Pares, Subordinados, Outros).' | translate }}</p>
                     </div>
                   </div>
 
@@ -1204,6 +1243,9 @@
                     <mat-chip *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)" [matTooltip]="comp.descricao">
                       <mat-icon matChipAvatar>psychology</mat-icon>
                       {{ comp.nome }}
+                      <ng-container *ngIf="isTipoGraficoPizza(getTipoGraficoControl(i).value)">
+                         {{ getMediaCompetenciaNoGraficoPizza(secao, comp) | number:'1.2-2' }}
+                      </ng-container>
                     </mat-chip>
                   </mat-chip-set>
                 </div>
@@ -1246,6 +1288,7 @@
                         [results]="dadosPizza"
                         [view]="[600,400]"
                         [legend]="true"
+                        [legendTitle]="'Legenda'"
                         [labels]="true"
                         [doughnut]="false"
                         [scheme]="getColorSchemeParaSecao(secao)">
@@ -1261,6 +1304,7 @@
                           [results]="getCompetenciaPieData(comp)"
                           [view]="[300,250]"
                           [legend]="true"
+                          [legendTitle]="'Legenda'"
                           [labels]="true"
                           [doughnut]="false"
                           [scheme]="getColorSchemeParaSecao(secao)">
@@ -1369,13 +1413,6 @@
                     <div style="margin-bottom: 20px;">
                       <h3>{{ comp.nome }}</h3>
                       <p style="color: #666; font-style: italic;">{{ comp.descricao }}</p>
-                      <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
-                        <mat-label>Texto introdutório para {{ comp.nome }}</mat-label>
-                        <textarea matInput placeholder="Digite um texto explicativo para esta competência..." rows="3"
-                                  [value]="getOrInitTextoCompetencia(secao, comp)"
-                                  (input)="atualizarTextoCompetencia(secao, comp.id, $event)">
-                        </textarea>
-                      </mat-form-field>
                     </div>
                     <div style="overflow-x: auto;">
                       <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
@@ -1530,6 +1567,20 @@
                 <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
                   <mat-icon style="font-size: 48px; width: 48px; height: 48px;">waterfall_chart</mat-icon>
                   <p>Selecione uma ou mais competências para gerar o gráfico.</p>
+                </div>
+              </ng-template>
+            </div>
+
+            <div *ngSwitchCase="'janela_johari'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataJohari" style="margin-top: 20px;">
+                <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+              </div>
+              <ng-template #noDataJohari>
+                <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
+                  <mat-icon style="font-size: 48px; width: 48px; height: 48px;">view_quilt</mat-icon>
+                  <p>Selecione uma ou mais competências para gerar a Janela de Johari.</p>
                 </div>
               </ng-template>
             </div>

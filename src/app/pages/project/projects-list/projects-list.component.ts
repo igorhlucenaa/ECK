@@ -50,6 +50,7 @@ export class ProjectsListComponent implements OnInit {
   clientSearchCtrl = new FormControl('');
   selectedClientId: string | null = null;
   isAdminMaster: boolean = false;
+  isClienteAdmin: boolean = false;
   userClientIds: string[] = [];
   today = new Date();
   loadingParticipantsProjectId: string | null = null;
@@ -136,6 +137,7 @@ export class ProjectsListComponent implements OnInit {
   ngOnInit(): void {
     this.authService.getCurrentUser().then(async (user) => {
       this.isAdminMaster = user?.role === 'admin_master';
+      this.isClienteAdmin = user?.role === 'admin_client';
       this.userClientIds = await this.authService.getCurrentUserClientIds();
       this.clientId = this.userClientIds[0] || null;
 
@@ -465,6 +467,15 @@ export class ProjectsListComponent implements OnInit {
 
   goToProjectTemplates(clientId: string, projectId: string): void {
     this.router.navigate([`/projects/${clientId}/${projectId}/templates`]);
+  }
+
+  openSendInvitesModal(clientId: string, projectId: string, projectName: string): void {
+    this.dialog.open(ParticipantsModalComponent, {
+      width: '95vw',
+      maxWidth: '1100px',
+      panelClass: 'participants-modal-dialog',
+      data: { clientId, projectId, projectName },
+    });
   }
 
   goToProjectQuestionnaires(projectId: string): void {

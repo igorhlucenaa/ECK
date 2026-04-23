@@ -140,7 +140,7 @@ export class AppHorizontalHeaderComponent implements OnInit {
   showFiller = false;
   userName = '';
   userEmail = '';
-  horizontalNavItems = hNavItems.filter(item => !!item.displayName);
+  horizontalNavItems: any[] = [];
 
   public selectedLanguage: any = {
     language: 'Português',
@@ -193,6 +193,30 @@ export class AppHorizontalHeaderComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.userName = (await this.authService.getCurrentUserName()) ?? '';
     this.userEmail = (await this.authService.getCurrentUserEmail()) ?? '';
+    const role = await this.authService.getCurrentUserRole();
+    this.horizontalNavItems = this.filterNavItemsByRole(hNavItems, role);
+  }
+
+  private filterNavItemsByRole(items: any[], role: string | null): any[] {
+    return items
+      .filter(item => {
+        if (!item.displayName) return false;
+        if (!item.role) return true;
+        const roles = Array.isArray(item.role) ? item.role : [item.role];
+        return role && roles.includes(role);
+      })
+      .map(item => ({
+        ...item,
+        children: item.children ? this.filterChildrenByRole(item.children, role) : undefined,
+      }));
+  }
+
+  private filterChildrenByRole(items: any[], role: string | null): any[] {
+    return items.filter(item => {
+      if (!item.role) return true;
+      const roles = Array.isArray(item.role) ? item.role : [item.role];
+      return role && roles.includes(role);
+    });
   }
 
   openChangePasswordDialog(): void {
@@ -429,13 +453,19 @@ export class AppChangePasswordDialogComponent {
   imports: [RouterModule, MaterialModule, TablerIconsModule, FormsModule, NgForOf],
   templateUrl: 'search-dialog.component.html',
 })
-export class AppHorizontalSearchDialogComponent {
+export class AppHorizontalSearchDialogComponent implements OnInit {
   searchText: string = '';
-  navItems = navItems;
+  navItemsData: any[] = [];
 
-  navItemsData = navItems.filter((navitem) => navitem.displayName);
+  constructor(private authService: AuthService) {}
 
-  // filtered = this.navItemsData.find((obj) => {
-  //   return obj.displayName == this.searchinput;
-  // });
+  async ngOnInit(): Promise<void> {
+    const role = await this.authService.getCurrentUserRole();
+    this.navItemsData = navItems.filter((item) => {
+      if (!item.displayName) return false;
+      if (!item.role) return true;
+      const roles = Array.isArray(item.role) ? item.role : [item.role];
+      return role && roles.includes(role);
+    });
+  }
 }

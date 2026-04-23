@@ -77,7 +77,12 @@
         <div class="credits-totals">
           <div class="credits-totals__item credits-totals__item--used">
             <span class="credits-totals__num">{{ totalCreditsUsed }}</span>
-            <span class="credits-totals__lbl">Em uso</span>
+            <span class="credits-totals__lbl">Utilizados</span>
+          </div>
+          <div class="credits-totals__sep"></div>
+          <div class="credits-totals__item" style="color:#f59e0b;">
+            <span class="credits-totals__num">{{ totalReservedCredits }}</span>
+            <span class="credits-totals__lbl">Reservados</span>
           </div>
           <div class="credits-totals__sep"></div>
           <div class="credits-totals__item credits-totals__item--available">
@@ -87,47 +92,81 @@
         </div>
       </div>
 
+      <!-- ── Filtros da tabela de créditos ── -->
+      <div class="credits-filter-bar">
+        <div class="projects-filter-bar__search">
+          <mat-icon>search</mat-icon>
+          <input [(ngModel)]="creditSearchQuery" (ngModelChange)="onCreditSearch()"
+                 placeholder="Buscar por cliente…" />
+          <button *ngIf="creditSearchQuery" (click)="creditSearchQuery=''; onCreditSearch()" class="projects-filter-bar__clear">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+          <mat-label>Status</mat-label>
+          <mat-select [value]="creditStatusFilter" (selectionChange)="onCreditStatusFilter($event.value)">
+            <mat-option value="">Todos</mat-option>
+            <mat-option value="zero">Sem créditos</mat-option>
+            <mat-option value="low">Baixo (&lt; 5)</mat-option>
+            <mat-option value="ok">Ativo (≥ 5)</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <span class="projects-filter-bar__count">
+          {{ filteredCreditRows.length }} cliente{{ filteredCreditRows.length !== 1 ? 's' : '' }}
+        </span>
+      </div>
+
       <div class="dash-card__body dash-card__body--no-pad">
-        <div class="credits-list-new" *ngIf="clientCreditRows.length > 0">
+        <div class="credits-table-wrap" *ngIf="clientCreditRows.length > 0">
+
+          <!-- Cabeçalho de colunas -->
+          <div class="credits-col-header">
+            <div class="credits-col-header__client">Cliente</div>
+            <div class="credits-col-header__num credits-col-header__num--used">Utilizados</div>
+            <div class="credits-col-header__num credits-col-header__num--reserved">Reservados</div>
+            <div class="credits-col-header__num credits-col-header__num--avail">Disponíveis</div>
+            <div class="credits-col-header__status">Status</div>
+            <div class="credits-col-header__expand"></div>
+          </div>
+
           <ng-container *ngFor="let r of pagedCreditRows">
 
             <!-- ── Linha do cliente ── -->
-            <div class="credits-row-new"
-                 [class.credits-row-new--zero]="r.credits === 0"
-                 [class.credits-row-new--expanded]="r.expanded"
-                 [class.credits-row-new--clickable]="r.creditsUsed > 0"
-                 (click)="r.creditsUsed > 0 && toggleCreditRow(r)">
+            <div class="credits-row-v2"
+                 [class.credits-row-v2--zero]="r.credits === 0"
+                 [class.credits-row-v2--expanded]="r.expanded"
+                 [class.credits-row-v2--clickable]="r.projects.length > 0"
+                 (click)="r.projects.length > 0 && toggleCreditRow(r)">
 
-              <div class="credits-row-new__client">
-                <div class="credits-row-new__avatar">{{ r.clientName.charAt(0).toUpperCase() }}</div>
-                <span class="credits-row-new__name">{{ r.clientName }}</span>
+              <div class="credits-row-v2__client">
+                <div class="credits-row-v2__avatar">{{ r.clientName.charAt(0).toUpperCase() }}</div>
+                <span class="credits-row-v2__name">{{ r.clientName }}</span>
               </div>
 
-              <div class="credits-row-new__bar-wrap">
-                <div class="credits-row-new__bar">
-                  <div class="credits-row-new__bar-total"
-                       [style.width.%]="(r.creditsUsed + r.credits) > 0 ? 100 : 0"></div>
-                  <div class="credits-row-new__bar-used"
-                       [style.width.%]="(r.creditsUsed + r.credits) > 0 ? (r.creditsUsed / (r.creditsUsed + r.credits)) * 100 : 0"></div>
-                </div>
-                <div class="credits-row-new__bar-labels">
-                  <span class="credits-row-new__bar-used-lbl">
-                    <mat-icon>remove_circle_outline</mat-icon>{{ r.creditsUsed }} em uso
-                  </span>
-                  <span class="credits-row-new__bar-avail-lbl">
-                    <mat-icon>add_circle_outline</mat-icon>{{ r.credits }} disponíveis
-                  </span>
-                </div>
+              <div class="credits-row-v2__num credits-row-v2__num--used">
+                <span class="credits-num credits-num--used">{{ r.creditsUsed }}</span>
               </div>
 
-              <div class="credits-row-new__actions">
+              <div class="credits-row-v2__num credits-row-v2__num--reserved">
+                <span class="credits-num credits-num--reserved">{{ r.reservedCredits }}</span>
+                <mat-icon *ngIf="r.reservedCredits > 0" class="credits-num__icon">lock_outline</mat-icon>
+              </div>
+
+              <div class="credits-row-v2__num credits-row-v2__num--avail">
+                <span class="credits-num credits-num--avail">{{ r.credits }}</span>
+              </div>
+
+              <div class="credits-row-v2__status">
                 <span class="credits-status-badge"
                       [class.credits-status-badge--zero]="r.credits === 0"
                       [class.credits-status-badge--low]="r.credits > 0 && r.credits < 5"
                       [class.credits-status-badge--ok]="r.credits >= 5">
                   {{ r.credits === 0 ? 'Sem créditos' : r.credits < 5 ? 'Baixo' : 'Ativo' }}
                 </span>
-                <mat-icon class="credits-row-new__chevron" *ngIf="r.creditsUsed > 0">
+              </div>
+
+              <div class="credits-row-v2__expand">
+                <mat-icon class="credits-chevron" *ngIf="r.projects.length > 0">
                   {{ r.expanded ? 'expand_less' : 'expand_more' }}
                 </mat-icon>
               </div>
@@ -137,33 +176,48 @@
             <div class="credits-projects-detail" *ngIf="r.expanded && r.projects.length > 0">
               <div class="credits-projects-detail__header">
                 <mat-icon>folder_open</mat-icon>
-                Projetos com consumo de crédito
+                Créditos por projeto
               </div>
+
+              <!-- sub-cabeçalho de colunas -->
+              <div class="credits-project-cols-header">
+                <span class="credits-project-cols-header__name">Projeto</span>
+                <span class="credits-project-cols-header__val credits-project-cols-header__val--used">Utilizados</span>
+                <span class="credits-project-cols-header__val credits-project-cols-header__val--reserved">Reservados</span>
+              </div>
+
               <div class="credits-project-item" *ngFor="let p of r.projects"
                    [class.credits-project-item--orphan]="p.orphan">
-                <div class="credits-project-item__dot"></div>
+                <div class="credits-project-item__dot"
+                     [class.credits-project-item__dot--reserved]="p.reserved > 0 && p.used === 0"
+                     [class.credits-project-item__dot--mixed]="p.reserved > 0 && p.used > 0"></div>
                 <span class="credits-project-item__name"
                       [matTooltip]="p.orphan ? 'Projeto não encontrado — ID: ' + p.projectId : ''"
                       [matTooltipDisabled]="!p.orphan">
                   <mat-icon *ngIf="p.orphan" class="credits-project-item__warn">warning_amber</mat-icon>
                   {{ p.projectName }}
                 </span>
-                <span class="credits-project-item__used">
-                  <mat-icon>toll</mat-icon>{{ p.used }} resposta{{ p.used !== 1 ? 's' : '' }}
+                <span class="credits-project-item__used" *ngIf="p.used > 0">
+                  <mat-icon>toll</mat-icon>{{ p.used }}
                 </span>
+                <span class="credits-project-item__used credits-project-item__used--zero" *ngIf="p.used === 0">—</span>
+                <span class="credits-project-item__reserved" *ngIf="p.reserved > 0">
+                  <mat-icon>lock_outline</mat-icon>{{ p.reserved }}
+                </span>
+                <span class="credits-project-item__reserved credits-project-item__reserved--zero" *ngIf="p.reserved === 0">—</span>
               </div>
             </div>
 
           </ng-container>
         </div>
-        <div class="dash-empty" *ngIf="clientCreditRows.length === 0">
+        <div class="dash-empty" *ngIf="filteredCreditRows.length === 0">
           <mat-icon>toll</mat-icon>
-          <span>{{ 'Nenhum cliente encontrado' | translate }}</span>
+          <span>{{ clientCreditRows.length === 0 ? 'Nenhum cliente encontrado' : 'Nenhum cliente para o filtro selecionado' }}</span>
         </div>
       </div>
 
       <mat-paginator
-        [length]="clientCreditRows.length"
+        [length]="filteredCreditRows.length"
         [pageSize]="creditPageSize"
         [pageIndex]="creditPageIndex"
         [pageSizeOptions]="[5, 8, 15]"
@@ -202,34 +256,50 @@
       </div>
 
       <div class="alerts-filter-bar">
-        <div class="alerts-filter-chips">
-          <button class="filter-chip" [class.filter-chip--active]="alertLevelFilter === 'all'"
-                  (click)="onAlertLevelFilter('all')">
-            Todos <span class="filter-chip__count">{{ alerts.length }}</span>
-          </button>
-          <button class="filter-chip filter-chip--danger" [class.filter-chip--active]="alertLevelFilter === 'danger'"
-                  (click)="onAlertLevelFilter('danger')">
-            <mat-icon>error_outline</mat-icon> Crítico
-            <span class="filter-chip__count">{{ alertCountByLevel('danger') }}</span>
-          </button>
-          <button class="filter-chip filter-chip--warning" [class.filter-chip--active]="alertLevelFilter === 'warning'"
-                  (click)="onAlertLevelFilter('warning')">
-            <mat-icon>warning_amber</mat-icon> Atenção
-            <span class="filter-chip__count">{{ alertCountByLevel('warning') }}</span>
-          </button>
-          <button class="filter-chip filter-chip--info" [class.filter-chip--active]="alertLevelFilter === 'info'"
-                  (click)="onAlertLevelFilter('info')">
-            <mat-icon>info_outline</mat-icon> Aviso
-            <span class="filter-chip__count">{{ alertCountByLevel('info') }}</span>
-          </button>
+        <!-- Linha 1: chips de nível -->
+        <div class="alerts-filter-row alerts-filter-row--chips">
+          <div class="alerts-filter-chips">
+            <button class="filter-chip" [class.filter-chip--active]="alertLevelFilter === 'all'"
+                    (click)="onAlertLevelFilter('all')">
+              Todos <span class="filter-chip__count">{{ alerts.length }}</span>
+            </button>
+            <button class="filter-chip filter-chip--danger" [class.filter-chip--active]="alertLevelFilter === 'danger'"
+                    (click)="onAlertLevelFilter('danger')">
+              <mat-icon>error_outline</mat-icon> Crítico
+              <span class="filter-chip__count">{{ alertCountByLevel('danger') }}</span>
+            </button>
+            <button class="filter-chip filter-chip--warning" [class.filter-chip--active]="alertLevelFilter === 'warning'"
+                    (click)="onAlertLevelFilter('warning')">
+              <mat-icon>warning_amber</mat-icon> Atenção
+              <span class="filter-chip__count">{{ alertCountByLevel('warning') }}</span>
+            </button>
+            <button class="filter-chip filter-chip--info" [class.filter-chip--active]="alertLevelFilter === 'info'"
+                    (click)="onAlertLevelFilter('info')">
+              <mat-icon>info_outline</mat-icon> Aviso
+              <span class="filter-chip__count">{{ alertCountByLevel('info') }}</span>
+            </button>
+          </div>
         </div>
-        <mat-form-field class="alerts-client-filter" appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ 'Filtrar por cliente' | translate }}</mat-label>
-          <mat-select [value]="alertClientFilter" (selectionChange)="onAlertClientFilter($event.value)">
-            <mat-option value="all">{{ 'Todos os clientes' | translate }}</mat-option>
-            <mat-option *ngFor="let c of alertClients" [value]="c">{{ c }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+
+        <!-- Linha 2: busca por texto + filtro por cliente -->
+        <div class="alerts-filter-row alerts-filter-row--search">
+          <div class="projects-filter-bar__search">
+            <mat-icon>search</mat-icon>
+            <input [(ngModel)]="alertSearchQuery" (ngModelChange)="onAlertSearch()"
+                   placeholder="Buscar por projeto ou descrição…" />
+            <button *ngIf="alertSearchQuery" (click)="alertSearchQuery=''; onAlertSearch()" class="projects-filter-bar__clear">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <mat-form-field class="alerts-client-filter" appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Filtrar por cliente</mat-label>
+            <mat-select [value]="alertClientFilter" (selectionChange)="onAlertClientFilter($event.value)">
+              <mat-option value="all">Todos os clientes</mat-option>
+              <mat-option *ngFor="let c of alertClients" [value]="c">{{ c }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <span class="projects-filter-bar__count">{{ filteredAlerts.length }} alerta{{ filteredAlerts.length !== 1 ? 's' : '' }}</span>
+        </div>
       </div>
 
       <div class="alerts-table-wrap">
@@ -311,6 +381,37 @@
           <mat-icon>info_outline</mat-icon>
         </button>
       </div>
+
+      <!-- ── Filtros ── -->
+      <div class="projects-filter-bar">
+        <div class="projects-filter-bar__search">
+          <mat-icon>search</mat-icon>
+          <input [(ngModel)]="projectSearchQuery" (ngModelChange)="onProjectSearch()"
+                 placeholder="Buscar por projeto ou cliente…" />
+          <button *ngIf="projectSearchQuery" (click)="projectSearchQuery=''; onProjectSearch()" class="projects-filter-bar__clear">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+          <mat-label>Cliente</mat-label>
+          <mat-select [value]="projectClientFilter" (selectionChange)="onProjectClientFilter($event.value)">
+            <mat-option value="">Todos</mat-option>
+            <mat-option *ngFor="let c of uniqueProjectClients" [value]="c">{{ c }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+          <mat-label>Status</mat-label>
+          <mat-select [value]="projectStatusFilter" (selectionChange)="onProjectStatusFilter($event.value)">
+            <mat-option value="">Todos</mat-option>
+            <mat-option value="atrasado">Atrasado</mat-option>
+            <mat-option value="em_risco">Em risco</mat-option>
+            <mat-option value="em_andamento">Em andamento</mat-option>
+            <mat-option value="concluido">Concluído</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <span class="projects-filter-bar__count">{{ filteredProjectRows.length }} projeto{{ filteredProjectRows.length !== 1 ? 's' : '' }}</span>
+      </div>
+
       <div class="dash-card__body dash-card__body--no-pad">
         <table mat-table [dataSource]="pagedProjectRows" class="projects-table">
 
@@ -364,13 +465,13 @@
               [routerLink]="['/projects']"></tr>
         </table>
 
-        <div class="dash-empty" *ngIf="projectRows.length === 0">
+        <div class="dash-empty" *ngIf="filteredProjectRows.length === 0">
           <mat-icon>folder_open</mat-icon>
-          <span>{{ 'Nenhum projeto em andamento' | translate }}</span>
+          <span>{{ projectRows.length === 0 ? 'Nenhum projeto em andamento' : 'Nenhum projeto para o filtro selecionado' }}</span>
         </div>
       </div>
       <mat-paginator
-        [length]="projectRows.length"
+        [length]="filteredProjectRows.length"
         [pageSize]="projectPageSize"
         [pageIndex]="projectPageIndex"
         [pageSizeOptions]="[5, 8, 15]"
@@ -682,6 +783,30 @@
           <mat-icon>info_outline</mat-icon>
         </button>
       </div>
+
+      <!-- ── Filtros ── -->
+      <div class="projects-filter-bar">
+        <div class="projects-filter-bar__search">
+          <mat-icon>search</mat-icon>
+          <input [(ngModel)]="projectSearchQuery" (ngModelChange)="onProjectSearch()"
+                 placeholder="Buscar por projeto…" />
+          <button *ngIf="projectSearchQuery" (click)="projectSearchQuery=''; onProjectSearch()" class="projects-filter-bar__clear">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+          <mat-label>Status</mat-label>
+          <mat-select [value]="projectStatusFilter" (selectionChange)="onProjectStatusFilter($event.value)">
+            <mat-option value="">Todos</mat-option>
+            <mat-option value="atrasado">Atrasado</mat-option>
+            <mat-option value="em_risco">Em risco</mat-option>
+            <mat-option value="em_andamento">Em andamento</mat-option>
+            <mat-option value="concluido">Concluído</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <span class="projects-filter-bar__count">{{ filteredProjectRows.length }} projeto{{ filteredProjectRows.length !== 1 ? 's' : '' }}</span>
+      </div>
+
       <div class="dash-card__body dash-card__body--no-pad">
         <table mat-table [dataSource]="pagedProjectRows" class="projects-table">
 
@@ -734,13 +859,13 @@
               [routerLink]="['/projects']"></tr>
         </table>
 
-        <div class="dash-empty" *ngIf="projectRows.length === 0">
+        <div class="dash-empty" *ngIf="filteredProjectRows.length === 0">
           <mat-icon>folder_open</mat-icon>
-          <span>{{ 'Nenhum projeto em andamento' | translate }}</span>
+          <span>{{ projectRows.length === 0 ? 'Nenhum projeto em andamento' : 'Nenhum projeto para o filtro selecionado' }}</span>
         </div>
       </div>
       <mat-paginator
-        [length]="projectRows.length"
+        [length]="filteredProjectRows.length"
         [pageSize]="projectPageSize"
         [pageIndex]="projectPageIndex"
         [pageSizeOptions]="[5, 8, 15]"
