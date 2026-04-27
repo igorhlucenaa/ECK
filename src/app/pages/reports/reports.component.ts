@@ -2659,6 +2659,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.replaceCanvasWithImages(previewEl, clone);
     this.replaceNgxChartsWithSvgImages(previewEl, clone);
     this.preserveSvgDimensions(previewEl, clone);
+    this.replaceReportChipsForPdf(previewEl, clone);
     clone.querySelectorAll('.ui-only').forEach(el => el.remove());
 
     const documentStyles = this.collectDocumentStyles();
@@ -2718,31 +2719,37 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       color: #0f172a !important;
     }
     table { border-collapse: collapse; max-width: 100%; }
+    #report-preview .pdf-chip-set,
     #report-preview mat-chip-set,
     #report-preview .mat-mdc-chip-set {
       display: flex !important;
       flex-wrap: wrap !important;
-      gap: 8px !important;
+      gap: 6px !important;
       align-items: center !important;
     }
+    #report-preview .pdf-chip,
     #report-preview mat-chip,
     #report-preview .mat-mdc-chip {
       display: inline-flex !important;
       align-items: center !important;
-      min-height: 24px !important;
+      gap: 7px !important;
+      min-height: 26px !important;
       width: auto !important;
       max-width: 100% !important;
-      padding: 4px 10px !important;
-      margin: 0 4px 6px 0 !important;
+      padding: 5px 12px !important;
+      margin: 0 !important;
       border: 0 !important;
       border-radius: 999px !important;
       background: #f1f5f9 !important;
-      color: #0f172a !important;
+      color: #1f2937 !important;
       box-shadow: none !important;
+      font-family: Roboto, "Helvetica Neue", sans-serif !important;
       font-size: 12px !important;
+      font-weight: 500 !important;
       line-height: 1.2 !important;
       white-space: nowrap !important;
     }
+    #report-preview .pdf-chip__label,
     #report-preview mat-chip .mat-mdc-chip-action-label,
     #report-preview .mat-mdc-chip .mat-mdc-chip-action-label {
       display: inline-flex !important;
@@ -2750,21 +2757,27 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       gap: 6px !important;
       overflow: visible !important;
     }
+    #report-preview .pdf-chip__icon,
     #report-preview mat-chip mat-icon,
     #report-preview .mat-mdc-chip mat-icon {
       display: inline-flex !important;
       align-items: center !important;
       justify-content: center !important;
-      width: 14px !important;
-      height: 14px !important;
-      min-width: 14px !important;
-      margin-right: 4px !important;
+      width: 16px !important;
+      height: 16px !important;
+      min-width: 16px !important;
+      margin: 0 !important;
       border-radius: 999px !important;
       background: #e0f2fe !important;
-      color: transparent !important;
-      font-size: 0 !important;
-      line-height: 0 !important;
+      color: #0f355a !important;
+      line-height: 16px !important;
       overflow: hidden !important;
+    }
+    #report-preview .pdf-chip__icon svg {
+      width: 11px !important;
+      height: 11px !important;
+      display: block !important;
+      fill: currentColor !important;
     }
     #report-preview mat-chip mat-icon::before,
     #report-preview .mat-mdc-chip mat-icon::before {
@@ -2831,6 +2844,56 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         // Se um canvas externo bloquear leitura, mantemos o canvas no HTML clonado.
       }
     });
+  }
+
+  private replaceReportChipsForPdf(source: HTMLElement, clone: HTMLElement): void {
+    const sourceChipSets = Array.from(source.querySelectorAll('mat-chip-set')) as HTMLElement[];
+    const clonedChipSets = Array.from(clone.querySelectorAll('mat-chip-set')) as HTMLElement[];
+
+    clonedChipSets.forEach((clonedSet, setIndex) => {
+      const sourceSet = sourceChipSets[setIndex];
+      if (!sourceSet) return;
+
+      const sourceChips = Array.from(sourceSet.querySelectorAll('mat-chip')) as HTMLElement[];
+      const replacementSet = document.createElement('div');
+      replacementSet.className = 'pdf-chip-set';
+
+      sourceChips.forEach(sourceChip => {
+        const label = this.extractChipLabel(sourceChip);
+        if (!label) return;
+
+        const chip = document.createElement('span');
+        chip.className = 'pdf-chip';
+
+        const icon = document.createElement('span');
+        icon.className = 'pdf-chip__icon';
+        icon.innerHTML = this.getPsychologyIconSvg();
+
+        const text = document.createElement('span');
+        text.className = 'pdf-chip__label';
+        text.textContent = label;
+
+        chip.appendChild(icon);
+        chip.appendChild(text);
+        replacementSet.appendChild(chip);
+      });
+
+      clonedSet.parentNode?.replaceChild(replacementSet, clonedSet);
+    });
+  }
+
+  private extractChipLabel(chip: HTMLElement): string {
+    const clone = chip.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('mat-icon, .mat-icon, .mat-mdc-chip-avatar').forEach(el => el.remove());
+    return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  private getPsychologyIconSvg(): string {
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 3a4 4 0 0 0-3.86 3H7.5A3.5 3.5 0 0 0 4 9.5c0 .63.17 1.22.47 1.73A3.5 3.5 0 0 0 6.5 17H8v2a2 2 0 0 0 2 2h2.25v-2H10v-4H6.5a1.5 1.5 0 0 1-.68-2.84l1.06-.54-.59-1.03A1.5 1.5 0 0 1 7.5 8H10V7a2 2 0 0 1 3.62-1.18l.53.73.8-.42A2 2 0 0 1 18 7.9V9h.5a1.5 1.5 0 0 1 0 3H16v2h2.5a3.5 3.5 0 0 0 1.38-6.72A4 4 0 0 0 14.7 4.1 4 4 0 0 0 12 3Z"/>
+        <path d="M11 8.25a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm4 5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm-4.25 4.25 4.75-8 1.75 1-4.75 8-1.75-1Z"/>
+      </svg>`;
   }
 
   private replaceNgxChartsWithSvgImages(source: HTMLElement, clone: HTMLElement): void {
