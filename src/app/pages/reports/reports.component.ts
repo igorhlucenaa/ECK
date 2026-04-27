@@ -2643,6 +2643,372 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
   }
 
+  private async exportReportPreviewAsPdf(fileName: string): Promise<void> {
+    const previewEl = document.getElementById('report-preview') as HTMLElement | null;
+    if (!previewEl) {
+      throw new Error('Pre-visualizacao do relatorio nao encontrada.');
+    }
+
+    await this.waitForPreviewAssets(previewEl);
+    const html = this.buildReportPreviewHtml(previewEl, fileName);
+    await this.pdfMakeService.generateReportFromHtml(html, fileName);
+  }
+
+  private buildReportPreviewHtml(previewEl: HTMLElement, fileName: string): string {
+    const clone = previewEl.cloneNode(true) as HTMLElement;
+    this.replaceCanvasWithImages(previewEl, clone);
+    this.replaceNgxChartsWithSvgImages(previewEl, clone);
+    this.preserveSvgDimensions(previewEl, clone);
+    clone.querySelectorAll('.ui-only').forEach(el => el.remove());
+
+    const documentStyles = this.collectDocumentStyles();
+    const safeTitle = this.escapeHtml(fileName.replace(/\.pdf$/i, ''));
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${safeTitle}</title>
+  <base href="${window.location.origin}/">
+  <style>
+    ${documentStyles}
+    @page { size: A4 portrait; margin: 8mm 7mm; }
+    * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
+      font-family: Roboto, "Helvetica Neue", sans-serif;
+      width: auto !important;
+      max-width: none !important;
+    }
+    #report-preview {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
+    }
+    #report-preview > .report-section {
+      width: 100% !important;
+      max-width: none !important;
+    }
+    .report-section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 4mm; }
+    img, canvas { max-width: 100% !important; height: auto; }
+    svg { max-width: 100% !important; }
+    .pdf-svg-chart {
+      display: flex !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
+      max-width: 100% !important;
+      overflow: visible !important;
+    }
+    .pdf-svg-chart__image {
+      display: block !important;
+      max-width: 100% !important;
+      height: auto !important;
+      object-fit: contain !important;
+      flex: 0 1 auto !important;
+    }
+    .pdf-svg-chart__legend {
+      flex: 0 0 auto !important;
+      max-width: 180px !important;
+      color: #0f172a !important;
+    }
+    table { border-collapse: collapse; max-width: 100%; }
+    #report-preview mat-chip-set,
+    #report-preview .mat-mdc-chip-set {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      gap: 8px !important;
+      align-items: center !important;
+    }
+    #report-preview mat-chip,
+    #report-preview .mat-mdc-chip {
+      display: inline-flex !important;
+      align-items: center !important;
+      min-height: 24px !important;
+      width: auto !important;
+      max-width: 100% !important;
+      padding: 4px 10px !important;
+      margin: 0 4px 6px 0 !important;
+      border: 0 !important;
+      border-radius: 999px !important;
+      background: #f1f5f9 !important;
+      color: #0f172a !important;
+      box-shadow: none !important;
+      font-size: 12px !important;
+      line-height: 1.2 !important;
+      white-space: nowrap !important;
+    }
+    #report-preview mat-chip .mat-mdc-chip-action-label,
+    #report-preview .mat-mdc-chip .mat-mdc-chip-action-label {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      overflow: visible !important;
+    }
+    #report-preview mat-chip mat-icon,
+    #report-preview .mat-mdc-chip mat-icon {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 14px !important;
+      height: 14px !important;
+      min-width: 14px !important;
+      margin-right: 4px !important;
+      border-radius: 999px !important;
+      background: #e0f2fe !important;
+      color: transparent !important;
+      font-size: 0 !important;
+      line-height: 0 !important;
+      overflow: hidden !important;
+    }
+    #report-preview mat-chip mat-icon::before,
+    #report-preview .mat-mdc-chip mat-icon::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #0f172a;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  ${clone.outerHTML}
+</body>
+</html>`;
+  }
+
+  private collectDocumentStyles(): string {
+    const inlineStyles = Array.from(document.head.querySelectorAll('style'))
+      .map(style => style.innerHTML)
+      .join('\n');
+
+    const sameOriginStyles = Array.from(document.styleSheets)
+      .map(sheet => {
+        const href = (sheet as CSSStyleSheet).href;
+        if (href && new URL(href, document.baseURI || window.location.href).origin !== window.location.origin) {
+          return '';
+        }
+
+        try {
+          return Array.from(sheet.cssRules)
+            .map(rule => rule.cssText)
+            .join('\n');
+        } catch {
+          return '';
+        }
+      })
+      .join('\n');
+
+    return `${inlineStyles}\n${sameOriginStyles}`;
+  }
+
+  private replaceCanvasWithImages(source: HTMLElement, clone: HTMLElement): void {
+    const sourceCanvases = Array.from(source.querySelectorAll('canvas')) as HTMLCanvasElement[];
+    const clonedCanvases = Array.from(clone.querySelectorAll('canvas')) as HTMLCanvasElement[];
+
+    clonedCanvases.forEach((clonedCanvas, index) => {
+      const sourceCanvas = sourceCanvases[index];
+      if (!sourceCanvas) return;
+
+      try {
+        const dataUrl = sourceCanvas.toDataURL('image/jpeg', 0.92);
+        if (!dataUrl) return;
+
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.width = sourceCanvas.style.width || `${sourceCanvas.offsetWidth}px`;
+        img.style.height = sourceCanvas.style.height || `${sourceCanvas.offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+        clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
+      } catch {
+        // Se um canvas externo bloquear leitura, mantemos o canvas no HTML clonado.
+      }
+    });
+  }
+
+  private replaceNgxChartsWithSvgImages(source: HTMLElement, clone: HTMLElement): void {
+    const chartSelector = 'ngx-charts-bar-horizontal, ngx-charts-pie-chart';
+    const sourceCharts = Array.from(source.querySelectorAll(chartSelector)) as HTMLElement[];
+    const clonedCharts = Array.from(clone.querySelectorAll(chartSelector)) as HTMLElement[];
+
+    sourceCharts.forEach((sourceChart, index) => {
+      const clonedChart = clonedCharts[index];
+      if (!clonedChart) return;
+
+      const sourceSvg = sourceChart.querySelector('svg') as SVGSVGElement | null;
+      if (!sourceSvg) return;
+
+      const svgDataUrl = this.buildSvgDataUrl(sourceSvg);
+      if (!svgDataUrl) return;
+
+      const svgRect = sourceSvg.getBoundingClientRect();
+      const chartRect = sourceChart.getBoundingClientRect();
+      const width = Math.max(1, Math.round(svgRect.width || chartRect.width || 800));
+      const height = Math.max(1, Math.round(svgRect.height || chartRect.height || 300));
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'pdf-svg-chart';
+      wrapper.style.width = `${Math.round(chartRect.width || width)}px`;
+
+      const img = document.createElement('img');
+      img.className = 'pdf-svg-chart__image';
+      img.alt = 'Grafico do relatorio';
+      img.src = svgDataUrl;
+      img.style.width = `${width}px`;
+      img.style.height = `${height}px`;
+
+      wrapper.appendChild(img);
+
+      const legend = clonedChart.querySelector('.chart-legend, ngx-charts-legend');
+      if (legend) {
+        const legendClone = legend.cloneNode(true) as HTMLElement;
+        legendClone.classList.add('pdf-svg-chart__legend');
+        wrapper.appendChild(legendClone);
+      }
+
+      clonedChart.parentNode?.replaceChild(wrapper, clonedChart);
+    });
+  }
+
+  private buildSvgDataUrl(sourceSvg: SVGSVGElement): string | null {
+    try {
+      const svgClone = sourceSvg.cloneNode(true) as SVGSVGElement;
+      this.inlineSvgStyles(sourceSvg, svgClone);
+
+      const rect = sourceSvg.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width || Number(sourceSvg.getAttribute('width')) || 800));
+      const height = Math.max(1, Math.round(rect.height || Number(sourceSvg.getAttribute('height')) || 300));
+
+      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svgClone.setAttribute('width', `${width}`);
+      svgClone.setAttribute('height', `${height}`);
+
+      if (!svgClone.getAttribute('viewBox')) {
+        svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      }
+
+      const serialized = new XMLSerializer().serializeToString(svgClone);
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`;
+    } catch (error) {
+      console.warn('Nao foi possivel serializar SVG do grafico para PDF.', error);
+      return null;
+    }
+  }
+
+  private inlineSvgStyles(sourceSvg: SVGSVGElement, svgClone: SVGSVGElement): void {
+    const propertiesToCopy = [
+      'fill',
+      'stroke',
+      'stroke-width',
+      'opacity',
+      'fill-opacity',
+      'stroke-opacity',
+      'font-family',
+      'font-size',
+      'font-weight',
+      'font-style',
+      'color',
+      'text-anchor',
+      'dominant-baseline',
+      'alignment-baseline'
+    ];
+
+    const sourceNodes = [sourceSvg, ...Array.from(sourceSvg.querySelectorAll('*'))] as Element[];
+    const clonedNodes = [svgClone, ...Array.from(svgClone.querySelectorAll('*'))] as Element[];
+
+    sourceNodes.forEach((sourceNode, nodeIndex) => {
+      const clonedNode = clonedNodes[nodeIndex] as HTMLElement | SVGElement | undefined;
+      if (!clonedNode) return;
+
+      const computed = window.getComputedStyle(sourceNode);
+      propertiesToCopy.forEach(property => {
+        const value = computed.getPropertyValue(property);
+        if (value) {
+          (clonedNode as HTMLElement).style.setProperty(property, value);
+        }
+      });
+    });
+  }
+
+  private preserveSvgDimensions(source: HTMLElement, clone: HTMLElement): void {
+    const sourceSvgs = Array.from(source.querySelectorAll('svg')) as SVGSVGElement[];
+    const clonedSvgs = Array.from(clone.querySelectorAll('svg')) as SVGSVGElement[];
+
+    clonedSvgs.forEach((clonedSvg, index) => {
+      const sourceSvg = sourceSvgs[index];
+      if (!sourceSvg) return;
+
+      const rect = sourceSvg.getBoundingClientRect();
+      if (rect.width > 0) {
+        const width = `${Math.round(rect.width)}`;
+        clonedSvg.setAttribute('width', width);
+        clonedSvg.style.width = `${width}px`;
+      }
+
+      if (rect.height > 0) {
+        const height = `${Math.round(rect.height)}`;
+        clonedSvg.setAttribute('height', height);
+        clonedSvg.style.height = `${height}px`;
+      }
+
+      clonedSvg.style.overflow = 'visible';
+    });
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private async waitForPreviewAssets(previewEl?: HTMLElement): Promise<void> {
+    if ((document as any).fonts?.ready) {
+      try {
+        await (document as any).fonts.ready;
+      } catch {
+        // Continua mesmo se o browser nao expuser status de fontes.
+      }
+    }
+
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (previewEl) {
+      await this.waitForReportCharts(previewEl);
+    }
+  }
+
+  private async waitForReportCharts(previewEl: HTMLElement): Promise<void> {
+    const chartHosts = Array.from(
+      previewEl.querySelectorAll('ngx-charts-bar-horizontal, ngx-charts-pie-chart')
+    ) as HTMLElement[];
+
+    if (chartHosts.length === 0) return;
+
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < 2500) {
+      const allChartsReady = chartHosts.every(chart => {
+        const svg = chart.querySelector('svg') as SVGSVGElement | null;
+        const rect = svg?.getBoundingClientRect();
+        return Boolean(svg && rect && rect.width > 1 && rect.height > 1);
+      });
+
+      if (allChartsReady) return;
+
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+  }
+
   /**
    * Handler para mudança de modo de montagem
    */
@@ -2903,13 +3269,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.builderHasUnsavedChanges = false;
     }
   }
-
-  // Exportar relatório individual como PDF via iframe (mesma abordagem do lote)
+  // Exportar relatorio individual como PDF fiel ao preview (download direto)
   async exportarRelatorioPDF(): Promise<boolean> {
     if (this.isExporting) return false;
 
     if (!this.isDataReady()) {
-      this.snackBar.open(this.t('Selecione uma avaliação antes de exportar.'), this.t('Fechar'), { duration: 4000 });
+      this.snackBar.open('Selecione uma avaliação antes de exportar.', this.t('Fechar'), { duration: 4000 });
       return false;
     }
 
@@ -2917,118 +3282,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.exportingLabel = 'Gerando PDF...';
     this.cdr.markForCheck();
 
-    let iframe: HTMLIFrameElement | null = null;
-
     try {
-      const previewEl = document.getElementById('report-preview');
-      if (!previewEl) throw new Error('Elemento #report-preview não encontrado. Acesse a aba Visualizar primeiro.');
-
-      // Converter <canvas> → <img> (canvas não é serializado pelo cloneNode)
-      const canvases = Array.from(previewEl.querySelectorAll('canvas')) as HTMLCanvasElement[];
-      const canvasDataUrls = canvases.map(c => {
-        try { return c.toDataURL('image/jpeg', 0.92); } catch { return ''; }
-      });
-
-      const clone = previewEl.cloneNode(true) as HTMLElement;
-      Array.from(clone.querySelectorAll('canvas')).forEach((clonedCanvas, j) => {
-        const dataUrl = canvasDataUrls[j];
-        if (!dataUrl) return;
-        const img = document.createElement('img');
-        img.src = dataUrl;
-        img.style.width  = canvases[j].style.width  || `${canvases[j].offsetWidth}px`;
-        img.style.height = canvases[j].style.height || `${canvases[j].offsetHeight}px`;
-        img.style.maxWidth = '100%';
-        img.style.display = 'block';
-        (clonedCanvas as Element).parentNode?.replaceChild(img, clonedCanvas as Element);
-      });
-      clone.querySelectorAll('.ui-only').forEach(el => el.remove());
-
-      const angularStyles = Array.from(document.head.querySelectorAll('style'))
-        .map(s => s.innerHTML).join('\n');
-      const linkTags = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
-        .map(l => l.outerHTML).join('\n');
-
-      const docTitle = this.getExportBaseName();
-
-      iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:1px;border:none;opacity:0;pointer-events:none;';
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentDocument!;
-      iframeDoc.open();
-      iframeDoc.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${docTitle}</title>
-  <base href="${window.location.origin}/">
-  ${linkTags}
-  <style>
-    @page { size: A4 portrait; margin: 10mm 12mm; }
-    * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
-    body { margin: 0; padding: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background: #fff; width: 186mm; }
-    .rp-report-wrapper { width: 100%; box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; background: transparent !important; zoom: 0.82; }
-    .report-section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 4mm; }
-    h1 { font-size: 1.5em !important; margin: 3mm 0 2mm !important; }
-    h2 { font-size: 1.2em !important; margin: 2mm 0 1.5mm !important; }
-    h3 { font-size: 1.05em !important; margin: 2mm 0 1mm !important; }
-    p  { margin: 1.5mm 0 !important; }
-    td, th { padding: 4px 8px !important; }
-    table { border-collapse: collapse; }
-    img, svg { max-width: 100% !important; height: auto; }
-    ${angularStyles}
-  </style>
-</head>
-<body>
-  <div class="rp-report-wrapper">${clone.innerHTML}</div>
-  <script>
-    (function scaleOverflowingTables() {
-      var bodyWidth = document.body.offsetWidth;
-      document.querySelectorAll('table').forEach(function(table) {
-        var natural = table.scrollWidth;
-        if (natural <= bodyWidth + 2) return;
-        var scale    = bodyWidth / natural;
-        var origH    = table.offsetHeight;
-        var wrap = document.createElement('div');
-        wrap.style.cssText = 'width:100%;overflow:hidden;display:block;';
-        table.parentNode.insertBefore(wrap, table);
-        wrap.appendChild(table);
-        table.style.transformOrigin = 'top left';
-        table.style.transform       = 'scale(' + scale + ')';
-        table.style.marginBottom    = (origH * (scale - 1)) + 'px';
-      });
-    })();
-  <\/script>
-</body>
-</html>`);
-      iframeDoc.close();
-
-      await new Promise<void>((resolve) => {
-        setTimeout(() => {
-          let done = false;
-          const finish = () => {
-            if (done) return;
-            done = true;
-            window.removeEventListener('afterprint', finish);
-            try { iframe!.contentWindow?.removeEventListener('afterprint', finish); } catch {}
-            clearTimeout(safetyTimer);
-            resolve();
-          };
-          window.addEventListener('afterprint', finish);
-          try { iframe!.contentWindow?.addEventListener('afterprint', finish); } catch {}
-          const safetyTimer = setTimeout(finish, 5 * 60 * 1000);
-          iframe!.contentWindow?.focus();
-          iframe!.contentWindow?.print();
-        }, 600);
-      });
-
+      this.invalidateCache();
+      const fileName = `${this.getExportBaseName()}.pdf`;
+      await this.exportReportPreviewAsPdf(fileName);
       return true;
     } catch (err: any) {
       console.error('Erro ao gerar PDF:', err);
-      this.snackBar.open(this.t('Erro ao gerar PDF: ') + (err?.message || 'erro desconhecido'), this.t('Fechar'), { duration: 5000 });
+      this.snackBar.open(`Erro ao gerar PDF: ${err?.message || 'erro desconhecido'}`, this.t('Fechar'), { duration: 6000 });
       return false;
     } finally {
-      if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
       this.isExporting = false;
       this.exportingLabel = '';
       this.cdr.markForCheck();
@@ -3270,16 +3533,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getDadosGraficoPorCompetencia(competencia: Competencia): { name: string, value: number }[] {
-    // Busca dados para uma competência específica
+    // Busca dados para uma competencia especifica
     const grupos = this.getGrupos();
     const dadosGrafico: { name: string, value: number }[] = [];
 
-    console.log('getDadosGraficoPorCompetencia - competencia:', competencia);
-    console.log('getDadosGraficoPorCompetencia - grupos:', grupos);
-
     grupos.forEach(grupo => {
       const media = this.getMediaPorPerguntaEGrupo(competencia, grupo);
-      // Garantir que apenas valores válidos sejam adicionados
+      // Garantir que apenas valores validos sejam adicionados
       const valor = (media !== null && !isNaN(media)) ? media : 0;
       dadosGrafico.push({
         name: grupo,
@@ -3287,7 +3547,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     });
 
-    console.log('getDadosGraficoPorCompetencia - result:', dadosGrafico);
     return dadosGrafico;
   }
 
@@ -6181,96 +6440,67 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.gapChartData = dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
   }
-
-    private getDadosPerguntaDefasagem(perguntaId: string): { selfScore: number | null; othersScore: number | null; gap: number | null } | null {
-    console.log(`�Y"� Buscando dados para pergunta: ${perguntaId}`);
-
+  private getDadosPerguntaDefasagem(perguntaId: string): { selfScore: number | null; othersScore: number | null; gap: number | null } | null {
     if (!this.dataSource || this.dataSource.length === 0) {
-      console.log('�O dataSource vazio ou nulo');
+      console.warn(`[PDF] getDadosPerguntaDefasagem sem dataSource (perguntaId=${perguntaId})`);
       return null;
     }
 
-    console.log(`�Y"S dataSource tem ${this.dataSource.length} linhas`);
-
-    // Coletar todas as respostas para esta pergunta específica
+    // Coletar todas as respostas para esta pergunta especifica
     const respostasSelf: number[] = [];
     const respostasOutros: number[] = [];
 
-    this.dataSource.forEach((row, index) => {
+    this.dataSource.forEach((row) => {
       if (row[perguntaId] !== undefined) {
         const valor = this.parseLikertAnswer(row[perguntaId]);
-        console.log(`�Y"� Linha ${index}: categoria=${row.categoria}, perguntaId=${perguntaId}, valor=${row[perguntaId]}, parseado=${valor}`);
 
         if (valor !== null) {
           if (row.categoria === 'Avaliado') {
             respostasSelf.push(valor);
-            console.log(`�o. Adicionado à autoavaliação: ${valor}`);
           } else {
             respostasOutros.push(valor);
-            console.log(`�o. Adicionado aos outros: ${valor}`);
           }
         }
-      } else {
-        console.log(`�O Linha ${index}: perguntaId ${perguntaId} não encontrada`);
       }
     });
 
-    console.log(`�Y"S Respostas coletadas - Self: ${respostasSelf.length}, Outros: ${respostasOutros.length}`);
-
-    // Calcular médias
+    // Calcular medias
     const selfScore = respostasSelf.length > 0 ? respostasSelf.reduce((a, b) => a + b, 0) / respostasSelf.length : null;
     const othersScore = respostasOutros.length > 0 ? respostasOutros.reduce((a, b) => a + b, 0) / respostasOutros.length : null;
 
     const gap = (selfScore !== null && othersScore !== null) ? (selfScore - othersScore) : null;
-
-    console.log(`�YZ� Resultado final - Self: ${selfScore}, Outros: ${othersScore}, Gap: ${gap}`);
+    if (selfScore === null && othersScore === null) {
+      console.warn(`[PDF] Sem respostas validas para pergunta ${perguntaId}`);
+    }
 
     return { selfScore, othersScore, gap };
   }
 
-    public getGapChartDataForCompetency(competencyId: string): GapChartDataItem[] {
-    console.log(`�Y"� getGapChartDataForCompetency chamado para competência: ${competencyId}`);
-
+  public getGapChartDataForCompetency(competencyId: string): GapChartDataItem[] {
     const competencia = this.competencias.find(c => c.id === competencyId);
     if (!competencia || !competencia.perguntasIds) {
-      console.log('�O Competência não encontrada ou sem perguntas');
+      console.warn(`[PDF] Competencia nao encontrada ou sem perguntas (id=${competencyId})`);
       return [];
     }
 
-    console.log(`�o. Competência encontrada: ${competencia.nome} com ${competencia.perguntasIds.length} perguntas`);
-
     const dadosPorPergunta: GapChartDataItem[] = [];
 
-    competencia.perguntasIds.forEach((perguntaId, index) => {
-      console.log(`�Y"� Processando pergunta ${index + 1}/${competencia.perguntasIds.length}: ${perguntaId}`);
-
+    competencia.perguntasIds.forEach((perguntaId) => {
       const perguntaTexto = this.questionMap[perguntaId] || perguntaId;
-      console.log(`�Y"< Texto da pergunta: ${perguntaTexto}`);
-
       const dadosPergunta = this.getDadosPerguntaDefasagem(perguntaId);
 
       if (dadosPergunta) {
-        const item = {
+        dadosPorPergunta.push({
           competencyName: perguntaTexto,
           selfScore: dadosPergunta.selfScore,
           othersScore: dadosPergunta.othersScore,
           gap: dadosPergunta.gap
-        };
-
-        console.log(`�o. Item criado:`, item);
-        dadosPorPergunta.push(item);
-      } else {
-        console.log(`�O Dados não encontrados para pergunta ${perguntaId}`);
+        });
       }
     });
 
-    console.log(`�Y"S Total de itens criados: ${dadosPorPergunta.length}`);
-    const resultado = dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
-
-    console.log(`�YZ� Resultado final ordenado:`, resultado);
-    return resultado;
+    return dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
   }
 
   ngAfterViewInit(): void { }
 }
-

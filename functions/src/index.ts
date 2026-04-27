@@ -5,6 +5,16 @@ import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import { randomBytes } from 'crypto';
 import { defineString } from 'firebase-functions/params';
+import path from 'path';
+
+const PdfPrinter = require('pdfmake/js/Printer').default as {
+  new (fonts: Record<string, unknown>): {
+    createPdfKitDocument: (docDefinition: Record<string, unknown>) => Promise<{
+      on: (event: string, handler: (...args: unknown[]) => void) => void;
+      end: () => void;
+    }>;
+  };
+};
 
 let firestoreDb: admin.firestore.Firestore | null = null;
 const DEFAULT_FRONTEND_URL = 'https://eck360.web.app';
@@ -967,6 +977,224 @@ async function processPendingAssessmentReminders(
     summary,
   });
 }
+
+function sanitizePdfFileName(value: unknown): string {
+  if (typeof value !== 'string') return 'relatorio-feedback-360.pdf';
+  const trimmed = value.trim();
+  if (!trimmed) return 'relatorio-feedback-360.pdf';
+  const sanitized = trimmed
+    .replace(/[\\/:*?"<>|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const withExtension = sanitized.toLowerCase().endsWith('.pdf')
+    ? sanitized
+    : `${sanitized}.pdf`;
+  return withExtension || 'relatorio-feedback-360.pdf';
+}
+
+function buildPdfFontsMap(): Record<string, unknown> {
+  const baseDir = path.join(process.cwd(), 'node_modules', 'pdfmake', 'fonts', 'Roboto');
+  return {
+    Roboto: {
+      normal: path.join(baseDir, 'Roboto-Regular.ttf'),
+      bold: path.join(baseDir, 'Roboto-Medium.ttf'),
+      italics: path.join(baseDir, 'Roboto-Italic.ttf'),
+      bolditalics: path.join(baseDir, 'Roboto-MediumItalic.ttf'),
+    },
+  };
+}
+
+function normalizeDocDefinitionForServer(
+  docDefinition: Record<string, unknown>
+): Record<string, unknown> {
+  const normalized: Record<string, unknown> = { ...docDefinition };
+
+  const content = normalized.content;
+  if (!Array.isArray(content) || content.length === 0) {
+    throw new Error('docDefinition invalido: "content" deve ser um array nao vazio.');
+  }
+
+  if (!normalized.defaultStyle || typeof normalized.defaultStyle !== 'object') {
+    normalized.defaultStyle = { font: 'Roboto', fontSize: 10, lineHeight: 1.5 };
+  } else {
+    const currentDefault = normalized.defaultStyle as Record<string, unknown>;
+    if (!currentDefault.font) {
+      normalized.defaultStyle = { ...currentDefault, font: 'Roboto' };
+    }
+  }
+
+  if (!normalized.pageMargins) {
+    normalized.pageMargins = [40, 60, 40, 60];
+  }
+
+  if (!normalized.header) {
+    normalized.header = {
+      text: 'ECK - Avaliacao 360',
+      alignment: 'left',
+      fontSize: 8,
+      color: '#666666',
+      margin: [40, 20, 40, 0],
+    };
+  }
+
+  if (!normalized.footer) {
+    normalized.footer = {
+      text: `© ${new Date().getFullYear()} ECK Consulting - Confidencial`,
+      alignment: 'center',
+      fontSize: 8,
+      color: '#999999',
+      margin: [40, 10, 40, 20],
+    };
+  }
+
+  return normalized;
+}
+
+async function createPdfBuffer(
+  docDefinition: Record<string, unknown>
+): Promise<Buffer> {
+  const printer = new PdfPrinter(buildPdfFontsMap());
+  const pdfDoc = await printer.createPdfKitDocument(normalizeDocDefinitionForServer(docDefinition));
+  const chunks: Buffer[] = [];
+
+  return await new Promise<Buffer>((resolve, reject) => {
+    pdfDoc.on('data', (chunk: unknown) => {
+      if (Buffer.isBuffer(chunk)) {
+        chunks.push(chunk);
+      } else if (chunk instanceof Uint8Array) {
+        chunks.push(Buffer.from(chunk));
+      }
+    });
+    pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
+    pdfDoc.on('error', (error: unknown) => reject(error));
+    pdfDoc.end();
+  });
+}
+
+async function createPdfBufferFromHtml(html: string): Promise<Buffer> {
+  if (!html.trim()) {
+    throw new Error('HTML do relatorio esta vazio.');
+  }
+
+  let browser: { close: () => Promise<void>; newPage: () => Promise<any> } | null = null;
+
+  try {
+    const [{ default: chromium }, { default: puppeteer }] = await Promise.all([
+      import('@sparticuz/chromium'),
+      import('puppeteer-core'),
+    ]);
+
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: {
+        width: 1240,
+        height: 1754,
+        deviceScaleFactor: 1,
+      },
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+
+    const page = await browser.newPage();
+    page.setDefaultNavigationTimeout(60000);
+    page.setDefaultTimeout(480000);
+
+    await page.setRequestInterception(true);
+    page.on('request', (request: any) => {
+      const url = request.url();
+
+      if (
+        url === 'about:blank' ||
+        url.startsWith('data:') ||
+        url.startsWith('blob:')
+      ) {
+        request.continue();
+        return;
+      }
+
+      request.abort();
+    });
+
+    await page.setContent(html, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
+    });
+    await page.emulateMediaType('screen');
+    await Promise.race([
+      page.evaluateHandle('document.fonts && document.fonts.ready'),
+      new Promise((resolve) => setTimeout(resolve, 1000)),
+    ]);
+
+    return Buffer.from(await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: {
+        top: '8mm',
+        right: '7mm',
+        bottom: '8mm',
+        left: '7mm',
+      },
+      timeout: 480000,
+    }));
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
+
+export const generateReportPdf = onRequest(
+  {
+    region: 'us-central1',
+    cors: true,
+    timeoutSeconds: 540,
+    memory: '4GiB',
+  },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send({ error: 'Metodo nao permitido. Use POST.' });
+      return;
+    }
+
+    const body = (req.body || {}) as Record<string, unknown>;
+    const rawDocDefinition = body.docDefinition;
+    const rawHtml = body.html;
+
+    const fileName = sanitizePdfFileName(body.fileName);
+
+    try {
+      let pdfBuffer: Buffer;
+
+      if (typeof rawHtml === 'string' && rawHtml.trim()) {
+        pdfBuffer = await createPdfBufferFromHtml(rawHtml);
+      } else if (rawDocDefinition && typeof rawDocDefinition === 'object' && !Array.isArray(rawDocDefinition)) {
+        pdfBuffer = await createPdfBuffer(rawDocDefinition as Record<string, unknown>);
+      } else {
+        res.status(400).send({
+          error: 'Campo obrigatorio ausente: html (string) ou docDefinition (objeto JSON).',
+        });
+        return;
+      }
+
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        res.status(500).send({ error: 'Falha ao gerar PDF: buffer vazio.' });
+        return;
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+      res.status(200).send(pdfBuffer);
+    } catch (error) {
+      const err = error as Error;
+      console.error('Erro ao gerar PDF no backend:', err);
+      res.status(500).send({
+        error: `Erro ao gerar PDF: ${err.message || 'Erro desconhecido'}`,
+      });
+    }
+  }
+);
 
 export const sendEmail = onRequest(
   {

@@ -1,4 +1,7 @@
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { environment } from 'src/enviroments/environment';
 
 // Tipos para PDFMake (serão carregados dinamicamente)
 interface PdfMakeModule {
@@ -71,6 +74,170 @@ export class ReportPdfMakeService {
 
   /** Cache: carrega pdfmake + fontes apenas uma vez por sessão */
   private pdfMakeLib: any = null;
+  private readonly PDF_GENERATION_TIMEOUT_MS = 180000;
+  private readonly CHART_IMAGE_PIXEL_RATIO = 1.25;
+  private readonly CHART_IMAGE_JPEG_QUALITY = 0.82;
+  private readonly MAX_DISTRIBUTION_ROWS_PER_TABLE = 25;
+  private readonly MAX_COMPETENCY_DETAIL_ROWS_PER_TABLE = 80;
+  private readonly ROBOTO_FONTS = {
+    normal: 'Roboto-Regular.ttf',
+    bold: 'Roboto-Medium.ttf',
+    italics: 'Roboto-Italic.ttf',
+    bolditalics: 'Roboto-MediumItalic.ttf'
+  };
+
+  constructor(private readonly http: HttpClient) {}
+
+  private extractVfsMap(fontsModule: any): Record<string, string> {
+    if (!fontsModule) return {};
+
+    if (fontsModule?.pdfMake?.vfs) return fontsModule.pdfMake.vfs;
+    if (fontsModule?.vfs) return fontsModule.vfs;
+    if (fontsModule?.default?.pdfMake?.vfs) return fontsModule.default.pdfMake.vfs;
+
+    const directEntries = Object.entries(fontsModule).filter(([key, value]) =>
+      /\.(ttf|otf)$/i.test(key) && typeof value === 'string'
+    ) as [string, string][];
+
+    if (directEntries.length > 0) return Object.fromEntries(directEntries);
+    return {};
+  }
+
+  private registerVirtualFileSystem(lib: any, vfsMap: Record<string, string>): void {
+    if (!vfsMap || Object.keys(vfsMap).length === 0) return;
+
+    if (typeof lib.addVirtualFileSystem === 'function') {
+      lib.addVirtualFileSystem(vfsMap);
+      return;
+    }
+
+    lib.vfs = { ...(lib.vfs || {}), ...vfsMap };
+  }
+
+  private registerRobotoFontFamily(lib: any): void {
+    const normal = this.hasFontInVirtualFs(lib, this.ROBOTO_FONTS.normal)
+      ? this.ROBOTO_FONTS.normal
+      : '';
+
+    if (!normal) {
+      throw new Error(`Fonte '${this.ROBOTO_FONTS.normal}' nao disponivel no virtual file system do pdfmake.`);
+    }
+
+    const fontsDef = {
+      Roboto: {
+        normal,
+        bold: this.hasFontInVirtualFs(lib, this.ROBOTO_FONTS.bold) ? this.ROBOTO_FONTS.bold : normal,
+        italics: this.hasFontInVirtualFs(lib, this.ROBOTO_FONTS.italics) ? this.ROBOTO_FONTS.italics : normal,
+        bolditalics: this.hasFontInVirtualFs(lib, this.ROBOTO_FONTS.bolditalics) ? this.ROBOTO_FONTS.bolditalics : normal
+      }
+    };
+
+    if (typeof lib.addFonts === 'function') {
+      lib.addFonts(fontsDef);
+      return;
+    }
+
+    lib.fonts = {
+      ...(lib.fonts || {}),
+      ...fontsDef
+    };
+  }
+
+  private hasFontInVirtualFs(lib: any, fileName: string): boolean {
+    if (lib?.virtualfs && typeof lib.virtualfs.existsSync === 'function') {
+      return Boolean(lib.virtualfs.existsSync(fileName));
+    }
+    return Boolean(lib?.vfs?.[fileName]);
+  }
+
+  private createPdfBlobWithTimeout(pdfMakeLib: any, docDefinition: any): Promise<Blob> {
+    this.validateTableStructures(docDefinition);
+
+    return Promise.race<Blob>([
+      new Promise<Blob>((resolve, reject) => {
+        try {
+          pdfMakeLib.createPdf(docDefinition).getBlob((blob: Blob) => {
+            if (blob && blob.size > 0) resolve(blob);
+            else reject(new Error('PDFMake retornou blob vazio'));
+          });
+        } catch (e) {
+          reject(e);
+        }
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`Timeout ao gerar PDF (${Math.round(this.PDF_GENERATION_TIMEOUT_MS / 1000)}s)`)),
+          this.PDF_GENERATION_TIMEOUT_MS
+        )
+      )
+    ]);
+  }
+
+  private chunkArray<T>(items: T[], chunkSize: number): T[][] {
+    if (items.length === 0) return [];
+    const safeChunkSize = Math.max(1, chunkSize);
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += safeChunkSize) {
+      chunks.push(items.slice(i, i + safeChunkSize));
+    }
+    return chunks;
+  }
+
+  private cloneTableRow(row: any[]): any[] {
+    return row.map(cell => {
+      if (cell && typeof cell === 'object' && !Array.isArray(cell)) {
+        return { ...cell };
+      }
+      return cell;
+    });
+  }
+
+  /**
+   * Valida estrutura de tabelas para evitar erros silenciosos do PDFMake
+   * que normalmente aparecem apenas como timeout.
+   */
+  private validateTableStructures(docDefinition: any): void {
+    const errors: string[] = [];
+
+    const walk = (node: any, path: string): void => {
+      if (node == null) return;
+
+      if (Array.isArray(node)) {
+        node.forEach((item, index) => walk(item, `${path}[${index}]`));
+        return;
+      }
+
+      if (typeof node !== 'object') return;
+
+      const table = node.table;
+      if (table && Array.isArray(table.body) && Array.isArray(table.widths)) {
+        const expectedColumns = table.widths.length;
+        table.body.forEach((row: any, rowIndex: number) => {
+          if (!Array.isArray(row)) {
+            errors.push(`${path}.table.body[${rowIndex}] nao e array`);
+            return;
+          }
+
+          if (row.length !== expectedColumns) {
+            errors.push(
+              `${path}.table.body[${rowIndex}] tem ${row.length} colunas; esperado ${expectedColumns}`
+            );
+          }
+        });
+      }
+
+      Object.entries(node).forEach(([key, value]) => {
+        if (key === 'table') return;
+        walk(value, `${path}.${key}`);
+      });
+    };
+
+    walk(docDefinition, 'docDefinition');
+
+    if (errors.length > 0) {
+      throw new Error(`Estrutura de tabela invalida: ${errors.slice(0, 4).join(' | ')}`);
+    }
+  }
 
   private async loadPdfMake(): Promise<any> {
     if (this.pdfMakeLib) return this.pdfMakeLib;
@@ -82,11 +249,11 @@ export class ReportPdfMakeService {
         import('pdfmake/build/vfs_fonts')
       ]);
       const lib = pdfMakeModule.default || pdfMakeModule;
-      const fonts = pdfFontsModule.default || pdfFontsModule;
+      const fontsModule = pdfFontsModule.default || pdfFontsModule;
+      const vfsMap = this.extractVfsMap(fontsModule);
 
-      if (fonts?.pdfMake?.vfs)       lib.vfs = fonts.pdfMake.vfs;
-      else if (fonts?.vfs)           lib.vfs = fonts.vfs;
-      else if (fonts?.default?.pdfMake?.vfs) lib.vfs = fonts.default.pdfMake.vfs;
+      this.registerVirtualFileSystem(lib, vfsMap);
+      this.registerRobotoFontFamily(lib);
 
       this.pdfMakeLib = lib;
       return lib;
@@ -136,26 +303,165 @@ export class ReportPdfMakeService {
     return docDefinition;
   }
 
+  private getGeneratePdfFunctionUrl(): string {
+    const url = environment.functions?.generateReportPdfUrl?.trim();
+    if (!url) {
+      throw new Error('URL da Cloud Function de PDF nao configurada (environment.functions.generateReportPdfUrl).');
+    }
+    return url;
+  }
+
+  private makeDocDefinitionTransportSafe(docDefinition: any): any {
+    const serialized = JSON.stringify(
+      docDefinition,
+      (_key, value) => (typeof value === 'function' ? undefined : value)
+    );
+    const parsed = JSON.parse(serialized);
+
+    if (!parsed.defaultStyle || typeof parsed.defaultStyle !== 'object') {
+      parsed.defaultStyle = { font: 'Roboto', fontSize: 10, lineHeight: 1.5 };
+    } else if (!parsed.defaultStyle.font) {
+      parsed.defaultStyle = { ...parsed.defaultStyle, font: 'Roboto' };
+    }
+
+    if (!parsed.header) {
+      parsed.header = {
+        text: 'ECK - Avaliacao 360',
+        alignment: 'left',
+        fontSize: 8,
+        color: '#666666',
+        margin: [40, 20, 40, 0]
+      };
+    }
+
+    if (!parsed.footer) {
+      parsed.footer = {
+        text: `© ${new Date().getFullYear()} ECK Consulting - Confidencial`,
+        alignment: 'center',
+        fontSize: 8,
+        color: '#999999',
+        margin: [40, 10, 40, 20]
+      };
+    }
+
+    return parsed;
+  }
+
+  private triggerBrowserDownload(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  private async buildCloudFunctionErrorMessage(error: unknown): Promise<string> {
+    const fallbackMessage = 'Falha ao gerar PDF no backend.';
+
+    if (!(error instanceof HttpErrorResponse)) {
+      const nonHttpMessage = (error as Error | undefined)?.message;
+      return nonHttpMessage || fallbackMessage;
+    }
+
+    const statusPrefix = error.status
+      ? `Cloud Function (${error.status})`
+      : 'Cloud Function';
+
+    if (error.status === 413) {
+      return `${statusPrefix}: payload muito grande para processamento.`;
+    }
+
+    const errorPayload = error.error;
+
+    if (typeof errorPayload === 'string' && errorPayload.trim()) {
+      return `${statusPrefix}: ${errorPayload.trim()}`;
+    }
+
+    if (errorPayload instanceof Blob) {
+      try {
+        const text = (await errorPayload.text()).trim();
+        if (!text) return `${statusPrefix}: ${fallbackMessage}`;
+
+        try {
+          const parsed = JSON.parse(text) as { error?: string };
+          if (parsed?.error) return `${statusPrefix}: ${parsed.error}`;
+        } catch {
+          // resposta nao era JSON; segue com texto bruto
+        }
+
+        return `${statusPrefix}: ${text}`;
+      } catch {
+        return `${statusPrefix}: ${fallbackMessage}`;
+      }
+    }
+
+    if (errorPayload && typeof errorPayload === 'object') {
+      const maybeError = (errorPayload as { error?: string }).error;
+      if (maybeError) return `${statusPrefix}: ${maybeError}`;
+    }
+
+    return `${statusPrefix}: ${error.message || fallbackMessage}`;
+  }
+
+  private async generateReportViaCloudFunction(data: ReportData, fileName: string): Promise<void> {
+    try {
+      const functionUrl = this.getGeneratePdfFunctionUrl();
+      const docDefinition = await this.buildDocDefinition(data);
+      const safeDocDefinition = this.makeDocDefinitionTransportSafe(docDefinition);
+      this.validateTableStructures(safeDocDefinition);
+
+      const payload = {
+        fileName,
+        docDefinition: safeDocDefinition
+      };
+
+      const blob = await firstValueFrom(
+        this.http.post(functionUrl, payload, {
+          responseType: 'blob'
+        })
+      );
+
+      if (!blob || blob.size === 0) {
+        throw new Error('Cloud Function retornou PDF vazio.');
+      }
+
+      this.triggerBrowserDownload(blob, fileName);
+    } catch (error) {
+      const message = await this.buildCloudFunctionErrorMessage(error);
+      throw new Error(message);
+    }
+  }
+
+  async generateReportFromHtml(html: string, fileName: string): Promise<void> {
+    try {
+      const functionUrl = this.getGeneratePdfFunctionUrl();
+      const blob = await firstValueFrom(
+        this.http.post(functionUrl, { html, fileName }, {
+          responseType: 'blob'
+        })
+      );
+
+      if (!blob || blob.size === 0) {
+        throw new Error('Cloud Function retornou PDF vazio.');
+      }
+
+      this.triggerBrowserDownload(blob, fileName);
+    } catch (error) {
+      const message = await this.buildCloudFunctionErrorMessage(error);
+      throw new Error(message);
+    }
+  }
+
   /**
    * Gera relatório e retorna como Blob (usado para geração em lote / ZIP)
    */
   async generateReportBlob(data: ReportData): Promise<Blob> {
     const pdfMakeLib = await this.loadPdfMake();
     const docDefinition = await this.buildDocDefinition(data);
-
-    return Promise.race<Blob>([
-      new Promise<Blob>((resolve, reject) => {
-        try {
-          pdfMakeLib.createPdf(docDefinition).getBlob((b: Blob) => {
-            if (b && b.size > 0) resolve(b);
-            else reject(new Error('PDFMake retornou blob vazio'));
-          });
-        } catch (e) { reject(e); }
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout ao gerar PDF (30s)')), 30000)
-      ),
-    ]);
+    return this.createPdfBlobWithTimeout(pdfMakeLib, docDefinition);
   }
 
   /**
@@ -163,56 +469,8 @@ export class ReportPdfMakeService {
    */
   async generateReport(data: ReportData, fileName?: string): Promise<void> {
     try {
-      const pdfMakeLib = await this.loadPdfMake();
-
-      const docDefinition = {
-        content: [],
-        styles: this.getStyles(),
-        defaultStyle: {
-          font: 'Roboto',
-          fontSize: 10,
-          lineHeight: 1.5
-        },
-        pageMargins: [40, 60, 40, 60],
-        header: this.buildHeader(data),
-        footer: this.buildFooter
-      };
-
-      // Processar seções na ordem definida
-      const secoesOrdenadas = [...data.relatorioConfiguracao]
-        .filter(s => s.visivel)
-        .sort((a, b) => a.ordem - b.ordem);
-
-      for (const secao of secoesOrdenadas) {
-        const conteudoSecao = await this.buildSection(secao, data);
-        if (conteudoSecao && conteudoSecao.length > 0) {
-          (docDefinition.content as any[]).push(...conteudoSecao);
-        }
-      }
-
-      // Gerar PDF via Blob + anchor click (compatível com todos os navegadores)
       const filename = fileName || this.buildDefaultFileName(data);
-      const blob: Blob = await Promise.race<Blob>([
-        new Promise<Blob>((resolve, reject) => {
-          try {
-            pdfMakeLib.createPdf(docDefinition as any).getBlob((b: Blob) => {
-              if (b && b.size > 0) resolve(b);
-              else reject(new Error('PDFMake retornou blob vazio'));
-            });
-          } catch (e) { reject(e); }
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout ao gerar PDF (30s)')), 30000)
-        )
-      ]);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await this.generateReportViaCloudFunction(data, filename);
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       throw error;
@@ -519,16 +777,19 @@ export class ReportPdfMakeService {
           colSpan: 5,
           alignment: 'center'
         });
+        for (let i = 1; i < 5; i++) {
+          headerRow.push({ text: '', style: 'tableHeader' });
+        }
       });
 
-      const subHeaderRow: any[] = [''];
+      const subHeaderRow: any[] = [{ text: '', style: 'tableSubHeader' }];
       grupos.forEach(() => {
         for (let nota = 1; nota <= 5; nota++) {
           subHeaderRow.push({ text: nota.toString(), style: 'tableSubHeader', alignment: 'center' });
         }
       });
 
-      const tableBody: any[] = [headerRow, subHeaderRow];
+      const questionRows: any[] = [];
 
       // Linhas de perguntas
       perguntas.forEach(perguntaId => {
@@ -569,7 +830,7 @@ export class ReportPdfMakeService {
           });
         });
 
-        tableBody.push(row);
+        questionRows.push(row);
       });
 
       // Linha de médias
@@ -584,31 +845,48 @@ export class ReportPdfMakeService {
           alignment: 'center',
           bold: true
         });
+        for (let i = 1; i < 5; i++) {
+          mediaRow.push({ text: '', style: 'tableHeader' });
+        }
       });
-      tableBody.push(mediaRow);
-
       // Calcular larguras das colunas
-      const widths: any[] = ['auto']; // Coluna de perguntas
+      const widths: any[] = ['*']; // Coluna de perguntas
       grupos.forEach(() => {
         for (let i = 0; i < 5; i++) {
-          widths.push('auto');
+          widths.push(14);
         }
       });
 
-      content.push({
-        table: {
-          headerRows: 2,
-          widths: widths,
-          body: tableBody
-        },
-        layout: {
-          fillColor: (rowIndex: number) => {
-            if (rowIndex === 0 || rowIndex === 1) return '#4CAF50';
-            if (rowIndex === tableBody.length - 1) return '#81C784';
-            return rowIndex % 2 === 0 ? '#F9F9F9' : null;
-          }
-        },
-        margin: [0, 0, 0, 30]
+      const questionChunks = this.chunkArray(questionRows, this.MAX_DISTRIBUTION_ROWS_PER_TABLE);
+      const chunksToRender = questionChunks.length > 0 ? questionChunks : [[]];
+
+      chunksToRender.forEach((chunkRows, chunkIndex) => {
+        const isLastChunk = chunkIndex === chunksToRender.length - 1;
+        const tableBody: any[] = [
+          this.cloneTableRow(headerRow),
+          this.cloneTableRow(subHeaderRow),
+          ...chunkRows.map(row => this.cloneTableRow(row))
+        ];
+
+        if (isLastChunk) {
+          tableBody.push(this.cloneTableRow(mediaRow));
+        }
+
+        content.push({
+          table: {
+            headerRows: 2,
+            widths: widths,
+            body: tableBody
+          },
+          layout: {
+            fillColor: (rowIndex: number) => {
+              if (rowIndex === 0 || rowIndex === 1) return '#4CAF50';
+              if (isLastChunk && rowIndex === tableBody.length - 1) return '#81C784';
+              return rowIndex % 2 === 0 ? '#F9F9F9' : null;
+            }
+          },
+          margin: [0, 0, 0, isLastChunk ? 30 : 12]
+        });
       });
     }
 
@@ -773,7 +1051,8 @@ export class ReportPdfMakeService {
 
     for (const comp of competencias) {
       const perguntas = comp.perguntasIds || [];
-      const tableBody: any[] = [['Pergunta', 'Categoria', 'Média', 'Respostas']];
+      const headerRow: any[] = ['Pergunta', 'Categoria', 'Media', 'Respostas'];
+      const detailRows: any[] = [];
 
       perguntas.forEach(perguntaId => {
         const perguntaTexto = data.questionMap[perguntaId] || perguntaId;
@@ -793,7 +1072,7 @@ export class ReportPdfMakeService {
 
           if (respostas.length > 0) {
             const media = respostas.reduce((a, b) => a + b, 0) / respostas.length;
-            tableBody.push([
+            detailRows.push([
               perguntaTexto,
               grupo,
               { text: media.toFixed(2), alignment: 'right' } as any,
@@ -805,8 +1084,35 @@ export class ReportPdfMakeService {
 
       content.push(
         { text: comp.nome, style: 'competencyTitle', pageBreak: 'before' },
-        { text: comp.descricao, style: 'competencyDescription', margin: [0, 0, 0, 15] },
-        {
+        { text: comp.descricao, style: 'competencyDescription', margin: [0, 0, 0, 15] }
+      );
+
+      if (detailRows.length === 0) {
+        content.push({
+          text: 'Sem dados disponiveis para esta competencia.',
+          style: 'bodyText',
+          margin: [0, 0, 0, 20]
+        });
+        continue;
+      }
+
+      const chunks = this.chunkArray(detailRows, this.MAX_COMPETENCY_DETAIL_ROWS_PER_TABLE);
+
+      chunks.forEach((chunkRows, chunkIndex) => {
+        if (chunkIndex > 0) {
+          content.push({
+            text: `${comp.nome} (continuacao)`,
+            style: 'subsectionTitle',
+            margin: [0, 10, 0, 8]
+          });
+        }
+
+        const tableBody = [
+          this.cloneTableRow(headerRow),
+          ...chunkRows.map(row => this.cloneTableRow(row))
+        ];
+
+        content.push({
           table: {
             headerRows: 1,
             widths: ['*', 'auto', 'auto', 'auto'],
@@ -817,9 +1123,9 @@ export class ReportPdfMakeService {
               return rowIndex === 0 ? '#4A90E2' : (rowIndex % 2 === 0 ? '#F5F5F5' : null);
             }
           },
-          margin: [0, 0, 0, 20]
-        }
-      );
+          margin: [0, 0, 0, chunkIndex === chunks.length - 1 ? 20 : 10]
+        });
+      });
     }
 
     return content;
@@ -974,7 +1280,12 @@ export class ReportPdfMakeService {
       if (!element) return null;
       const echartsInstance = (element as any).__echarts_instance__;
       if (echartsInstance && typeof echartsInstance.getDataURL === 'function') {
-        return echartsInstance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#FFFFFF' });
+        return echartsInstance.getDataURL({
+          type: 'jpeg',
+          pixelRatio: this.CHART_IMAGE_PIXEL_RATIO,
+          quality: this.CHART_IMAGE_JPEG_QUALITY,
+          backgroundColor: '#FFFFFF'
+        });
       }
       return null;
     } catch {
@@ -1082,7 +1393,7 @@ export class ReportPdfMakeService {
       }
     });
 
-    return canvas.toDataURL('image/png');
+    return canvas.toDataURL('image/jpeg', this.CHART_IMAGE_JPEG_QUALITY);
   }
 
   /**
@@ -1117,7 +1428,7 @@ export class ReportPdfMakeService {
     const seriesData = radarOptions.series[0]?.data || [];
 
     if (indicators.length === 0 || seriesData.length === 0) {
-      return canvas.toDataURL('image/png');
+      return canvas.toDataURL('image/jpeg', this.CHART_IMAGE_JPEG_QUALITY);
     }
 
     // Desenhar círculos concêntricos
@@ -1201,7 +1512,7 @@ export class ReportPdfMakeService {
       ctx.fillText(serie.name || `Série ${serieIndex + 1}`, 20, 30 + serieIndex * 20);
     });
 
-    return canvas.toDataURL('image/png');
+    return canvas.toDataURL('image/jpeg', this.CHART_IMAGE_JPEG_QUALITY);
   }
 
   /**
@@ -1240,7 +1551,7 @@ export class ReportPdfMakeService {
     const total = data.reduce((sum, d) => sum + d.value, 0);
 
     if (total === 0) {
-      return canvas.toDataURL('image/png');
+      return canvas.toDataURL('image/jpeg', this.CHART_IMAGE_JPEG_QUALITY);
     }
 
     let currentAngle = -Math.PI / 2;
@@ -1292,7 +1603,7 @@ export class ReportPdfMakeService {
       ctx.fillText(item.name, x + 20, y + 12);
     });
 
-    return canvas.toDataURL('image/png');
+    return canvas.toDataURL('image/jpeg', this.CHART_IMAGE_JPEG_QUALITY);
   }
 
   /**
@@ -1391,7 +1702,7 @@ export class ReportPdfMakeService {
     ctx.fillStyle = '#2C3E50';
     ctx.fillText('Ponto Forte (Auto < Outros)', 70, canvas.height - 40);
 
-    return canvas.toDataURL('image/png');
+    return canvas.toDataURL('image/jpeg', this.CHART_IMAGE_JPEG_QUALITY);
   }
 
   /**
@@ -1515,7 +1826,7 @@ export class ReportPdfMakeService {
       ctx.fillText(point.name, x, y + 25);
     });
 
-    return canvas.toDataURL('image/png');
+    return canvas.toDataURL('image/jpeg', this.CHART_IMAGE_JPEG_QUALITY);
   }
 
   /**

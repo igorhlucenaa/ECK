@@ -21,26 +21,9 @@ export class GapChartComponent implements OnInit, OnDestroy, OnChanges {
   // Expor Math para uso no template
   Math = Math;
 
-  ngOnInit() {
-    console.log('🚀 GapChartComponent inicializado');
-  }
+  ngOnInit() {}
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['data'] && changes['data'].currentValue) {
-      console.log('🔄 GapChartComponent - dados recebidos:', this.data);
-      if (this.data && this.data.length > 0) {
-        this.data.forEach((item, index) => {
-          console.log(`📊 Item ${index}:`, {
-            name: item.competencyName,
-            selfScore: item.selfScore,
-            othersScore: item.othersScore,
-            gap: item.gap,
-            gapType: this.getGapType(item)
-          });
-        });
-      }
-    }
-  }
+  ngOnChanges(_changes: SimpleChanges) {}
 
   ngOnDestroy() {
     // Cleanup se necessário

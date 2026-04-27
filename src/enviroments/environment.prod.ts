@@ -13,5 +13,7 @@ export const environment = {
     sendEmailUrl: 'https://us-central1-pwa-workana.cloudfunctions.net/sendEmail',
     triggerPendingAssessmentRemindersUrl:
       'https://us-central1-pwa-workana.cloudfunctions.net/triggerPendingAssessmentReminders',
+    generateReportPdfUrl:
+      'https://us-central1-pwa-workana.cloudfunctions.net/generateReportPdf',
   },
 };
