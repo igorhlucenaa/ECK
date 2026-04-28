@@ -60,11 +60,11 @@
     </mat-form-field>
 
     <!-- Badge de escopo (somente quando projeto selecionado) -->
-    <div class="rs-scope-badge rs-scope-badge--project" *ngIf="selectedProjectId">
+    <div class="rs-project-chip" *ngIf="selectedProjectId">
       <mat-icon>folder_open</mat-icon>
       <div>
-        <span class="rs-scope-badge__label">Configurando</span>
-        <span class="rs-scope-badge__value">{{ selectedProjectName }}</span>
+        <span class="rs-project-chip__label">Configurando</span>
+        <span class="rs-project-chip__value">{{ selectedProjectName }}</span>
       </div>
     </div>
 
@@ -84,7 +84,7 @@
     <span *ngIf="selectedClientId && projects.length === 0 && !isLoadingProjects">Este cliente não possui projetos ativos.</span>
   </div>
 
-  <form [formGroup]="form" *ngIf="!isLoading && selectedProjectId">
+  <form class="rs-form" [formGroup]="form" *ngIf="!isLoading && selectedProjectId">
 
     <!-- ── TOGGLE PRINCIPAL ── -->
     <div class="rs-toggle-card" [class.rs-toggle-card--active]="form.controls.enabled.value">
@@ -236,7 +236,7 @@
                 <mat-option value="">Usar template original do convite</mat-option>
                 <mat-option *ngFor="let t of templates" [value]="t.id">
                   {{ t.name }}
-                  <span class="rs-scope-badge" [class.rs-scope-badge--client]="t.scope === 'client'">
+                  <span class="rs-template-scope-badge" [class.rs-template-scope-badge--client]="t.scope === 'client'">
                     {{ t.scope === 'client' ? 'Cliente' : 'Global' }}
                   </span>
                 </mat-option>
@@ -254,7 +254,7 @@
                 <mat-option value="">Usar template padrão de lembrete</mat-option>
                 <mat-option *ngFor="let t of templates" [value]="t.id">
                   {{ t.name }}
-                  <span class="rs-scope-badge" [class.rs-scope-badge--client]="t.scope === 'client'">
+                  <span class="rs-template-scope-badge" [class.rs-template-scope-badge--client]="t.scope === 'client'">
                     {{ t.scope === 'client' ? 'Cliente' : 'Global' }}
                   </span>
                 </mat-option>
@@ -272,7 +272,7 @@
                 <mat-option value="">Usar template padrão de lembrete</mat-option>
                 <mat-option *ngFor="let t of templates" [value]="t.id">
                   {{ t.name }}
-                  <span class="rs-scope-badge" [class.rs-scope-badge--client]="t.scope === 'client'">
+                  <span class="rs-template-scope-badge" [class.rs-template-scope-badge--client]="t.scope === 'client'">
                     {{ t.scope === 'client' ? 'Cliente' : 'Global' }}
                   </span>
                 </mat-option>

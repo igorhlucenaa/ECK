@@ -310,7 +310,8 @@ export class ReminderSettingsComponent implements OnInit {
         payload.intervalDays,
         payload.maxReminders,
         sendTime,
-        payload.timezone
+        payload.timezone,
+        payload.weekdays
       );
 
       await this.triggerImmediateReminderProcessing(this.selectedClientId, this.selectedProjectId);
@@ -376,12 +377,14 @@ export class ReminderSettingsComponent implements OnInit {
     sendTime: string,
     timezone: string,
     now: Date,
+    weekdays: number[] = [],
   ): Date {
     // Âncora e offset inicial
     const anchor      = lastSent ?? startDate;
     const firstOffset = lastSent ? intervalDays : 0; // sem lastSent → dispara no próprio startDate
 
     let next = this.buildOccurrenceAt(anchor, firstOffset, sendTime, timezone);
+    next = this.advanceToAllowedWeekday(next, timezone, weekdays);
 
     if (next > now) return next;
 
@@ -390,13 +393,46 @@ export class ReminderSettingsComponent implements OnInit {
     const gap   = now.getTime() - next.getTime();
     const extra = Math.ceil(gap / msPerInterval);          // quantos intervalos a pular
     next = this.buildOccurrenceAt(anchor, firstOffset + intervalDays * extra, sendTime, timezone);
+    next = this.advanceToAllowedWeekday(next, timezone, weekdays);
 
     // Margem de segurança para bordas de DST
     if (next <= now) {
       next = this.buildOccurrenceAt(anchor, firstOffset + intervalDays * (extra + 1), sendTime, timezone);
+      next = this.advanceToAllowedWeekday(next, timezone, weekdays);
     }
 
     return next;
+  }
+
+  private advanceToAllowedWeekday(date: Date, timezone: string, weekdays: number[] = []): Date {
+    const allowedWeekdays = this.normalizeWeekdays(weekdays);
+    if (!allowedWeekdays.length) return date;
+
+    for (let offset = 0; offset < 7; offset++) {
+      const candidate = new Date(date.getTime() + offset * 86_400_000);
+      if (allowedWeekdays.includes(this.getWeekdayInTimezone(candidate, timezone))) {
+        return candidate;
+      }
+    }
+
+    return date;
+  }
+
+  private getWeekdayInTimezone(date: Date, timezone: string): number {
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+    }).format(date).toLowerCase();
+    const map: Record<string, number> = {
+      sun: 0,
+      mon: 1,
+      tue: 2,
+      wed: 3,
+      thu: 4,
+      fri: 5,
+      sat: 6,
+    };
+    return map[weekday.slice(0, 3)] ?? date.getDay();
   }
 
   private async propagateSettingsToLinks(
@@ -408,6 +444,7 @@ export class ReminderSettingsComponent implements OnInit {
     maxReminders: number,
     sendTime: string,
     timezone: string,
+    weekdays: number[],
   ): Promise<void> {
     try {
       // Busca links por clientId+projectId (novos) E por assessmentId (legados sem esses campos).
@@ -457,7 +494,15 @@ export class ReminderSettingsComponent implements OnInit {
           // Usa lastReminderSentAt quando disponível (mantém cadência real);
           // caso contrário ancora em startDate (configura a partir do zero).
           const lastSent = this.toDate(data['lastReminderSentAt']);
-          const next     = this.computeNextReminder(lastSent, startDate, intervalDays, sendTime, timezone, now);
+          const next = this.computeNextReminder(
+            lastSent,
+            startDate,
+            intervalDays,
+            sendTime,
+            timezone,
+            now,
+            weekdays
+          );
           update['nextReminderAt'] = Timestamp.fromDate(next);
         }
 

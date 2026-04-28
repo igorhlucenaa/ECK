@@ -834,6 +834,7 @@ export class ParticipantsModalComponent implements OnInit {
           templateId: template.id,
           participantId: participant.id,
           assessmentId: assessment.id,
+          evaluatedParticipantId: (participant as any).avaliadoId || undefined,
         };
 
         const response = await fetch(
@@ -880,6 +881,7 @@ export class ParticipantsModalComponent implements OnInit {
               reminderSettings.intervalDays,
               reminderSettings.sendTime,
               reminderSettings.timezone,
+              reminderSettings.weekdays,
             );
             newLinkData['nextReminderAt'] = Timestamp.fromDate(nextAt);
           }
@@ -905,10 +907,11 @@ export class ParticipantsModalComponent implements OnInit {
           if (isPending && !existingData['nextReminderAt'] && reminderSettings) {
             const nextAt = this.computeNextReminderAt(
               reminderSettings.startDate,
-              reminderSettings.intervalDays,
-              reminderSettings.sendTime,
-              reminderSettings.timezone,
-            );
+                reminderSettings.intervalDays,
+                reminderSettings.sendTime,
+                reminderSettings.timezone,
+                reminderSettings.weekdays,
+              );
             updateData['nextReminderAt'] = Timestamp.fromDate(nextAt);
           }
 
@@ -951,6 +954,7 @@ export class ParticipantsModalComponent implements OnInit {
     sendTime: string;
     timezone: string;
     maxReminders: number;
+    weekdays: number[];
   } | null> {
     try {
       const docId = `${this.data.clientId}_${this.data.projectId}`;
@@ -968,6 +972,7 @@ export class ParticipantsModalComponent implements OnInit {
         sendTime: String(d['sendTime'] || '09:00'),
         timezone: String(d['timezone'] || 'America/Fortaleza'),
         maxReminders: Math.max(0, Number(d['maxReminders'] || 0)),
+        weekdays: this.normalizeWeekdays(d['weekdays']),
       };
     } catch {
       return null;
@@ -984,21 +989,67 @@ export class ParticipantsModalComponent implements OnInit {
     intervalDays: number,
     sendTime: string,
     timezone: string,
+    weekdays: number[] = [],
   ): Date {
     const now = new Date();
     let next = this.buildReminderOccurrence(startDate, 0, sendTime, timezone);
+    next = this.advanceToAllowedWeekday(next, timezone, weekdays);
 
     if (next > now) return next;
 
     const msPerInterval = intervalDays * 86_400_000;
     const extra = Math.ceil((now.getTime() - next.getTime()) / msPerInterval);
     next = this.buildReminderOccurrence(startDate, intervalDays * extra, sendTime, timezone);
+    next = this.advanceToAllowedWeekday(next, timezone, weekdays);
 
     if (next <= now) {
       next = this.buildReminderOccurrence(startDate, intervalDays * (extra + 1), sendTime, timezone);
+      next = this.advanceToAllowedWeekday(next, timezone, weekdays);
     }
 
     return next;
+  }
+
+  private advanceToAllowedWeekday(date: Date, timezone: string, weekdays: number[] = []): Date {
+    const allowedWeekdays = this.normalizeWeekdays(weekdays);
+    if (!allowedWeekdays.length) return date;
+
+    for (let offset = 0; offset < 7; offset++) {
+      const candidate = new Date(date.getTime() + offset * 86_400_000);
+      if (allowedWeekdays.includes(this.getWeekdayInTimezone(candidate, timezone))) {
+        return candidate;
+      }
+    }
+
+    return date;
+  }
+
+  private getWeekdayInTimezone(date: Date, timezone: string): number {
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+    }).format(date).toLowerCase();
+    const map: Record<string, number> = {
+      sun: 0,
+      mon: 1,
+      tue: 2,
+      wed: 3,
+      thu: 4,
+      fri: 5,
+      sat: 6,
+    };
+    return map[weekday.slice(0, 3)] ?? date.getDay();
+  }
+
+  private normalizeWeekdays(value: unknown): number[] {
+    if (!Array.isArray(value)) return [];
+    return Array.from(
+      new Set(
+        value
+          .map((item) => Number(item))
+          .filter((item) => Number.isInteger(item) && item >= 0 && item <= 6)
+      )
+    ).sort((a, b) => a - b);
   }
 
   private buildReminderOccurrence(base: Date, offsetDays: number, sendTime: string, timezone: string): Date {

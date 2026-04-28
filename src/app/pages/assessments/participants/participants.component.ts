@@ -1146,24 +1146,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         return;
       }
 
-      const templateRef = doc(
-        this.firestore,
-        'mailTemplates',
-        selectedTemplateId
-      );
-      const templateDoc = await getDoc(templateRef);
+      const templateDoc = await getDoc(doc(this.firestore, 'mailTemplates', selectedTemplateId));
       if (!templateDoc.exists()) {
-        throw new Error('Template não encontrado.');
-      }
-
-      let templateContent = templateDoc.data()['content'] || '';
-      const originalContent = templateContent;
-
-      let contentObj;
-      try {
-        contentObj = JSON.parse(templateContent);
-      } catch (error) {
-        throw new Error('Erro ao parsear o conteúdo do template: ' + error);
+        throw new Error('Template nao encontrado.');
       }
 
       let projectIdForDeadline = this.filterProject;
@@ -1181,28 +1166,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         );
         return;
       }
-
-      let projectDeadline: Date | undefined;
-      if (projectIdForDeadline) {
-        const projectRef = doc(
-          this.firestore,
-          'projects',
-          projectIdForDeadline
-        );
-        const projectDoc = await getDoc(projectRef);
-        if (projectDoc.exists()) {
-          if (projectDoc.data()['deadline'] instanceof Timestamp) {
-            projectDeadline = projectDoc.data()['deadline'].toDate();
-          } else if (projectDoc.data()['deadline'] instanceof Date) {
-            projectDeadline = projectDoc.data()['deadline'];
-          }
-        }
-      }
-      const formattedDeadline = this.formatDate(projectDeadline);
-
-      const projectName = this.getSelectedProjectName() || '';
-      const clientName = this.getSelectedClientName() || '';
-      const avaliadoNameCache = new Map<string, string>();
       const sendEmailUrl = (await import('src/enviroments/environment')).environment.functions.sendEmailUrl;
 
       // Carrega configurações de lembrete do projeto uma única vez antes do loop
@@ -1211,31 +1174,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
       // Envio sequencial: cada participante recebe template com variáveis próprias
       for (const participant of this.selectedParticipants) {
-        // Resolver nome do avaliado (para e-mails de avaliador)
-        let nomeAvaliado = '';
-        if (participant.avaliadoId) {
-          if (avaliadoNameCache.has(participant.avaliadoId)) {
-            nomeAvaliado = avaliadoNameCache.get(participant.avaliadoId)!;
-          } else {
-            const avaliadoDoc = await getDoc(doc(this.firestore, 'participants', participant.avaliadoId));
-            nomeAvaliado = avaliadoDoc.exists() ? (avaliadoDoc.data()['name'] || '') : '';
-            avaliadoNameCache.set(participant.avaliadoId, nomeAvaliado);
-          }
-        }
-
-        const participantContent = this.replaceAllVariables(
-          JSON.parse(JSON.stringify(contentObj)),
-          {
-            nome_participante: participant.name,
-            nome_avaliado: nomeAvaliado,
-            data_expiracao: formattedDeadline,
-            nome_projeto: projectName,
-            nome_cliente: clientName,
-          }
-        );
-
-        await updateDoc(templateRef, { content: JSON.stringify(participantContent) });
-
         const response = await fetch(sendEmailUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1244,6 +1182,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             templateId: selectedTemplateId,
             participantId: participant.id,
             assessmentId: selectedAssessmentId,
+            evaluatedParticipantId: participant.avaliadoId || undefined,
           }),
         });
 
@@ -1284,7 +1223,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           }
           if (reminderSettings) {
             linkData['nextReminderAt'] = Timestamp.fromDate(
-              this.computeNextReminderAt(reminderSettings.startDate, reminderSettings.intervalDays, reminderSettings.sendTime, reminderSettings.timezone)
+              this.computeNextReminderAt(
+                reminderSettings.startDate,
+                reminderSettings.intervalDays,
+                reminderSettings.sendTime,
+                reminderSettings.timezone,
+                reminderSettings.weekdays
+              )
             );
           }
           await setDoc(assessmentLinkDoc, linkData);
@@ -1306,7 +1251,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           }
           if (isPending && !existingData['nextReminderAt'] && reminderSettings) {
             updateData['nextReminderAt'] = Timestamp.fromDate(
-              this.computeNextReminderAt(reminderSettings.startDate, reminderSettings.intervalDays, reminderSettings.sendTime, reminderSettings.timezone)
+              this.computeNextReminderAt(
+                reminderSettings.startDate,
+                reminderSettings.intervalDays,
+                reminderSettings.sendTime,
+                reminderSettings.timezone,
+                reminderSettings.weekdays
+              )
             );
           }
           await updateDoc(doc(this.firestore, 'assessmentLinks', existingLinkDoc.id), updateData);
@@ -1323,7 +1274,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         }
       }
 
-      await updateDoc(templateRef, { content: originalContent });
 
       // ── CORREÇÃO 2: Reservar créditos em transação atômica ─────────────
       // runTransaction garante que a leitura + verificação + escrita ocorrem
@@ -1778,6 +1728,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     sendTime: string;
     timezone: string;
     maxReminders: number;
+    weekdays: number[];
   } | null> {
     if (!clientId || !projectId) return null;
     try {
@@ -1796,6 +1747,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         sendTime: String(d['sendTime'] || '09:00'),
         timezone: String(d['timezone'] || 'America/Fortaleza'),
         maxReminders: Math.max(0, Number(d['maxReminders'] || 0)),
+        weekdays: this.normalizeWeekdays(d['weekdays']),
       };
     } catch {
       return null;
@@ -1811,21 +1763,67 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     intervalDays: number,
     sendTime: string,
     timezone: string,
+    weekdays: number[] = [],
   ): Date {
     const now = new Date();
     let next = this.buildReminderOccurrence(startDate, 0, sendTime, timezone);
+    next = this.advanceToAllowedWeekday(next, timezone, weekdays);
 
     if (next > now) return next;
 
     const msPerInterval = intervalDays * 86_400_000;
     const extra = Math.ceil((now.getTime() - next.getTime()) / msPerInterval);
     next = this.buildReminderOccurrence(startDate, intervalDays * extra, sendTime, timezone);
+    next = this.advanceToAllowedWeekday(next, timezone, weekdays);
 
     if (next <= now) {
       next = this.buildReminderOccurrence(startDate, intervalDays * (extra + 1), sendTime, timezone);
+      next = this.advanceToAllowedWeekday(next, timezone, weekdays);
     }
 
     return next;
+  }
+
+  private advanceToAllowedWeekday(date: Date, timezone: string, weekdays: number[] = []): Date {
+    const allowedWeekdays = this.normalizeWeekdays(weekdays);
+    if (!allowedWeekdays.length) return date;
+
+    for (let offset = 0; offset < 7; offset++) {
+      const candidate = new Date(date.getTime() + offset * 86_400_000);
+      if (allowedWeekdays.includes(this.getWeekdayInTimezone(candidate, timezone))) {
+        return candidate;
+      }
+    }
+
+    return date;
+  }
+
+  private getWeekdayInTimezone(date: Date, timezone: string): number {
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+    }).format(date).toLowerCase();
+    const map: Record<string, number> = {
+      sun: 0,
+      mon: 1,
+      tue: 2,
+      wed: 3,
+      thu: 4,
+      fri: 5,
+      sat: 6,
+    };
+    return map[weekday.slice(0, 3)] ?? date.getDay();
+  }
+
+  private normalizeWeekdays(value: unknown): number[] {
+    if (!Array.isArray(value)) return [];
+    return Array.from(
+      new Set(
+        value
+          .map((item) => Number(item))
+          .filter((item) => Number.isInteger(item) && item >= 0 && item <= 6)
+      )
+    ).sort((a, b) => a - b);
   }
 
   private buildReminderOccurrence(base: Date, offsetDays: number, sendTime: string, timezone: string): Date {

@@ -472,49 +472,10 @@ export class EmailSelectionDialogComponent implements OnInit {
     this.isLoading.set(true);
 
     try {
-      // Carregar o template
-      const templateRef = doc(
-        this.firestore,
-        'mailTemplates',
-        this.data.templateId
-      );
-      const templateDoc = await getDoc(templateRef);
+      const templateDoc = await getDoc(doc(this.firestore, 'mailTemplates', this.data.templateId));
       if (!templateDoc.exists()) {
-        throw new Error('Template não encontrado.');
+        throw new Error('Template nao encontrado.');
       }
-
-      let templateContent = templateDoc.data()['content'] || '';
-      const originalContent = templateContent;
-      let contentObj = JSON.parse(templateContent);
-
-      // Obter a data de expiração do projeto
-      const projectRef = doc(
-        this.firestore,
-        'projects',
-        this.selectedProjectId
-      );
-      const projectDoc = await getDoc(projectRef);
-      if (!projectDoc.exists()) {
-        throw new Error('Projeto não encontrado.');
-      }
-      let projectDeadline: Date | undefined;
-      if (projectDoc.data()['deadline'] instanceof Timestamp) {
-        projectDeadline = projectDoc.data()['deadline'].toDate();
-      } else if (projectDoc.data()['deadline'] instanceof Date) {
-        projectDeadline = projectDoc.data()['deadline'];
-      }
-      const formattedDeadline = this.formatDate(projectDeadline);
-
-      // Obter nome do projeto para variável {{nome_projeto}}
-      const projectName = projectDoc.data()['name'] || '';
-      // Obter nome do cliente para variável {{nome_cliente}}
-      let clientName = '';
-      const clientId = projectDoc.data()['clientId'];
-      if (clientId) {
-        const clientDoc = await getDoc(doc(this.firestore, 'clients', clientId));
-        if (clientDoc.exists()) clientName = clientDoc.data()['companyName'] || '';
-      }
-      const avaliadoNameCache = new Map<string, string>();
 
       // Enviar e-mails para cada participante selecionado
       for (const key of this.selectedParticipants) {
@@ -522,40 +483,15 @@ export class EmailSelectionDialogComponent implements OnInit {
           (p) => this.getParticipantKey(p) === key
         );
         if (participant) {
-          // Resolver nome do avaliado
-          let nomeAvaliado = '';
           const avaliadoId = (participant as any)['avaliadoId'];
-          if (avaliadoId) {
-            if (avaliadoNameCache.has(avaliadoId)) {
-              nomeAvaliado = avaliadoNameCache.get(avaliadoId)!;
-            } else {
-              const avaliadoDoc = await getDoc(doc(this.firestore, 'participants', avaliadoId));
-              nomeAvaliado = avaliadoDoc.exists() ? (avaliadoDoc.data()['name'] || '') : '';
-              avaliadoNameCache.set(avaliadoId, nomeAvaliado);
-            }
-          }
-
-          let participantContent = this.replaceAllVariables(
-            JSON.parse(JSON.stringify(contentObj)),
-            {
-              nome_participante: participant.name,
-              nome_avaliado: nomeAvaliado,
-              data_expiracao: formattedDeadline,
-              nome_projeto: projectName,
-              nome_cliente: clientName,
-            }
-          );
-
-          const finalContent = JSON.stringify(participantContent);
-
-          await updateDoc(templateRef, { content: finalContent });
 
           await this.emailService
             .sendEmail(
               participant.email,
               this.data.templateId,
               participant.id,
-              this.selectedAssessmentId
+              this.selectedAssessmentId,
+              avaliadoId || undefined
             )
             .toPromise();
 
@@ -575,7 +511,6 @@ export class EmailSelectionDialogComponent implements OnInit {
         }
       }
 
-      await updateDoc(templateRef, { content: originalContent });
       this.dialogRef.close();
     } catch (error) {
       console.error('Erro ao enviar e-mails ou atualizar documentos:', error);

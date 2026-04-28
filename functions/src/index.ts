@@ -180,9 +180,22 @@ function buildNextReminderAt(
   base: Date,
   intervalDays: number,
   sendTime: string,
-  timezone: string
+  timezone: string,
+  weekdays: number[] = []
 ): admin.firestore.Timestamp {
-  const targetDay = new Date(base.getTime() + intervalDays * 86400000);
+  let targetDay = new Date(base.getTime() + intervalDays * 86400000);
+  const allowedWeekdays = normalizeWeekdays(weekdays);
+
+  if (allowedWeekdays.length) {
+    for (let offset = 0; offset < 7; offset++) {
+      const candidate = addDays(targetDay, offset);
+      const candidateWeekday = getZonedDateParts(candidate, timezone).weekday;
+      if (allowedWeekdays.includes(candidateWeekday)) {
+        targetDay = candidate;
+        break;
+      }
+    }
+  }
 
   // Data do dia alvo no timezone configurado (extrai year/month/day individualmente)
   const dateFmt = new Intl.DateTimeFormat('en-US', {
@@ -615,13 +628,18 @@ function isReminderDue(
     return false;
   }
 
+  const startDate = asDate(setting.startDate);
+  if (startDate && now < startDate) {
+    return false;
+  }
+
   const nextReminderAt = asDate(linkData.nextReminderAt);
   if (nextReminderAt && now < nextReminderAt) {
     return false;
   }
 
   const intervalDays = sanitizeIntervalDays(setting.intervalDays, 3);
-  const baseDate = asDate(linkData.lastReminderSentAt) || asDate(linkData.sentAt);
+  const baseDate = asDate(linkData.lastReminderSentAt) || asDate(linkData.sentAt) || startDate;
   if (!baseDate) return true;
   return now >= addDays(baseDate, intervalDays);
 }
@@ -680,10 +698,101 @@ async function persistReminderRunStats(
   await Promise.all(updates);
 }
 
+const REMINDER_CLAIM_TTL_MS = 10 * 60 * 1000;
+
+async function getPendingLinksForSetting(
+  setting: ReminderSettingsDoc,
+  projectAssessmentCache: Map<string, string | undefined>
+): Promise<admin.firestore.QueryDocumentSnapshot[]> {
+  const clientId = normalizeOptionalString(setting.clientId);
+  const projectId = normalizeOptionalString(setting.projectId);
+  if (!clientId || !projectId) return [];
+
+  const docsMap = new Map<string, admin.firestore.QueryDocumentSnapshot>();
+  const db = getDb();
+
+  const scopedSnap = await db
+    .collection('assessmentLinks')
+    .where('clientId', '==', clientId)
+    .where('projectId', '==', projectId)
+    .where('status', '==', 'pending')
+    .get();
+
+  scopedSnap.docs.forEach((docSnap) => docsMap.set(docSnap.id, docSnap));
+
+  let assessmentId = projectAssessmentCache.get(projectId);
+  if (!projectAssessmentCache.has(projectId)) {
+    const projectDoc = await db.collection('projects').doc(projectId).get();
+    assessmentId = normalizeOptionalString((projectDoc.data() || {}).assessmentId);
+    projectAssessmentCache.set(projectId, assessmentId);
+  }
+
+  // Compatibilidade com links antigos criados antes de clientId/projectId no assessmentLinks.
+  if (assessmentId) {
+    const legacySnap = await db
+      .collection('assessmentLinks')
+      .where('assessmentId', '==', assessmentId)
+      .where('status', '==', 'pending')
+      .get();
+
+    legacySnap.docs.forEach((docSnap) => docsMap.set(docSnap.id, docSnap));
+  }
+
+  return Array.from(docsMap.values());
+}
+
+async function claimReminderLink(
+  linkRef: admin.firestore.DocumentReference,
+  setting: ReminderSettingsDoc,
+  now: Date,
+  runId: string,
+  scope: { clientId: string; projectId: string }
+): Promise<{ claimed: boolean; data?: Record<string, unknown> }> {
+  return getDb().runTransaction(async (transaction) => {
+    const snap = await transaction.get(linkRef);
+    if (!snap.exists) return { claimed: false };
+
+    const current = (snap.data() || {}) as Record<string, unknown>;
+    if (normalizeOptionalString(current.status) !== 'pending') {
+      return { claimed: false };
+    }
+
+    const processingStartedAt = asDate(current.reminderProcessingStartedAt);
+    const processingRunId = normalizeOptionalString(current.reminderProcessingRunId);
+    const hasFreshClaim =
+      !!processingRunId &&
+      !!processingStartedAt &&
+      now.getTime() - processingStartedAt.getTime() < REMINDER_CLAIM_TTL_MS;
+
+    if (hasFreshClaim) {
+      return { claimed: false };
+    }
+
+    if (!isReminderDue(current, setting, now)) {
+      return { claimed: false };
+    }
+
+    transaction.set(
+      linkRef,
+      {
+        clientId: scope.clientId,
+        projectId: scope.projectId,
+        reminderProcessingRunId: runId,
+        reminderProcessingStartedAt: admin.firestore.Timestamp.fromDate(now),
+        lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return { claimed: true, data: current };
+  });
+}
+
 async function processPendingAssessmentReminders(
   options: ProcessRemindersOptions
 ): Promise<void> {
   const now = options.now || new Date();
+  const runId = `${options.trigger}_${now.getTime()}_${randomBytes(6).toString('hex')}`;
   const targetClientIds = new Set(
     (options.targetClientIds || [])
       .map((id) => normalizeOptionalString(id))
@@ -726,6 +835,7 @@ async function processPendingAssessmentReminders(
       clientId,
       projectId,
       enabled: true,
+      startDate: raw.startDate,
       intervalDays: sanitizeIntervalDays(raw.intervalDays, 3),
       maxReminders: Number(raw.maxReminders || 0),
       templateId: normalizeOptionalString(raw.templateId),
@@ -739,7 +849,12 @@ async function processPendingAssessmentReminders(
 
     settingsByDocId.set(docId, normalized);
     statsByDocId.set(docId, { sent: 0, skipped: 0, errors: 0 });
-    scheduleByDocId.set(docId, buildScheduleState(normalized, now));
+    scheduleByDocId.set(
+      docId,
+      options.trigger === 'manual_http'
+        ? { canRun: true }
+        : buildScheduleState(normalized, now)
+    );
   });
 
   if (!settingsByDocId.size) {
@@ -754,22 +869,20 @@ async function processPendingAssessmentReminders(
     return;
   }
 
-  const pendingLinksSnap = await getDb()
-    .collection('assessmentLinks')
-    .where('status', '==', 'pending')
-    .get();
-
-  if (pendingLinksSnap.empty) {
-    await persistReminderRunStats(statsByDocId, scheduleByDocId, settingsByDocId);
-    console.log('Sem assessmentLinks pendentes para lembrete.');
-    return;
-  }
-
-  const { emailUser, emailPass } = getEmailCredentials();
-  const transporter = getTransporter(emailUser, emailPass);
+  let emailUser = '';
+  let transporter: nodemailer.Transporter | undefined;
+  const getReminderTransporter = (): nodemailer.Transporter => {
+    if (!transporter) {
+      const credentials = getEmailCredentials();
+      emailUser = credentials.emailUser;
+      transporter = getTransporter(credentials.emailUser, credentials.emailPass);
+    }
+    return transporter;
+  };
 
   const participantCache = new Map<string, Record<string, unknown>>();
   const projectClientCache = new Map<string, string | undefined>();
+  const projectAssessmentCache = new Map<string, string | undefined>();
 
   const getParticipantData = async (
     participantId: string
@@ -823,147 +936,173 @@ async function processPendingAssessmentReminders(
     return normalizeOptionalString(participantData?.projectId);
   };
 
-  for (const linkDoc of pendingLinksSnap.docs) {
-    const linkData = (linkDoc.data() || {}) as Record<string, unknown>;
-    const participantId = normalizeOptionalString(linkData.participantId);
-    const assessmentId = normalizeOptionalString(linkData.assessmentId);
+  let candidateCount = 0;
 
-    if (!participantId || !assessmentId) continue;
-
-    const clientId = await resolveClientId(linkData);
-    if (!clientId) continue;
-    if (targetClientIds.size > 0 && !targetClientIds.has(clientId)) continue;
-
-    // Obtém projectId do link ou, se ausente, do documento do participante (compatibilidade retroativa)
-    const projectId = await resolveProjectId(linkData);
-    if (!projectId) continue;
-    if (targetProjectIds.size > 0 && !targetProjectIds.has(projectId)) continue;
-
-    // Busca as configurações pelo docId correto: {clientId}_{projectId}
-    const docId = `${clientId}_${projectId}`;
-    const setting = settingsByDocId.get(docId);
+  for (const [docId, setting] of settingsByDocId.entries()) {
     const stats = statsByDocId.get(docId);
     const scheduleState = scheduleByDocId.get(docId);
-    if (!setting || !stats || !scheduleState) continue;
+    if (!stats || !scheduleState?.canRun) continue;
 
-    if (!scheduleState.canRun) {
-      stats.skipped += 1;
-      continue;
-    }
+    const candidateDocs = await getPendingLinksForSetting(setting, projectAssessmentCache);
+    candidateCount += candidateDocs.length;
 
-    if (!isReminderDue(linkData, setting, now)) {
-      stats.skipped += 1;
-      continue;
-    }
+    for (const linkDoc of candidateDocs) {
+      const linkData = (linkDoc.data() || {}) as Record<string, unknown>;
+      const participantId = normalizeOptionalString(linkData.participantId);
+      const assessmentId = normalizeOptionalString(linkData.assessmentId);
 
-    const participantData = await getParticipantData(participantId);
-    const participantType = (normalizeOptionalString(participantData?.type) || '').toLowerCase();
-    const templateId = resolveTemplateIdForParticipant(setting, linkData, participantType);
-    if (!templateId) {
-      stats.errors += 1;
-      await linkDoc.ref.set(
-        {
+      if (!participantId || !assessmentId) continue;
+
+      const clientId = await resolveClientId(linkData);
+      if (!clientId) continue;
+      if (targetClientIds.size > 0 && !targetClientIds.has(clientId)) continue;
+
+      const projectId = await resolveProjectId(linkData);
+      if (!projectId) continue;
+      if (targetProjectIds.size > 0 && !targetProjectIds.has(projectId)) continue;
+
+      // Links legados por assessmentId ainda precisam confirmar que pertencem ao projeto atual.
+      if (`${clientId}_${projectId}` !== docId) continue;
+
+      if (!isReminderDue(linkData, setting, now)) {
+        stats.skipped += 1;
+        continue;
+      }
+
+      const participantData = await getParticipantData(participantId);
+      const participantType = (normalizeOptionalString(participantData?.type) || '').toLowerCase();
+      const templateId = resolveTemplateIdForParticipant(setting, linkData, participantType);
+      if (!templateId) {
+        stats.errors += 1;
+        await linkDoc.ref.set(
+          {
+            clientId,
+            projectId,
+            lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastReminderError: 'Template de lembrete nao configurado.',
+          },
+          { merge: true }
+        );
+        continue;
+      }
+
+      let participantEmail = normalizeOptionalString(linkData.participantEmail);
+      if (!participantEmail) {
+        participantEmail = normalizeOptionalString(participantData?.email);
+      }
+
+      if (!participantEmail || !isValidEmail(participantEmail)) {
+        stats.errors += 1;
+        await linkDoc.ref.set(
+          {
+            clientId,
+            projectId,
+            lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastReminderError: 'Email do participante ausente ou invalido.',
+          },
+          { merge: true }
+        );
+        continue;
+      }
+
+      const claim = await claimReminderLink(linkDoc.ref, setting, now, runId, { clientId, projectId });
+      if (!claim.claimed) {
+        stats.skipped += 1;
+        continue;
+      }
+
+      const claimedLinkData = claim.data || linkData;
+      const intervalDays = sanitizeIntervalDays(setting.intervalDays, 3);
+      const sendTime = normalizeTime(setting.sendTime, '09:00');
+      const timezone = (setting.timezone && isValidTimeZone(setting.timezone))
+        ? setting.timezone
+        : 'America/Fortaleza';
+      const token = normalizeOptionalString(claimedLinkData.token) || generateSecureToken();
+      const avaliadoId = normalizeOptionalString(claimedLinkData.avaliadoId);
+
+      try {
+        const reminderTransporter = getReminderTransporter();
+        const sendResult = await sendAssessmentEmail({
+          email: participantEmail,
+          templateId,
+          participantId,
+          assessmentId,
+          evaluatedParticipantId: avaliadoId,
+          tokenOverride: token,
+          persistParticipantLink: false,
+          transporter: reminderTransporter,
+          emailUser,
+        });
+
+        const nextReminderAt = buildNextReminderAt(
+          now,
+          intervalDays,
+          sendTime,
+          timezone,
+          setting.weekdays || []
+        );
+
+        await linkDoc.ref.set(
+          {
+            clientId: sendResult.clientId || clientId,
+            projectId,
+            participantEmail,
+            token: sendResult.token,
+            sentAt: admin.firestore.FieldValue.serverTimestamp(),
+            reminderTemplateId: templateId,
+            reminderCount: admin.firestore.FieldValue.increment(1),
+            lastReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+            nextReminderAt,
+            reminderProcessingRunId: admin.firestore.FieldValue.delete(),
+            reminderProcessingStartedAt: admin.firestore.FieldValue.delete(),
+            lastReminderError: admin.firestore.FieldValue.delete(),
+            emailHistory: admin.firestore.FieldValue.arrayUnion({
+              type: 'lembrete',
+              sentAt: admin.firestore.Timestamp.fromDate(now),
+              status: 'enviado',
+              templateId: templateId || '',
+            }),
+          },
+          { merge: true }
+        );
+
+        stats.sent += 1;
+      } catch (error) {
+        const err = error as Error;
+        stats.errors += 1;
+        console.error('Erro ao enviar lembrete automatico:', {
+          assessmentLinkId: linkDoc.id,
+          participantId,
+          assessmentId,
           clientId,
-          lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastReminderError: 'Template de lembrete nao configurado.',
-        },
-        { merge: true }
-      );
-      continue;
+          projectId,
+          error: err.message,
+        });
+
+        await linkDoc.ref.set(
+          {
+            clientId,
+            projectId,
+            lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+            reminderProcessingRunId: admin.firestore.FieldValue.delete(),
+            reminderProcessingStartedAt: admin.firestore.FieldValue.delete(),
+            lastReminderError: err.message || 'Falha desconhecida ao enviar lembrete.',
+            emailHistory: admin.firestore.FieldValue.arrayUnion({
+              type: 'lembrete',
+              sentAt: admin.firestore.Timestamp.fromDate(now),
+              status: 'erro',
+              error: err.message || 'Falha desconhecida',
+            }),
+          },
+          { merge: true }
+        );
+      }
     }
+  }
 
-    let participantEmail = normalizeOptionalString(linkData.participantEmail);
-    if (!participantEmail) {
-      participantEmail = normalizeOptionalString(participantData?.email);
-    }
-
-    if (!participantEmail || !isValidEmail(participantEmail)) {
-      stats.errors += 1;
-      await linkDoc.ref.set(
-        {
-          clientId,
-          lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastReminderError: 'Email do participante ausente ou invalido.',
-        },
-        { merge: true }
-      );
-      continue;
-    }
-
-    const intervalDays = sanitizeIntervalDays(setting.intervalDays, 3);
-    const sendTime = normalizeTime(setting.sendTime, '09:00');
-    const timezone = (setting.timezone && isValidTimeZone(setting.timezone))
-      ? setting.timezone
-      : 'America/Fortaleza';
-    const token = normalizeOptionalString(linkData.token) || generateSecureToken();
-    const avaliadoId = normalizeOptionalString(linkData.avaliadoId);
-
-    try {
-      const sendResult = await sendAssessmentEmail({
-        email: participantEmail,
-        templateId,
-        participantId,
-        assessmentId,
-        evaluatedParticipantId: avaliadoId,
-        tokenOverride: token,
-        persistParticipantLink: false,
-        transporter,
-        emailUser,
-      });
-
-      // nextReminderAt respeita sendTime e timezone configurados
-      const nextReminderAt = buildNextReminderAt(now, intervalDays, sendTime, timezone);
-
-      await linkDoc.ref.set(
-        {
-          clientId: sendResult.clientId || clientId,
-          participantEmail,
-          token: sendResult.token,
-          sentAt: admin.firestore.FieldValue.serverTimestamp(),
-          reminderTemplateId: templateId,
-          reminderCount: admin.firestore.FieldValue.increment(1),
-          lastReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
-          nextReminderAt,
-          lastReminderError: admin.firestore.FieldValue.delete(),
-          emailHistory: admin.firestore.FieldValue.arrayUnion({
-            type: 'lembrete',
-            sentAt: admin.firestore.Timestamp.fromDate(now),
-            status: 'enviado',
-            templateId: templateId || '',
-          }),
-        },
-        { merge: true }
-      );
-
-      stats.sent += 1;
-    } catch (error) {
-      const err = error as Error;
-      stats.errors += 1;
-      console.error('Erro ao enviar lembrete automatico:', {
-        assessmentLinkId: linkDoc.id,
-        participantId,
-        assessmentId,
-        clientId,
-        projectId,
-        error: err.message,
-      });
-
-      await linkDoc.ref.set(
-        {
-          clientId,
-          lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastReminderError: err.message || 'Falha desconhecida ao enviar lembrete.',
-          emailHistory: admin.firestore.FieldValue.arrayUnion({
-            type: 'lembrete',
-            sentAt: admin.firestore.Timestamp.fromDate(now),
-            status: 'erro',
-            error: err.message || 'Falha desconhecida',
-          }),
-        },
-        { merge: true }
-      );
-    }
+  if (candidateCount === 0) {
+    console.log('Sem assessmentLinks pendentes para lembrete nos projetos elegiveis.');
   }
 
   await persistReminderRunStats(statsByDocId, scheduleByDocId, settingsByDocId);

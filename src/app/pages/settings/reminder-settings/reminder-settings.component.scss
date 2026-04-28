@@ -1,16 +1,21 @@
+:host {
+  display: block;
+}
+
 // ─── Wrapper da página ───────────────────────────────────────
 .rs-wrapper {
-  padding: 28px 24px;
-  max-width: 1440px;
+  padding: 28px 24px 36px;
+  max-width: 1320px;
   margin: 0 auto;
 }
 
 // ─── Card branco principal ────────────────────────────────────
 .rs-main-card {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 16px rgba(27, 45, 86, 0.08);
-  padding: 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border: 1px solid #e5edf7;
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(27, 45, 86, 0.08);
+  padding: 0;
   overflow: hidden;
 }
 
@@ -21,7 +26,9 @@
   align-items: center;
   gap: 10px;
   padding: 40px;
-  border-radius: 12px;
+  border: 1px solid #e5edf7;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(27, 45, 86, 0.07);
   color: #94a3b8;
 
   mat-icon { font-size: 40px; width: 40px; height: 40px; }
@@ -33,24 +40,28 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 32px 20px;
+  padding: 32px 24px;
   font-size: 14px;
   color: #64748b;
 }
 
 // ─── Barra de cabeçalho (cliente + último run) ────────────────
 .rs-header-bar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: minmax(240px, 1.05fr) minmax(280px, 1.25fr) auto auto;
+  align-items: start;
+  gap: 14px;
+  padding: 22px 24px 16px;
+  margin-bottom: 0;
+  border-bottom: 1px solid #edf2f7;
+  background:
+    radial-gradient(circle at top left, rgba(27, 132, 255, 0.08), transparent 34%),
+    #ffffff;
 }
 
 .rs-client-field {
-  min-width: 300px;
-  flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .rs-client-badge {
@@ -59,7 +70,8 @@
   gap: 8px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
-  border-radius: 10px;
+  min-height: 54px;
+  border-radius: 12px;
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 700;
@@ -69,23 +81,26 @@
 }
 
 .rs-project-field {
-  min-width: 260px;
-  flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
-.rs-scope-badge--project {
+.rs-project-chip {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #eff6ff;
+  min-height: 54px;
+  max-width: 320px;
+  background: linear-gradient(135deg, #eff6ff, #f8fbff);
   border: 1px solid #bfdbfe;
-  border-radius: 10px;
-  padding: 8px 14px;
+  border-radius: 12px;
+  padding: 9px 14px;
   white-space: nowrap;
+  overflow: hidden;
 
   mat-icon { font-size: 17px; width: 17px; height: 17px; color: #1B84FF; flex-shrink: 0; }
 
-  .rs-scope-badge__label {
+  &__label {
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -93,11 +108,14 @@
     color: #1e40af;
     display: block;
   }
-  .rs-scope-badge__value {
+  &__value {
+    max-width: 250px;
     font-size: 13px;
     font-weight: 700;
     color: #1e3a8a;
     display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -107,7 +125,11 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 48px 24px;
+  margin: 22px 24px 24px;
+  padding: 54px 24px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
   color: #94a3b8;
   text-align: center;
 
@@ -120,10 +142,12 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 54px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 10px 14px;
+  border-radius: 12px;
+  padding: 9px 14px;
+  white-space: nowrap;
 
   &__icon {
     width: 32px; height: 32px;
@@ -140,22 +164,28 @@
   }
 }
 
+// ─── Formulário ───────────────────────────────────────────────
+.rs-form {
+  padding: 20px 24px 24px;
+}
+
 // ─── Toggle principal ─────────────────────────────────────────
 .rs-toggle-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 2px solid #e2e8f0;
-  background: #f8fafc;
-  margin-bottom: 20px;
-  transition: border-color 0.2s, background 0.2s;
+  padding: 18px 20px;
+  border-radius: 16px;
+  border: 1px solid #dbe5ef;
+  background: linear-gradient(135deg, #f8fafc, #ffffff);
+  margin-bottom: 18px;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 
   &--active {
     border-color: #1B84FF;
-    background: #eff6ff;
+    background: linear-gradient(135deg, #eff6ff, #ffffff);
+    box-shadow: 0 12px 28px rgba(27, 132, 255, 0.1);
 
     .rs-toggle-card__icon { background: #1B84FF; mat-icon { color: #fff; } }
     .rs-toggle-card__title { color: #1e40af; }
@@ -168,8 +198,8 @@
   }
 
   &__icon {
-    width: 42px; height: 42px;
-    border-radius: 10px;
+    width: 46px; height: 46px;
+    border-radius: 14px;
     background: #e2e8f0;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
@@ -178,7 +208,7 @@
   }
 
   &__title {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
     color: #1a1a2e;
     margin-bottom: 2px;
@@ -186,7 +216,7 @@
   }
 
   &__sub {
-    font-size: 12px;
+    font-size: 12.5px;
     color: #64748b;
   }
 }
@@ -194,29 +224,30 @@
 // ─── Seções ───────────────────────────────────────────────────
 .rs-section {
   background: #fff;
-  border: 1px solid #e8edf3;
-  border-radius: 12px;
+  border: 1px solid #e5edf7;
+  border-radius: 16px;
   margin-bottom: 16px;
   overflow: hidden;
+  box-shadow: 0 8px 24px rgba(27, 45, 86, 0.035);
 
   &__header {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 16px;
-    font-size: 13px;
+    padding: 14px 18px;
+    font-size: 13.5px;
     font-weight: 700;
     letter-spacing: 0.2px;
 
     mat-icon { font-size: 18px; width: 18px; height: 18px; }
 
-    &--blue   { background: #eff6ff; color: #1e40af; mat-icon { color: #1B84FF; } border-bottom: 2px solid #bfdbfe; }
-    &--indigo { background: #eef2ff; color: #3730a3; mat-icon { color: #6366f1; } border-bottom: 2px solid #c7d2fe; }
-    &--green  { background: #f0fdf4; color: #166534; mat-icon { color: #16a34a; } border-bottom: 2px solid #bbf7d0; }
+    &--blue   { background: #eff6ff; color: #1e40af; mat-icon { color: #1B84FF; } border-bottom: 1px solid #bfdbfe; }
+    &--indigo { background: #eef2ff; color: #3730a3; mat-icon { color: #6366f1; } border-bottom: 1px solid #c7d2fe; }
+    &--green  { background: #f0fdf4; color: #166534; mat-icon { color: #16a34a; } border-bottom: 1px solid #bbf7d0; }
   }
 
   &__body {
-    padding: 16px;
+    padding: 18px;
   }
 
   &__hint {
@@ -230,24 +261,30 @@
 // ─── Grid de campos ───────────────────────────────────────────
 .rs-fields-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 14px;
 }
 
 .rs-field-card {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
+  min-height: 86px;
+  padding: 12px 12px 4px;
+  border: 1px solid #edf2f7;
+  border-radius: 14px;
+  background: #fbfdff;
 
   &__icon {
-    width: 36px; height: 36px;
-    border-radius: 8px;
+    width: 38px; height: 38px;
+    border-radius: 12px;
     flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     margin-top: 8px;
 
     mat-icon { font-size: 18px; width: 18px; height: 18px; color: #fff; }
 
+    &--green  { background: #16a34a; }
     &--blue   { background: #1B84FF; }
     &--purple { background: #7c3aed; }
     &--teal   { background: #0e9488; }
@@ -267,11 +304,13 @@
 .rs-weekday-actions {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 
 .rs-weekday-btn {
   font-size: 12px;
+  border-radius: 999px !important;
   mat-icon { font-size: 14px; width: 14px; height: 14px; margin-right: 4px; vertical-align: middle; }
 }
 
@@ -282,9 +321,9 @@
 }
 
 .rs-day-btn {
-  width: 44px; height: 44px;
-  border-radius: 10px;
-  border: 2px solid #e2e8f0;
+  min-width: 48px; height: 42px;
+  border-radius: 999px;
+  border: 1px solid #dbe5ef;
   background: #f8fafc;
   color: #64748b;
   font-size: 12px;
@@ -311,14 +350,15 @@
 .rs-templates-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .rs-template-card {
-  background: #f8fafc;
+  background: #fbfdff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 14px 14px 4px;
+  min-height: 108px;
 
   &--avaliado { border-left: 3px solid #1B84FF; }
   &--avaliador { border-left: 3px solid #7c3aed; }
@@ -335,10 +375,10 @@
   }
 }
 
-.rs-scope-badge {
+.rs-template-scope-badge {
   font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
   background: #f1f5f9;
   color: #64748b;
   margin-left: 4px;
@@ -351,10 +391,10 @@
 
 // ─── Resumo do último run ─────────────────────────────────────
 .rs-run-summary {
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f8fafc, #ffffff);
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 16px;
+  padding: 16px 18px;
   margin-bottom: 16px;
 
   &__title {
@@ -369,9 +409,9 @@
   }
 
   &__stats {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: 12px;
   }
 }
 
@@ -408,8 +448,58 @@
 
 .rs-save-btn {
   min-width: 180px;
-  height: 44px;
+  height: 46px;
   font-size: 14px;
   font-weight: 600;
+  border-radius: 12px !important;
   mat-icon { margin-right: 8px; }
+}
+
+@media (max-width: 1100px) {
+  .rs-header-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rs-project-chip,
+  .rs-last-run {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .rs-wrapper {
+    padding: 18px 12px 28px;
+  }
+
+  .rs-header-bar,
+  .rs-form {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .rs-header-bar,
+  .rs-fields-grid,
+  .rs-run-summary__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .rs-toggle-card {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .rs-toggle-card,
+  .rs-field-card {
+    flex-direction: column;
+  }
+
+  .rs-actions {
+    justify-content: stretch;
+  }
+
+  .rs-save-btn {
+    width: 100%;
+  }
 }
