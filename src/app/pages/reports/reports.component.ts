@@ -4903,8 +4903,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           this.invalidateCache();
           const reportData = this.pdfMakeService.prepareReportDataFromComponent(this);
-          const blob = await this.pdfMakeService.generateReportBlob(reportData);
           const filename = `relatorio-${avaliado.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.pdf`;
+          // Usa Cloud Function para gerar PDF (mesma qualidade do individual)
+          const blob = await this.pdfMakeService.generateReportBlobFromCloudFunction(reportData, filename);
           zip.file(filename, blob);
         } catch (err: any) {
           this.batchErrors.push({ name: avaliado, error: err?.message || 'Erro desconhecido' });

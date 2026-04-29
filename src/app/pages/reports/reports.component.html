@@ -1144,7 +1144,7 @@
             <button mat-flat-button color="primary"
                     class="rp-batch-generate-btn"
                     [disabled]="batchSelectedCount === 0 || isBatchGenerating || competencias.length === 0"
-                    (click)="generateBatchReportsPDF()">
+                    (click)="generateBatchReports()">
               <mat-icon>download</mat-icon>
               Gerar {{ batchSelectedCount }} PDF(s) em lote → ZIP
             </button>

@@ -408,31 +408,40 @@ export class ReportPdfMakeService {
 
   private async generateReportViaCloudFunction(data: ReportData, fileName: string): Promise<void> {
     try {
-      const functionUrl = this.getGeneratePdfFunctionUrl();
-      const docDefinition = await this.buildDocDefinition(data);
-      const safeDocDefinition = this.makeDocDefinitionTransportSafe(docDefinition);
-      this.validateTableStructures(safeDocDefinition);
-
-      const payload = {
-        fileName,
-        docDefinition: safeDocDefinition
-      };
-
-      const blob = await firstValueFrom(
-        this.http.post(functionUrl, payload, {
-          responseType: 'blob'
-        })
-      );
-
-      if (!blob || blob.size === 0) {
-        throw new Error('Cloud Function retornou PDF vazio.');
-      }
-
+      const blob = await this.generateReportBlobFromCloudFunction(data, fileName);
       this.triggerBrowserDownload(blob, fileName);
     } catch (error) {
       const message = await this.buildCloudFunctionErrorMessage(error);
       throw new Error(message);
     }
+  }
+
+  /**
+   * Gera relatório via Cloud Function e retorna o Blob (sem download).
+   * Usado para geração em lote onde precisamos acumular os PDFs antes de zipar.
+   */
+  async generateReportBlobFromCloudFunction(data: ReportData, fileName: string): Promise<Blob> {
+    const functionUrl = this.getGeneratePdfFunctionUrl();
+    const docDefinition = await this.buildDocDefinition(data);
+    const safeDocDefinition = this.makeDocDefinitionTransportSafe(docDefinition);
+    this.validateTableStructures(safeDocDefinition);
+
+    const payload = {
+      fileName,
+      docDefinition: safeDocDefinition
+    };
+
+    const blob = await firstValueFrom(
+      this.http.post(functionUrl, payload, {
+        responseType: 'blob'
+      })
+    );
+
+    if (!blob || blob.size === 0) {
+      throw new Error('Cloud Function retornou PDF vazio.');
+    }
+
+    return blob;
   }
 
   async generateReportFromHtml(html: string, fileName: string): Promise<void> {
