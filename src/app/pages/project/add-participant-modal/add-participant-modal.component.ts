@@ -19,6 +19,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { debounceTime, Subject } from 'rxjs';
+import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 interface Client {
   id: string;
@@ -193,7 +194,8 @@ export class AddParticipantModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: ModalData,
     private fb: FormBuilder,
     private firestore: Firestore,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private participantValidationService: ParticipantValidationService
   ) {
     this.participantForm = this.fb.group({
       clientId: ['', Validators.required],
@@ -377,12 +379,29 @@ export class AddParticipantModalComponent implements OnInit {
       const formValue = this.participantForm.value;
       const category = formValue.category;
       const type = category === 'Avaliado' ? 'avaliado' : 'avaliador';
+      const projectId = formValue.projectId;
+
+      // Validar se já existe avaliado no projeto
+      const validation = await this.participantValidationService.validateSingleEvaluateePerProject(
+        projectId,
+        category
+      );
+
+      if (!validation.valid) {
+        this.snackBar.open(
+          `Este projeto já possui um avaliado cadastrado (${validation.existingEvaluateeName}). É permitido apenas um avaliado por projeto.`,
+          'Fechar',
+          { duration: 5000 }
+        );
+        this.isSaving = false;
+        return;
+      }
 
       const participantData = {
         name: formValue.name,
         email: formValue.email,
         clientId: formValue.clientId,
-        projectId: formValue.projectId,
+        projectId: projectId,
         type: type,
         category: category,
         createdAt: new Date(),

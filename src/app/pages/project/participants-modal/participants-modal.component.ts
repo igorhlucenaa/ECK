@@ -37,6 +37,7 @@ import { SendHistoryDialogComponent } from '../../assessments/participants/send-
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
+import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 interface ModalData {
   projectId: string;
@@ -415,7 +416,8 @@ export class ParticipantsModalComponent implements OnInit {
     private dialog: MatDialog,
     private router: Router,
     private translate: TranslateService,
-    private confirmDialog: ConfirmDialogService
+    private confirmDialog: ConfirmDialogService,
+    private participantValidationService: ParticipantValidationService
   ) {}
 
   async ngOnInit(): Promise<void> {

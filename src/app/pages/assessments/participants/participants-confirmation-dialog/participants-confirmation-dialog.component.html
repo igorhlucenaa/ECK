@@ -68,6 +68,12 @@
           <span class="pcd__eval-text pcd__eval-text--none">Nenhum formulário vinculado a este projeto</span>
         </ng-container>
       </div>
+
+      <!-- Erro de validação de avaliado único -->
+      <div class="pcd__error-row" *ngIf="validationError">
+        <mat-icon class="pcd__error-icon">error_outline</mat-icon>
+        <span class="pcd__error-text">{{ validationError }}</span>
+      </div>
     </div>
 
     <!-- ── Prévia dos participantes ────────────────────────── -->
