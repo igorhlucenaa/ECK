@@ -86,8 +86,9 @@ export class CompetencyDialogComponent implements OnInit, OnDestroy {
     });
 
     this.groupForm = this.fb.group({
+      clientId: [this.data.clientId, Validators.required],
       groupName: ['', [Validators.required, Validators.minLength(3)]],
-      selectedCompetencyIds: [[] as string[]],
+      selectedCompetencyIds: [[], [Validators.required, Validators.minLength(1)]],
       assessmentId: [''],
       mappings: this.fb.array([])
     });
@@ -116,8 +117,27 @@ export class CompetencyDialogComponent implements OnInit, OnDestroy {
         this.loadAvailableAssessments(initialClientId);
       }
 
-      // Recarrega listas ao mudar cliente
+      // Recarrega listas ao mudar cliente (modo competência)
       this.competencyForm.get('clientId')?.valueChanges
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((clientId: string) => {
+          if (clientId) {
+            this.loadAvailableCompetencies(clientId);
+            this.loadAvailableAssessments(clientId);
+            this.availableQuestions = [];
+            this.clearMappings();
+            this.customQuestionsByCompetency = {};
+          } else {
+            this.availableCompetencies = [];
+            this.availableAssessments = [];
+            this.availableQuestions = [];
+            this.clearMappings();
+            this.customQuestionsByCompetency = {};
+          }
+        });
+
+      // Recarrega listas ao mudar cliente (modo grupo)
+      this.groupForm.get('clientId')?.valueChanges
         .pipe(takeUntil(this.destroy$))
         .subscribe((clientId: string) => {
           if (clientId) {
@@ -160,10 +180,6 @@ export class CompetencyDialogComponent implements OnInit, OnDestroy {
       return this.saveCompetencyGroup();
     }
     return this.saveCompetency();
-  }
-
-  get clientIdControl(): FormControl {
-    return this.competencyForm.get('clientId') as FormControl;
   }
 
   ngOnDestroy(): void {
@@ -396,7 +412,7 @@ export class CompetencyDialogComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const clientId = this.competencyForm.get('clientId')?.value as string;
+    const clientId = this.groupForm.get('clientId')?.value as string;
     if (!clientId) {
       this.snackBar.open('Selecione um cliente para o grupo', 'Fechar', { duration: 3000 });
       return;

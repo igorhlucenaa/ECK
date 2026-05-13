@@ -45,12 +45,12 @@
         <div class="col-md-6" *ngIf="isGroupMode">
           <mat-form-field appearance="outline" class="w-100">
             <mat-label>{{ 'Cliente' | translate }}</mat-label>
-            <mat-select [formControl]="clientIdControl">
+            <mat-select formControlName="clientId">
               <mat-option *ngFor="let client of data.clients" [value]="client.id">
                 {{ client.companyName }}
               </mat-option>
             </mat-select>
-            <mat-error *ngIf="competencyForm.get('clientId')?.hasError('required')">
+            <mat-error *ngIf="groupForm.get('clientId')?.hasError('required')">
               {{ 'O cliente é obrigatório' | translate }}
             </mat-error>
           </mat-form-field>
