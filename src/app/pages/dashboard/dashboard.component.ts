@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+﻿import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { PageEvent } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
@@ -28,7 +28,7 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router, RouterModule } from '@angular/router';
 
-// ── Types ──────────────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type ProjectStatus = 'em_andamento' | 'em_risco' | 'atrasado' | 'concluido';
 
@@ -84,12 +84,13 @@ export class DashboardComponent implements OnInit {
   clientId: string | null = null;
   clientName = '';
   userClientIds: string[] = [];
+  viewerProjectIds = new Set<string>();
 
-  // ── KPIs (4 cards, role-specific) ─────────────────────────
+  // â”€â”€ KPIs (4 cards, role-specific) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   masterKpis: { value: number; label: string; color: string; icon: string }[] = [];
   clientKpis: { value: number; label: string; color: string; icon: string }[] = [];
 
-  // ── Alerts ────────────────────────────────────────────────
+  // â”€â”€ Alerts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   alerts: AlertItem[] = [];
   alertLevelFilter  = 'all';
   alertClientFilter = 'all';
@@ -145,7 +146,7 @@ export class DashboardComponent implements OnInit {
     return this.alerts.filter(a => a.level === level).length;
   }
 
-  // ── Credits per client (master) ───────────────────────────
+  // â”€â”€ Credits per client (master) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   clientCreditRows: {
     clientId: string;
     clientName: string;
@@ -191,7 +192,7 @@ export class DashboardComponent implements OnInit {
   onCreditSearch(): void { this.creditPageIndex = 0; }
   onCreditStatusFilter(v: string): void { this.creditStatusFilter = v; this.creditPageIndex = 0; }
 
-  // ── Projects table ────────────────────────────────────────
+  // â”€â”€ Projects table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   projectRows: ProjectRow[] = [];
   masterProjectCols = ['clientName', 'name', 'responseRate', 'deadline', 'status'];
   clientProjectCols = ['name', 'responseRate', 'deadline', 'status'];
@@ -229,7 +230,7 @@ export class DashboardComponent implements OnInit {
   onProjectClientFilter(v: string): void { this.projectClientFilter = v; this.projectPageIndex = 0; }
   onProjectStatusFilter(v: string): void { this.projectStatusFilter = v; this.projectPageIndex = 0; }
 
-  // ── Funnel (master only) ──────────────────────────────────
+  // â”€â”€ Funnel (master only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   funnelData = { created: 0, invitesSent: 0, completed: 0 };
   funnelAllProjects: any[] = [];
   funnelInvitedProjectIds = new Set<string>();
@@ -237,7 +238,7 @@ export class DashboardComponent implements OnInit {
   funnelClientOptions: { id: string; name: string }[] = [];
   funnelClientFilter = 'all';
 
-  // ── Existing chart data (kept for charts section) ─────────
+  // â”€â”€ Existing chart data (kept for charts section) â”€â”€â”€â”€â”€â”€â”€â”€â”€
   pieCardsData: { value: number; label: string; color: string; icon: string }[] = [];
   assessmentsData: { client: string; used: number; remaining: number }[] = [];
   projectsByClientData: { client: string; projects: number }[] = [];
@@ -253,26 +254,26 @@ export class DashboardComponent implements OnInit {
   private headersMap: Record<string, { key: string; header: string }[]> = {
     clients: [
       { key: 'companyName', header: 'Nome da Empresa' },
-      { key: 'credits', header: 'Créditos Disponíveis' },
+      { key: 'credits', header: 'CrÃ©ditos DisponÃ­veis' },
       { key: 'sector', header: 'Setor' },
       { key: 'cnpj', header: 'CNPJ' },
-      { key: 'createdAt', header: 'Data de Criação' },
+      { key: 'createdAt', header: 'Data de CriaÃ§Ã£o' },
     ],
     creditOrders: [
-      { key: 'credits', header: 'Créditos' },
+      { key: 'credits', header: 'CrÃ©ditos' },
       { key: 'totalAmount', header: 'Valor Total' },
       { key: 'status', header: 'Status' },
-      { key: 'startDate', header: 'Data de Início' },
+      { key: 'startDate', header: 'Data de InÃ­cio' },
       { key: 'validityDate', header: 'Data de Validade' },
       { key: 'clientId', header: 'Cliente' },
     ],
     projects: [
       { key: 'name', header: 'Nome do Projeto' },
       { key: 'status', header: 'Status' },
-      { key: 'budget', header: 'Orçamento' },
+      { key: 'budget', header: 'OrÃ§amento' },
       { key: 'deadline', header: 'Prazo' },
       { key: 'clientId', header: 'Cliente' },
-      { key: 'createdAt', header: 'Data de Criação' },
+      { key: 'createdAt', header: 'Data de CriaÃ§Ã£o' },
     ],
     participants: [
       { key: 'name', header: 'Nome' },
@@ -280,14 +281,14 @@ export class DashboardComponent implements OnInit {
       { key: 'category', header: 'Categoria' },
       { key: 'type', header: 'Tipo' },
       { key: 'projectId', header: 'Projeto' },
-      { key: 'createdAt', header: 'Data de Criação' },
+      { key: 'createdAt', header: 'Data de CriaÃ§Ã£o' },
     ],
   };
 
   availableTables = [
     { key: 'clients',      label: 'Clientes' },
     { key: 'projects',     label: 'Projetos' },
-    { key: 'creditOrders', label: 'Pedidos de Crédito' },
+    { key: 'creditOrders', label: 'Pedidos de CrÃ©dito' },
     { key: 'participants', label: 'Participantes' },
   ];
 
@@ -307,10 +308,9 @@ export class DashboardComponent implements OnInit {
     }
     this.clientId = this.userClientIds[0] || null;
 
-    // Viewer não acessa o dashboard
+    // Carregar projetos do viewer se for viewer
     if (this.userRole === 'viewer') {
-      this.router.navigate(['/assessments']);
-      return;
+      await this.loadViewerProjectIds();
     }
 
     if (this.userRole === 'admin_master') {
@@ -323,7 +323,7 @@ export class DashboardComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  // ── Master data loading ───────────────────────────────────
+  // â”€â”€ Master data loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private async loadMasterData(): Promise<void> {
     const today = new Date();
@@ -340,7 +340,7 @@ export class DashboardComponent implements OnInit {
     const clientsMap = new Map(clientsSnap.docs.map(d => [d.id, d.data()]));
     const activeProjects = projectsSnap.docs.filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status']));
 
-    // assessmentLinks: completed já carregado, buscar pending também
+    // assessmentLinks: completed jÃ¡ carregado, buscar pending tambÃ©m
     const completedParticipantIds = new Set(linksSnap.docs.map(d => d.data()['participantId'] as string));
     const pendingLinkSnap = await getDocs(query(collection(this.firestore, 'assessmentLinks'), where('status', '==', 'pending')));
     const pendingParticipantIds = new Set(pendingLinkSnap.docs.map(d => d.data()['participantId'] as string));
@@ -350,25 +350,25 @@ export class DashboardComponent implements OnInit {
     const statsByProject = this.buildParticipantStats(participantsSnap.docs, completedParticipantIds, withInviteIds);
 
     // Projetos com pelo menos 1 participante com link = "com convites enviados" no funil
-    // (buscamos pelo projectId dos participantes que têm link)
+    // (buscamos pelo projectId dos participantes que tÃªm link)
     const invitedParticipantProjectIds = new Set(
       participantsSnap.docs
         .filter(d => withInviteIds.has(d.id))
         .map(d => d.data()['projectId'] as string)
     );
 
-    // KPIs — pendentes = participantes com link pending
+    // KPIs â€” pendentes = participantes com link pending
     const pendingCount = participantsSnap.docs.filter(d => pendingParticipantIds.has(d.id)).length;
     this.masterKpis = [
       { value: clientsSnap.size,       label: 'Clientes Ativos',          color: '#1B84FF', icon: 'business' },
       { value: activeProjects.length,  label: 'Projetos Ativos',          color: '#26c6da', icon: 'folder_open' },
-      { value: pendingCount,           label: 'Avaliações em Andamento',  color: '#7c3aed', icon: 'assignment_turned_in' },
+      { value: pendingCount,           label: 'AvaliaÃ§Ãµes em Andamento',  color: '#7c3aed', icon: 'assignment_turned_in' },
     ];
 
-    // Credits per client — com breakdown por projeto
+    // Credits per client â€” com breakdown por projeto
     const UNKNOWN_PROJECT = '__sem_projeto__';
 
-    // Mapa de utilizados: clientId → Map<projectId, count>
+    // Mapa de utilizados: clientId â†’ Map<projectId, count>
     // Fonte: assessmentLinks completed, enriquecido com clientId do participante
     const usedByClientProject = new Map<string, Map<string, number>>();
     participantsSnap.docs.forEach(pDoc => {
@@ -383,9 +383,9 @@ export class DashboardComponent implements OnInit {
       }
     });
 
-    // Mapa de reservados: clientId → Map<projectId, count>
+    // Mapa de reservados: clientId â†’ Map<projectId, count>
     // Fonte: assessmentLinks com creditReserved=true e status=pending (computado localmente,
-    // não usa clients.reservedCredits que pode estar desatualizado)
+    // nÃ£o usa clients.reservedCredits que pode estar desatualizado)
     const reservedByClientProject = new Map<string, Map<string, number>>();
     pendingLinkSnap.docs.forEach(linkDoc => {
       const data = linkDoc.data();
@@ -398,14 +398,14 @@ export class DashboardComponent implements OnInit {
       proj.set(projectId, (proj.get(projectId) || 0) + 1);
     });
 
-    const projectsNameMap = new Map(projectsSnap.docs.map(d => [d.id, (d.data()['name'] as string) || '—']));
+    const projectsNameMap = new Map(projectsSnap.docs.map(d => [d.id, (d.data()['name'] as string) || 'â€”']));
 
     this.clientCreditRows = clientsSnap.docs
       .map(d => {
         const usedMap      = usedByClientProject.get(d.id)     || new Map<string, number>();
         const reservedMap  = reservedByClientProject.get(d.id) || new Map<string, number>();
 
-        // União de todos os projetos com qualquer atividade de crédito
+        // UniÃ£o de todos os projetos com qualquer atividade de crÃ©dito
         const allProjectIds = new Set([...usedMap.keys(), ...reservedMap.keys()]);
 
         const projects = Array.from(allProjectIds)
@@ -419,28 +419,28 @@ export class DashboardComponent implements OnInit {
               orphan = true;
             } else {
               const found = projectsNameMap.get(projectId);
-              projectName = found ?? 'Projeto excluído';
+              projectName = found ?? 'Projeto excluÃ­do';
               orphan = !found;
             }
             return { projectId, projectName, used, reserved, orphan };
           })
           .sort((a, b) => (b.used + b.reserved) - (a.used + a.reserved));
 
-        // Totais computados localmente (consistência garantida)
+        // Totais computados localmente (consistÃªncia garantida)
         const creditsUsedCalc     = projects.reduce((s, p) => s + p.used,     0);
         const reservedCreditsCalc = projects.reduce((s, p) => s + p.reserved, 0);
 
         return {
           clientId: d.id,
-          clientName: (d.data()['companyName'] as string) || '—',
+          clientName: (d.data()['companyName'] as string) || 'â€”',
           credits: (d.data()['credits'] as number) || 0,
-          reservedCredits: reservedCreditsCalc,   // ← computado de links reais, não do campo Firestore
+          reservedCredits: reservedCreditsCalc,   // â† computado de links reais, nÃ£o do campo Firestore
           creditsUsed: creditsUsedCalc,
           projects,
           expanded: false,
         };
       })
-      .sort((a, b) => a.credits - b.credits); // menor primeiro (mais crítico no topo)
+      .sort((a, b) => a.credits - b.credits); // menor primeiro (mais crÃ­tico no topo)
 
     // Projects table
     this.projectRows = this.buildProjectRows(projectsSnap.docs, statsByProject, clientsMap, today);
@@ -448,13 +448,13 @@ export class DashboardComponent implements OnInit {
     // Alerts
     this.alerts = this.buildAlerts(projectsSnap.docs, clientsSnap.docs, statsByProject, today);
 
-    // Funil — dados base (todos os clientes)
+    // Funil â€” dados base (todos os clientes)
     this.funnelAllProjects = projectsSnap.docs;
     this.funnelInvitedProjectIds = invitedParticipantProjectIds;
     this.funnelClientsMap = new Map(clientsSnap.docs.map(d => [d.id, (d.data()['companyName'] as string) || '']));
     this.funnelClientOptions = [
       { id: 'all', name: 'Todos os clientes' },
-      ...clientsSnap.docs.map(d => ({ id: d.id, name: (d.data()['companyName'] as string) || '—' })),
+      ...clientsSnap.docs.map(d => ({ id: d.id, name: (d.data()['companyName'] as string) || 'â€”' })),
     ];
     this.buildFunnelData(projectsSnap.docs, invitedParticipantProjectIds);
 
@@ -480,12 +480,11 @@ export class DashboardComponent implements OnInit {
       used: count,
       remaining: 0,
     }));
-
     this.buildCategoryChartFromDocs(participantsSnap.docs);
     this.buildProjectsByStatusChart(projectsSnap.docs);
   }
 
-  // ── Client data loading ───────────────────────────────────
+  // ─── Client data loading ────────────────────────────────────────────────────────
 
   private async loadClientData(): Promise<void> {
     if (this.userClientIds.length === 0) return;
@@ -511,11 +510,24 @@ export class DashboardComponent implements OnInit {
       : `${clientSnaps.length} clientes`;
 
     // Busca projetos, participantes e assessments de todos os clientes via 'in'
-    const [projectsSnap, participantsSnap, assessmentsSnap] = await Promise.all([
-      getDocs(query(collection(this.firestore, 'projects'), where('clientId', 'in', this.userClientIds))),
-      getDocs(query(collection(this.firestore, 'participants'), where('clientId', 'in', this.userClientIds))),
-      getDocs(query(collection(this.firestore, 'assessments'), where('clientId', 'in', this.userClientIds))),
-    ]);
+    let projectsSnap, participantsSnap, assessmentsSnap;
+
+    if (this.userRole === 'viewer' && this.viewerProjectIds.size > 0) {
+      // Viewer: filtra apenas projetos onde está inserido
+      const projectIds = Array.from(this.viewerProjectIds);
+      [projectsSnap, participantsSnap, assessmentsSnap] = await Promise.all([
+        getDocs(query(collection(this.firestore, 'projects'), where('__name__', 'in', projectIds))),
+        getDocs(query(collection(this.firestore, 'participants'), where('projectId', 'in', projectIds))),
+        getDocs(query(collection(this.firestore, 'assessments'), where('projectId', 'in', projectIds))),
+      ]);
+    } else {
+      // Admin_client: busca todos os clientes vinculados
+      [projectsSnap, participantsSnap, assessmentsSnap] = await Promise.all([
+        getDocs(query(collection(this.firestore, 'projects'), where('clientId', 'in', this.userClientIds))),
+        getDocs(query(collection(this.firestore, 'participants'), where('clientId', 'in', this.userClientIds))),
+        getDocs(query(collection(this.firestore, 'assessments'), where('clientId', 'in', this.userClientIds))),
+      ]);
+    }
 
     // Carregar assessmentLinks para os participantes
     const pIds = participantsSnap.docs.map(d => d.id);
@@ -543,9 +555,9 @@ export class DashboardComponent implements OnInit {
 
     this.clientKpis = [
       { value: activeProjects.length, label: 'Projetos Ativos',          color: '#1B84FF', icon: 'folder_open' },
-      { value: pendingCount,          label: 'Avaliações em Andamento',  color: '#26c6da', icon: 'assignment_turned_in' },
+      { value: pendingCount,          label: 'AvaliaÃ§Ãµes em Andamento',  color: '#26c6da', icon: 'assignment_turned_in' },
       { value: totalParticipants,     label: 'Participantes Ativos',     color: '#7c3aed', icon: 'groups' },
-      { value: totalCredits,          label: 'Créditos Disponíveis',     color: '#4caf50', icon: 'toll' },
+      { value: totalCredits,          label: 'CrÃ©ditos DisponÃ­veis',     color: '#4caf50', icon: 'toll' },
     ];
 
     this.projectRows = this.buildProjectRows(projectsSnap.docs, statsByProject, clientDataMap as any, today);
@@ -558,7 +570,7 @@ export class DashboardComponent implements OnInit {
     this.buildCategoryChartFromDocs(participantsSnap.docs);
     this.buildProjectsByStatusChart(projectsSnap.docs);
 
-    // Gráfico de projetos por cliente (relevante quando há múltiplos clientes)
+    // GrÃ¡fico de projetos por cliente (relevante quando hÃ¡ mÃºltiplos clientes)
     this.projectsByClientData = Array.from(clientDataMap.entries()).map(([id, data]) => ({
       client: data['companyName'] || id,
       projects: activeProjects.filter(d => d.data()['clientId'] === id).length,
@@ -573,7 +585,7 @@ export class DashboardComponent implements OnInit {
     this.totalActiveProjects = activeProjects.length;
   }
 
-  // ── Helpers ───────────────────────────────────────────────
+  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private buildParticipantStats(
     docs: any[],
@@ -619,13 +631,13 @@ export class DashboardComponent implements OnInit {
         const clientData = clientsMap.get(data['clientId']);
 
         let status: ProjectStatus = 'em_andamento';
-        if (data['status'] === 'Concluído') {
+        if (data['status'] === 'ConcluÃ­do') {
           status = 'concluido';
         } else if (daysLeft < 0 && responseRate < 100) {
-          // Prazo vencido E ainda há respostas pendentes
+          // Prazo vencido E ainda hÃ¡ respostas pendentes
           status = 'atrasado';
         } else if (daysLeft >= 0 && daysLeft <= 7 && responseRate < 100) {
-          // Prazo chegando (≤ 7 dias) E ainda há respostas pendentes
+          // Prazo chegando (â‰¤ 7 dias) E ainda hÃ¡ respostas pendentes
           status = 'em_risco';
         }
 
@@ -656,7 +668,7 @@ export class DashboardComponent implements OnInit {
     const cMap = new Map(clientDocs.map(d => [d.id, d.data()['companyName'] as string]));
     const activeStatuses = ['Em andamento', 'Ativo']; // inclui legado
 
-    // 🔴 Crítico: prazo vencido com respostas pendentes
+    // ðŸ”´ CrÃ­tico: prazo vencido com respostas pendentes
     projectDocs
       .filter(d => {
         const data = d.data();
@@ -664,10 +676,10 @@ export class DashboardComponent implements OnInit {
         const deadline = data['deadline'] ? new Date(data['deadline'].seconds * 1000) : null;
         if (!deadline) return false;
         const days = Math.ceil((deadline.getTime() - today.getTime()) / 86400000);
-        if (days >= 0) return false; // não vencido
+        if (days >= 0) return false; // nÃ£o vencido
         const stats = statsByProject.get(d.id);
         const rate = stats && stats.total > 0 ? (stats.responded / stats.total) * 100 : 0;
-        return rate < 100; // ainda tem pendências
+        return rate < 100; // ainda tem pendÃªncias
       })
       .forEach(d => {
         const data = d.data();
@@ -679,12 +691,12 @@ export class DashboardComponent implements OnInit {
           category: 'Prazo Vencido',
           clientName: cMap.get(data['clientId']) || '',
           title: data['name'] || '',
-          description: `Vencido há ${overdue} dia(s) — ${rate}% respondido`,
+          description: `Vencido hÃ¡ ${overdue} dia(s) â€” ${rate}% respondido`,
           route: '/projects',
         });
       });
 
-    // 🟠 Atenção: prazo em ≤ 7 dias com respostas incompletas
+    // ðŸŸ  AtenÃ§Ã£o: prazo em â‰¤ 7 dias com respostas incompletas
     projectDocs
       .filter(d => {
         const data = d.data();
@@ -692,7 +704,7 @@ export class DashboardComponent implements OnInit {
         const deadline = data['deadline'] ? new Date(data['deadline'].seconds * 1000) : null;
         if (!deadline) return false;
         const days = Math.ceil((deadline.getTime() - today.getTime()) / 86400000);
-        if (days < 0 || days > 7) return false; // já vencido ou folga suficiente
+        if (days < 0 || days > 7) return false; // jÃ¡ vencido ou folga suficiente
         const stats = statsByProject.get(d.id);
         const rate = stats && stats.total > 0 ? (stats.responded / stats.total) * 100 : 0;
         return rate < 100;
@@ -705,24 +717,24 @@ export class DashboardComponent implements OnInit {
         const pending = (stats?.total ?? 0) - (stats?.responded ?? 0);
         alerts.push({
           level: 'warning',
-          category: 'Prazo Próximo',
+          category: 'Prazo PrÃ³ximo',
           clientName: cMap.get(data['clientId']) || '',
           title: data['name'] || '',
-          description: `${days} dia(s) restante(s) — ${pending} resposta(s) pendente(s) (${rate}% concluído)`,
+          description: `${days} dia(s) restante(s) â€” ${pending} resposta(s) pendente(s) (${rate}% concluÃ­do)`,
           route: '/projects',
         });
       });
 
-    // 🔵 Aviso: cliente sem créditos
+    // ðŸ”µ Aviso: cliente sem crÃ©ditos
     clientDocs
       .filter(d => (d.data()['credits'] || 0) === 0)
       .forEach(d => {
         alerts.push({
           level: 'info',
-          category: 'Sem Créditos',
+          category: 'Sem CrÃ©ditos',
           clientName: d.data()['companyName'] || '',
           title: d.data()['companyName'] || '',
-          description: 'Créditos esgotados — realize um pedido para continuar',
+          description: 'CrÃ©ditos esgotados â€” realize um pedido para continuar',
           route: '/orders',
         });
       });
@@ -775,11 +787,11 @@ export class DashboardComponent implements OnInit {
   }
 
   private buildProjectsByStatusChart(projectDocs: any[]): void {
-    const counts: Record<string, number> = { 'Em andamento': 0, 'Concluído': 0, 'Cancelado': 0 };
+    const counts: Record<string, number> = { 'Em andamento': 0, 'ConcluÃ­do': 0, 'Cancelado': 0 };
     projectDocs.forEach(d => {
       const s = d.data()['status'];
       if (s === 'Em andamento' || s === 'Ativo') counts['Em andamento']++;
-      else if (s === 'Concluído') counts['Concluído']++;
+      else if (s === 'ConcluÃ­do') counts['ConcluÃ­do']++;
       else if (s === 'Cancelado' || s === 'Inativo') counts['Cancelado']++;
     });
 
@@ -809,7 +821,7 @@ export class DashboardComponent implements OnInit {
     const active = filtered.filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status']));
     const created = active.length;
     const invitesSent = active.filter(d => invitedProjectIds.has(d.id)).length;
-    const completed = active.filter(d => d.data()['status'] === 'Concluído').length;
+    const completed = active.filter(d => d.data()['status'] === 'ConcluÃ­do').length;
 
     this.funnelData = { created, invitesSent, completed };
   }
@@ -819,14 +831,14 @@ export class DashboardComponent implements OnInit {
     this.buildFunnelData(this.funnelAllProjects, this.funnelInvitedProjectIds, clientId);
   }
 
-  // ── Template helpers ──────────────────────────────────────
+  // â”€â”€ Template helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   statusLabel(status: ProjectStatus): string {
     const map: Record<ProjectStatus, string> = {
       em_andamento: 'Em andamento',
       em_risco: 'Em risco',
       atrasado: 'Atrasado',
-      concluido: 'Concluído',
+      concluido: 'ConcluÃ­do',
     };
     return map[status];
   }
@@ -842,7 +854,7 @@ export class DashboardComponent implements OnInit {
   }
 
   deadlineLabel(row: ProjectRow): string {
-    if (!row.deadline) return '—';
+    if (!row.deadline) return 'â€”';
     if (row.status === 'concluido') return row.deadline.toLocaleDateString('pt-BR');
     if (row.daysUntilDeadline < 0) return `${Math.abs(row.daysUntilDeadline)}d atrasado`;
     if (row.daysUntilDeadline === 0) return 'Hoje';
@@ -858,19 +870,19 @@ export class DashboardComponent implements OnInit {
     return '';
   }
 
-  // ── Exports ───────────────────────────────────────────────
+  // â”€â”€ Exports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   async generatePDF(): Promise<void> {
     if (this.isExporting) return;
 
     const dashboardEl = document.getElementById('dashboard-content');
     if (!dashboardEl) {
-      this.snackBar.open(this.translate.instant('Elemento do dashboard não encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Elemento do dashboard nÃ£o encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
     this.isExporting = true;
-    this.exportLabel = this.translate.instant('Preparando impressão...');
+    this.exportLabel = this.translate.instant('Preparando impressÃ£o...');
     this.cdr.markForCheck();
 
     let iframe: HTMLIFrameElement | null = null;
@@ -1061,6 +1073,24 @@ export class DashboardComponent implements OnInit {
     if (!ts?.seconds) return '';
     const d = new Date(ts.seconds * 1000);
     return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
+  }
+
+  private async loadViewerProjectIds(): Promise<void> {
+    this.viewerProjectIds.clear();
+    const email = await this.authService.getCurrentUserEmail();
+    if (!email) return;
+
+    const usersSnap = await getDocs(
+      query(collection(this.firestore, 'users'), where('email', '==', email))
+    );
+
+    if (usersSnap.empty) return;
+
+    const userData = usersSnap.docs[0].data();
+    const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
+    const fromSingle = userData['project'] ? [userData['project']] : [];
+
+    [...fromArray, ...fromSingle].forEach((projectId) => this.viewerProjectIds.add(projectId));
   }
 
   private async getFormattedData(tableKey: string): Promise<any[]> {

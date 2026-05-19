@@ -1,7 +1,7 @@
 ﻿import { NavItem } from './nav-item/nav-item';
 
 export const navItems: NavItem[] = [
-  // ─── Seção admin_master / admin_client ───────────────────────
+  // ─── Seção principal ───────────────────────
   {
     navCap: 'Bem Vindo!',
     role: ['admin_master', 'admin_client'],
@@ -16,13 +16,13 @@ export const navItems: NavItem[] = [
     displayName: 'Definições',
     iconName: 'solar:settings-bold-duotone',
     route: '',
-    role: ['admin_master', 'admin_client'],
+    role: ['admin_master', 'admin_client', 'viewer'],
     children: [
       {
         displayName: 'Clientes',
         iconName: 'solar:people-nearby-bold-duotone',
         route: '/clients',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master'],
       },
       {
         displayName: 'Pedidos de Crédito',
@@ -46,19 +46,19 @@ export const navItems: NavItem[] = [
         displayName: 'Lembretes Automáticos',
         iconName: 'solar:bell-bing-bold-duotone',
         route: '/settings',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master', 'admin_client', 'viewer'],
       },
       {
         displayName: 'Gerenciar Competências',
         iconName: 'solar:diploma-bold-duotone',
         route: '/competencies',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master'],
       },
       {
         displayName: 'Formulários',
         iconName: 'solar:chart-2-bold-duotone',
         route: '/assessments',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master'],
       },
       {
         displayName: 'Relatórios',
@@ -87,13 +87,25 @@ export const navItems: NavItem[] = [
     role: ['viewer'],
   },
   {
-    displayName: 'Minhas Avaliações',
-    iconName: 'solar:document-text-bold-duotone',
-    route: '/assessments',
+    displayName: 'Dashboard',
+    iconName: 'solar:pie-chart-2-bold-duotone',
+    route: '/dashboard',
     role: ['viewer'],
   },
   {
-    displayName: 'Meu Relatório',
+    displayName: 'Participantes',
+    iconName: 'solar:user-id-bold-duotone',
+    route: '/assessments/participants',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Projetos',
+    iconName: 'solar:bill-list-bold-duotone',
+    route: '/projects',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Relatórios',
     iconName: 'solar:chart-square-bold-duotone',
     route: '/reports',
     role: ['viewer'],

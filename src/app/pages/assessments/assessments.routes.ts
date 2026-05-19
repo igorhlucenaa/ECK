@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { AssessmentsComponent } from './assessments.component';
+import { AuthGuard } from 'src/app/guards/auth.guard';
 
 export const AssessmentsRoutes: Routes = [
   {
@@ -8,6 +9,8 @@ export const AssessmentsRoutes: Routes = [
     children: [
       {
         path: '',
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master'] },
         loadComponent: () =>
           import('./assessment-list/assessment-list.component').then(
             (m) => m.AssessmentListComponent
@@ -15,6 +18,8 @@ export const AssessmentsRoutes: Routes = [
       },
       {
         path: 'upload',
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master'] },
         loadComponent: () =>
           import('./upload-list/upload-list.component').then(
             (m) => m.UploadListComponent
@@ -22,6 +27,8 @@ export const AssessmentsRoutes: Routes = [
       },
       {
         path: 'dashboard',
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master'] },
         loadComponent: () =>
           import('./dashboard/dashboard.component').then(
             (m) => m.DashboardComponent
@@ -29,11 +36,15 @@ export const AssessmentsRoutes: Routes = [
       },
       {
         path: 'export',
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master'] },
         loadComponent: () =>
           import('./export/export.component').then((m) => m.ExportComponent),
       },
       {
         path: 'new',
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master'] },
         loadComponent: () =>
           import('./create-assessment/create-assessment.component').then(
             (m) => m.CreateAssessmentComponent
@@ -41,6 +52,8 @@ export const AssessmentsRoutes: Routes = [
       },
       {
         path: ':id/edit',
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master'] },
         loadComponent: () =>
           import('./create-assessment/create-assessment.component').then(
             (m) => m.CreateAssessmentComponent
@@ -48,6 +61,8 @@ export const AssessmentsRoutes: Routes = [
       },
       {
         path: 'participants',
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
         loadComponent: () =>
           import('./participants/participants.component').then(
             (m) => m.ParticipantsComponent
@@ -56,3 +71,4 @@ export const AssessmentsRoutes: Routes = [
     ],
   },
 ];
+

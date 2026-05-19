@@ -38,7 +38,7 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'dashboard', // Redireciona para o Dashboard
+        redirectTo: 'dashboard',
         pathMatch: 'full',
       },
       {
@@ -48,14 +48,14 @@ export const routes: Routes = [
             (m) => m.DashboardRoutes
           ),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] }, // Permissões ajustadas
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
       },
       {
         path: 'clients',
         loadChildren: () =>
           import('./pages/clients/clients.routes').then((m) => m.ClientsRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { role: ['admin_master'] },
       },
       {
         path: 'mail-templates',
@@ -68,13 +68,13 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./pages/settings/settings.routes').then((m) => m.SettingsRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
       },
       {
         path: 'clients/:id/customization',
         component: ClientCustomizationComponent,
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { role: ['admin_master'] },
       },
       {
         path: 'projects',
@@ -83,7 +83,7 @@ export const routes: Routes = [
             (m) => m.ProjectsRoutes
           ),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
       },
       {
         path: 'assessments',
@@ -104,9 +104,11 @@ export const routes: Routes = [
       {
         path: 'competencies',
         loadChildren: () =>
-          import('./pages/competencies/competencies.routes').then((m) => m.CompetenciesRoutes),
+          import('./pages/competencies/competencies.routes').then(
+            (m) => m.CompetenciesRoutes
+          ),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { role: ['admin_master'] },
       },
       {
         path: 'orders',
@@ -147,3 +149,4 @@ export const routes: Routes = [
     redirectTo: 'authentication/error',
   },
 ];
+

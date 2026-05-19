@@ -51,7 +51,9 @@ export class ProjectsListComponent implements OnInit {
   selectedClientId: string | null = null;
   isAdminMaster: boolean = false;
   isClienteAdmin: boolean = false;
+  isViewer: boolean = false;
   userClientIds: string[] = [];
+  viewerProjectIds = new Set<string>();
   today = new Date();
   loadingParticipantsProjectId: string | null = null;
   selectedProjectIds = new Set<string>();
@@ -138,8 +140,12 @@ export class ProjectsListComponent implements OnInit {
     this.authService.getCurrentUser().then(async (user) => {
       this.isAdminMaster = user?.role === 'admin_master';
       this.isClienteAdmin = user?.role === 'admin_client';
+      this.isViewer = user?.role === 'viewer';
       this.userClientIds = await this.authService.getCurrentUserClientIds();
       this.clientId = this.userClientIds[0] || null;
+      if (this.isViewer) {
+        await this.loadViewerProjectIds();
+      }
 
       this.displayedColumns = [
         ...(this.isAdminMaster ? ['select'] : []),
@@ -176,7 +182,17 @@ export class ProjectsListComponent implements OnInit {
   private async loadClients(): Promise<void> {
     try {
       const clientsCollection = collection(this.firestore, 'clients');
-      const snapshot = await getDocs(clientsCollection);
+      let snapshot;
+
+      if (this.isAdminMaster) {
+        // Admin_master vê todos os clientes
+        snapshot = await getDocs(clientsCollection);
+      } else if (this.userClientIds.length > 0) {
+        // Admin_client e viewer veem apenas seus clientes vinculados
+        snapshot = await getDocs(query(clientsCollection, where('__name__', 'in', this.userClientIds)));
+      } else {
+        snapshot = await getDocs(query(clientsCollection, where('__name__', '==', 'nonexistent')));
+      }
 
       this.clients = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -351,9 +367,33 @@ export class ProjectsListComponent implements OnInit {
     }
   }
 
+  private async loadViewerProjectIds(): Promise<void> {
+    this.viewerProjectIds.clear();
+    const email = await this.authService.getCurrentUserEmail();
+    if (!email) return;
+
+    const usersQuery = query(
+      collection(this.firestore, 'users'),
+      where('email', '==', email)
+    );
+    const usersSnap = await getDocs(usersQuery);
+    if (usersSnap.empty) return;
+
+    const data = usersSnap.docs[0].data() || {};
+    const fromArray = Array.isArray(data['projects']) ? data['projects'] : [];
+    const fromSingle = typeof data['project'] === 'string' && data['project'].trim()
+      ? [data['project']]
+      : [];
+
+    [...fromArray, ...fromSingle].forEach((id) => this.viewerProjectIds.add(id));
+  }
+
   private filterProjectsByClient(projects: any[]): any[] {
     if (this.isAdminMaster && this.selectedClientId) {
       return projects.filter((project) => project.clientId === this.selectedClientId);
+    }
+    if (this.isViewer && this.viewerProjectIds.size > 0) {
+      return projects.filter((project) => this.viewerProjectIds.has(project.id));
     }
     if (!this.isAdminMaster && this.userClientIds.length > 0) {
       return projects.filter((project) => this.userClientIds.includes(project.clientId));

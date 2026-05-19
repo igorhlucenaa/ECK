@@ -209,7 +209,8 @@ export class UsersComponent implements OnInit, AfterViewInit {
   async loadUsers(groups: UserGroup[]): Promise<void> {
     try {
       this.userRole = await this.authService.getCurrentUserRole();
-      const clientId = await this.authService.getCurrentClientId();
+      const userClientIds = await this.authService.getCurrentUserClientIds();
+      const clientId = userClientIds.length > 0 ? userClientIds[0] : null;
 
       // Coleção de usuários
       const usersCollection = collection(this.firestore, 'users');
@@ -217,10 +218,10 @@ export class UsersComponent implements OnInit, AfterViewInit {
 
       // Admin_client pode ver apenas os usuários do seu cliente
       // Suporta tanto campo legado 'client' quanto novo 'clients' (array)
-      if (this.userRole === 'admin_client' && clientId) {
+      if (this.userRole === 'admin_client' && userClientIds.length > 0) {
         const [snapLegacy, snapArray] = await Promise.all([
-          getDocs(query(usersCollection, where('client', '==', clientId))),
-          getDocs(query(usersCollection, where('clients', 'array-contains', clientId))),
+          getDocs(query(usersCollection, where('client', 'in', userClientIds))),
+          getDocs(query(usersCollection, where('clients', 'array-contains-any', userClientIds))),
         ]);
         // Mescla sem duplicatas
         const docsMap = new Map<string, any>();
