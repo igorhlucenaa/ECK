@@ -172,6 +172,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
+  get canManageParticipantData(): boolean {
+    return this.userRole !== 'viewer';
+  }
+
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,

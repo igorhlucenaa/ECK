@@ -115,6 +115,15 @@
           <mat-hint>Opcional — relatório individual</mat-hint>
         </mat-form-field>
       </div>
+
+      <!-- Botão de liberação de relatório (apenas admin_master) -->
+      <button mat-icon-button
+              *ngIf="canReleaseReport && selectedAvaliado"
+              matTooltip="Liberar relatório para este avaliado"
+              (click)="releaseReport(getParticipantIdByName(selectedAvaliado))"
+              class="rp-release-btn">
+        <mat-icon>lock_open</mat-icon>
+      </button>
     </ng-container>
 
     <!-- Botão limpar (aparece quando há algo selecionado) -->
@@ -1042,13 +1051,13 @@
       <!-- Export actions bar -->
       <div class="rp-export-bar ui-only">
         <!-- Individual -->
-        <button mat-flat-button color="accent" (click)="exportarRelatorioPDF()" [disabled]="isExporting || isBatchGenerating">
+        <button mat-flat-button color="accent" *ngIf="canExportPdf" (click)="exportarRelatorioPDF()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>picture_as_pdf</mat-icon> Exportar PDF individual
         </button>
-        <button mat-flat-button color="primary" (click)="exportarBaseExcel()" [disabled]="isExporting || isBatchGenerating">
+        <button mat-flat-button color="primary" *ngIf="canExportExcel" (click)="exportarBaseExcel()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>grid_on</mat-icon> {{ 'Exportar base (Excel)' | translate }}
         </button>
-        <button mat-flat-button color="primary" (click)="exportarRelatorioDOCX()" [disabled]="isExporting || isBatchGenerating">
+        <button mat-flat-button color="primary" *ngIf="canExportDocx" (click)="exportarRelatorioDOCX()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>description</mat-icon> {{ 'Exportar DOCX' | translate }}
         </button>
       </div>

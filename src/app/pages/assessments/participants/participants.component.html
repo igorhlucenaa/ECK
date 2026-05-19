@@ -232,7 +232,7 @@
         {{ 'Baixar Modelo' | translate }}
       </button>
 
-      <button mat-stroked-button class="btn-action-secondary">
+      <button mat-stroked-button class="btn-action-secondary" *ngIf="canManageParticipantData">
         <label for="uploadExcel" style="cursor:pointer;display:flex;align-items:center;gap:6px;">
           <mat-icon>upload_file</mat-icon>
           {{ 'Importar Excel' | translate }}
@@ -240,7 +240,7 @@
         <input id="uploadExcel" type="file" accept=".xlsx,.xls" style="display:none" (change)="uploadExcel($event)" />
       </button>
 
-      <button mat-raised-button class="btn-add" (click)="openAddParticipantModal()">
+      <button mat-raised-button class="btn-add" *ngIf="canManageParticipantData" (click)="openAddParticipantModal()">
         <mat-icon>person_add</mat-icon>
         {{ 'Adicionar Participante' | translate }}
       </button>
@@ -552,7 +552,7 @@
           <mat-icon>download</mat-icon>
           {{ 'Baixar Modelo Excel' | translate }}
         </button>
-        <button mat-raised-button class="btn-add" (click)="openAddParticipantModal()">
+        <button mat-raised-button class="btn-add" *ngIf="canManageParticipantData" (click)="openAddParticipantModal()">
           <mat-icon>person_add</mat-icon>
           {{ 'Adicionar Participante' | translate }}
         </button>
@@ -777,7 +777,7 @@
           <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
             <div class="actions-cell-row">
-              <button class="act-btn act-btn--neutral" [matTooltip]="'Editar participante' | translate"
+              <button class="act-btn act-btn--neutral" *ngIf="canManageParticipantData" [matTooltip]="'Editar participante' | translate"
                       (click)="openEditParticipantDialog(participant); $event.stopPropagation()">
                 <mat-icon>edit</mat-icon>
               </button>
@@ -824,7 +824,7 @@
           <mat-icon>deselect</mat-icon>
           {{ 'Limpar seleção' | translate }}
         </button>
-        <button mat-stroked-button color="warn" (click)="deleteSelectedParticipants()" [disabled]="isLoading">
+        <button mat-stroked-button color="warn" *ngIf="canManageParticipantData" (click)="deleteSelectedParticipants()" [disabled]="isLoading">
           <mat-icon>delete_sweep</mat-icon>
           {{ 'Excluir selecionados' | translate }}
         </button>

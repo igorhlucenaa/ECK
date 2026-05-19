@@ -131,10 +131,21 @@ export class CreditOrdersComponent implements OnInit {
   private async loadOrders(): Promise<void> {
     try {
       this.userRole = await this.authService.getCurrentUserRole();
-      const clientId = await this.authService.getCurrentClientId();
+      const userClientIds = await this.authService.getCurrentUserClientIds();
+      const clientId = userClientIds.length > 0 ? userClientIds[0] : null;
 
       const clientsCollection = collection(this.firestore, 'clients');
-      const clientsSnapshot = await getDocs(clientsCollection);
+      let clientsSnapshot;
+
+      if (this.userRole === 'admin_master') {
+        // Admin_master vê todos os clientes
+        clientsSnapshot = await getDocs(clientsCollection);
+      } else if (userClientIds.length > 0) {
+        // Admin_client vê apenas seus clientes vinculados
+        clientsSnapshot = await getDocs(query(clientsCollection, where('__name__', 'in', userClientIds)));
+      } else {
+        clientsSnapshot = await getDocs(query(clientsCollection, where('__name__', '==', 'nonexistent')));
+      }
 
       this.clientsList = clientsSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -154,10 +165,10 @@ export class CreditOrdersComponent implements OnInit {
       const ordersCollection = collection(this.firestore, 'creditOrders');
       let queryConstraint = query(ordersCollection);
 
-      if (this.userRole === 'admin_client') {
+      if (this.userRole === 'admin_client' && userClientIds.length > 0) {
         queryConstraint = query(
           ordersCollection,
-          where('clientId', '==', clientId)
+          where('clientId', 'in', userClientIds)
         );
       }
 
