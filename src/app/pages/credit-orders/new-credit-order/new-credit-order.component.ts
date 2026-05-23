@@ -78,10 +78,14 @@ export class NewCreditOrderComponent implements OnInit {
       notes: [''],
     });
 
-    // Atualiza o valor mínimo para a data de validade com base na data de início
+    // Auto-preenche validade com início + 12 meses e atualiza validador de data mínima
     this.orderForm.get('startDate')?.valueChanges.subscribe((startDate) => {
       const validityControl = this.orderForm.get('validityDate');
       if (startDate) {
+        const autoValidity = new Date(startDate);
+        autoValidity.setFullYear(autoValidity.getFullYear() + 1);
+        validityControl?.setValue(autoValidity, { emitEvent: false });
+
         validityControl?.setValidators([
           Validators.required,
           this.minDateValidator(new Date(startDate)),

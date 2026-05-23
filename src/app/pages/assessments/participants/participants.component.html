@@ -395,6 +395,43 @@
       </div>
     </div>
 
+    <!-- ─── Painel de créditos do cliente ───────────────────── -->
+    <div class="credit-panel" *ngIf="filterClient && currentClientCredits">
+      <div class="credit-panel__title">
+        <mat-icon>toll</mat-icon>
+        <span>Créditos do Cliente</span>
+      </div>
+      <div class="credit-panel__items">
+        <div class="credit-item credit-item--green">
+          <span class="credit-item__value">{{ currentClientCredits!.disponivel }}</span>
+          <span class="credit-item__label">Disponíveis</span>
+          <span class="credit-item__hint">prontos para usar</span>
+        </div>
+        <div class="credit-sep"></div>
+        <div class="credit-item credit-item--amber">
+          <span class="credit-item__value">{{ currentClientCredits!.reservado }}</span>
+          <span class="credit-item__label">Reservados</span>
+          <span class="credit-item__hint">projetos em andamento</span>
+        </div>
+        <div class="credit-sep"></div>
+        <div class="credit-item credit-item--blue">
+          <span class="credit-item__value">{{ currentClientCredits!.consumido }}</span>
+          <span class="credit-item__label">Consumidos</span>
+          <span class="credit-item__hint">projetos concluídos</span>
+        </div>
+        <div class="credit-sep"></div>
+        <div class="credit-item credit-item--gray">
+          <span class="credit-item__value">{{ currentClientCredits!.disponivel + currentClientCredits!.reservado + currentClientCredits!.consumido }}</span>
+          <span class="credit-item__label">Total comprado</span>
+          <span class="credit-item__hint">saldo acumulado</span>
+        </div>
+      </div>
+      <div class="credit-panel__note">
+        <mat-icon>info</mat-icon>
+        <span>1 crédito é reservado ao cadastrar um Avaliado e consumido ao concluir o projeto</span>
+      </div>
+    </div>
+
     <!-- ─── Filtros (só exibidos com contexto definido) ──────── -->
     <div class="filter-card" *ngIf="filterClient && filterProject">
       <div class="filter-card__header">
@@ -460,79 +497,6 @@
 
     <!-- Contexto definido: loading, tabela, empty -->
     <ng-container *ngIf="filterClient && filterProject">
-
-    <!-- ── Banner de créditos do cliente ─────────────────────── -->
-    <div class="credits-summary-bar" *ngIf="clientCredits !== null">
-      <div class="credits-summary-bar__item credits-summary-bar__item--available"
-           [class.credits-summary-bar__item--zero]="clientCredits === 0">
-        <mat-icon>toll</mat-icon>
-        <span><strong>{{ clientCredits }}</strong> disponíve{{ clientCredits !== 1 ? 'is' : 'l' }}</span>
-      </div>
-      <div class="credits-summary-bar__sep" *ngIf="reservedParticipants.length > 0">·</div>
-      <button class="credits-summary-bar__item credits-summary-bar__item--reserved credits-summary-bar__item--btn"
-           *ngIf="reservedParticipants.length > 0"
-           [matMenuTriggerFor]="reservedMenu">
-        <mat-icon>lock_outline</mat-icon>
-        <strong>{{ reservedParticipants.length }}</strong> reservado{{ reservedParticipants.length !== 1 ? 's' : '' }}
-        <mat-icon style="font-size:14px;width:14px;height:14px;margin-left:2px;">expand_more</mat-icon>
-      </button>
-
-      <mat-menu #reservedMenu="matMenu" class="si-credits-menu">
-        <div class="si-credits-menu__header" (click)="$event.stopPropagation()">
-          <mat-icon>toll</mat-icon>
-          <span>{{ 'Créditos — este projeto' | translate }}</span>
-        </div>
-
-        <!-- Resumo -->
-        <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__label">{{ 'Disponíveis (cliente)' | translate }}</span>
-          <span class="si-credits-menu__val si-credits-menu__val--avail">{{ clientCredits }}</span>
-        </div>
-        <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__label">{{ 'Reservados (este projeto)' | translate }}</span>
-          <span class="si-credits-menu__val si-credits-menu__val--reserved">{{ reservedParticipants.length }}</span>
-        </div>
-        <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__label">{{ 'Utilizados (este projeto)' | translate }}</span>
-          <span class="si-credits-menu__val si-credits-menu__val--used">{{ usedParticipants.length }}</span>
-        </div>
-
-        <!-- Reservados -->
-        <mat-divider></mat-divider>
-        <div class="si-credits-menu__section" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__section-title">🔒 {{ 'Reservados — aguardando resposta' | translate }}</span>
-          <div class="si-credits-menu__participant" *ngFor="let p of reservedParticipants">
-            <div class="si-credits-menu__avatar">{{ p.name.charAt(0).toUpperCase() }}</div>
-            <div class="si-credits-menu__pinfo">
-              <span class="si-credits-menu__pname">{{ p.name }}</span>
-              <span class="si-credits-menu__pemail">{{ p.email }}</span>
-            </div>
-            <span class="si-credits-menu__pstatus si-credits-menu__pstatus--pending">{{ 'Pendente' | translate }}</span>
-          </div>
-          <div class="si-credits-menu__empty" *ngIf="reservedParticipants.length === 0">
-            <mat-icon>check_circle</mat-icon><span>{{ 'Nenhum reservado neste projeto' | translate }}</span>
-          </div>
-        </div>
-
-        <!-- Utilizados -->
-        <mat-divider *ngIf="usedParticipants.length > 0"></mat-divider>
-        <div class="si-credits-menu__section" *ngIf="usedParticipants.length > 0" (click)="$event.stopPropagation()">
-          <span class="si-credits-menu__section-title">✅ {{ 'Utilizados — já responderam' | translate }}</span>
-          <div class="si-credits-menu__participant" *ngFor="let p of usedParticipants">
-            <div class="si-credits-menu__avatar si-credits-menu__avatar--used">{{ p.name.charAt(0).toUpperCase() }}</div>
-            <div class="si-credits-menu__pinfo">
-              <span class="si-credits-menu__pname">{{ p.name }}</span>
-              <span class="si-credits-menu__pemail">{{ p.completedAt | date:'dd/MM/yy HH:mm' }}</span>
-            </div>
-            <span class="si-credits-menu__pstatus si-credits-menu__pstatus--used">{{ 'Respondido' | translate }}</span>
-          </div>
-        </div>
-      </mat-menu>
-      <div class="credits-summary-bar__warn" *ngIf="clientCredits === 0">
-        <mat-icon>warning</mat-icon>
-        <span>{{ 'Sem créditos — envio bloqueado' | translate }}</span>
-      </div>
-    </div>
 
     <!-- Loading -->
     <div class="send-loading" *ngIf="isTableLoading">
@@ -759,16 +723,6 @@
                 <mat-icon>check_circle</mat-icon>
                 {{ participant.completedAt ? (participant.completedAt | date:'dd/MM/yy') : '—' }}
               </span>
-              <span class="datas-row datas-row--credit" *ngIf="participant.completedAt"
-                    [matTooltip]="'1 crédito consumido ao responder' | translate">
-                <mat-icon>toll</mat-icon>
-                {{ '1 crédito' | translate }}
-              </span>
-              <span class="datas-row datas-row--reserved" *ngIf="participant.creditReserved && !participant.completedAt"
-                    [matTooltip]="'1 crédito reservado para este participante' | translate">
-                <mat-icon>lock_outline</mat-icon>
-                {{ '1 reservado' | translate }}
-              </span>
             </div>
           </td>
         </ng-container>
@@ -790,7 +744,7 @@
               <button class="act-btn act-btn--cancel"
                 *ngIf="participant.status === 'Enviado (Pendente)'"
                 (click)="cancelSend(participant); $event.stopPropagation()"
-                [matTooltip]="'Cancelar envio e liberar crédito' | translate">
+                [matTooltip]="'Cancelar envio' | translate">
                 <mat-icon>cancel</mat-icon>
               </button>
               <button class="act-btn act-btn--report"

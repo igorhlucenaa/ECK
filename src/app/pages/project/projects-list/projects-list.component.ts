@@ -89,7 +89,10 @@ export class ProjectsListComponent implements OnInit {
 
   private _applyCustomFilter(): void {
     this.dataSource.filterPredicate = (data: any, filter: string) => {
-      const matchSearch = !this.searchValue || data.name.toLowerCase().includes(this.searchValue.trim().toLowerCase());
+      const q = this.searchValue.trim().toLowerCase();
+      const matchSearch = !q
+        || data.name.toLowerCase().includes(q)
+        || (data.clientName || '').toLowerCase().includes(q);
       const matchStatus = this.statusFilter === 'all' || data.status === this.statusFilter;
       return matchSearch && matchStatus;
     };
@@ -258,9 +261,6 @@ export class ProjectsListComponent implements OnInit {
         }
       };
       this.dataSource.sort = this.sort;
-
-      this.dataSource.filterPredicate = (data, filter) =>
-        data.name.toLowerCase().includes(filter);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
       this.snackBar.open(this.translate.instant('Erro ao carregar projetos.'), this.translate.instant('Fechar'), {

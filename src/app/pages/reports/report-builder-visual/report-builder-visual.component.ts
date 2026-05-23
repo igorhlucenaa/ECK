@@ -11,10 +11,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Subject, takeUntil } from 'rxjs';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
+import { DocumentoConfig, DOCUMENTO_CONFIG_PADRAO } from '../../../services/report-pdfmake.service';
 
 // Interface local para evitar dependência circular
 type RelatorioSecaoTipo = 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari' | 'perguntas_abertas';
@@ -42,6 +44,8 @@ interface RelatorioSecaoSimplificada {
   textosPorCompetencia?: { [key: string]: string };
   tipoGrafico?: 'barra' | 'radar' | 'pizza-comparativa' | 'pizza-individual' | 'barras-individuais' | 'janela_johari';
   paletaCor?: string;
+  pageBreakAntes?: boolean;
+  pageBreakDepois?: boolean;
   [key: string]: any;
 }
 
@@ -70,6 +74,7 @@ type TipoGraficoRelatorio =
     MatInputModule,
     MatSelectModule,
     MatCheckboxModule,
+    MatSlideToggleModule,
     DragDropModule,
     AngularEditorModule
   ],
@@ -81,8 +86,16 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   @Input() competencias: any[] = [];
   @Input() savedLabel: string = '';
   @Input() hasUnsavedChanges: boolean = false;
+  @Input() documentoConfig: DocumentoConfig = {
+    cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho },
+    rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape }
+  };
   @Output() configuracaoChange = new EventEmitter<RelatorioSecaoSimplificada[]>();
   @Output() saveRequested = new EventEmitter<void>();
+  @Output() documentoConfigChange = new EventEmitter<DocumentoConfig>();
+
+  mostrarPainelDocumento = false;
+  readonly currentYear = new Date().getFullYear();
 
   private destroy$ = new Subject<void>();
 
@@ -293,11 +306,43 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   selecionarPaleta(key: string): void {
     if (!this.secaoEditando) return;
     this.secaoEditando['paletaCor'] = key;
+    if (key === 'personalizada' && !this.secaoEditando['coresPersonalizadas']?.length) {
+      this.secaoEditando['coresPersonalizadas'] = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
+    }
   }
 
   selecionarPaletaBaixas(key: string): void {
     if (!this.secaoEditando) return;
     this.secaoEditando['paletaCorBaixas'] = key;
+  }
+
+  getCoresPersonalizadasAtuais(): string[] {
+    const cores = this.secaoEditando?.['coresPersonalizadas'];
+    if (Array.isArray(cores) && cores.length > 0) return cores;
+    return ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
+  }
+
+  atualizarCorPersonalizada(index: number, event: Event): void {
+    if (!this.secaoEditando) return;
+    const cores = [...this.getCoresPersonalizadasAtuais()];
+    cores[index] = (event.target as HTMLInputElement).value;
+    this.secaoEditando['coresPersonalizadas'] = cores;
+  }
+
+  adicionarCorPersonalizada(): void {
+    if (!this.secaoEditando) return;
+    const cores = [...this.getCoresPersonalizadasAtuais()];
+    if (cores.length >= 8) return;
+    cores.push('#808080');
+    this.secaoEditando['coresPersonalizadas'] = cores;
+  }
+
+  removerUltimaCorPersonalizada(): void {
+    if (!this.secaoEditando) return;
+    const cores = [...this.getCoresPersonalizadasAtuais()];
+    if (cores.length <= 2) return;
+    cores.pop();
+    this.secaoEditando['coresPersonalizadas'] = cores;
   }
 
   // Configuração do editor rich text
@@ -335,6 +380,29 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
       this.ordenarSecoes();
       this.fecharPainelConfig();
     }
+  }
+
+  togglePainelDocumento(): void {
+    this.mostrarPainelDocumento = !this.mostrarPainelDocumento;
+    if (this.mostrarPainelDocumento) {
+      this.fecharPainelConfig();
+    }
+  }
+
+  atualizarCabecalho(campo: keyof DocumentoConfig['cabecalho'], valor: any): void {
+    this.documentoConfig = {
+      ...this.documentoConfig,
+      cabecalho: { ...this.documentoConfig.cabecalho, [campo]: valor }
+    };
+    this.documentoConfigChange.emit(this.documentoConfig);
+  }
+
+  atualizarRodape(campo: keyof DocumentoConfig['rodape'], valor: any): void {
+    this.documentoConfig = {
+      ...this.documentoConfig,
+      rodape: { ...this.documentoConfig.rodape, [campo]: valor }
+    };
+    this.documentoConfigChange.emit(this.documentoConfig);
   }
 
   ngOnDestroy(): void {
@@ -421,8 +489,16 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
     if (secaoNormalizada.tipo === 'graficos') {
       secaoNormalizada.tipoGrafico = this.resolverTipoGraficoSecao(secaoNormalizada);
     }
+    // Default: non-capa sections break before by default; normalize undefined → true
+    if (secaoNormalizada.tipo !== 'capa' && secaoNormalizada.pageBreakAntes === undefined) {
+      secaoNormalizada.pageBreakAntes = true;
+    }
+    if (secaoNormalizada.pageBreakDepois === undefined) {
+      secaoNormalizada.pageBreakDepois = false;
+    }
     this.secaoEditando = secaoNormalizada;
     this.showConfigPanel = true;
+    this.mostrarPainelDocumento = false;
   }
 
   /**

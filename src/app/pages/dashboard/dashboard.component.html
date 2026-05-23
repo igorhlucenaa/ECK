@@ -69,7 +69,7 @@
           <p class="dash-card__sub">{{ 'Utilizados e disponíveis — clientes críticos no topo' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Créditos consumidos = respostas de avaliação recebidas. Disponíveis = saldo restante para novos envios.' | translate"
+                [matTooltip]="'Créditos consumidos = projetos concluídos. Disponíveis = saldo restante para novos projetos.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -77,10 +77,10 @@
         <div class="credits-totals">
           <div class="credits-totals__item credits-totals__item--used">
             <span class="credits-totals__num">{{ totalCreditsUsed }}</span>
-            <span class="credits-totals__lbl">{{ 'Utilizados' | translate }}</span>
+            <span class="credits-totals__lbl">{{ 'Consumidos' | translate }}</span>
           </div>
           <div class="credits-totals__sep"></div>
-          <div class="credits-totals__item" style="color:#f59e0b;">
+          <div class="credits-totals__item credits-totals__item--reserved">
             <span class="credits-totals__num">{{ totalReservedCredits }}</span>
             <span class="credits-totals__lbl">{{ 'Reservados' | translate }}</span>
           </div>
@@ -122,8 +122,8 @@
           <!-- Cabeçalho de colunas -->
           <div class="credits-col-header">
             <div class="credits-col-header__client">{{ 'Cliente' | translate }}</div>
-            <div class="credits-col-header__num credits-col-header__num--used">{{ 'Utilizados' | translate }}</div>
             <div class="credits-col-header__num credits-col-header__num--reserved">{{ 'Reservados' | translate }}</div>
+            <div class="credits-col-header__num credits-col-header__num--used">{{ 'Consumidos' | translate }}</div>
             <div class="credits-col-header__num credits-col-header__num--avail">{{ 'Disponíveis' | translate }}</div>
             <div class="credits-col-header__status">{{ 'Status' | translate }}</div>
             <div class="credits-col-header__expand"></div>
@@ -143,13 +143,12 @@
                 <span class="credits-row-v2__name">{{ r.clientName }}</span>
               </div>
 
-              <div class="credits-row-v2__num credits-row-v2__num--used">
-                <span class="credits-num credits-num--used">{{ r.creditsUsed }}</span>
-              </div>
-
               <div class="credits-row-v2__num credits-row-v2__num--reserved">
                 <span class="credits-num credits-num--reserved">{{ r.reservedCredits }}</span>
-                <mat-icon *ngIf="r.reservedCredits > 0" class="credits-num__icon">lock_outline</mat-icon>
+              </div>
+
+              <div class="credits-row-v2__num credits-row-v2__num--used">
+                <span class="credits-num credits-num--used">{{ r.creditsUsed }}</span>
               </div>
 
               <div class="credits-row-v2__num credits-row-v2__num--avail">
@@ -182,29 +181,27 @@
               <!-- sub-cabeçalho de colunas -->
               <div class="credits-project-cols-header">
                 <span class="credits-project-cols-header__name">{{ 'Projeto' | translate }}</span>
-                <span class="credits-project-cols-header__val credits-project-cols-header__val--used">{{ 'Utilizados' | translate }}</span>
-                <span class="credits-project-cols-header__val credits-project-cols-header__val--reserved">{{ 'Reservados' | translate }}</span>
+                <span class="credits-project-cols-header__val">{{ 'Crédito' | translate }}</span>
               </div>
 
               <div class="credits-project-item" *ngFor="let p of r.projects"
                    [class.credits-project-item--orphan]="p.orphan">
-                <div class="credits-project-item__dot"
-                     [class.credits-project-item__dot--reserved]="p.reserved > 0 && p.used === 0"
-                     [class.credits-project-item__dot--mixed]="p.reserved > 0 && p.used > 0"></div>
                 <span class="credits-project-item__name"
                       [matTooltip]="p.orphan ? 'Projeto não encontrado — ID: ' + p.projectId : ''"
                       [matTooltipDisabled]="!p.orphan">
                   <mat-icon *ngIf="p.orphan" class="credits-project-item__warn">warning_amber</mat-icon>
                   {{ p.projectName }}
                 </span>
-                <span class="credits-project-item__used" *ngIf="p.used > 0">
-                  <mat-icon>toll</mat-icon>{{ p.used }}
+                <span class="credits-project-item__status-badge credits-project-item__status-badge--reserved"
+                      *ngIf="p.reserved"
+                      matTooltip="1 crédito reservado — projeto em andamento">
+                  <mat-icon>lock_outline</mat-icon>Reservado
                 </span>
-                <span class="credits-project-item__used credits-project-item__used--zero" *ngIf="p.used === 0">—</span>
-                <span class="credits-project-item__reserved" *ngIf="p.reserved > 0">
-                  <mat-icon>lock_outline</mat-icon>{{ p.reserved }}
+                <span class="credits-project-item__status-badge credits-project-item__status-badge--consumed"
+                      *ngIf="!p.reserved"
+                      matTooltip="1 crédito consumido — projeto concluído">
+                  <mat-icon>check_circle</mat-icon>Consumido
                 </span>
-                <span class="credits-project-item__reserved credits-project-item__reserved--zero" *ngIf="p.reserved === 0">—</span>
               </div>
             </div>
 
@@ -459,10 +456,17 @@
             </td>
           </ng-container>
 
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row" class="col-actions">
+              <mat-icon class="row-arrow-icon">arrow_forward</mat-icon>
+            </td>
+          </ng-container>
+
           <tr mat-header-row *matHeaderRowDef="masterProjectCols"></tr>
           <tr mat-row *matRowDef="let row; columns: masterProjectCols;"
               class="project-row"
-              [routerLink]="['/projects']"></tr>
+              [routerLink]="['/projects', row.id, 'edit']"></tr>
         </table>
 
         <div class="dash-empty" *ngIf="filteredProjectRows.length === 0">
@@ -853,10 +857,17 @@
             </td>
           </ng-container>
 
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row" class="col-actions">
+              <mat-icon class="row-arrow-icon">arrow_forward</mat-icon>
+            </td>
+          </ng-container>
+
           <tr mat-header-row *matHeaderRowDef="clientProjectCols"></tr>
           <tr mat-row *matRowDef="let row; columns: clientProjectCols;"
               class="project-row"
-              [routerLink]="['/projects']"></tr>
+              [routerLink]="['/projects', row.id, 'edit']"></tr>
         </table>
 
         <div class="dash-empty" *ngIf="filteredProjectRows.length === 0">

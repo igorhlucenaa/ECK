@@ -22,7 +22,7 @@ import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { EChartsOption } from 'echarts';
 import { ReportsPdfService } from './reports-pdf.service';
-import { ReportPdfMakeService } from '../../services/report-pdfmake.service';
+import { ReportPdfMakeService, DocumentoConfig, DOCUMENTO_CONFIG_PADRAO } from '../../services/report-pdfmake.service';
 import { NgxEchartsModule } from 'ngx-echarts';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -581,6 +581,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Modo de montagem: 'visual' ou 'classico'
   modoMontagem: 'visual' | 'classico' = 'visual';
+
+  documentoConfig: DocumentoConfig = { ...DOCUMENTO_CONFIG_PADRAO,
+    cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho },
+    rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape }
+  };
 
   // Exemplo de configuração inicial do relatório
   relatorioConfiguracao: RelatorioSecao[] = [
@@ -2470,6 +2475,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       assessmentName: assessment ? assessment.name : '',
       competencias: sanitize(this.competencias),
       configuracao: sanitize(this.relatorioConfiguracao),
+      documentoConfig: sanitize(this.documentoConfig),
       criadoEm: new Date()
     };
     try {
@@ -2512,6 +2518,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       assessmentName: assessment ? assessment.name : '',
       competencias: sanitize(this.competencias),
       configuracao: sanitize(this.relatorioConfiguracao),
+      documentoConfig: sanitize(this.documentoConfig),
       atualizadoEm: new Date()
     };
     try {
@@ -2532,6 +2539,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         const reportData = reportSnap.data();
         this.relatorioConfiguracao = reportData['configuracao'] || [];
         this.competencias = reportData['competencias'] || [];
+        if (reportData['documentoConfig']) {
+          this.documentoConfig = {
+            cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho, ...reportData['documentoConfig'].cabecalho },
+            rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape, ...reportData['documentoConfig'].rodape }
+          };
+        }
 
         // Preencher automaticamente o nome do relatório no campo de nome
         if (reportData['nome']) {
@@ -3089,6 +3102,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.relatorioConfiguracao = novaConfiguracao;
     this.atualizarFormArrayComConfiguracao();
     this.invalidateCache('secao-');
+    this.builderHasUnsavedChanges = true;
+  }
+
+  onDocumentoConfigChange(config: DocumentoConfig): void {
+    this.documentoConfig = config;
     this.builderHasUnsavedChanges = true;
   }
 

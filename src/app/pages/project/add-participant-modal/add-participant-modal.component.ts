@@ -14,6 +14,11 @@ import {
   getDoc,
   doc,
   addDoc,
+  runTransaction,
+  increment,
+  query,
+  where,
+  Timestamp,
 } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
@@ -129,6 +134,7 @@ interface ModalData {
           <input matInput formControlName="email" type="email" placeholder="exemplo@empresa.com" />
           <mat-error *ngIf="participantForm.get('email')?.hasError('required')">E-mail é obrigatório</mat-error>
           <mat-error *ngIf="participantForm.get('email')?.hasError('email')">E-mail inválido</mat-error>
+          <mat-error *ngIf="participantForm.get('email')?.hasError('duplicateEmail')">Este avaliador já foi adicionado ao projeto.</mat-error>
         </mat-form-field>
 
         <!-- Categoria -->
@@ -251,6 +257,29 @@ export class AddParticipantModalComponent implements OnInit {
     } finally {
       this.isLoading = false;
     }
+
+    // Validação de e-mail duplicado em tempo real (debounce 500 ms)
+    this.participantForm.get('email')!.valueChanges
+      .pipe(debounceTime(500))
+      .subscribe(async (email: string) => {
+        const ctrl = this.participantForm.get('email')!;
+        const projectId = this.participantForm.get('projectId')!.value;
+        if (!email || !projectId || ctrl.hasError('email') || ctrl.hasError('required')) return;
+        const emailNorm = email.trim().toLowerCase();
+        const snap = await getDocs(
+          query(
+            collection(this.firestore, 'participants'),
+            where('projectId', '==', projectId),
+            where('emailLower', '==', emailNorm)
+          )
+        );
+        if (!snap.empty) {
+          ctrl.setErrors({ ...ctrl.errors, duplicateEmail: true });
+        } else {
+          const { duplicateEmail: _dup, ...rest } = ctrl.errors ?? {};
+          ctrl.setErrors(Object.keys(rest).length ? rest : null);
+        }
+      });
   }
 
   async loadClientAndProjectNames(): Promise<void> {
@@ -365,49 +394,165 @@ export class AddParticipantModalComponent implements OnInit {
   }
 
   async addParticipant(): Promise<void> {
-    if (this.participantForm.invalid || this.isSaving) {
-      console.log('Formulário inválido ou salvamento em andamento');
-      return;
-    }
+    if (this.participantForm.invalid || this.isSaving) return;
 
     this.isSaving = true;
-    console.log('Iniciando salvamento do participante...');
 
     try {
       const formValue = this.participantForm.value;
       const category = formValue.category;
       const type = category === 'Avaliado' ? 'avaliado' : 'avaliador';
+      const clientId: string = formValue.clientId;
+      const projectId: string = formValue.projectId;
+      const emailNorm = (formValue.email as string).trim().toLowerCase();
 
-      const participantData = {
-        name: formValue.name,
-        email: formValue.email,
-        clientId: formValue.clientId,
-        projectId: formValue.projectId,
-        type: type,
-        category: category,
-        createdAt: new Date(),
-      };
-
-      console.log('Dados do participante a serem salvos:', participantData);
-
-      const docRef = await addDoc(
-        collection(this.firestore, 'participants'),
-        participantData
+      // Verifica duplicidade de e-mail no projeto (case-insensitive)
+      const dupSnap = await getDocs(
+        query(
+          collection(this.firestore, 'participants'),
+          where('projectId', '==', projectId),
+          where('emailLower', '==', emailNorm)
+        )
       );
-      console.log('Participante salvo com ID:', docRef.id);
+      if (!dupSnap.empty) {
+        const err: any = new Error('E-mail já cadastrado neste projeto.');
+        err.code = 'duplicate-email';
+        throw err;
+      }
 
-      this.snackBar.open('Participante adicionado com sucesso!', 'Fechar', {
-        duration: 3000,
-      });
-      this.dialogRef.close(true); // Retorna true para indicar que o participante foi adicionado
-    } catch (error) {
-      console.error('Erro ao adicionar participante:', error);
-      this.snackBar.open('Erro ao adicionar participante.', 'Fechar', {
-        duration: 3000,
-      });
+      if (type === 'avaliado') {
+        await this.registerEvaluateeWithCredit(formValue, clientId, projectId, emailNorm);
+      } else {
+        await addDoc(collection(this.firestore, 'participants'), {
+          name: formValue.name,
+          email: formValue.email,
+          emailLower: emailNorm,
+          clientId,
+          projectId,
+          type,
+          category,
+          createdAt: new Date(),
+        });
+      }
+
+      this.snackBar.open('Participante adicionado com sucesso!', 'Fechar', { duration: 3000 });
+      this.dialogRef.close(true);
+    } catch (error: any) {
+      if (error?.code === 'duplicate-email') {
+        this.snackBar.open(
+          'Este avaliador já foi adicionado ao projeto.',
+          'Fechar',
+          { duration: 5000 }
+        );
+      } else if (error?.code === 'insufficient-credits') {
+        this.snackBar.open(
+          'Créditos insuficientes. Adquira mais créditos para continuar.',
+          'Comprar Créditos',
+          { duration: 8000 }
+        );
+      } else {
+        console.error('Erro ao adicionar participante:', error);
+        this.snackBar.open('Erro ao adicionar participante.', 'Fechar', { duration: 3000 });
+      }
     } finally {
       this.isSaving = false;
-      console.log('Salvamento concluído');
     }
+  }
+
+  private async registerEvaluateeWithCredit(
+    formValue: any,
+    clientId: string,
+    projectId: string,
+    emailLower: string
+  ): Promise<void> {
+    const now = Timestamp.now();
+
+    // FIFO: busca todos os pedidos aprovados do cliente e filtra/ordena em memória
+    // (múltiplos filtros de desigualdade no Firestore exigem índice composto — evitamos aqui)
+    const orderSnap = await getDocs(
+      query(
+        collection(this.firestore, 'creditOrders'),
+        where('clientId', '==', clientId),
+        where('status', '==', 'Aprovado'),
+      )
+    );
+
+    const nowMs = Date.now();
+    const validOrders = orderSnap.docs
+      .filter(d => {
+        const data = d.data();
+        const validity = data['validityDate'] as Timestamp | undefined;
+        const remaining = (data['remainingCredits'] as number) ?? 0;
+        return remaining > 0 && (!validity || validity.toMillis() >= nowMs);
+      })
+      .sort((a, b) => {
+        const aMs = (a.data()['createdAt'] as Timestamp)?.toMillis() ?? 0;
+        const bMs = (b.data()['createdAt'] as Timestamp)?.toMillis() ?? 0;
+        return aMs - bMs;
+      });
+
+    if (validOrders.length === 0) {
+      const err: any = new Error('Créditos insuficientes.');
+      err.code = 'insufficient-credits';
+      throw err;
+    }
+
+    const orderRef = validOrders[0].ref;
+    const clientRef = doc(this.firestore, `clients/${clientId}`);
+    const participantRef = doc(collection(this.firestore, 'participants'));
+    const txRef = doc(collection(this.firestore, 'creditTransactions'));
+
+    await runTransaction(this.firestore, async (t) => {
+      const freshClient = await t.get(clientRef);
+      const freshOrder = await t.get(orderRef);
+
+      const clientCredits: number = freshClient.data()?.['credits'] ?? 0;
+      const orderRemaining: number = freshOrder.data()?.['remainingCredits'] ?? 0;
+      const orderValidity: Timestamp | undefined = freshOrder.data()?.['validityDate'];
+
+      if (clientCredits < 1 || orderRemaining < 1) {
+        const err: any = new Error('Créditos insuficientes.');
+        err.code = 'insufficient-credits';
+        throw err;
+      }
+
+      if (orderValidity && orderValidity.toMillis() < Date.now()) {
+        const err: any = new Error('Créditos insuficientes.');
+        err.code = 'insufficient-credits';
+        throw err;
+      }
+
+      t.set(participantRef, {
+        name: formValue.name,
+        email: formValue.email,
+        emailLower,
+        clientId,
+        projectId,
+        type: 'avaliado',
+        category: formValue.category,
+        createdAt: Timestamp.now(),
+        creditReserved: true,
+        creditConsumed: false,
+        orderId: orderRef.id,
+      });
+
+      t.update(clientRef, {
+        credits: increment(-1),
+        reservedCredits: increment(1),
+      });
+
+      t.update(orderRef, {
+        remainingCredits: increment(-1),
+      });
+
+      t.set(txRef, {
+        type: 'reserve',
+        clientId,
+        projectId,
+        participantId: participantRef.id,
+        orderId: orderRef.id,
+        createdAt: Timestamp.now(),
+      });
+    });
   }
 }

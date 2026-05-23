@@ -152,7 +152,7 @@ export class DashboardComponent implements OnInit {
     credits: number;
     reservedCredits: number;
     creditsUsed: number;
-    projects: { projectId: string; projectName: string; used: number; reserved: number; orphan: boolean }[];
+    projects: { projectId: string; projectName: string; reserved: boolean; used: number; orphan: boolean }[];
     expanded: boolean;
   }[] = [];
   creditPageIndex   = 0;
@@ -160,9 +160,9 @@ export class DashboardComponent implements OnInit {
   creditSearchQuery = '';
   creditStatusFilter = '';   // 'zero' | 'low' | 'ok' | ''
 
-  get totalCredits(): number { return this.clientCreditRows.reduce((s, r) => s + r.credits, 0); }
-  get totalReservedCredits(): number { return this.clientCreditRows.reduce((s, r) => s + r.reservedCredits, 0); }
-  get totalCreditsUsed(): number { return this.clientCreditRows.reduce((s, r) => s + r.creditsUsed, 0); }
+  get totalCredits(): number         { return this.clientCreditRows.reduce((s, r) => s + r.credits, 0); }
+  get totalReservedCredits(): number  { return this.clientCreditRows.reduce((s, r) => s + r.reservedCredits, 0); }
+  get totalCreditsUsed(): number      { return this.clientCreditRows.reduce((s, r) => s + r.creditsUsed, 0); }
 
   get filteredCreditRows() {
     const q = this.creditSearchQuery.trim().toLowerCase();
@@ -193,8 +193,8 @@ export class DashboardComponent implements OnInit {
 
   // ── Projects table ────────────────────────────────────────
   projectRows: ProjectRow[] = [];
-  masterProjectCols = ['clientName', 'name', 'responseRate', 'deadline', 'status'];
-  clientProjectCols = ['name', 'responseRate', 'deadline', 'status'];
+  masterProjectCols = ['clientName', 'name', 'responseRate', 'deadline', 'status', 'actions'];
+  clientProjectCols = ['name', 'responseRate', 'deadline', 'status', 'actions'];
   projectPageIndex = 0;
   projectPageSize  = 8;
   projectSearchQuery = '';
@@ -365,82 +365,46 @@ export class DashboardComponent implements OnInit {
       { value: pendingCount,           label: 'Avaliações em Andamento',  color: '#7c3aed', icon: 'assignment_turned_in' },
     ];
 
-    // Credits per client — com breakdown por projeto
-    const UNKNOWN_PROJECT = '__sem_projeto__';
+    // Credits per client — NOVO modelo: 1 crédito reservado por projeto ativo, 1 consumido por projeto concluído
+    const projectsNameMap = new Map(projectsSnap.docs.map(d => [d.id, (d.data()['name'] as string) || '—']));
+    const concludedByClient = new Map<string, { projectId: string; projectName: string }[]>();
+    const activeByClient    = new Map<string, { projectId: string; projectName: string }[]>();
 
-    // Mapa de utilizados: clientId → Map<projectId, count>
-    // Fonte: assessmentLinks completed, enriquecido com clientId do participante
-    const usedByClientProject = new Map<string, Map<string, number>>();
-    participantsSnap.docs.forEach(pDoc => {
+    projectsSnap.docs.forEach(pDoc => {
       const data = pDoc.data();
       const clientId = data['clientId'] as string;
       if (!clientId) return;
-      if (completedParticipantIds.has(pDoc.id)) {
-        const projectId = (data['projectId'] as string) || UNKNOWN_PROJECT;
-        if (!usedByClientProject.has(clientId)) usedByClientProject.set(clientId, new Map());
-        const proj = usedByClientProject.get(clientId)!;
-        proj.set(projectId, (proj.get(projectId) || 0) + 1);
+      const projectName = projectsNameMap.get(pDoc.id) ?? (data['name'] as string) ?? '—';
+      if (data['status'] === 'Concluído') {
+        if (!concludedByClient.has(clientId)) concludedByClient.set(clientId, []);
+        concludedByClient.get(clientId)!.push({ projectId: pDoc.id, projectName });
+      } else if (!['Cancelado', 'Inativo'].includes(data['status'])) {
+        if (!activeByClient.has(clientId)) activeByClient.set(clientId, []);
+        activeByClient.get(clientId)!.push({ projectId: pDoc.id, projectName });
       }
     });
 
-    // Mapa de reservados: clientId → Map<projectId, count>
-    // Fonte: assessmentLinks com creditReserved=true e status=pending (computado localmente,
-    // não usa clients.reservedCredits que pode estar desatualizado)
-    const reservedByClientProject = new Map<string, Map<string, number>>();
-    pendingLinkSnap.docs.forEach(linkDoc => {
-      const data = linkDoc.data();
-      if (!data['creditReserved']) return;
-      const clientId = data['clientId'] as string;
-      if (!clientId) return;
-      const projectId = (data['projectId'] as string) || UNKNOWN_PROJECT;
-      if (!reservedByClientProject.has(clientId)) reservedByClientProject.set(clientId, new Map());
-      const proj = reservedByClientProject.get(clientId)!;
-      proj.set(projectId, (proj.get(projectId) || 0) + 1);
-    });
-
-    const projectsNameMap = new Map(projectsSnap.docs.map(d => [d.id, (d.data()['name'] as string) || '—']));
-
     this.clientCreditRows = clientsSnap.docs
       .map(d => {
-        const usedMap      = usedByClientProject.get(d.id)     || new Map<string, number>();
-        const reservedMap  = reservedByClientProject.get(d.id) || new Map<string, number>();
+        const active    = activeByClient.get(d.id)    || [];
+        const concluded = concludedByClient.get(d.id) || [];
 
-        // União de todos os projetos com qualquer atividade de crédito
-        const allProjectIds = new Set([...usedMap.keys(), ...reservedMap.keys()]);
-
-        const projects = Array.from(allProjectIds)
-          .map(projectId => {
-            const used     = usedMap.get(projectId)     || 0;
-            const reserved = reservedMap.get(projectId) || 0;
-            let projectName: string;
-            let orphan = false;
-            if (projectId === UNKNOWN_PROJECT) {
-              projectName = 'Sem projeto';
-              orphan = true;
-            } else {
-              const found = projectsNameMap.get(projectId);
-              projectName = found ?? 'Projeto excluído';
-              orphan = !found;
-            }
-            return { projectId, projectName, used, reserved, orphan };
-          })
-          .sort((a, b) => (b.used + b.reserved) - (a.used + a.reserved));
-
-        // Totais computados localmente (consistência garantida)
-        const creditsUsedCalc     = projects.reduce((s, p) => s + p.used,     0);
-        const reservedCreditsCalc = projects.reduce((s, p) => s + p.reserved, 0);
+        const projects = [
+          ...active.map(p => ({ projectId: p.projectId, projectName: p.projectName, reserved: true,  used: 0, orphan: false })),
+          ...concluded.map(p => ({ projectId: p.projectId, projectName: p.projectName, reserved: false, used: 1, orphan: false })),
+        ];
 
         return {
           clientId: d.id,
           clientName: (d.data()['companyName'] as string) || '—',
           credits: (d.data()['credits'] as number) || 0,
-          reservedCredits: reservedCreditsCalc,   // ← computado de links reais, não do campo Firestore
-          creditsUsed: creditsUsedCalc,
+          reservedCredits: (d.data()['reservedCredits'] as number) || 0,
+          creditsUsed: (d.data()['consumedCredits'] as number) || 0,
           projects,
           expanded: false,
         };
       })
-      .sort((a, b) => a.credits - b.credits); // menor primeiro (mais crítico no topo)
+      .sort((a, b) => a.credits - b.credits); // menor disponível primeiro (mais crítico no topo)
 
     // Projects table
     this.projectRows = this.buildProjectRows(projectsSnap.docs, statsByProject, clientsMap, today);
@@ -680,7 +644,7 @@ export class DashboardComponent implements OnInit {
           clientName: cMap.get(data['clientId']) || '',
           title: data['name'] || '',
           description: `Vencido há ${overdue} dia(s) — ${rate}% respondido`,
-          route: '/projects',
+          route: `/projects/${d.id}/edit`,
         });
       });
 
@@ -709,7 +673,7 @@ export class DashboardComponent implements OnInit {
           clientName: cMap.get(data['clientId']) || '',
           title: data['name'] || '',
           description: `${days} dia(s) restante(s) — ${pending} resposta(s) pendente(s) (${rate}% concluído)`,
-          route: '/projects',
+          route: `/projects/${d.id}/edit`,
         });
       });
 

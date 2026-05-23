@@ -635,7 +635,9 @@
         [competencias]="competencias"
         [savedLabel]="builderSavedLabel"
         [hasUnsavedChanges]="builderHasUnsavedChanges"
+        [documentoConfig]="documentoConfig"
         (configuracaoChange)="onConfiguracaoVisualChange($event)"
+        (documentoConfigChange)="onDocumentoConfigChange($event)"
         (saveRequested)="onBuilderSaveRequested()">
       </app-report-builder-visual>
 
@@ -1267,6 +1269,7 @@
                             [view]="[800, (dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)]"
                             [style.height.px]="(dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)"
                             [legend]="true"
+                            [legendTitle]="'Legenda'"
                             [showGridLines]="true"
                             [showDataLabel]="true"
                             [barPadding]="8"

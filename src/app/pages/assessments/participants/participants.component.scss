@@ -141,90 +141,6 @@
   font-size: 13px;
 }
 
-// ─── Barra de resumo de créditos ─────────────────────────────
-.credits-summary-bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  padding: 10px 20px;
-  background: #f8faff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  margin: 0 0 14px;
-  font-size: 13px;
-
-  &__sep { color: #cbd5e1; font-size: 16px; }
-
-  &__item {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: 500;
-
-    mat-icon { font-size: 16px; width: 16px; height: 16px; flex-shrink: 0; }
-
-    &--available { color: #166534; mat-icon { color: #16a34a; } }
-    &--available.credits-summary-bar__item--zero { color: #b91c1c; mat-icon { color: #ef4444; } }
-    &--reserved { color: #5b21b6; mat-icon { color: #7c3aed; } }
-  }
-
-  &__reserved-names {
-    color: #64748b;
-    font-weight: 400;
-    font-size: 12px;
-  }
-
-  &__item--btn {
-    cursor: pointer;
-    border: none;
-    background: none;
-    font: inherit;
-    transition: opacity 0.15s;
-    &:hover { opacity: 0.8; }
-  }
-
-  &__warn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    color: #b91c1c;
-    font-weight: 600;
-    font-size: 12px;
-    mat-icon { font-size: 15px; width: 15px; height: 15px; color: #ef4444; }
-  }
-}
-
-// ─── Banner de créditos (legado — mantido) ────────────────────
-.credits-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  border-radius: 10px;
-  margin: 0 0 16px;
-  font-size: 13.5px;
-  font-weight: 500;
-
-  mat-icon {
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-
-  &--ok {
-    background: rgba(76, 175, 80, 0.08);
-    border: 1px solid rgba(76, 175, 80, 0.25);
-    color: #2e7d32;
-  }
-
-  &--zero {
-    background: rgba(239, 68, 68, 0.07);
-    border: 1px solid rgba(239, 68, 68, 0.25);
-    color: #b91c1c;
-  }
-}
 
 // ─── Dialog Actions ───────────────────────────────────────────
 .send-dialog-actions {
@@ -497,6 +413,92 @@
 .ctx-sep {
   width: 1px; height: 28px;
   background: rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+
+// ─── Credit Panel ─────────────────────────────────────────────
+.credit-panel {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 16px 20px 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(27, 45, 86, 0.06);
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin-bottom: 12px;
+    mat-icon { font-size: 16px; width: 16px; height: 16px; color: #94a3b8; }
+  }
+
+  &__items {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+  }
+
+  &__note {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    color: #94a3b8;
+    margin-top: 10px;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 8px;
+    mat-icon { font-size: 14px; width: 14px; height: 14px; }
+  }
+}
+
+.credit-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 20px;
+  gap: 1px;
+  min-width: 90px;
+
+  &__value {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  &__label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+  }
+
+  &__hint {
+    font-size: 10px;
+    color: #94a3b8;
+  }
+
+  &--green  .credit-item__value { color: #10b981; }
+  &--green  .credit-item__label { color: #10b981; }
+  &--amber  .credit-item__value { color: #f59e0b; }
+  &--amber  .credit-item__label { color: #f59e0b; }
+  &--blue   .credit-item__value { color: #3b82f6; }
+  &--blue   .credit-item__label { color: #3b82f6; }
+  &--gray   .credit-item__value { color: #64748b; }
+  &--gray   .credit-item__label { color: #64748b; }
+}
+
+.credit-sep {
+  width: 1px;
+  height: 40px;
+  background: #e2e8f0;
   flex-shrink: 0;
 }
 

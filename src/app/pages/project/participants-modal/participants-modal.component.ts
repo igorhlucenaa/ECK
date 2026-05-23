@@ -56,6 +56,7 @@ interface UnifiedParticipant {
   type: 'avaliado' | 'avaliador';
   clientId: string;
   creditReserved?: boolean;
+  creditConsumed?: boolean;
   reminderCount?: number;
   nextReminderAt?: Date;
   sendCount?: number;          // total de envios (convite + lembretes manuais)
@@ -94,77 +95,6 @@ interface Assessment {
       </div>
       <div class="si-header__right">
 
-        <!-- Pill de créditos — clicável para ver reservas -->
-        <button class="si-credits-pill"
-                [class.si-credits-pill--low]="clientCredits < 5 && clientCredits > 0"
-                [class.si-credits-pill--zero]="clientCredits === 0"
-                [matMenuTriggerFor]="creditsMenu"
-                matTooltip="Ver detalhes de créditos">
-          <mat-icon>toll</mat-icon>
-          <strong>{{ clientCredits }}</strong> disponíveis
-          <span class="si-credits-pill__reserved" *ngIf="reservedParticipants.length > 0">
-            &nbsp;·&nbsp;
-            <mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle;">lock_outline</mat-icon>
-            <strong>{{ reservedParticipants.length }}</strong> reservado{{ reservedParticipants.length !== 1 ? 's' : '' }}
-          </span>
-        </button>
-
-        <!-- Menu de créditos reservados -->
-        <mat-menu #creditsMenu="matMenu" class="si-credits-menu">
-          <div class="si-credits-menu__header" (click)="$event.stopPropagation()">
-            <mat-icon>toll</mat-icon>
-            <span>Créditos — {{ data.projectName || 'Projeto' }}</span>
-          </div>
-
-          <!-- Resumo de contadores -->
-          <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
-            <span class="si-credits-menu__label">Disponíveis (cliente)</span>
-            <span class="si-credits-menu__val si-credits-menu__val--avail">{{ clientCredits }}</span>
-          </div>
-          <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
-            <span class="si-credits-menu__label">Reservados (este projeto)</span>
-            <span class="si-credits-menu__val si-credits-menu__val--reserved">{{ reservedParticipants.length }}</span>
-          </div>
-          <div class="si-credits-menu__row" (click)="$event.stopPropagation()">
-            <span class="si-credits-menu__label">Utilizados (este projeto)</span>
-            <span class="si-credits-menu__val si-credits-menu__val--used">{{ usedParticipants.length }}</span>
-          </div>
-
-          <!-- Reservados -->
-          <mat-divider></mat-divider>
-          <div class="si-credits-menu__section" (click)="$event.stopPropagation()">
-            <span class="si-credits-menu__section-title">
-              🔒 Reservados — aguardando resposta
-            </span>
-            <div class="si-credits-menu__participant" *ngFor="let p of reservedParticipants">
-              <div class="si-credits-menu__avatar">{{ p.name.charAt(0).toUpperCase() }}</div>
-              <div class="si-credits-menu__pinfo">
-                <span class="si-credits-menu__pname">{{ p.name }}</span>
-                <span class="si-credits-menu__pemail">{{ p.email }}</span>
-              </div>
-              <span class="si-credits-menu__pstatus si-credits-menu__pstatus--pending">Pendente</span>
-            </div>
-            <div class="si-credits-menu__empty" *ngIf="reservedParticipants.length === 0">
-              <mat-icon>check_circle</mat-icon><span>Nenhum reservado neste projeto</span>
-            </div>
-          </div>
-
-          <!-- Utilizados -->
-          <mat-divider *ngIf="usedParticipants.length > 0"></mat-divider>
-          <div class="si-credits-menu__section" *ngIf="usedParticipants.length > 0" (click)="$event.stopPropagation()">
-            <span class="si-credits-menu__section-title">
-              ✅ Utilizados — já responderam
-            </span>
-            <div class="si-credits-menu__participant" *ngFor="let p of usedParticipants">
-              <div class="si-credits-menu__avatar si-credits-menu__avatar--used">{{ p.name.charAt(0).toUpperCase() }}</div>
-              <div class="si-credits-menu__pinfo">
-                <span class="si-credits-menu__pname">{{ p.name }}</span>
-                <span class="si-credits-menu__pemail">{{ p.completedAt | date:'dd/MM/yy HH:mm' }}</span>
-              </div>
-              <span class="si-credits-menu__pstatus si-credits-menu__pstatus--used">Respondido</span>
-            </div>
-          </div>
-        </mat-menu>
         <button mat-icon-button class="si-header__refresh" (click)="refreshParticipants()" [disabled]="isRefreshing" matTooltip="Atualizar">
           <mat-icon [class.si-spin]="isRefreshing">refresh</mat-icon>
         </button>
@@ -262,14 +192,7 @@ interface Assessment {
             <mat-icon>check_circle</mat-icon>
             {{ p.completedAt ? (p.completedAt | date:'dd/MM/yy') : '—' }}
           </span>
-          <span class="si-datas-row si-datas-row--credit" *ngIf="p.completedAt"
-                matTooltip="1 crédito consumido ao responder">
-            <mat-icon>toll</mat-icon>1 crédito
-          </span>
-          <span class="si-datas-row si-datas-row--reserved" *ngIf="p.creditReserved && !p.completedAt"
-                matTooltip="1 crédito reservado para este participante">
-            <mat-icon>lock_outline</mat-icon>1 reservado
-          </span>
+
         </div>
 
         <div class="si-row__meta">
@@ -298,7 +221,7 @@ interface Assessment {
           <button class="si-act-btn si-act-btn--cancel"
                   *ngIf="p.status === 'Enviado (Pendente)'"
                   (click)="cancelSend(p); $event.stopPropagation()"
-                  matTooltip="Cancelar envio e liberar crédito">
+                  matTooltip="Cancelar envio">
             <mat-icon>cancel</mat-icon>
           </button>
         </div>
@@ -311,12 +234,6 @@ interface Assessment {
         <span class="si-footer__count" *ngIf="selectedParticipants.length > 0">
           <mat-icon>check_circle</mat-icon>
           {{ selectedParticipants.length }} selecionado{{ selectedParticipants.length !== 1 ? 's' : '' }}
-          <span class="si-footer__credit-tag" *ngIf="newCreditsNeeded > 0">
-            · {{ newCreditsNeeded }} crédito{{ newCreditsNeeded !== 1 ? 's' : '' }} a reservar
-          </span>
-          <span class="si-footer__no-credit-tag" *ngIf="newCreditsNeeded === 0 && selectedParticipants.length > 0">
-            · créditos já reservados
-          </span>
         </span>
         <span class="si-footer__hint" *ngIf="!isSelectionReady">
           Selecione um modelo de e-mail{{ selectedTemplate && selectedTemplate.emailType !== 'cadastro' ? ' e um formulário' : '' }} para habilitar a seleção
@@ -324,14 +241,11 @@ interface Assessment {
         <span class="si-footer__hint" *ngIf="isSelectionReady && selectedParticipants.length === 0">
           Selecione ao menos um participante para enviar
         </span>
-        <span class="si-footer__err" *ngIf="newCreditsNeeded > clientCredits">
-          <mat-icon>warning</mat-icon> Créditos insuficientes (disponíveis: {{ clientCredits }})
-        </span>
       </div>
       <div class="si-footer__actions">
         <button mat-button (click)="dialogRef.close()">Cancelar</button>
         <button class="si-send-btn" (click)="resendLinks()"
-                [disabled]="isLoading || selectedParticipants.length === 0 || !templateFormControl.valid || !assessmentFormControl.valid || newCreditsNeeded > clientCredits">
+                [disabled]="isLoading || selectedParticipants.length === 0 || !templateFormControl.valid || !assessmentFormControl.valid">
           <span class="si-send-btn__spinner" *ngIf="isLoading"></span>
           <mat-icon *ngIf="!isLoading">send</mat-icon>
           {{ isLoading ? 'Enviando…' : 'Enviar E-mails' }}
@@ -370,27 +284,6 @@ export class ParticipantsModalComponent implements OnInit {
   assessments: Assessment[] = [];
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
-  clientCredits = 0;
-  clientReservedCredits = 0;
-
-  get newCreditsNeeded(): number {
-    return this.selectedParticipants.filter(p => !p.completedAt && !p['creditReserved']).length;
-  }
-
-  get reservedModalNames(): string[] {
-    return this.reservedParticipants.map(p => p.name);
-  }
-
-  /** Participantes com crédito reservado (envio pendente, não responderam ainda) */
-  get reservedParticipants(): UnifiedParticipant[] {
-    return this.dataSource.data.filter(p => p.creditReserved && !p.completedAt);
-  }
-
-  /** Participantes que já responderam (crédito consumido) */
-  get usedParticipants(): UnifiedParticipant[] {
-    return this.dataSource.data.filter(p => !!p.completedAt);
-  }
-
   selectAllPending(): void {
     if (!this.isSelectionReady) return;
     this.dataSource.filteredData.forEach(p => {
@@ -425,7 +318,6 @@ export class ParticipantsModalComponent implements OnInit {
       this.loadAssessmentsForClient(this.data.clientId),
       this.loadClients(),
       this.loadProjects(),
-      this.loadClientCredits(),
     ]);
     this.dataSource.paginator = this.participantsPaginator;
     this.dataSource.sort = this.sort;
@@ -461,17 +353,6 @@ export class ParticipantsModalComponent implements OnInit {
     });
   }
 
-  async loadClientCredits(): Promise<void> {
-    try {
-      const snap = await getDoc(doc(this.firestore, `clients/${this.data.clientId}`));
-      if (snap.exists()) {
-        const d = snap.data() as Record<string, any>;
-        this.clientCredits = d['credits'] || 0;
-        this.clientReservedCredits = d['reservedCredits'] || 0;
-      }
-    } catch { /* silent */ }
-  }
-
   getFriendlyEmailType(emailType: string): string {
     switch (emailType) {
       case 'conviteAvaliador':
@@ -493,7 +374,7 @@ export class ParticipantsModalComponent implements OnInit {
 
   async refreshParticipants(): Promise<void> {
     this.isRefreshing = true;
-    await Promise.all([this.loadParticipants(), this.loadClientCredits()]);
+    await this.loadParticipants();
     this.isRefreshing = false;
     this.lastRefreshed = new Date();
   }
@@ -571,9 +452,8 @@ export class ParticipantsModalComponent implements OnInit {
           }
         }
 
-        const creditReserved = (linkDataMap[participantId] || []).some(
-          ld => ld['creditReserved'] === true && ld['status'] !== 'cancelled'
-        );
+        const creditReserved = participantData['creditReserved'] === true;
+        const creditConsumed = participantData['creditConsumed'] === true;
 
         participants.push({
           id: participantId,
@@ -587,6 +467,7 @@ export class ParticipantsModalComponent implements OnInit {
           type: type,
           clientId: this.data.clientId,
           creditReserved,
+          creditConsumed,
           reminderCount,
           nextReminderAt,
           sendCount,
@@ -794,39 +675,9 @@ export class ParticipantsModalComponent implements OnInit {
         return;
       }
 
-      // ── Verificar e preparar reserva de créditos ──────────────
-      const clientRef = doc(this.firestore, `clients/${this.data.clientId}`);
-      const clientSnap = await getDoc(clientRef);
-      let creditsToReserve = 0;
-      if (clientSnap.exists()) {
-        const availableCredits: number = clientSnap.data()['credits'] || 0;
-        // Descobre quais participantes já têm crédito reservado
-        let alreadyReservedCount = 0;
-        for (const p of this.selectedParticipants) {
-          const existQ = query(
-            collection(this.firestore, 'assessmentLinks'),
-            where('participantId', '==', p.id),
-            where('assessmentId', '==', assessment.id)
-          );
-          const existSnap = await getDocs(existQ);
-          const hasReservation = existSnap.docs.some(d => d.data()['creditReserved'] === true && d.data()['status'] !== 'cancelled');
-          if (hasReservation) alreadyReservedCount++;
-        }
-        const newCreditsNeeded = this.selectedParticipants.length - alreadyReservedCount;
-        if (availableCredits < newCreditsNeeded) {
-          this.snackBar.open(
-            this.translate.instant(`Créditos insuficientes. Disponíveis: ${availableCredits} — necessários: ${newCreditsNeeded}.`),
-            this.translate.instant('Fechar'),
-            { duration: 6000 }
-          );
-          this.isLoading = false;
-          return;
-        }
-      }
-      // ──────────────────────────────────────────────────────────
-
       // Carrega configurações de lembrete do projeto uma única vez
       const reminderSettings = await this.loadReminderSettings();
+      const emailCount = this.selectedParticipants.length;
 
       for (const participant of this.selectedParticipants) {
         const emailRequest = {
@@ -872,7 +723,7 @@ export class ParticipantsModalComponent implements OnInit {
             status: 'pending',
             emailTemplate: template.id,
             participantEmail: participant.email,
-            creditReserved: true,
+            creditReserved: false,
           };
 
           if (reminderSettings) {
@@ -888,12 +739,10 @@ export class ParticipantsModalComponent implements OnInit {
 
           const assessmentLinkDoc = doc(collection(this.firestore, 'assessmentLinks'));
           await setDoc(assessmentLinkDoc, newLinkData);
-          creditsToReserve++;
         } else {
           const existingLinkDoc = existingLinksSnapshot.docs[0];
           const existingData = existingLinkDoc.data();
           const isPending = existingData['status'] !== 'completed';
-          const alreadyReserved = existingData['creditReserved'] === true && existingData['status'] !== 'cancelled';
 
           const updateData: Record<string, any> = {
             clientId: this.data.clientId,
@@ -901,7 +750,7 @@ export class ParticipantsModalComponent implements OnInit {
             sentAt: new Date(),
             emailTemplate: template.id,
             status: isPending ? 'pending' : 'completed',
-            creditReserved: true,
+            creditReserved: false,
           };
 
           if (isPending && !existingData['nextReminderAt'] && reminderSettings) {
@@ -919,24 +768,13 @@ export class ParticipantsModalComponent implements OnInit {
             doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
             updateData
           );
-          if (!alreadyReserved) creditsToReserve++;
         }
       }
 
-      // ── Efetivar reserva de créditos ───────────────────────────
-      if (creditsToReserve > 0) {
-        const latestClientSnap = await getDoc(clientRef);
-        if (latestClientSnap.exists()) {
-          const d = latestClientSnap.data();
-          await updateDoc(clientRef, {
-            credits: Math.max(0, (d['credits'] || 0) - creditsToReserve),
-            reservedCredits: (d['reservedCredits'] || 0) + creditsToReserve,
-          });
-        }
-      }
-      // ──────────────────────────────────────────────────────────
+      // Marca crédito como consumido para avaliados disparados neste envio
+      await this.markCreditsConsumedForDispatch();
 
-      const msg = this.translate.instant('Links enviados para {{count}} participantes!', { count: this.selectedParticipants.length });
+      const msg = this.translate.instant('Links enviados para {{count}} participantes!', { count: emailCount });
       this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 3000 });
       this.dialogRef.close();
     } catch (error) {
@@ -945,6 +783,35 @@ export class ParticipantsModalComponent implements OnInit {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  /**
+   * Ao concluir um disparo, marca creditConsumed=true em cada avaliado
+   * presente nos selectedParticipants e define firstFinalDispatchAt no projeto
+   * se ainda não estiver definido (gatilho R4: estorno só antes do 1º disparo).
+   */
+  private async markCreditsConsumedForDispatch(): Promise<void> {
+    const avaliadosToConsume = this.selectedParticipants.filter(
+      (p) => p.type === 'avaliado' && p.creditReserved && !p.creditConsumed
+    );
+
+    if (avaliadosToConsume.length === 0) return;
+
+    const projectRef = doc(this.firestore, `projects/${this.data.projectId}`);
+    const projectSnap = await getDoc(projectRef);
+    const hasFirstDispatch = !!projectSnap.data()?.['firstFinalDispatchAt'];
+
+    const updates: Promise<void>[] = avaliadosToConsume.map((p) =>
+      updateDoc(doc(this.firestore, 'participants', p.id), { creditConsumed: true })
+    );
+
+    if (!hasFirstDispatch) {
+      updates.push(
+        updateDoc(projectRef, { firstFinalDispatchAt: Timestamp.now() })
+      );
+    }
+
+    await Promise.all(updates);
   }
 
   /** Carrega as configurações de lembrete ativas para o projeto atual. */
@@ -1093,7 +960,7 @@ export class ParticipantsModalComponent implements OnInit {
       type: 'warning',
       title: 'Cancelar envio',
       itemName: participant.name,
-      message: 'O crédito reservado será liberado de volta ao saldo do cliente.',
+      message: 'Tem certeza que deseja cancelar o envio?',
     });
     if (!ok) return;
 
@@ -1105,8 +972,6 @@ export class ParticipantsModalComponent implements OnInit {
     participant.status = 'Não Enviado';
     participant.sentAt = undefined;
     participant.creditReserved = false;
-    this.clientCredits += 1;
-    this.clientReservedCredits = Math.max(0, this.clientReservedCredits - 1);
     this.dataSource.data = [...this.dataSource.data];
     this.applyFilter();
     this.updateSelection();
@@ -1124,9 +989,6 @@ export class ParticipantsModalComponent implements OnInit {
         return;
       }
       const linkDoc = linkSnap.docs[0];
-      const linkData = linkDoc.data();
-      const creditWasReserved = linkData['creditReserved'] === true;
-      const clientIdForCancel = linkData['clientId'] || this.data.clientId;
 
       await updateDoc(doc(this.firestore, 'assessmentLinks', linkDoc.id), {
         status: 'cancelled',
@@ -1134,26 +996,12 @@ export class ParticipantsModalComponent implements OnInit {
         creditReserved: false,
       });
 
-      if (creditWasReserved && clientIdForCancel) {
-        const clientRef = doc(this.firestore, `clients/${clientIdForCancel}`);
-        const clientSnap = await getDoc(clientRef);
-        if (clientSnap.exists()) {
-          const d = clientSnap.data() as Record<string, any>;
-          await updateDoc(clientRef, {
-            credits: (d['credits'] || 0) + 1,
-            reservedCredits: Math.max(0, (d['reservedCredits'] || 0) - 1),
-          });
-        }
-      }
-
-      this.snackBar.open('Envio cancelado e crédito liberado.', 'Fechar', { duration: 3000 });
+      this.snackBar.open('Envio cancelado.', 'Fechar', { duration: 3000 });
     } catch (e) {
       // Rollback em caso de erro
       participant.status = prevStatus;
       participant.sentAt = prevSentAt;
       participant.creditReserved = prevCreditReserved;
-      this.clientCredits -= 1;
-      this.clientReservedCredits += 1;
       this.dataSource.data = [...this.dataSource.data];
       this.applyFilter();
       console.error('Erro ao cancelar envio:', e);
