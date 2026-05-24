@@ -2742,7 +2742,32 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       width: 100% !important;
       max-width: none !important;
     }
-    .report-section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 4mm; }
+    .report-section {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+      margin-bottom: 4mm;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
+    app-johari-window-chart,
+    app-gap-chart,
+    ngx-charts-bar-horizontal,
+    .pdf-svg-chart,
+    .capa-info-block {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+      display: block !important;
+    }
+    table {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+    tr {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
     img, canvas { max-width: 100% !important; height: auto; }
     svg { max-width: 100% !important; }
     .pdf-svg-chart {
@@ -2765,6 +2790,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       color: #0f172a !important;
     }
     table { border-collapse: collapse; max-width: 100%; }
+    .tabela-frequencia,
+    .tabela-distribuicao-notas,
+    .tabela-destaques {
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+    }
+    .tabela-destaques th, .tabela-destaques td {
+      word-break: break-word !important;
+      white-space: normal !important;
+    }
     #report-preview .pdf-chip-set,
     #report-preview mat-chip-set,
     #report-preview .mat-mdc-chip-set {

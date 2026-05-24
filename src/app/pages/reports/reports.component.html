@@ -1364,25 +1364,31 @@
                   <p>{{ comp.descricao }}</p>
                   <div style="overflow-x: auto;">
                     <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
-                      <table class="tabela-frequencia" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                      <table class="tabela-frequencia" style="width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed;">
+                        <colgroup>
+                          <col style="width: 35%;">
+                          <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                            <col *ngFor="let nota of [1,2,3,4,5]" style="width: 2.6%;">
+                          </ng-container>
+                        </colgroup>
                         <thead>
                           <tr [style.background-color]="getTableHeaderColors(secao).primary" style="color: white;">
-                            <th rowspan="2" style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">{{ comp.nome.toUpperCase() }}</th>
-                            <th *ngFor="let categoria of tabelaData.mediasGerais" [attr.colspan]="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">
+                            <th rowspan="2" style="border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-weight: bold; font-size: 11px;">{{ comp.nome.toUpperCase() }}</th>
+                            <th *ngFor="let categoria of tabelaData.mediasGerais" [attr.colspan]="5" style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 11px;">
                               {{ getAbreviacaoCategoria(categoria.categoria) }}
                             </th>
                           </tr>
                           <tr [style.background-color]="getTableHeaderColors(secao).secondary" style="color: white;">
                             <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                              <th *ngFor="let nota of [1,2,3,4,5]" style="border: 1px solid #ddd; padding: 4px; text-align: center; min-width: 30px; font-weight: bold;">{{ nota }}</th>
+                              <th *ngFor="let nota of [1,2,3,4,5]" style="border: 1px solid #ddd; padding: 4px 1px; text-align: center; font-weight: bold; font-size: 10px;">{{ nota }}</th>
                             </ng-container>
                           </tr>
                         </thead>
                         <tbody>
                           <tr *ngFor="let linha of tabelaData.linhas; let isEven = even" [style.background-color]="isEven ? '#f9f9f9' : 'white'">
-                            <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px; text-align: left;">{{ linha.pergunta }}</td>
+                            <td style="border: 1px solid #ddd; padding: 6px 8px; font-size: 11px; text-align: left; line-height: 1.3;">{{ linha.pergunta }}</td>
                             <ng-container *ngFor="let categoria of linha.categorias">
-                              <td *ngFor="let dist of categoria.distribuicao" style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 12px;">
+                              <td *ngFor="let dist of categoria.distribuicao" style="border: 1px solid #ddd; padding: 4px 1px; text-align: center; font-size: 10px;">
                                 {{ dist.quantidade > 0 ? dist.quantidade : '' }}
                               </td>
                             </ng-container>
@@ -1428,23 +1434,29 @@
                     </div>
                     <div style="overflow-x: auto;">
                       <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
-                        <table class="tabela-distribuicao-notas" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <table class="tabela-distribuicao-notas" style="width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed;">
+                          <colgroup>
+                            <col style="width: 35%;">
+                            <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                              <col *ngFor="let nota of [1,2,3,4,5]" style="width: 2.6%;">
+                            </ng-container>
+                          </colgroup>
                           <thead>
                             <tr [style.background-color]="getTableHeaderColors(secao).primary" style="color: white;">
-                              <th rowspan="2" style="border: 1px solid #ddd; padding: 8px; text-align: left;">{{ comp.nome.toUpperCase() }}</th>
-                              <th *ngFor="let categoria of tabelaData.mediasGerais" [attr.colspan]="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ getAbreviacaoCategoria(categoria.categoria) }}</th>
+                              <th rowspan="2" style="border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-weight: bold; font-size: 11px;">{{ comp.nome.toUpperCase() }}</th>
+                              <th *ngFor="let categoria of tabelaData.mediasGerais" [attr.colspan]="5" style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 11px;">{{ getAbreviacaoCategoria(categoria.categoria) }}</th>
                             </tr>
                             <tr [style.background-color]="getTableHeaderColors(secao).secondary" style="color: white;">
                               <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                                <th *ngFor="let nota of [1,2,3,4,5]" style="border: 1px solid #ddd; padding: 4px; text-align: center; min-width: 30px;">{{ nota }}</th>
+                                <th *ngFor="let nota of [1,2,3,4,5]" style="border: 1px solid #ddd; padding: 4px 1px; text-align: center; font-size: 10px;">{{ nota }}</th>
                               </ng-container>
                             </tr>
                           </thead>
                           <tbody>
                             <tr *ngFor="let linha of tabelaData.linhas; let isEven = even" [style.background-color]="isEven ? '#f9f9f9' : 'white'">
-                              <td style="border: 1px solid #ddd; padding: 8px; font-size: 11px;">{{ linha.pergunta }}</td>
+                              <td style="border: 1px solid #ddd; padding: 6px 8px; font-size: 11px; text-align: left; line-height: 1.3;">{{ linha.pergunta }}</td>
                               <ng-container *ngFor="let categoria of linha.categorias">
-                                <td *ngFor="let dist of categoria.distribuicao" style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 12px;">
+                                <td *ngFor="let dist of categoria.distribuicao" style="border: 1px solid #ddd; padding: 4px 1px; text-align: center; font-size: 10px;">
                                   {{ dist.quantidade > 0 ? dist.quantidade : '' }}
                                 </td>
                               </ng-container>
@@ -1487,21 +1499,21 @@
                     Esta seção apresenta os comportamentos em que você obteve as maiores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
                     Pela perspectiva das outras pessoas, seus pontos fortes são estes padrões de comportamento específicos:
                   </p>
-                  <table class="mat-elevation-z8" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                  <table class="mat-elevation-z8 tabela-destaques" style="width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed;">
                     <thead [style.background-color]="getDestaquesAltasColors(secao).header" style="color: white;">
                       <tr>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Classificação</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">Comportamento</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média geral</th>
-                        <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média por categoria</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 80px;">Classificação</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Comportamento</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média geral</th>
+                        <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média por categoria</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr *ngFor="let item of tabelaAltas.items; let isEven = even" [style.background-color]="isEven ? '#f9f9f9' : 'white'">
-                        <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.classificacao }}</td>
-                        <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ item.comportamento }}</td>
-                        <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
-                        <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">{{ item.classificacao }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 11px; line-height: 1.3;">{{ item.comportamento }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
+                        <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -1514,21 +1526,21 @@
                     Esta seção apresenta os comportamentos em que você obteve as menores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
                     Pela perspectiva das outras pessoas, estes são os padrões de comportamento que podem ser desenvolvidos:
                   </p>
-                  <table class="mat-elevation-z8" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                  <table class="mat-elevation-z8 tabela-destaques" style="width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed;">
                     <thead [style.background-color]="getDestaquesBaixasColors(secao).header" style="color: white;">
                       <tr>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Classificação</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">Comportamento</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média do(a) avaliado(a)</th>
-                        <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média sem autoavaliação</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 80px;">Classificação</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Comportamento</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média do(a) avaliado(a)</th>
+                        <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média sem autoavaliação</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr *ngFor="let item of tabelaBaixas.items; let isEven = even" [style.background-color]="isEven ? '#f9f9f9' : 'white'">
-                        <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.classificacao }}</td>
-                        <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ item.comportamento }}</td>
-                        <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
-                        <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">{{ item.classificacao }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 11px; line-height: 1.3;">{{ item.comportamento }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
+                        <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
                       </tr>
                     </tbody>
                   </table>

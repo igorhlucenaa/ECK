@@ -114,6 +114,19 @@ interface ReportData {
   documentoConfig?: DocumentoConfig;
 }
 
+export interface PdfHtmlRenderOptions {
+  format?: 'A4' | 'Letter';
+  landscape?: boolean;
+  scale?: number;
+  preferCssPageSize?: boolean;
+  marginMm?: {
+    top?: number;
+    right?: number;
+    bottom?: number;
+    left?: number;
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReportPdfMakeService {
 
@@ -491,11 +504,11 @@ export class ReportPdfMakeService {
     return blob;
   }
 
-  async generateReportFromHtml(html: string, fileName: string): Promise<void> {
+  async generateReportFromHtml(html: string, fileName: string, options?: PdfHtmlRenderOptions): Promise<void> {
     try {
       const functionUrl = this.getGeneratePdfFunctionUrl();
       const blob = await firstValueFrom(
-        this.http.post(functionUrl, { html, fileName }, {
+        this.http.post(functionUrl, { html, fileName, options }, {
           responseType: 'blob'
         })
       );
