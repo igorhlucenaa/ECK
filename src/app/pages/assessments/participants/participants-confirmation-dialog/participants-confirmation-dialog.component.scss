@@ -122,6 +122,30 @@
   &--none    { color: #94a3b8; }
 }
 
+// ── Error row ────────────────────────────────────────────────────────────────────
+.pcd__error-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  font-size: 13px;
+}
+
+.pcd__error-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #dc2626;
+}
+
+.pcd__error-text {
+  color: #dc2626;
+  font-weight: 500;
+}
+
 // ── Table ─────────────────────────────────────────────────────────────────────
 .pcd__table-wrap {
   border: 1px solid #e2e8f0;

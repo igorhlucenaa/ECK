@@ -9,7 +9,7 @@ export const ClientsRoutes: Routes = [
     path: '',
     component: ClientsListComponent,
     canActivate: [AuthGuard],
-    data: { role: ['admin_master', 'admin_client'] },
+    data: { role: ['admin_master'] },
   },
   {
     path: 'new',

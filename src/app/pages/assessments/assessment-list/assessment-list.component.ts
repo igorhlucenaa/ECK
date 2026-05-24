@@ -105,6 +105,10 @@ export class AssessmentListComponent implements OnInit {
   userRole: string = '';
   mailTemplates: MailTemplate[] = [];
 
+  get canManageAssessments(): boolean {
+    return this.userRole === 'admin_master';
+  }
+
   get hasActiveFilters(): boolean {
     return !!(this.searchValue || this.clientFilterValue || this.creatorFilter || this.dateFrom || this.dateTo);
   }

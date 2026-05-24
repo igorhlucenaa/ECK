@@ -48,6 +48,7 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 interface ModalData {
   projectId?: string;
@@ -171,6 +172,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
+  get canManageParticipantData(): boolean {
+    return this.userRole !== 'viewer';
+  }
+
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
@@ -178,6 +183,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     private fb: FormBuilder,
     private router: Router,
     private authService: AuthService,
+    private participantValidationService: ParticipantValidationService,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: ModalData | null,
     @Optional() public dialogRef: MatDialogRef<ParticipantsComponent>
   ) {}
@@ -1309,6 +1315,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
       dialogRef.afterClosed().subscribe(async (result) => {
         if (!result) return;
+
         let saved = 0;
         for (const participant of participants) {
           try {

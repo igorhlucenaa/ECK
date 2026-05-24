@@ -935,13 +935,15 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!this.groupNameControl.value) {
+    const groupName = String(this.groupNameControl.value || '').trim();
+    if (!groupName) {
       this.snackBar.open(this.t('Digite um nome para o grupo de competências.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
 
     try {
       const assessmentIdFinal = this.selectedAssessmentId;
+      const isCreatingNewGroup = !this.currentGroupId;
 
       // Validação removida: competências sem perguntas são permitidas (usuário vincula depois)
 
@@ -964,7 +966,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       });
 
       const groupData: any = {
-        name: this.groupNameControl.value,
+        name: groupName,
         clientId: this.selectedClientId,
         competencias: competenciasParaSalvar,
         assessmentId: assessmentIdFinal
@@ -1107,18 +1109,13 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         this.snackBar.open(this.t('Grupo atualizado com sucesso!'), this.t('Fechar'), { duration: 3000 });
       } else {
         const docRef = await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
+        this.currentGroupId = docRef.id;
         this.hasUnsavedChanges = false;
         this.snackBar.open(this.t('Grupo salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
       }
 
-      // Limpar campos se não estiver editando
-      if (!this.currentGroupId) {
-        this.groupNameControl.reset();
-        // Limpar competências após salvar novo grupo
-        this.competencias = [];
-        this.customQuestions = [];
-        this.cancelarEdicaoCompetencia();
-      }
+      // Mantém o controle sincronizado para evitar bloqueio de autosave
+      this.groupNameControl.setValue(groupName, { emitEvent: false });
 
       // Fechar editor de grupo após salvar
       this.isGroupEditorOpen = false;
@@ -1126,10 +1123,9 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       // Atualizar lista de grupos
       await this.loadCompetencyGroups(this.selectedClientId);
 
-      // Se criou novo grupo, buscar o ID recém-criado e selecionar
-      if (!this.currentGroupId) {
-        const lastGroup = this.competencyGroups[this.competencyGroups.length - 1];
-        if (lastGroup) { this.currentGroupId = lastGroup.id; }
+      // Se criou novo grupo, seleciona explicitamente o ID retornado pelo Firestore
+      if (isCreatingNewGroup && this.currentGroupId) {
+        this.competencyGroupControl.setValue(this.currentGroupId, { emitEvent: false });
       }
 
       // Forçar atualização da view para garantir que o dropdown seja atualizado

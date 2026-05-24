@@ -1,7 +1,7 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { parseNumeric, exportToCSV, filterQuestionsByType, computeConsolidation, getQuestionTypeStats } from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
-import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
@@ -472,6 +472,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   clients: any[] = [];
   clientsFiltered: any[] = [];
   clientSearchCtrl = new FormControl('');
+  currentUserRole: string = '';
+  viewerProjectIds = new Set<string>();
   selectedClientId: string | null = null;
   competencyGroups: any[] = [];
   competencyGroupControl = new FormControl('');
@@ -495,6 +497,26 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   competencyAverages: { title: string; avg: number }[] = [];
   topItems: { title: string; avg: number }[] = [];
   lowItems: { title: string; avg: number }[] = [];
+
+  get canExportPdf(): boolean {
+    return ['admin_master', 'admin_client', 'viewer'].includes(this.currentUserRole);
+  }
+
+  get canExportExcel(): boolean {
+    return ['admin_master', 'admin_client'].includes(this.currentUserRole);
+  }
+
+  get canExportDocx(): boolean {
+    return this.currentUserRole === 'admin_master';
+  }
+
+  get canReleaseReport(): boolean {
+    return this.currentUserRole === 'admin_master';
+  }
+
+  get shouldFilterByReleaseStatus(): boolean {
+    return ['admin_client', 'viewer'].includes(this.currentUserRole);
+  }
 
   consolidation: any[] = [];
   consolidationColumns: string[] = ['pergunta', 'sessao', 'tema', 'resposta', 'respondentes', 'percent', 'score'];
@@ -886,6 +908,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async ngOnInit() {
     this.today = new Date();
+    this.currentUserRole = (await this.authService.getCurrentUserRole()) || '';
+    if (this.currentUserRole === 'viewer') {
+      await this.loadViewerProjectIds();
+    }
 
     // Configurar o listener para mudanças no filtro de perguntas
     this.includeOpenQuestions.valueChanges.subscribe(() => {
@@ -1372,7 +1398,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             horarioAvaliacao: completedAtDate ? completedAtDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
             cargo: participantData['cargo'] || '',
             setor: participantData['setor'] || '',
-            isTargetParticipant: isTargetParticipant // Marcar se é o participante alvo
+            isTargetParticipant: isTargetParticipant, // Marcar se é o participante alvo
+            reportStatus: participantData['reportStatus'] || 'pending', // Status de liberação do relatório
+            participanteId: participantId // ID do participante para liberar relatório
           };
 
           // Adicionar respostas às perguntas
@@ -1439,6 +1467,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.debugLog('Resultados processados:', results);
     this.dataSource = results;
+
+    // Filtrar por status de liberação para admin_client e viewer
+    if (this.shouldFilterByReleaseStatus) {
+      this.dataSource = this.dataSource.filter(row => row.reportStatus === 'released');
+    }
 
     // Carregar avaliados disponíveis após processar os dados
     this.avaliadosDisponiveis = this.getAvaliadosDisponiveis();
@@ -4737,10 +4770,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async loadClients(): Promise<void> {
     try {
-      const userRole = await this.authService.getCurrentUserRole();
+      const userRole = this.currentUserRole || (await this.authService.getCurrentUserRole()) || '';
       const clientsCollection = collection(this.firestore, 'clients');
 
-      if (userRole === 'admin_client') {
+      if (userRole === 'admin_client' || userRole === 'viewer') {
         const clientIds = await this.authService.getCurrentUserClientIds();
         if (clientIds.length === 0) {
           this.clients = [];
@@ -4921,8 +4954,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           this.invalidateCache();
           const reportData = this.pdfMakeService.prepareReportDataFromComponent(this);
-          const blob = await this.pdfMakeService.generateReportBlob(reportData);
           const filename = `relatorio-${avaliado.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.pdf`;
+          // Usa Cloud Function para gerar PDF (mesma qualidade do individual)
+          const blob = await this.pdfMakeService.generateReportBlobFromCloudFunction(reportData, filename);
           zip.file(filename, blob);
         } catch (err: any) {
           this.batchErrors.push({ name: avaliado, error: err?.message || 'Erro desconhecido' });
@@ -5198,6 +5232,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }))
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
+      if (this.currentUserRole === 'viewer' && this.viewerProjectIds.size > 0) {
+        this.filterProjects = this.filterProjects.filter((project) =>
+          this.viewerProjectIds.has(project.id)
+        );
+      }
+
       // Monta mapa projectId → assessmentId
       this.allAssessmentsByProject.clear();
       this.filterProjects.forEach(p => {
@@ -5334,6 +5374,88 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Erro ao carregar grupos de competências.'), this.t('Fechar'), {
         duration: 3000,
       });
+    }
+  }
+
+  private async loadViewerProjectIds(): Promise<void> {
+    this.viewerProjectIds.clear();
+    const email = await this.authService.getCurrentUserEmail();
+    if (!email) return;
+
+    const usersSnap = await getDocs(
+      query(collection(this.firestore, 'users'), where('email', '==', email))
+    );
+    if (usersSnap.empty) return;
+
+    const userData = usersSnap.docs[0].data() || {};
+    const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
+    const fromSingle =
+      typeof userData['project'] === 'string' && userData['project'].trim()
+        ? [userData['project']]
+        : [];
+
+    [...fromArray, ...fromSingle].forEach((projectId) => this.viewerProjectIds.add(projectId));
+  }
+
+  // Sistema de liberação de relatórios
+  getParticipantIdByName(participantName: string): string | null {
+    const participant = this.dataSource.find(row => row.avaliado === participantName);
+    return participant?.participanteId || null;
+  }
+
+  async releaseReport(participantId: string | null): Promise<void> {
+    if (!this.canReleaseReport) {
+      this.snackBar.open(this.t('Apenas administradores podem liberar relatórios.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    if (!participantId) {
+      this.snackBar.open(this.t('Participante inválido para liberação do relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+
+    try {
+      const participantRef = doc(this.firestore, 'participants', participantId);
+      await updateDoc(participantRef, { reportStatus: 'released' });
+
+      // Atualizar o dataSource localmente
+      this.dataSource = this.dataSource.map(row => {
+        if (row.participanteId === participantId) {
+          return { ...row, reportStatus: 'released' };
+        }
+        return row;
+      });
+
+      this.snackBar.open(this.t('Relatório liberado com sucesso.'), this.t('Fechar'), { duration: 3000 });
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error('Erro ao liberar relatório:', error);
+      this.snackBar.open(this.t('Erro ao liberar relatório.'), this.t('Fechar'), { duration: 3000 });
+    }
+  }
+
+  async revokeReportRelease(participantId: string): Promise<void> {
+    if (!this.canReleaseReport) {
+      this.snackBar.open(this.t('Apenas administradores podem revogar liberação.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+
+    try {
+      const participantRef = doc(this.firestore, 'participants', participantId);
+      await updateDoc(participantRef, { reportStatus: 'pending' });
+
+      // Atualizar o dataSource localmente
+      this.dataSource = this.dataSource.map(row => {
+        if (row.participanteId === participantId) {
+          return { ...row, reportStatus: 'pending' };
+        }
+        return row;
+      });
+
+      this.snackBar.open(this.t('Liberação de relatório revogada.'), this.t('Fechar'), { duration: 3000 });
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error('Erro ao revogar liberação:', error);
+      this.snackBar.open(this.t('Erro ao revogar liberação.'), this.t('Fechar'), { duration: 3000 });
     }
   }
 

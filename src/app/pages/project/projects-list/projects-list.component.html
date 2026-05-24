@@ -174,15 +174,15 @@
                 <mat-icon *ngIf="loadingParticipantsProjectId !== p.id">supervisor_account</mat-icon>
               </button>
 
-              <!-- Disparar convites — botão primário visível (admin_master + cliente_admin) -->
-              <button class="act-btn act-btn--send" *ngIf="isAdminMaster || isClienteAdmin"
+              <!-- Disparar convites — botão primário visível para perfis operacionais -->
+              <button class="act-btn act-btn--send" *ngIf="isAdminMaster || isClienteAdmin || isViewer"
                       (click)="openSendInvitesModal(p.clientId, p.id, p.name)"
                       [matTooltip]="'Disparar Convites / Lembretes' | translate">
                 <mat-icon>send</mat-icon>
               </button>
 
-              <!-- Menu de ações secundárias (admin_master + cliente_admin) -->
-              <button *ngIf="isAdminMaster || isClienteAdmin" class="act-btn act-btn--more" [matMenuTriggerFor]="actionsMenu">
+              <!-- Menu de ações secundárias (admin_master) -->
+              <button *ngIf="isAdminMaster" class="act-btn act-btn--more" [matMenuTriggerFor]="actionsMenu">
                 <mat-icon>more_horiz</mat-icon>
               </button>
 

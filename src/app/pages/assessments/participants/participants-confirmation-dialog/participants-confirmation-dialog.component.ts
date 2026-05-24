@@ -3,6 +3,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MaterialModule } from 'src/app/material.module';
+import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 @Component({
   selector: 'app-participants-confirmation-dialog',
@@ -19,6 +20,7 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
   filteredProjects: { id: string; name: string; clientId: string }[] = [];
   evaluation: { id: string; name: string } | null = null;
   isLoadingEval = false;
+  validationError: string | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<ParticipantsConfirmationDialogComponent>,
@@ -29,7 +31,8 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
       preselectedClientId?: string;
       preselectedProjectId?: string;
       loadEvaluation: (projectId: string) => Promise<{ id: string; name: string } | null>;
-    }
+    },
+    private participantValidationService: ParticipantValidationService
   ) {
     this.selectedClientId = data.preselectedClientId || '';
     this.selectedProjectId = data.preselectedProjectId || '';
@@ -42,6 +45,8 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
 
     if (this.selectedProjectId) {
       await this.loadEval(this.selectedProjectId);
+      // Executar validação quando o projeto já está pré-selecionado
+      await this.onProjectChange();
     }
   }
 
@@ -55,8 +60,40 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
 
   async onProjectChange(): Promise<void> {
     this.evaluation = null;
+    this.validationError = null;
+
     if (this.selectedProjectId) {
       await this.loadEval(this.selectedProjectId);
+
+      // Validar se há mais de um avaliado no arquivo Excel
+      const participantsWithProject = this.data.participants.map(p => ({
+        ...p,
+        projectId: this.selectedProjectId
+      }));
+      const excelValidation = this.participantValidationService.validateExcelParticipants(
+        participantsWithProject
+      );
+
+      if (!excelValidation.valid) {
+        const projectName = this.data.projects.find(p => p.id === this.selectedProjectId)?.name || 'projeto';
+        const error = excelValidation.errors[0];
+        this.validationError = `O arquivo contém ${error.evaluateesCount} avaliados para o projeto "${projectName}". É permitido apenas um avaliado por projeto.`;
+        return;
+      }
+
+      // Validar se já existe um avaliado cadastrado no projeto
+      const hasEvaluateeInFile = this.data.participants.some(p => p.category === 'Avaliado');
+      if (hasEvaluateeInFile) {
+        const existingValidation = await this.participantValidationService.validateSingleEvaluateePerProject(
+          this.selectedProjectId,
+          'Avaliado'
+        );
+
+        if (!existingValidation.valid) {
+          const projectName = this.data.projects.find(p => p.id === this.selectedProjectId)?.name || 'projeto';
+          this.validationError = `O projeto "${projectName}" já possui um avaliado cadastrado (${existingValidation.existingEvaluateeName}). Não é possível adicionar outro avaliado.`;
+        }
+      }
     }
   }
 
@@ -72,7 +109,7 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
   }
 
   get isValid(): boolean {
-    return !!this.selectedClientId && !!this.selectedProjectId;
+    return !!this.selectedClientId && !!this.selectedProjectId && !this.validationError;
   }
 
   get countByType(): { avaliados: number; avaliadores: number } {

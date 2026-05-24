@@ -24,6 +24,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { debounceTime, Subject } from 'rxjs';
+import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 interface Client {
   id: string;
@@ -199,7 +200,8 @@ export class AddParticipantModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: ModalData,
     private fb: FormBuilder,
     private firestore: Firestore,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private participantValidationService: ParticipantValidationService
   ) {
     this.participantForm = this.fb.group({
       clientId: ['', Validators.required],
@@ -405,6 +407,21 @@ export class AddParticipantModalComponent implements OnInit {
       const clientId: string = formValue.clientId;
       const projectId: string = formValue.projectId;
       const emailNorm = (formValue.email as string).trim().toLowerCase();
+
+      // Validar se já existe avaliado no projeto (máximo 1 avaliado por projeto)
+      const validation = await this.participantValidationService.validateSingleEvaluateePerProject(
+        projectId,
+        category
+      );
+      if (!validation.valid) {
+        this.snackBar.open(
+          `Este projeto já possui um avaliado cadastrado (${validation.existingEvaluateeName}). É permitido apenas um avaliado por projeto.`,
+          'Fechar',
+          { duration: 5000 }
+        );
+        this.isSaving = false;
+        return;
+      }
 
       // Verifica duplicidade de e-mail no projeto (case-insensitive)
       const dupSnap = await getDocs(

@@ -7,6 +7,6 @@ export const SettingsRoutes: Routes = [
     path: '',
     component: ReminderSettingsComponent,
     canActivate: [AuthGuard],
-    data: { role: ['admin_master', 'admin_client'] },
+    data: { role: ['admin_master', 'admin_client', 'viewer'] },
   },
 ];
