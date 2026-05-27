@@ -76,8 +76,12 @@ export class AuthService {
           this.router.navigate([returnUrl]);
         } else if (userRole === 'admin_master') {
           this.router.navigate(['/projects']);
+        } else if (userRole === 'admin_client') {
+          this.router.navigate(['/projects']);
+        } else if (userRole === 'viewer') {
+          this.router.navigate(['/dashboard']);
         } else {
-          this.router.navigate(['/users']);
+          this.router.navigate(['/dashboard']);
         }
       });
     } catch (error: any) {

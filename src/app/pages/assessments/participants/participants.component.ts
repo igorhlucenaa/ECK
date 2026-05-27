@@ -161,6 +161,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   selectedTemplate: MailTemplate | any = null;
   userRole: string = '';
   userClientIds: string[] = [];
+  viewerProjectIds = new Set<string>();
   isClientDisabled: boolean = false;
   isProjectDisabled: boolean = false;
   isEmailSendingMode: boolean = false;
@@ -193,6 +194,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
     this.userRole = await this.authService.getCurrentUserRole() || '';
     this.userClientIds = await this.authService.getCurrentUserClientIds();
+    if (this.userRole === 'viewer') {
+      await this.loadViewerProjectIds();
+    }
 
     await this.loadReportTemplates();
 
@@ -397,7 +401,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   async loadClients(): Promise<void> {
     try {
       let docs: any[] = [];
-      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+      if ((this.userRole === 'admin_client' || this.userRole === 'viewer') && this.userClientIds.length > 0) {
         const snaps = await Promise.all(
           this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
         );
@@ -448,6 +452,28 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     try {
       const projectsCollection = collection(this.firestore, 'projects');
       let snapshot;
+      if (this.userRole === 'viewer') {
+        if (this.viewerProjectIds.size === 0) {
+          this.projects = [];
+          this.filteredProjects = [];
+          return;
+        }
+        const projectDocs: any[] = [];
+        const projectIds = Array.from(this.viewerProjectIds);
+        for (let i = 0; i < projectIds.length; i += 10) {
+          const batch = projectIds.slice(i, i + 10);
+          const snap = await getDocs(query(projectsCollection, where('__name__', 'in', batch)));
+          projectDocs.push(...snap.docs);
+        }
+        this.projects = projectDocs.map((d) => ({
+          id: d.id,
+          name: d.data()['name'] || 'Projeto Sem Nome',
+          clientId: d.data()['clientId'] || '',
+        }));
+        this.filteredProjects = [...this.projects];
+        return;
+      }
+
       if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
         snapshot = await getDocs(query(projectsCollection, where('clientId', 'in', this.userClientIds)));
       } else {
@@ -477,7 +503,23 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     try {
       const participantsCollection = collection(this.firestore, 'participants');
       let participantsSnapshot;
-      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+      if (this.userRole === 'viewer') {
+        if (this.viewerProjectIds.size === 0) {
+          this.dataSource.data = [];
+          return;
+        }
+        const participantDocs: any[] = [];
+        const projectIds = Array.from(this.viewerProjectIds);
+        for (let i = 0; i < projectIds.length; i += 10) {
+          const batch = projectIds.slice(i, i + 10);
+          const snap = await getDocs(query(participantsCollection, where('projectId', 'in', batch)));
+          participantDocs.push(...snap.docs);
+        }
+        participantsSnapshot = {
+          docs: participantDocs,
+          empty: participantDocs.length === 0,
+        };
+      } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
         participantsSnapshot = await getDocs(query(participantsCollection, where('clientId', 'in', this.userClientIds)));
       } else {
         participantsSnapshot = await getDocs(participantsCollection);
@@ -1504,6 +1546,26 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       });
       return null;
     }
+  }
+
+  private async loadViewerProjectIds(): Promise<void> {
+    this.viewerProjectIds.clear();
+    const email = await this.authService.getCurrentUserEmail();
+    if (!email) return;
+
+    const usersSnap = await getDocs(
+      query(collection(this.firestore, 'users'), where('email', '==', email))
+    );
+    if (usersSnap.empty) return;
+
+    const userData = usersSnap.docs[0].data() || {};
+    const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
+    const fromSingle =
+      typeof userData['project'] === 'string' && userData['project'].trim()
+        ? [userData['project']]
+        : [];
+
+    [...fromArray, ...fromSingle].forEach((projectId) => this.viewerProjectIds.add(projectId));
   }
 
   openEditParticipantDialog(participant: UnifiedParticipant): void {

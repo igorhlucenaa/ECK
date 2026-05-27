@@ -640,7 +640,7 @@
   <!-- ══════════════════════════════════════════════════════════ -->
   <!-- VISÃO CLIENTE                                             -->
   <!-- ══════════════════════════════════════════════════════════ -->
-  <div id="dashboard-content" *ngIf="!isLoading && userRole === 'admin_client'">
+  <div id="dashboard-content" *ngIf="!isLoading && (userRole === 'admin_client' || userRole === 'viewer')">
 
     <!-- ── KPIs (4 cards) ─────────────────────────────────────── -->
     <div class="dash-block-header">
@@ -898,7 +898,7 @@
         <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
       </a>
 
-      <a class="quick-action-btn" routerLink="/users" [queryParams]="{tab: 'groups'}">
+      <a class="quick-action-btn" routerLink="/users" [queryParams]="{tab: 'groups'}" *ngIf="userRole === 'admin_client'">
         <div class="quick-action-btn__icon quick-action-btn__icon--green">
           <mat-icon>group_work</mat-icon>
         </div>

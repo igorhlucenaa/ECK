@@ -3,19 +3,19 @@
 export const navItems: NavItem[] = [
   {
     navCap: 'Bem Vindo!',
-    role: ['admin_master', 'admin_client'],
+    role: ['admin_master', 'admin_client', 'viewer'],
   },
   {
     displayName: 'Dashboard',
     iconName: 'solar:pie-chart-2-bold-duotone',
     route: '/dashboard',
-    role: ['admin_master', 'admin_client'],
+    role: ['admin_master', 'admin_client', 'viewer'],
   },
   {
     displayName: 'Definições',
     iconName: 'solar:settings-bold-duotone',
     route: '',
-    role: ['admin_master', 'admin_client'],
+    role: ['admin_master', 'admin_client', 'viewer'],
     children: [
       {
         displayName: 'Clientes',
@@ -45,7 +45,7 @@ export const navItems: NavItem[] = [
         displayName: 'Lembretes Automáticos',
         iconName: 'solar:bell-bing-bold-duotone',
         route: '/settings',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master', 'admin_client', 'viewer'],
       },
       {
         displayName: 'Gerenciar Competências',
@@ -63,7 +63,7 @@ export const navItems: NavItem[] = [
         displayName: 'Relatórios',
         iconName: 'solar:pie-chart-2-bold-duotone',
         route: '/reports',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master', 'admin_client', 'viewer'],
       },
     ],
   },
@@ -71,13 +71,13 @@ export const navItems: NavItem[] = [
     displayName: 'Participantes',
     iconName: 'solar:user-id-bold-duotone',
     route: '/assessments/participants',
-    role: ['admin_master', 'admin_client'],
+    role: ['admin_master', 'admin_client', 'viewer'],
   },
   {
     displayName: 'Projetos',
     iconName: 'solar:bill-list-bold-duotone',
     route: '/projects',
-    role: ['admin_master', 'admin_client'],
+    role: ['admin_master', 'admin_client', 'viewer'],
   },
 
   // {

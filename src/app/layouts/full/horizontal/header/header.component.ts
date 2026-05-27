@@ -25,6 +25,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialogRef } from '@angular/material/dialog';
 import {
   Auth,
+  onAuthStateChanged,
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
@@ -191,10 +192,22 @@ export class AppHorizontalHeaderComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    this.userName = (await this.authService.getCurrentUserName()) ?? '';
-    this.userEmail = (await this.authService.getCurrentUserEmail()) ?? '';
-    const role = await this.authService.getCurrentUserRole();
-    this.horizontalNavItems = this.filterNavItemsByRole(hNavItems, role);
+    await new Promise<void>((resolve) => {
+      const unsub = onAuthStateChanged(this.firebaseAuth, async (user) => {
+        unsub();
+        if (user) {
+          this.userName = (await this.authService.getCurrentUserName()) ?? '';
+          this.userEmail = (await this.authService.getCurrentUserEmail()) ?? '';
+          const role = await this.authService.getCurrentUserRole();
+          this.horizontalNavItems = this.filterNavItemsByRole(hNavItems, role);
+        } else {
+          this.userName = '';
+          this.userEmail = '';
+          this.horizontalNavItems = [];
+        }
+        resolve();
+      });
+    });
   }
 
   private filterNavItemsByRole(items: any[], role: string | null): any[] {

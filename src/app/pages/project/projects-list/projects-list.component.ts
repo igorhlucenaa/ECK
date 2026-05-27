@@ -392,7 +392,7 @@ export class ProjectsListComponent implements OnInit {
     if (this.isAdminMaster && this.selectedClientId) {
       return projects.filter((project) => project.clientId === this.selectedClientId);
     }
-    if (this.isViewer && this.viewerProjectIds.size > 0) {
+    if (this.isViewer) {
       return projects.filter((project) => this.viewerProjectIds.has(project.id));
     }
     if (!this.isAdminMaster && this.userClientIds.length > 0) {

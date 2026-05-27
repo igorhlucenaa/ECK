@@ -512,7 +512,20 @@ export class DashboardComponent implements OnInit {
     // Busca projetos, participantes e assessments de todos os clientes via 'in'
     let projectsSnap, participantsSnap, assessmentsSnap;
 
-    if (this.userRole === 'viewer' && this.viewerProjectIds.size > 0) {
+    if (this.userRole === 'viewer') {
+      if (this.viewerProjectIds.size === 0) {
+        this.clientKpis = [
+          { value: 0, label: 'Projetos Ativos',         color: '#1B84FF', icon: 'folder_open' },
+          { value: 0, label: 'AvaliaÃ§Ãµes em Andamento', color: '#26c6da', icon: 'assignment_turned_in' },
+          { value: 0, label: 'Participantes Ativos',    color: '#7c3aed', icon: 'groups' },
+          { value: 0, label: 'CrÃ©ditos DisponÃ­veis',    color: '#4caf50', icon: 'toll' },
+        ];
+        this.projectRows = [];
+        this.alerts = [];
+        this.totalActiveProjects = 0;
+        return;
+      }
+
       // Viewer: filtra apenas projetos onde está inserido
       const projectIds = Array.from(this.viewerProjectIds);
       [projectsSnap, participantsSnap, assessmentsSnap] = await Promise.all([

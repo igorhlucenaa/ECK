@@ -962,6 +962,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
               assessmentId: d.data()['assessmentId'] || undefined,
             }))
             .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+          if (this.currentUserRole === 'viewer') {
+            this.filterProjects = this.filterProjects.filter((project) =>
+              this.viewerProjectIds.has(project.id)
+            );
+          }
           this.allAssessmentsByProject.clear();
           this.filterProjects.forEach(p => {
             if (p.assessmentId) this.allAssessmentsByProject.set(p.id, p.assessmentId);
@@ -5250,7 +5255,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }))
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
-      if (this.currentUserRole === 'viewer' && this.viewerProjectIds.size > 0) {
+      if (this.currentUserRole === 'viewer') {
         this.filterProjects = this.filterProjects.filter((project) =>
           this.viewerProjectIds.has(project.id)
         );

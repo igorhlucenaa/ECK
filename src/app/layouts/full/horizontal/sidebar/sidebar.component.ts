@@ -11,6 +11,7 @@ import { MediaMatcher } from '@angular/cdk/layout';
 import { AppHorizontalNavItemComponent } from './nav-item/nav-item.component';
 import { CommonModule, NgForOf, NgIf } from '@angular/common';
 import { AuthService } from '../../../../services/apps/authentication/auth.service';
+import { Auth, onAuthStateChanged } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-horizontal-sidebar',
@@ -31,6 +32,7 @@ export class AppHorizontalSidebarComponent implements OnInit {
     media: MediaMatcher,
     changeDetectorRef: ChangeDetectorRef,
     private authService: AuthService,
+    private auth: Auth,
   ) {
     this.mobileQuery = media.matchMedia('(min-width: 1100px)');
     this._mobileQueryListener = () => changeDetectorRef.detectChanges();
@@ -38,8 +40,14 @@ export class AppHorizontalSidebarComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    const role = await this.authService.getCurrentUserRole();
-    this.navItems = this.filterNavItemsByRole(navItems, role);
+    await new Promise<void>((resolve) => {
+      const unsub = onAuthStateChanged(this.auth, async (user) => {
+        unsub();
+        const role = user ? await this.authService.getCurrentUserRole() : null;
+        this.navItems = this.filterNavItemsByRole(navItems, role);
+        resolve();
+      });
+    });
   }
 
   private filterNavItemsByRole(items: NavItem[], role: string | null): NavItem[] {
