@@ -1210,7 +1210,51 @@ async function createPdfBuffer(
   });
 }
 
-async function createPdfBufferFromHtml(html: string): Promise<Buffer> {
+type HtmlPdfRenderOptions = {
+  format: 'A4' | 'Letter';
+  landscape: boolean;
+  scale: number;
+  preferCssPageSize: boolean;
+  margin: {
+    top: string;
+    right: string;
+    bottom: string;
+    left: string;
+  };
+};
+
+function normalizeHtmlPdfOptions(raw: unknown): HtmlPdfRenderOptions {
+  const input = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
+  const marginInput = (input.marginMm && typeof input.marginMm === 'object')
+    ? (input.marginMm as Record<string, unknown>)
+    : {};
+
+  const toMm = (value: unknown, fallback: number) => {
+    const parsed = Number(value);
+    const clamped = Number.isFinite(parsed) ? Math.min(25, Math.max(3, parsed)) : fallback;
+    return `${clamped}mm`;
+  };
+
+  const scaleRaw = Number(input.scale);
+  const scale = Number.isFinite(scaleRaw) ? Math.min(1, Math.max(0.75, scaleRaw)) : 0.96;
+
+  const format = input.format === 'Letter' ? 'Letter' : 'A4';
+
+  return {
+    format,
+    landscape: Boolean(input.landscape),
+    scale,
+    preferCssPageSize: input.preferCssPageSize !== false,
+    margin: {
+      top: toMm(marginInput.top, 8),
+      right: toMm(marginInput.right, 7),
+      bottom: toMm(marginInput.bottom, 8),
+      left: toMm(marginInput.left, 7),
+    },
+  };
+}
+
+async function createPdfBufferFromHtml(html: string, options: HtmlPdfRenderOptions): Promise<Buffer> {
   if (!html.trim()) {
     throw new Error('HTML do relatorio esta vazio.');
   }
@@ -1258,22 +1302,27 @@ async function createPdfBufferFromHtml(html: string): Promise<Buffer> {
       waitUntil: 'domcontentloaded',
       timeout: 60000,
     });
-    await page.emulateMediaType('screen');
+    await page.emulateMediaType('print');
     await Promise.race([
       page.evaluateHandle('document.fonts && document.fonts.ready'),
       new Promise((resolve) => setTimeout(resolve, 1000)),
     ]);
+    await page.waitForFunction(
+      () => {
+        const flag = (globalThis as { __pdfLayoutReady?: boolean }).__pdfLayoutReady;
+        return flag === true;
+      },
+      { timeout: 20000 }
+    ).catch(() => undefined);
+    await new Promise((resolve) => setTimeout(resolve, 120));
 
     return Buffer.from(await page.pdf({
-      format: 'A4',
+      format: options.format,
+      landscape: options.landscape,
+      scale: options.scale,
       printBackground: true,
-      preferCSSPageSize: true,
-      margin: {
-        top: '8mm',
-        right: '7mm',
-        bottom: '8mm',
-        left: '7mm',
-      },
+      preferCSSPageSize: options.preferCssPageSize,
+      margin: options.margin,
       timeout: 480000,
     }));
   } finally {
@@ -1299,6 +1348,7 @@ export const generateReportPdf = onRequest(
     const body = (req.body || {}) as Record<string, unknown>;
     const rawDocDefinition = body.docDefinition;
     const rawHtml = body.html;
+    const htmlOptions = normalizeHtmlPdfOptions(body.options);
 
     const fileName = sanitizePdfFileName(body.fileName);
 
@@ -1306,7 +1356,7 @@ export const generateReportPdf = onRequest(
       let pdfBuffer: Buffer;
 
       if (typeof rawHtml === 'string' && rawHtml.trim()) {
-        pdfBuffer = await createPdfBufferFromHtml(rawHtml);
+        pdfBuffer = await createPdfBufferFromHtml(rawHtml, htmlOptions);
       } else if (rawDocDefinition && typeof rawDocDefinition === 'object' && !Array.isArray(rawDocDefinition)) {
         pdfBuffer = await createPdfBuffer(rawDocDefinition as Record<string, unknown>);
       } else {

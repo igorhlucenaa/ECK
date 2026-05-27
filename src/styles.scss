@@ -50,9 +50,53 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   }
 
   body.printing .report-section {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
     margin-bottom: 6mm;
+  }
+
+  body.printing h1,
+  body.printing h2,
+  body.printing h3,
+  body.printing h4,
+  body.printing h5,
+  body.printing h6 {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+
+  body.printing app-johari-window-chart,
+  body.printing app-gap-chart,
+  body.printing ngx-charts-bar-horizontal,
+  body.printing .pdf-svg-chart,
+  body.printing .capa-info-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    display: block !important;
+  }
+
+  body.printing table {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  body.printing tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.printing .tabela-frequencia,
+  body.printing .tabela-distribuicao-notas,
+  body.printing .tabela-destaques {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  body.printing .tabela-destaques th,
+  body.printing .tabela-destaques td {
+    word-break: break-word !important;
+    white-space: normal !important;
   }
 }
 
