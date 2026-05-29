@@ -30,6 +30,9 @@ import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { DependencyCheckService } from 'src/app/services/dependency-check.service';
+import { DependencyBlockDialogComponent } from 'src/app/shared/dependency-block-dialog/dependency-block-dialog.component';
 
 export interface Order {
   id: string;
@@ -65,6 +68,7 @@ export interface Order {
     ReactiveFormsModule,
     TranslateModule,
     AppPageHeaderComponent,
+    MatDialogModule,
   ],
   templateUrl: './credit-orders.component.html',
   styleUrls: ['./credit-orders.component.scss'],
@@ -105,7 +109,9 @@ export class CreditOrdersComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private dialog: MatDialog,
+    private dependencyCheck: DependencyCheckService
   ) {}
 
   ngOnInit(): void {
@@ -330,6 +336,16 @@ export class CreditOrdersComponent implements OnInit {
   }
 
   async deleteOrder(orderId: string): Promise<void> {
+    // Verificação prévia: pedido com créditos já usados não pode ser excluído
+    const depResult = await this.dependencyCheck.checkCreditOrder(orderId);
+    if (!depResult.canDelete) {
+      this.dialog.open(DependencyBlockDialogComponent, {
+        width: '560px',
+        data: { entityLabel: depResult.entityLabel, blockers: depResult.blockers },
+      });
+      return;
+    }
+
     try {
       const orderDoc = doc(this.firestore, `creditOrders/${orderId}`);
       const orderSnapshot = await getDoc(orderDoc);

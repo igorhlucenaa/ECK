@@ -1,0 +1,44 @@
+<div class="dbd">
+
+  <!-- Header -->
+  <div class="dbd__header">
+    <div class="dbd__icon"><mat-icon>link_off</mat-icon></div>
+    <div>
+      <h2 class="dbd__title">Não é possível excluir</h2>
+      <p class="dbd__subtitle">{{ entityLabelCapitalized }} possui vínculos ativos</p>
+    </div>
+    <button mat-icon-button class="dbd__close" (click)="dialogRef.close()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Body -->
+  <div class="dbd__body">
+    <p class="dbd__intro">
+      Para excluir {{ data.entityLabel }}, remova antes os
+      <strong>{{ totalBlockers }}</strong> registro(s) vinculado(s) abaixo:
+    </p>
+
+    <ul class="dbd__list">
+      <li class="dbd__item" *ngFor="let b of data.blockers">
+        <div class="dbd__item-main">
+          <span class="dbd__count">{{ b.count }}</span>
+          <div class="dbd__item-text">
+            <span class="dbd__item-label">{{ b.label }}</span>
+            <span class="dbd__item-hint" *ngIf="b.hint">{{ b.hint }}</span>
+          </div>
+        </div>
+        <button mat-stroked-button class="dbd__nav-btn" *ngIf="b.route" (click)="navegar(b)">
+          <mat-icon>arrow_forward</mat-icon>
+          Ir para gerenciar
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Footer -->
+  <div class="dbd__footer">
+    <button mat-flat-button color="primary" (click)="dialogRef.close()">Entendi</button>
+  </div>
+
+</div>

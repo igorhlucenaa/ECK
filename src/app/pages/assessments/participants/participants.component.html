@@ -232,7 +232,7 @@
         {{ 'Baixar Modelo' | translate }}
       </button>
 
-      <button mat-stroked-button class="btn-action-secondary" *ngIf="canManageParticipantData">
+      <button mat-stroked-button class="btn-action-secondary" *hasPermission="'criar'">
         <label for="uploadExcel" style="cursor:pointer;display:flex;align-items:center;gap:6px;">
           <mat-icon>upload_file</mat-icon>
           {{ 'Importar Excel' | translate }}
@@ -240,7 +240,7 @@
         <input id="uploadExcel" type="file" accept=".xlsx,.xls" style="display:none" (change)="uploadExcel($event)" />
       </button>
 
-      <button mat-raised-button class="btn-add" *ngIf="canManageParticipantData" (click)="openAddParticipantModal()">
+      <button mat-raised-button class="btn-add" *hasPermission="'criar'" (click)="openAddParticipantModal()">
         <mat-icon>person_add</mat-icon>
         {{ 'Adicionar Participante' | translate }}
       </button>
@@ -376,7 +376,14 @@
       <div class="context-banner__left">
         <div class="context-banner__icon"><mat-icon>folder_open</mat-icon></div>
         <div class="context-banner__info">
-          <span class="context-banner__project">{{ getSelectedProjectName() }}</span>
+          <div class="context-banner__project-row">
+            <span class="context-banner__project">{{ getSelectedProjectName() }}</span>
+            <span *ngIf="projectStatusLabel" class="project-status-tag" [ngClass]="projectStatusClass">
+              <mat-icon>{{ isProjectConcluded ? 'check_circle' : isProjectCancelled ? 'cancel' : 'play_circle' }}</mat-icon>
+              {{ projectStatusLabel }}
+              <span *ngIf="isProjectConcluded" class="project-status-tag__note"> — somente leitura</span>
+            </span>
+          </div>
           <span class="context-banner__client">{{ getSelectedClientName() }}</span>
         </div>
       </div>
@@ -396,13 +403,15 @@
     </div>
 
     <!-- ─── Painel de créditos do cliente ───────────────────── -->
-    <div class="credit-panel" *ngIf="filterClient && currentClientCredits">
+    <div class="credit-panel" *ngIf="filterClient && currentClientCredits && userRole !== 'viewer'">
       <div class="credit-panel__title">
         <mat-icon>toll</mat-icon>
         <span>Créditos do Cliente</span>
       </div>
       <div class="credit-panel__items">
-        <div class="credit-item credit-item--green">
+        <div class="credit-item"
+             [class.credit-item--green]="currentClientCredits!.disponivel > 0"
+             [class.credit-item--red]="currentClientCredits!.disponivel <= 0">
           <span class="credit-item__value">{{ currentClientCredits!.disponivel }}</span>
           <span class="credit-item__label">Disponíveis</span>
           <span class="credit-item__hint">prontos para usar</span>
@@ -421,9 +430,9 @@
         </div>
         <div class="credit-sep"></div>
         <div class="credit-item credit-item--gray">
-          <span class="credit-item__value">{{ currentClientCredits!.disponivel + currentClientCredits!.reservado + currentClientCredits!.consumido }}</span>
+          <span class="credit-item__value">{{ currentClientCredits!.totalComprado }}</span>
           <span class="credit-item__label">Total comprado</span>
-          <span class="credit-item__hint">saldo acumulado</span>
+          <span class="credit-item__hint">pedidos aprovados vigentes</span>
         </div>
       </div>
       <div class="credit-panel__note">
@@ -516,7 +525,7 @@
           <mat-icon>download</mat-icon>
           {{ 'Baixar Modelo Excel' | translate }}
         </button>
-        <button mat-raised-button class="btn-add" *ngIf="canManageParticipantData" (click)="openAddParticipantModal()">
+        <button mat-raised-button class="btn-add" *hasPermission="'criar'" (click)="openAddParticipantModal()">
           <mat-icon>person_add</mat-icon>
           {{ 'Adicionar Participante' | translate }}
         </button>
@@ -731,8 +740,12 @@
           <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
             <div class="actions-cell-row">
-              <button class="act-btn act-btn--neutral" *ngIf="canManageParticipantData" [matTooltip]="'Editar participante' | translate"
-                      (click)="openEditParticipantDialog(participant); $event.stopPropagation()">
+              <button class="act-btn act-btn--neutral" *hasPermission="'editar'"
+                      [disabled]="isProjectConcluded || isProjectCancelled"
+                      [matTooltip]="(isProjectConcluded || isProjectCancelled)
+                        ? 'Edição bloqueada: projeto ' + projectStatusLabel + '. Altere o status nas configurações para editar.'
+                        : ('Editar participante' | translate)"
+                      (click)="!isProjectConcluded && !isProjectCancelled && openEditParticipantDialog(participant); $event.stopPropagation()">
                 <mat-icon>edit</mat-icon>
               </button>
               <button class="act-btn act-btn--history"
@@ -751,6 +764,12 @@
                 *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
                 (click)="generateReportForParticipant(participant)" [matTooltip]="'Gerar Relatório' | translate">
                 <mat-icon>description</mat-icon>
+              </button>
+              <button class="act-btn act-btn--neutral"
+                *ngIf="canManageViewers && participant.email"
+                (click)="linkParticipantAsViewer(participant); $event.stopPropagation()"
+                [matTooltip]="'Vincular como Visualizador' | translate">
+                <mat-icon>person_add</mat-icon>
               </button>
             </div>
           </td>
@@ -773,12 +792,34 @@
         <strong>{{ selectedParticipants.length }}</strong>
         <span>participante{{ selectedParticipants.length !== 1 ? 's' : '' }} selecionado{{ selectedParticipants.length !== 1 ? 's' : '' }}</span>
       </div>
+      <div class="send-action-bar__center" *ngIf="!templateFormControl.valid && filterProject">
+        <mat-form-field appearance="outline" class="inline-select">
+          <mat-label>{{ 'Modelo de E-mail' | translate }}</mat-label>
+          <mat-icon matPrefix>mail_outline</mat-icon>
+          <mat-select [formControl]="templateFormControl" (selectionChange)="onTemplateChange()">
+            <mat-option *ngFor="let template of mailTemplates" [value]="template.id">
+              {{ template.name }} — {{ getFriendlyEmailType(template.emailType) }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="inline-select"
+          *ngIf="selectedTemplate?.emailType && selectedTemplate?.emailType !== 'cadastro'">
+          <mat-label>{{ 'Formulário' | translate }}</mat-label>
+          <mat-icon matPrefix>assignment</mat-icon>
+          <mat-select [formControl]="assessmentFormControl" required>
+            <mat-option *ngFor="let a of assessments" [value]="a.id">{{ a.name }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
       <div class="send-action-bar__right">
         <button mat-button class="btn-clear-selection" (click)="toggleAll(false)">
           <mat-icon>deselect</mat-icon>
           {{ 'Limpar seleção' | translate }}
         </button>
-        <button mat-stroked-button color="warn" *ngIf="canManageParticipantData" (click)="deleteSelectedParticipants()" [disabled]="isLoading">
+        <button mat-stroked-button color="warn" *hasPermission="'excluir'"
+          (click)="deleteSelectedParticipants()"
+          [disabled]="isLoading || isProjectConcluded || isProjectCancelled"
+          [matTooltip]="(isProjectConcluded || isProjectCancelled) ? 'Remoção bloqueada: projeto ' + projectStatusLabel : ''">
           <mat-icon>delete_sweep</mat-icon>
           {{ 'Excluir selecionados' | translate }}
         </button>

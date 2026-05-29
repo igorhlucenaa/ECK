@@ -33,7 +33,7 @@ export const navItems: NavItem[] = [
         displayName: 'Usuários e Grupos',
         iconName: 'solar:users-group-two-rounded-bold-duotone',
         route: '/users',
-        role: ['admin_master'],
+        role: ['admin_master', 'admin_client'],
       },
       {
         displayName: 'Modelos de E-mail',
@@ -57,7 +57,7 @@ export const navItems: NavItem[] = [
         displayName: 'Formulários',
         iconName: 'solar:chart-2-bold-duotone',
         route: '/assessments',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master'],
       },
       {
         displayName: 'Relatórios',
@@ -78,6 +78,38 @@ export const navItems: NavItem[] = [
     iconName: 'solar:bill-list-bold-duotone',
     route: '/projects',
     role: ['admin_master', 'admin_client'],
+  },
+
+  // ─── Seção viewer ─────────────────────────────────────────────
+  {
+    displayName: 'Dashboard',
+    iconName: 'solar:pie-chart-2-bold-duotone',
+    route: '/dashboard',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Projetos',
+    iconName: 'solar:bill-list-bold-duotone',
+    route: '/projects',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Participantes',
+    iconName: 'solar:user-id-bold-duotone',
+    route: '/assessments/participants',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Relatórios',
+    iconName: 'solar:chart-square-bold-duotone',
+    route: '/reports',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Lembretes Automáticos',
+    iconName: 'solar:bell-bing-bold-duotone',
+    route: '/settings',
+    role: ['viewer'],
   },
 
   // {

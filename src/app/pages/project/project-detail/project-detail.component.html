@@ -10,8 +10,17 @@
       {{ 'Voltar' | translate }}
     </button>
 
+    <button *ngIf="canConcludeProject" mat-stroked-button class="btn-conclude"
+            [disabled]="isConcluding"
+            (click)="concludeProject()"
+            style="border-color:#10b981;color:#10b981;margin-right:8px;">
+      <mat-spinner *ngIf="isConcluding" diameter="16" style="display:inline-block;margin-right:6px;vertical-align:middle;"></mat-spinner>
+      <mat-icon *ngIf="!isConcluding">task_alt</mat-icon>
+      {{ isConcluding ? 'Concluindo...' : 'Concluir Projeto' }}
+    </button>
+
     <button mat-raised-button class="btn-save"
-            [disabled]="form.invalid || isLoading"
+            [disabled]="form.invalid || isLoading || projectStatus === 'concluido'"
             (click)="saveProject()">
       <mat-spinner *ngIf="isLoading" diameter="16" style="display:inline-block;margin-right:6px;vertical-align:middle;"></mat-spinner>
       <mat-icon *ngIf="!isLoading">{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>

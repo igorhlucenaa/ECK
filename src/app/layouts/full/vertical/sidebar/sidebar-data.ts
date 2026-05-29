@@ -22,7 +22,7 @@ export const navItems: NavItem[] = [
         displayName: 'Clientes',
         iconName: 'solar:people-nearby-bold-duotone',
         route: '/clients',
-        role: ['admin_master'],
+        role: ['admin_master', 'admin_client'],
       },
       {
         displayName: 'Pedidos de Crédito',
@@ -34,7 +34,7 @@ export const navItems: NavItem[] = [
         displayName: 'Usuários e Grupos',
         iconName: 'solar:users-group-two-rounded-bold-duotone',
         route: '/users',
-        role: ['admin_master'],
+        role: ['admin_master', 'admin_client'],
       },
       {
         displayName: 'Modelos de E-mail',

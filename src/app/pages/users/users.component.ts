@@ -14,6 +14,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  arrayRemove,
 } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
@@ -365,15 +366,15 @@ export class UsersComponent implements OnInit, AfterViewInit {
   async loadUserGroups(): Promise<UserGroup[]> {
     try {
       const userRole = await this.authService.getCurrentUserRole();
-      const clientId = await this.authService.getCurrentClientId();
+      const clientIds = await this.authService.getCurrentUserClientIds();
 
       const groupsCollection = collection(this.firestore, 'userGroups');
       let groupsSnapshot;
 
-      // Admin_client pode ver apenas os grupos do seu cliente
-      if (userRole === 'admin_client' && clientId) {
+      // Admin_client pode ver apenas os grupos dos seus clientes
+      if (userRole === 'admin_client' && clientIds.length > 0) {
         groupsSnapshot = await getDocs(
-          query(groupsCollection, where('clientId', '==', clientId))
+          query(groupsCollection, where('clientId', 'in', clientIds))
         );
       } else if (userRole === 'admin_master') {
         groupsSnapshot = await getDocs(groupsCollection);
@@ -545,6 +546,8 @@ export class UsersComponent implements OnInit, AfterViewInit {
       if (!confirmed) return;
       const ids = Array.from(this.selectedUserIds);
       try {
+        // Desvincular cada usuário dos grupos antes de apagar
+        await Promise.all(ids.map(id => this.unlinkUserFromGroups(id)));
         const batch = writeBatch(this.firestore);
         ids.forEach(id => batch.delete(doc(this.firestore, `users/${id}`)));
         await batch.commit();
@@ -593,6 +596,8 @@ export class UsersComponent implements OnInit, AfterViewInit {
       if (!confirmed) return;
       const ids = Array.from(this.selectedGroupIds);
       try {
+        // Desvincular referências de cada grupo antes de apagar
+        await Promise.all(ids.map(id => this.unlinkGroupReferences(id)));
         const batch = writeBatch(this.firestore);
         ids.forEach(id => batch.delete(doc(this.firestore, `userGroups/${id}`)));
         await batch.commit();
@@ -618,6 +623,9 @@ export class UsersComponent implements OnInit, AfterViewInit {
     dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
         try {
+          // Desvincular: remover o grupo de users.groups[] e projects.groupIds[]
+          await this.unlinkGroupReferences(group.id!);
+
           const groupDoc = doc(this.firestore, `userGroups/${group.id}`);
           await deleteDoc(groupDoc);
 
@@ -641,6 +649,18 @@ export class UsersComponent implements OnInit, AfterViewInit {
         }
       }
     });
+  }
+
+  /** Remove referências de um grupo em users.groups[] e projects.groupIds[]. */
+  private async unlinkGroupReferences(groupId: string): Promise<void> {
+    const [usersSnap, projectsSnap] = await Promise.all([
+      getDocs(query(collection(this.firestore, 'users'), where('groups', 'array-contains', groupId))),
+      getDocs(query(collection(this.firestore, 'projects'), where('groupIds', 'array-contains', groupId))),
+    ]);
+    await Promise.all([
+      ...usersSnap.docs.map(d => updateDoc(d.ref, { groups: arrayRemove(groupId) })),
+      ...projectsSnap.docs.map(d => updateDoc(d.ref, { groupIds: arrayRemove(groupId) })),
+    ]);
   }
 
   openCreateUserDialog(): void {
@@ -683,6 +703,9 @@ export class UsersComponent implements OnInit, AfterViewInit {
     dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
         try {
+          // Desvincular: remover o usuário de userGroups.userIds[]
+          await this.unlinkUserFromGroups(user.id!);
+
           const userDoc = doc(this.firestore, `users/${user.id}`);
           await deleteDoc(userDoc);
 
@@ -702,6 +725,14 @@ export class UsersComponent implements OnInit, AfterViewInit {
         }
       }
     });
+  }
+
+  /** Remove o usuário de todos os grupos (userGroups.userIds[]) ao excluí-lo. */
+  private async unlinkUserFromGroups(userId: string): Promise<void> {
+    const snap = await getDocs(
+      query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', userId))
+    );
+    await Promise.all(snap.docs.map(d => updateDoc(d.ref, { userIds: arrayRemove(userId) })));
   }
 
   /** Retorna true se o usuário logado pode bloquear/desbloquear o alvo */
@@ -780,8 +811,8 @@ export class UsersComponent implements OnInit, AfterViewInit {
       this.userDataSource.data = this.userDataSource.data.map(patch);
 
       this.snackBar.open(
-        this.translate.instant('Link de acesso enviado para {{email}}', { email: user.email }),
-        this.translate.instant('Fechar'),
+        `Link de acesso enviado para ${user.email}`,
+        'Fechar',
         { duration: 3000 }
       );
     } catch (err: any) {

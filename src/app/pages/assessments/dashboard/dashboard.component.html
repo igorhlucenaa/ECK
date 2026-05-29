@@ -124,15 +124,15 @@
           <!-- Container do Gráfico -->
           <div [ngSwitch]="questionChart.type" class="chart-container" *ngIf="questionChart.question.type !== 'matrix'">
             <!-- Gráfico de Barras -->
-            <ngx-charts-bar-vertical *ngSwitchCase="'bar'" [results]="questionChart.data" [scheme]="'cool'" [gradient]="false" [xAxis]="true" [yAxis]="true" [legend]="true" [showXAxisLabel]="true" [showYAxisLabel]="true" xAxisLabel="Opções" yAxisLabel="Respostas" [animations]="true">
+            <ngx-charts-bar-vertical *ngSwitchCase="'bar'" [results]="questionChart.data" [scheme]="'cool'" [gradient]="false" [xAxis]="true" [yAxis]="true" [legend]="true" [legendTitle]="'Legenda'" [showXAxisLabel]="true" [showYAxisLabel]="true" xAxisLabel="Opções" yAxisLabel="Respostas" [animations]="true">
             </ngx-charts-bar-vertical>
 
             <!-- Gráfico de Pizza -->
-            <ngx-charts-pie-chart *ngSwitchCase="'pie'" [results]="questionChart.data" [scheme]="'cool'" [gradient]="false" [legend]="true" [labels]="true" [doughnut]="false" [animations]="true">
+            <ngx-charts-pie-chart *ngSwitchCase="'pie'" [results]="questionChart.data" [scheme]="'cool'" [gradient]="false" [legend]="true" [legendTitle]="'Legenda'" [labels]="true" [doughnut]="false" [animations]="true">
             </ngx-charts-pie-chart>
 
             <!-- Gráfico Polar -->
-            <ngx-charts-polar-chart *ngSwitchCase="'polar'" [results]="questionChart.data" [scheme]="'cool'" [gradient]="false" [legend]="true" [showXAxisLabel]="true" [showYAxisLabel]="true" [animations]="true" [showGridLines]="true">
+            <ngx-charts-polar-chart *ngSwitchCase="'polar'" [results]="questionChart.data" [scheme]="'cool'" [gradient]="false" [legend]="true" [legendTitle]="'Legenda'" [showXAxisLabel]="true" [showYAxisLabel]="true" [animations]="true" [showGridLines]="true">
             </ngx-charts-polar-chart>
 
             <!-- Medidor (Gauge) -->

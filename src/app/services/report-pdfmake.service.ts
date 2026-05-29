@@ -36,6 +36,7 @@ export interface DocumentoConfig {
     mostrarNumeroPagina: boolean;
     cor: string;
     linhaInferior: boolean;
+    logoUrl?: string;
   };
   rodape: {
     ativo: boolean;
@@ -125,6 +126,9 @@ export interface PdfHtmlRenderOptions {
     bottom?: number;
     left?: number;
   };
+  displayHeaderFooter?: boolean;
+  headerTemplate?: string;
+  footerTemplate?: string;
 }
 
 @Injectable({ providedIn: 'root' })

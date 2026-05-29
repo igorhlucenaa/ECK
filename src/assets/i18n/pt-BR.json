@@ -799,5 +799,18 @@
   ,"Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.": "Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado."
   ,"Indicadores e métricas da plataforma em tempo real": "Indicadores e métricas da plataforma em tempo real"
 
+  ,"kpi.clientes_ativos": "Clientes Ativos"
+  ,"kpi.projetos_ativos": "Projetos Ativos"
+  ,"kpi.avaliacoes_andamento": "Avaliações em Andamento"
+  ,"kpi.participantes_ativos": "Participantes Ativos"
+  ,"kpi.creditos_disponiveis": "Créditos Disponíveis"
+
+  ,"alert.prazo_vencido": "Prazo Vencido"
+  ,"alert.prazo_proximo": "Prazo Próximo"
+  ,"alert.sem_creditos": "Sem Créditos"
+  ,"alert.vencido_descricao": "Vencido há {{days}} dia(s) — {{rate}}% respondido"
+  ,"alert.proximo_descricao": "{{days}} dia(s) restante(s) — {{pending}} resposta(s) pendente(s) ({{rate}}% concluído)"
+  ,"alert.creditos_esgotados": "Créditos esgotados — realize um pedido para continuar"
+
 }
 

@@ -100,30 +100,40 @@
       </mat-form-field>
     </div>
 
-    <!-- Passo 4: Avaliado (aparece após selecionar avaliação, quando há avaliados) -->
+    <!-- Passo 4: Avaliado — exibição automática (1 avaliado por projeto) -->
     <ng-container *ngIf="assessmentControl.value && avaliadosDisponiveis.length > 0">
       <mat-icon class="rp-seq-arrow">chevron_right</mat-icon>
-      <div class="rp-seq-step" [class.rp-seq-step--done]="!!selectedAvaliado">
-        <div class="rp-seq-step__num">4</div>
-        <mat-form-field appearance="outline" class="rp-seq-field">
-          <mat-label>Avaliado</mat-label>
-          <mat-icon matPrefix>person_search</mat-icon>
-          <mat-select [formControl]="avaliadoControl" (selectionChange)="onAvaliadoChange()">
-            <mat-option value="">Todos os avaliados</mat-option>
-            <mat-option *ngFor="let avaliado of avaliadosDisponiveis" [value]="avaliado">{{ avaliado }}</mat-option>
-          </mat-select>
-          <mat-hint>Opcional — relatório individual</mat-hint>
-        </mat-form-field>
-      </div>
 
-      <!-- Botão de liberação de relatório (apenas admin_master) -->
-      <button mat-icon-button
-              *ngIf="canReleaseReport && selectedAvaliado"
-              matTooltip="Liberar relatório para este avaliado"
-              (click)="releaseReport(getParticipantIdByName(selectedAvaliado))"
-              class="rp-release-btn">
-        <mat-icon>lock_open</mat-icon>
-      </button>
+      <!-- Caso padrão: exatamente 1 avaliado → badge estático, sem dropdown -->
+      <ng-container *ngIf="avaliadosDisponiveis.length === 1; else multiAvaliadoSelect">
+        <div class="rp-seq-step rp-seq-step--done">
+          <div class="rp-seq-step__num">4</div>
+          <div class="rp-avaliado-badge">
+            <mat-icon class="rp-avaliado-badge__icon">person_search</mat-icon>
+            <div class="rp-avaliado-badge__info">
+              <span class="rp-avaliado-badge__label">Avaliado</span>
+              <span class="rp-avaliado-badge__name">{{ avaliadosDisponiveis[0] }}</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Fallback (dados legados com múltiplos avaliados): exibe dropdown -->
+      <ng-template #multiAvaliadoSelect>
+        <div class="rp-seq-step" [class.rp-seq-step--done]="!!selectedAvaliado">
+          <div class="rp-seq-step__num">4</div>
+          <mat-form-field appearance="outline" class="rp-seq-field">
+            <mat-label>Avaliado</mat-label>
+            <mat-icon matPrefix>person_search</mat-icon>
+            <mat-select [formControl]="avaliadoControl" (selectionChange)="onAvaliadoChange()">
+              <mat-option *ngFor="let avaliado of avaliadosDisponiveis" [value]="avaliado">{{ avaliado }}</mat-option>
+            </mat-select>
+            <mat-hint>Selecione para visualizar o relatório individual</mat-hint>
+          </mat-form-field>
+        </div>
+      </ng-template>
+
+      <!-- Controle de publicação de relatório (apenas admin_master) -->
     </ng-container>
 
     <!-- Botão limpar (aparece quando há algo selecionado) -->
@@ -185,8 +195,9 @@
     </div>
   </div>
 
-  <!-- Tab: Competências -->
+  <!-- Tab: Competências (oculta para visualizador) -->
   <div class="rp-workflow-tab rp-workflow-tab--clickable"
+       *ngIf="currentUserRole !== 'viewer'"
        [class.rp-workflow-tab--done]="competencias.length > 0 && selectedTabIndex !== 0"
        [class.rp-workflow-tab--active]="selectedTabIndex === 0"
        [class.rp-workflow-tab--disabled]="!selectedAssessmentId"
@@ -201,8 +212,9 @@
     </div>
   </div>
 
-  <!-- Tab: Montar -->
+  <!-- Tab: Montar (oculta para visualizador) -->
   <div class="rp-workflow-tab rp-workflow-tab--clickable"
+       *ngIf="currentUserRole !== 'viewer'"
        [class.rp-workflow-tab--done]="selectedTabIndex === 2 && relatorioConfiguracao.length > 0"
        [class.rp-workflow-tab--active]="selectedTabIndex === 1"
        [class.rp-workflow-tab--disabled]="competencias.length === 0"
@@ -220,9 +232,9 @@
   <!-- Tab: Visualizar -->
   <div class="rp-workflow-tab rp-workflow-tab--clickable"
        [class.rp-workflow-tab--active]="selectedTabIndex === 2"
-       [class.rp-workflow-tab--disabled]="competencias.length === 0"
-       (click)="competencias.length > 0 && goToTab(2)"
-       matTooltip="{{ competencias.length === 0 ? 'Configure as competências primeiro' : '' }}">
+       [class.rp-workflow-tab--disabled]="currentUserRole !== 'viewer' && competencias.length === 0"
+       (click)="(currentUserRole === 'viewer' || competencias.length > 0) && goToTab(2)"
+       matTooltip="{{ currentUserRole !== 'viewer' && competencias.length === 0 ? 'Configure as competências primeiro' : '' }}">
     <div class="rp-workflow-tab__icon">
       <mat-icon>preview</mat-icon>
     </div>
@@ -238,7 +250,7 @@
 <div class="rp-step-panels" data-tour="reports-header">
 
   <!-- ============ PASSO 1: COMPETÊNCIAS ============ -->
-  <div class="rp-step-panel" *ngIf="selectedTabIndex === 0">
+  <div class="rp-step-panel" *ngIf="selectedTabIndex === 0 && currentUserRole !== 'viewer'">
     <div class="rp-step-panel__header">
       <h2 class="rp-step-panel__title">Competências</h2>
       <p class="rp-step-panel__desc">Selecione quais competências aparecerão no relatório</p>
@@ -441,7 +453,7 @@
   </div>
 
   <!-- ============ PASSO 2: MONTAR RELATÓRIO ============ -->
-  <div class="rp-step-panel" *ngIf="selectedTabIndex === 1">
+  <div class="rp-step-panel" *ngIf="selectedTabIndex === 1 && currentUserRole !== 'viewer'">
     <div class="rp-step-panel__header">
       <h2 class="rp-step-panel__title">Montar Relatório</h2>
       <p class="rp-step-panel__desc">Organize as seções, textos e gráficos do relatório</p>
@@ -479,6 +491,15 @@
               <mat-label>Nome do relatório</mat-label>
               <input matInput [formControl]="nomeRelatorioControl" placeholder="Ex: Relatório João Silva">
             </mat-form-field>
+            <!-- Badge de vínculo com template -->
+            <div class="rp-template-link-badge" *ngIf="selectedTemplateId.value">
+              <mat-icon>link</mat-icon>
+              <span>Vinculado ao template: <strong>{{ nomeTemplateSelecionado }}</strong></span>
+            </div>
+            <div class="rp-template-link-badge rp-template-link-badge--none" *ngIf="!selectedTemplateId.value">
+              <mat-icon>link_off</mat-icon>
+              <span>Sem vínculo — aplique um template ao lado para vincular ao salvar</span>
+            </div>
             <div class="rp-persist-card__actions">
               <button mat-flat-button class="btn-pc-primary" (click)="salvarRelatorioNoFirebase()">
                 <mat-icon>save</mat-icon> Salvar
@@ -1043,11 +1064,66 @@
     <div class="rp-tab-content">
 
       <!-- Navegação Tab 3 -->
-      <div class="rp-tab-footer rp-tab-footer--start ui-only">
+      <div class="rp-tab-footer rp-tab-footer--start ui-only" *ngIf="currentUserRole !== 'viewer'">
         <button mat-stroked-button (click)="goToTab(1)" class="rp-back-btn">
           <mat-icon>arrow_back</mat-icon>
           Montar Relatório
         </button>
+      </div>
+
+      <!-- ── Controle de publicação (somente admin_master, na etapa final) ── -->
+      <div class="rp-publish-bar ui-only" *ngIf="canReleaseReport && selectedAvaliado"
+           [class.rp-publish-bar--orphan]="isSnapshotOrphaned">
+        <div class="rp-publish-bar__info">
+          <mat-icon class="rp-publish-bar__icon"
+                    [class.rp-publish-bar__icon--ok]="viewerHasAccess && !hasUnpublishedChanges && !isSnapshotOrphaned"
+                    [class.rp-publish-bar__icon--warn]="!viewerHasAccess || hasUnpublishedChanges || isSnapshotOrphaned">
+            {{ viewerHasAccess && !hasUnpublishedChanges && !isSnapshotOrphaned ? 'cloud_done' : 'cloud_upload' }}
+          </mat-icon>
+          <div class="rp-publish-bar__text">
+            <!-- Estado inconsistente: status diz não publicado mas viewer ainda acessa -->
+            <ng-container *ngIf="isSnapshotOrphaned">
+              <strong>Visualizador ainda tem acesso</strong>
+              <span>O relatório consta como não publicado, mas o visualizador ainda consegue vê-lo. Clique em "Despublicar" para cortar o acesso.</span>
+            </ng-container>
+            <!-- Não publicado e sem snapshot ativo -->
+            <ng-container *ngIf="!viewerHasAccess">
+              <strong>Relatório não publicado</strong>
+              <span>Publique para que o visualizador tenha acesso.</span>
+            </ng-container>
+            <!-- Publicado com alterações pendentes -->
+            <ng-container *ngIf="viewerHasAccess && !isSnapshotOrphaned && hasUnpublishedChanges">
+              <strong>Alterações não publicadas</strong>
+              <span>Você alterou o relatório desde a última publicação. Publique novamente para o visualizador ver as mudanças.</span>
+            </ng-container>
+            <!-- Publicado e em dia -->
+            <ng-container *ngIf="viewerHasAccess && !isSnapshotOrphaned && !hasUnpublishedChanges">
+              <strong>Relatório publicado</strong>
+              <span>O visualizador já tem acesso a esta versão.</span>
+            </ng-container>
+          </div>
+        </div>
+        <div class="rp-publish-bar__actions">
+          <!-- Publicar / Republicar -->
+          <button mat-flat-button
+                  class="rp-publish-btn"
+                  [class.rp-publish-btn--warn]="!viewerHasAccess || hasUnpublishedChanges"
+                  *ngIf="!viewerHasAccess || hasUnpublishedChanges"
+                  (click)="releaseReport(selectedAvaliado!)">
+            <span class="rp-publish-btn__dot"></span>
+            <mat-icon>cloud_upload</mat-icon>
+            {{ selectedAvaliadoReleaseStatus === 'released' ? 'Republicar alterações' : 'Publicar relatório' }}
+          </button>
+          <!-- Despublicar: aparece sempre que o viewer tiver acesso (inclui estado órfão) -->
+          <button mat-stroked-button
+                  class="rp-unpublish-btn"
+                  [class.rp-unpublish-btn--alert]="isSnapshotOrphaned"
+                  *ngIf="viewerHasAccess"
+                  (click)="revokeReportRelease(selectedAvaliado!)">
+            <mat-icon>lock</mat-icon>
+            Despublicar
+          </button>
+        </div>
       </div>
 
       <!-- Export actions bar -->
@@ -1174,9 +1250,48 @@
         </div>
       </div>
 
+      <!-- Banner: relatório aguardando publicação (viewer/admin_client) -->
+      <div class="rp-pending-banner" *ngIf="isReportPendingForViewer">
+        <div class="rp-pending-banner__icon">
+          <mat-icon>hourglass_top</mat-icon>
+        </div>
+        <div class="rp-pending-banner__content">
+          <h3 class="rp-pending-banner__title">Relatório aguardando publicação</h3>
+          <p class="rp-pending-banner__desc" *ngIf="selectedAvaliado">
+            O relatório de <strong>{{ selectedAvaliado }}</strong> ainda não foi publicado pelo administrador.
+            Assim que ele for liberado, o conteúdo aparecerá aqui automaticamente.
+          </p>
+          <p class="rp-pending-banner__desc" *ngIf="!selectedAvaliado">
+            O relatório desta avaliação ainda não foi publicado pelo administrador.
+            Assim que ele for liberado, o conteúdo aparecerá aqui automaticamente.
+          </p>
+        </div>
+        <span class="rp-pending-banner__badge">
+          <mat-icon>schedule</mat-icon>
+          Aguardando aprovação
+        </span>
+      </div>
+
       <!-- Report preview area -->
-      <div id="report-preview">
-        <div class="report-section" *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
+      <div id="report-preview" *ngIf="!isReportPendingForViewer">
+
+        <!-- Cabeçalho do documento -->
+        <div class="rp-doc-cabecalho"
+             *ngIf="documentoConfig.cabecalho.ativo"
+             [style.color]="documentoConfig.cabecalho.cor"
+             [class.rp-doc-cabecalho--linha]="documentoConfig.cabecalho.linhaInferior">
+          <img *ngIf="documentoConfig.cabecalho.logoUrl"
+               [src]="documentoConfig.cabecalho.logoUrl"
+               class="rp-doc-cabecalho__logo" alt="Logo">
+          <span class="rp-doc-cabecalho__left">{{ documentoConfig.cabecalho.textoEsquerda }}</span>
+          <span class="rp-doc-cabecalho__project" *ngIf="documentoConfig.cabecalho.mostrarNomeProjeto">{{ selectedAssessmentName }}</span>
+          <span class="rp-doc-cabecalho__pagina" *ngIf="documentoConfig.cabecalho.mostrarNumeroPagina">Pág. </span>
+        </div>
+
+        <div class="report-section"
+             [class.report-section--page-break-before]="secao['pageBreakAntes']"
+             [class.report-section--page-break-after]="secao['pageBreakDepois']"
+             *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
           <ng-container [ngSwitch]="secao.tipo">
 
             <div *ngSwitchCase="'capa'" class="capa-section">
@@ -1189,7 +1304,7 @@
                   <span class="capa-info-block__date">{{ today | date:'dd/MM/yyyy' }}</span>
                 </div>
                 <div class="capa-info-block__respondentes" *ngIf="getContagemRespondentesPorCategoria().length > 0">
-                  <span class="capa-info-block__resp-title">Respondentes por Categoria</span>
+                  <span class="capa-info-block__resp-title">Avaliadores por Perfil</span>
                   <div class="capa-info-block__resp-chips">
                     <span class="capa-info-block__chip"
                           *ngFor="let item of getContagemRespondentesPorCategoria()">
@@ -1640,6 +1755,17 @@
           </ng-container>
           <hr class="ui-only" />
         </div>
+
+        <!-- Rodapé do documento -->
+        <div class="rp-doc-rodape"
+             *ngIf="documentoConfig.rodape.ativo"
+             [style.color]="documentoConfig.rodape.cor"
+             [class.rp-doc-rodape--linha]="documentoConfig.rodape.linhaSuperior">
+          <span class="rp-doc-rodape__text">{{ documentoConfig.rodape.texto }}</span>
+          <span class="rp-doc-rodape__ano" *ngIf="documentoConfig.rodape.mostrarAno">{{ today | date:'yyyy' }}</span>
+          <span class="rp-doc-rodape__pagina" *ngIf="documentoConfig.rodape.mostrarNumeroPagina">Pág. </span>
+        </div>
+
       </div>
 
     </div>

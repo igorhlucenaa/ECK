@@ -27,6 +27,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { ToastService } from 'src/app/services/toast.service';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { DependencyCheckService } from 'src/app/services/dependency-check.service';
+import { DependencyBlockDialogComponent } from 'src/app/shared/dependency-block-dialog/dependency-block-dialog.component';
 
 @Component({
   selector: 'app-clients-list',
@@ -71,7 +73,8 @@ export class ClientsListComponent implements OnInit {
     private router: Router,
     private translate: TranslateService,
     private toast: ToastService,
-    private authService: AuthService
+    private authService: AuthService,
+    private dependencyCheck: DependencyCheckService
   ) {}
 
   async ngOnInit() {
@@ -192,66 +195,37 @@ export class ClientsListComponent implements OnInit {
     this.applyFilters();
   }
 
-  deleteClient(id: string) {
+  async deleteClient(id: string) {
+    const clientName = this.dataSource.data.find(c => c.id === id)?.companyName || 'cliente';
+
+    // 1. Verificação prévia de dependências
+    const result = await this.dependencyCheck.checkClient(id, clientName);
+    if (!result.canDelete) {
+      this.dialog.open(DependencyBlockDialogComponent, {
+        width: '560px',
+        data: { entityLabel: result.entityLabel, blockers: result.blockers },
+      });
+      return;
+    }
+
+    // 2. Sem vínculos — confirmar e excluir
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
       data: {
-        message: this.translate.instant('Ao remover o cliente, todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?'),
+        title: 'Excluir cliente',
+        message: this.translate.instant(`Tem certeza de que deseja excluir o cliente "${clientName}"?`),
       },
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (confirmed) {
-        // Referências às coleções relacionadas
-        const projectsCollection = collection(this.firestore, 'projects');
-        const userGroupsCollection = collection(this.firestore, 'userGroups');
-        const usersCollection = collection(this.firestore, 'users');
-
-        // Queries para localizar documentos relacionados
-        const projectsQuery = query(
-          projectsCollection,
-          where('clientId', '==', id)
-        );
-        const userGroupsQuery = query(
-          userGroupsCollection,
-          where('clientId', '==', id)
-        );
-        const usersQuery = query(usersCollection, where('client', '==', id));
-
-        // Função auxiliar para deletar documentos de uma query
-        const deleteDocuments = async (querySnapshot: any) => {
-          const batch = writeBatch(this.firestore);
-          querySnapshot.forEach((doc: any) => {
-            batch.delete(doc.ref);
-          });
-          await batch.commit();
-        };
-
-        // Deletar cliente e seus relacionados
-        Promise.all([
-          getDocs(projectsQuery).then(deleteDocuments),
-          getDocs(userGroupsQuery).then(deleteDocuments),
-          getDocs(usersQuery).then(deleteDocuments),
-        ])
-          .then(() => {
-            // Após excluir documentos relacionados, exclua o cliente
-            const clientDocRef = doc(this.firestore, `clients/${id}`);
-            return deleteDoc(clientDocRef);
-          })
-          .then(() => {
-            this.toast.success(this.translate.instant('Cliente e dados relacionados excluídos com sucesso.'));
-            // Atualizar tabela
-            this.dataSource.data = this.dataSource.data.filter(
-              (client) => client.id !== id
-            );
-          })
-          .catch((error) => {
-            console.error(
-              'Erro ao excluir cliente e dados relacionados:',
-              error
-            );
-            this.toast.error(this.translate.instant('Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.'));
-          });
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        await deleteDoc(doc(this.firestore, `clients/${id}`));
+        this.toast.success(this.translate.instant('Cliente excluído com sucesso.'));
+        this.dataSource.data = this.dataSource.data.filter((client) => client.id !== id);
+      } catch (error) {
+        console.error('Erro ao excluir cliente:', error);
+        this.toast.error(this.translate.instant('Erro ao excluir cliente. Tente novamente.'));
       }
     });
   }
@@ -282,40 +256,54 @@ export class ClientsListComponent implements OnInit {
     }
   }
 
-  deleteSelectedClients(): void {
-    const count = this.selectedClientIds.size;
+  async deleteSelectedClients(): Promise<void> {
+    const ids = Array.from(this.selectedClientIds);
+
+    // 1. Verificação prévia: identificar clientes com vínculos
+    const checks = await Promise.all(
+      ids.map(async id => {
+        const name = this.dataSource.data.find(c => c.id === id)?.companyName || 'cliente';
+        return { id, name, result: await this.dependencyCheck.checkClient(id, name) };
+      })
+    );
+    const blocked = checks.filter(c => !c.result.canDelete);
+    const deletable = checks.filter(c => c.result.canDelete);
+
+    // 2. Se houver bloqueados, informar e abortar (não exclui parcialmente sem avisar)
+    if (blocked.length > 0) {
+      const aggregated = blocked.flatMap(b =>
+        b.result.blockers.map(bl => ({ ...bl, label: `${bl.label} (${b.name})` }))
+      );
+      this.dialog.open(DependencyBlockDialogComponent, {
+        width: '560px',
+        data: {
+          entityLabel: blocked.length === 1
+            ? blocked[0].result.entityLabel
+            : `${blocked.length} clientes selecionados`,
+          blockers: aggregated,
+        },
+      });
+      return;
+    }
+
+    if (deletable.length === 0) return;
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
       data: {
-        message: this.translate.instant(`Ao remover ${count} cliente(s), todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?`),
+        title: 'Excluir clientes',
+        message: this.translate.instant(`Tem certeza de que deseja excluir ${deletable.length} cliente(s)?`),
       },
     });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) return;
-      const ids = Array.from(this.selectedClientIds);
-      const projectsCol = collection(this.firestore, 'projects');
-      const groupsCol   = collection(this.firestore, 'userGroups');
-      const usersCol    = collection(this.firestore, 'users');
-
-      const deleteByQuery = async (q: any) => {
-        const snap = await getDocs(q);
-        if (snap.empty) return;
-        const batch = writeBatch(this.firestore);
-        snap.forEach((d: any) => batch.delete(d.ref));
-        await batch.commit();
-      };
-
       try {
-        for (const id of ids) {
-          await Promise.all([
-            deleteByQuery(query(projectsCol, where('clientId', '==', id))),
-            deleteByQuery(query(groupsCol,   where('clientId', '==', id))),
-            deleteByQuery(query(usersCol,    where('client',   '==', id))),
-          ]);
-          await deleteDoc(doc(this.firestore, `clients/${id}`));
-        }
-        this.dataSource.data = this.dataSource.data.filter(c => !this.selectedClientIds.has(c.id));
+        const batch = writeBatch(this.firestore);
+        deletable.forEach(c => batch.delete(doc(this.firestore, `clients/${c.id}`)));
+        await batch.commit();
+        const deletedIds = new Set(deletable.map(c => c.id));
+        this.dataSource.data = this.dataSource.data.filter(c => !deletedIds.has(c.id));
         this.selectedClientIds.clear();
         this.toast.success(this.translate.instant('Clientes excluídos com sucesso.'));
       } catch (error) {

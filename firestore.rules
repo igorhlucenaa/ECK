@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// ════════════════════════════════════════════════════════════════════
+// BASELINE de Security Rules — Avaliação 360
+//
+// ⚠️ REVISE antes de ativar. Este arquivo NÃO está registrado em
+//    firebase.json (seção "firestore") de propósito, para não sobrescrever
+//    as regras atuais do Console sem intenção.
+//
+// Para ativar:
+//   1) Adicione ao firebase.json:
+//        "firestore": { "rules": "firestore.rules" }
+//   2) Rode:  firebase deploy --only firestore:rules
+//
+// Importante: o app usa o SDK do cliente para ler/gravar diretamente em
+// quase todas as coleções, então o baseline mantém leitura/escrita para
+// usuários AUTENTICADOS. As Cloud Functions usam o Admin SDK e IGNORAM
+// estas regras (têm acesso total) — por isso o safeDelete e os triggers
+// continuam funcionando mesmo com regras restritivas.
+// ════════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ── Log de auditoria de crédito ──────────────────────────────
+    // Pode ser criado (reserva/consumo) e lido, mas NUNCA alterado ou
+    // apagado pelo cliente — preserva a trilha de auditoria.
+    match /creditTransactions/{txId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if false; // só via Admin SDK (Cloud Functions)
+    }
+
+    // ── Snapshots de relatório publicado ─────────────────────────
+    // Cliente publica/revoga (create/update). Exclusão direta bloqueada
+    // para evitar perda acidental — limpeza acontece via cascata server-side.
+    match /releasedReports/{snapId} {
+      allow read, create, update: if isSignedIn();
+      allow delete: if false;
+    }
+
+    // ── Demais coleções ──────────────────────────────────────────
+    // Mantém o comportamento atual do app: acesso para autenticados.
+    // (Endureça por coleção/role conforme migrar os fluxos para Functions.)
+    match /{document=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

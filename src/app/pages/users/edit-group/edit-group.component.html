@@ -40,6 +40,13 @@
             </div>
           </div>
           <div class="eu-profile-info__row">
+            <mat-icon>folder_open</mat-icon>
+            <div>
+              <span class="eu-profile-info__label">Projetos vinculados</span>
+              <span class="eu-profile-info__val">{{ (groupForm.get('projectIds')?.value?.length || 0) }} projeto{{ (groupForm.get('projectIds')?.value?.length || 0) !== 1 ? 's' : '' }}</span>
+            </div>
+          </div>
+          <div class="eu-profile-info__row">
             <mat-icon>people</mat-icon>
             <div>
               <span class="eu-profile-info__label">Membros selecionados</span>
@@ -100,6 +107,35 @@
             </mat-select>
             <mat-error *ngIf="groupForm.get('clientId')?.hasError('required')">Cliente é obrigatório</mat-error>
           </mat-form-field>
+
+          <!-- Projetos -->
+          <p class="eu-section-label">Acesso a Projetos</p>
+
+          <div class="eu-all-projects-toggle">
+            <mat-slide-toggle formControlName="allProjects" color="primary">
+              Todos os projetos do cliente
+            </mat-slide-toggle>
+            <span class="eu-all-projects-toggle__hint">Novos projetos entram automaticamente</span>
+          </div>
+
+          <mat-form-field appearance="outline" class="eu-field eu-field--full" *ngIf="!groupForm.get('allProjects')?.value">
+            <mat-label>Projetos com Acesso</mat-label>
+            <mat-icon matPrefix>folder_open</mat-icon>
+            <mat-select formControlName="projectIds" multiple>
+              <mat-option *ngIf="projects.length === 0" disabled>
+                {{ groupForm.get('clientId')?.value ? 'Nenhum projeto encontrado para este cliente' : 'Selecione um cliente para carregar projetos' }}
+              </mat-option>
+              <mat-option *ngFor="let project of projects" [value]="project.id">
+                {{ project.name }}
+              </mat-option>
+            </mat-select>
+            <mat-hint>Viewers terão acesso apenas a estes projetos · {{ (groupForm.get('projectIds')?.value?.length || 0) }} selecionado(s)</mat-hint>
+          </mat-form-field>
+
+          <div class="eu-all-projects-badge" *ngIf="groupForm.get('allProjects')?.value">
+            <mat-icon>check_circle</mat-icon>
+            Acesso a todos os projetos presentes e futuros do cliente
+          </div>
 
           <!-- Membros -->
           <p class="eu-section-label">Membros</p>

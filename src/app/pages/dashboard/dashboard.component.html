@@ -642,9 +642,9 @@
 
 
   <!-- ══════════════════════════════════════════════════════════ -->
-  <!-- VISÃO CLIENTE                                             -->
+  <!-- VISÃO CLIENTE / VIEWER                                    -->
   <!-- ══════════════════════════════════════════════════════════ -->
-  <div id="dashboard-content" *ngIf="!isLoading && userRole === 'admin_client'">
+  <div id="dashboard-content" *ngIf="!isLoading && (userRole === 'admin_client' || userRole === 'viewer')">
 
     <!-- ── KPIs (4 cards) ─────────────────────────────────────── -->
     <div class="dash-block-header">
@@ -867,7 +867,12 @@
           <tr mat-header-row *matHeaderRowDef="clientProjectCols"></tr>
           <tr mat-row *matRowDef="let row; columns: clientProjectCols;"
               class="project-row"
-              [routerLink]="['/projects', row.id, 'edit']"></tr>
+              [routerLink]="userRole === 'viewer'
+                ? ['/reports']
+                : ['/projects', row.id, 'edit']"
+              [queryParams]="userRole === 'viewer'
+                ? { projectId: row.id }
+                : {}"></tr>
         </table>
 
         <div class="dash-empty" *ngIf="filteredProjectRows.length === 0">
@@ -883,6 +888,40 @@
         (page)="onProjectPage($event)"
         class="projects-paginator">
       </mat-paginator>
+    </mat-card>
+
+    <!-- ── Funil de Projetos (admin_client only) ─────────────── -->
+    <mat-card class="dash-card funnel-card" *ngIf="userRole === 'admin_client'">
+      <div class="dash-card__header">
+        <div class="dash-card__header-icon dash-card__header-icon--purple">
+          <mat-icon>filter_alt</mat-icon>
+        </div>
+        <div>
+          <h3 class="dash-card__title">{{ 'Funil de Projetos' | translate }}</h3>
+          <p class="dash-card__sub">{{ 'Progresso dos projetos ativos por etapa' | translate }}</p>
+        </div>
+        <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
+                [matTooltip]="'Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados.' | translate"
+                matTooltipPosition="left" matTooltipClass="dash-tooltip">
+          <mat-icon>info_outline</mat-icon>
+        </button>
+      </div>
+      <div class="funnel-body">
+        <div class="funnel-step funnel-step--active">
+          <div class="funnel-step__value">{{ funnelData.created }}</div>
+          <div class="funnel-step__label">{{ 'Criados' | translate }}</div>
+        </div>
+        <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
+        <div class="funnel-step funnel-step--mid">
+          <div class="funnel-step__value">{{ funnelData.invitesSent }}</div>
+          <div class="funnel-step__label">{{ 'Com convites enviados' | translate }}</div>
+        </div>
+        <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
+        <div class="funnel-step funnel-step--done">
+          <div class="funnel-step__value">{{ funnelData.completed }}</div>
+          <div class="funnel-step__label">{{ 'Concluídos' | translate }}</div>
+        </div>
+      </div>
     </mat-card>
 
     <!-- ── Atalhos Rápidos ────────────────────────────────────── -->
@@ -909,13 +948,26 @@
         <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
       </a>
 
-      <a class="quick-action-btn" routerLink="/users" [queryParams]="{tab: 'groups'}">
+      <a class="quick-action-btn" routerLink="/users" [queryParams]="{tab: 'groups'}"
+         *ngIf="userRole !== 'viewer'">
         <div class="quick-action-btn__icon quick-action-btn__icon--green">
           <mat-icon>group_work</mat-icon>
         </div>
         <div class="quick-action-btn__text">
           <span class="quick-action-btn__label">{{ 'Meus Grupos' | translate }}</span>
           <span class="quick-action-btn__sub">{{ 'Grupos de usuários da empresa' | translate }}</span>
+        </div>
+        <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
+      </a>
+
+      <a class="quick-action-btn" routerLink="/mail-templates"
+         *ngIf="userRole === 'admin_client'">
+        <div class="quick-action-btn__icon quick-action-btn__icon--orange">
+          <mat-icon>email</mat-icon>
+        </div>
+        <div class="quick-action-btn__text">
+          <span class="quick-action-btn__label">{{ 'Modelos de E-mail' | translate }}</span>
+          <span class="quick-action-btn__sub">{{ 'Configurar templates de convites' | translate }}</span>
         </div>
         <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
       </a>
@@ -958,7 +1010,40 @@
         </div>
       </mat-card>
 
-      <mat-card class="dash-card dash-card--table">
+      <!-- Projetos por Status (admin_client only) -->
+      <mat-card class="dash-card" *ngIf="userRole === 'admin_client' && projectsByStatusChart">
+        <div class="dash-card__header">
+          <div class="dash-card__header-icon dash-card__header-icon--purple">
+            <mat-icon>donut_large</mat-icon>
+          </div>
+          <div>
+            <h3 class="dash-card__title">{{ 'Projetos por Status' | translate }}</h3>
+            <p class="dash-card__sub">{{ 'Distribuição de todos os projetos por status atual' | translate }}</p>
+          </div>
+          <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
+                  [matTooltip]="'Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.' | translate"
+                  matTooltipPosition="left" matTooltipClass="dash-tooltip">
+            <mat-icon>info_outline</mat-icon>
+          </button>
+        </div>
+        <div class="dash-card__body">
+          <apx-chart
+            [series]="projectsByStatusChart.series"
+            [chart]="projectsByStatusChart.chart"
+            [plotOptions]="projectsByStatusChart.plotOptions"
+            [colors]="projectsByStatusChart.colors"
+            [dataLabels]="projectsByStatusChart.dataLabels"
+            [xaxis]="projectsByStatusChart.xaxis"
+            [yaxis]="projectsByStatusChart.yaxis"
+            [grid]="projectsByStatusChart.grid"
+            [legend]="projectsByStatusChart.legend"
+            [tooltip]="projectsByStatusChart.tooltip">
+          </apx-chart>
+        </div>
+      </mat-card>
+
+      <!-- Créditos Próximos ao Vencimento (admin_client only) -->
+      <mat-card class="dash-card dash-card--table" *ngIf="userRole === 'admin_client'">
         <div class="dash-card__header">
           <div class="dash-card__header-icon dash-card__header-icon--orange">
             <mat-icon>warning_amber</mat-icon>
@@ -979,6 +1064,6 @@
       </mat-card>
     </div>
 
-  </div><!-- /admin_client -->
+  </div><!-- /admin_client + viewer -->
 
 </div>

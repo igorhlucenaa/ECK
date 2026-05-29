@@ -15,6 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   Firestore,
@@ -50,6 +51,7 @@ export interface UserGroup {
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
+    MatSlideToggleModule,
     MatSnackBarModule,
     CommonModule,
     TranslateModule,
@@ -63,6 +65,7 @@ export class CreateUserGroupComponent implements OnInit {
   projects: { id: string; name: string }[] = [];
   users: { id: string; name: string; surname: string }[] = [];
   isEditMode: boolean = false;
+  private currentUserRole: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -76,6 +79,7 @@ export class CreateUserGroupComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeForm();
+    this.authService.getCurrentUserRole().then(role => { this.currentUserRole = role; });
     this.loadClients().then(() => {
       if (this.data) {
         this.isEditMode = true;
@@ -98,16 +102,21 @@ export class CreateUserGroupComponent implements OnInit {
       name: ['', Validators.required],
       description: [''],
       clientId: ['', Validators.required],
+      allProjects: [false],
+      projectIds: [[]],
       userIds: [[]],
     });
 
     this.authService.getCurrentUserRole().then(async (role) => {
       if (role === 'admin_client') {
-        const clientId = await this.authService.getCurrentClientId();
+        const clientIds = await this.authService.getCurrentUserClientIds();
+        const clientId = clientIds.length > 0 ? clientIds[0] : null;
         this.groupForm.get('clientId')?.setValue(clientId);
-        this.groupForm.get('clientId')?.disable(); // Impede alteração do cliente
-        this.loadProjects(clientId);
-        this.loadUsers(clientId);
+        this.groupForm.get('clientId')?.disable();
+        if (clientId) {
+          this.loadProjects(clientId);
+          this.loadUsers(clientId);
+        }
       }
     });
   }
@@ -120,9 +129,11 @@ export class CreateUserGroupComponent implements OnInit {
       const clientsCollection = collection(this.firestore, 'clients');
       let snapshot;
 
-      if (userRole === 'admin_client' && clientId) {
+      if (userRole === 'admin_client') {
+        const clientIds = await this.authService.getCurrentUserClientIds();
+        if (clientIds.length === 0) { this.clients = []; return; }
         snapshot = await getDocs(
-          query(clientsCollection, where('__name__', '==', clientId))
+          query(clientsCollection, where('__name__', 'in', clientIds))
         );
       } else if (userRole === 'admin_master') {
         snapshot = await getDocs(clientsCollection);
@@ -171,26 +182,50 @@ export class CreateUserGroupComponent implements OnInit {
   }
 
   private async loadUsers(clientId: string | null): Promise<void> {
-    if (!clientId) {
-      this.users = [];
-      return;
+    if (!clientId) { this.users = []; return; }
+
+    if (!this.currentUserRole) {
+      this.currentUserRole = await this.authService.getCurrentUserRole();
     }
 
     try {
       const usersCollection = collection(this.firestore, 'users');
-      const usersQuery = query(usersCollection);
-      const snapshot = await getDocs(usersQuery);
+      let snap;
 
-      this.users = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'] || 'Sem Nome',
-        surname: doc.data()['surname'] || 'Sem Sobrenome',
-      }));
+      if (this.currentUserRole === 'admin_master') {
+        // Admin master vê TODOS os usuários (viewer + admin_client) para poder montar o grupo.
+        // O vínculo com o cliente é criado pela associação ao grupo, não pelo pré-filtro.
+        snap = await getDocs(
+          query(usersCollection, where('role', 'in', ['viewer', 'admin_client']))
+        );
+        const docsMap = new Map<string, any>();
+        snap.docs.forEach(d => docsMap.set(d.id, d));
+        this.users = Array.from(docsMap.values())
+          .map(d => ({
+            id: d.id,
+            name: d.data()['name'] || 'Sem Nome',
+            surname: d.data()['surname'] || 'Sem Sobrenome',
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      } else {
+        // Admin client: apenas usuários já vinculados ao seu cliente (campo legado ou array)
+        const [snapLegacy, snapArray] = await Promise.all([
+          getDocs(query(usersCollection, where('client', '==', clientId))),
+          getDocs(query(usersCollection, where('clients', 'array-contains', clientId))),
+        ]);
+        const docsMap = new Map<string, any>();
+        [...snapLegacy.docs, ...snapArray.docs].forEach(d => docsMap.set(d.id, d));
+        this.users = Array.from(docsMap.values())
+          .map(d => ({
+            id: d.id,
+            name: d.data()['name'] || 'Sem Nome',
+            surname: d.data()['surname'] || 'Sem Sobrenome',
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      }
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
-      this.snackBar.open(this.translate.instant('Erro ao carregar usuários.'), this.translate.instant('Fechar'), {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao carregar usuários.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 

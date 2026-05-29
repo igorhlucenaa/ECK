@@ -28,6 +28,8 @@ export class ProjectService {
     if (!projectSnap.exists()) throw new Error('Projeto não encontrado.');
 
     const projectData = projectSnap.data();
+    // Idempotência: retorna só se status é 'concluido' (lowercase, já processado por este serviço)
+    // Projetos com 'Concluído' (title case, auto-concluídos sem crédito) ainda precisam do processamento
     if (projectData['status'] === 'concluido') return;
 
     const clientId: string = projectData['clientId'];
@@ -66,7 +68,7 @@ export class ProjectService {
       if (freshProject.data()?.['status'] === 'concluido') return;
 
       t.update(projectRef, {
-        status: 'concluido',
+        status: 'Concluído',
         concludedAt: Timestamp.now(),
         concludedBy,
       });
@@ -112,8 +114,8 @@ export class ProjectService {
     if (!projectSnap.exists()) throw new Error('Projeto não encontrado.');
 
     const projectData = projectSnap.data();
-    if (projectData['status'] === 'concluido') throw new Error('Projeto já concluído.');
-    if (projectData['status'] === 'cancelado') return;
+    if (['concluido', 'Concluído'].includes(projectData['status'])) throw new Error('Projeto já concluído.');
+    if (['cancelado', 'Cancelado'].includes(projectData['status'])) return;
 
     if (projectData['firstFinalDispatchAt']) {
       throw new Error('Cancelamento sem estorno: disparo final já realizado.');
@@ -163,10 +165,10 @@ export class ProjectService {
 
     await runTransaction(this.firestore, async (t) => {
       const freshProject = await t.get(projectRef);
-      if (freshProject.data()?.['status'] === 'cancelado') return;
+      if (['cancelado', 'Cancelado'].includes(freshProject.data()?.['status'])) return;
 
       t.update(projectRef, {
-        status: 'cancelado',
+        status: 'Cancelado',
         cancelledAt: Timestamp.now(),
         cancelledBy,
       });

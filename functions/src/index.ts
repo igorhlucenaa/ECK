@@ -1,6 +1,6 @@
-import { onRequest } from 'firebase-functions/v2/https';
+import { onRequest, onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { onDocumentUpdated, onDocumentDeleted } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import { randomBytes } from 'crypto';
@@ -1221,6 +1221,9 @@ type HtmlPdfRenderOptions = {
     bottom: string;
     left: string;
   };
+  displayHeaderFooter: boolean;
+  headerTemplate: string;
+  footerTemplate: string;
 };
 
 function normalizeHtmlPdfOptions(raw: unknown): HtmlPdfRenderOptions {
@@ -1251,6 +1254,9 @@ function normalizeHtmlPdfOptions(raw: unknown): HtmlPdfRenderOptions {
       bottom: toMm(marginInput.bottom, 8),
       left: toMm(marginInput.left, 7),
     },
+    displayHeaderFooter: Boolean(input.displayHeaderFooter),
+    headerTemplate: typeof input.headerTemplate === 'string' ? input.headerTemplate : '',
+    footerTemplate: typeof input.footerTemplate === 'string' ? input.footerTemplate : '',
   };
 }
 
@@ -1323,6 +1329,9 @@ async function createPdfBufferFromHtml(html: string, options: HtmlPdfRenderOptio
       printBackground: true,
       preferCSSPageSize: options.preferCssPageSize,
       margin: options.margin,
+      displayHeaderFooter: options.displayHeaderFooter,
+      headerTemplate: options.displayHeaderFooter ? (options.headerTemplate || '<span></span>') : '<span></span>',
+      footerTemplate: options.displayHeaderFooter ? (options.footerTemplate || '<span></span>') : '<span></span>',
       timeout: 480000,
     }));
   } finally {
@@ -1600,6 +1609,281 @@ export const onAssessmentCompleted = onDocumentUpdated(
     } catch (error) {
       const err = error as Error;
       console.error('onAssessmentCompleted: erro ao sincronizar créditos:', err.message);
+    }
+  }
+);
+
+// ════════════════════════════════════════════════════════════════════
+// INTEGRIDADE REFERENCIAL — exclusão segura com cascata/estorno atômico
+// ════════════════════════════════════════════════════════════════════
+
+const DELETE_REGION = 'us-central1';
+
+/** Resolve o papel (role) do usuário autenticado pelo e-mail. */
+async function getCallerRole(email: string | undefined): Promise<string | null> {
+  if (!email) return null;
+  const db = getDb();
+  const snap = await db.collection('users').where('email', '==', email).limit(1).get();
+  if (snap.empty) return null;
+  return normalizeOptionalString(snap.docs[0].data()['role']) ?? null;
+}
+
+/** Apaga em lotes (máx. 450/batch) todos os docs de uma query. */
+async function deleteQueryInBatches(
+  query: admin.firestore.Query
+): Promise<number> {
+  const db = getDb();
+  const snap = await query.get();
+  if (snap.empty) return 0;
+  let count = 0;
+  for (let i = 0; i < snap.docs.length; i += 450) {
+    const batch = db.batch();
+    snap.docs.slice(i, i + 450).forEach(d => { batch.delete(d.ref); count++; });
+    await batch.commit();
+  }
+  return count;
+}
+
+/** Remove um valor de um campo array em todos os docs que o contêm. */
+async function pullFromArrayField(
+  collectionName: string, field: string, value: string
+): Promise<void> {
+  const db = getDb();
+  const snap = await db.collection(collectionName).where(field, 'array-contains', value).get();
+  if (snap.empty) return;
+  for (let i = 0; i < snap.docs.length; i += 450) {
+    const batch = db.batch();
+    snap.docs.slice(i, i + 450).forEach(d =>
+      batch.update(d.ref, { [field]: admin.firestore.FieldValue.arrayRemove(value) })
+    );
+    await batch.commit();
+  }
+}
+
+interface SafeDeleteRequest {
+  entity: 'client' | 'project' | 'participant' | 'creditOrder' | 'assessment';
+  id: string;
+}
+
+interface BlockerInfo { collection: string; label: string; count: number; }
+
+/**
+ * Exclusão autoritativa (server-side). Verifica permissão, aplica regra de
+ * dependência (bloqueio OU cascata atômica) e mantém integridade dos créditos.
+ *
+ * Retorno: { deleted: true } ou lança HttpsError('failed-precondition') com
+ * a lista de bloqueios em err.details.blockers.
+ */
+export const safeDelete = onCall(
+  { region: DELETE_REGION },
+  async (request) => {
+    // 1. Autenticação + autorização
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Login necessário.');
+    }
+    const role = await getCallerRole(request.auth.token.email as string | undefined);
+    if (role !== 'admin_master') {
+      throw new HttpsError('permission-denied', 'Apenas admin master pode excluir registros.');
+    }
+
+    const { entity, id } = (request.data || {}) as SafeDeleteRequest;
+    if (!entity || !id) {
+      throw new HttpsError('invalid-argument', 'Parâmetros "entity" e "id" são obrigatórios.');
+    }
+
+    const db = getDb();
+
+    switch (entity) {
+      case 'client':   return deleteClientSafe(db, id);
+      case 'project':  return deleteProjectSafe(db, id);
+      case 'participant': return deleteParticipantSafe(db, id);
+      case 'creditOrder': return deleteCreditOrderSafe(db, id);
+      case 'assessment': return deleteAssessmentSafe(db, id);
+      default:
+        throw new HttpsError('invalid-argument', `Entidade desconhecida: ${entity}`);
+    }
+  }
+);
+
+/** CLIENTE → BLOQUEIA se houver qualquer filho. */
+async function deleteClientSafe(db: admin.firestore.Firestore, id: string) {
+  const checks: Array<[string, admin.firestore.Query, string]> = [
+    ['projects',        db.collection('projects').where('clientId', '==', id),        'Projetos'],
+    ['assessments',     db.collection('assessments').where('clientId', '==', id),     'Formulários'],
+    ['participants',    db.collection('participants').where('clientId', '==', id),     'Participantes'],
+    ['userGroups',      db.collection('userGroups').where('clientId', '==', id),       'Grupos de usuários'],
+    ['creditOrders',    db.collection('creditOrders').where('clientId', '==', id),     'Pedidos de crédito'],
+    ['competencies',    db.collection('competencies').where('clientId', '==', id),     'Competências'],
+    ['competencyGroups',db.collection('competencyGroups').where('clientId', '==', id), 'Grupos de competências'],
+    ['mailTemplates',   db.collection('mailTemplates').where('clientId', '==', id),    'Modelos de e-mail'],
+  ];
+  const blockers: BlockerInfo[] = [];
+  for (const [coll, q, label] of checks) {
+    const c = (await q.count().get()).data().count;
+    if (c > 0) blockers.push({ collection: coll, label, count: c });
+  }
+  if (blockers.length > 0) {
+    throw new HttpsError('failed-precondition', 'Cliente possui vínculos ativos.', { blockers });
+  }
+  await db.collection('clients').doc(id).delete();
+  return { deleted: true };
+}
+
+/** PROJETO → CASCATA atômica: apaga filhos exclusivos + estorna créditos. */
+async function deleteProjectSafe(db: admin.firestore.Firestore, id: string) {
+  const projectSnap = await db.collection('projects').doc(id).get();
+  const clientId = normalizeOptionalString(projectSnap.data()?.['clientId']);
+
+  // Apaga formulários do projeto + suas subcoleções (results)
+  const assessmentsSnap = await db.collection('assessments').where('projectId', '==', id).get();
+  for (const a of assessmentsSnap.docs) {
+    await db.recursiveDelete(a.ref);
+  }
+
+  // Apaga participantes, links, snapshots e templates do projeto
+  await deleteQueryInBatches(db.collection('participants').where('projectId', '==', id));
+  await deleteQueryInBatches(db.collection('assessmentLinks').where('projectId', '==', id));
+  await deleteQueryInBatches(db.collection('releasedReports').where('projectId', '==', id));
+  await deleteQueryInBatches(db.collection('mailTemplates').where('projectId', '==', id));
+
+  // Desvincula o projeto dos grupos
+  await pullFromArrayField('userGroups', 'projectIds', id);
+
+  // Apaga o projeto
+  await db.collection('projects').doc(id).delete();
+
+  // Estorna/recalcula créditos do cliente
+  if (clientId) {
+    try { await sincronizarCreditosCliente(clientId); } catch { /* log abaixo */ }
+  }
+  return { deleted: true };
+}
+
+/** PARTICIPANTE → CASCATA: avaliadores vinculados + links + resync de crédito. */
+async function deleteParticipantSafe(db: admin.firestore.Firestore, id: string) {
+  const pSnap = await db.collection('participants').doc(id).get();
+  const data = pSnap.data() || {};
+  const clientId = normalizeOptionalString(data['clientId']);
+  const projectId = normalizeOptionalString(data['projectId']);
+
+  // Avaliadores vinculados a este avaliado
+  const avaliadoresSnap = await db.collection('participants').where('avaliadoId', '==', id).get();
+  const idsToDelete = [id, ...avaliadoresSnap.docs.map(d => d.id)];
+
+  // Links de todos os participantes envolvidos
+  for (const pid of idsToDelete) {
+    await deleteQueryInBatches(db.collection('assessmentLinks').where('participantId', '==', pid));
+    // Respostas na subcoleção do assessment do projeto
+    if (projectId) {
+      const aSnap = await db.collection('assessments').where('projectId', '==', projectId).get();
+      for (const a of aSnap.docs) {
+        await deleteQueryInBatches(a.ref.collection('results').where('participantId', '==', pid));
+      }
+    }
+  }
+
+  // Apaga os participantes
+  const batch = db.batch();
+  idsToDelete.forEach(pid => batch.delete(db.collection('participants').doc(pid)));
+  await batch.commit();
+
+  // Recalcula créditos (estorno de reservas liberadas)
+  if (clientId) {
+    try { await sincronizarCreditosCliente(clientId); } catch { /* ignora */ }
+  }
+  return { deleted: true, removed: idsToDelete.length };
+}
+
+/** PEDIDO DE CRÉDITO → BLOQUEIA se houver participante usando o crédito. */
+async function deleteCreditOrderSafe(db: admin.firestore.Firestore, id: string) {
+  const used = (await db.collection('participants').where('orderId', '==', id).count().get()).data().count;
+  if (used > 0) {
+    throw new HttpsError('failed-precondition', 'Pedido possui créditos reservados/consumidos.', {
+      blockers: [{ collection: 'participants', label: 'Participantes usando este crédito', count: used }],
+    });
+  }
+  await db.collection('creditOrders').doc(id).delete();
+  return { deleted: true };
+}
+
+/** FORMULÁRIO → BLOQUEIA se houver respostas/links/snapshots. */
+async function deleteAssessmentSafe(db: admin.firestore.Firestore, id: string) {
+  const links = (await db.collection('assessmentLinks').where('assessmentId', '==', id).count().get()).data().count;
+  const snaps = (await db.collection('releasedReports').where('assessmentId', '==', id).count().get()).data().count;
+  const results = (await db.collection('assessments').doc(id).collection('results').count().get()).data().count;
+  const blockers: BlockerInfo[] = [];
+  if (results > 0) blockers.push({ collection: 'results', label: 'Respostas registradas', count: results });
+  if (links > 0)   blockers.push({ collection: 'assessmentLinks', label: 'Convites enviados', count: links });
+  if (snaps > 0)   blockers.push({ collection: 'releasedReports', label: 'Relatórios publicados', count: snaps });
+  if (blockers.length > 0) {
+    throw new HttpsError('failed-precondition', 'Formulário possui vínculos ativos.', { blockers });
+  }
+  await db.recursiveDelete(db.collection('assessments').doc(id));
+  return { deleted: true };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// TRIGGERS de limpeza de órfãos (defesa em profundidade)
+// Executam mesmo se o registro for apagado fora do safeDelete.
+// ──────────────────────────────────────────────────────────────────
+
+/** Ao apagar um PROJETO, limpa filhos órfãos e ressincroniza créditos. */
+export const onProjectDeleted = onDocumentDeleted(
+  { document: 'projects/{projectId}', region: DELETE_REGION },
+  async (event) => {
+    const db = getDb();
+    const projectId = event.params.projectId;
+    const clientId = normalizeOptionalString(event.data?.data()?.['clientId']);
+    try {
+      const assessmentsSnap = await db.collection('assessments').where('projectId', '==', projectId).get();
+      for (const a of assessmentsSnap.docs) await db.recursiveDelete(a.ref);
+      await deleteQueryInBatches(db.collection('participants').where('projectId', '==', projectId));
+      await deleteQueryInBatches(db.collection('assessmentLinks').where('projectId', '==', projectId));
+      await deleteQueryInBatches(db.collection('releasedReports').where('projectId', '==', projectId));
+      await deleteQueryInBatches(db.collection('mailTemplates').where('projectId', '==', projectId));
+      await pullFromArrayField('userGroups', 'projectIds', projectId);
+      if (clientId) await sincronizarCreditosCliente(clientId);
+    } catch (e) {
+      console.error('onProjectDeleted: erro na limpeza de órfãos:', (e as Error).message);
+    }
+  }
+);
+
+/** Ao apagar um CLIENTE, remove em cascata todas as entidades vinculadas. */
+export const onClientDeleted = onDocumentDeleted(
+  { document: 'clients/{clientId}', region: DELETE_REGION },
+  async (event) => {
+    const db = getDb();
+    const clientId = event.params.clientId;
+    try {
+      // Apaga projetos (que por sua vez disparam onProjectDeleted)
+      await deleteQueryInBatches(db.collection('projects').where('clientId', '==', clientId));
+      await deleteQueryInBatches(db.collection('participants').where('clientId', '==', clientId));
+      const assessmentsSnap = await db.collection('assessments').where('clientId', '==', clientId).get();
+      for (const a of assessmentsSnap.docs) await db.recursiveDelete(a.ref);
+      await deleteQueryInBatches(db.collection('userGroups').where('clientId', '==', clientId));
+      await deleteQueryInBatches(db.collection('creditOrders').where('clientId', '==', clientId));
+      await deleteQueryInBatches(db.collection('competencies').where('clientId', '==', clientId));
+      await deleteQueryInBatches(db.collection('competencyGroups').where('clientId', '==', clientId));
+      await deleteQueryInBatches(db.collection('mailTemplates').where('clientId', '==', clientId));
+    } catch (e) {
+      console.error('onClientDeleted: erro na limpeza de órfãos:', (e as Error).message);
+    }
+  }
+);
+
+/** Ao apagar um PARTICIPANTE, limpa seus links e respostas órfãos. */
+export const onParticipantDeleted = onDocumentDeleted(
+  { document: 'participants/{participantId}', region: DELETE_REGION },
+  async (event) => {
+    const db = getDb();
+    const participantId = event.params.participantId;
+    const clientId = normalizeOptionalString(event.data?.data()?.['clientId']);
+    try {
+      await deleteQueryInBatches(db.collection('assessmentLinks').where('participantId', '==', participantId));
+      if (clientId) await sincronizarCreditosCliente(clientId);
+    } catch (e) {
+      console.error('onParticipantDeleted: erro na limpeza de órfãos:', (e as Error).message);
     }
   }
 );

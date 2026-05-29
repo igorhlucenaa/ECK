@@ -48,7 +48,14 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ProjectService } from 'src/app/services/project.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
+import { HasPermissionDirective } from 'src/app/directives/has-permission.directive';
+import { hasPermission, AppRole } from 'src/app/config/permissions.config';
+import { Auth, sendPasswordResetEmail, ActionCodeSettings } from '@angular/fire/auth';
+import { FirebaseApp } from '@angular/fire/app';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 
 interface ModalData {
   projectId?: string;
@@ -93,6 +100,7 @@ interface Client {
   credits?: number;
   reservedCredits?: number;
   consumedCredits?: number;
+  creditsPurchased?: number;
 }
 
 interface Project {
@@ -118,7 +126,7 @@ interface Assessment {
 @Component({
   selector: 'app-participants',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent, RouterLink],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent, RouterLink, HasPermissionDirective],
   templateUrl: './participants.component.html',
   styleUrls: ['./participants.component.scss'],
 })
@@ -161,8 +169,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   selectedTemplate: MailTemplate | any = null;
   userRole: string = '';
   userClientIds: string[] = [];
+  viewerProjectIds: string[] = [];
   isClientDisabled: boolean = false;
   isProjectDisabled: boolean = false;
+  projectStatus: string = '';
   isEmailSendingMode: boolean = false;
   emailType: string | undefined;
   reportTemplates: any[] = [];
@@ -173,7 +183,32 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   @ViewChild(MatSort) sort!: MatSort;
 
   get canManageParticipantData(): boolean {
-    return this.userRole !== 'viewer';
+    return hasPermission(this.userRole as AppRole, 'criar');
+  }
+
+  get canManageViewers(): boolean {
+    return hasPermission(this.userRole as AppRole, 'gerenciar_viewers');
+  }
+
+  get isProjectConcluded(): boolean {
+    return ['Concluído', 'concluido'].includes(this.projectStatus);
+  }
+
+  get isProjectCancelled(): boolean {
+    return ['Cancelado', 'cancelado'].includes(this.projectStatus);
+  }
+
+  get projectStatusLabel(): string {
+    if (this.isProjectConcluded) return 'Concluído';
+    if (this.isProjectCancelled) return 'Cancelado';
+    if (this.projectStatus) return 'Em andamento';
+    return '';
+  }
+
+  get projectStatusClass(): string {
+    if (this.isProjectConcluded) return 'project-status--green';
+    if (this.isProjectCancelled) return 'project-status--red';
+    return 'project-status--blue';
   }
 
   constructor(
@@ -183,7 +218,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     private fb: FormBuilder,
     private router: Router,
     private authService: AuthService,
+    private projectService: ProjectService,
     private participantValidationService: ParticipantValidationService,
+    private auth: Auth,
+    private firebaseApp: FirebaseApp,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: ModalData | null,
     @Optional() public dialogRef: MatDialogRef<ParticipantsComponent>
   ) {}
@@ -193,6 +231,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
     this.userRole = await this.authService.getCurrentUserRole() || '';
     this.userClientIds = await this.authService.getCurrentUserClientIds();
+
+    if (this.userRole === 'viewer') {
+      await this.loadViewerProjectIds();
+    }
 
     await this.loadReportTemplates();
 
@@ -322,6 +364,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.filterProject = this.data.projectId;
       this.isClientDisabled = true;
       this.isProjectDisabled = true;
+      this.loadProjectStatus();
 
       Promise.all([this.loadMailTemplates(), this.loadAssessments()]).then(
         () => {
@@ -390,15 +433,61 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     return true;
   }
 
+  private async loadViewerProjectIds(): Promise<void> {
+    this.viewerProjectIds = [];
+    const email = await this.authService.getCurrentUserEmail();
+    if (!email) return;
+
+    const usersSnap = await getDocs(query(collection(this.firestore, 'users'), where('email', '==', email)));
+    if (usersSnap.empty) return;
+
+    const userDocId = usersSnap.docs[0].id;
+    const userData = usersSnap.docs[0].data();
+    const isOnNewStructure = 'groups' in userData;
+    const projectIds = new Set<string>();
+
+    // Fonte principal: grupos onde o viewer aparece em userIds
+    const groupsSnap = await getDocs(
+      query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', userDocId))
+    );
+
+    const allProjectsClientIds = new Set<string>();
+    groupsSnap.forEach(snap => {
+      const gData = snap.data();
+      if (gData['allProjects'] === true && gData['clientId']) {
+        allProjectsClientIds.add(gData['clientId']);
+      } else {
+        (gData['projectIds'] || []).forEach((id: string) => projectIds.add(id));
+      }
+    });
+
+    // Grupos com allProjects: buscar todos os projetos do cliente
+    if (allProjectsClientIds.size > 0) {
+      const projSnap = await getDocs(
+        query(collection(this.firestore, 'projects'), where('clientId', 'in', [...allProjectsClientIds]))
+      );
+      projSnap.forEach(d => projectIds.add(d.id));
+    }
+
+    // Fallback legado: apenas se nunca foi migrado para grupos
+    if (!isOnNewStructure && projectIds.size === 0) {
+      const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
+      const fromSingle = userData['project'] ? [userData['project']] : [];
+      [...fromArray, ...fromSingle].forEach((id: string) => projectIds.add(id));
+    }
+
+    this.viewerProjectIds = [...projectIds];
+  }
+
   async loadClients(): Promise<void> {
     try {
       let docs: any[] = [];
-      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+      if (this.userRole !== 'admin_master' && this.userClientIds.length > 0) {
         const snaps = await Promise.all(
           this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
         );
         docs = snaps.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }));
-      } else {
+      } else if (this.userRole === 'admin_master') {
         const snapshot = await getDocs(collection(this.firestore, 'clients'));
         docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       }
@@ -408,6 +497,25 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         credits: d['credits'] ?? 0,
         reservedCredits: d['reservedCredits'] ?? 0,
         consumedCredits: d['consumedCredits'] ?? 0,
+        creditsPurchased: 0, // calculado abaixo
+      }));
+
+      // Calcular créditos comprados (pedidos aprovados e vigentes) para cada cliente
+      const now = new Date();
+      await Promise.all(this.clients.map(async client => {
+        try {
+          const ordersSnap = await getDocs(query(
+            collection(this.firestore, 'creditOrders'),
+            where('clientId', '==', client.id),
+            where('status', '==', 'Aprovado')
+          ));
+          let purchased = 0;
+          ordersSnap.docs.forEach(d => {
+            const validity = d.data()['validityDate']?.toDate();
+            if (validity && validity > now) purchased += (d.data()['credits'] || 0);
+          });
+          client.creditsPurchased = purchased;
+        } catch { client.creditsPurchased = 0; }
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
@@ -422,7 +530,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     try {
       const projectsCollection = collection(this.firestore, 'projects');
       let snapshot;
-      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+      if (this.userRole === 'viewer' && this.viewerProjectIds.length > 0) {
+        snapshot = await getDocs(query(projectsCollection, where('__name__', 'in', this.viewerProjectIds)));
+      } else if (this.userRole === 'viewer') {
+        this.projects = []; this.filteredProjects = []; return;
+      } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
         snapshot = await getDocs(query(projectsCollection, where('clientId', 'in', this.userClientIds)));
       } else {
         snapshot = await getDocs(projectsCollection);
@@ -451,7 +563,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     try {
       const participantsCollection = collection(this.firestore, 'participants');
       let participantsSnapshot;
-      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+      if (this.userRole === 'viewer' && this.viewerProjectIds.length > 0) {
+        participantsSnapshot = await getDocs(query(participantsCollection, where('projectId', 'in', this.viewerProjectIds)));
+      } else if (this.userRole === 'viewer') {
+        this.dataSource.data = []; return;
+      } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
         participantsSnapshot = await getDocs(query(participantsCollection, where('clientId', 'in', this.userClientIds)));
       } else {
         participantsSnapshot = await getDocs(participantsCollection);
@@ -881,20 +997,51 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   onProjectChange(): void {
     this.applyFilter();
+    this.loadProjectStatus();
+  }
+
+  private async loadProjectStatus(): Promise<void> {
+    if (!this.filterProject) { this.projectStatus = ''; return; }
+    try {
+      const snap = await getDoc(doc(this.firestore, 'projects', this.filterProject));
+      if (!snap.exists()) { this.projectStatus = ''; return; }
+      const status: string = snap.data()['status'] || '';
+      this.projectStatus = status;
+
+      // Migração automática: se o projeto está Concluído mas ainda tem créditos reservados,
+      // dispara o concludeProject para mover reservedCredits → consumedCredits
+      if (['Concluído', 'concluido'].includes(status)) {
+        const reserved = await getDocs(query(
+          collection(this.firestore, 'participants'),
+          where('projectId', '==', this.filterProject),
+          where('creditReserved', '==', true),
+          where('creditConsumed', '==', false)
+        ));
+        if (!reserved.empty) {
+          await this.projectService.concludeProject(this.filterProject, 'auto-migration').catch(() => {});
+          // Recarrega os créditos do cliente após migração
+          await this.loadClients();
+        }
+      }
+    } catch { this.projectStatus = ''; }
   }
 
   getSelectedClientName(): string {
     return this.clients.find(c => c.id === this.filterClient)?.name || '';
   }
 
-  get currentClientCredits(): { disponivel: number; reservado: number; consumido: number } | null {
+  get currentClientCredits(): { disponivel: number; reservado: number; consumido: number; totalComprado: number } | null {
     if (!this.filterClient) return null;
     const c = this.clients.find(cl => cl.id === this.filterClient);
     if (!c) return null;
+    const totalComprado = c.creditsPurchased ?? 0;
+    const reservado = c.reservedCredits ?? 0;
+    const consumido = c.consumedCredits ?? 0;
     return {
-      disponivel: c.credits ?? 0,
-      reservado: c.reservedCredits ?? 0,
-      consumido: c.consumedCredits ?? 0,
+      totalComprado,
+      reservado,
+      consumido,
+      disponivel: totalComprado - reservado - consumido,
     };
   }
 
@@ -1343,7 +1490,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           this.filteredProjects = this.projects.filter(p => p.clientId === result.client);
         }
         if (!this.filterProject) this.filterProject = result.project;
-        await this.loadParticipants();
+        await Promise.all([this.loadParticipants(), this.loadClients()]);
       });
     };
     reader.readAsArrayBuffer(file);
@@ -1432,7 +1579,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
         if (this.filterProject) await this.revertProjectIfConcluded(this.filterProject);
-        this.loadParticipants();
+        await Promise.all([this.loadParticipants(), this.loadClients()]);
       }
     });
   }
@@ -1712,5 +1859,103 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const utcMin = sh * 60 + sm - offsetMin;
     const dayStartUtc = new Date(`${datePart}T00:00:00Z`).getTime();
     return new Date(dayStartUtc + utcMin * 60_000);
+  }
+
+  async linkParticipantAsViewer(participant: UnifiedParticipant): Promise<void> {
+    if (!participant.email) {
+      this.snackBar.open('Participante não tem e-mail cadastrado.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const emailLower = participant.email.toLowerCase().trim();
+
+    // Verifica se já existe usuário com esse e-mail
+    const [snapLower, snapEmail] = await Promise.all([
+      getDocs(query(collection(this.firestore, 'users'), where('emailLower', '==', emailLower))),
+      getDocs(query(collection(this.firestore, 'users'), where('email', '==', participant.email))),
+    ]);
+    const existing = snapLower.empty ? snapEmail : snapLower;
+
+    if (!existing.empty) {
+      const existingData = existing.docs[0].data();
+      if (existingData['role'] === 'viewer') {
+        // Garante que o projeto está na lista de projetos do viewer
+        const currentProjects: string[] = existingData['projects'] || [];
+        if (!currentProjects.includes(participant.projectId)) {
+          await updateDoc(existing.docs[0].ref, { projects: arrayUnion(participant.projectId) });
+          this.snackBar.open('Projeto adicionado ao acesso do visualizador existente.', 'Fechar', { duration: 3000 });
+        } else {
+          this.snackBar.open('Este participante já possui acesso como visualizador.', 'Fechar', { duration: 3000 });
+        }
+      } else {
+        this.snackBar.open(
+          `Este e-mail já está cadastrado com o perfil "${existingData['role']}". Edite o usuário para alterar permissões.`,
+          'Fechar',
+          { duration: 5000 }
+        );
+      }
+      return;
+    }
+
+    // Cria o usuário no Firestore
+    try {
+      await addDoc(collection(this.firestore, 'users'), {
+        name: participant.name,
+        surname: '',
+        email: participant.email,
+        emailLower,
+        role: 'viewer',
+        clients: participant.clientId ? [participant.clientId] : [],
+        projects: [participant.projectId],
+        status: 'active',
+        createdAt: new Date(),
+      });
+    } catch (err: any) {
+      this.snackBar.open(`Erro ao criar visualizador: ${err?.message}`, 'Fechar', { duration: 5000 });
+      return;
+    }
+
+    // Cria conta Firebase Auth via app secundário e envia e-mail de boas-vindas
+    const appName = `viewer_link_${Date.now()}`;
+    const secondaryApp = initializeApp((this.firebaseApp as any).options, appName);
+    const secondaryAuth = getAuth(secondaryApp);
+    try {
+      const tempPassword =
+        Math.random().toString(36).slice(2) +
+        Math.random().toString(36).toUpperCase().slice(2) + '!8';
+      await createUserWithEmailAndPassword(secondaryAuth, participant.email, tempPassword);
+      await firebaseSignOut(secondaryAuth);
+    } catch (err: any) {
+      if (err?.code !== 'auth/email-already-in-use') {
+        this.snackBar.open(
+          `Conta Firestore criada, mas erro ao criar Auth: ${err?.message}`,
+          'Fechar', { duration: 6000 }
+        );
+        try { await deleteApp(secondaryApp); } catch {}
+        return;
+      }
+    } finally {
+      try { await deleteApp(secondaryApp); } catch {}
+    }
+
+    // Envia e-mail com link de acesso
+    try {
+      const actionCodeSettings: ActionCodeSettings = {
+        url: `${window.location.origin}/authentication/login`,
+        handleCodeInApp: false,
+      };
+      await sendPasswordResetEmail(this.auth, participant.email, actionCodeSettings);
+    } catch (err: any) {
+      this.snackBar.open(
+        `Visualizador criado, mas o e-mail não foi enviado: ${err?.message}`,
+        'Fechar', { duration: 6000 }
+      );
+      return;
+    }
+
+    this.snackBar.open(
+      `Acesso criado! E-mail de acesso enviado para ${participant.email}.`,
+      'Fechar', { duration: 4000 }
+    );
   }
 }

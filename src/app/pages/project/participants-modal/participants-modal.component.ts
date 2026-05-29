@@ -353,6 +353,12 @@ export class ParticipantsModalComponent implements OnInit {
       this.applyFilter();
       this.updateSelection();
     });
+
+    // Pré-seleciona todos os participantes que ainda não responderam
+    this.dataSource.data.forEach(p => {
+      if (!p.completedAt) p.selected = true;
+    });
+    this.updateSelection();
   }
 
   getFriendlyEmailType(emailType: string): string {

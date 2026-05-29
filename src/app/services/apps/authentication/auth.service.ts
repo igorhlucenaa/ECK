@@ -28,6 +28,8 @@ import { firstValueFrom } from 'rxjs';
   providedIn: 'root',
 })
 export class AuthService {
+  private _roleCache: string | null | undefined = undefined;
+
   constructor(private auth: Auth, private firestore: Firestore, private router: Router) {}
 
   async login(
@@ -68,16 +70,16 @@ export class AuthService {
         // Obter o papel do usuário após login
         const userRole = await this.getCurrentUserRole();
 
-        // Restaurar a página onde o usuário estava antes de ser redirecionado para login
         const returnUrl = localStorage.getItem('returnUrl');
         localStorage.removeItem('returnUrl');
 
-        if (returnUrl && returnUrl !== '/authentication/login') {
-          this.router.navigate([returnUrl]);
-        } else if (userRole === 'admin_master') {
+        if (userRole === 'admin_master') {
+          const target = (returnUrl && returnUrl !== '/authentication/login') ? returnUrl : '/projects';
+          this.router.navigate([target]);
+        } else if (userRole === 'admin_client') {
           this.router.navigate(['/projects']);
         } else {
-          this.router.navigate(['/users']);
+          this.router.navigate(['/dashboard']);
         }
       });
     } catch (error: any) {
@@ -99,15 +101,14 @@ export class AuthService {
       await this.auth.setPersistence(persistence).then(async () => {
         await signInWithEmailAndPassword(this.auth, email, password);
 
-        // Obter o papel do usuário após login
-        // const userRole = await this.getCurrentUserRole();
-
-        // Redirecionar com base no papel do usuário
-        // if (userRole === 'admin_master') {
-          // location.assign('/projects'); // Redireciona para 'products' diretamente
-        // } else {
-          location.assign('/users'); // Ou outra rota padrão para outros papéis
-        // }
+        const userRole = await this.getCurrentUserRole();
+        if (userRole === 'admin_master') {
+          location.assign('/projects');
+        } else if (userRole === 'admin_client') {
+          location.assign('/projects');
+        } else {
+          location.assign('/dashboard');
+        }
       });
     } catch (error) {
       console.error('Erro no login:', error);
@@ -126,6 +127,7 @@ export class AuthService {
 
   async logout(): Promise<void> {
     try {
+      this._roleCache = undefined;
       await this.auth.setPersistence(browserSessionPersistence); // Redefine persistência
       await signOut(this.auth); // Realiza logout
     } catch (error) {
@@ -135,6 +137,8 @@ export class AuthService {
   }
 
   async getCurrentUserRole(): Promise<string | null> {
+    if (this._roleCache !== undefined) return this._roleCache as string | null;
+
     try {
       const user = this.auth.currentUser;
 
@@ -155,13 +159,15 @@ export class AuthService {
         console.warn(
           `Nenhum documento encontrado para o e-mail ${user.email}.`
         );
+        this._roleCache = null;
         return null;
       }
 
       const docSnap = querySnapshot.docs[0];
       const data = docSnap.data();
 
-      return data?.['role'] || null;
+      this._roleCache = data?.['role'] || null;
+      return this._roleCache as string | null;
     } catch (error) {
       console.error('Erro ao obter papel do usuário:', error);
       return null;
@@ -324,6 +330,7 @@ export class AuthService {
   }
 
   async getCurrentUser(): Promise<{
+    uid: string;
     name: string;
     email: string;
     role: string;
@@ -356,6 +363,7 @@ export class AuthService {
       const data = docSnap.data();
 
       return {
+        uid: user.uid,
         name: data?.['name'] || 'Usuário Desconhecido',
         email: user.email,
         role: data?.['role'] || 'Role não informado',

@@ -14,7 +14,7 @@
   <mat-tab-group data-tour="users-tabs" class="users-tabs" animationDuration="200ms">
 
     <!-- ═══════════════════════════════════ Tab: Usuários ═══ -->
-    <mat-tab label="{{ 'Usuários' | translate }}">
+    <mat-tab label="{{ 'Usuários' | translate }}" *ngIf="currentUserRole !== 'admin_client'">
       <div class="tab-card">
 
         <!-- Toolbar -->
@@ -93,12 +93,14 @@
                 <span class="perm-card__subtitle">{{ 'Gestão da própria empresa' | translate }}</span>
               </div>
               <ul class="perm-list">
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar clientes vinculados e saldo de créditos' | translate }}</li>
                 <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar projetos da própria empresa' | translate }}</li>
                 <li><mat-icon>check_circle</mat-icon>{{ 'Criar e gerenciar participantes dos projetos' | translate }}</li>
-                <li><mat-icon>check_circle</mat-icon>{{ 'Criar e gerenciar grupos de usuários' | translate }}</li>
-                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar avaliações vinculadas à empresa' | translate }}</li>
-                <li><mat-icon>check_circle</mat-icon>{{ 'Acessar relatórios da própria empresa' | translate }}</li>
-                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Não cria, edita ou exclui usuários' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar grupos de usuários da empresa' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Acessar relatórios publicados pelo administrador' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Não cadastra, edita ou exclui clientes' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso à lista de usuários' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso a formulários de avaliação' | translate }}</li>
                 <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Não acessa dados de outros clientes' | translate }}</li>
               </ul>
               <div class="perm-card__note perm-card__note--info">
@@ -115,7 +117,7 @@
               <ul class="perm-list">
                 <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar avaliações atribuídas' | translate }}</li>
                 <li><mat-icon>check_circle</mat-icon>{{ 'Responder avaliações 360°' | translate }}</li>
-                <li><mat-icon>check_circle</mat-icon>{{ 'Ver seu próprio relatório' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Ver relatórios publicados pelo administrador' | translate }}</li>
                 <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso ao painel de gestão' | translate }}</li>
                 <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso a usuários ou grupos' | translate }}</li>
                 <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso a configurações' | translate }}</li>

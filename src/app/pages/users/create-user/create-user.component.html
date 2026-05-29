@@ -50,19 +50,22 @@
       </mat-form-field>
     </div>
 
-    <!-- Papel + Clientes (multi-select) -->
-    <div class="form-group form-row">
+    <!-- Papel / Perfil -->
+    <div class="form-group">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Papel / Perfil</mat-label>
         <mat-icon matPrefix class="field-icon">shield</mat-icon>
-        <mat-select formControlName="role">
+        <mat-select formControlName="role" (selectionChange)="onRoleChange($event.value)">
           <mat-option *ngFor="let role of roles" [value]="role.value">
             {{ role.label }}
           </mat-option>
         </mat-select>
         <mat-error *ngIf="userForm.get('role')?.hasError('required')">Papel é obrigatório</mat-error>
       </mat-form-field>
+    </div>
 
+    <!-- Clientes (apenas para admin_client) -->
+    <div class="form-group" *ngIf="selectedRole === 'admin_client'">
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>Clientes</mat-label>
         <mat-icon matPrefix class="field-icon">business</mat-icon>
@@ -72,8 +75,58 @@
           </mat-option>
         </mat-select>
         <mat-hint>Selecione um ou mais clientes</mat-hint>
+        <mat-error *ngIf="userForm.get('clients')?.hasError('required')">Selecione pelo menos um cliente</mat-error>
       </mat-form-field>
     </div>
+
+    <!-- Grupo (obrigatório para viewer) -->
+    <ng-container *ngIf="selectedRole === 'viewer'">
+
+      <!-- Filtro por cliente (opcional, apenas para admin_master ver menos grupos) -->
+      <div class="form-group" *ngIf="clients.length > 1">
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>Filtrar grupos por cliente</mat-label>
+          <mat-icon matPrefix class="field-icon">business</mat-icon>
+          <mat-select [formControl]="clientFilterCtrl" (selectionChange)="onClientFilterChange($event.value)">
+            <mat-option value="">Todos os clientes</mat-option>
+            <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
+          </mat-select>
+          <mat-hint>Use para filtrar a lista de grupos abaixo</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <!-- Seleção de grupos -->
+      <div class="form-group">
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>Grupo(s) *</mat-label>
+          <mat-icon matPrefix class="field-icon">group_work</mat-icon>
+          <mat-select formControlName="groups" multiple (selectionChange)="onGroupsChange($event.value)">
+            <mat-option *ngIf="filteredGroups.length === 0" disabled>
+              {{ allGroups.length === 0 ? 'Carregando grupos…' : 'Nenhum grupo encontrado' }}
+            </mat-option>
+            <mat-option *ngFor="let group of filteredGroups" [value]="group.id">
+              <span>{{ group.name }}</span>
+              <span style="font-size:11px;color:#94a3b8;margin-left:6px">— {{ group.clientName }}</span>
+            </mat-option>
+          </mat-select>
+          <mat-hint>O acesso ao cliente e aos projetos vem do grupo selecionado</mat-hint>
+          <mat-error *ngIf="userForm.get('groups')?.hasError('groupRequired')">Selecione pelo menos um grupo</mat-error>
+        </mat-form-field>
+      </div>
+
+      <!-- Info derivada: cliente e projetos -->
+      <div class="derived-info" *ngIf="derivedClientName || derivedProjectNames.length > 0">
+        <div class="derived-info__item" *ngIf="derivedClientName">
+          <mat-icon>business</mat-icon>
+          <span><strong>Cliente:</strong> {{ derivedClientName }}</span>
+        </div>
+        <div class="derived-info__item" *ngIf="derivedProjectNames.length > 0">
+          <mat-icon>folder_open</mat-icon>
+          <span><strong>Projetos com acesso:</strong> {{ derivedProjectNames.join(', ') }}</span>
+        </div>
+      </div>
+
+    </ng-container>
 
   </form>
 </mat-dialog-content>
