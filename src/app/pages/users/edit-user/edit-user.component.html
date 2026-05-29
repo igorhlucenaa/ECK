@@ -1,15 +1,206 @@
-<div class="container my-4">
-  <div class="row" style="margin-bottom: 10px">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
-        <mat-icon>arrow_back</mat-icon>
-        {{ 'Voltar' | translate }}
-      </button>
-    </div>
+<!-- Loading -->
+<div class="eu-loading" *ngIf="isLoading">
+  <mat-spinner diameter="48"></mat-spinner>
+  <p>Carregando usuário...</p>
+</div>
+
+<!-- Page -->
+<div class="eu-wrapper" *ngIf="!isLoading">
+
+  <!-- Breadcrumb / back -->
+  <div class="eu-breadcrumb">
+    <button mat-icon-button class="eu-back-btn" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span class="eu-breadcrumb__trail">
+      <a class="eu-breadcrumb__link" routerLink="/users">Usuários</a>
+      <mat-icon class="eu-breadcrumb__sep">chevron_right</mat-icon>
+      <span class="eu-breadcrumb__current">Editar usuário</span>
+    </span>
   </div>
 
-  <div *ngIf="isLoading" class="text-center py-5">
-    <mat-spinner diameter="50" style="margin: 0 auto 16px;"></mat-spinner>
-    <p>{{ 'Carregando formulário de edição...' | translate }}</p>
+  <!-- Content grid -->
+  <div class="eu-grid">
+
+    <!-- ── Sidebar: perfil ── -->
+    <aside class="eu-sidebar">
+      <div class="eu-profile-card">
+        <div class="eu-avatar">{{ userInitial }}</div>
+        <p class="eu-profile-card__name">{{ userName }}</p>
+        <span class="eu-profile-card__email">{{ userForm.get('email')?.value }}</span>
+
+        <div class="eu-profile-card__divider"></div>
+
+        <div class="eu-profile-info">
+          <div class="eu-profile-info__row">
+            <mat-icon>shield</mat-icon>
+            <div>
+              <span class="eu-profile-info__label">Perfil atual</span>
+              <span class="eu-profile-info__val eu-role"
+                [class.eu-role--master]="userForm.get('role')?.value === 'admin_master'"
+                [class.eu-role--admin]="userForm.get('role')?.value === 'admin_client'"
+                [class.eu-role--viewer]="userForm.get('role')?.value === 'viewer'">
+                {{ userForm.get('role')?.value === 'admin_master' ? 'Master'
+                  : userForm.get('role')?.value === 'admin_client' ? 'Admin Cliente'
+                  : userForm.get('role')?.value === 'viewer' ? 'Visualizador'
+                  : '—' }}
+              </span>
+            </div>
+          </div>
+          <div class="eu-profile-info__row">
+            <mat-icon>business</mat-icon>
+            <div>
+              <span class="eu-profile-info__label">Clientes</span>
+              <span class="eu-profile-info__val">{{ clientNames }}</span>
+            </div>
+          </div>
+          <div class="eu-profile-info__row" *ngIf="userForm.get('role')?.value === 'viewer' && derivedProjectNames.length > 0">
+            <mat-icon>folder_open</mat-icon>
+            <div>
+              <span class="eu-profile-info__label">Projetos com acesso</span>
+              <span class="eu-profile-info__val">{{ derivedProjectNames.join(', ') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="eu-profile-card__hint">
+          <mat-icon>info</mat-icon>
+          Alterações refletirão imediatamente no sistema
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Main: formulário ── -->
+    <main class="eu-main">
+      <div class="eu-form-card">
+
+        <!-- Card header -->
+        <div class="eu-form-card__header">
+          <div class="eu-form-card__header-icon">
+            <mat-icon>manage_accounts</mat-icon>
+          </div>
+          <div>
+            <h2 class="eu-form-card__title">Editar usuário</h2>
+            <p class="eu-form-card__sub">Atualize os dados do usuário abaixo</p>
+          </div>
+        </div>
+
+        <form [formGroup]="userForm" class="eu-form">
+
+          <!-- Identificação -->
+          <p class="eu-section-label">Identificação</p>
+          <div class="eu-form-row">
+            <mat-form-field appearance="outline" class="eu-field">
+              <mat-label>Nome</mat-label>
+              <mat-icon matPrefix>person_outline</mat-icon>
+              <input matInput formControlName="name" placeholder="Nome">
+              <mat-error *ngIf="userForm.get('name')?.hasError('required')">Nome é obrigatório</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="eu-field">
+              <mat-label>Sobrenome</mat-label>
+              <mat-icon matPrefix>person_outline</mat-icon>
+              <input matInput formControlName="surname" placeholder="Sobrenome">
+              <mat-error *ngIf="userForm.get('surname')?.hasError('required')">Sobrenome é obrigatório</mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Acesso -->
+          <p class="eu-section-label">Acesso</p>
+          <mat-form-field appearance="outline" class="eu-field eu-field--full">
+            <mat-label>E-mail</mat-label>
+            <mat-icon matPrefix>email</mat-icon>
+            <input matInput formControlName="email">
+            <mat-hint>O e-mail não pode ser alterado</mat-hint>
+          </mat-form-field>
+
+          <!-- Perfil -->
+          <p class="eu-section-label">Perfil</p>
+          <mat-form-field appearance="outline" class="eu-field eu-field--full">
+            <mat-label>Papel / Perfil</mat-label>
+            <mat-icon matPrefix>shield</mat-icon>
+            <mat-select formControlName="role" (selectionChange)="onRoleChange($event.value)">
+              <mat-option *ngFor="let role of roles" [value]="role.value">
+                {{ role.label }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="userForm.get('role')?.hasError('required')">Papel é obrigatório</mat-error>
+          </mat-form-field>
+
+          <!-- Vínculo: cliente (admin_client) ou grupo (viewer) -->
+          <ng-container *ngIf="selectedRole === 'admin_client'">
+            <p class="eu-section-label">Vínculo com Cliente</p>
+            <mat-form-field appearance="outline" class="eu-field eu-field--full">
+              <mat-label>Clientes</mat-label>
+              <mat-icon matPrefix>business</mat-icon>
+              <mat-select formControlName="clients" multiple>
+                <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
+              </mat-select>
+              <mat-hint>Selecione um ou mais clientes</mat-hint>
+            </mat-form-field>
+          </ng-container>
+
+          <ng-container *ngIf="selectedRole === 'viewer'">
+            <p class="eu-section-label">Grupos de Acesso</p>
+
+            <!-- Filtro por cliente (quando há múltiplos clientes) -->
+            <mat-form-field appearance="outline" class="eu-field eu-field--full" *ngIf="clients.length > 1">
+              <mat-label>Filtrar grupos por cliente</mat-label>
+              <mat-icon matPrefix>business</mat-icon>
+              <mat-select [value]="clientFilterValue" (selectionChange)="onClientFilterChange($event.value)">
+                <mat-option value="">Todos os clientes</mat-option>
+                <mat-option *ngFor="let c of clients" [value]="c.id">{{ c.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="eu-field eu-field--full">
+              <mat-label>Grupo(s) *</mat-label>
+              <mat-icon matPrefix>group_work</mat-icon>
+              <mat-select formControlName="groups" multiple (selectionChange)="onGroupsChange($event.value)">
+                <mat-option *ngIf="filteredGroups.length === 0" disabled>
+                  {{ allGroups.length === 0 ? 'Carregando grupos…' : 'Nenhum grupo encontrado' }}
+                </mat-option>
+                <mat-option *ngFor="let group of filteredGroups" [value]="group.id">
+                  <span>{{ group.name }}</span>
+                  <span style="font-size:11px;color:#94a3b8;margin-left:6px">— {{ group.clientName }}</span>
+                </mat-option>
+              </mat-select>
+              <mat-hint>Defina os grupos que este viewer pertence</mat-hint>
+              <mat-error *ngIf="userForm.get('groups')?.hasError('groupRequired')">Selecione pelo menos um grupo</mat-error>
+            </mat-form-field>
+
+            <!-- Info derivada -->
+            <div class="eu-derived-info" *ngIf="derivedClientName || derivedProjectNames.length > 0">
+              <div class="eu-derived-info__item" *ngIf="derivedClientName">
+                <mat-icon>business</mat-icon>
+                <span><strong>Cliente:</strong> {{ derivedClientName }}</span>
+              </div>
+              <div class="eu-derived-info__item" *ngIf="derivedProjectNames.length > 0">
+                <mat-icon>folder_open</mat-icon>
+                <span><strong>Projetos com acesso:</strong> {{ derivedProjectNames.join(', ') }}</span>
+              </div>
+            </div>
+          </ng-container>
+
+        </form>
+
+        <!-- Card footer -->
+        <div class="eu-form-card__footer">
+          <button mat-stroked-button class="eu-btn-cancel" (click)="goBack()">
+            <mat-icon>close</mat-icon>
+            Cancelar
+          </button>
+          <button mat-raised-button class="eu-btn-save"
+            [disabled]="userForm.invalid || isSaving"
+            (click)="save()">
+            <mat-spinner *ngIf="isSaving" diameter="18" class="eu-btn-save__spinner"></mat-spinner>
+            <mat-icon *ngIf="!isSaving">save</mat-icon>
+            {{ isSaving ? 'Salvando...' : 'Salvar alterações' }}
+          </button>
+        </div>
+
+      </div>
+    </main>
+
   </div>
 </div>

@@ -1,19 +1,11 @@
-import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+﻿import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import { PageEvent } from '@angular/material/paginator';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import {
-  AppBandwidthUsageComponent,
-  AppCurrentVisitsComponent,
-  AppDownloadCountComponent,
-  AppFavouriteContactsComponent,
-  AppFeedsComponent,
   AppNewsletterCampaign2Component,
   AppPieCardsComponent,
-  AppProfileCardComponent,
   AppProjectDataComponent,
-  AppRecentCommentsComponent,
   AppSalesOverview2Component,
-  AppTodoListComponent,
 } from 'src/app/components';
 import {
   Firestore,
@@ -21,73 +13,268 @@ import {
   query,
   where,
   getDocs,
+  doc,
+  getDoc,
 } from '@angular/fire/firestore';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { ExportDialogComponent } from './export-dialog/export-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { NgApexchartsModule } from 'ng-apexcharts';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Router, RouterModule } from '@angular/router';
+import { fixMojibake } from 'src/app/utils/encoding.utils';
+
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export type ProjectStatus = 'em_andamento' | 'em_risco' | 'atrasado' | 'concluido';
+
+export interface AlertItem {
+  level: 'danger' | 'warning' | 'info';
+  category: string;
+  clientName: string;
+  title: string;
+  description: string;
+  route: string;
+  queryParams?: Record<string, string>;
+}
+
+export interface ProjectRow {
+  id: string;
+  name: string;
+  clientName: string;
+  totalParticipants: number;
+  respondedParticipants: number;
+  responseRate: number;
+  deadline: Date | null;
+  daysUntilDeadline: number;
+  status: ProjectStatus;
+}
 
 @Component({
   selector: 'app-dashboard3',
   standalone: true,
   imports: [
+    CommonModule,
+    FormsModule,
     MaterialModule,
+    RouterModule,
     AppPieCardsComponent,
     AppSalesOverview2Component,
-    AppCurrentVisitsComponent,
     AppProjectDataComponent,
-    AppProfileCardComponent,
-    AppBandwidthUsageComponent,
-    AppDownloadCountComponent,
-    AppFavouriteContactsComponent,
-    AppFeedsComponent,
-    AppRecentCommentsComponent,
-    AppTodoListComponent,
     AppNewsletterCampaign2Component,
+    AppPageHeaderComponent,
+    TranslateModule,
+    NgApexchartsModule,
+    MatProgressSpinnerModule,
   ],
   templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.scss'],
 })
 export class DashboardComponent implements OnInit {
-  constructor(private dialog: MatDialog, private cdr: ChangeDetectorRef) {}
+  isExporting = false;
+  isExportingTables = false;
+  exportLabel = '';
+  isLoading = true;
 
-  pieCardsData: { value: number; label: string; color: string }[] = [];
-  totalEvaluatedParticipants: number = 0;
-  activeProjects: number = 0;
-  totalCredits: number = 0;
-  creditOrdersData: { date: string; credits: number }[] = [];
-  creditUsageData: { month: string; used: number; remaining: number }[] = [];
+  userRole: string | null = null;
+  clientId: string | null = null;
+  clientName = '';
+  userClientIds: string[] = [];
+  viewerProjectIds = new Set<string>();
+
+  // â”€â”€ KPIs (4 cards, role-specific) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  masterKpis: { value: number; label: string; color: string; icon: string }[] = [];
+  clientKpis: { value: number; label: string; color: string; icon: string }[] = [];
+
+  // â”€â”€ Alerts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  alerts: AlertItem[] = [];
+  alertLevelFilter  = 'all';
+  alertClientFilter = 'all';
+  alertSearchQuery  = '';
+  alertPageIndex    = 0;
+  alertPageSize     = 6;
+
+  get filteredAlerts(): AlertItem[] {
+    const q = this.alertSearchQuery.trim().toLowerCase();
+    return this.alerts.filter(a => {
+      const matchLevel  = this.alertLevelFilter  === 'all' || a.level      === this.alertLevelFilter;
+      const matchClient = this.alertClientFilter === 'all' || a.clientName === this.alertClientFilter;
+      const matchSearch = !q || a.title.toLowerCase().includes(q)
+        || a.description.toLowerCase().includes(q)
+        || (a.clientName || '').toLowerCase().includes(q);
+      return matchLevel && matchClient && matchSearch;
+    });
+  }
+
+  get pagedAlerts(): AlertItem[] {
+    const start = this.alertPageIndex * this.alertPageSize;
+    return this.filteredAlerts.slice(start, start + this.alertPageSize);
+  }
+
+  onAlertLevelFilter(level: string): void {
+    this.alertLevelFilter = level;
+    this.alertPageIndex = 0;
+  }
+
+  onAlertClientFilter(value: string): void {
+    this.alertClientFilter = value;
+    this.alertPageIndex = 0;
+  }
+
+  onAlertSearch(): void { this.alertPageIndex = 0; }
+
+  onAlertPage(event: PageEvent): void {
+    this.alertPageIndex = event.pageIndex;
+    this.alertPageSize  = event.pageSize;
+  }
+
+  get alertClients(): string[] {
+    return [...new Set(this.alerts.map(a => a.clientName).filter(Boolean))].sort() as string[];
+  }
+
+  get alertTableCols(): string[] {
+    return this.userRole === 'admin_master'
+      ? ['level', 'category', 'clientName', 'description', 'action']
+      : ['level', 'category', 'description', 'action'];
+  }
+
+  alertCountByLevel(level: string): number {
+    return this.alerts.filter(a => a.level === level).length;
+  }
+
+  // â”€â”€ Credits per client (master) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  clientCreditRows: {
+    clientId: string;
+    clientName: string;
+    credits: number;
+    reservedCredits: number;
+    creditsUsed: number;
+    projects: { projectId: string; projectName: string; reserved: boolean; used: number; orphan: boolean }[];
+    expanded: boolean;
+  }[] = [];
+  creditPageIndex   = 0;
+  creditPageSize    = 8;
+  creditSearchQuery = '';
+  creditStatusFilter = '';   // 'zero' | 'low' | 'ok' | ''
+
+  get totalCredits(): number         { return this.clientCreditRows.reduce((s, r) => s + r.credits, 0); }
+  get totalReservedCredits(): number  { return this.clientCreditRows.reduce((s, r) => s + r.reservedCredits, 0); }
+  get totalCreditsUsed(): number      { return this.clientCreditRows.reduce((s, r) => s + r.creditsUsed, 0); }
+
+  get filteredCreditRows() {
+    const q = this.creditSearchQuery.trim().toLowerCase();
+    return this.clientCreditRows.filter(r => {
+      const matchSearch = !q || r.clientName.toLowerCase().includes(q);
+      const matchStatus = !this.creditStatusFilter ||
+        (this.creditStatusFilter === 'zero' && r.credits === 0) ||
+        (this.creditStatusFilter === 'low'  && r.credits > 0 && r.credits < 5) ||
+        (this.creditStatusFilter === 'ok'   && r.credits >= 5);
+      return matchSearch && matchStatus;
+    });
+  }
+
+  get pagedCreditRows() {
+    const start = this.creditPageIndex * this.creditPageSize;
+    return this.filteredCreditRows.slice(start, start + this.creditPageSize);
+  }
+
+  toggleCreditRow(row: any): void { row.expanded = !row.expanded; }
+
+  onCreditPage(event: PageEvent): void {
+    this.creditPageIndex = event.pageIndex;
+    this.creditPageSize  = event.pageSize;
+  }
+
+  onCreditSearch(): void { this.creditPageIndex = 0; }
+  onCreditStatusFilter(v: string): void { this.creditStatusFilter = v; this.creditPageIndex = 0; }
+
+  // â”€â”€ Projects table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  projectRows: ProjectRow[] = [];
+  masterProjectCols = ['clientName', 'name', 'responseRate', 'deadline', 'status', 'actions'];
+  clientProjectCols = ['name', 'responseRate', 'deadline', 'status', 'actions'];
+  projectPageIndex = 0;
+  projectPageSize  = 8;
+  projectSearchQuery = '';
+  projectClientFilter = '';
+  projectStatusFilter = '';
+
+  get uniqueProjectClients(): string[] {
+    return [...new Set(this.projectRows.map(r => r.clientName).filter(Boolean))].sort();
+  }
+
+  get filteredProjectRows(): ProjectRow[] {
+    const q = this.projectSearchQuery.trim().toLowerCase();
+    return this.projectRows.filter(r => {
+      const matchSearch = !q || r.name.toLowerCase().includes(q) || r.clientName.toLowerCase().includes(q);
+      const matchClient = !this.projectClientFilter || r.clientName === this.projectClientFilter;
+      const matchStatus = !this.projectStatusFilter || r.status === this.projectStatusFilter;
+      return matchSearch && matchClient && matchStatus;
+    });
+  }
+
+  get pagedProjectRows(): ProjectRow[] {
+    const start = this.projectPageIndex * this.projectPageSize;
+    return this.filteredProjectRows.slice(start, start + this.projectPageSize);
+  }
+
+  onProjectPage(event: PageEvent): void {
+    this.projectPageIndex = event.pageIndex;
+    this.projectPageSize  = event.pageSize;
+  }
+
+  onProjectSearch(): void { this.projectPageIndex = 0; }
+  onProjectClientFilter(v: string): void { this.projectClientFilter = v; this.projectPageIndex = 0; }
+  onProjectStatusFilter(v: string): void { this.projectStatusFilter = v; this.projectPageIndex = 0; }
+
+  // â”€â”€ Funnel (master only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  funnelData = { created: 0, invitesSent: 0, completed: 0 };
+  funnelAllProjects: any[] = [];
+  funnelInvitedProjectIds = new Set<string>();
+  funnelClientsMap = new Map<string, string>();
+  funnelClientOptions: { id: string; name: string }[] = [];
+  funnelClientFilter = 'all';
+
+  // â”€â”€ Existing chart data (kept for charts section) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  pieCardsData: { value: number; label: string; color: string; icon: string }[] = [];
+  assessmentsData: { client: string; used: number; remaining: number }[] = [];
+  projectsByClientData: { client: string; projects: number }[] = [];
+  participantsByCategoryChart: any = null;
+  projectsByStatusChart: any = null;
+  totalActiveProjects = 0;
 
   private firestore = inject(Firestore);
+  private authService = inject(AuthService);
+  private translate = inject(TranslateService);
+  private router = inject(Router);
 
   private headersMap: Record<string, { key: string; header: string }[]> = {
     clients: [
       { key: 'companyName', header: 'Nome da Empresa' },
-      { key: 'credits', header: 'Créditos Disponíveis' },
+      { key: 'credits', header: 'Cr\u00e9ditos Dispon\u00edveis' },
       { key: 'sector', header: 'Setor' },
       { key: 'cnpj', header: 'CNPJ' },
-      { key: 'createdAt', header: 'Data de Criação' },
+      { key: 'createdAt', header: 'Data de Cria\u00e7\u00e3o' },
     ],
     creditOrders: [
-      { key: 'credits', header: 'Créditos' },
+      { key: 'credits', header: 'Cr\u00e9ditos' },
       { key: 'totalAmount', header: 'Valor Total' },
       { key: 'status', header: 'Status' },
-      { key: 'startDate', header: 'Data de Início' },
+      { key: 'startDate', header: 'Data de In\u00edcio' },
       { key: 'validityDate', header: 'Data de Validade' },
       { key: 'clientId', header: 'Cliente' },
     ],
     projects: [
       { key: 'name', header: 'Nome do Projeto' },
       { key: 'status', header: 'Status' },
-      { key: 'budget', header: 'Orçamento' },
+      { key: 'budget', header: 'Or\u00e7amento' },
       { key: 'deadline', header: 'Prazo' },
       { key: 'clientId', header: 'Cliente' },
-      { key: 'createdAt', header: 'Data de Criação' },
-    ],
-    users: [
-      { key: 'name', header: 'Nome' },
-      { key: 'surname', header: 'Sobrenome' },
-      { key: 'email', header: 'E-mail' },
-      { key: 'role', header: 'Papel' },
-      { key: 'createdAt', header: 'Data de Criação' },
+      { key: 'createdAt', header: 'Data de Cria\u00e7\u00e3o' },
     ],
     participants: [
       { key: 'name', header: 'Nome' },
@@ -95,234 +282,688 @@ export class DashboardComponent implements OnInit {
       { key: 'category', header: 'Categoria' },
       { key: 'type', header: 'Tipo' },
       { key: 'projectId', header: 'Projeto' },
-      { key: 'createdAt', header: 'Data de Criação' },
+      { key: 'createdAt', header: 'Data de Cria\u00e7\u00e3o' },
     ],
   };
-  assessmentsData: { client: string; used: number; remaining: number }[] = [];
-
-  projectsByClientData: { client: string; projects: number }[] = [];
-  totalActiveProjects: number = 0;
 
   availableTables = [
-    { key: 'clients', label: 'Clientes' },
-    { key: 'projects', label: 'Projetos' },
-    { key: 'creditOrders', label: 'Pedidos de Crédito' },
+    { key: 'clients',      label: 'Clientes' },
+    { key: 'projects',     label: 'Projetos' },
+    { key: 'creditOrders', label: 'Pedidos de Cr\u00e9dito' },
     { key: 'participants', label: 'Participantes' },
   ];
 
+  constructor(
+    private dialog: MatDialog,
+    private cdr: ChangeDetectorRef,
+    private snackBar: MatSnackBar,
+  ) {}
+
   async ngOnInit(): Promise<void> {
-    // Teste de collections
-    // const col = collection(this.firestore, 'assessmentLinks');
+    this.userRole = await this.authService.getCurrentUserRole();
+    // Suporta clients[] (novo) e campo legado client
+    this.userClientIds = await this.authService.getCurrentUserClientIds();
+    if (this.userClientIds.length === 0) {
+      const legacy = await this.authService.getCurrentClientId();
+      if (legacy) this.userClientIds = [legacy];
+    }
+    this.clientId = this.userClientIds[0] || null;
 
-    // const snap = await getDocs(col);
-
-    // let result = snap.docs.map((res) => res.data());
-    // console.log(result);
-
-    const data = await this.fetchDashboardData();
-    this.creditOrdersData = await this.fetchCreditOrdersData();
-    this.assessmentsData = await this.fetchAssessmentsData();
-
-    this.cdr.detectChanges();
-    // await this.fetchProjectsByClient();
-    // Dados para os gráficos de pizza
-    this.pieCardsData = [
-      { value: data.totalClients, label: 'Clientes', color: '#1e88e5' },
-      {
-        value: data.totalActiveProjects,
-        label: 'Projetos Ativos',
-        color: '#26c6da',
-      },
-      {
-        value: data.totalEvaluatedParticipants,
-        label: 'Avaliados',
-        color: '#fc4b6c',
-      },
-      {
-        value: data.totalCreditOrders,
-        label: 'Pedidos de Crédito',
-        color: '#ffb22b',
-      },
-      {
-        value: data.totalRemainingCredits,
-        label: 'Créditos Remanescentes',
-        color: '#4caf50',
-      }, // Novo KPI!
-    ];
-
-    // Dados vazios (placeholder)
-    this.creditUsageData = [
-      { month: 'Jan', used: 0, remaining: 0 },
-      { month: 'Feb', used: 0, remaining: 0 },
-      { month: 'Mar', used: 0, remaining: 0 },
-      { month: 'Apr', used: 0, remaining: 0 },
-      { month: 'May', used: 0, remaining: 0 },
-    ];
-
-    // Outras métricas do dashboard
-    this.totalEvaluatedParticipants = data.totalEvaluatedParticipants;
-    this.activeProjects = data.totalProjects;
-    this.totalCredits = data.totalCredits;
-  }
-
-  private async fetchAssessmentsData(): Promise<
-    { client: string; used: number; remaining: number }[]
-  > {
-    const assessmentsCollection = collection(this.firestore, 'assessments');
-    const clientsCollection = collection(this.firestore, 'clients');
-
-    const assessmentsSnapshot = await getDocs(assessmentsCollection);
-    const clientsSnapshot = await getDocs(clientsCollection);
-
-    // Criar um mapa para associar clientId ao nome do cliente
-    const clientMap = new Map(
-      clientsSnapshot.docs.map((doc) => [doc.id, doc.data()['companyName']])
-    );
-
-    // Criar um mapa para contar avaliações por cliente
-    const assessmentsByClient = new Map<string, number>();
-
-    assessmentsSnapshot.docs.forEach((doc) => {
-      const clientId = doc.data()['clientId'];
-      if (clientId) {
-        assessmentsByClient.set(
-          clientId,
-          (assessmentsByClient.get(clientId) || 0) + 1
-        );
-      }
-    });
-
-    // Transformar os dados para o formato esperado
-    return Array.from(assessmentsByClient.entries()).map(
-      ([clientId, count]) => ({
-        client: clientMap.get(clientId) || 'Desconhecido',
-        used: count, // Número de avaliações cadastradas por cliente
-        remaining: 0, // Não usado aqui, mas mantido para compatibilidade com o gráfico
-      })
-    );
-  }
-
-  async generatePDF(): Promise<void> {
-    const dashboardElement = document.getElementById('dashboard-content');
-
-    if (!dashboardElement) {
-      console.error('Elemento do dashboard não encontrado.');
-      return;
+    // Carregar projetos do viewer se for viewer
+    if (this.userRole === 'viewer') {
+      await this.loadViewerProjectIds();
     }
 
-    const canvas = await html2canvas(dashboardElement, {
-      scrollY: -window.scrollY,
-    });
-    const imgData = canvas.toDataURL('image/png');
-
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgWidth = 210; // Largura da página A4 em mm
-    const pageHeight = 297; // Altura da página A4 em mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    let position = 0;
-
-    if (imgHeight > pageHeight) {
-      // Adicionar paginação, caso necessário
-      while (position < imgHeight) {
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, pageHeight);
-        position += pageHeight;
-
-        if (position < imgHeight) {
-          pdf.addPage();
-        }
-      }
+    if (this.userRole === 'admin_master') {
+      await this.loadMasterData();
     } else {
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      await this.loadClientData();
     }
 
-    pdf.save('dashboard.pdf');
+    this.isLoading = false;
+    this.cdr.markForCheck();
   }
 
-  private async fetchCreditOrdersData(): Promise<
-    { date: string; credits: number }[]
-  > {
-    const creditOrdersCollection = collection(this.firestore, 'creditOrders');
-    const snapshot = await getDocs(creditOrdersCollection);
+  // â”€â”€ Master data loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    return snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        date: new Date(data['startDate'].seconds * 1000).toLocaleDateString(),
-        credits: data['credits'] || 0,
-      };
-    });
-  }
+  private async loadMasterData(): Promise<void> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  private async fetchDashboardData(): Promise<any> {
-    const clientsCollection = collection(this.firestore, 'clients');
-    const projectsCollection = collection(this.firestore, 'projects');
-    const creditOrdersCollection = collection(this.firestore, 'creditOrders');
-    const participantsCollection = collection(this.firestore, 'participants');
+    const [clientsSnap, projectsSnap, participantsSnap, assessmentsSnap, linksSnap] = await Promise.all([
+      getDocs(collection(this.firestore, 'clients')),
+      getDocs(collection(this.firestore, 'projects')),
+      getDocs(collection(this.firestore, 'participants')),
+      getDocs(collection(this.firestore, 'assessments')),
+      getDocs(query(collection(this.firestore, 'assessmentLinks'), where('status', '==', 'completed'))),
+    ]);
 
-    const clientsSnapshot = await getDocs(clientsCollection);
-    const projectsSnapshot = await getDocs(projectsCollection);
-    const creditOrdersSnapshot = await getDocs(creditOrdersCollection);
-    const participantsSnapshot = await getDocs(participantsCollection);
+    const clientsMap = new Map(clientsSnap.docs.map(d => [d.id, d.data()]));
+    const activeProjects = projectsSnap.docs.filter(d => !['Cancelado', 'cancelado', 'Inativo'].includes(d.data()['status']));
 
-    const evaluatedParticipants = participantsSnapshot.docs.filter(
-      (doc) => doc.data()['type'] === 'avaliado'
-    ).length;
+    // assessmentLinks: completed já carregado, buscar pending também
+    const completedParticipantIds = new Set(linksSnap.docs.map(d => d.data()['participantId'] as string));
+    const pendingLinkSnap = await getDocs(query(collection(this.firestore, 'assessmentLinks'), where('status', '==', 'pending')));
+    const pendingParticipantIds = new Set(pendingLinkSnap.docs.map(d => d.data()['participantId'] as string));
+    // withInviteIds = quem tem qualquer link (completed ou pending)
+    const withInviteIds = new Set([...completedParticipantIds, ...pendingParticipantIds]);
 
-    const totalCredits = clientsSnapshot.docs.reduce((sum, doc) => {
-      const data = doc.data();
-      return sum + (data['credits'] || 0);
-    }, 0);
+    const statsByProject = this.buildParticipantStats(participantsSnap.docs, completedParticipantIds, withInviteIds);
 
-    const activeProjects = projectsSnapshot.docs.filter(
-      (doc) => doc.data()['status'] === 'Ativo'
+    // Projetos com pelo menos 1 participante com link = "com convites enviados" no funil
+    // (buscamos pelo projectId dos participantes que tÃªm link)
+    const invitedParticipantProjectIds = new Set(
+      participantsSnap.docs
+        .filter(d => withInviteIds.has(d.id))
+        .map(d => d.data()['projectId'] as string)
     );
 
-    // Criar um mapa de clientes para contar projetos ativos
-    const projectCountByClient = new Map<string, number>();
+    // KPIs â€” pendentes = participantes com link pending
+    const pendingCount = participantsSnap.docs.filter(d => pendingParticipantIds.has(d.id)).length;
+    this.masterKpis = [
+      { value: clientsSnap.size,       label: this.translate.instant('kpi.clientes_ativos'),        color: '#1B84FF', icon: 'business' },
+      { value: activeProjects.length,  label: this.translate.instant('kpi.projetos_ativos'),        color: '#26c6da', icon: 'folder_open' },
+      { value: pendingCount,           label: this.translate.instant('kpi.avaliacoes_andamento'),   color: '#7c3aed', icon: 'assignment_turned_in' },
+    ];
 
-    activeProjects.forEach((doc) => {
-      const clientId = doc.data()['clientId'];
-      if (clientId) {
-        projectCountByClient.set(
-          clientId,
-          (projectCountByClient.get(clientId) || 0) + 1
-        );
+    // Credits per client — NOVO modelo: 1 crédito reservado por projeto ativo, 1 consumido por projeto concluído
+    const projectsNameMap = new Map(projectsSnap.docs.map(d => [d.id, fixMojibake((d.data()['name'] as string) || '—')]));
+    const concludedByClient = new Map<string, { projectId: string; projectName: string }[]>();
+    const activeByClient    = new Map<string, { projectId: string; projectName: string }[]>();
+
+    projectsSnap.docs.forEach(pDoc => {
+      const data = pDoc.data();
+      const clientId = data['clientId'] as string;
+      if (!clientId) return;
+      const projectName = projectsNameMap.get(pDoc.id) ?? (data['name'] as string) ?? '—';
+      if (data['status'] === 'Concluído' || data['status'] === 'concluido') {
+        if (!concludedByClient.has(clientId)) concludedByClient.set(clientId, []);
+        concludedByClient.get(clientId)!.push({ projectId: pDoc.id, projectName });
+      } else if (!['Cancelado', 'cancelado', 'Inativo'].includes(data['status'])) {
+        if (!activeByClient.has(clientId)) activeByClient.set(clientId, []);
+        activeByClient.get(clientId)!.push({ projectId: pDoc.id, projectName });
       }
     });
 
-    // Transformar os dados para incluir o nome dos clientes e corrigir os nomes das propriedades
-    this.projectsByClientData = clientsSnapshot.docs.map((doc) => ({
-      client: doc.data()['companyName'], // Nome do cliente
-      projects: projectCountByClient.get(doc.id) || 0, // Número de projetos ativos do cliente
+    this.clientCreditRows = clientsSnap.docs
+      .map(d => {
+        const active    = activeByClient.get(d.id)    || [];
+        const concluded = concludedByClient.get(d.id) || [];
+
+        const projects = [
+          ...active.map(p => ({ projectId: p.projectId, projectName: p.projectName, reserved: true,  used: 0, orphan: false })),
+          ...concluded.map(p => ({ projectId: p.projectId, projectName: p.projectName, reserved: false, used: 1, orphan: false })),
+        ];
+
+        return {
+          clientId: d.id,
+          clientName: fixMojibake((d.data()['companyName'] as string) || '—'),
+          credits: (d.data()['credits'] as number) || 0,
+          reservedCredits: (d.data()['reservedCredits'] as number) || 0,
+          creditsUsed: (d.data()['consumedCredits'] as number) || 0,
+          projects,
+          expanded: false,
+        };
+      })
+      .sort((a, b) => a.credits - b.credits); // menor disponível primeiro (mais crítico no topo)
+
+    // Projects table
+    this.projectRows = this.buildProjectRows(projectsSnap.docs, statsByProject, clientsMap, today);
+
+    // Alerts
+    this.alerts = this.buildAlerts(projectsSnap.docs, clientsSnap.docs, statsByProject, today);
+
+    // Funil â€” dados base (todos os clientes)
+    this.funnelAllProjects = projectsSnap.docs;
+    this.funnelInvitedProjectIds = invitedParticipantProjectIds;
+    this.funnelClientsMap = new Map(clientsSnap.docs.map(d => [d.id, fixMojibake((d.data()['companyName'] as string) || '')]));
+    this.funnelClientOptions = [
+      { id: 'all', name: 'Todos os clientes' },
+      ...clientsSnap.docs.map(d => ({ id: d.id, name: fixMojibake((d.data()['companyName'] as string) || '—') })),
+    ];
+    this.buildFunnelData(projectsSnap.docs, invitedParticipantProjectIds);
+
+    // Existing chart data (charts section)
+    this.totalActiveProjects = activeProjects.length;
+    const projectCountByClient = new Map<string, number>();
+    activeProjects.forEach(d => {
+      const id = d.data()['clientId'];
+      if (id) projectCountByClient.set(id, (projectCountByClient.get(id) || 0) + 1);
+    });
+    this.projectsByClientData = clientsSnap.docs.map(d => ({
+      client: fixMojibake(d.data()['companyName'] || ''),
+      projects: projectCountByClient.get(d.id) || 0,
+    }));
+
+    const byClientAssessments = new Map<string, number>();
+    assessmentsSnap.docs.forEach(d => {
+      const id = d.data()['clientId'];
+      if (id) byClientAssessments.set(id, (byClientAssessments.get(id) || 0) + 1);
+    });
+    this.assessmentsData = Array.from(byClientAssessments.entries()).map(([id, count]) => ({
+      client: (clientsMap.get(id) as any)?.['companyName'] || 'Desconhecido',
+      used: count,
+      remaining: 0,
+    }));
+    this.buildCategoryChartFromDocs(participantsSnap.docs);
+    this.buildProjectsByStatusChart(projectsSnap.docs);
+  }
+
+  // ─── Client data loading ────────────────────────────────────────────────────────
+
+  private async loadClientData(): Promise<void> {
+    const isViewer = this.userRole === 'viewer';
+
+    // Viewers may have no clientIds — they are linked to projects directly
+    if (!isViewer && this.userClientIds.length === 0) return;
+    if (isViewer && this.viewerProjectIds.size === 0) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const clientDataMap = new Map<string, any>();
+    let totalCredits = 0;
+    let clientSnaps: any[] = [];
+
+    if (!isViewer && this.userClientIds.length > 0) {
+      clientSnaps = await Promise.all(
+        this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
+      );
+      clientSnaps.forEach(snap => {
+        if (snap.exists()) {
+          clientDataMap.set(snap.id, snap.data());
+          totalCredits += snap.data()['credits'] || 0;
+        }
+      });
+      this.clientName = clientSnaps.length === 1
+        ? (clientSnaps[0].exists() ? fixMojibake(clientSnaps[0].data()['companyName'] || '') : '')
+        : `${clientSnaps.length} clientes`;
+    }
+
+    // Busca projetos, participantes e assessments
+    let projectsSnap, participantsSnap, assessmentsSnap;
+
+    if (isViewer) {
+      const projectIds = Array.from(this.viewerProjectIds);
+      [projectsSnap, participantsSnap, assessmentsSnap] = await Promise.all([
+        getDocs(query(collection(this.firestore, 'projects'), where('__name__', 'in', projectIds))),
+        getDocs(query(collection(this.firestore, 'participants'), where('projectId', 'in', projectIds))),
+        getDocs(query(collection(this.firestore, 'assessments'), where('projectId', 'in', projectIds))),
+      ]);
+    } else {
+      [projectsSnap, participantsSnap, assessmentsSnap] = await Promise.all([
+        getDocs(query(collection(this.firestore, 'projects'), where('clientId', 'in', this.userClientIds))),
+        getDocs(query(collection(this.firestore, 'participants'), where('clientId', 'in', this.userClientIds))),
+        getDocs(query(collection(this.firestore, 'assessments'), where('clientId', 'in', this.userClientIds))),
+      ]);
+    }
+
+    // Carregar assessmentLinks para os participantes
+    const pIds = participantsSnap.docs.map(d => d.id);
+    const completedParticipantIds = new Set<string>();
+    const pendingParticipantIds = new Set<string>();
+    if (pIds.length > 0) {
+      const batchSize = 10;
+      for (let i = 0; i < pIds.length; i += batchSize) {
+        const batch = pIds.slice(i, i + batchSize);
+        const [compSnap, pendSnap] = await Promise.all([
+          getDocs(query(collection(this.firestore, 'assessmentLinks'), where('participantId', 'in', batch), where('status', '==', 'completed'))),
+          getDocs(query(collection(this.firestore, 'assessmentLinks'), where('participantId', 'in', batch), where('status', '==', 'pending'))),
+        ]);
+        compSnap.docs.forEach(d => completedParticipantIds.add(d.data()['participantId']));
+        pendSnap.docs.forEach(d => pendingParticipantIds.add(d.data()['participantId']));
+      }
+    }
+
+    const withInviteIds = new Set([...completedParticipantIds, ...pendingParticipantIds]);
+    const activeProjects = projectsSnap.docs.filter(d => !['Cancelado', 'cancelado', 'Inativo'].includes(d.data()['status']));
+    const statsByProject = this.buildParticipantStats(participantsSnap.docs, completedParticipantIds, withInviteIds);
+
+    if (!isViewer) {
+      const invitedProjectIds = new Set(
+        participantsSnap.docs.filter(d => withInviteIds.has(d.id)).map(d => d.data()['projectId'] as string)
+      );
+      this.buildFunnelData(projectsSnap.docs, invitedProjectIds);
+    }
+
+    const pendingCount = participantsSnap.docs.filter(d => pendingParticipantIds.has(d.id)).length;
+    const totalParticipants = participantsSnap.docs.filter(d => d.data()['type'] === 'avaliado').length;
+
+    this.clientKpis = [
+      { value: activeProjects.length, label: 'Projetos Ativos',          color: '#1B84FF', icon: 'folder_open' },
+      { value: pendingCount,          label: this.translate.instant('kpi.avaliacoes_andamento'),  color: '#26c6da', icon: 'assignment_turned_in' },
+      { value: totalParticipants,     label: 'Participantes Ativos',     color: '#7c3aed', icon: 'groups' },
+      ...(!isViewer ? [{ value: totalCredits, label: this.translate.instant('kpi.creditos_disponiveis'), color: '#4caf50', icon: 'toll' }] : []),
+    ];
+
+    this.projectRows = this.buildProjectRows(projectsSnap.docs, statsByProject, clientDataMap as any, today);
+
+    const fakeClientDocs = clientSnaps
+      .filter(s => s.exists())
+      .map(s => ({ id: s.id, data: () => s.data() } as any));
+    this.alerts = this.buildAlerts(projectsSnap.docs, fakeClientDocs, statsByProject, today);
+
+    this.buildCategoryChartFromDocs(participantsSnap.docs);
+    this.buildProjectsByStatusChart(projectsSnap.docs);
+
+    // Gráfico de projetos por cliente (relevante quando há múltiplos clientes)
+    this.projectsByClientData = Array.from(clientDataMap.entries()).map(([id, data]) => ({
+      client: fixMojibake(data['companyName'] || id),
+      projects: activeProjects.filter(d => d.data()['clientId'] === id).length,
+    }));
+
+    this.assessmentsData = Array.from(clientDataMap.entries()).map(([id, data]) => ({
+      client: fixMojibake(data['companyName'] || id),
+      used: assessmentsSnap.docs.filter(d => d.data()['clientId'] === id).length,
+      remaining: 0,
     }));
 
     this.totalActiveProjects = activeProjects.length;
+  }
 
-    let remainingCredits = 0;
-    clientsSnapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      const credits = data['credits'] || 0;
-      const validityDate = data['validityDate']
-        ? new Date(data['validityDate'].seconds * 1000)
-        : null;
-      const today = new Date();
+  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-      // Apenas créditos não expirados são somados
-      if (!validityDate || validityDate > today) {
-        remainingCredits += credits;
+  private buildParticipantStats(
+    docs: any[],
+    completedIds: Set<string> = new Set(),
+    withInviteIds: Set<string> = new Set()
+  ): Map<string, { total: number; responded: number; withInvite: number }> {
+    const map = new Map<string, { total: number; responded: number; withInvite: number }>();
+    docs.forEach(d => {
+      const data = d.data();
+      const pid = data['projectId'];
+      if (!pid) return;
+      const entry = map.get(pid) || { total: 0, responded: 0, withInvite: 0 };
+      // total = TODOS os participantes do projeto (com ou sem convite)
+      // Assim, novos participantes adicionados derrubam o percentual imediatamente
+      entry.total++;
+      if (withInviteIds.has(d.id)) {
+        entry.withInvite++;
+        if (completedIds.has(d.id)) entry.responded++;
       }
+      map.set(pid, entry);
+    });
+    return map;
+  }
+
+  private buildProjectRows(
+    projectDocs: any[],
+    statsByProject: Map<string, { total: number; responded: number; withInvite: number }>,
+    clientsMap: Map<string, any>,
+    today: Date
+  ): ProjectRow[] {
+    const rows: ProjectRow[] = projectDocs
+      .filter(d => !['Cancelado', 'cancelado', 'Inativo'].includes(d.data()['status']))
+      .map(d => {
+        const data = d.data();
+        const stats = statsByProject.get(d.id) || { total: 0, responded: 0, withInvite: 0 };
+        const responseRate = stats.total > 0 ? Math.round((stats.responded / stats.total) * 100) : 0;
+        const deadline = data['deadline']
+          ? new Date(data['deadline'].seconds * 1000)
+          : null;
+        const daysLeft = deadline
+          ? Math.ceil((deadline.getTime() - today.getTime()) / 86400000)
+          : 9999;
+        const clientData = clientsMap.get(data['clientId']);
+
+        let status: ProjectStatus = 'em_andamento';
+        if (data['status'] === 'Concluído' || data['status'] === 'concluido' || (stats.total > 0 && responseRate === 100)) {
+          status = 'concluido';
+        } else if (daysLeft < 0 && responseRate < 100) {
+          status = 'atrasado';
+        } else if (daysLeft >= 0 && daysLeft <= 7 && responseRate < 100) {
+          status = 'em_risco';
+        }
+
+        return {
+          id: d.id,
+          name: fixMojibake(data['name'] || ''),
+          clientName: fixMojibake(clientData?.['companyName'] || ''),
+          totalParticipants: stats.total,
+          respondedParticipants: stats.responded,
+          responseRate,
+          deadline,
+          daysUntilDeadline: daysLeft,
+          status,
+        } as ProjectRow;
+      });
+
+    const order: Record<ProjectStatus, number> = { atrasado: 0, em_risco: 1, em_andamento: 2, concluido: 3 };
+    return rows.sort((a, b) => order[a.status] - order[b.status]);
+  }
+
+  private buildAlerts(
+    projectDocs: any[],
+    clientDocs: any[],
+    statsByProject: Map<string, { total: number; responded: number; withInvite: number }>,
+    today: Date
+  ): AlertItem[] {
+    const alerts: AlertItem[] = [];
+    const cMap = new Map(clientDocs.map(d => [d.id, fixMojibake(d.data()['companyName'] as string || '')]));
+    const activeStatuses = ['Em andamento', 'Ativo']; // inclui legado
+
+    // ðŸ”´ CrÃ­tico: prazo vencido com respostas pendentes
+    projectDocs
+      .filter(d => {
+        const data = d.data();
+        if (!activeStatuses.includes(data['status'])) return false;
+        const deadline = data['deadline'] ? new Date(data['deadline'].seconds * 1000) : null;
+        if (!deadline) return false;
+        const days = Math.ceil((deadline.getTime() - today.getTime()) / 86400000);
+        if (days >= 0) return false; // nÃ£o vencido
+        const stats = statsByProject.get(d.id);
+        const rate = stats && stats.total > 0 ? (stats.responded / stats.total) * 100 : 0;
+        return rate < 100; // ainda tem pendÃªncias
+      })
+      .forEach(d => {
+        const data = d.data();
+        const stats = statsByProject.get(d.id);
+        const rate = stats && stats.total > 0 ? Math.round((stats.responded / stats.total) * 100) : 0;
+        const overdue = Math.abs(Math.ceil((new Date(data['deadline'].seconds * 1000).getTime() - today.getTime()) / 86400000));
+        alerts.push({
+          level: 'danger',
+          category: this.translate.instant('alert.prazo_vencido'),
+          clientName: cMap.get(data['clientId']) || '',
+          title: fixMojibake(data['name'] || ''),
+          description: this.translate.instant('alert.vencido_descricao', { days: overdue, rate: rate }),
+          route: `/projects/${d.id}/edit`,
+        });
+      });
+
+    // ðŸŸ  AtenÃ§Ã£o: prazo em â‰¤ 7 dias com respostas incompletas
+    projectDocs
+      .filter(d => {
+        const data = d.data();
+        if (!activeStatuses.includes(data['status'])) return false;
+        const deadline = data['deadline'] ? new Date(data['deadline'].seconds * 1000) : null;
+        if (!deadline) return false;
+        const days = Math.ceil((deadline.getTime() - today.getTime()) / 86400000);
+        if (days < 0 || days > 7) return false; // jÃ¡ vencido ou folga suficiente
+        const stats = statsByProject.get(d.id);
+        const rate = stats && stats.total > 0 ? (stats.responded / stats.total) * 100 : 0;
+        return rate < 100;
+      })
+      .forEach(d => {
+        const data = d.data();
+        const stats = statsByProject.get(d.id);
+        const rate = stats && stats.total > 0 ? Math.round((stats.responded / stats.total) * 100) : 0;
+        const days = Math.ceil((new Date(data['deadline'].seconds * 1000).getTime() - today.getTime()) / 86400000);
+        const pending = (stats?.total ?? 0) - (stats?.responded ?? 0);
+        alerts.push({
+          level: 'warning',
+          category: this.translate.instant('alert.prazo_proximo'),
+          clientName: cMap.get(data['clientId']) || '',
+          title: fixMojibake(data['name'] || ''),
+          description: this.translate.instant('alert.proximo_descricao', { days: days, pending: pending, rate: rate }),
+          route: `/projects/${d.id}/edit`,
+        });
+      });
+
+    // ðŸ”µ Aviso: cliente sem crÃ©ditos
+    clientDocs
+      .filter(d => (d.data()['credits'] || 0) === 0)
+      .forEach(d => {
+        alerts.push({
+          level: 'info',
+          category: this.translate.instant('alert.sem_creditos'),
+          clientName: fixMojibake(d.data()['companyName'] || ''),
+          title: fixMojibake(d.data()['companyName'] || ''),
+          description: this.translate.instant('alert.creditos_esgotados'),
+          route: '/orders',
+        });
+      });
+
+    return alerts;
+  }
+
+  private buildCategoryChartFromDocs(docs: any[]): void {
+    const byCategory = new Map<string, number>();
+    docs.forEach(d => {
+      const cat = d.data()['category'] || d.data()['type'] || 'Outros';
+      byCategory.set(cat, (byCategory.get(cat) || 0) + 1);
+    });
+    if (byCategory.size === 0) return;
+
+    const labels = Array.from(byCategory.keys());
+    const values = Array.from(byCategory.values());
+
+    this.participantsByCategoryChart = {
+      series: values,
+      chart: {
+        type: 'donut',
+        height: 260,
+        toolbar: { show: false },
+        fontFamily: 'Poppins, sans-serif',
+      },
+      labels,
+      colors: ['#1B84FF', '#26c6da', '#fc4b6c', '#ffb22b', '#4caf50', '#7c3aed'],
+      legend: { position: 'bottom', fontFamily: 'Poppins, sans-serif', fontSize: '12px' },
+      dataLabels: { enabled: false },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '68%',
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                label: 'Total',
+                color: '#1e293b',
+                formatter: (w: any) => w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0),
+              },
+            },
+          },
+        },
+      },
+      stroke: { width: 2, colors: ['#fff'] },
+      tooltip: { theme: 'light' },
+    };
+  }
+
+  private buildProjectsByStatusChart(projectDocs: any[]): void {
+    const counts: Record<string, number> = { 'Em andamento': 0, 'Concluído': 0, 'Cancelado': 0 };
+    projectDocs.forEach(d => {
+      const s = d.data()['status'];
+      if (s === 'Em andamento' || s === 'Ativo') counts['Em andamento']++;
+      else if (s === 'Concluído' || s === 'concluido') counts['Concluído']++;
+      else if (s === 'Cancelado' || s === 'cancelado' || s === 'Inativo') counts['Cancelado']++;
     });
 
-    return {
-      totalClients: clientsSnapshot.size || 0,
-      totalProjects: activeProjects || 0,
-      totalCreditOrders: creditOrdersSnapshot.size || 0,
-      totalEvaluatedParticipants: evaluatedParticipants || 0,
-      totalCredits,
-      totalRemainingCredits: remainingCredits,
-      totalActiveProjects: this.totalActiveProjects,
+    const labels = Object.keys(counts);
+    const values = Object.values(counts);
+    const colors = ['#1B84FF', '#4caf50', '#fc4b6c'];
+
+    this.projectsByStatusChart = {
+      series: [{ name: 'Projetos', data: values }],
+      chart: { type: 'bar', height: 220, toolbar: { show: false }, fontFamily: 'Poppins, sans-serif' },
+      plotOptions: { bar: { horizontal: false, columnWidth: '40%', borderRadius: 6, borderRadiusApplication: 'end', distributed: true } },
+      colors,
+      dataLabels: { enabled: true, formatter: (val: number) => val > 0 ? String(val) : '', style: { fontSize: '13px', fontFamily: 'Poppins', colors: ['#374151'] }, offsetY: -6 },
+      xaxis: { categories: labels, labels: { style: { fontSize: '12px', fontFamily: 'Poppins' } }, axisBorder: { show: false }, axisTicks: { show: false } },
+      yaxis: { show: true, min: 0, tickAmount: 3, labels: { style: { fontSize: '11px' } } },
+      grid: { borderColor: '#f1f5f9', yaxis: { lines: { show: true } }, xaxis: { lines: { show: false } } },
+      legend: { show: false },
+      tooltip: { theme: 'light', y: { formatter: (val: number) => `${val} projeto${val !== 1 ? 's' : ''}` } },
     };
+  }
+
+  buildFunnelData(projectDocs: any[], invitedProjectIds: Set<string>, clientFilter = 'all'): void {
+    const filtered = clientFilter === 'all'
+      ? projectDocs
+      : projectDocs.filter(d => d.data()['clientId'] === clientFilter);
+
+    const active = filtered.filter(d => !['Cancelado', 'cancelado', 'Inativo'].includes(d.data()['status']));
+    const created = active.length;
+    const invitesSent = active.filter(d => invitedProjectIds.has(d.id)).length;
+    const completed = active.filter(d => ['Concluído', 'concluido'].includes(d.data()['status'])).length;
+
+    this.funnelData = { created, invitesSent, completed };
+  }
+
+  onFunnelClientFilter(clientId: string): void {
+    this.funnelClientFilter = clientId;
+    this.buildFunnelData(this.funnelAllProjects, this.funnelInvitedProjectIds, clientId);
+  }
+
+  // â”€â”€ Template helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  statusLabel(status: ProjectStatus): string {
+    const map: Record<ProjectStatus, string> = {
+      em_andamento: 'Em andamento',
+      em_risco: 'Em risco',
+      atrasado: 'Atrasado',
+      concluido: 'Conclu\u00eddo',
+    };
+    return map[status];
+  }
+
+  statusClass(status: ProjectStatus): string {
+    const map: Record<ProjectStatus, string> = {
+      em_andamento: 'status-badge--blue',
+      em_risco: 'status-badge--yellow',
+      atrasado: 'status-badge--red',
+      concluido: 'status-badge--green',
+    };
+    return map[status];
+  }
+
+  deadlineLabel(row: ProjectRow): string {
+    if (!row.deadline) return '\u2014';
+    if (row.status === 'concluido') return row.deadline.toLocaleDateString('pt-BR');
+    if (row.daysUntilDeadline < 0) return `${Math.abs(row.daysUntilDeadline)}d atrasado`;
+    if (row.daysUntilDeadline === 0) return 'Hoje';
+    if (row.daysUntilDeadline <= 7) return `${row.daysUntilDeadline}d restante(s)`;
+    return row.deadline.toLocaleDateString('pt-BR');
+  }
+
+  deadlineClass(row: ProjectRow): string {
+    if (!row.deadline || row.status === 'concluido') return '';
+    if (row.daysUntilDeadline < 0) return 'deadline--overdue';
+    if (row.daysUntilDeadline <= 3) return 'deadline--critical';
+    if (row.daysUntilDeadline <= 7) return 'deadline--warning';
+    return '';
+  }
+
+  // â”€â”€ Exports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  async generatePDF(): Promise<void> {
+    if (this.isExporting) return;
+
+    const dashboardEl = document.getElementById('dashboard-content');
+    if (!dashboardEl) {
+      this.snackBar.open(this.translate.instant('Elemento do dashboard não encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
+      return;
+    }
+
+    this.isExporting = true;
+    this.exportLabel = this.translate.instant('Preparando impressão...');
+    this.cdr.markForCheck();
+
+    let iframe: HTMLIFrameElement | null = null;
+
+    try {
+      await new Promise(r => setTimeout(r, 100));
+
+      const canvases = Array.from(dashboardEl.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      const canvasDataUrls = canvases.map(c => {
+        try { return c.toDataURL('image/jpeg', 0.92); } catch { return ''; }
+      });
+
+      const clone = dashboardEl.cloneNode(true) as HTMLElement;
+
+      Array.from(clone.querySelectorAll('canvas')).forEach((clonedCanvas, i) => {
+        const dataUrl = canvasDataUrls[i];
+        if (!dataUrl) return;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.width  = canvases[i].style.width  || `${canvases[i].offsetWidth}px`;
+        img.style.height = canvases[i].style.height || `${canvases[i].offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+        clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
+      });
+
+      const angularStyles = Array.from(document.head.querySelectorAll('style'))
+        .map(s => s.innerHTML).join('\n');
+      const linkTags = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
+        .map(l => l.outerHTML).join('\n');
+
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;border:none;visibility:hidden;';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument!;
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="${window.location.origin}/">
+  ${linkTags}
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+    * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+    body { margin: 0; padding: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background: #fff; width: 186mm; }
+    #dashboard-content { width: 100%; }
+    table { border-collapse: collapse; }
+    img, svg { max-width: 100% !important; height: auto; }
+    ${angularStyles}
+  </style>
+</head>
+<body>
+  <div id="dashboard-content">${clone.innerHTML}</div>
+  <script>
+    (function() {
+      var bodyWidth = document.body.offsetWidth;
+      document.querySelectorAll('table').forEach(function(table) {
+        var natural = table.scrollWidth;
+        if (natural <= bodyWidth + 2) return;
+        var scale = bodyWidth / natural;
+        var origH = table.offsetHeight;
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'width:100%;overflow:hidden;display:block;';
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(table);
+        table.style.transformOrigin = 'top left';
+        table.style.transform = 'scale(' + scale + ')';
+        table.style.marginBottom = (origH * (scale - 1)) + 'px';
+      });
+    })();
+  <\/script>
+</body>
+</html>`);
+      iframeDoc.close();
+
+      await new Promise<void>((resolve) => {
+        const doPrint = () => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            window.removeEventListener('afterprint', finish);
+            try { iframe!.contentWindow?.removeEventListener('afterprint', finish); } catch {}
+            clearTimeout(safetyTimer);
+            resolve();
+          };
+          window.addEventListener('afterprint', finish);
+          try { iframe!.contentWindow?.addEventListener('afterprint', finish); } catch {}
+          const safetyTimer = setTimeout(finish, 2 * 60 * 1000);
+          iframe!.contentWindow?.focus();
+          iframe!.contentWindow?.print();
+        };
+        iframe!.addEventListener('load', () => setTimeout(doPrint, 400));
+      });
+
+      this.snackBar.open(this.translate.instant('Dashboard exportado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
+    } catch (err) {
+      console.error(err);
+      this.snackBar.open(this.translate.instant('Erro ao exportar o dashboard.'), this.translate.instant('Fechar'), { duration: 4000 });
+    } finally {
+      if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
+      this.isExporting = false;
+      this.exportLabel = '';
+      this.cdr.markForCheck();
+    }
   }
 
   openExportDialog(): void {
@@ -332,154 +973,120 @@ export class DashboardComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe(async (result) => {
-      if (result) {
-        const { selectedTable, selectedFormat } = result;
-
-        if (selectedFormat === 'excel') {
-          await this.exportToExcel(selectedTable.key, selectedTable.label);
-        } else if (selectedFormat === 'pdf') {
-          await this.exportToPDF(selectedTable.key, selectedTable.label);
-        }
+      if (!result) return;
+      const { selectedTable, selectedFormat } = result;
+      this.isExportingTables = true;
+      this.exportLabel = this.translate.instant('Exportando') + ' ' + selectedTable.label + '...';
+      this.cdr.markForCheck();
+      try {
+        if (selectedFormat === 'excel') await this.exportToExcel(selectedTable.key, selectedTable.label);
+        else if (selectedFormat === 'pdf') await this.exportToPDF(selectedTable.key, selectedTable.label);
+      } finally {
+        this.isExportingTables = false;
+        this.exportLabel = '';
+        this.cdr.markForCheck();
       }
     });
   }
 
-  // Função para exportar dados para Excel
-  private async exportToExcel(
-    tableKey: string,
-    tableLabel: string
-  ): Promise<void> {
+  private async exportToExcel(tableKey: string, tableLabel: string): Promise<void> {
     const data = await this.getFormattedData(tableKey);
     const headers = this.headersMap[tableKey] || [];
-
-    // Importar e configurar ExcelJS
     const ExcelJS = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(tableLabel);
 
-    // Adicionar cabeçalhos com estilos
-    const headerRow = worksheet.addRow(headers.map(({ header }) => header));
-    headerRow.eachCell((cell) => {
+    const headerRow = worksheet.addRow(headers.map(h => h.header));
+    headerRow.eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4CAF50' },
-      };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B84FF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' },
-      };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    // Adicionar dados
-    data.forEach((row) => {
-      const dataRow = worksheet.addRow(
-        headers.map(({ key }) => row[key] || '')
-      );
-      dataRow.eachCell((cell) => {
-        cell.border = {
-          top: { style: 'thin' },
-          left: { style: 'thin' },
-          bottom: { style: 'thin' },
-          right: { style: 'thin' },
-        };
+    data.forEach(row => {
+      const dataRow = worksheet.addRow(headers.map(h => row[h.key] || ''));
+      dataRow.eachCell(cell => {
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
       });
     });
 
-    // Ajustar largura das colunas
-    worksheet.columns = headers.map(() => ({ width: 20 }));
-
-    // Salvar arquivo
+    worksheet.columns = headers.map(() => ({ width: 22 }));
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `${tableLabel}.xlsx`;
     link.click();
+    URL.revokeObjectURL(link.href);
+    this.snackBar.open(this.translate.instant('Exportado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
   }
 
-  // Função para exportar dados para PDF
-  private async exportToPDF(
-    tableKey: string,
-    tableLabel: string
-  ): Promise<void> {
+  private async exportToPDF(tableKey: string, tableLabel: string): Promise<void> {
     const data = await this.getFormattedData(tableKey);
     const headers = this.headersMap[tableKey] || [];
-
-    // Importar jsPDF e autoTable
     const { default: jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
-
     const doc = new jsPDF();
-
-    // Adicionar título
-    doc.setFontSize(18);
-    doc.text(`${tableLabel}`, 14, 20);
-
-    // Configurar autoTable
+    doc.setFontSize(16);
+    doc.text(tableLabel, 14, 20);
     autoTable(doc, {
       startY: 30,
-      head: [headers.map(({ header }) => header)],
-      body: data.map((row) => headers.map(({ key }) => row[key] || '')),
+      head: [headers.map(h => h.header)],
+      body: data.map(row => headers.map(h => row[h.key] || '')),
       theme: 'grid',
-      headStyles: {
-        fillColor: [76, 175, 80],
-        textColor: 255,
-        fontStyle: 'bold',
-      },
+      headStyles: { fillColor: [27, 132, 255], textColor: 255, fontStyle: 'bold' },
       bodyStyles: { textColor: 50 },
       styles: { cellPadding: 3, fontSize: 10 },
     });
-
-    // Salvar arquivo
     doc.save(`${tableLabel}.pdf`);
+    this.snackBar.open(this.translate.instant('Exportado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
   }
 
-  private formatDate(timestamp: any): string {
-    if (!timestamp || !timestamp.seconds) return ''; // Se for indefinido, retorna vazio
-    const date = new Date(timestamp.seconds * 1000);
-    return isNaN(date.getTime()) ? '' : date.toLocaleDateString('pt-BR');
+  private formatDate(ts: any): string {
+    if (!ts?.seconds) return '';
+    const d = new Date(ts.seconds * 1000);
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
+  }
+
+  private async loadViewerProjectIds(): Promise<void> {
+    this.viewerProjectIds.clear();
+    const email = await this.authService.getCurrentUserEmail();
+    if (!email) return;
+
+    const usersSnap = await getDocs(
+      query(collection(this.firestore, 'users'), where('email', '==', email))
+    );
+
+    if (usersSnap.empty) return;
+
+    const userData = usersSnap.docs[0].data();
+    const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
+    const fromSingle = userData['project'] ? [userData['project']] : [];
+
+    [...fromArray, ...fromSingle].forEach((projectId) => this.viewerProjectIds.add(projectId));
   }
 
   private async getFormattedData(tableKey: string): Promise<any[]> {
-    const collectionRef = collection(this.firestore, tableKey);
-    const snapshot = await getDocs(collectionRef);
-    let data = snapshot.docs.map((doc) => ({ ...doc.data() }));
+    const snap = await getDocs(collection(this.firestore, tableKey));
+    const [clientsSnap, projectsSnap] = await Promise.all([
+      getDocs(collection(this.firestore, 'clients')),
+      getDocs(collection(this.firestore, 'projects')),
+    ]);
+    const clientsMap  = new Map(clientsSnap.docs.map(d  => [d.id,  d.data()['companyName']]));
+    const projectsMap = new Map(projectsSnap.docs.map(d => [d.id, d.data()['name']]));
 
-    // Buscar nomes de clientes e projetos para substituição
-    const clientsSnapshot = await getDocs(
-      collection(this.firestore, 'clients')
-    );
-    const clientsMap = new Map(
-      clientsSnapshot.docs.map((doc) => [doc.id, doc.data()['companyName']])
-    );
-
-    const projectsSnapshot = await getDocs(
-      collection(this.firestore, 'projects')
-    );
-    const projectsMap = new Map(
-      projectsSnapshot.docs.map((doc) => [doc.id, doc.data()['name']])
-    );
-
-    // Substituir clientId, projectId e tratar datas corretamente
-    return data.map((item: any) => ({
-      ...item,
-      clientId: item.clientId
-        ? clientsMap.get(item.clientId) || 'Desconhecido'
-        : '',
-      projectId: item.projectId
-        ? projectsMap.get(item.projectId) || 'Desconhecido'
-        : '',
-      createdAt: this.formatDate(item.createdAt),
-      startDate: this.formatDate(item.startDate),
-      validityDate: this.formatDate(item.validityDate),
-      deadline: this.formatDate(item.deadline),
-    }));
+    return snap.docs.map(d => {
+      const item: any = { ...d.data() };
+      return {
+        ...item,
+        clientId:     item.clientId     ? clientsMap.get(item.clientId)   || 'Desconhecido' : '',
+        projectId:    item.projectId    ? projectsMap.get(item.projectId) || 'Desconhecido' : '',
+        createdAt:    this.formatDate(item.createdAt),
+        startDate:    this.formatDate(item.startDate),
+        validityDate: this.formatDate(item.validityDate),
+        deadline:     this.formatDate(item.deadline),
+      };
+    });
   }
 }

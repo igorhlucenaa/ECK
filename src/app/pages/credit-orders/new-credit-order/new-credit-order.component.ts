@@ -27,6 +27,8 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { MatIconModule } from '@angular/material/icon';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-new-credit-order',
@@ -43,7 +45,9 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
     MatButtonModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatIconModule,
     RouterModule,
+    AppPageHeaderComponent,
   ],
   templateUrl: './new-credit-order.component.html',
   styleUrls: ['./new-credit-order.component.scss'],
@@ -74,10 +78,14 @@ export class NewCreditOrderComponent implements OnInit {
       notes: [''],
     });
 
-    // Atualiza o valor mínimo para a data de validade com base na data de início
+    // Auto-preenche validade com início + 12 meses e atualiza validador de data mínima
     this.orderForm.get('startDate')?.valueChanges.subscribe((startDate) => {
       const validityControl = this.orderForm.get('validityDate');
       if (startDate) {
+        const autoValidity = new Date(startDate);
+        autoValidity.setFullYear(autoValidity.getFullYear() + 1);
+        validityControl?.setValue(autoValidity, { emitEvent: false });
+
         validityControl?.setValidators([
           Validators.required,
           this.minDateValidator(new Date(startDate)),

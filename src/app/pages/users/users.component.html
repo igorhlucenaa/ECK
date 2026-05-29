@@ -1,305 +1,527 @@
-<div class="container my-4">
-  <mat-tab-group data-tour="users-tabs">
-    <mat-tab label="{{ 'Usuários' | translate }}">
-      <!-- Tabela de Usuários -->
-      <mat-card>
-        <mat-card-title style="margin: 15px">{{ 'Usuários' | translate }}</mat-card-title>
+<div class="users-wrapper">
 
-        <mat-card-content>
-          <div
-            class="mt-3 text-end"
-            style="margin-top: 10px; margin-bottom: 10px; text-align: end"
-            data-tour="users-add"
-          >
-            <button
-              mat-flat-button
-              color="primary"
-              (click)="openCreateUserDialog()"
-            >
+  <app-page-header
+    [eyebrow]="'Gestão' | translate"
+    [title]="'Usuários e Grupos' | translate"
+    [subtitle]="'Gerencie os usuários e grupos de usuários da plataforma' | translate">
+
+    <button mat-icon-button *ngIf="dialogRef" (click)="dialogRef.close()" [matTooltip]="'Fechar' | translate">
+      <mat-icon>close</mat-icon>
+    </button>
+
+  </app-page-header>
+
+  <mat-tab-group data-tour="users-tabs" class="users-tabs" animationDuration="200ms">
+
+    <!-- ═══════════════════════════════════ Tab: Usuários ═══ -->
+    <mat-tab label="{{ 'Usuários' | translate }}" *ngIf="currentUserRole !== 'admin_client'">
+      <div class="tab-card">
+
+        <!-- Toolbar -->
+        <div class="search-bar">
+          <mat-form-field appearance="outline" class="search-field">
+            <mat-icon matPrefix class="search-prefix-icon">search</mat-icon>
+            <input matInput (keyup)="applyUserFilter($event)" placeholder="{{ 'Buscar por nome, e-mail...' | translate }}" />
+          </mat-form-field>
+
+          <!-- Filtro de status -->
+          <div class="status-filter-group">
+            <button class="status-filter-btn" [class.active]="statusFilter === 'all'"
+              (click)="applyStatusFilter('all')">
+              <mat-icon>people</mat-icon> {{ 'Todos' | translate }}
+            </button>
+            <button class="status-filter-btn" [class.active]="statusFilter === 'active'"
+              (click)="applyStatusFilter('active')">
+              <mat-icon>check_circle</mat-icon> {{ 'Ativos' | translate }}
+            </button>
+            <button class="status-filter-btn status-filter-btn--blocked" [class.active]="statusFilter === 'blocked'"
+              (click)="applyStatusFilter('blocked')">
+              <mat-icon>lock</mat-icon> {{ 'Bloqueados' | translate }}
+            </button>
+          </div>
+
+          <div class="search-bar__right">
+            <div class="search-count">
+              {{ userDataSource.filteredData.length }} resultado{{ userDataSource.filteredData.length !== 1 ? 's' : '' }}
+            </div>
+            <button mat-raised-button class="btn-action"
+              *ngIf="currentUserRole === 'admin_master'"
+              (click)="openCreateUserDialog()" data-tour="users-add">
+              <mat-icon>person_add</mat-icon>
               {{ 'Adicionar Usuário' | translate }}
             </button>
           </div>
-          <mat-form-field appearance="outline" class="w-100 mb-3">
-            <mat-label>{{ 'Buscar Usuário' | translate }}</mat-label>
-            <input
-              matInput
-              (keyup)="applyUserFilter($event)"
-              placeholder="{{ 'Digite para buscar' | translate }}"
-            />
-          </mat-form-field>
-          <div class="table-responsive" data-tour="users-table">
-            <table
-              mat-table
-              [dataSource]="userDataSource"
-              matSort
-              #userSort="matSort"
-              class="mat-elevation-z8 w-100"
-            >
-              <!-- Nome -->
-              <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome' | translate }}</th>
-                <td mat-cell *matCellDef="let user">{{ user.name }}</td>
-              </ng-container>
+        </div>
 
-              <!-- Sobrenome -->
-              <ng-container matColumnDef="surname">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                  {{ 'Sobrenome' | translate }}
-                </th>
-                <td mat-cell *matCellDef="let user">{{ user.surname }}</td>
-              </ng-container>
+        <!-- Painel de Perfis e Permissões -->
+        <mat-expansion-panel class="permissions-panel">
+          <mat-expansion-panel-header>
+            <mat-panel-title class="permissions-panel__title">
+              <mat-icon>shield</mat-icon>
+              {{ 'Perfis e Permissões' | translate }}
+            </mat-panel-title>
+            <mat-panel-description class="permissions-panel__desc">
+              {{ 'O que cada perfil pode fazer na plataforma' | translate }}
+            </mat-panel-description>
+          </mat-expansion-panel-header>
 
-              <!-- E-mail -->
-              <ng-container matColumnDef="email">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                  {{ 'E-mail' | translate }}
-                </th>
-                <td mat-cell *matCellDef="let user">{{ user.email }}</td>
-              </ng-container>
+          <div class="perm-grid">
 
-              <!-- Cliente -->
-              <ng-container matColumnDef="client">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                  {{ 'Cliente' | translate }}
-                </th>
-                <td mat-cell *matCellDef="let user">
-                  <a
-                    *ngIf="user.client.length > 0"
-                    href="javascript:void(0)"
-                    (click)="openDetailsModal(clientUsersTitle, user.client)"
-                  >
-                    {{ 'Ver Clientes' | translate }}
-                  </a>
-                  <span *ngIf="user.client.length === 0">{{ 'Sem Clientes' | translate }}</span>
-                </td>
-              </ng-container>
+            <!-- Master -->
+            <div class="perm-card perm-card--master">
+              <div class="perm-card__header">
+                <span class="perm-badge perm-badge--master">{{ 'Master' | translate }}</span>
+                <span class="perm-card__subtitle">{{ 'Acesso total ao sistema' | translate }}</span>
+              </div>
+              <ul class="perm-list">
+                <li><mat-icon>check_circle</mat-icon>{{ 'Gerenciar todos os clientes e projetos' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Criar e excluir avaliações' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Gerenciar usuários Admin Cliente e Visualizadores' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar todos os relatórios' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Gerenciar grupos de usuários' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Configurar competências e templates' | translate }}</li>
+              </ul>
+              <div class="perm-card__note perm-card__note--locked">
+                <mat-icon>lock</mat-icon> {{ 'Não pode ser editado ou excluído por outros usuários' | translate }}
+              </div>
+            </div>
 
-              <!-- Projetos -->
-              <ng-container matColumnDef="projects">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                  {{ 'Projetos' | translate }}
-                </th>
-                <td mat-cell *matCellDef="let user">
-                  <a
-                    *ngIf="user.projects.length > 0"
-                    href="javascript:void(0)"
-                    (click)="openDetailsModal(userProjectsTitle, user.projects)"
-                  >
-                    {{ 'Ver Projetos' | translate }}
-                  </a>
-                  <span *ngIf="user.projects.length === 0">{{ 'Sem projetos' | translate }}</span>
-                </td>
-              </ng-container>
+            <!-- Admin Cliente -->
+            <div class="perm-card perm-card--admin">
+              <div class="perm-card__header">
+                <span class="perm-badge perm-badge--admin">{{ 'Admin Cliente' | translate }}</span>
+                <span class="perm-card__subtitle">{{ 'Gestão da própria empresa' | translate }}</span>
+              </div>
+              <ul class="perm-list">
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar clientes vinculados e saldo de créditos' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar projetos da própria empresa' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Criar e gerenciar participantes dos projetos' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar grupos de usuários da empresa' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Acessar relatórios publicados pelo administrador' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Não cadastra, edita ou exclui clientes' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso à lista de usuários' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso a formulários de avaliação' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Não acessa dados de outros clientes' | translate }}</li>
+              </ul>
+              <div class="perm-card__note perm-card__note--info">
+                <mat-icon>info</mat-icon> {{ 'Acesso restrito aos dados da própria empresa' | translate }}
+              </div>
+            </div>
 
-              <!-- Grupo -->
-              <ng-container matColumnDef="group">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                  {{ 'Grupos' | translate }}
-                </th>
-                <td mat-cell *matCellDef="let user">
-                  <a
-                    *ngIf="user.groups.length > 0"
-                    href="javascript:void(0)"
-                    (click)="openDetailsModal(userGroupsTitle, user.groups)"
-                  >
-                    {{ 'Ver Grupos' | translate }}
-                  </a>
-                  <span *ngIf="user.groups.length === 0">{{ 'Sem grupos' | translate }}</span>
-                </td>
-              </ng-container>
+            <!-- Visualizador -->
+            <div class="perm-card perm-card--viewer">
+              <div class="perm-card__header">
+                <span class="perm-badge perm-badge--viewer">{{ 'Visualizador' | translate }}</span>
+                <span class="perm-card__subtitle">{{ 'Acesso de leitura' | translate }}</span>
+              </div>
+              <ul class="perm-list">
+                <li><mat-icon>check_circle</mat-icon>{{ 'Visualizar avaliações atribuídas' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Responder avaliações 360°' | translate }}</li>
+                <li><mat-icon>check_circle</mat-icon>{{ 'Ver relatórios publicados pelo administrador' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso ao painel de gestão' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso a usuários ou grupos' | translate }}</li>
+                <li class="perm-list__denied"><mat-icon>cancel</mat-icon>{{ 'Sem acesso a configurações' | translate }}</li>
+              </ul>
+              <div class="perm-card__note perm-card__note--info">
+                <mat-icon>info</mat-icon> {{ 'Acesso restrito à experiência de avaliação' | translate }}
+              </div>
+            </div>
 
-              <!-- Papel -->
-              <ng-container matColumnDef="role">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Papel' | translate }}</th>
-                <td mat-cell *matCellDef="let user">{{ user.role }}</td>
-              </ng-container>
-
-              <!-- Status de Notificação -->
-              <ng-container matColumnDef="notificationStatus">
-                <th mat-header-cell *matHeaderCellDef>{{ 'Status de Notificação' | translate }}</th>
-                <td mat-cell *matCellDef="let user">
-                  {{ user.notificationStatus }}
-                </td>
-              </ng-container>
-
-              <!-- Ações -->
-              <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
-                <td mat-cell *matCellDef="let user">
-                  <button
-                    mat-icon-button
-                    color="accent"
-                    [routerLink]="['/users', user.id, 'details']"
-                    matTooltip="{{ 'Ver detalhes' | translate }}"
-                  >
-                    <mat-icon>visibility</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="primary"
-                    (click)="editUser(user)"
-                    [disabled]="user.role === 'admin_master'"
-                  >
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="warn"
-                    [disabled]="user.role === 'admin_master'"
-                    (click)="deleteUser(user)"
-                    matTooltip="{{ 'Excluir Usuário' | translate }}"
-                  >
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="accent"
-                    (click)="sendEmailNotification(user)"
-                    matTooltip="{{ 'Enviar E-mail' | translate }}"
-                  >
-                    <mat-icon>email</mat-icon>
-                  </button>
-                </td>
-              </ng-container>
-
-              <tr mat-header-row *matHeaderRowDef="displayedUserColumns"></tr>
-              <tr
-                mat-row
-                *matRowDef="let row; columns: displayedUserColumns"
-              ></tr>
-            </table>
           </div>
-          <mat-paginator
-            [pageSize]="5"
-            [pageSizeOptions]="[5, 10, 20]"
-            #userPaginator
-          ></mat-paginator>
+        </mat-expansion-panel>
 
-          <!-- <button
-            mat-flat-button
-            color="primary"
-            (click)="openCreateUserDialog()"
-          >
-            <mat-icon>person_add</mat-icon>
-            Novo Usuário
-          </button> -->
-        </mat-card-content>
-      </mat-card>
+        <!-- Barra de ações em massa — Usuários (apenas admin_master) -->
+        <div class="bulk-action-bar" *ngIf="isSomeUsersSelected() && currentUserRole === 'admin_master'">
+          <mat-icon>check_circle</mat-icon>
+          <strong>{{ selectedUserIds.size }}</strong>
+          <span>usuário{{ selectedUserIds.size !== 1 ? 's' : '' }} selecionado{{ selectedUserIds.size !== 1 ? 's' : '' }}</span>
+          <span class="bulk-spacer"></span>
+          <button mat-button (click)="toggleAllUsers(false)">
+            <mat-icon>deselect</mat-icon> {{ 'Limpar seleção' | translate }}
+          </button>
+          <button mat-flat-button color="warn" (click)="deleteSelectedUsers()">
+            <mat-icon>delete_sweep</mat-icon> {{ 'Excluir selecionados' | translate }}
+          </button>
+        </div>
+
+        <!-- Tabela -->
+        <div class="table-container" data-tour="users-table">
+          <table mat-table [dataSource]="userDataSource" matSort #userSort="matSort" class="users-table">
+
+            <!-- Seleção (apenas admin_master) -->
+            <ng-container matColumnDef="select">
+              <th mat-header-cell *matHeaderCellDef class="select-col">
+                <mat-checkbox *ngIf="currentUserRole === 'admin_master'"
+                  [checked]="isAllUsersSelected()"
+                  [indeterminate]="isSomeUsersSelected() && !isAllUsersSelected()"
+                  (change)="toggleAllUsers($event.checked)">
+                </mat-checkbox>
+              </th>
+              <td mat-cell *matCellDef="let user" class="select-col">
+                <mat-checkbox *ngIf="currentUserRole === 'admin_master'"
+                  [checked]="selectedUserIds.has(user.id)"
+                  [disabled]="!canDelete(user)"
+                  (change)="toggleUserSelect(user)">
+                </mat-checkbox>
+              </td>
+            </ng-container>
+
+            <!-- Nome + Sobrenome -->
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                <span class="col-header"><mat-icon class="col-icon">person</mat-icon>{{ 'Usuário' | translate }}</span>
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <div class="user-cell">
+                  <div class="user-avatar" [class.user-avatar--blocked]="user.blocked">
+                    <mat-icon *ngIf="user.blocked" class="avatar-lock-icon">lock</mat-icon>
+                    <span *ngIf="!user.blocked">{{ (user.name || '?')[0].toUpperCase() }}</span>
+                  </div>
+                  <div class="user-name-col">
+                    <span class="user-name">{{ user.name }} {{ user.surname }}</span>
+                    <span class="blocked-badge" *ngIf="user.blocked">
+                      <mat-icon>lock</mat-icon> {{ 'Bloqueado' | translate }}
+                    </span>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- E-mail -->
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                <span class="col-header"><mat-icon class="col-icon">email</mat-icon>{{ 'E-mail' | translate }}</span>
+              </th>
+              <td mat-cell *matCellDef="let user" class="email-cell">{{ user.email }}</td>
+            </ng-container>
+
+            <!-- Cliente -->
+            <ng-container matColumnDef="client">
+              <th mat-header-cell *matHeaderCellDef>
+                <span class="col-header"><mat-icon class="col-icon">business</mat-icon>{{ 'Cliente' | translate }}</span>
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <button class="link-chip" *ngIf="user.clients?.length > 0"
+                  (click)="openDetailsModal(clientUsersTitle, user.clients)">
+                  <mat-icon>business</mat-icon>
+                  <span>{{ user.clients.length }} cliente{{ user.clients.length !== 1 ? 's' : '' }}</span>
+                </button>
+                <span class="empty-tag" *ngIf="!user.clients?.length">—</span>
+              </td>
+            </ng-container>
+
+            <!-- Projetos -->
+            <ng-container matColumnDef="projects">
+              <th mat-header-cell *matHeaderCellDef>
+                <span class="col-header"><mat-icon class="col-icon">folder</mat-icon>{{ 'Projetos' | translate }}</span>
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <button class="link-chip link-chip--project" *ngIf="user.projects.length > 0"
+                  (click)="openDetailsModal(userProjectsTitle, user.projects)">
+                  <mat-icon>folder_open</mat-icon>
+                  <span>{{ user.projects.length }} projeto{{ user.projects.length !== 1 ? 's' : '' }}</span>
+                </button>
+                <span class="empty-tag" *ngIf="user.projects.length === 0">—</span>
+              </td>
+            </ng-container>
+
+            <!-- Grupos -->
+            <ng-container matColumnDef="group">
+              <th mat-header-cell *matHeaderCellDef>
+                <span class="col-header"><mat-icon class="col-icon">groups</mat-icon>{{ 'Grupos' | translate }}</span>
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <button class="link-chip link-chip--group" *ngIf="user.groups.length > 0"
+                  (click)="openDetailsModal(userGroupsTitle, user.groups)">
+                  <mat-icon>group</mat-icon>
+                  <span>{{ user.groups.length }} grupo{{ user.groups.length !== 1 ? 's' : '' }}</span>
+                </button>
+                <span class="empty-tag" *ngIf="user.groups.length === 0">—</span>
+              </td>
+            </ng-container>
+
+            <!-- Papel -->
+            <ng-container matColumnDef="role">
+              <th mat-header-cell *matHeaderCellDef>
+                <span class="col-header"><mat-icon class="col-icon">security</mat-icon>{{ 'Perfil' | translate }}</span>
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <span class="role-badge"
+                  [class.role-master]="user.role === 'admin_master'"
+                  [class.role-client]="user.role === 'admin_client'"
+                  [class.role-user]="user.role === 'user'">
+                  <mat-icon>{{
+                    user.role === 'admin_master' ? 'shield' :
+                    user.role === 'admin_client' ? 'manage_accounts' :
+                    'person'
+                  }}</mat-icon>
+                  {{ user.role === 'admin_master' ? 'Master' : user.role === 'admin_client' ? 'Admin' : user.role || '—' }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Status de Notificação -->
+            <ng-container matColumnDef="notificationStatus">
+              <th mat-header-cell *matHeaderCellDef>
+                <span class="col-header"><mat-icon class="col-icon">notifications</mat-icon>{{ 'Acesso' | translate }}</span>
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <span class="notif-chip"
+                  [class.notif-accessed]="user.notificationStatus === 'Acessou'"
+                  [class.notif-link-sent]="user.notificationStatus === 'Link Enviado'"
+                  [class.notif-pending]="user.notificationStatus === 'Pendente'"
+                  [matTooltip]="user.notificationStatus === 'Acessou' && user.lastLoginAt
+                    ? 'Último acesso: ' + (user.lastLoginAt | date:'dd/MM/yyyy HH:mm')
+                    : user.notificationStatus === 'Link Enviado' && user.lastInviteSentAt
+                    ? 'Link enviado em: ' + (user.lastInviteSentAt | date:'dd/MM/yyyy HH:mm')
+                    : 'Nenhum link enviado ainda'">
+                  <mat-icon>{{
+                    user.notificationStatus === 'Acessou' ? 'verified_user' :
+                    user.notificationStatus === 'Link Enviado' ? 'mark_email_read' :
+                    'schedule'
+                  }}</mat-icon>
+                  {{ user.notificationStatus }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Ações -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef class="actions-col">{{ 'Ações' | translate }}</th>
+              <td mat-cell *matCellDef="let user" class="actions-col">
+                <div class="actions-cell">
+
+                  <!-- Ver detalhes -->
+                  <button class="act-btn act-btn--view"
+                    (click)="openUserDetails(user)"
+                    [matTooltip]="'Ver detalhes' | translate">
+                    <mat-icon>person_search</mat-icon>
+                  </button>
+
+                  <!-- Enviar link de acesso / redefinição de senha -->
+                  <button class="act-btn act-btn--send"
+                    (click)="sendEmailNotification(user)"
+                    [matTooltip]="'Enviar link de criação / redefinição de senha' | translate">
+                    <mat-icon>key</mat-icon>
+                  </button>
+
+                  <!-- Mais ações -->
+                  <button class="act-btn act-btn--more"
+                    [matMenuTriggerFor]="userActionsMenu">
+                    <mat-icon>more_horiz</mat-icon>
+                  </button>
+
+                  <mat-menu #userActionsMenu="matMenu">
+
+                    <!-- Bloquear / Desbloquear -->
+                    <button mat-menu-item *ngIf="canBlock(user)"
+                      (click)="toggleBlockUser(user)"
+                      [class.menu-item--warn]="!user.blocked">
+                      <mat-icon class="menu-icon"
+                        [class.menu-icon--warn]="!user.blocked"
+                        [class.menu-icon--success]="user.blocked">
+                        {{ user.blocked ? 'lock_open' : 'lock' }}
+                      </mat-icon>
+                      <span>{{ (user.blocked ? 'Desbloquear acesso' : 'Bloquear acesso') | translate }}</span>
+                    </button>
+
+                    <!-- Editar (admin_master) -->
+                    <button mat-menu-item *ngIf="currentUserRole === 'admin_master'"
+                      (click)="editUser(user)"
+                      [disabled]="!canEdit(user)"
+                      [matTooltip]="!canEdit(user) ? getEditTooltip(user) : ''">
+                      <mat-icon class="menu-icon menu-icon--neutral">edit</mat-icon>
+                      <span>{{ 'Editar usuário' | translate }}</span>
+                    </button>
+
+                    <mat-divider *ngIf="currentUserRole === 'admin_master'"></mat-divider>
+
+                    <!-- Excluir (admin_master) -->
+                    <button mat-menu-item *ngIf="currentUserRole === 'admin_master'"
+                      (click)="canDelete(user) && deleteUser(user)"
+                      [disabled]="!canDelete(user)"
+                      class="menu-item--danger"
+                      [matTooltip]="!canDelete(user) ? getDeleteTooltip(user) : ''">
+                      <mat-icon class="menu-icon menu-icon--danger">delete_outline</mat-icon>
+                      <span>{{ 'Excluir usuário' | translate }}</span>
+                    </button>
+
+                  </mat-menu>
+
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedUserColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedUserColumns;" class="table-row"
+                [class.row-duplicate-email]="hasDuplicateEmail(row)"
+                [class.row-blocked]="row.blocked"></tr>
+
+            <tr class="mat-row no-data-row" *matNoDataRow>
+              <td class="mat-cell" [attr.colspan]="displayedUserColumns.length">
+                <div class="no-data">
+                  <mat-icon>manage_accounts</mat-icon>
+                  <span>{{ 'Nenhum usuário encontrado' | translate }}</span>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <mat-paginator [pageSize]="10" [pageSizeOptions]="[5, 10, 20, 50]"
+          showFirstLastButtons #userPaginator class="tab-paginator"></mat-paginator>
+      </div>
     </mat-tab>
 
+    <!-- ═══════════════════════════════════ Tab: Grupos ══════ -->
     <mat-tab label="{{ 'Grupos' | translate }}">
-      <!-- Tabela de Grupos -->
-      <mat-card class="mt-4">
-        <mat-card-title style="margin: 15px">{{ 'Grupos de Usuários' | translate }}</mat-card-title>
-        <mat-card-content>
-          <div
-            class="mt-3 text-end"
-            style="margin-top: 10px; margin-bottom: 10px; text-align: end"
-          >
-            <button
-              mat-flat-button
-              color="primary"
-              (click)="openCreateGroupDialog()"
-            >
-              {{ 'Adicionar Grupo de Usuários' | translate }}
+      <div class="tab-card">
+
+        <!-- Toolbar -->
+        <div class="search-bar">
+          <mat-form-field appearance="outline" class="search-field">
+            <mat-icon matPrefix class="search-prefix-icon">search</mat-icon>
+            <input matInput (keyup)="applyGroupFilter($event)" placeholder="{{ 'Buscar por nome, cliente...' | translate }}" />
+          </mat-form-field>
+          <div class="search-bar__right">
+            <div class="search-count">
+              {{ groupDataSource.filteredData.length }} resultado{{ groupDataSource.filteredData.length !== 1 ? 's' : '' }}
+            </div>
+            <button mat-raised-button class="btn-action" (click)="openCreateGroupDialog()">
+              <mat-icon>group_add</mat-icon>
+              {{ 'Adicionar Grupo' | translate }}
             </button>
           </div>
+        </div>
 
-          <mat-form-field appearance="outline" class="w-100 mb-3">
-            <mat-label>{{ 'Buscar Grupo' | translate }}</mat-label>
-            <input
-              matInput
-              (keyup)="applyGroupFilter($event)"
-              placeholder="{{ 'Digite para buscar' | translate }}"
-            />
-          </mat-form-field>
+        <!-- Barra de ações em massa — Grupos -->
+        <div class="bulk-action-bar" *ngIf="isSomeGroupsSelected()">
+          <mat-icon>check_circle</mat-icon>
+          <strong>{{ selectedGroupIds.size }}</strong>
+          <span>grupo{{ selectedGroupIds.size !== 1 ? 's' : '' }} selecionado{{ selectedGroupIds.size !== 1 ? 's' : '' }}</span>
+          <span class="bulk-spacer"></span>
+          <button mat-button (click)="toggleAllGroups(false)">
+            <mat-icon>deselect</mat-icon> {{ 'Limpar seleção' | translate }}
+          </button>
+          <button mat-flat-button color="warn" (click)="deleteSelectedGroups()">
+            <mat-icon>delete_sweep</mat-icon> {{ 'Excluir selecionados' | translate }}
+          </button>
+        </div>
 
-          <table
-            mat-table
-            [dataSource]="groupDataSource"
-            matSort
-            #groupSort="matSort"
-            class="mat-elevation-z8 w-100"
-          >
-            <!-- Nome -->
+        <!-- Tabela -->
+        <div class="table-container">
+          <table mat-table [dataSource]="groupDataSource" matSort #groupSort="matSort" class="users-table groups-table">
+
+            <!-- Seleção -->
+            <ng-container matColumnDef="select">
+              <th mat-header-cell *matHeaderCellDef class="select-col">
+                <mat-checkbox
+                  [checked]="isAllGroupsSelected()"
+                  [indeterminate]="isSomeGroupsSelected() && !isAllGroupsSelected()"
+                  (change)="toggleAllGroups($event.checked)">
+                </mat-checkbox>
+              </th>
+              <td mat-cell *matCellDef="let group" class="select-col">
+                <mat-checkbox
+                  [checked]="selectedGroupIds.has(group.id)"
+                  (change)="toggleGroupSelect(group.id)">
+                </mat-checkbox>
+              </td>
+            </ng-container>
+
+            <!-- Nome do Grupo -->
             <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                <span class="col-header"><mat-icon class="col-icon">group_work</mat-icon>{{ 'Grupo' | translate }}</span>
+              </th>
               <td mat-cell *matCellDef="let group">
-                <a [routerLink]="['/users/group', group.id, 'details']" style="text-decoration: none; color: inherit;">{{ group.name }}</a>
+                <div class="user-cell">
+                  <div class="user-avatar user-avatar--group">{{ (group.name || '?')[0].toUpperCase() }}</div>
+                  <a class="group-name-link" (click)="openGroupDetails(group)" style="cursor:pointer">{{ group.name }}</a>
+                </div>
               </td>
             </ng-container>
 
             <!-- Cliente -->
             <ng-container matColumnDef="client">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Cliente' | translate }}</th>
-              <td mat-cell *matCellDef="let group">{{ group.client }}</td>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                <span class="col-header"><mat-icon class="col-icon">business</mat-icon>{{ 'Cliente' | translate }}</span>
+              </th>
+              <td mat-cell *matCellDef="let group">
+                <span class="client-tag">{{ group.client }}</span>
+              </td>
             </ng-container>
 
             <!-- Descrição -->
             <ng-container matColumnDef="description">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                {{ 'Descrição' | translate }}
+                <span class="col-header"><mat-icon class="col-icon">notes</mat-icon>{{ 'Descrição' | translate }}</span>
               </th>
-              <td mat-cell *matCellDef="let group">{{ group.description }}</td>
+              <td mat-cell *matCellDef="let group" class="desc-cell">{{ group.description || '—' }}</td>
             </ng-container>
 
             <!-- Criado por -->
             <ng-container matColumnDef="createdBy">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                {{ 'Criado por' | translate }}
+                <span class="col-header"><mat-icon class="col-icon">person_outline</mat-icon>{{ 'Criado por' | translate }}</span>
               </th>
-              <td mat-cell *matCellDef="let group">{{ group.createdBy }}</td>
+              <td mat-cell *matCellDef="let group">{{ group.createdBy || '—' }}</td>
             </ng-container>
 
             <!-- Ações -->
             <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
-              <td mat-cell *matCellDef="let group">
-                <button
-                  mat-icon-button
-                  color="primary"
-                  (click)="editGroup(group)"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  color="warn"
-                  (click)="deleteGroup(group)"
-                  matTooltip="{{ 'Excluir Grupo' | translate }}"
-                >
-                  <mat-icon>delete</mat-icon>
-                </button>
+              <th mat-header-cell *matHeaderCellDef class="actions-col">{{ 'Ações' | translate }}</th>
+              <td mat-cell *matCellDef="let group" class="actions-col">
+                <div class="actions-cell">
+
+                  <!-- Ver detalhes -->
+                  <button class="act-btn act-btn--view"
+                    (click)="openGroupDetails(group)"
+                    matTooltip="{{ 'Ver detalhes' | translate }}">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+
+                  <!-- Mais ações -->
+                  <button class="act-btn act-btn--more"
+                    [matMenuTriggerFor]="groupActionsMenu">
+                    <mat-icon>more_horiz</mat-icon>
+                  </button>
+
+                  <mat-menu #groupActionsMenu="matMenu">
+                    <button mat-menu-item (click)="editGroup(group)">
+                      <mat-icon class="menu-icon menu-icon--neutral">edit</mat-icon>
+                      <span>{{ 'Editar grupo' | translate }}</span>
+                    </button>
+                    <mat-divider></mat-divider>
+                    <button mat-menu-item (click)="deleteGroup(group)" class="menu-item--danger">
+                      <mat-icon class="menu-icon menu-icon--danger">delete_outline</mat-icon>
+                      <span>{{ 'Excluir grupo' | translate }}</span>
+                    </button>
+                  </mat-menu>
+
+                </div>
               </td>
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedGroupColumns"></tr>
-            <tr
-              mat-row
-              *matRowDef="let row; columns: displayedGroupColumns"
-            ></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedGroupColumns;" class="table-row"></tr>
+
+            <tr class="mat-row no-data-row" *matNoDataRow>
+              <td class="mat-cell" [attr.colspan]="displayedGroupColumns.length">
+                <div class="no-data">
+                  <mat-icon>group_off</mat-icon>
+                  <span>{{ 'Nenhum grupo encontrado' | translate }}</span>
+                </div>
+              </td>
+            </tr>
           </table>
+        </div>
 
-          <mat-paginator
-            [pageSize]="5"
-            [pageSizeOptions]="[5, 10, 20]"
-            #groupPaginator
-          ></mat-paginator>
-
-          <!-- <div class="row mb-3">
-            <div class="col-12 text-end">
-              <button
-                mat-flat-button
-                color="primary"
-                (click)="openCreateGroupDialog()"
-              >
-                <mat-icon>group_add</mat-icon>
-                Adicionar Grupo de Usuários
-              </button>
-            </div>
-          </div> -->
-        </mat-card-content>
-      </mat-card>
+        <mat-paginator [pageSize]="10" [pageSizeOptions]="[5, 10, 20, 50]"
+          showFirstLastButtons #groupPaginator class="tab-paginator"></mat-paginator>
+      </div>
     </mat-tab>
+
   </mat-tab-group>
+
 </div>

@@ -117,16 +117,19 @@
   <!-- --------------------------------------------------------------- -->
   <!-- langugage Dropdown -->
   <!-- --------------------------------------------------------------- -->
-  <button [matMenuTriggerFor]="flags" mat-icon-button class="m-r-5">
-    <img [src]="selectedLanguage.icon" class="rounded icon-20" />
+  <button [matMenuTriggerFor]="flags" mat-button class="lang-pill m-r-5">
+    <div class="lang-pill__inner">
+      <img [src]="selectedLanguage.icon" class="lang-flag-img" />
+      <span class="lang-pill__code">{{ selectedLanguage.type }}</span>
+      <mat-icon class="lang-pill__arrow">expand_more</mat-icon>
+    </div>
   </button>
-  <mat-menu #flags="matMenu" class="cardWithShadow" xPosition="before">
+  <mat-menu #flags="matMenu" class="cardWithShadow lang-menu" xPosition="before">
     @for(lang of languages; track lang) {
-    <button mat-menu-item (click)="changeLanguage(lang)">
-      <div class="d-flex align-items-center">
-        <img [src]="lang.icon" class="rounded m-r-8 icon-20" />
-        <span class="mat-subtitle-1 f-s-14">{{ lang.language }}</span>
-      </div>
+    <button mat-menu-item (click)="changeLanguage(lang)" class="lang-menu-item">
+      <img [src]="lang.icon" class="lang-flag-menu" />
+      <span class="mat-subtitle-1 f-s-14 f-w-500">{{ lang.language }}</span>
+      <span class="lang-code-tag m-l-auto">{{ lang.type }}</span>
     </button>
     }
   </mat-menu>
@@ -164,7 +167,7 @@
       <p class="m-0 text-white f-s-12">You have 4 Notifications</p>
     </div>
 
-    @for(notification of notifications; track notification.title) {
+    @for(notification of notifications; track $index) {
     <button mat-menu-item class="p-16">
       <div class="d-flex align-items-center">
         <span
@@ -313,6 +316,11 @@
           <span class="f-s-12 mat-body-2">
             {{ userEmail || "email@exemplo.com" }}
           </span>
+          @if(roleBadgeLabel) {
+          <span class="role-badge-header" [style]="roleBadgeStyle">
+            {{ roleBadgeLabel }}
+          </span>
+          }
         </div>
       </div>
     </div>

@@ -1,171 +1,190 @@
-<!-- email-template-list.component.html -->
-<div class="container">
-  <div class="row" style="margin-bottom: 10px" *ngIf="clientId">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
-        <mat-icon>arrow_back</mat-icon>
-        Voltar
+<div class="templates-wrapper">
+
+  <app-page-header
+    eyebrow="Projetos"
+    [title]="'Modelos de E-mail' | translate"
+    subtitle="Gerencie os modelos de e-mail para notificações do projeto"
+    data-tour="mail-templates-header">
+
+    <button mat-button class="btn-back" *ngIf="clientId" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'Voltar' | translate }}
+    </button>
+
+    <button mat-raised-button class="btn-action" (click)="createTemplate()" data-tour="mail-templates-add">
+      <mat-icon>add</mat-icon>
+      Novo Modelo
+    </button>
+
+  </app-page-header>
+
+  <!-- Card principal -->
+  <div class="templates-card">
+
+    <!-- Filtros -->
+    <div class="filters-bar">
+
+      <!-- Busca por texto -->
+      <mat-form-field appearance="outline" class="filter-field filter-search">
+        <mat-label>{{ 'Buscar' | translate }}</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;font-size:20px;margin-right:4px;">search</mat-icon>
+        <input matInput [(ngModel)]="searchQuery" (ngModelChange)="applyFilter()" placeholder="Nome ou assunto..." />
+      </mat-form-field>
+
+      <!-- Cliente — oculto para admin_client com 1 cliente -->
+      <mat-form-field appearance="outline" class="filter-field"
+                      *ngIf="userRole === 'admin_master' || clients.length > 1">
+        <mat-label>{{ 'Cliente' | translate }}</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;font-size:18px;margin-right:4px;">business</mat-icon>
+        <mat-select [(ngModel)]="clientFilter" (ngModelChange)="onClientChange($event)">
+          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option *ngFor="let client of clients" [value]="client.id">
+            {{ client.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Projeto — aparece quando cliente está selecionado e não veio de rota de projeto -->
+      <mat-form-field appearance="outline" class="filter-field"
+                      *ngIf="clientFilter && !clientId">
+        <mat-label>{{ 'Projeto' | translate }}</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;font-size:18px;margin-right:4px;">folder_open</mat-icon>
+        <mat-select [(ngModel)]="projectFilter" (ngModelChange)="onProjectChange($event)"
+                    [disabled]="projects.length === 0">
+          <mat-option value="">{{ 'Todos os projetos' | translate }}</mat-option>
+          <mat-option *ngFor="let p of projects" [value]="p.id">{{ p.name }}</mat-option>
+        </mat-select>
+        <mat-hint *ngIf="projects.length === 0">Nenhum projeto ativo</mat-hint>
+      </mat-form-field>
+
+      <!-- Tipo de Notificação -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Tipo de Notificação</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;font-size:18px;margin-right:4px;">notifications</mat-icon>
+        <mat-select [(ngModel)]="emailTypeFilter" (ngModelChange)="applyFilter()">
+          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option value="cadastro">{{ 'Cadastro do Usuário' | translate }}</mat-option>
+          <mat-option value="conviteAvaliador">{{ 'Convite - Avaliador' | translate }}</mat-option>
+          <mat-option value="conviteRespondente">{{ 'Convite - Avaliado' | translate }}</mat-option>
+          <mat-option value="lembreteAvaliador">{{ 'Lembrete - Avaliador' | translate }}</mat-option>
+          <mat-option value="lembreteRespondente">{{ 'Lembrete - Avaliado' | translate }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <button mat-stroked-button class="btn-clear" (click)="clearFilters()">
+        <mat-icon>filter_alt_off</mat-icon>
+        Limpar
       </button>
     </div>
-  </div>
 
-  <mat-card>
-    <mat-card-title style="margin-bottom: 10px" data-tour="mail-templates-header">{{ title }}</mat-card-title>
-    <mat-card-content>
-      <div
-        class="mt-3 text-end"
-        style="margin-top: 10px; margin-bottom: 10px; text-align: end"
-        data-tour="mail-templates-add"
-      >
-        <button mat-flat-button color="primary" (click)="createTemplate()">
-          Adicionar Modelo de E-mail
-        </button>
-      </div>
+    <!-- Contador -->
+    <div class="results-count" *ngIf="dataSource.data">
+      {{ dataSource.data.length }} modelo{{ dataSource.data.length !== 1 ? 's' : '' }}
+    </div>
 
-      <!-- Filtros -->
-      <div class="row my-3">
-        <!-- Filtro de Tipo de Notificação -->
-        <div class="col-6">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Tipo de Notificação</mat-label>
-            <mat-select (selectionChange)="onEmailTypeChange($event)">
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="cadastro">Cadastro do Usuário</mat-option>
-              <mat-option value="conviteAvaliador"
-                >Convite - Avaliador</mat-option
-              >
-              <mat-option value="conviteRespondente"
-                >Convite - Avaliado</mat-option
-              >
-              <mat-option value="lembreteAvaliador"
-                >Lembrete - Avaliador</mat-option
-              >
-              <mat-option value="lembreteRespondente"
-                >Lembrete - Avaliado</mat-option
-              >
-            </mat-select>
-          </mat-form-field>
-        </div>
+    <!-- Tabela -->
+    <div class="table-container">
+      <table mat-table [dataSource]="dataSource" matSort class="templates-table">
 
-        <div class="col-6">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Filtrar por Cliente</mat-label>
-            <mat-select (selectionChange)="onClientChange($event)">
-              <mat-option value="">Todos</mat-option>
-              <mat-option *ngFor="let client of clients" [value]="client.name">
-                {{ client.name }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Filtro de Busca -->
-        <div class="col-12">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Buscar</mat-label>
-            <input
-              matInput
-              (keyup)="applyFilter()"
-              #searchInput
-              [placeholder]="('Digite para buscar' | translate)"
-            />
-          </mat-form-field>
-        </div>
-      </div>
-
-      <!-- Limpar Filtros -->
-      <div class="row">
-        <div class="col-12 text-right">
-          <button mat-button (click)="clearFilters()">Limpar Filtros</button>
-        </div>
-      </div>
-
-      <!-- Tabela de Templates -->
-      <table
-        mat-table
-        [dataSource]="dataSource"
-        matSort
-        class="mat-elevation-z8 w-100"
-      >
+        <!-- Cliente -->
         <ng-container matColumnDef="client">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Cliente</th>
-          <td mat-cell *matCellDef="let template">{{ template.clientName }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
-          <td mat-cell *matCellDef="let template">{{ template.name }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="subject">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Assunto</th>
-          <td mat-cell *matCellDef="let template">{{ template.subject }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="emailType">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
-            Tipo de Notificação
+            <span class="col-header"><mat-icon class="col-icon">business</mat-icon>{{ 'Cliente' | translate }}</span>
           </th>
-          <td mat-cell *matCellDef="let template">
-            {{ getFriendlyEmailType(template.emailType) }}
+          <td mat-cell *matCellDef="let t">
+            <span class="client-badge" [class.client-badge--global]="t.isGlobal">
+              {{ t.clientName }}
+            </span>
           </td>
         </ng-container>
 
+        <!-- Nome -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header"><mat-icon class="col-icon">description</mat-icon>{{ 'Nome' | translate }}</span>
+          </th>
+          <td mat-cell *matCellDef="let t">
+            <div class="template-name-cell">
+              <div class="template-icon">
+                <mat-icon>mail_outline</mat-icon>
+              </div>
+              <span class="template-name">{{ t.name }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Assunto -->
+        <ng-container matColumnDef="subject">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header"><mat-icon class="col-icon">subject</mat-icon>Assunto</span>
+          </th>
+          <td mat-cell *matCellDef="let t" class="subject-cell">
+            {{ t.subject }}
+          </td>
+        </ng-container>
+
+        <!-- Tipo -->
+        <ng-container matColumnDef="emailType">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header"><mat-icon class="col-icon">label</mat-icon>{{ 'Tipo' | translate }}</span>
+          </th>
+          <td mat-cell *matCellDef="let t">
+            <span class="type-badge" [ngClass]="getEmailTypeClass(t.emailType)">
+              {{ getFriendlyEmailType(t.emailType) }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Ações -->
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef>Ações</th>
-          <td mat-cell *matCellDef="let template">
-            <button
-              mat-icon-button
-              color="primary"
-              *ngIf="clientId"
-              matTooltip="Enviar E-mail"
-              (click)="
-                openParticipantSelectionModal(
-                  clientId,
-                  template.id,
-                  template.emailType,
-                  projectId
-                )
-              "
-            >
-              <mat-icon>mail</mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              color="accent"
-              matTooltip="Duplicar template"
-              (click)="duplicateTemplate(template)"
-            >
-              <mat-icon>content_copy</mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              color="primary"
-              matTooltip="Editar"
-              (click)="editTemplate(template.id, template.isGlobal)"
-            >
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              color="warn"
-              matTooltip="Excluir"
-              (click)="deleteTemplate(template.id, template.isGlobal)"
-            >
-              <mat-icon>delete</mat-icon>
-            </button>
+          <th mat-header-cell *matHeaderCellDef class="actions-col">{{ 'Ações' | translate }}</th>
+          <td mat-cell *matCellDef="let t" class="actions-col">
+            <div class="actions-cell">
+              <button mat-icon-button class="action-send"
+                *ngIf="effectiveClientId"
+                [matTooltip]="'Enviar E-mail' | translate"
+                (click)="openParticipantSelectionModal(effectiveClientId, t.id, t.emailType, effectiveProjectId ?? '')">
+                <mat-icon>send</mat-icon>
+              </button>
+              <button mat-icon-button class="action-duplicate"
+                [matTooltip]="'Duplicar modelo' | translate"
+                (click)="duplicateTemplate(t)">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+              <button mat-icon-button class="action-edit"
+                [matTooltip]="'Editar' | translate"
+                (click)="editTemplate(t.id, t.isGlobal)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button class="action-delete"
+                [matTooltip]="'Excluir' | translate"
+                (click)="deleteTemplate(t.id, t.isGlobal)">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
           </td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-      </table>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
 
-      <!-- Paginação -->
-      <mat-paginator
-        [pageSize]="5"
-        [pageSizeOptions]="[5, 10, 20]"
-      ></mat-paginator>
-    </mat-card-content>
-  </mat-card>
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+            <div class="no-data">
+              <mat-icon>search_off</mat-icon>
+              <span>Nenhum modelo encontrado</span>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <mat-paginator
+      [pageSize]="10"
+      [pageSizeOptions]="[5, 10, 20]"
+      showFirstLastButtons
+      class="templates-paginator">
+    </mat-paginator>
+
+  </div>
 </div>

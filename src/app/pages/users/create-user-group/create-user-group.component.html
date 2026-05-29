@@ -1,81 +1,111 @@
-<div mat-dialog-title>
-  {{ isEditMode ? ('Editar Grupo de Usuários' | translate) : ('Criar Novo Grupo de Usuários' | translate) }}
-</div>
-<div mat-dialog-content style="padding-top: 5px">
-  <form [formGroup]="groupForm" (ngSubmit)="saveGroup()">
-    <!-- Cliente -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>{{ 'Cliente' | translate }}</mat-label>
-      <mat-select
-        formControlName="clientId"
-        (selectionChange)="onClientChange()"
-      >
-        <mat-option *ngFor="let client of clients" [value]="client.id">
-          {{ client.name }}
-        </mat-option>
-      </mat-select>
-      <mat-error *ngIf="groupForm.get('clientId')?.hasError('required')">
-        {{ 'O cliente é obrigatório.' | translate }}
-      </mat-error>
-    </mat-form-field>
-
-    <!-- Nome do Grupo -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>{{ 'Nome do Grupo' | translate }}</mat-label>
-      <input
-        matInput
-        formControlName="name"
-        placeholder="{{ 'Digite o nome do grupo' | translate }}"
-      />
-      <mat-error *ngIf="groupForm.get('name')?.hasError('required')">
-        {{ 'O nome do grupo é obrigatório.' | translate }}
-      </mat-error>
-    </mat-form-field>
-
-    <!-- Usuários -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>{{ 'Usuários' | translate }}</mat-label>
-      <mat-select
-        formControlName="userIds"
-        multiple
-        panelClass="custom-dropdown"
-      >
-        <mat-option *ngFor="let user of users" [value]="user.id">
-          {{ user.name }} {{ user.surname }}
-        </mat-option>
-      </mat-select>
-    </mat-form-field>
-
-    <!-- Descrição do Grupo -->
-    <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>{{ 'Descrição' | translate }}</mat-label>
-      <textarea
-        matInput
-        formControlName="description"
-        rows="3"
-        placeholder="{{ 'Descreva o grupo' | translate }}"
-      ></textarea>
-    </mat-form-field>
-
-    <!-- Projetos -->
-    <!-- <mat-form-field appearance="outline" class="w-100 mb-3">
-      <mat-label>Projetos</mat-label>
-      <mat-select formControlName="projectIds" multiple>
-        <mat-option *ngFor="let project of projects" [value]="project.id">
-          {{ project.name }}
-        </mat-option>
-      </mat-select>
-    </mat-form-field> -->
-  </form>
-</div>
-<div mat-dialog-actions align="end">
-  <button mat-button mat-dialog-close>{{ 'Cancelar' | translate }}</button>
-  <button
-    mat-flat-button
-    color="primary"
-    [disabled]="groupForm.invalid"
-    (click)="saveGroup()"
-  >
-    {{ isEditMode ? ('Salvar Alterações' | translate) : ('Criar Grupo' | translate) }}
+<!-- ── Header ── -->
+<div class="dialog-header">
+  <div class="dialog-header-avatar">
+    <mat-icon>{{ isEditMode ? 'group' : 'group_add' }}</mat-icon>
+  </div>
+  <div class="dialog-header-text">
+    <h2 class="dialog-title">{{ isEditMode ? 'Editar Grupo' : 'Novo Grupo de Usuários' }}</h2>
+    <p class="dialog-subtitle">{{ isEditMode ? 'Atualize os dados do grupo' : 'Preencha os dados para criar um novo grupo' }}</p>
+  </div>
+  <button mat-icon-button mat-dialog-close class="dialog-close-btn">
+    <mat-icon>close</mat-icon>
   </button>
 </div>
+
+<!-- ── Body ── -->
+<mat-dialog-content class="dialog-body">
+  <form [formGroup]="groupForm" class="group-form">
+
+    <!-- Nome do Grupo -->
+    <div class="form-group">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Nome do Grupo</mat-label>
+        <mat-icon matPrefix class="field-icon">group</mat-icon>
+        <input matInput formControlName="name" placeholder="Ex: Líderes de Projetos" />
+        <mat-error *ngIf="groupForm.get('name')?.hasError('required')">Nome é obrigatório</mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Descrição -->
+    <div class="form-group">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Descrição</mat-label>
+        <mat-icon matPrefix class="field-icon">notes</mat-icon>
+        <textarea matInput formControlName="description" rows="2"
+          placeholder="Descreva o propósito deste grupo"></textarea>
+      </mat-form-field>
+    </div>
+
+    <!-- Cliente -->
+    <div class="form-group">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Cliente</mat-label>
+        <mat-icon matPrefix class="field-icon">business</mat-icon>
+        <mat-select formControlName="clientId" (selectionChange)="onClientChange()">
+          <mat-option *ngFor="let client of clients" [value]="client.id">
+            {{ client.name }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="groupForm.get('clientId')?.hasError('required')">Cliente é obrigatório</mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Projetos do Grupo -->
+    <div class="form-group">
+      <div class="all-projects-toggle">
+        <mat-slide-toggle formControlName="allProjects" color="primary">
+          Todos os projetos do cliente
+        </mat-slide-toggle>
+        <span class="all-projects-toggle__hint">Novos projetos entram automaticamente</span>
+      </div>
+
+      <mat-form-field appearance="outline" class="w-100" *ngIf="!groupForm.get('allProjects')?.value">
+        <mat-label>Projetos com Acesso</mat-label>
+        <mat-icon matPrefix class="field-icon">folder_open</mat-icon>
+        <mat-select formControlName="projectIds" multiple panelClass="custom-dropdown">
+          <mat-option *ngIf="projects.length === 0" disabled>
+            Selecione um cliente para carregar projetos
+          </mat-option>
+          <mat-option *ngFor="let project of projects" [value]="project.id">
+            {{ project.name }}
+          </mat-option>
+        </mat-select>
+        <mat-hint>Viewers do grupo terão acesso apenas a estes projetos · {{ (groupForm.get('projectIds')?.value?.length || 0) }} selecionado(s)</mat-hint>
+      </mat-form-field>
+
+      <div class="all-projects-badge" *ngIf="groupForm.get('allProjects')?.value">
+        <mat-icon>check_circle</mat-icon>
+        Acesso a todos os projetos presentes e futuros do cliente
+      </div>
+    </div>
+
+    <!-- Usuários do Grupo -->
+    <div class="form-group">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Usuários do Grupo</mat-label>
+        <mat-icon matPrefix class="field-icon">people</mat-icon>
+        <mat-select formControlName="userIds" multiple panelClass="custom-dropdown">
+          <mat-option *ngIf="users.length === 0" disabled>
+            Selecione um cliente para carregar usuários
+          </mat-option>
+          <mat-option *ngFor="let user of users" [value]="user.id">
+            {{ user.name }} {{ user.surname }}
+          </mat-option>
+        </mat-select>
+        <mat-hint>{{ (groupForm.get('userIds')?.value?.length || 0) }} usuário(s) selecionado(s)</mat-hint>
+      </mat-form-field>
+    </div>
+
+  </form>
+</mat-dialog-content>
+
+<!-- ── Footer ── -->
+<mat-dialog-actions class="dialog-actions">
+  <button mat-button class="btn-cancel" mat-dialog-close>
+    Cancelar
+  </button>
+  <button mat-flat-button class="btn-save" [disabled]="groupForm.invalid" (click)="saveGroup()">
+    <mat-icon>{{ isEditMode ? 'save' : 'group_add' }}</mat-icon>
+    {{ isEditMode ? 'Salvar Alterações' : 'Criar Grupo' }}
+  </button>
+</mat-dialog-actions>

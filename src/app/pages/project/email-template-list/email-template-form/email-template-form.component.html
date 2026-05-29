@@ -1,193 +1,285 @@
-<div class="container">
-  <div class="row" style="margin-bottom: 10px">
-    <div class="col-12">
-      <button style="width: 100px" mat-button (click)="goBack()">
-        <mat-icon>arrow_back</mat-icon>
-        Voltar
-      </button>
-    </div>
-  </div>
+<div class="form-wrapper">
+
+  <app-page-header
+    eyebrow="Modelos de E-mail"
+    [title]="(isEditMode ? 'Editar Template' : 'Criar Template') | translate"
+    subtitle="Configure o conteúdo e as configurações do modelo de e-mail"
+    data-tour="template-form-header">
+
+    <button mat-button class="btn-back" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'Voltar' | translate }}
+    </button>
+
+    <button mat-raised-button class="btn-save" (click)="saveTemplate()">
+      <mat-icon>{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>
+      {{ (isEditMode ? 'Salvar Alterações' : 'Criar Template') | translate }}
+    </button>
+
+  </app-page-header>
+
   <form [formGroup]="form">
-    <mat-card>
-      <mat-card-title style="margin: 15px">{{
-        isEditMode ? "Editar Template" : "Criar Template"
-      }}</mat-card-title>
-      <mat-card-content>
-        <mat-form-field class="w-100">
-          <mat-label>Nome do Template</mat-label>
-          <input matInput formControlName="name" />
-        </mat-form-field>
 
-        <mat-form-field class="w-100">
-          <mat-label>Tipo de Notificação</mat-label>
-          <mat-select formControlName="emailType">
-            <mat-option value="cadastro">Cadastro do Usuário</mat-option>
-            <mat-option value="conviteAvaliador"
-              >Convite - Avaliador</mat-option
-            >
-            <mat-option value="conviteRespondente"
-              >Convite - Avaliado</mat-option
-            >
-            <mat-option value="lembreteAvaliador"
-              >Lembrete - Avaliador</mat-option
-            >
-            <mat-option value="lembreteRespondente"
-              >Lembrete - Avaliado</mat-option
-            >
-            <mat-option value="relatorioFinalizado"
-              >Relatório Finalizado</mat-option
-            >
-            <!-- Nova opção -->
-          </mat-select>
-        </mat-form-field>
+    <!-- Card de Configurações -->
+    <div class="config-card">
+      <div class="config-card-header">
+        <div class="config-card-icon">
+          <mat-icon>tune</mat-icon>
+        </div>
+        <div>
+          <h3 class="config-card-title">{{ 'Configurações do Template' | translate }}</h3>
+          <p class="config-card-subtitle">{{ 'Defina o tipo, assunto e cliente do modelo' | translate }}</p>
+        </div>
+      </div>
 
-        <mat-form-field class="w-100">
-          <mat-label>Assunto</mat-label>
-          <input matInput formControlName="subject" />
-        </mat-form-field>
+      <div class="config-card-body">
+        <div class="fields-row">
+          <mat-form-field appearance="outline" class="field-name">
+            <mat-label>{{ 'Nome do Template' | translate }}</mat-label>
+            <mat-icon matPrefix class="field-icon">label_outline</mat-icon>
+            <input matInput formControlName="name" />
+          </mat-form-field>
 
-        <!-- Campo de Cliente (apenas admin_master ou preenchido automaticamente) -->
-        <mat-form-field
-          class="w-100"
-          *ngIf="userRole === 'admin_master' && !clientIdFromRoute"
-        >
-          <mat-label>Cliente</mat-label>
-          <mat-select formControlName="clientId">
-            <mat-option value="">TEMPLATE PADRÃO</mat-option>
-            <mat-option *ngFor="let client of clients" [value]="client.id">
-              {{ client.name }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
+          <mat-form-field appearance="outline" class="field-type">
+            <mat-label>{{ 'Tipo de Notificação' | translate }}</mat-label>
+            <mat-icon matPrefix class="field-icon">notifications</mat-icon>
+            <mat-select formControlName="emailType">
+              <mat-option value="cadastro">{{ 'Cadastro do Usuário' | translate }}</mat-option>
+              <mat-option value="conviteAvaliador">{{ 'Convite - Avaliador' | translate }}</mat-option>
+              <mat-option value="conviteRespondente">{{ 'Convite - Avaliado' | translate }}</mat-option>
+              <mat-option value="lembreteAvaliador">{{ 'Lembrete - Avaliador' | translate }}</mat-option>
+              <mat-option value="lembreteRespondente">{{ 'Lembrete - Avaliado' | translate }}</mat-option>
+              <mat-option value="relatorioFinalizado">{{ 'Relatório Finalizado' | translate }}</mat-option>
+            </mat-select>
+          </mat-form-field>
 
-        <!-- Para admin_client ou clientId da rota, exibir como texto ou hidden -->
-        <div
-          *ngIf="!clientIdFromRoute || userRole === 'admin_client'"
-          class="w-100"
-        >
-          <p>
-            <strong>Cliente:</strong>
-            {{ clientNameFromRoute || "Não identificado" }}
-          </p>
-          <input
-            type="hidden"
-            formControlName="clientId"
-            [value]="clientIdFromRoute || userClientId"
-          />
+          <mat-form-field appearance="outline" class="field-subject">
+            <mat-label>{{ 'Assunto' | translate }}</mat-label>
+            <mat-icon matPrefix class="field-icon">subject</mat-icon>
+            <input matInput formControlName="subject" />
+          </mat-form-field>
         </div>
 
-        <!-- Exibir apenas clientName se vier da rota -->
-        <div *ngIf="clientIdFromRoute && !projectIdFromRoute" class="w-100">
-          <p>
-            <strong>Cliente:</strong>
-            {{ clientNameFromRoute || "Não identificado" }}
-          </p>
+        <!-- Cliente (admin_master sem clientId da rota) -->
+        <div class="fields-row" *ngIf="userRole === 'admin_master' && !clientIdFromRoute">
+          <mat-form-field appearance="outline" class="field-client">
+            <mat-label>{{ 'Cliente' | translate }}</mat-label>
+            <mat-icon matPrefix class="field-icon">business</mat-icon>
+            <mat-select formControlName="clientId">
+              <mat-option value="">{{ 'TEMPLATE PADRÃO' | translate }}</mat-option>
+              <mat-option *ngFor="let client of clients" [value]="client.id">
+                {{ client.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
         </div>
-      </mat-card-content>
-    </mat-card>
+
+        <!-- Cliente como texto (admin_client ou clientId da rota) -->
+        <div *ngIf="!clientIdFromRoute || userRole === 'admin_client'" class="client-info">
+          <mat-icon>business</mat-icon>
+          <span><strong>{{ 'Cliente' | translate }}:</strong> {{ clientNameFromRoute || 'Não identificado' }}</span>
+          <input type="hidden" formControlName="clientId" [value]="clientIdFromRoute || userClientId" />
+        </div>
+
+        <div *ngIf="clientIdFromRoute && !projectIdFromRoute" class="client-info">
+          <mat-icon>business</mat-icon>
+          <span><strong>{{ 'Cliente' | translate }}:</strong> {{ clientNameFromRoute || 'Não identificado' }}</span>
+        </div>
+      </div>
+    </div>
 
     <!-- Editor Unlayer -->
-    <div class="col-12">
-      <email-editor
-        [options]="{ locale: 'pt' }"
-        (ready)="onEditorReady()"
-      ></email-editor>
+    <div class="editor-container">
+      <email-editor [options]="{ locale: 'pt' }" [minHeight]="'0'" (ready)="onEditorReady()"></email-editor>
     </div>
 
-    <!-- Legenda de Variáveis Dinâmicas -->
-    <mat-card class="mt-3">
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon style="vertical-align: middle; margin-right: 8px;">info</mat-icon>
-          Variáveis Dinâmicas Disponíveis
-        </mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <p style="margin-bottom: 12px; color: #666;">
-          Use as seguintes variáveis no texto do template para preenchimento automático:
-        </p>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; align-items: start; gap: 12px;">
-            <mat-icon style="color: #1976d2; margin-top: 4px;">person</mat-icon>
-            <div>
-              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
-                $%Nome do usuário preenchido dinâmicamente$%
-              </strong>
-              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
-                Será substituído automaticamente pelo nome do participante (quem recebe o e-mail) ao enviar.
-              </p>
-            </div>
-          </div>
-          <div style="display: flex; align-items: start; gap: 12px;">
-            <mat-icon style="color: #1976d2; margin-top: 4px;">badge</mat-icon>
-            <div>
-              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
-                $%NOME_DO_AVALIADO$%
-              </strong>
-              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
-                (E-mail ao avaliador) Será substituído pelo nome de quem está sendo avaliado na respectiva avaliação.
-              </p>
-            </div>
-          </div>
-          <div style="display: flex; align-items: start; gap: 12px;">
-            <mat-icon style="color: #1976d2; margin-top: 4px;">event</mat-icon>
-            <div>
-              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
-                $%DATA DE EXPIRAÇÃO DO PROJETO$%
-              </strong>
-              <span style="color: #666; font-size: 13px;"> ou </span>
-              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
-                *$%DATA DE EXPIRAÇÃO DO PROJETO$%*
-              </strong>
-              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
-                Será substituído automaticamente pela data limite do projeto (formato: DD/MM/YYYY).
-              </p>
-            </div>
-          </div>
-          <div style="display: flex; align-items: start; gap: 12px;">
-            <mat-icon style="color: #1976d2; margin-top: 4px;">link</mat-icon>
-            <div>
-              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
-                [LINK_AVALIACAO]
-              </strong>
-              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
-                Será substituído automaticamente pelo link da avaliação ao enviar o e-mail.
-              </p>
-            </div>
-          </div>
-          <div style="display: flex; align-items: start; gap: 12px;">
-            <mat-icon style="color: #1976d2; margin-top: 4px;">description</mat-icon>
-            <div>
-              <strong style="color: #1976d2; font-family: monospace; font-size: 14px;">
-                [LINK_RELATORIO]
-              </strong>
-              <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
-                Será substituído automaticamente pelo link do relatório (apenas para templates do tipo "Relatório Finalizado").
-              </p>
-            </div>
-          </div>
-        </div>
-        <div style="display: flex; align-items: start; gap: 12px; margin-top: 12px;">
-          <mat-icon style="color: #1976d2; margin-top: 4px;">link</mat-icon>
-          <div>
-            <strong style="color: #1976d2; font-size: 14px;">Links no texto</strong>
-            <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">
-              Qualquer endereço que comece com http:// ou https:// (digitado ou colado) será enviado no e-mail como link clicável automaticamente.
-            </p>
-          </div>
-        </div>
-        <mat-divider style="margin: 16px 0;"></mat-divider>
-        <p style="margin: 0; color: #ff9800; font-size: 12px;">
-          <mat-icon style="vertical-align: middle; font-size: 16px; height: 16px; width: 16px;">warning</mat-icon>
-          <strong>Importante:</strong> Digite exatamente como mostrado acima, incluindo os símbolos $% e colchetes [].
-        </p>
-      </mat-card-content>
-    </mat-card>
+    <!-- Variáveis Dinâmicas -->
+    <div class="vars-card">
 
-    <div class="text-end mt-3">
-      <button mat-flat-button color="primary" (click)="saveTemplate()">
-        {{ isEditMode ? "Salvar Alterações" : "Criar Template" }}
+      <div class="vars-card-header">
+        <div class="vars-header-icon-wrap"><mat-icon>code</mat-icon></div>
+        <div>
+          <h3 class="vars-card-title">Variáveis Dinâmicas</h3>
+          <p class="vars-card-subtitle">Insira as variáveis abaixo no editor. Elas serão substituídas automaticamente no momento do envio.</p>
+        </div>
+      </div>
+
+      <!-- Grupo: Participante -->
+      <div class="vars-group">
+        <div class="vars-group-label">
+          <mat-icon>person_outline</mat-icon>
+          Participante
+        </div>
+        <div class="vars-grid">
+
+          <div class="var-item var-item--blue">
+            <div class="var-header">
+              <div class="var-icon var-icon--blue"><mat-icon>person</mat-icon></div>
+              <span class="var-name">Nome do participante</span>
+            </div>
+            <div class="var-pill var-pill--blue">
+              <code class="var-pill__text" ngNonBindable>{{nome_participante}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{nome_participante}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Nome completo de quem receberá o e-mail.</p>
+            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+          </div>
+
+          <div class="var-item var-item--teal">
+            <div class="var-header">
+              <div class="var-icon var-icon--teal"><mat-icon>badge</mat-icon></div>
+              <span class="var-name">Nome do avaliado</span>
+            </div>
+            <div class="var-pill var-pill--teal">
+              <code class="var-pill__text" ngNonBindable>{{nome_avaliado}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{nome_avaliado}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Nome de quem está sendo avaliado (apenas em e-mails para o avaliador).</p>
+            <div class="var-tags">
+              <span class="var-tag var-tag--orange">Convite Avaliador</span>
+              <span class="var-tag var-tag--orange">Lembrete Avaliador</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Grupo: Projeto -->
+      <div class="vars-group">
+        <div class="vars-group-label">
+          <mat-icon>folder_open</mat-icon>
+          Projeto &amp; Cliente
+        </div>
+        <div class="vars-grid">
+
+          <div class="var-item var-item--indigo">
+            <div class="var-header">
+              <div class="var-icon var-icon--indigo"><mat-icon>folder_open</mat-icon></div>
+              <span class="var-name">Nome do projeto</span>
+            </div>
+            <div class="var-pill var-pill--indigo">
+              <code class="var-pill__text" ngNonBindable>{{nome_projeto}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{nome_projeto}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Nome do projeto de avaliação selecionado.</p>
+            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+          </div>
+
+          <div class="var-item var-item--gray">
+            <div class="var-header">
+              <div class="var-icon var-icon--gray"><mat-icon>business</mat-icon></div>
+              <span class="var-name">Nome do cliente</span>
+            </div>
+            <div class="var-pill var-pill--gray">
+              <code class="var-pill__text" ngNonBindable>{{nome_cliente}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{nome_cliente}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Nome da empresa / cliente associado ao projeto.</p>
+            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+          </div>
+
+          <div class="var-item var-item--amber">
+            <div class="var-header">
+              <div class="var-icon var-icon--amber"><mat-icon>event</mat-icon></div>
+              <span class="var-name">Data de expiração</span>
+            </div>
+            <div class="var-pill var-pill--amber">
+              <code class="var-pill__text" ngNonBindable>{{data_expiracao}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{data_expiracao}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Data limite do projeto no formato DD/MM/AAAA.</p>
+            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Grupo: Links -->
+      <div class="vars-group">
+        <div class="vars-group-label">
+          <mat-icon>link</mat-icon>
+          Links gerados automaticamente
+        </div>
+        <div class="vars-grid">
+
+          <div class="var-item var-item--green">
+            <div class="var-header">
+              <div class="var-icon var-icon--green"><mat-icon>link</mat-icon></div>
+              <span class="var-name">Link da avaliação</span>
+            </div>
+            <div class="var-pill var-pill--green">
+              <code class="var-pill__text">[LINK_AVALIACAO]</code>
+              <button class="var-pill__copy" (click)="copyVar('[LINK_AVALIACAO]')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">URL única de acesso ao formulário. Inserido automaticamente ao salvar o template.</p>
+            <div class="var-tags">
+              <span class="var-tag var-tag--blue">Convite</span>
+              <span class="var-tag var-tag--blue">Lembrete</span>
+            </div>
+          </div>
+
+          <div class="var-item var-item--purple">
+            <div class="var-header">
+              <div class="var-icon var-icon--purple"><mat-icon>description</mat-icon></div>
+              <span class="var-name">Link do relatório</span>
+            </div>
+            <div class="var-pill var-pill--purple">
+              <code class="var-pill__text">[LINK_RELATORIO]</code>
+              <button class="var-pill__copy" (click)="copyVar('[LINK_RELATORIO]')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">URL de acesso ao relatório finalizado do participante.</p>
+            <div class="var-tags">
+              <span class="var-tag var-tag--purple">Relatório Finalizado</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Exemplo de uso -->
+      <div class="vars-example">
+        <div class="vars-example__header">
+          <mat-icon>lightbulb_outline</mat-icon>
+          <span>Exemplo de uso no corpo do e-mail</span>
+        </div>
+        <pre class="vars-example__code" ngNonBindable>Olá, <span class="ex-var">{{nome_participante}}</span>!
+
+Você foi convidado(a) a avaliar <span class="ex-var">{{nome_avaliado}}</span>
+no projeto <span class="ex-var">{{nome_projeto}}</span>.
+
+Prazo: <span class="ex-var">{{data_expiracao}}</span>
+
+Acesse sua avaliação: <span class="ex-link">[LINK_AVALIACAO]</span></pre>
+      </div>
+
+    </div>
+
+    <!-- Bottom save bar -->
+    <div class="save-bar">
+      <button mat-button class="btn-back" (click)="goBack()">
+        <mat-icon>arrow_back</mat-icon>
+        {{ 'Voltar' | translate }}
+      </button>
+      <span class="save-bar-spacer"></span>
+      <button mat-raised-button color="primary" class="btn-save" (click)="saveTemplate()">
+        <mat-icon>{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>
+        {{ (isEditMode ? 'Salvar Alterações' : 'Criar Template') | translate }}
       </button>
     </div>
+
   </form>
 </div>

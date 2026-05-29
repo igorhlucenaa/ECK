@@ -51,12 +51,32 @@ export class CreateQuestionDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Inicializa com tipo padrão
-    this.onQuestionTypeChange('rating');
+    if (this.data?.existingQuestion) {
+      const q = this.data.existingQuestion;
+      this.onQuestionTypeChange(q.type || 'rating');
+      this.questionForm.patchValue({
+        title: q.title || '',
+        type: q.type || 'rating',
+        required: q.required || false
+      });
+      if (q.options && q.options.length > 0) {
+        this.optionsArray.clear();
+        q.options.forEach((opt: string) => {
+          this.optionsArray.push(this.fb.control(opt, Validators.required));
+        });
+      }
+    } else {
+      this.onQuestionTypeChange('rating');
+    }
   }
 
   get optionsArray(): FormArray {
     return this.questionForm.get('options') as FormArray;
+  }
+
+  getSelectedTypeLabel(): string {
+    const type = this.questionForm.get('type')?.value;
+    return this.questionTypes.find(t => t.value === type)?.label || '';
   }
 
   onQuestionTypeChange(type: string): void {
@@ -104,7 +124,6 @@ export class CreateQuestionDialogComponent implements OnInit {
       this.isLoading = true;
       const formValue = this.questionForm.value;
 
-      // Carregar a avaliação atual
       const assessmentRef = doc(this.firestore, 'assessments', this.data.assessmentId);
       const assessmentSnap = await getDoc(assessmentRef);
 
@@ -116,60 +135,107 @@ export class CreateQuestionDialogComponent implements OnInit {
       const assessmentData = assessmentSnap.data();
       const surveyJSON = assessmentData['surveyJSON'] || { pages: [] };
 
-      // Garantir que há pelo menos uma página
       if (!surveyJSON.pages || !Array.isArray(surveyJSON.pages) || surveyJSON.pages.length === 0) {
         surveyJSON.pages = [{ name: 'página1', elements: [] }];
       }
 
-      // Criar o elemento da pergunta no formato SurveyJS
-      const questionName = this.generateQuestionName();
-      const newQuestionElement: any = {
-        name: questionName,
-        type: formValue.type,
-        title: {
-          pt: formValue.title
-        },
-        isRequired: formValue.required || false
-      };
+      const isEditMode = !!this.data?.existingQuestion;
 
-      // Adicionar configurações específicas por tipo
-      if (formValue.type === 'rating') {
-        newQuestionElement.rateMin = 1;
-        newQuestionElement.rateMax = 5;
-        newQuestionElement.minRateDescription = { pt: 'Discordo Totalmente' };
-        newQuestionElement.maxRateDescription = { pt: 'Concordo Totalmente' };
-      } else if ((formValue.type === 'radiogroup' || formValue.type === 'dropdown' || formValue.type === 'checkbox')
-                 && formValue.options && formValue.options.length > 0) {
-        newQuestionElement.choices = formValue.options.filter((opt: string) => opt && opt.trim() !== '');
-      } else if (formValue.type === 'text') {
-        newQuestionElement.inputType = 'text';
+      if (isEditMode) {
+        // ── Modo edição: encontrar e atualizar o elemento existente ───────
+        const questionId = this.data.existingQuestion.id;
+        let found = false;
+        for (const page of surveyJSON.pages) {
+          const elements: any[] = page.elements || [];
+          const element = elements.find((e: any) => e.name === questionId);
+          if (element) {
+            element.title = formValue.title;
+            element.type = formValue.type;
+            element.isRequired = formValue.required || false;
+
+            if (formValue.type === 'rating') {
+              element.rateValues = [
+                { value: 1, text: '1' }, { value: 2, text: '2' },
+                { value: 3, text: '3' }, { value: 4, text: '4' },
+                { value: 5, text: '5' }, { value: '?', text: '?' }
+              ];
+              element.minRateDescription = { pt: 'Discordo Totalmente' };
+              element.maxRateDescription = { pt: 'Concordo Totalmente' };
+              delete element.rateMin; delete element.rateMax;
+              delete element.choices;
+            } else if (['radiogroup', 'dropdown', 'checkbox'].includes(formValue.type)) {
+              element.choices = (formValue.options || []).filter((opt: string) => opt && opt.trim() !== '');
+              delete element.rateMin;
+              delete element.rateMax;
+              delete element.minRateDescription;
+              delete element.maxRateDescription;
+            } else {
+              delete element.choices;
+              delete element.rateMin;
+              delete element.rateMax;
+            }
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          this.snackBar.open('Pergunta não encontrada na avaliação', 'Fechar', { duration: 3000 });
+          return;
+        }
+
+        await updateDoc(assessmentRef, { surveyJSON });
+
+        this.snackBar.open('Pergunta atualizada com sucesso!', 'Fechar', { duration: 3000 });
+        this.dialogRef.close({
+          id: this.data.existingQuestion.id,
+          title: formValue.title,
+          type: formValue.type,
+          required: formValue.required || false
+        });
+
+      } else {
+        // ── Modo criação: adicionar novo elemento ─────────────────────────
+        const questionName = this.generateQuestionName();
+        const newQuestionElement: any = {
+          name: questionName,
+          type: formValue.type,
+          title: formValue.title,
+          isRequired: formValue.required || false
+        };
+
+        if (formValue.type === 'rating') {
+          newQuestionElement.rateValues = [
+            { value: 1, text: '1' }, { value: 2, text: '2' },
+            { value: 3, text: '3' }, { value: 4, text: '4' },
+            { value: 5, text: '5' }, { value: '?', text: '?' }
+          ];
+          newQuestionElement.minRateDescription = { pt: 'Discordo Totalmente' };
+          newQuestionElement.maxRateDescription = { pt: 'Concordo Totalmente' };
+        } else if (['radiogroup', 'dropdown', 'checkbox'].includes(formValue.type) && formValue.options?.length > 0) {
+          newQuestionElement.choices = formValue.options.filter((opt: string) => opt && opt.trim() !== '');
+        } else if (formValue.type === 'text') {
+          newQuestionElement.inputType = 'text';
+        }
+
+        const firstPage = surveyJSON.pages[0];
+        if (!firstPage.elements) firstPage.elements = [];
+        firstPage.elements.push(newQuestionElement);
+
+        await updateDoc(assessmentRef, { surveyJSON });
+
+        this.snackBar.open('Pergunta criada e adicionada à avaliação com sucesso!', 'Fechar', { duration: 3000 });
+        this.dialogRef.close({
+          id: questionName,
+          title: formValue.title,
+          type: formValue.type,
+          required: formValue.required || false
+        });
       }
 
-      // Adicionar a pergunta à primeira página (ou criar uma nova se necessário)
-      const firstPage = surveyJSON.pages[0];
-      if (!firstPage.elements) {
-        firstPage.elements = [];
-      }
-      firstPage.elements.push(newQuestionElement);
-
-      // Atualizar a avaliação no Firestore
-      await updateDoc(assessmentRef, {
-        surveyJSON: surveyJSON
-      });
-
-      // Criar objeto de retorno com informações da pergunta
-      const newQuestion = {
-        id: questionName,
-        title: formValue.title,
-        type: formValue.type,
-        required: formValue.required || false
-      };
-
-      this.snackBar.open('Pergunta criada e adicionada à avaliação com sucesso!', 'Fechar', { duration: 3000 });
-      this.dialogRef.close(newQuestion);
     } catch (error) {
-      console.error('Erro ao criar pergunta:', error);
-      this.snackBar.open('Erro ao criar pergunta na avaliação', 'Fechar', { duration: 3000 });
+      console.error('Erro ao salvar pergunta:', error);
+      this.snackBar.open('Erro ao salvar pergunta', 'Fechar', { duration: 3000 });
     } finally {
       this.isLoading = false;
     }

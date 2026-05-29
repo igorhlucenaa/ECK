@@ -1,1349 +1,1775 @@
-<div *ngIf="isLoading">
-  <div *ngIf="isIndividualMode" style="text-align: center; padding: 40px;">
-    <mat-spinner [diameter]="50" style="margin: 0 auto 16px;"></mat-spinner>
+<!-- ===================== LOADING STATE ===================== -->
+<div class="rp-loading" *ngIf="isLoading">
+  <div class="rp-loading-individual" *ngIf="isIndividualMode">
+    <mat-spinner [diameter]="50"></mat-spinner>
     <p>Carregando relatório individual para {{ individualParticipantName }}...</p>
   </div>
-  <div *ngIf="!isIndividualMode">Carregando dados...</div>
-</div>
-
-<!-- Modo Individual - Banner Informativo -->
-<div *ngIf="isIndividualMode" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px; margin-bottom: 16px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-  <div style="display: flex; align-items: center; justify-content: space-between;">
-    <div>
-      <h3 style="margin: 0 0 8px 0; font-size: 18px;">
-        <mat-icon style="vertical-align: middle; margin-right: 8px;">person</mat-icon>
-        Relatório Individual
-      </h3>
-      <p style="margin: 0; font-size: 14px;">
-        <strong>Avaliado:</strong> {{ individualParticipantName }}
-        <span *ngIf="individualTemplateName" style="margin-left: 16px;">
-          <strong>Template:</strong> {{ individualTemplateName }}
-        </span>
-      </p>
-    </div>
-    <button mat-stroked-button color="white" (click)="voltarParaLista()" style="border-color: white; color: white;">
-      <mat-icon>arrow_back</mat-icon>
-      Voltar para Lista
-    </button>
+  <div class="rp-loading-general" *ngIf="!isIndividualMode">
+    <mat-spinner [diameter]="36"></mat-spinner>
+    <p>Carregando dados...</p>
   </div>
 </div>
 
-<!-- Material select -->
-<mat-form-field
-  appearance="fill"
-  style="min-width: 300px; margin-bottom: 16px; display: block"
-  *ngIf="assessments"
->
-  <mat-label>{{ 'Selecione a avaliação' | translate }}</mat-label>
-  <mat-select [formControl]="assessmentControl">
-    <mat-option *ngFor="let a of assessments" [value]="a.id">{{
-      a.name
-    }}</mat-option>
-    <mat-option *ngIf="assessments.length === 0" disabled
-    >{{ 'Nenhuma avaliação encontrada' | translate }}</mat-option
-    >
-  </mat-select>
-</mat-form-field>
+<div class="rp-page-wrapper">
+<!-- ===================== PAGE HEADER ===================== -->
+<app-page-header
+  eyebrow="Análise 360°"
+  title="Relatórios"
+  subtitle="Configure e visualize relatórios de avaliação 360°">
+</app-page-header>
 
-<!-- Seleção do avaliado -->
-<mat-form-field
-  appearance="fill"
-  style="min-width: 300px; margin-bottom: 16px; display: block"
-  *ngIf="avaliadosDisponiveis.length > 0"
->
-  <mat-label>{{ 'Selecione o avaliado' | translate }}</mat-label>
-  <mat-select [formControl]="avaliadoControl" (selectionChange)="onAvaliadoChange()">
-    <mat-option value="">{{ 'Todos os avaliados' | translate }}</mat-option>
-    <mat-option *ngFor="let avaliado of avaliadosDisponiveis" [value]="avaliado">
-      {{ avaliado }}
-    </mat-option>
-  </mat-select>
-  <mat-hint>{{ 'Selecione um avaliado específico para visualizar dados individuais' | translate }}</mat-hint>
-</mat-form-field>
+<!-- ===================== INDIVIDUAL MODE BANNER ===================== -->
+<div class="rp-individual-banner" *ngIf="isIndividualMode">
+  <div class="rp-individual-banner__icon">
+    <mat-icon>person</mat-icon>
+  </div>
+  <div class="rp-individual-banner__info">
+    <h3>Relatório Individual</h3>
+    <p>
+      <strong>Avaliado:</strong> {{ individualParticipantName }}
+      <span class="rp-individual-template" *ngIf="individualTemplateName">
+        &nbsp;&bull;&nbsp;<strong>Template:</strong> {{ individualTemplateName }}
+      </span>
+    </p>
+  </div>
+  <button mat-stroked-button class="rp-individual-banner__back" (click)="voltarParaLista()">
+    <mat-icon>arrow_back</mat-icon>
+    Voltar para Lista
+  </button>
+</div>
 
-<!-- Indicador de avaliado selecionado -->
-<div
-  *ngIf="selectedAvaliado"
-  style="background-color: #e8f5e8; border-left: 4px solid #4caf50; padding: 12px; margin-bottom: 16px; border-radius: 4px;"
->
-  <div style="display: flex; align-items: center; justify-content: space-between;">
-    <div style="display: flex; align-items: center;">
-      <mat-icon style="color: #4caf50; margin-right: 8px;">person</mat-icon>
+<!-- ===================== CONFIG STRIP ===================== -->
+<div class="rp-config-strip">
+
+  <!-- ── Fluxo sequencial: Cliente → Projeto → Avaliação → Avaliado ── -->
+  <div class="rp-sequential-filter" *ngIf="!isIndividualMode">
+
+    <!-- Passo 1: Cliente -->
+    <div class="rp-seq-step" [class.rp-seq-step--done]="!!filterClientControl.value">
+      <div class="rp-seq-step__num">1</div>
+      <mat-form-field appearance="outline" class="rp-seq-field">
+        <mat-label>Cliente</mat-label>
+        <mat-icon matPrefix>business</mat-icon>
+        <mat-select [formControl]="filterClientControl" (selectionChange)="onFilterClientChange()" (closed)="resetClientSearch()">
+          <div class="client-search-wrap">
+            <mat-icon class="client-search-icon">search</mat-icon>
+            <input class="client-search-input" [formControl]="clientSearchCtrl"
+                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   (keydown)="$event.stopPropagation()" />
+          </div>
+          <mat-option value="">— Selecione um cliente —</mat-option>
+          <mat-option *ngFor="let c of clientsFiltered" [value]="c.id">{{ c.name }}</mat-option>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-icon class="rp-seq-arrow" *ngIf="filterClientControl.value">chevron_right</mat-icon>
+
+    <!-- Passo 2: Projeto (aparece após selecionar cliente) -->
+    <div class="rp-seq-step" [class.rp-seq-step--done]="!!filterProjectControl.value"
+         *ngIf="filterClientControl.value">
+      <div class="rp-seq-step__num">2</div>
+      <mat-form-field appearance="outline" class="rp-seq-field">
+        <mat-label>Projeto</mat-label>
+        <mat-icon matPrefix>folder_open</mat-icon>
+        <mat-select [formControl]="filterProjectControl" (selectionChange)="onFilterProjectChange()"
+                    [disabled]="filterProjects.length === 0">
+          <mat-option value="">— Selecione um projeto —</mat-option>
+          <mat-option *ngFor="let p of filterProjects" [value]="p.id">{{ p.name }}</mat-option>
+        </mat-select>
+        <mat-hint *ngIf="filterProjects.length === 0 && filterClientControl.value">Nenhum projeto ativo</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <mat-icon class="rp-seq-arrow" *ngIf="filterProjectControl.value">chevron_right</mat-icon>
+
+    <!-- Passo 3: Avaliação (aparece após selecionar projeto) -->
+    <div class="rp-seq-step" [class.rp-seq-step--done]="!!assessmentControl.value"
+         *ngIf="filterProjectControl.value">
+      <div class="rp-seq-step__num">3</div>
+      <mat-form-field appearance="outline" class="rp-seq-field">
+        <mat-label>Avaliação</mat-label>
+        <mat-icon matPrefix>assignment</mat-icon>
+        <mat-select [formControl]="assessmentControl"
+                    [disabled]="filteredAssessments.length === 0">
+          <mat-option value="">— Selecione a avaliação —</mat-option>
+          <mat-option *ngFor="let a of filteredAssessments" [value]="a.id">{{ a.name }}</mat-option>
+        </mat-select>
+        <mat-hint *ngIf="filteredAssessments.length === 0">Nenhuma avaliação vinculada</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <!-- Passo 4: Avaliado — exibição automática (1 avaliado por projeto) -->
+    <ng-container *ngIf="assessmentControl.value && avaliadosDisponiveis.length > 0">
+      <mat-icon class="rp-seq-arrow">chevron_right</mat-icon>
+
+      <!-- Caso padrão: exatamente 1 avaliado → badge estático, sem dropdown -->
+      <ng-container *ngIf="avaliadosDisponiveis.length === 1; else multiAvaliadoSelect">
+        <div class="rp-seq-step rp-seq-step--done">
+          <div class="rp-seq-step__num">4</div>
+          <div class="rp-avaliado-badge">
+            <mat-icon class="rp-avaliado-badge__icon">person_search</mat-icon>
+            <div class="rp-avaliado-badge__info">
+              <span class="rp-avaliado-badge__label">Avaliado</span>
+              <span class="rp-avaliado-badge__name">{{ avaliadosDisponiveis[0] }}</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Fallback (dados legados com múltiplos avaliados): exibe dropdown -->
+      <ng-template #multiAvaliadoSelect>
+        <div class="rp-seq-step" [class.rp-seq-step--done]="!!selectedAvaliado">
+          <div class="rp-seq-step__num">4</div>
+          <mat-form-field appearance="outline" class="rp-seq-field">
+            <mat-label>Avaliado</mat-label>
+            <mat-icon matPrefix>person_search</mat-icon>
+            <mat-select [formControl]="avaliadoControl" (selectionChange)="onAvaliadoChange()">
+              <mat-option *ngFor="let avaliado of avaliadosDisponiveis" [value]="avaliado">{{ avaliado }}</mat-option>
+            </mat-select>
+            <mat-hint>Selecione para visualizar o relatório individual</mat-hint>
+          </mat-form-field>
+        </div>
+      </ng-template>
+
+      <!-- Controle de publicação de relatório (apenas admin_master) -->
+    </ng-container>
+
+    <!-- Botão limpar (aparece quando há algo selecionado) -->
+    <button mat-icon-button class="rp-seq-clear"
+            *ngIf="filterClientControl.value"
+            matTooltip="Limpar seleção"
+            (click)="clearFilterContext()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Modo individual: campo de avaliação (readonly) -->
+  <div class="rp-config-selectors" *ngIf="isIndividualMode">
+    <mat-form-field class="rp-selector" appearance="outline">
+      <mat-label>{{ 'Avaliação' | translate }}</mat-label>
+      <mat-icon matPrefix>assignment</mat-icon>
+      <input matInput [formControl]="assessmentSearchControl" [readonly]="true" placeholder="Avaliação carregada automaticamente">
+    </mat-form-field>
+
+    <mat-form-field class="rp-selector" appearance="outline">
+      <mat-label>{{ 'Avaliado' | translate }}</mat-label>
+      <mat-icon matPrefix>person_search</mat-icon>
+      <mat-select [formControl]="avaliadoControl" [disabled]="true">
+        <mat-option *ngIf="isIndividualMode && individualParticipantName" [value]="individualParticipantName">{{ individualParticipantName }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Selected avaliado indicator (só no modo normal) -->
+  <div class="rp-avaliado-indicator" *ngIf="selectedAvaliado && !isIndividualMode">
+    <div class="rp-avaliado-indicator__left">
+      <div class="rp-avaliado-indicator__icon">
+        <mat-icon>person_pin</mat-icon>
+      </div>
       <div>
-        <strong style="color: #2e7d32;">Visualizando dados individuais</strong>
-        <p style="margin: 4px 0 0 0; color: #388e3c; font-size: 14px;">
-          Avaliado selecionado: <strong>{{ selectedAvaliado }}</strong>
-        </p>
+        <strong>Visualizando dados individuais</strong>
+        <p>Avaliado selecionado: <strong>{{ selectedAvaliado }}</strong></p>
       </div>
     </div>
-    <button
-      mat-icon-button
-      color="warn"
-      size="small"
-      (click)="limparSelecaoAvaliado()"
-      matTooltip="{{ 'Limpar seleção de avaliado' | translate }}"
-    >
-      <mat-icon>clear</mat-icon>
+    <button mat-icon-button class="rp-avaliado-indicator__clear" (click)="limparSelecaoAvaliado()" matTooltip="{{ 'Limpar seleção de avaliado' | translate }}">
+      <mat-icon>cancel</mat-icon>
     </button>
   </div>
 </div>
 
-<!-- Botão de debug temporário -->
-<!-- <div *ngIf="selectedAssessmentId && dataSource.length > 0" style="margin-bottom: 16px;">
-  <button mat-stroked-button color="accent" (click)="debugTabelaDetalhada()" style="margin-right: 8px;">
-    <mat-icon>bug_report</mat-icon>
-    {{ 'Debug Tabela Detalhada' | translate }}
-  </button>
-  <button mat-stroked-button color="primary" (click)="testarDados()" style="margin-right: 8px;">
-    <mat-icon>science</mat-icon>
-    Teste Simples
-  </button>
-  <button mat-stroked-button color="warn" (click)="debugEstruturaDados()" style="margin-right: 8px;">
-    <mat-icon>storage</mat-icon>
-    Debug Estrutura
-  </button>
-  <button mat-stroked-button color="warn" (click)="debugGraficos()" style="margin-right: 8px;">
-    <mat-icon>bar_chart</mat-icon>
-    {{ 'Debug Gráficos' | translate }}
-  </button>
-  <button mat-stroked-button style="color: #FF9800; border-color: #FF9800;" (click)="debugAvaliacoesAltas()" style="margin-right: 8px;">
-    <mat-icon>emoji_events</mat-icon>
-    Debug Avaliações Altas
-  </button>
+<!-- ===================== WORKFLOW TABS ===================== -->
+<div class="rp-workflow">
 
-</div> -->
-
-<!-- TAB GROUP START -->
-<mat-tab-group [selectedIndex]="selectedTabIndex" data-tour="reports-header">
-  <!--
-  <mat-tab label="Dados">
-    ...
-  </mat-tab>
-  <mat-tab label="Competências">
-    ...
-  </mat-tab>
-  <mat-tab label="Gráficos">
-    ...
-  </mat-tab>
-  -->
-  <mat-tab label="Competências">
-    <div style="margin-bottom: 24px;">
-          <h3>{{ 'Cadastro de Competências' | translate }}</h3>
-      <p style="color: #666; margin-bottom: 16px;">
-        {{ 'As competências são agrupamentos de perguntas que representam habilidades específicas a serem avaliadas.' | translate }}
-      </p>
-
-      <!-- Seleção de Cliente e Gerenciamento de Grupos -->
-      <mat-card style="padding: 20px; margin-bottom: 20px; background-color: #f8f9fa;">
-        <mat-card-header>
-          <mat-card-title style="font-size: 18px; color: #6366f1;">
-            <mat-icon style="vertical-align: middle; margin-right: 8px;">business</mat-icon>
-            {{ 'Gerenciamento de Grupos de Competências' | translate }}
-          </mat-card-title>
-          <mat-card-subtitle>{{ 'Selecione um cliente e gerencie grupos de competências' | translate }}</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px;">
-            <!-- Seleção de Cliente -->
-            <mat-form-field appearance="outline">
-              <mat-label>{{ 'Cliente' | translate }}</mat-label>
-              <mat-select [formControl]="clientControl" (selectionChange)="onClientChange()">
-                <mat-option *ngFor="let client of clients" [value]="client.id">
-                  {{ client.name }}
-                </mat-option>
-              </mat-select>
-              <mat-hint>{{ 'Selecione o cliente para associar as competências' | translate }}</mat-hint>
-            </mat-form-field>
-
-            <!-- Carregamento de Grupos Existentes -->
-            <mat-form-field appearance="outline">
-              <mat-label>{{ 'Carregar Grupo Existente' | translate }}</mat-label>
-              <mat-select [formControl]="competencyGroupControl" [disabled]="!selectedClientId">
-                <mat-option *ngFor="let group of competencyGroups" [value]="group.id">
-                  {{ group.name }} ({{ group.competencias?.length || 0 }} competências)
-                </mat-option>
-              </mat-select>
-              <mat-hint>{{ 'Carregue um grupo de competências salvo' | translate }}</mat-hint>
-            </mat-form-field>
-          </div>
-
-          <div style="display: flex; gap: 16px; align-items: end;">
-            <!-- Salvar Novo Grupo -->
-            <mat-form-field appearance="outline" style="flex: 1;">
-              <mat-label>{{ 'Nome do Novo Grupo' | translate }}</mat-label>
-              <input matInput [formControl]="groupNameControl" placeholder="Ex: Grupo Liderança Executiva">
-              <mat-hint>{{ 'Digite um nome para salvar o grupo atual de competências' | translate }}</mat-hint>
-            </mat-form-field>
-
-            <!-- Botões de Ação -->
-            <div style="display: flex; gap: 8px;">
-              <button mat-raised-button color="primary"
-                      (click)="saveCompetencyGroup()"
-                      [disabled]="!selectedClientId || !groupNameControl.value || competencias.length === 0"
-                      matTooltip="{{ 'Salvar grupo atual' | translate }}">
-                <mat-icon>save</mat-icon>
-                {{ 'Salvar Grupo' | translate }}
-              </button>
-
-              <button mat-stroked-button color="accent"
-                      (click)="loadCompetencyGroup()"
-                      [disabled]="!competencyGroupControl.value"
-                      matTooltip="{{ 'Carregar grupo selecionado' | translate }}">
-                <mat-icon>download</mat-icon>
-                {{ 'Carregar' | translate }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Status -->
-          <div style="margin-top: 16px;">
-            <mat-chip-set>
-              <mat-chip *ngIf="selectedClientId">
-                <mat-icon matChipAvatar>business</mat-icon>
-                Cliente: {{ getClientName() }}
-              </mat-chip>
-              <mat-chip>
-                <mat-icon matChipAvatar>psychology</mat-icon>
-                {{ getCompetenciaText() }}
-              </mat-chip>
-              <mat-chip *ngIf="competencyGroups.length > 0">
-                <mat-icon matChipAvatar>folder</mat-icon>
-                {{ getGrupoText() }}
-              </mat-chip>
-            </mat-chip-set>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card style="padding: 20px; margin-bottom: 20px;">
-        <mat-card-header>
-          <mat-card-title>{{ competenciaEditando.id ? 'Editar Competência' : 'Nova Competência' }}</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <form [formGroup]="competenciaForm" (ngSubmit)="salvarCompetencia()">
-            <div style="display: flex; flex-direction: column; gap: 16px;">
-              <mat-form-field appearance="outline" style="width: 100%;">
-                <mat-label>{{ 'Nome da competência' | translate }}</mat-label>
-                <input matInput formControlName="nome" required placeholder="Ex: Liderança, Comunicação, Trabalho em Equipe" />
-                <mat-hint>{{ 'Nome que aparecerá nos relatórios e gráficos' | translate }}</mat-hint>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" style="width: 100%;">
-                <mat-label>{{ 'Descrição detalhada' | translate }}</mat-label>
-                <textarea
-                  matInput
-                  formControlName="descricao"
-                  required
-                  rows="4"
-                  placeholder="{{ 'Ex: Capacidade de liderar equipes, tomar decisões estratégicas e influenciar positivamente os colaboradores' | translate }}"
-                ></textarea>
-                <mat-hint>{{ 'Descrição que aparecerá como subtítulo nos relatórios' | translate }}</mat-hint>
-              </mat-form-field>
-
-              <!-- Filtro de Tipos de Perguntas -->
-              <mat-card style="padding: 16px; margin-bottom: 16px; background-color: #f8f9ff; border-left: 4px solid #6366f1;">
-                <div style="display: flex; align-items: start; gap: 12px;">
-                  <mat-icon style="color: #6366f1; margin-top: 2px;">filter_list</mat-icon>
-                  <div style="flex: 1;">
-                    <h4 style="margin: 0 0 8px 0; color: #6366f1; font-size: 14px;">Filtro de Tipos de Perguntas</h4>
-
-                    <mat-checkbox [formControl]="includeOpenQuestions" (change)="onQuestionFilterChange()" style="margin-bottom: 8px;">
-                      Incluir perguntas abertas (texto livre)
-                    </mat-checkbox>
-
-                    <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
-                      <mat-icon style="font-size: 14px; vertical-align: middle; margin-right: 4px;">info</mat-icon>
-                      {{ getAvailableQuestionCount() }}
-                    </div>
-
-                    <div style="font-size: 11px; color: #888;">
-                      <strong>✅ Fechadas:</strong> Escalas, múltipla escolha, dropdown, matriz<br>
-                      <strong>📝 Abertas:</strong> Texto livre, comentários, uploads
-                    </div>
-                  </div>
-                </div>
-              </mat-card>
-
-              <mat-form-field appearance="outline" style="width: 100%;">
-                <mat-label>{{ 'Questões vinculadas' | translate }}</mat-label>
-                <mat-select formControlName="perguntasIds" multiple>
-                  <mat-option *ngFor="let q of dynamicColumns" [value]="q" [disabled]="perguntasBloqueadas.has(q)">
-                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                      <span>{{ questionMap[q] || q }}</span>
-                      <mat-chip style="font-size: 10px; height: 18px; margin-left: 8px;">
-                        {{ getQuestionTypeByIdSafe(q) }}
-                      </mat-chip>
-                    </div>
-                  </mat-option>
-                </mat-select>
-                <mat-hint>{{ 'Questões já utilizadas em outras competências são desabilitadas.' | translate }}</mat-hint>
-              </mat-form-field>
-            </div>
-
-            <div style="margin-top: 20px; display: flex; gap: 12px;">
-              <button mat-flat-button color="primary" type="submit" [disabled]="!competenciaForm.valid">
-                <mat-icon>{{ competenciaEditando.id ? 'save' : 'add' }}</mat-icon>
-                {{ (competenciaEditando.id ? 'Salvar Alterações' : 'Adicionar Competência') | translate }}
-              </button>
-              <button mat-button type="button" (click)="cancelarEdicaoCompetencia()" *ngIf="competenciaEditando.id">
-                <mat-icon>cancel</mat-icon>
-                {{ 'Cancelar' | translate }}
-              </button>
-              @if (showDebugButtons) {
-                <button mat-button type="button" (click)="debugPerguntas()" color="accent">
-                  <mat-icon>bug_report</mat-icon>
-                  Debug Perguntas
-                </button>
-                <button mat-button type="button" (click)="debugTiposPerguntas()" color="primary">
-                  <mat-icon>analytics</mat-icon>
-                  Debug Tipos
-                </button>
-              }
-            </div>
-          </form>
-        </mat-card-content>
-      </mat-card>
+  <!-- Tab: Avaliação -->
+  <div class="rp-workflow-tab"
+       [class.rp-workflow-tab--done]="selectedAssessmentId"
+       [class.rp-workflow-tab--active]="!selectedAssessmentId">
+    <div class="rp-workflow-tab__icon">
+      <mat-icon>{{ selectedAssessmentId ? 'check_circle' : 'assignment' }}</mat-icon>
     </div>
+    <div class="rp-workflow-tab__label">
+      <strong>Avaliação</strong>
+      <span>{{ selectedAssessmentId ? 'Selecionada' : 'Selecione acima' }}</span>
+    </div>
+  </div>
 
-    <div *ngIf="competencias.length > 0">
-      <h4>{{ 'Competências Cadastradas' | translate }} ({{ competencias.length }})</h4>
-      <mat-accordion multi>
-        <mat-expansion-panel *ngFor="let c of competencias; trackBy: trackByCompetencia" style="margin-bottom: 10px;">
-          <mat-expansion-panel-header>
-            <mat-panel-title style="width: 50%; align-items: center;">
-              <mat-icon style="margin-right: 8px;" color="primary">psychology</mat-icon>
-              {{ c.nome }}
-            </mat-panel-title>
-            <mat-panel-description style="width: 50%; align-items: center; justify-content: space-between;">
-              <span>{{ c.descricao }}</span>
-              <div style="display: flex; gap: 8px;">
-                <mat-chip>
-                  <mat-icon matChipAvatar>quiz</mat-icon>
-                  {{ getQuestaoText(c.perguntasIds?.length || 0) }}
-                </mat-chip>
+  <!-- Tab: Competências (oculta para visualizador) -->
+  <div class="rp-workflow-tab rp-workflow-tab--clickable"
+       *ngIf="currentUserRole !== 'viewer'"
+       [class.rp-workflow-tab--done]="competencias.length > 0 && selectedTabIndex !== 0"
+       [class.rp-workflow-tab--active]="selectedTabIndex === 0"
+       [class.rp-workflow-tab--disabled]="!selectedAssessmentId"
+       (click)="selectedAssessmentId && goToTab(0)"
+       matTooltip="{{ !selectedAssessmentId ? 'Selecione uma avaliação primeiro' : '' }}">
+    <div class="rp-workflow-tab__icon">
+      <mat-icon>psychology</mat-icon>
+    </div>
+    <div class="rp-workflow-tab__label">
+      <strong>Competências</strong>
+      <span>{{ competencias.length > 0 ? competencias.length + ' ativa' + (competencias.length !== 1 ? 's' : '') : 'Configure' }}</span>
+    </div>
+  </div>
+
+  <!-- Tab: Montar (oculta para visualizador) -->
+  <div class="rp-workflow-tab rp-workflow-tab--clickable"
+       *ngIf="currentUserRole !== 'viewer'"
+       [class.rp-workflow-tab--done]="selectedTabIndex === 2 && relatorioConfiguracao.length > 0"
+       [class.rp-workflow-tab--active]="selectedTabIndex === 1"
+       [class.rp-workflow-tab--disabled]="competencias.length === 0"
+       (click)="competencias.length > 0 && goToTab(1)"
+       matTooltip="{{ competencias.length === 0 ? 'Configure as competências primeiro' : '' }}">
+    <div class="rp-workflow-tab__icon">
+      <mat-icon>dashboard_customize</mat-icon>
+    </div>
+    <div class="rp-workflow-tab__label">
+      <strong>Montar</strong>
+      <span>Seções e gráficos</span>
+    </div>
+  </div>
+
+  <!-- Tab: Visualizar -->
+  <div class="rp-workflow-tab rp-workflow-tab--clickable"
+       [class.rp-workflow-tab--active]="selectedTabIndex === 2"
+       [class.rp-workflow-tab--disabled]="currentUserRole !== 'viewer' && competencias.length === 0"
+       (click)="(currentUserRole === 'viewer' || competencias.length > 0) && goToTab(2)"
+       matTooltip="{{ currentUserRole !== 'viewer' && competencias.length === 0 ? 'Configure as competências primeiro' : '' }}">
+    <div class="rp-workflow-tab__icon">
+      <mat-icon>preview</mat-icon>
+    </div>
+    <div class="rp-workflow-tab__label">
+      <strong>Visualizar</strong>
+      <span>PDF e exportação</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===================== STEP PANELS ===================== -->
+<div class="rp-step-panels" data-tour="reports-header">
+
+  <!-- ============ PASSO 1: COMPETÊNCIAS ============ -->
+  <div class="rp-step-panel" *ngIf="selectedTabIndex === 0 && currentUserRole !== 'viewer'">
+    <div class="rp-step-panel__header">
+      <h2 class="rp-step-panel__title">Competências</h2>
+      <p class="rp-step-panel__desc">Selecione quais competências aparecerão no relatório</p>
+    </div>
+    <div class="rp-tab-content">
+
+      <!-- Estado: nenhuma avaliação selecionada -->
+      <div *ngIf="!selectedAssessmentId" class="rp-comp-gate">
+        <div class="rp-comp-gate__icon-wrap">
+          <mat-icon>assignment</mat-icon>
+        </div>
+        <h4>Selecione uma avaliação primeiro</h4>
+        <p>Use o seletor acima para escolher qual avaliação 360° deseja analisar. As competências vinculadas serão carregadas automaticamente.</p>
+      </div>
+
+      <!-- Estado: avaliação selecionada -->
+      <ng-container *ngIf="selectedAssessmentId">
+
+        <!-- Nenhuma competência criada ainda -->
+        <div *ngIf="allCompetencies.length === 0" class="rp-setup-guide">
+
+          <div class="rp-setup-guide__header">
+            <div class="rp-setup-guide__icon">
+              <mat-icon>map</mat-icon>
+            </div>
+            <div>
+              <h4>Configure as competências para esta avaliação</h4>
+              <p>Antes de montar o relatório, é necessário vincular as perguntas da avaliação às competências. Siga os passos abaixo:</p>
+            </div>
+          </div>
+
+          <div class="rp-setup-guide__steps">
+
+            <div class="rp-setup-step rp-setup-step--done">
+              <div class="rp-setup-step__num">
+                <mat-icon>check</mat-icon>
               </div>
-            </mat-panel-description>
-          </mat-expansion-panel-header>
+              <div class="rp-setup-step__body">
+                <strong>Avaliação selecionada</strong>
+                <span>{{ selectedAssessmentName }}</span>
+              </div>
+            </div>
 
-          <mat-list dense>
-            <mat-list-item *ngFor="let perguntaId of c.perguntasIds">
-              <mat-icon matListItemIcon>drag_indicator</mat-icon>
-              {{ questionMap[perguntaId] }}
-            </mat-list-item>
-          </mat-list>
+            <div class="rp-setup-step__connector"></div>
 
-          <mat-action-row>
-            <button mat-icon-button color="primary" (click)="editarCompetencia(c); $event.stopPropagation()" matTooltip="{{ 'Editar competência' | translate }}">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button mat-icon-button color="warn" (click)="removerCompetencia(c); $event.stopPropagation()" matTooltip="{{ 'Remover competência' | translate }}">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </mat-action-row>
-        </mat-expansion-panel>
-      </mat-accordion>
-    </div>
-
-    <div *ngIf="competencias.length === 0" style="text-align: center; padding: 40px; color: #666;">
-      <mat-icon style="font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px;">psychology</mat-icon>
-      <h4>{{ 'Nenhuma competência cadastrada' | translate }}</h4>
-      <p>{{ 'Comece criando competências para organizar suas perguntas em grupos temáticos.' | translate }}</p>
-    </div>
-  </mat-tab>
-
-  <mat-tab label="Montar Relatório">
-    <!-- Salvar/Carregar Relatório e Templates - Visível em AMBOS os modos (Visual e Clássico) -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-      <!-- Salvar/Carregar Relatório -->
-      <mat-card style="padding: 16px;">
-        <mat-card-header>
-          <mat-card-title style="font-size: 16px; margin-bottom: 8px;">
-            <mat-icon style="vertical-align: middle; margin-right: 8px;">save</mat-icon>
-            Relatórios
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div style="display: flex; gap: 8px;">
-              <mat-form-field appearance="outline" style="flex: 1;">
-                <mat-label>{{ 'Nome do novo relatório' | translate }}</mat-label>
-                <input matInput [formControl]="nomeRelatorioControl" placeholder="Ex: Relatório João Silva">
-              </mat-form-field>
-              <button mat-flat-button color="primary" (click)="salvarRelatorioNoFirebase()" matTooltip="{{ 'Salvar configuração atual' | translate }}">
-                <mat-icon>save</mat-icon>
+            <div class="rp-setup-step rp-setup-step--active">
+              <div class="rp-setup-step__num">2</div>
+              <div class="rp-setup-step__body">
+                <strong>Ir para Competências e vincular as perguntas</strong>
+                <span>
+                  Na página de Competências, selecione a mesma avaliação
+                  (<em>{{ selectedAssessmentName }}</em>), crie ou edite os grupos de competências
+                  vinculando as perguntas do formulário, e clique em <strong>Salvar</strong>.
+                </span>
+              </div>
+              <button mat-flat-button color="primary" (click)="navigateToCompetencies()" class="rp-setup-step__btn">
+                <mat-icon>open_in_new</mat-icon>
+                Ir para Competências
               </button>
             </div>
-            <div style="display: flex; gap: 8px;">
-              <mat-form-field appearance="outline" style="flex: 1;">
-                <mat-label>{{ 'Carregar relatório salvo' | translate }}</mat-label>
-                <mat-select [formControl]="selectedReportId">
-                  <mat-option *ngFor="let report of savedReports" [value]="report.id">{{ report.name }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <button mat-stroked-button color="accent" (click)="carregarRelatorioSelecionado()" matTooltip="{{ 'Carregar configuração' | translate }}">
-                <mat-icon>upload</mat-icon>
+
+            <div class="rp-setup-step__connector"></div>
+
+            <div class="rp-setup-step rp-setup-step--disabled">
+              <div class="rp-setup-step__num">3</div>
+              <div class="rp-setup-step__body">
+                <strong>Voltar para Relatórios</strong>
+                <span>Após salvar, volte aqui e selecione a mesma avaliação. As competências aparecerão automaticamente.</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Competências carregadas -->
+        <ng-container *ngIf="allCompetencies.length > 0">
+
+          <!-- Instrução contextual -->
+          <div class="rp-comp-instruction">
+            <div class="rp-comp-instruction__icon">
+              <mat-icon>tune</mat-icon>
+            </div>
+            <div class="rp-comp-instruction__text">
+              <strong>Ajuste quais competências aparecerão no relatório</strong>
+              <span>Clique em uma competência para ativar ou desativar. Todas estão ativas por padrão.</span>
+            </div>
+            <div class="rp-comp-instruction__actions">
+              <button mat-stroked-button size="small"
+                      (click)="selectAllCompetencias()"
+                      [disabled]="competencias.length === allCompetencies.length"
+                      matTooltip="Ativar todas as competências">
+                <mat-icon>done_all</mat-icon>
+                Ativar todas
+              </button>
+              <button mat-stroked-button size="small"
+                      (click)="deselectAllCompetencias()"
+                      [disabled]="competencias.length === 0"
+                      matTooltip="Desativar todas as competências">
+                <mat-icon>remove_done</mat-icon>
+                Desativar todas
               </button>
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
 
-      <!-- Templates -->
-      <mat-card style="padding: 16px;">
-        <mat-card-header>
-          <mat-card-title style="font-size: 16px; margin-bottom: 8px;">
-            <mat-icon style="vertical-align: middle; margin-right: 8px;">file_copy</mat-icon>
-            {{ 'Templates' | translate }}
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div style="display: flex; gap: 8px;">
-              <mat-form-field appearance="outline" style="flex: 1;">
-                <mat-label>{{ 'Nome do template' | translate }}</mat-label>
-                <input matInput [formControl]="nomeTemplateControl" placeholder="Ex: Template Padrão">
-              </mat-form-field>
-              <button mat-flat-button color="primary" (click)="salvarTemplateNoFirebase()" matTooltip="{{ 'Salvar como template' | translate }}">
-                <mat-icon>file_copy</mat-icon>
-              </button>
+          <!-- Contador de competências ativas -->
+          <div class="rp-comp-status-bar">
+            <div class="rp-comp-status-bar__count">
+              <mat-icon>check_circle</mat-icon>
+              <span>
+                <strong>{{ competencias.length }}</strong> de {{ allCompetencies.length }} competência{{ allCompetencies.length !== 1 ? 's' : '' }} ativa{{ competencias.length !== 1 ? 's' : '' }}
+              </span>
             </div>
-            <div style="display: flex; gap: 8px;">
-              <mat-form-field appearance="outline" style="flex: 1;">
-                <mat-label>{{ 'Aplicar template' | translate }}</mat-label>
-                <mat-select [formControl]="selectedTemplateId">
-                  <mat-option *ngFor="let template of savedTemplates" [value]="template.id">{{ template.name }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <button mat-stroked-button color="accent" (click)="aplicarTemplateSelecionado()" matTooltip="{{ 'Aplicar template' | translate }}">
-                <mat-icon>download</mat-icon>
-              </button>
-              <button mat-flat-button color="primary" *ngIf="selectedTemplateId.value" (click)="atualizarTemplateNoFirebase()" matTooltip="{{ 'Salvar alterações no template' | translate }}">
-                <mat-icon>save</mat-icon>
-                Salvar alterações
-              </button>
-            </div>
+            <button mat-button color="primary" (click)="navigateToCompetencies()" class="rp-comp-manage-link">
+              <mat-icon>open_in_new</mat-icon>
+              Criar / editar competências
+            </button>
           </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
 
-    <!-- Modo Visual (Novo) / Clássico -->
-    <div style="margin-bottom: 16px;">
-      <mat-button-toggle-group [(value)]="modoMontagem" (change)="onModoMontagemChange()">
-        <mat-button-toggle value="visual">
-          <mat-icon>dashboard</mat-icon>
-          Visual (Drag & Drop)
-        </mat-button-toggle>
-        <mat-button-toggle value="classico">
-          <mat-icon>list</mat-icon>
-          Clássico
-        </mat-button-toggle>
-      </mat-button-toggle-group>
-    </div>
+          <!-- Cards expansíveis de competências -->
+          <mat-accordion class="rp-comp-accordion" multi>
+            <mat-expansion-panel
+              *ngFor="let c of allCompetencies; trackBy: trackByCompetencia"
+              class="rp-comp-panel"
+              [class.rp-comp-panel--active]="isCompetenciaAtiva(c.id)"
+              [class.rp-comp-panel--inactive]="!isCompetenciaAtiva(c.id)">
 
-    <!-- Componente Visual -->
-    <app-report-builder-visual
-      *ngIf="modoMontagem === 'visual'"
-      [relatorioConfiguracao]="relatorioConfiguracao"
-      [competencias]="competencias"
-      (configuracaoChange)="onConfiguracaoVisualChange($event)">
-    </app-report-builder-visual>
+              <mat-expansion-panel-header class="rp-comp-panel__header">
+                <!-- Toggle de ativação (clique separado do expand) -->
+                <div class="rp-comp-panel__toggle" (click)="toggleCompetencia(c); $event.stopPropagation()">
+                  <mat-icon *ngIf="isCompetenciaAtiva(c.id)" class="rp-comp-panel__check">check_circle</mat-icon>
+                  <mat-icon *ngIf="!isCompetenciaAtiva(c.id)" class="rp-comp-panel__uncheck">radio_button_unchecked</mat-icon>
+                </div>
 
-    <!-- Modo Clássico -->
-    <div *ngIf="modoMontagem === 'classico'">
-      <div style="margin-bottom: 24px;">
-        <h3>{{ 'Configuração de Relatório' | translate }}</h3>
-        <p style="color: #666; margin-bottom: 20px;">
-          {{ 'Monte seu relatório organizando as seções, personalizando textos e selecionando competências para análise.' | translate }}
-        </p>
-
-      <!-- Botões de ação -->
-      <div style="margin-bottom: 16px;">
-        <mat-chip-listbox>
-          <mat-chip-option (click)="addSecaoCustomizada('texto')">
-            <mat-icon>text_fields</mat-icon> Bloco de Texto
-          </mat-chip-option>
-          <mat-chip-option (click)="addSecaoCustomizada('graficos')">
-            <mat-icon>bar_chart</mat-icon> {{ 'Gráficos' | translate }}
-          </mat-chip-option>
-          <mat-chip-option (click)="addSecaoCustomizada('competencia_detalhada')">
-            <mat-icon>table_view</mat-icon> {{ 'Tabela Detalhada' | translate }}
-          </mat-chip-option>
-          <mat-chip-option (click)="addSecaoCustomizada('grafico_defasagem')">
-            <mat-icon>waterfall_chart</mat-icon> {{ 'Gráfico de Defasagem' | translate }}
-          </mat-chip-option>
-          <mat-chip-option (click)="addSecaoCustomizada('janela_johari')">
-            <mat-icon>view_quilt</mat-icon> {{ 'Janela de Johari' | translate }}
-          </mat-chip-option>
-          <mat-chip-option (click)="addSecaoCustomizada('perguntas_abertas')">
-            <mat-icon>forum</mat-icon> {{ 'Perguntas Abertas' | translate }}
-          </mat-chip-option>
-        </mat-chip-listbox>
-      </div>
-
-      <!-- Contador de seções -->
-      <div style="margin-bottom: 16px;">
-        <mat-chip-set>
-          <mat-chip>
-            <mat-icon matChipAvatar>list</mat-icon>
-            {{ getSecaoText() }}
-          </mat-chip>
-          <mat-chip>
-            <mat-icon matChipAvatar>psychology</mat-icon>
-            {{ getCompetenciaText() }}
-          </mat-chip>
-        </mat-chip-set>
-      </div>
-    </div>
-    <form [formGroup]="dummyForm">
-      <div formArrayName="relatorioFormArray" cdkDropList (cdkDropListDropped)="dropSecao($event)">
-        <div *ngFor="let secaoCtrl of relatorioFormGroups; let i = index; trackBy: trackBySectionForm" [formGroup]="secaoCtrl" cdkDrag>
-          <mat-card style="margin-bottom: 16px;">
-            <mat-card-header style="padding-bottom: 8px;">
-              <div style="display: flex; align-items: center; width: 100%;">
-                  <button mat-icon-button cdkDragHandle matTooltip="{{ 'Arraste para reordenar' | translate }}" style="margin-right: 8px;">
-                  <mat-icon>drag_indicator</mat-icon>
-                </button>
-                <div style="flex: 1;">
-                  <mat-checkbox formControlName="visivel" (change)="atualizarSecaoConfiguracao(i)" style="margin-bottom: 4px;">
-                    <span style="font-weight: 500;">{{ secaoCtrl.get('titulo')?.value }}</span>
-                  </mat-checkbox>
-                  <mat-chip [style.background]="getTipoSecaoColor(secaoCtrl.get('tipo')?.value)" [style.color]="'white'" style="margin-left: 8px;">
-                    {{ getTipoSecaoLabel(secaoCtrl.get('tipo')?.value) }}
+                <mat-panel-title class="rp-comp-panel__title">
+                  <span class="rp-comp-panel__name">{{ c.nome }}</span>
+                  <mat-chip class="rp-comp-panel__chip"
+                            [class.rp-comp-panel__chip--active]="isCompetenciaAtiva(c.id)"
+                            [class.rp-comp-panel__chip--inactive]="!isCompetenciaAtiva(c.id)">
+                    {{ isCompetenciaAtiva(c.id) ? 'Ativa' : 'Inativa' }}
                   </mat-chip>
-                                  <mat-chip *ngIf="hasCompetenciasSelecionadas(secaoCtrl)" color="accent">
-                  {{ getCompetenciaCountText(getCompetenciasIdsValue(secaoCtrl)) }}
-                </mat-chip>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <mat-form-field appearance="outline" style="width: 180px; margin: 0; font-size: 12px;">
-                    <mat-label>{{ 'Tipo' | translate }}</mat-label>
-                    <mat-select formControlName="tipo" (selectionChange)="atualizarSecaoConfiguracao(i)">
-                      <mat-option value="capa">Capa</mat-option>
-                      <mat-option value="introducao">Introdução</mat-option>
-                      <mat-option value="resumo">{{ 'Resumo de Competências' | translate }}</mat-option>
-                      <mat-option value="graficos">{{ 'Gráficos' | translate }}</mat-option>
-                      <mat-option value="tabela">{{ 'Tabela de Frequência' | translate }}</mat-option>
-                      <mat-option value="tabela_detalhada">{{ 'Tabela de Distribuição' | translate }}</mat-option>
-                      <mat-option value="competencia_detalhada">Análise Detalhada</mat-option>
-                      <mat-option value="destaques">{{ 'Destaques' | translate }}</mat-option>
-                      <mat-option value="texto">Texto Livre</mat-option>
-                      <mat-option value="grafico_defasagem">{{ 'Gráfico de Defasagem' | translate }}</mat-option>
-                      <mat-option value="perguntas_abertas">{{ 'Perguntas Abertas' | translate }}</mat-option>
-                    </mat-select>
-                  </mat-form-field>
-                  <button mat-icon-button color="accent" (click)="addSecaoCustomizadaAbaixo(i, secaoCtrl.get('tipo')?.value)" matTooltip="Adicionar seção abaixo">
-                    <mat-icon>add</mat-icon>
-                  </button>
-                  <button mat-icon-button color="warn" (click)="removerSecao(i)" matTooltip="Remover seção">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </div>
-              </div>
-            </mat-card-header>
+                </mat-panel-title>
 
-            <mat-card-content>
-              <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
-                    <mat-label>{{ 'Título da seção' | translate }}</mat-label>
-                <input matInput formControlName="titulo" (input)="atualizarSecaoConfiguracao(i)">
-                    <mat-hint>{{ 'Este título aparecerá no relatório final' | translate }}</mat-hint>
-              </mat-form-field>
+                <mat-panel-description class="rp-comp-panel__desc">
+                  {{ c.descricao }}
+                  <span class="rp-comp-panel__qtd">
+                    <mat-icon>quiz</mat-icon>
+                    {{ c.perguntasIds.length || 0 }} questão{{ (c.perguntasIds.length || 0) !== 1 ? 'ões' : '' }}
+                  </span>
+                </mat-panel-description>
+              </mat-expansion-panel-header>
 
-                              <div *ngIf="isSecaoTipo(secaoCtrl, 'texto') || isSecaoTipo(secaoCtrl, 'custom') || isSecaoTipo(secaoCtrl, 'capa') || isSecaoTipo(secaoCtrl, 'introducao')">
-                <label style="font-weight: 500; margin-bottom: 8px; display: block;">Conteúdo:</label>
-
-                <!-- Dicas específicas para cada tipo de seção -->
-                <div *ngIf="isSecaoTipo(secaoCtrl, 'capa')" style="background-color: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
-                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center;">
-                      <mat-icon style="color: #2196f3; margin-right: 8px;">info</mat-icon>
-                      <strong style="color: #1976d2;">{{ 'Dica para Capa:' | translate }}</strong>
-                    </div>
-                    <button mat-stroked-button color="primary" size="small" (click)="aplicarTemplateRico(i, 'capa')" style="font-size: 12px;">
-                      <mat-icon style="font-size: 16px; margin-right: 4px;">auto_awesome</mat-icon>
-                      {{ 'Aplicar Template' | translate }}
-                    </button>
+              <!-- Conteúdo expandido: lista de questões vinculadas -->
+              <div class="rp-comp-panel__questions">
+                <p class="rp-comp-panel__questions-label">
+                  <mat-icon>list_alt</mat-icon>
+                  Questões vinculadas a esta competência:
+                </p>
+                <div *ngIf="(c.perguntasIds?.length || 0) > 0; else semPerguntas" class="rp-comp-panel__question-list">
+                  <div *ngFor="let pId of c.perguntasIds; let qi = index" class="rp-comp-panel__question-item">
+                    <span class="rp-comp-panel__question-num">{{ qi + 1 }}</span>
+                    <span class="rp-comp-panel__question-text">{{ questionMap[pId] || pId }}</span>
                   </div>
-                  <p style="margin: 0; color: #1565c0; font-size: 14px;">
-                    {{ 'Use o editor de texto rico para criar uma capa profissional. Você pode adicionar títulos, subtítulos, imagens, cores e formatação para destacar informações importantes. Clique em "Aplicar Template" para usar um modelo pré-formatado.' | translate }}
+                </div>
+                <ng-template #semPerguntas>
+                  <p class="rp-comp-panel__no-questions">
+                    <mat-icon>info_outline</mat-icon>
+                    Nenhuma questão vinculada ainda. Acesse a página de Competências para vincular perguntas.
                   </p>
-                </div>
-
-                <div *ngIf="isSecaoTipo(secaoCtrl, 'introducao')" style="background-color: #f3e5f5; border-left: 4px solid #9c27b0; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
-                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center;">
-                      <mat-icon style="color: #9c27b0; margin-right: 8px;">lightbulb</mat-icon>
-                      <strong style="color: #7b1fa2;">{{ 'Dica para Introdução:' | translate }}</strong>
-                    </div>
-                    <button mat-stroked-button color="accent" size="small" (click)="aplicarTemplateRico(i, 'introducao')" style="font-size: 12px;">
-                      <mat-icon style="font-size: 16px; margin-right: 4px;">auto_awesome</mat-icon>
-                      {{ 'Aplicar Template' | translate }}
-                    </button>
-                  </div>
-                  <p style="margin: 0; color: #6a1b9a; font-size: 14px;">
-                    {{ 'Crie uma introdução atrativa usando formatação rica. Adicione títulos, listas, destaques e imagens para explicar o propósito e contexto do relatório. Clique em "Aplicar Template" para usar um modelo pré-formatado.' | translate }}
-                  </p>
-                </div>
-
-                <angular-editor formControlName="texto" (blur)="atualizarSecaoConfiguracao(i)" [config]="editorConfig"></angular-editor>
-              </div>
-
-              <div *ngIf="isSecaoTipo(secaoCtrl, 'graficos')">
-                <div style="display: grid; grid-template-columns: 1fr 200px; gap: 16px; margin-bottom: 16px;">
-                  <mat-form-field appearance="outline">
-                    <mat-label>{{ 'Competências para os gráficos' | translate }}</mat-label>
-                    <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
-                      <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
-                    </mat-select>
-                    <mat-hint>{{ 'Selecione as competências que devem aparecer nesta seção de gráficos.' | translate }}</mat-hint>
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>{{ 'Tipo de gráfico' | translate }}</mat-label>
-                    <mat-select formControlName="tipoGrafico" (selectionChange)="atualizarSecaoConfiguracao(i)">
-                      <mat-option value="barra">Barra Comparativa</mat-option>
-                      <mat-option value="radar">Radar Comparativo</mat-option>
-                      <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
-                      <mat-option value="pizza-individual">Pizza Individual</mat-option>
-                      <mat-option value="barras-individuais">Barras Individuais</mat-option>
-                      <mat-option value="janela_johari">{{ 'Janela de Johari' | translate }}</mat-option>
-                    </mat-select>
-                  </mat-form-field>
-                </div>
-
-                <!-- Controles de Cores -->
-                <mat-card style="padding: 16px; background-color: #f5f5f5;">
-                  <mat-card-header style="padding-bottom: 8px;">
-                    <mat-card-title style="font-size: 14px; color: #7b1fa2;">
-                      <mat-icon style="vertical-align: middle; margin-right: 8px; font-size: 18px;">palette</mat-icon>
-                      Personalização de Cores
-                    </mat-card-title>
-                  </mat-card-header>
-                  <mat-card-content>
-                    <!-- Mensagem especial para gráfico de barras comparativo -->
-                    <div *ngIf="secaoCtrl.get('tipoGrafico')?.value === 'barra'"
-                         style="background-color: #e8f5e8; border-left: 4px solid #4caf50; padding: 12px; margin-bottom: 16px; border-radius: 4px;">
-                      <div style="display: flex; align-items: center;">
-                        <mat-icon style="color: #4caf50; margin-right: 8px;">info</mat-icon>
-                        <span style="color: #2e7d32; font-size: 14px;">
-                          <strong>{{ 'Gráfico de Barras Comparativo:' | translate }}</strong> {{ 'Cada categoria terá uma cor distinta para melhor visualização.' | translate }}
-                          {{ 'A paleta "Categorias Distintas" é recomendada para este tipo de gráfico.' | translate }}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 150px 80px; gap: 16px; align-items: start;">
-                      <mat-form-field appearance="outline">
-                        <mat-label>{{ 'Paleta de cores' | translate }}</mat-label>
-                        <mat-select formControlName="paletaCor" (selectionChange)="onPaletaCorChange(relatorioConfiguracao[i], i)">
-                          <mat-option *ngFor="let paleta of paletasCores | keyvalue" [value]="paleta.key">
-                            {{ paleta.value.nome }}
-                          </mat-option>
-                        </mat-select>
-                        <mat-hint>{{ 'Escolha uma paleta pré-definida ou personalize' | translate }}</mat-hint>
-                      </mat-form-field>
-
-                      <!-- Preview das cores da paleta selecionada -->
-                      <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
-                        <div *ngFor="let cor of getColorSchemeParaSecao(relatorioConfiguracao[i]).domain; let idx = index"
-                             [style.background-color]="cor"
-                             style="width: 24px; height: 24px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer;"
-                             [matTooltip]="getCorTooltip(relatorioConfiguracao[i], idx)">
-                        </div>
-                      </div>
-
-                      @if (showDebugButtons) {
-                        <button mat-stroked-button color="accent"
-                                (click)="debugCores(relatorioConfiguracao[i], i)"
-                                style="height: 36px; font-size: 11px;"
-                                matTooltip="{{ 'Debug das cores' | translate }}">
-                          Debug
-                        </button>
-                      }
-                    </div>
-
-                    <!-- Cores personalizadas (apenas se paleta personalizada estiver selecionada) -->
-                    <div *ngIf="isPaletaPersonalizada(secaoCtrl, i)" style="margin-top: 16px;">
-                      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                        <span style="font-size: 14px; font-weight: 500;">{{ 'Cores personalizadas:' | translate }}</span>
-                        <button mat-icon-button color="primary" (click)="adicionarCorPersonalizada(relatorioConfiguracao[i], i)" matTooltip="{{ 'Adicionar cor' | translate }}">
-                          <mat-icon>add</mat-icon>
-                        </button>
-                      </div>
-                      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <div *ngFor="let cor of relatorioConfiguracao[i]['coresPersonalizadas']; let idx = index" style="display: flex; align-items: center; gap: 4px;">
-                                                    <input type="color"
-                                 [value]="cor"
-                                 (change)="atualizarCorPersonalizada(relatorioConfiguracao[i], i, idx, $event)"
-                                 style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer;">
-                          <button mat-icon-button color="warn" (click)="removerCorPersonalizada(relatorioConfiguracao[i], i, idx)" matTooltip="{{ 'Remover cor' | translate }}">
-                            <mat-icon style="font-size: 18px;">delete_outline</mat-icon>
-                          </button>
-                        </div>
-                      </div>
-                      <mat-hint style="font-size: 12px; color: #666; margin-top: 8px;">
-                        {{ 'Clique nas cores para editá-las. Adicione pelo menos 3 cores para melhores resultados.' | translate }}
-                      </mat-hint>
-                    </div>
-                  </mat-card-content>
-                </mat-card>
-              </div>
-
-              <div *ngIf="isSecaoTipo(secaoCtrl, 'perguntas_abertas')">
-                <mat-card style="margin-top: 16px; padding: 16px; background-color: #e8eaf6;">
-                  <mat-card-content>
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                      <mat-icon style="color: #5C6BC0; margin-right: 8px;">forum</mat-icon>
-                      <span style="font-weight: 500;">{{ 'Perguntas Abertas' | translate }}</span>
-                    </div>
-                    <p style="margin: 0; font-size: 14px; color: #555;">
-                      {{ 'Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado, Gestor, Par, Subordinado, Outros).' | translate }}
-                    </p>
-                  </mat-card-content>
-                </mat-card>
-              </div>
-              <div *ngIf="isSecaoTipo(secaoCtrl, 'janela_johari')">
-                <mat-card style="margin-top: 16px; padding: 16px; background-color: #e3f2fd;">
-                  <mat-card-content>
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                      <mat-icon style="color: #2196F3; margin-right: 8px;">info</mat-icon>
-                      <span style="font-weight: 500;">Configuração da Janela de Johari</span>
-                    </div>
-                    <p style="margin: 0; font-size: 14px; color: #555;">
-                      A Janela de Johari classifica as competências em quatro quadrantes com base na autoavaliação e na avaliação dos outros.
-                      Selecione as competências que você deseja incluir nesta análise. O gráfico será gerado automaticamente.
-                    </p>
-                  </mat-card-content>
-                </mat-card>
-              </div>
-
-              <div *ngIf="isSecaoTipo(secaoCtrl, 'tabela')">
-                <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
-                  <mat-label>Competências para a tabela</mat-label>
-                  <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
-                    <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
-                  </mat-select>
-                  <mat-hint>Selecione as competências que devem aparecer na tabela de frequência.</mat-hint>
-                </mat-form-field>
-              </div>
-
-              <div *ngIf="isSecaoTipo(secaoCtrl, 'tabela_detalhada')">
-                <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
-                  <mat-label>Competências para tabela detalhada</mat-label>
-                  <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
-                    <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
-                  </mat-select>
-                  <mat-hint>Selecione as competências para exibir na tabela de distribuição de notas (1-5).</mat-hint>
-                </mat-form-field>
-
-                <mat-card style="margin-top: 16px; padding: 16px; background-color: #e8f5e8;">
-                  <mat-card-content>
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                      <mat-icon style="color: #4CAF50; margin-right: 8px;">info</mat-icon>
-                      <span style="font-weight: 500;">Sobre a Tabela de Distribuição</span>
-                    </div>
-                    <p style="margin: 0; font-size: 14px; color: #555;">
-                      Esta tabela mostra a contagem de respostas para cada nota (1-5) por categoria de avaliador,
-                      similar ao formato de frequência mostrado na imagem de exemplo. Cada competência selecionada
-                      gerará uma tabela completa com todas as suas perguntas.
-                    </p>
-                  </mat-card-content>
-                </mat-card>
-              </div>
-
-              <div *ngIf="isSecaoTipo(secaoCtrl, 'grafico_defasagem')">
-                <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
-                  <mat-label>Competências para o Gráfico de Defasagem</mat-label>
-                  <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
-                    <mat-option *ngFor="let comp of competencias" [value]="comp.id">{{ comp.nome }}</mat-option>
-                  </mat-select>
-                  <mat-hint>Selecione as competências que devem aparecer no gráfico.</mat-hint>
-                </mat-form-field>
-
-                <!-- Gráficos de defasagem por grupo de competências -->
-                <div *ngIf="getCompetenciasSelecionadasParaSecao(secaoCtrl.value).length > 0; else noDataDefasagem" style="margin-top: 20px;">
-                  <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secaoCtrl.value)" style="margin-bottom: 30px;">
-                    <h4 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">
-                      {{ comp.nome }}
-                    </h4>
-                    <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
-                  </div>
-                </div>
-
-                <ng-template #noDataDefasagem>
-                  <div class="no-data-placeholder" style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
-                    <mat-icon style="font-size: 48px; width: 48px; height: 48px;">waterfall_chart</mat-icon>
-                    <p>Selecione uma ou mais competências para gerar o gráfico.</p>
-                  </div>
                 </ng-template>
               </div>
 
-              <div *ngIf="secaoCtrl.get('tipo')?.value === 'destaques'">
-                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px;">
-                  <!-- Removido: controle de Característica do líder ADEO -->
-                  <mat-checkbox formControlName="mostrarPontuacaoSemAuto" (change)="atualizarSecaoConfiguracao(i)">
-                    Mostrar pontuação sem autoavaliação
-                  </mat-checkbox>
-                </div>
+            </mat-expansion-panel>
+          </mat-accordion>
 
-                <mat-card style="margin-top: 16px; padding: 16px; background-color: #fff3e0;">
-                  <mat-card-content>
-                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                      <mat-icon style="color: #FF9800; margin-right: 8px;">info</mat-icon>
-                      <span style="font-weight: 500;">Sobre Avaliações Mais Altas e Baixas</span>
-                    </div>
-                    <p style="margin: 0; font-size: 14px; color: #555;">
-                      Esta seção lista os comportamentos/perguntas com maior e menor pontuação média geral.
-                    Inclui todas as competências automaticamente.
-                    </p>
-                  </mat-card-content>
-                </mat-card>
-              </div>
-            </mat-card-content>
-          </mat-card>
-        </div>
-      </div>
-    </form>
-      </div>
-    <!-- Fim do modo clássico -->
-  </mat-tab>
-
-  <!-- <mat-tab label="Dashboard Interativo">
-    <app-survey-dashboard
-      [assessmentId]="selectedAssessmentId">
-    </app-survey-dashboard>
-  </mat-tab> -->
-
-  <mat-tab label="Visualizar Relatório">
-    <button mat-flat-button color="accent" class="ui-only" style="margin-bottom: 16px;" (click)="exportarRelatorioPDF()">
-      <mat-icon>picture_as_pdf</mat-icon> {{ 'Exportar PDF' | translate }}
-    </button>
-    <button mat-flat-button color="primary" class="ui-only" style="margin-left: 8px; margin-bottom: 16px;" (click)="exportarBaseExcel()">
-      <mat-icon>grid_on</mat-icon> {{ 'Exportar base (Excel)' | translate }}
-    </button>
-    <button mat-flat-button color="primary" class="ui-only" style="margin-left: 8px; margin-bottom: 16px;" (click)="exportarRelatorioDOCX()">
-      <mat-icon>description</mat-icon> {{ 'Exportar DOCX' | translate }}
-    </button>
-    <div id="report-preview">
-      <div class="report-section" *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
-        <ng-container [ngSwitch]="secao.tipo">
-                      <div *ngSwitchCase="'capa'">
-              <h1>{{ secao.titulo }}</h1>
-              <div [innerHTML]="getCapaComDadosDinamicos(secao.texto)"></div>
+          <!-- ===== BOTÃO AVANÇAR ===== -->
+          <div class="rp-tab-footer">
+            <div class="rp-tab-footer__status" *ngIf="competencias.length === 0">
+              <mat-icon>warning_amber</mat-icon>
+              <span>Ative pelo menos uma competência para avançar</span>
             </div>
-          <div *ngSwitchCase="'introducao'">
-            <h2>{{ secao.titulo }}</h2>
-            <div [innerHTML]="secao.texto"></div>
-          </div>
-          <div *ngSwitchCase="'resumo'">
-            <h2>{{ secao.titulo }}</h2>
-            <div [innerHTML]="secao.texto"></div>
-            <div *ngIf="getResumoMedias().length">
-              <div *ngFor="let compData of getResumoMediasPorCompetencia()">
-                <h3>{{ compData.nome }}</h3>
-                <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ compData.descricao }}</p>
-                <table class="mat-elevation-z8" style="margin: 16px 0 32px 0; min-width: 400px;">
-                  <thead>
-                    <tr>
-                      <th>Grupo</th>
-                      <th>Média</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let linha of compData.dados">
-                      <td>{{ linha.grupo }}</td>
-                      <td>{{ linha.media !== null ? (linha.media | number:'1.2-2') : '-' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            <div class="rp-tab-footer__status rp-tab-footer__status--ok" *ngIf="competencias.length > 0">
+              <mat-icon>check_circle</mat-icon>
+              <span><strong>{{ competencias.length }}</strong> competência{{ competencias.length !== 1 ? 's' : '' }} pronta{{ competencias.length !== 1 ? 's' : '' }}</span>
             </div>
-            <p *ngIf="!getResumoMedias().length"><i>Nenhuma competência selecionada ou sem dados.</i></p>
+            <button mat-flat-button
+                    color="primary"
+                    class="rp-advance-btn"
+                    [disabled]="competencias.length === 0"
+                    (click)="goToTab(1)">
+              Montar Relatório
+              <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+            </button>
           </div>
-          <div *ngSwitchCase="'graficos'">
-            <h2>{{ secao.titulo }}</h2>
-            <div [innerHTML]="secao.texto"></div>
 
+        </ng-container>
+      </ng-container>
 
+    </div>
+  </div>
 
-            <div *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length > 0">
-              <!-- Controle de tipo de gráfico (somente UI; oculto na exportação) -->
-              <mat-form-field appearance="outline" class="ui-only" style="width: 250px; margin-bottom: 16px;">
-                <mat-label>Tipo de gráfico</mat-label>
-                <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao, i)">
-                  <mat-option value="barra">Barra Comparativa</mat-option>
-                  <mat-option value="radar">Radar Comparativo</mat-option>
-                  <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
-                  <mat-option value="pizza-individual">Pizza Individual</mat-option>
-                  <mat-option value="barras-individuais">Barras Individuais</mat-option>
-                  <mat-option value="janela_johari">Janela de Johari</mat-option>
-                </mat-select>
-              </mat-form-field>
+  <!-- ============ PASSO 2: MONTAR RELATÓRIO ============ -->
+  <div class="rp-step-panel" *ngIf="selectedTabIndex === 1 && currentUserRole !== 'viewer'">
+    <div class="rp-step-panel__header">
+      <h2 class="rp-step-panel__title">Montar Relatório</h2>
+      <p class="rp-step-panel__desc">Organize as seções, textos e gráficos do relatório</p>
+    </div>
+    <div class="rp-tab-content">
 
-              <!-- Lista das competências selecionadas -->
-              <div style="margin-bottom: 16px;">
-                <h4>Competências analisadas:</h4>
-                <mat-chip-set>
-                  <mat-chip *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)"
-                           [matTooltip]="comp.descricao">
-                    <mat-icon matChipAvatar>psychology</mat-icon>
-                    {{ comp.nome }}
-                  </mat-chip>
-                </mat-chip-set>
-              </div>
+      <!-- Save/Load + Templates -->
+      <div class="rp-persist-cols">
 
-              <!-- Gráfico único comparativo -->
-              <ng-container [ngSwitch]="getTipoGraficoControl(i).value || 'barra'">
-                <!-- Janela de Johari -->
-                <div *ngSwitchCase="'janela_johari'">
-                  <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
-                </div>
-                <!-- Gráfico de barras comparativo -->
-                <div *ngSwitchCase="'barra'">
-                  <div style="display: flex; flex-direction: column; gap: 30px;">
-                    <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
-                      <h4>{{ comp.nome }}</h4>
-                      <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
-                      <ng-container *ngIf="getCompetenciaBarraComparativaData(comp) as dadosGrafico">
-                        <ngx-charts-bar-horizontal
-                          [results]="dadosGrafico"
-                          [xAxis]="true"
-                          [yAxis]="true"
-                          [view]="[800, (dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)]"
-                          [style.height.px]="(dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)"
-                          [legend]="true"
-                          [showGridLines]="true"
-                          [showDataLabel]="true"
-                          [barPadding]="8"
-                          [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
-                          [xAxisLabel]="'Pontuação (0-5)'"
-                          [yAxisLabel]="'Categorias'"
-                        ></ngx-charts-bar-horizontal>
-                      </ng-container>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Gráfico radar comparativo -->
-                <div *ngSwitchCase="'radar'">
-                  <div echarts [options]="getSecaoRadarOptions(secao)" [style.height.px]="400"></div>
-                </div>
-
-                <!-- Gráfico de pizza comparativo -->
-                <div *ngSwitchCase="'pizza-comparativa'">
-                  <ng-container *ngIf="getSecaoPieData(secao) as dadosPizza">
-                    <ngx-charts-pie-chart
-                      [results]="dadosPizza"
-                      [view]="[600,400]"
-                      [legend]="true"
-                      [labels]="true"
-                      [doughnut]="false"
-                      [scheme]="getColorSchemeParaSecao(secao)"
-                    ></ngx-charts-pie-chart>
-                  </ng-container>
-                </div>
-
-                <!-- Gráficos de pizza individuais -->
-                <div *ngSwitchCase="'pizza-individual'">
-                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                    <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
-                      <h4>{{ comp.nome }}</h4>
-                      <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
-                      <ngx-charts-pie-chart
-                        [results]="getCompetenciaPieData(comp)"
-                        [view]="[300,250]"
-                        [legend]="true"
-                        [labels]="true"
-                        [doughnut]="false"
-                        [scheme]="getColorSchemeParaSecao(secao)"
-                      ></ngx-charts-pie-chart>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Gráficos de barras individuais -->
-                <div *ngSwitchCase="'barras-individuais'">
-                  <div style="display: flex; flex-direction: column; gap: 30px;">
-                    <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
-                      <h4>{{ comp.nome }}</h4>
-                      <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
-                      <div style="height: 300px; width: 100%;">
-                        <ngx-charts-bar-horizontal
-                          [results]="getCompetenciaStackedData(comp)"
-                          [xAxis]="true"
-                          [yAxis]="true"
-                          [view]="[800, 280]"
-                          [legend]="false"
-                          [showGridLines]="true"
-                          [showDataLabel]="true"
-                          [barPadding]="8"
-                          [scheme]="getColorSchemeParaSecao(secao)"
-                          [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
-                        ></ngx-charts-bar-horizontal>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </ng-container>
+        <!-- ── Coluna: Meu Relatório ── -->
+        <div class="rp-persist-col">
+          <div class="rp-persist-col__header">
+            <div class="rp-persist-col__icon-wrap rp-persist-col__icon-wrap--report">
+              <mat-icon>bookmark</mat-icon>
             </div>
-
-            <p *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length === 0">
-              <i>Nenhuma competência selecionada para exibir gráficos.</i>
-            </p>
-          </div>
-          <div *ngSwitchCase="'tabela'">
-            <h2>{{ secao.titulo }}</h2>
-            <div [innerHTML]="secao.texto"></div>
-
-            <div *ngIf="getCompetenciasSelecionadasParaTabela().length > 0; else noTabelaData">
-              <div *ngFor="let comp of getCompetenciasSelecionadasParaTabela()">
-                <h3>{{ comp.nome }}</h3>
-                <p>{{ comp.descricao }}</p>
-
-                <!-- Tabela de frequência similar ao print -->
-                <div style="overflow-x: auto;">
-                  <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
-                    <table class="tabela-frequencia" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                      <!-- Cabeçalho da tabela -->
-                      <thead>
-                        <tr style="background-color: #8BC34A; color: white;">
-                          <th rowspan="2" style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">{{ comp.nome.toUpperCase() }}</th>
-                          <th *ngFor="let categoria of tabelaData.mediasGerais"
-                              [attr.colspan]="5"
-                              style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">
-                            {{ getAbreviacaoCategoria(categoria.categoria) }}
-                          </th>
-                        </tr>
-                        <tr style="background-color: #A5D6A7; color: white;">
-                          <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                            <th *ngFor="let nota of [1,2,3,4,5]"
-                                style="border: 1px solid #ddd; padding: 4px; text-align: center; min-width: 30px; font-weight: bold;">
-                              {{ nota }}
-                            </th>
-                          </ng-container>
-                        </tr>
-                      </thead>
-
-                      <!-- Corpo da tabela -->
-                      <tbody>
-                        <tr *ngFor="let linha of tabelaData.linhas; let isEven = even"
-                            [style.background-color]="isEven ? '#f9f9f9' : 'white'">
-                          <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px; text-align: left;">
-                            {{ linha.pergunta }}
-                          </td>
-                          <ng-container *ngFor="let categoria of linha.categorias">
-                            <td *ngFor="let dist of categoria.distribuicao"
-                                style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 12px;">
-                              {{ dist.quantidade > 0 ? dist.quantidade : '' }}
-                            </td>
-                          </ng-container>
-                        </tr>
-
-                        <!-- Linha de médias movida para o rodapé para evitar duplicidade -->
-                      </tbody>
-                      <tfoot>
-                        <!-- Linha Média total (igual já exibida) -->
-                        <tr style="background-color: #8BC34A; color: white; font-weight: bold;">
-                          <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px;">Média</td>
-                          <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                            <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">
-                              {{ categoria.media | number:'1.1-1' }}
-                            </td>
-                          </ng-container>
-                        </tr>
-
-                        <!-- Linha Média sem autoavaliação (por categoria) -->
-                        <tr>
-                          <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px; font-weight: bold;">Média sem autoavaliação</td>
-                          <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                            <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">
-                              <ng-container *ngIf="getAbreviacaoCategoria(categoria.categoria) !== 'A'">
-                                {{ categoria.totalRespostas > 0 ? (categoria.media | number:'1.1-1') : '' }}
-                              </ng-container>
-                            </td>
-                          </ng-container>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </ng-container>
-                </div>
-              </div>
+            <div>
+              <p class="rp-persist-col__title">Meu Relatório</p>
+              <p class="rp-persist-col__desc">Salve e recupere configurações específicas por avaliado</p>
             </div>
-
-            <ng-template #noTabelaData>
-              <p>
-                Selecione uma ou mais competências na aba "Montar Relatório" para visualizar a tabela.
-              </p>
-            </ng-template>
           </div>
-                    <div *ngSwitchCase="'tabela_detalhada'">
-            <h2>{{ secao.titulo }}</h2>
-            <div [innerHTML]="secao.texto"></div>
 
-            @if (showDebugButtons) {
-              <button mat-raised-button color="warn" (click)="debugTabelaDetalhada()" style="margin-bottom: 16px;">
-                🔍 Debug Tabela Detalhada
+          <!-- Salvar -->
+          <div class="rp-persist-card">
+            <div class="rp-persist-card__top">
+              <mat-icon class="rp-persist-card__icon">save</mat-icon>
+              <div>
+                <p class="rp-persist-card__name">Salvar relatório</p>
+                <p class="rp-persist-card__hint">Registra a configuração atual com um nome</p>
+              </div>
+              <mat-icon class="rp-persist-card__info-icon"
+                matTooltip="Salva a configuração atual das seções, textos e gráficos com um nome personalizado. Use para guardar um trabalho em andamento ou criar versões específicas para um avaliado."
+                matTooltipPosition="above">info_outline</mat-icon>
+            </div>
+            <mat-form-field appearance="outline" class="rp-persist-card__field">
+              <mat-label>Nome do relatório</mat-label>
+              <input matInput [formControl]="nomeRelatorioControl" placeholder="Ex: Relatório João Silva">
+            </mat-form-field>
+            <!-- Badge de vínculo com template -->
+            <div class="rp-template-link-badge" *ngIf="selectedTemplateId.value">
+              <mat-icon>link</mat-icon>
+              <span>Vinculado ao template: <strong>{{ nomeTemplateSelecionado }}</strong></span>
+            </div>
+            <div class="rp-template-link-badge rp-template-link-badge--none" *ngIf="!selectedTemplateId.value">
+              <mat-icon>link_off</mat-icon>
+              <span>Sem vínculo — aplique um template ao lado para vincular ao salvar</span>
+            </div>
+            <div class="rp-persist-card__actions">
+              <button mat-flat-button class="btn-pc-primary" (click)="salvarRelatorioNoFirebase()">
+                <mat-icon>save</mat-icon> Salvar
               </button>
-            }
+            </div>
+          </div>
 
-            <!-- Seleção de competências para tabela detalhada -->
-            <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0">
-              <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let compIndex = index">
-                <div style="margin-bottom: 30px;">
-                  <!-- Texto editável para a competência -->
-                  <div style="margin-bottom: 20px;">
-                    <h3>{{ comp.nome }}</h3>
-                    <p style="color: #666; font-style: italic;">{{ comp.descricao }}</p>
+          <!-- Carregar / Excluir -->
+          <div class="rp-persist-card">
+            <div class="rp-persist-card__top">
+              <mat-icon class="rp-persist-card__icon">history</mat-icon>
+              <div>
+                <p class="rp-persist-card__name">Carregar ou excluir relatório</p>
+                <p class="rp-persist-card__hint">Selecione um relatório salvo para carregar ou remover</p>
+              </div>
+              <mat-icon class="rp-persist-card__info-icon"
+                matTooltip="Escolha um relatório salvo anteriormente para continuar editando, atualizar com as mudanças atuais ou removê-lo permanentemente."
+                matTooltipPosition="above">info_outline</mat-icon>
+            </div>
+            <mat-form-field appearance="outline" class="rp-persist-card__field">
+              <mat-label>Selecionar relatório</mat-label>
+              <mat-select [formControl]="selectedReportId">
+                <mat-option *ngFor="let report of savedReports" [value]="report.id">{{ report.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <div class="rp-persist-card__actions">
+              <button mat-stroked-button class="btn-pc-outline" (click)="carregarRelatorioSelecionado()" [disabled]="!selectedReportId.value">
+                <mat-icon>download</mat-icon> Carregar
+              </button>
+              <button mat-flat-button class="btn-pc-primary" *ngIf="selectedReportId.value" (click)="atualizarRelatorioNoFirebase()">
+                <mat-icon>sync</mat-icon> Atualizar
+              </button>
+              <button mat-stroked-button class="btn-pc-danger" *ngIf="selectedReportId.value" (click)="excluirRelatorio()"
+                matTooltip="Excluir este relatório permanentemente">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+              <button mat-icon-button class="btn-pc-clear" *ngIf="selectedReportId.value" (click)="selectedReportId.setValue(null)"
+                matTooltip="Remover seleção">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
 
-                                        <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
-                      <mat-label>Texto introdutório para {{ comp.nome }}</mat-label>
-                      <textarea matInput
-                                placeholder="Digite um texto explicativo para esta competência..."
-                                rows="3"
-                                [value]="getOrInitTextoCompetencia(secao, comp)"
-                                (input)="atualizarTextoCompetencia(secao, comp.id, $event)">
-                      </textarea>
+          <!-- Resetar configuração -->
+          <div class="rp-persist-card rp-persist-card--reset">
+            <div class="rp-persist-card__top">
+              <mat-icon class="rp-persist-card__icon rp-persist-card__icon--reset">restart_alt</mat-icon>
+              <div>
+                <p class="rp-persist-card__name">Limpar configuração</p>
+                <p class="rp-persist-card__hint">Restaura o relatório para a estrutura padrão</p>
+              </div>
+              <mat-icon class="rp-persist-card__info-icon rp-persist-card__info-icon--danger"
+                matTooltip="Descarta todas as seções e configurações atuais, restaurando o relatório para a estrutura padrão. Ação irreversível — salve antes se necessário."
+                matTooltipPosition="above">info_outline</mat-icon>
+            </div>
+            <div class="rp-persist-card__actions">
+              <button mat-stroked-button class="btn-pc-danger" (click)="resetarRelatorio()">
+                <mat-icon>restart_alt</mat-icon> Limpar e resetar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Coluna: Templates ── -->
+        <div class="rp-persist-col">
+          <div class="rp-persist-col__header">
+            <div class="rp-persist-col__icon-wrap rp-persist-col__icon-wrap--template">
+              <mat-icon>file_copy</mat-icon>
+            </div>
+            <div>
+              <p class="rp-persist-col__title">Templates</p>
+              <p class="rp-persist-col__desc">Estruturas reutilizáveis para qualquer avaliado</p>
+            </div>
+          </div>
+
+          <!-- Criar template -->
+          <div class="rp-persist-card">
+            <div class="rp-persist-card__top">
+              <mat-icon class="rp-persist-card__icon rp-persist-card__icon--template">add_circle</mat-icon>
+              <div>
+                <p class="rp-persist-card__name">Criar novo template</p>
+                <p class="rp-persist-card__hint">Salva a estrutura atual como template reutilizável</p>
+              </div>
+              <mat-icon class="rp-persist-card__info-icon rp-persist-card__info-icon--template"
+                matTooltip="Cria um template com a estrutura atual de seções e textos. Templates são reutilizáveis para qualquer avaliado, sem guardar dados específicos de pessoa."
+                matTooltipPosition="above">info_outline</mat-icon>
+            </div>
+            <mat-form-field appearance="outline" class="rp-persist-card__field">
+              <mat-label>Nome do template</mat-label>
+              <input matInput [formControl]="nomeTemplateControl" placeholder="Ex: Padrão Liderança">
+            </mat-form-field>
+            <div class="rp-persist-card__actions">
+              <button mat-flat-button class="btn-pc-template" (click)="salvarTemplateNoFirebase()">
+                <mat-icon>file_copy</mat-icon> Criar template
+              </button>
+            </div>
+          </div>
+
+          <!-- Aplicar / Atualizar / Excluir template -->
+          <div class="rp-persist-card">
+            <div class="rp-persist-card__top">
+              <mat-icon class="rp-persist-card__icon rp-persist-card__icon--template">layers</mat-icon>
+              <div>
+                <p class="rp-persist-card__name">Aplicar ou gerenciar template</p>
+                <p class="rp-persist-card__hint">Carregue, atualize ou exclua um template existente</p>
+              </div>
+              <mat-icon class="rp-persist-card__info-icon rp-persist-card__info-icon--template"
+                matTooltip="Selecione um template para aplicá-lo ao relatório atual, sobrescrevendo a estrutura existente. Também é possível atualizar o template com as mudanças feitas ou excluí-lo permanentemente."
+                matTooltipPosition="above">info_outline</mat-icon>
+            </div>
+            <mat-form-field appearance="outline" class="rp-persist-card__field">
+              <mat-label>Selecionar template</mat-label>
+              <mat-select [formControl]="selectedTemplateId">
+                <mat-option *ngFor="let template of savedTemplates" [value]="template.id">{{ template.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <div class="rp-persist-card__actions">
+              <button mat-stroked-button class="btn-pc-outline-template" (click)="aplicarTemplateSelecionado()" [disabled]="!selectedTemplateId.value">
+                <mat-icon>download</mat-icon> Aplicar
+              </button>
+              <button mat-flat-button class="btn-pc-template" *ngIf="selectedTemplateId.value" (click)="atualizarTemplateNoFirebase()">
+                <mat-icon>sync</mat-icon> Atualizar
+              </button>
+              <button mat-stroked-button class="btn-pc-danger" *ngIf="selectedTemplateId.value" (click)="excluirTemplate()"
+                matTooltip="Excluir este template permanentemente">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+              <button mat-icon-button class="btn-pc-clear" *ngIf="selectedTemplateId.value" (click)="selectedTemplateId.setValue(null)"
+                matTooltip="Remover seleção">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Atalho para visualizar no topo do kanban -->
+      <div class="rp-builder-top-bar">
+        <div class="rp-mode-toggle-inline">
+          <mat-button-toggle-group [(value)]="modoMontagem" (change)="onModoMontagemChange()">
+            <mat-button-toggle value="visual">
+              <mat-icon>dashboard</mat-icon>
+              Visual (Drag & Drop)
+            </mat-button-toggle>
+            <mat-button-toggle value="classico">
+              <mat-icon>list</mat-icon>
+              Clássico
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+        <button mat-flat-button color="primary" class="rp-advance-btn" (click)="goToTab(2)">
+          Visualizar Relatório
+          <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        </button>
+      </div>
+
+
+      <!-- Visual mode -->
+      <app-report-builder-visual
+        *ngIf="modoMontagem === 'visual'"
+        [relatorioConfiguracao]="relatorioConfiguracao"
+        [competencias]="competencias"
+        [savedLabel]="builderSavedLabel"
+        [hasUnsavedChanges]="builderHasUnsavedChanges"
+        [documentoConfig]="documentoConfig"
+        (configuracaoChange)="onConfiguracaoVisualChange($event)"
+        (documentoConfigChange)="onDocumentoConfigChange($event)"
+        (saveRequested)="onBuilderSaveRequested()">
+      </app-report-builder-visual>
+
+      <!-- Classic mode -->
+      <div *ngIf="modoMontagem === 'classico'" class="rp-classic-mode">
+        <div class="rp-section-header-block">
+          <h3>{{ 'Configuração de Relatório' | translate }}</h3>
+          <p>{{ 'Monte seu relatório organizando as seções, personalizando textos e selecionando competências para análise.' | translate }}</p>
+        </div>
+
+        <!-- Add section chips -->
+        <div class="rp-add-section-bar">
+          <mat-chip-listbox>
+            <mat-chip-option (click)="addSecaoCustomizada('texto')">
+              <mat-icon>text_fields</mat-icon> Bloco de Texto
+            </mat-chip-option>
+            <mat-chip-option (click)="addSecaoCustomizada('graficos')">
+              <mat-icon>bar_chart</mat-icon> {{ 'Gráficos' | translate }}
+            </mat-chip-option>
+            <mat-chip-option (click)="addSecaoCustomizada('competencia_detalhada')">
+              <mat-icon>table_view</mat-icon> {{ 'Tabela Detalhada' | translate }}
+            </mat-chip-option>
+            <mat-chip-option (click)="addSecaoCustomizada('grafico_defasagem')">
+              <mat-icon>waterfall_chart</mat-icon> {{ 'Gráfico de Defasagem' | translate }}
+            </mat-chip-option>
+            <mat-chip-option (click)="addSecaoCustomizada('janela_johari')">
+              <mat-icon>view_quilt</mat-icon> {{ 'Janela de Johari' | translate }}
+            </mat-chip-option>
+            <mat-chip-option (click)="addSecaoCustomizada('perguntas_abertas')">
+              <mat-icon>forum</mat-icon> {{ 'Perguntas Abertas' | translate }}
+            </mat-chip-option>
+          </mat-chip-listbox>
+        </div>
+
+        <!-- Section stats -->
+        <div class="rp-section-stats">
+          <mat-chip-set>
+            <mat-chip>
+              <mat-icon matChipAvatar>list</mat-icon>
+              {{ getSecaoText() }}
+            </mat-chip>
+            <mat-chip>
+              <mat-icon matChipAvatar>psychology</mat-icon>
+              {{ getCompetenciaText() }}
+            </mat-chip>
+          </mat-chip-set>
+        </div>
+
+        <!-- Section cards (cdkDropList) -->
+        <form [formGroup]="dummyForm">
+          <div formArrayName="relatorioFormArray" cdkDropList (cdkDropListDropped)="dropSecao($event)">
+            <div *ngFor="let secaoCtrl of relatorioFormGroups; let i = index; trackBy: trackBySectionForm"
+                 [formGroup]="secaoCtrl" cdkDrag>
+              <mat-card class="rp-section-card">
+                <mat-card-header class="rp-section-card__header">
+                  <div class="rp-section-card__header-inner">
+                    <button mat-icon-button cdkDragHandle matTooltip="{{ 'Arraste para reordenar' | translate }}" class="rp-drag-handle">
+                      <mat-icon>drag_indicator</mat-icon>
+                    </button>
+                    <div class="rp-section-card__title-area">
+                      <mat-checkbox formControlName="visivel" (change)="atualizarSecaoConfiguracao(i)">
+                        <span class="rp-section-card__name">{{ secaoCtrl.get('titulo')?.value }}</span>
+                      </mat-checkbox>
+                      <mat-chip [style.background]="getTipoSecaoColor(secaoCtrl.get('tipo')?.value)" [style.color]="'white'">
+                        {{ getTipoSecaoLabel(secaoCtrl.get('tipo')?.value, secaoCtrl.get('tipoGrafico')?.value) }}
+                      </mat-chip>
+                      <mat-chip *ngIf="hasCompetenciasSelecionadas(secaoCtrl)" color="accent">
+                        {{ getCompetenciaCountText(getCompetenciasIdsValue(secaoCtrl)) }}
+                      </mat-chip>
+                    </div>
+                    <div class="rp-section-card__controls">
+                      <mat-form-field appearance="outline" class="rp-section-type-select">
+                        <mat-label>{{ 'Tipo' | translate }}</mat-label>
+                        <mat-select formControlName="tipo" (selectionChange)="atualizarSecaoConfiguracao(i)">
+                          <mat-option value="capa">Capa</mat-option>
+                          <mat-option value="introducao">Introdução</mat-option>
+                          <mat-option value="resumo">{{ 'Resumo de Competências' | translate }}</mat-option>
+                          <mat-option value="graficos">{{ 'Gráficos' | translate }}</mat-option>
+                          <mat-option value="tabela">{{ 'Tabela de Frequência' | translate }}</mat-option>
+                          <mat-option value="tabela_detalhada">{{ 'Tabela de Distribuição' | translate }}</mat-option>
+                          <mat-option value="competencia_detalhada">Análise Detalhada</mat-option>
+                          <mat-option value="destaques">{{ 'Destaques' | translate }}</mat-option>
+                          <mat-option value="texto">Texto Livre</mat-option>
+                          <mat-option value="grafico_defasagem">{{ 'Gráfico de Defasagem' | translate }}</mat-option>
+                          <mat-option value="perguntas_abertas">{{ 'Perguntas Abertas' | translate }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <button mat-icon-button color="accent" (click)="addSecaoCustomizadaAbaixo(i, secaoCtrl.get('tipo')?.value)" matTooltip="Adicionar seção abaixo">
+                        <mat-icon>add</mat-icon>
+                      </button>
+                      <button mat-icon-button color="warn" (click)="removerSecao(i)" matTooltip="Remover seção">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                </mat-card-header>
+
+                <mat-card-content>
+                  <mat-form-field appearance="outline" class="rp-full-field rp-section-title-field">
+                    <mat-label>{{ 'Título da seção' | translate }}</mat-label>
+                    <input matInput formControlName="titulo" (input)="atualizarSecaoConfiguracao(i)">
+                    <mat-hint>{{ 'Este título aparecerá no relatório final' | translate }}</mat-hint>
+                  </mat-form-field>
+
+                  <div *ngIf="isSecaoTipo(secaoCtrl, 'texto') || isSecaoTipo(secaoCtrl, 'custom') || isSecaoTipo(secaoCtrl, 'capa') || isSecaoTipo(secaoCtrl, 'introducao')">
+                    <label class="rp-content-label">Conteúdo:</label>
+
+                    <div *ngIf="isSecaoTipo(secaoCtrl, 'capa')" class="rp-tip-card rp-tip-card--blue">
+                      <div class="rp-tip-card__header">
+                        <div class="rp-tip-card__title">
+                          <mat-icon>info</mat-icon>
+                          <strong>{{ 'Dica para Capa:' | translate }}</strong>
+                        </div>
+                        <button mat-stroked-button color="primary" size="small" (click)="aplicarTemplateRico(i, 'capa')">
+                          <mat-icon>auto_awesome</mat-icon>
+                          {{ 'Aplicar Template' | translate }}
+                        </button>
+                      </div>
+                      <p>{{ 'Use o editor de texto rico para criar uma capa profissional. Você pode adicionar títulos, subtítulos, imagens, cores e formatação para destacar informações importantes. Clique em "Aplicar Template" para usar um modelo pré-formatado.' | translate }}</p>
+                    </div>
+
+                    <div *ngIf="isSecaoTipo(secaoCtrl, 'introducao')" class="rp-tip-card rp-tip-card--purple">
+                      <div class="rp-tip-card__header">
+                        <div class="rp-tip-card__title">
+                          <mat-icon>lightbulb</mat-icon>
+                          <strong>{{ 'Dica para Introdução:' | translate }}</strong>
+                        </div>
+                        <button mat-stroked-button color="accent" size="small" (click)="aplicarTemplateRico(i, 'introducao')">
+                          <mat-icon>auto_awesome</mat-icon>
+                          {{ 'Aplicar Template' | translate }}
+                        </button>
+                      </div>
+                      <p>{{ 'Crie uma introdução atrativa usando formatação rica. Adicione títulos, listas, destaques e imagens para explicar o propósito e contexto do relatório. Clique em "Aplicar Template" para usar um modelo pré-formatado.' | translate }}</p>
+                    </div>
+
+                    <angular-editor formControlName="texto" (blur)="atualizarSecaoConfiguracao(i)" [config]="editorConfig"></angular-editor>
+                  </div>
+
+                  <div *ngIf="isSecaoTipo(secaoCtrl, 'graficos')">
+                    <div class="rp-grid-2 rp-chart-selectors">
+                      <mat-form-field appearance="outline">
+                        <mat-label>{{ 'Competências para os gráficos' | translate }}</mat-label>
+                        <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                          <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
+                        </mat-select>
+                        <mat-hint>{{ 'Selecione as competências que devem aparecer nesta seção de gráficos.' | translate }}</mat-hint>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>{{ 'Tipo de gráfico' | translate }}</mat-label>
+                        <mat-select formControlName="tipoGrafico" (selectionChange)="atualizarSecaoConfiguracao(i)">
+                          <mat-option value="barra">Barra Comparativa</mat-option>
+                          <mat-option value="radar">Radar Comparativo</mat-option>
+                          <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
+                          <mat-option value="pizza-individual">Pizza Individual</mat-option>
+                          <mat-option value="barras-individuais">Barras Individuais</mat-option>
+                          <mat-option value="janela_johari">{{ 'Janela de Johari' | translate }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                    </div>
+
+                    <!-- Color controls -->
+                    <mat-card class="rp-color-card">
+                      <mat-card-header>
+                        <mat-card-title class="rp-color-card__title">
+                          <mat-icon>palette</mat-icon>
+                          Personalização de Cores
+                        </mat-card-title>
+                      </mat-card-header>
+                      <mat-card-content>
+                        <div *ngIf="secaoCtrl.get('tipoGrafico')?.value === 'barra'" class="rp-info-bar rp-info-bar--green">
+                          <mat-icon>info</mat-icon>
+                          <span>
+                            <strong>{{ 'Gráfico de Barras Comparativo:' | translate }}</strong>
+                            {{ 'Cada categoria terá uma cor distinta para melhor visualização.' | translate }}
+                            {{ 'A paleta "Categorias Distintas" é recomendada para este tipo de gráfico.' | translate }}
+                          </span>
+                        </div>
+
+                        <p class="rp-palette-label">{{ 'Paleta de cores' | translate }}</p>
+
+                        <!-- Grupo: Gradientes -->
+                        <p class="rp-palette-group-label">Gradientes</p>
+                        <div class="rp-palette-grid">
+                          <div *ngFor="let paleta of paletasGradiente"
+                               class="rp-palette-card"
+                               [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                               (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
+                               [matTooltip]="paleta.value.nome">
+                            <div class="rp-palette-card__swatches">
+                              <span *ngFor="let cor of paleta.value.cores.slice(0, 5)"
+                                    class="rp-palette-card__swatch"
+                                    [style.background-color]="cor">
+                              </span>
+                            </div>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                                      class="rp-palette-card__check">check_circle</mat-icon>
+                          </div>
+                        </div>
+
+                        <!-- Grupo: Cores Sólidas -->
+                        <p class="rp-palette-group-label">Cores Sólidas</p>
+                        <div class="rp-palette-grid">
+                          <div *ngFor="let paleta of paletasFlat"
+                               class="rp-palette-card"
+                               [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                               (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
+                               [matTooltip]="paleta.value.nome">
+                            <div class="rp-palette-card__swatches">
+                              <span *ngFor="let cor of paleta.value.cores.slice(0, 5)"
+                                    class="rp-palette-card__swatch"
+                                    [style.background-color]="cor">
+                              </span>
+                            </div>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                                      class="rp-palette-card__check">check_circle</mat-icon>
+                          </div>
+                        </div>
+
+                        <!-- Grupo: Especiais -->
+                        <p class="rp-palette-group-label">Especiais</p>
+                        <div class="rp-palette-grid">
+                          <div *ngFor="let paleta of paletasEspecial"
+                               class="rp-palette-card"
+                               [class.rp-palette-card--selected]="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                               (click)="getPaletaCorControl(i).setValue(paleta.key); onPaletaCorChange(relatorioConfiguracao[i], i)"
+                               [matTooltip]="paleta.value.nome">
+                            <div class="rp-palette-card__swatches">
+                              <span *ngFor="let cor of paleta.value.cores.slice(0, 5)"
+                                    class="rp-palette-card__swatch"
+                                    [style.background-color]="cor">
+                              </span>
+                            </div>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
+                                      class="rp-palette-card__check">check_circle</mat-icon>
+                          </div>
+                        </div>
+
+                        @if (showDebugButtons) {
+                          <button mat-stroked-button color="accent"
+                                  (click)="debugCores(relatorioConfiguracao[i], i)"
+                                  class="rp-debug-btn"
+                                  matTooltip="{{ 'Debug das cores' | translate }}">
+                            Debug
+                          </button>
+                        }
+
+                        <div *ngIf="isPaletaPersonalizada(secaoCtrl, i)" class="rp-custom-colors">
+                          <div class="rp-custom-colors__header">
+                            <span>{{ 'Cores personalizadas:' | translate }}</span>
+                            <button mat-icon-button color="primary" (click)="adicionarCorPersonalizada(relatorioConfiguracao[i], i)" matTooltip="{{ 'Adicionar cor' | translate }}">
+                              <mat-icon>add</mat-icon>
+                            </button>
+                          </div>
+                          <div class="rp-custom-colors__swatches">
+                            <div *ngFor="let cor of relatorioConfiguracao[i]['coresPersonalizadas']; let idx = index" class="rp-custom-color-item">
+                              <input type="color" [value]="cor"
+                                     (change)="atualizarCorPersonalizada(relatorioConfiguracao[i], i, idx, $event)"
+                                     class="rp-color-input">
+                              <button mat-icon-button color="warn" (click)="removerCorPersonalizada(relatorioConfiguracao[i], i, idx)" matTooltip="{{ 'Remover cor' | translate }}">
+                                <mat-icon>delete_outline</mat-icon>
+                              </button>
+                            </div>
+                          </div>
+                          <mat-hint class="rp-color-hint">{{ 'Clique nas cores para editá-las. Adicione pelo menos 3 cores para melhores resultados.' | translate }}</mat-hint>
+                        </div>
+                      </mat-card-content>
+                    </mat-card>
+                  </div>
+
+                  <div *ngIf="isSecaoTipo(secaoCtrl, 'perguntas_abertas')">
+                    <div class="rp-info-section rp-info-section--indigo">
+                      <div class="rp-info-section__header">
+                        <mat-icon>forum</mat-icon>
+                        <span>{{ 'Perguntas Abertas' | translate }}</span>
+                      </div>
+                      <p>{{ 'Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado(a), Gestor(es), Pares, Subordinados, Outros).' | translate }}</p>
+                    </div>
+                  </div>
+
+                  <div *ngIf="isSecaoTipo(secaoCtrl, 'janela_johari')">
+                    <div class="rp-info-section rp-info-section--blue">
+                      <div class="rp-info-section__header">
+                        <mat-icon>info</mat-icon>
+                        <span>Configuração da Janela de Johari</span>
+                      </div>
+                      <p>A Janela de Johari classifica as competências em quatro quadrantes com base na autoavaliação e na avaliação dos outros. Selecione as competências que você deseja incluir nesta análise. O gráfico será gerado automaticamente.</p>
+                    </div>
+                  </div>
+
+                  <div *ngIf="isSecaoTipo(secaoCtrl, 'tabela')">
+                    <mat-form-field appearance="outline" class="rp-full-field rp-section-title-field">
+                      <mat-label>Competências para a tabela</mat-label>
+                      <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                        <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
+                      </mat-select>
+                      <mat-hint>Selecione as competências que devem aparecer na tabela de frequência.</mat-hint>
                     </mat-form-field>
                   </div>
 
-                  <!-- Tabela de distribuição de notas -->
+                  <div *ngIf="isSecaoTipo(secaoCtrl, 'tabela_detalhada')">
+                    <mat-form-field appearance="outline" class="rp-full-field rp-section-title-field">
+                      <mat-label>Competências para tabela detalhada</mat-label>
+                      <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                        <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
+                      </mat-select>
+                      <mat-hint>Selecione as competências para exibir na tabela de distribuição de notas (1-5).</mat-hint>
+                    </mat-form-field>
+                    <div class="rp-info-section rp-info-section--green">
+                      <div class="rp-info-section__header">
+                        <mat-icon>info</mat-icon>
+                        <span>Sobre a Tabela de Distribuição</span>
+                      </div>
+                      <p>Esta tabela mostra a contagem de respostas para cada nota (1-5) por categoria de avaliador, similar ao formato de frequência mostrado na imagem de exemplo. Cada competência selecionada gerará uma tabela completa com todas as suas perguntas.</p>
+                    </div>
+                  </div>
+
+                  <div *ngIf="isSecaoTipo(secaoCtrl, 'grafico_defasagem')">
+                    <mat-form-field appearance="outline" class="rp-full-field rp-section-title-field">
+                      <mat-label>Competências para o Gráfico de Defasagem</mat-label>
+                      <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                        <mat-option *ngFor="let comp of competencias" [value]="comp.id">{{ comp.nome }}</mat-option>
+                      </mat-select>
+                      <mat-hint>Selecione as competências que devem aparecer no gráfico.</mat-hint>
+                    </mat-form-field>
+
+                    <div *ngIf="getCompetenciasSelecionadasParaSecao(secaoCtrl.value).length > 0; else noDataDefasagem" class="rp-defasagem-preview">
+                      <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secaoCtrl.value)" class="rp-defasagem-item">
+                        <h4>{{ comp.nome }}</h4>
+                        <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
+                      </div>
+                    </div>
+                    <ng-template #noDataDefasagem>
+                      <div class="rp-empty-placeholder">
+                        <mat-icon>waterfall_chart</mat-icon>
+                        <p>Selecione uma ou mais competências para gerar o gráfico.</p>
+                      </div>
+                    </ng-template>
+                  </div>
+
+                  <div *ngIf="secaoCtrl.get('tipo')?.value === 'destaques'">
+                    <div class="rp-destaques-options">
+                      <mat-checkbox formControlName="mostrarPontuacaoSemAuto" (change)="atualizarSecaoConfiguracao(i)">
+                        Mostrar pontuação sem autoavaliação
+                      </mat-checkbox>
+                    </div>
+                    <div class="rp-info-section rp-info-section--orange">
+                      <div class="rp-info-section__header">
+                        <mat-icon>info</mat-icon>
+                        <span>Sobre Avaliações Mais Altas e Baixas</span>
+                      </div>
+                      <p>Esta seção lista os comportamentos/perguntas com maior e menor pontuação média geral. Inclui todas as competências automaticamente.</p>
+                    </div>
+                  </div>
+
+                  <div *ngIf="isSecaoTipo(secaoCtrl, 'competencia_detalhada')">
+                    <mat-form-field appearance="outline" class="rp-full-field rp-section-title-field">
+                      <mat-label>{{ 'Competências para Análise Detalhada' | translate }}</mat-label>
+                      <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
+                        <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- ===== NAVEGAÇÃO TAB 2 ===== -->
+      <div class="rp-tab-footer rp-tab-footer--between">
+        <button mat-stroked-button (click)="goToTab(0)" class="rp-back-btn">
+          <mat-icon>arrow_back</mat-icon>
+          Competências
+        </button>
+        <button mat-flat-button color="primary" class="rp-advance-btn" (click)="goToTab(2)">
+          Visualizar Relatório
+          <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ PASSO 3: VISUALIZAR RELATÓRIO ============ -->
+  <div class="rp-step-panel" *ngIf="selectedTabIndex === 2">
+    <div class="rp-step-panel__header rp-step-panel__header--visualizar ui-only">
+      <h2 class="rp-step-panel__title">Visualizar e Exportar</h2>
+      <p class="rp-step-panel__desc">Pré-visualize o relatório e exporte em PDF ou DOCX</p>
+    </div>
+    <div class="rp-tab-content">
+
+      <!-- Navegação Tab 3 -->
+      <div class="rp-tab-footer rp-tab-footer--start ui-only" *ngIf="currentUserRole !== 'viewer'">
+        <button mat-stroked-button (click)="goToTab(1)" class="rp-back-btn">
+          <mat-icon>arrow_back</mat-icon>
+          Montar Relatório
+        </button>
+      </div>
+
+      <!-- ── Controle de publicação (somente admin_master, na etapa final) ── -->
+      <div class="rp-publish-bar ui-only" *ngIf="canReleaseReport && selectedAvaliado"
+           [class.rp-publish-bar--orphan]="isSnapshotOrphaned">
+        <div class="rp-publish-bar__info">
+          <mat-icon class="rp-publish-bar__icon"
+                    [class.rp-publish-bar__icon--ok]="viewerHasAccess && !hasUnpublishedChanges && !isSnapshotOrphaned"
+                    [class.rp-publish-bar__icon--warn]="!viewerHasAccess || hasUnpublishedChanges || isSnapshotOrphaned">
+            {{ viewerHasAccess && !hasUnpublishedChanges && !isSnapshotOrphaned ? 'cloud_done' : 'cloud_upload' }}
+          </mat-icon>
+          <div class="rp-publish-bar__text">
+            <!-- Estado inconsistente: status diz não publicado mas viewer ainda acessa -->
+            <ng-container *ngIf="isSnapshotOrphaned">
+              <strong>Visualizador ainda tem acesso</strong>
+              <span>O relatório consta como não publicado, mas o visualizador ainda consegue vê-lo. Clique em "Despublicar" para cortar o acesso.</span>
+            </ng-container>
+            <!-- Não publicado e sem snapshot ativo -->
+            <ng-container *ngIf="!viewerHasAccess">
+              <strong>Relatório não publicado</strong>
+              <span>Publique para que o visualizador tenha acesso.</span>
+            </ng-container>
+            <!-- Publicado com alterações pendentes -->
+            <ng-container *ngIf="viewerHasAccess && !isSnapshotOrphaned && hasUnpublishedChanges">
+              <strong>Alterações não publicadas</strong>
+              <span>Você alterou o relatório desde a última publicação. Publique novamente para o visualizador ver as mudanças.</span>
+            </ng-container>
+            <!-- Publicado e em dia -->
+            <ng-container *ngIf="viewerHasAccess && !isSnapshotOrphaned && !hasUnpublishedChanges">
+              <strong>Relatório publicado</strong>
+              <span>O visualizador já tem acesso a esta versão.</span>
+            </ng-container>
+          </div>
+        </div>
+        <div class="rp-publish-bar__actions">
+          <!-- Publicar / Republicar -->
+          <button mat-flat-button
+                  class="rp-publish-btn"
+                  [class.rp-publish-btn--warn]="!viewerHasAccess || hasUnpublishedChanges"
+                  *ngIf="!viewerHasAccess || hasUnpublishedChanges"
+                  (click)="releaseReport(selectedAvaliado!)">
+            <span class="rp-publish-btn__dot"></span>
+            <mat-icon>cloud_upload</mat-icon>
+            {{ selectedAvaliadoReleaseStatus === 'released' ? 'Republicar alterações' : 'Publicar relatório' }}
+          </button>
+          <!-- Despublicar: aparece sempre que o viewer tiver acesso (inclui estado órfão) -->
+          <button mat-stroked-button
+                  class="rp-unpublish-btn"
+                  [class.rp-unpublish-btn--alert]="isSnapshotOrphaned"
+                  *ngIf="viewerHasAccess"
+                  (click)="revokeReportRelease(selectedAvaliado!)">
+            <mat-icon>lock</mat-icon>
+            Despublicar
+          </button>
+        </div>
+      </div>
+
+      <!-- Export actions bar -->
+      <div class="rp-export-bar ui-only">
+        <!-- Individual -->
+        <button mat-flat-button color="accent" *ngIf="canExportPdf" (click)="exportarRelatorioPDF()" [disabled]="isExporting || isBatchGenerating">
+          <mat-icon>picture_as_pdf</mat-icon> Exportar PDF individual
+        </button>
+        <button mat-flat-button color="primary" *ngIf="canExportExcel" (click)="exportarBaseExcel()" [disabled]="isExporting || isBatchGenerating">
+          <mat-icon>grid_on</mat-icon> {{ 'Exportar base (Excel)' | translate }}
+        </button>
+        <button mat-flat-button color="primary" *ngIf="canExportDocx" (click)="exportarRelatorioDOCX()" [disabled]="isExporting || isBatchGenerating">
+          <mat-icon>description</mat-icon> {{ 'Exportar DOCX' | translate }}
+        </button>
+      </div>
+
+      <!-- ── GERAÇÃO EM LOTE (somente na tab Visualizar) ── -->
+      <div class="rp-batch-panel ui-only"
+           *ngIf="!isIndividualMode && avaliadosDisponiveis.length > 0">
+
+        <button mat-stroked-button class="rp-batch-trigger"
+                (click)="toggleBatchPanel()"
+                [class.rp-batch-trigger--open]="batchPanelOpen"
+                [disabled]="isBatchGenerating">
+          <mat-icon>layers</mat-icon>
+          Geração em Lote
+          <span class="rp-batch-trigger__count" *ngIf="batchSelectedCount > 0">
+            {{ batchSelectedCount }} selecionado(s)
+          </span>
+          <mat-icon class="rp-batch-trigger__chevron">{{ batchPanelOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+
+        <div class="rp-batch-body" *ngIf="batchPanelOpen">
+
+          <!-- Seleção de participantes -->
+          <div class="rp-batch-section">
+            <div class="rp-batch-section__header">
+              <mat-icon>people</mat-icon>
+              <span>Participantes</span>
+              <button mat-button class="rp-batch-selall" (click)="toggleAllBatchParticipants()">
+                {{ allBatchSelected ? 'Desmarcar todos' : 'Selecionar todos' }}
+              </button>
+            </div>
+            <div class="rp-batch-participants">
+              <label *ngFor="let avaliado of avaliadosDisponiveis" class="rp-batch-participant">
+                <input type="checkbox"
+                       [checked]="batchSelectedParticipants.has(avaliado)"
+                       (change)="toggleBatchParticipant(avaliado)" />
+                <span class="rp-batch-participant__name">{{ avaliado }}</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Categorias de avaliadores -->
+          <div class="rp-batch-section rp-batch-section--evaluators" *ngIf="availableCategoriesForBatch.length > 0">
+            <div class="rp-batch-section__header rp-batch-section__header--clickable"
+                 (click)="batchShowEvaluatorConfig = !batchShowEvaluatorConfig">
+              <mat-icon>filter_list</mat-icon>
+              <span>Avaliadores incluídos</span>
+              <span class="rp-batch-excluded-badge" *ngIf="batchExcludedCategories.size > 0">
+                {{ batchExcludedCategories.size }} categoria(s) excluída(s)
+              </span>
+              <mat-icon class="rp-batch-trigger__chevron" style="margin-left:auto">
+                {{ batchShowEvaluatorConfig ? 'expand_less' : 'expand_more' }}
+              </mat-icon>
+            </div>
+            <div class="rp-batch-evaluators" *ngIf="batchShowEvaluatorConfig">
+              <label *ngFor="let cat of availableCategoriesForBatch" class="rp-batch-evaluator">
+                <input type="checkbox"
+                       [checked]="!isCategoryExcluded(cat.grupo)"
+                       (change)="toggleBatchCategoryExclusion(cat.grupo)" />
+                <span class="rp-batch-evaluator__name">{{ cat.grupo }}</span>
+                <span class="rp-batch-evaluator__count">{{ cat.totalCount }} resposta(s)</span>
+              </label>
+              <div class="rp-batch-anonymity-warnings" *ngIf="getAnonymityWarnings().length > 0">
+                <div class="rp-batch-anonymity-warn" *ngFor="let w of getAnonymityWarnings()">
+                  <mat-icon>warning</mat-icon>
+                  <span><strong>{{ w.avaliado }}</strong> — <strong>{{ w.grupo }}</strong>: {{ w.count }} resposta(s)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Erros da última execução -->
+          <div class="rp-batch-errors" *ngIf="batchErrors.length > 0">
+            <div class="rp-batch-error" *ngFor="let e of batchErrors">
+              <mat-icon>error_outline</mat-icon>
+              <span><strong>{{ e.name }}</strong>: {{ e.error }}</span>
+            </div>
+          </div>
+
+          <!-- Progresso -->
+          <div class="rp-batch-progress-inline" *ngIf="isBatchGenerating">
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Gerando {{ batchProgress + 1 }}/{{ batchTotal }}: <strong>{{ batchCurrentName }}</strong></span>
+            <div class="rp-batch-progress-bar-wrap" style="flex:1">
+              <div class="rp-batch-progress-bar"
+                   [style.width.%]="batchTotal > 0 ? (batchProgress / batchTotal) * 100 : 0"></div>
+            </div>
+            <span>{{ batchTotal > 0 ? ((batchProgress / batchTotal) * 100 | number:'1.0-0') : 0 }}%</span>
+          </div>
+
+          <!-- Botão gerar -->
+          <div class="rp-batch-actions">
+            <button mat-flat-button color="primary"
+                    class="rp-batch-generate-btn"
+                    [disabled]="batchSelectedCount === 0 || isBatchGenerating || competencias.length === 0"
+                    (click)="generateBatchReports()">
+              <mat-icon>download</mat-icon>
+              Gerar {{ batchSelectedCount }} PDF(s) em lote → ZIP
+            </button>
+            <span class="rp-batch-hint" *ngIf="competencias.length === 0">Configure as competências primeiro</span>
+          </div>
+
+        </div><!-- /rp-batch-body -->
+      </div><!-- /rp-batch-panel -->
+
+      <!-- Export loading overlay -->
+      <div class="rp-export-overlay" *ngIf="isExporting">
+        <div class="rp-export-overlay__box">
+          <mat-spinner diameter="48"></mat-spinner>
+          <span class="rp-export-overlay__label">{{ exportingLabel }}</span>
+          <span class="rp-export-overlay__hint">Isso pode levar alguns segundos, aguarde...</span>
+        </div>
+      </div>
+
+      <!-- Banner: relatório aguardando publicação (viewer/admin_client) -->
+      <div class="rp-pending-banner" *ngIf="isReportPendingForViewer">
+        <div class="rp-pending-banner__icon">
+          <mat-icon>hourglass_top</mat-icon>
+        </div>
+        <div class="rp-pending-banner__content">
+          <h3 class="rp-pending-banner__title">Relatório aguardando publicação</h3>
+          <p class="rp-pending-banner__desc" *ngIf="selectedAvaliado">
+            O relatório de <strong>{{ selectedAvaliado }}</strong> ainda não foi publicado pelo administrador.
+            Assim que ele for liberado, o conteúdo aparecerá aqui automaticamente.
+          </p>
+          <p class="rp-pending-banner__desc" *ngIf="!selectedAvaliado">
+            O relatório desta avaliação ainda não foi publicado pelo administrador.
+            Assim que ele for liberado, o conteúdo aparecerá aqui automaticamente.
+          </p>
+        </div>
+        <span class="rp-pending-banner__badge">
+          <mat-icon>schedule</mat-icon>
+          Aguardando aprovação
+        </span>
+      </div>
+
+      <!-- Report preview area -->
+      <div id="report-preview" *ngIf="!isReportPendingForViewer">
+
+        <!-- Cabeçalho do documento -->
+        <div class="rp-doc-cabecalho"
+             *ngIf="documentoConfig.cabecalho.ativo"
+             [style.color]="documentoConfig.cabecalho.cor"
+             [class.rp-doc-cabecalho--linha]="documentoConfig.cabecalho.linhaInferior">
+          <img *ngIf="documentoConfig.cabecalho.logoUrl"
+               [src]="documentoConfig.cabecalho.logoUrl"
+               class="rp-doc-cabecalho__logo" alt="Logo">
+          <span class="rp-doc-cabecalho__left">{{ documentoConfig.cabecalho.textoEsquerda }}</span>
+          <span class="rp-doc-cabecalho__project" *ngIf="documentoConfig.cabecalho.mostrarNomeProjeto">{{ selectedAssessmentName }}</span>
+          <span class="rp-doc-cabecalho__pagina" *ngIf="documentoConfig.cabecalho.mostrarNumeroPagina">Pág. </span>
+        </div>
+
+        <div class="report-section"
+             [class.report-section--page-break-before]="secao['pageBreakAntes']"
+             [class.report-section--page-break-after]="secao['pageBreakDepois']"
+             *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
+          <ng-container [ngSwitch]="secao.tipo">
+
+            <div *ngSwitchCase="'capa'" class="capa-section">
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <!-- Bloco dinâmico: participante + respondentes (renderizado por Angular, não injetado no HTML) -->
+              <div class="capa-info-block" *ngIf="selectedAvaliado || getContagemRespondentesPorCategoria().length > 0">
+                <div class="capa-info-block__avaliado" *ngIf="selectedAvaliado">
+                  <span class="capa-info-block__label">Avaliado(a)</span>
+                  <span class="capa-info-block__name">{{ selectedAvaliadoName }}</span>
+                  <span class="capa-info-block__date">{{ today | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="capa-info-block__respondentes" *ngIf="getContagemRespondentesPorCategoria().length > 0">
+                  <span class="capa-info-block__resp-title">Avaliadores por Perfil</span>
+                  <div class="capa-info-block__resp-chips">
+                    <span class="capa-info-block__chip"
+                          *ngFor="let item of getContagemRespondentesPorCategoria()">
+                      {{ item.categoria }}: <strong>{{ item.quantidade }}</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngSwitchCase="'introducao'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+            </div>
+
+            <div *ngSwitchCase="'resumo'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div *ngIf="getResumoMedias().length">
+                <div *ngFor="let compData of getResumoMediasPorCompetencia()">
+                  <h3>{{ compData.nome }}</h3>
+                  <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ compData.descricao }}</p>
+                  <table class="mat-elevation-z8" style="margin: 16px 0 32px 0; min-width: 400px;">
+                    <thead>
+                      <tr>
+                        <th>Grupo</th>
+                        <th>Média</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let linha of compData.dados">
+                        <td>{{ linha.grupo }}</td>
+                        <td>{{ linha.media !== null ? (linha.media | number:'1.2-2') : '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <p *ngIf="!getResumoMedias().length"><i>Nenhuma competência selecionada ou sem dados.</i></p>
+            </div>
+
+            <div *ngSwitchCase="'graficos'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+
+              <div *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length > 0">
+                <mat-form-field appearance="outline" class="ui-only" style="width: 250px; margin-bottom: 16px;">
+                  <mat-label>Tipo de gráfico</mat-label>
+                  <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao, i)">
+                    <mat-option value="barra">Barra Comparativa</mat-option>
+                    <mat-option value="radar">Radar Comparativo</mat-option>
+                    <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
+                    <mat-option value="pizza-individual">Pizza Individual</mat-option>
+                    <mat-option value="barras-individuais">Barras Individuais</mat-option>
+                    <mat-option value="janela_johari">Janela de Johari</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <div style="margin-bottom: 16px;">
+                  <h4>Competências analisadas:</h4>
+                  <mat-chip-set>
+                    <mat-chip *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)" [matTooltip]="comp.descricao">
+                      <mat-icon matChipAvatar>psychology</mat-icon>
+                      {{ comp.nome }}
+                      <ng-container *ngIf="isTipoGraficoPizza(getTipoGraficoControl(i).value)">
+                         {{ getMediaCompetenciaNoGraficoPizza(secao, comp) | number:'1.2-2' }}
+                      </ng-container>
+                    </mat-chip>
+                  </mat-chip-set>
+                </div>
+
+                <ng-container [ngSwitch]="getTipoGraficoControl(i).value || 'barra'">
+                  <div *ngSwitchCase="'janela_johari'">
+                    <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+                  </div>
+                  <div *ngSwitchCase="'barra'">
+                    <div style="display: flex; flex-direction: column; gap: 30px;">
+                      <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                        <h4>{{ comp.nome }}</h4>
+                        <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
+                        <ng-container *ngIf="getCompetenciaBarraComparativaData(comp) as dadosGrafico">
+                          <ngx-charts-bar-horizontal
+                            [results]="dadosGrafico"
+                            [xAxis]="true"
+                            [yAxis]="true"
+                            [view]="[800, (dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)]"
+                            [style.height.px]="(dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)"
+                            [legend]="true"
+                            [legendTitle]="'Legenda'"
+                            [showGridLines]="true"
+                            [showDataLabel]="true"
+                            [barPadding]="8"
+                            [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
+                            [xAxisLabel]="'Pontuação (0-5)'"
+                            [yAxisLabel]="'Categorias'"
+                            [scheme]="getColorSchemeParaSecao(secao)">
+                          </ngx-charts-bar-horizontal>
+                        </ng-container>
+                      </div>
+                    </div>
+                  </div>
+                  <div *ngSwitchCase="'radar'">
+                    <div echarts [options]="getSecaoRadarOptions(secao)" [style.height.px]="400"></div>
+                  </div>
+                  <div *ngSwitchCase="'pizza-comparativa'">
+                    <ng-container *ngIf="getSecaoPieData(secao) as dadosPizza">
+                      <ngx-charts-pie-chart
+                        [results]="dadosPizza"
+                        [view]="[600,400]"
+                        [legend]="true"
+                        [legendTitle]="'Legenda'"
+                        [labels]="true"
+                        [doughnut]="false"
+                        [scheme]="getColorSchemeParaSecao(secao)">
+                      </ngx-charts-pie-chart>
+                    </ng-container>
+                  </div>
+                  <div *ngSwitchCase="'pizza-individual'">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                      <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                        <h4>{{ comp.nome }}</h4>
+                        <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
+                        <ngx-charts-pie-chart
+                          [results]="getCompetenciaPieData(comp)"
+                          [view]="[300,250]"
+                          [legend]="true"
+                          [legendTitle]="'Legenda'"
+                          [labels]="true"
+                          [doughnut]="false"
+                          [scheme]="getColorSchemeParaSecao(secao)">
+                        </ngx-charts-pie-chart>
+                      </div>
+                    </div>
+                  </div>
+                  <div *ngSwitchCase="'barras-individuais'">
+                    <div style="display: flex; flex-direction: column; gap: 30px;">
+                      <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                        <h4>{{ comp.nome }}</h4>
+                        <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
+                        <div style="height: 300px; width: 100%;">
+                          <ngx-charts-bar-horizontal
+                            [results]="getCompetenciaStackedData(comp)"
+                            [xAxis]="true"
+                            [yAxis]="true"
+                            [view]="[800, 280]"
+                            [legend]="false"
+                            [showGridLines]="true"
+                            [showDataLabel]="true"
+                            [barPadding]="8"
+                            [scheme]="getColorSchemeParaSecao(secao)"
+                            [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
+                          </ngx-charts-bar-horizontal>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </ng-container>
+              </div>
+
+              <p *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length === 0">
+                <i>Nenhuma competência selecionada para exibir gráficos.</i>
+              </p>
+            </div>
+
+            <div *ngSwitchCase="'tabela'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+
+              <div *ngIf="getCompetenciasSelecionadasParaTabela().length > 0; else noTabelaData">
+                <div *ngFor="let comp of getCompetenciasSelecionadasParaTabela()">
+                  <h3>{{ comp.nome }}</h3>
+                  <p>{{ comp.descricao }}</p>
                   <div style="overflow-x: auto;">
                     <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
-                      <table class="tabela-distribuicao-notas" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                        <!-- Cabeçalho da tabela -->
+                      <table class="tabela-frequencia" style="width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed;">
+                        <colgroup>
+                          <col style="width: 35%;">
+                          <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                            <col *ngFor="let nota of [1,2,3,4,5]" style="width: 2.6%;">
+                          </ng-container>
+                        </colgroup>
                         <thead>
-                          <tr style="background-color: #4CAF50; color: white;">
-                            <th rowspan="2" style="border: 1px solid #ddd; padding: 8px; text-align: left;">{{ comp.nome.toUpperCase() }}</th>
-                                                         <th *ngFor="let categoria of tabelaData.mediasGerais"
-                                 [attr.colspan]="5"
-                                 style="border: 1px solid #ddd; padding: 8px; text-align: center;">
-                               {{ getAbreviacaoCategoria(categoria.categoria) }}
-                             </th>
+                          <tr [style.background-color]="getTableHeaderColors(secao).primary" style="color: white;">
+                            <th rowspan="2" style="border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-weight: bold; font-size: 11px;">{{ comp.nome.toUpperCase() }}</th>
+                            <th *ngFor="let categoria of tabelaData.mediasGerais" [attr.colspan]="5" style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 11px;">
+                              {{ getAbreviacaoCategoria(categoria.categoria) }}
+                            </th>
                           </tr>
-                          <tr style="background-color: #66BB6A; color: white;">
+                          <tr [style.background-color]="getTableHeaderColors(secao).secondary" style="color: white;">
                             <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                              <th *ngFor="let nota of [1,2,3,4,5]"
-                                  style="border: 1px solid #ddd; padding: 4px; text-align: center; min-width: 30px;">
-                                {{ nota }}
-                              </th>
+                              <th *ngFor="let nota of [1,2,3,4,5]" style="border: 1px solid #ddd; padding: 4px 1px; text-align: center; font-weight: bold; font-size: 10px;">{{ nota }}</th>
                             </ng-container>
                           </tr>
                         </thead>
-
-                        <!-- Corpo da tabela -->
                         <tbody>
-                          <tr *ngFor="let linha of tabelaData.linhas; let isEven = even"
-                              [style.background-color]="isEven ? '#f9f9f9' : 'white'">
-                            <td style="border: 1px solid #ddd; padding: 8px; font-size: 11px;">
-                              {{ linha.pergunta }}
-                            </td>
+                          <tr *ngFor="let linha of tabelaData.linhas; let isEven = even" [style.background-color]="isEven ? '#f9f9f9' : 'white'">
+                            <td style="border: 1px solid #ddd; padding: 6px 8px; font-size: 11px; text-align: left; line-height: 1.3;">{{ linha.pergunta }}</td>
                             <ng-container *ngFor="let categoria of linha.categorias">
-                              <td *ngFor="let dist of categoria.distribuicao"
-                                  style="border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 12px;">
+                              <td *ngFor="let dist of categoria.distribuicao" style="border: 1px solid #ddd; padding: 4px 1px; text-align: center; font-size: 10px;">
                                 {{ dist.quantidade > 0 ? dist.quantidade : '' }}
                               </td>
                             </ng-container>
                           </tr>
-
-                          <!-- Linha de médias -->
-                          <tr style="background-color: #81C784; color: white; font-weight: bold;">
-                            <td style="border: 1px solid #ddd; padding: 8px;">Média</td>
+                        </tbody>
+                        <tfoot>
+                          <tr [style.background-color]="getTableHeaderColors(secao).footer" style="color: white; font-weight: bold;">
+                            <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px;">Média</td>
                             <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                              <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">
-                                {{ categoria.media | number:'1.1-2' }}
+                              <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">{{ categoria.media | number:'1.1-1' }}</td>
+                            </ng-container>
+                          </tr>
+                          <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px; font-weight: bold;">Média sem autoavaliação</td>
+                            <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                              <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">
+                                <ng-container *ngIf="getAbreviacaoCategoria(categoria.categoria) !== 'A'">
+                                  {{ categoria.totalRespostas > 0 ? (categoria.media | number:'1.1-1') : '' }}
+                                </ng-container>
                               </td>
                             </ng-container>
                           </tr>
-                        </tbody>
+                        </tfoot>
                       </table>
-
-                      <!-- Legenda -->
-                      <div style="margin-top: 16px; padding: 12px; background-color: #f5f5f5; border-radius: 4px;">
-                        <p style="margin: 0; font-size: 12px; color: #666;">
-                          <strong>Importante:</strong> A opção "Sem dados" não é exibida no resumo.
-                        </p>
-                                                 <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
-                           <strong>Categorias da tabela:</strong><br>
-                           <ng-container *ngFor="let categoria of tabelaData.mediasGerais; let last = last">
-                             <strong>{{ getAbreviacaoCategoria(categoria.categoria) }}:</strong> {{ categoria.categoria }}{{ !last ? ', ' : '' }}
-                           </ng-container>
-                         </p>
-                      </div>
                     </ng-container>
                   </div>
-
-                  <mat-divider *ngIf="compIndex < getCompetenciasSelecionadasParaSecao(secao).length - 1" style="margin: 30px 0;"></mat-divider>
                 </div>
               </div>
+              <ng-template #noTabelaData>
+                <p>Selecione uma ou mais competências na aba "Montar Relatório" para visualizar a tabela.</p>
+              </ng-template>
             </div>
 
-            <p *ngIf="getCompetenciasSelecionadasParaSecao(secao).length === 0">
-              <i>Selecione uma ou mais competências na aba "Montar Relatório" para visualizar as tabelas detalhadas.</i>
-            </p>
-          </div>
-          <div *ngSwitchCase="'destaques'">
-            <h2>{{ secao.titulo }}</h2>
-            <div [innerHTML]="secao.texto"></div>
-
-            <!-- Botão de debug temporário -->
-            <!-- <button mat-raised-button color="accent" (click)="debugAvaliacoesAltasSimples()" style="margin-bottom: 16px;">
-              🔍 Debug Avaliações Altas
-            </button> -->
-
-            <!-- Avaliações mais altas -->
-            <ng-container *ngIf="gerarTabelaAvaliacoesAltas(competencias.length) as tabelaAltas">
-              <div *ngIf="tabelaAltas.items.length > 0; else noDestaquesData">
-                <h3 style="color: #8BC34A; margin-top: 20px;">Avaliações mais altas</h3>
-                <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
-                  Esta seção apresenta os comportamentos em que você obteve as maiores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
-                  Pela perspectiva das outras pessoas, seus pontos fortes são estes padrões de comportamento específicos:
-                </p>
-
-                <table class="mat-elevation-z8" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                  <thead style="background-color: #8BC34A; color: white;">
-                    <tr>
-                      <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Classificação</th>
-                      <th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">Comportamento</th>
-                      <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média geral</th>
-                      <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média por categoria</th>
-
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let item of tabelaAltas.items; let isEven = even"
-                        [style.background-color]="isEven ? '#f9f9f9' : 'white'">
-                      <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.classificacao }}</td>
-                      <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ item.comportamento }}</td>
-                      <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
-                      <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
-
-                    </tr>
-                  </tbody>
-                </table>
+            <div *ngSwitchCase="'tabela_detalhada'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0">
+                <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let compIndex = index">
+                  <div style="margin-bottom: 30px;">
+                    <div style="margin-bottom: 20px;">
+                      <h3>{{ comp.nome }}</h3>
+                      <p style="color: #666; font-style: italic;">{{ comp.descricao }}</p>
+                    </div>
+                    <div style="overflow-x: auto;">
+                      <ng-container *ngIf="getTabelaCompetencia(comp) as tabelaData">
+                        <table class="tabela-distribuicao-notas" style="width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed;">
+                          <colgroup>
+                            <col style="width: 35%;">
+                            <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                              <col *ngFor="let nota of [1,2,3,4,5]" style="width: 2.6%;">
+                            </ng-container>
+                          </colgroup>
+                          <thead>
+                            <tr [style.background-color]="getTableHeaderColors(secao).primary" style="color: white;">
+                              <th rowspan="2" style="border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-weight: bold; font-size: 11px;">{{ comp.nome.toUpperCase() }}</th>
+                              <th *ngFor="let categoria of tabelaData.mediasGerais" [attr.colspan]="5" style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 11px;">{{ getAbreviacaoCategoria(categoria.categoria) }}</th>
+                            </tr>
+                            <tr [style.background-color]="getTableHeaderColors(secao).secondary" style="color: white;">
+                              <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                                <th *ngFor="let nota of [1,2,3,4,5]" style="border: 1px solid #ddd; padding: 4px 1px; text-align: center; font-size: 10px;">{{ nota }}</th>
+                              </ng-container>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr *ngFor="let linha of tabelaData.linhas; let isEven = even" [style.background-color]="isEven ? '#f9f9f9' : 'white'">
+                              <td style="border: 1px solid #ddd; padding: 6px 8px; font-size: 11px; text-align: left; line-height: 1.3;">{{ linha.pergunta }}</td>
+                              <ng-container *ngFor="let categoria of linha.categorias">
+                                <td *ngFor="let dist of categoria.distribuicao" style="border: 1px solid #ddd; padding: 4px 1px; text-align: center; font-size: 10px;">
+                                  {{ dist.quantidade > 0 ? dist.quantidade : '' }}
+                                </td>
+                              </ng-container>
+                            </tr>
+                            <tr [style.background-color]="getTableHeaderColors(secao).footer" style="color: white; font-weight: bold;">
+                              <td style="border: 1px solid #ddd; padding: 8px;">Média</td>
+                              <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
+                                <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ categoria.media | number:'1.1-2' }}</td>
+                              </ng-container>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <div style="margin-top: 16px; padding: 12px; background-color: #f5f5f5; border-radius: 4px;">
+                          <p style="margin: 0; font-size: 12px; color: #666;"><strong>Importante:</strong> A opção "Sem dados" não é exibida no resumo.</p>
+                          <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
+                            <strong>Categorias da tabela:</strong><br>
+                            <ng-container *ngFor="let categoria of tabelaData.mediasGerais; let last = last">
+                              <strong>{{ getAbreviacaoCategoria(categoria.categoria) }}:</strong> {{ categoria.categoria }}{{ !last ? ', ' : '' }}
+                            </ng-container>
+                          </p>
+                        </div>
+                      </ng-container>
+                    </div>
+                    <mat-divider *ngIf="compIndex < getCompetenciasSelecionadasParaSecao(secao).length - 1" style="margin: 30px 0;"></mat-divider>
+                  </div>
+                </div>
               </div>
-            </ng-container>
-
-            <!-- Avaliações mais baixas -->
-            <ng-container *ngIf="gerarTabelaAvaliacoesBaixas(competencias.length) as tabelaBaixas">
-              <div *ngIf="tabelaBaixas.items.length > 0">
-                <h3 style="color: #FF5722; margin-top: 30px;">Avaliações mais baixas</h3>
-                <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
-                  Esta seção apresenta os comportamentos em que você obteve as menores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
-                  Pela perspectiva das outras pessoas, estes são os padrões de comportamento que podem ser desenvolvidos:
-                </p>
-
-                <table class="mat-elevation-z8" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                  <thead style="background-color: #FF5722; color: white;">
-                    <tr>
-                      <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Classificação</th>
-                      <th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">Comportamento</th>
-                      <th style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média do(a) avaliado(a)</th>
-                      <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">Pontuação média sem autoavaliação</th>
-
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let item of tabelaBaixas.items; let isEven = even"
-                        [style.background-color]="isEven ? '#f9f9f9' : 'white'">
-                      <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.classificacao }}</td>
-                      <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ item.comportamento }}</td>
-                      <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
-                      <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 12px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
-
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </ng-container>
-
-            <ng-template #noDestaquesData>
-              <p style="color: #666; font-style: italic; margin-top: 20px;">
-                <i>Nenhum dado disponível para gerar as tabelas de avaliações. Certifique-se de que há competências cadastradas e dados de avaliação carregados.</i>
+              <p *ngIf="getCompetenciasSelecionadasParaSecao(secao).length === 0">
+                <i>Selecione uma ou mais competências na aba "Montar Relatório" para visualizar as tabelas detalhadas.</i>
               </p>
-            </ng-template>
-          </div>
-          <div *ngSwitchCase="'competencia_detalhada'">
-            <h2>{{ secao.titulo }}</h2>
-            <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let i = index">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; margin-bottom: 20px;">
-                <!-- Coluna da Esquerda: Textos Editáveis -->
-                <div *ngIf="getOrInitTextoCompetencia(secao, comp)">
-                  <h3 style="margin-bottom: 4px;">{{ comp.nome }}</h3>
-                  <p style="color: #666; font-style: italic; margin-top: 0;">{{ comp.descricao }}</p>
-                  <angular-editor
-                    [(ngModel)]="secao.textosPorCompetencia![comp.id]"
-                    [config]="editorConfig">
-                  </angular-editor>
-                </div>
-
-                <!-- Coluna da Direita: Gráfico -->
-                <div style="height: 250px;">
-                  <ngx-charts-bar-horizontal
-                    [scheme]="getColorSchemeParaSecao(secao)"
-                    [results]="getDadosGraficoPorCompetencia(comp)"
-                    [xAxis]="true"
-                    [yAxis]="true"
-                    [showDataLabel]="true"
-                    [barPadding]="8"
-                    [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
-                  </ngx-charts-bar-horizontal>
-                </div>
-              </div>
-               <mat-divider *ngIf="i < getCompetenciasSelecionadasParaSecao(secao).length - 1"></mat-divider>
-            </div>
-          </div>
-          <div *ngSwitchCase="'grafico_defasagem'">
-            <h2>{{ secao.titulo }}</h2>
-            <div [innerHTML]="secao.texto"></div>
-
-            <!-- Gráficos de defasagem por grupo de competências -->
-            <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataDefasagem" style="margin-top: 20px;">
-              <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao)" style="margin-bottom: 30px;">
-                <h3 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">
-                  {{ comp.nome }}
-                </h3>
-                <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
-              </div>
             </div>
 
-            <ng-template #noDataDefasagem>
-              <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
-                <mat-icon style="font-size: 48px; width: 48px; height: 48px;">waterfall_chart</mat-icon>
-                <p>Selecione uma ou mais competências para gerar o gráfico.</p>
-              </div>
-            </ng-template>
-          </div>
-          <div *ngSwitchCase="'perguntas_abertas'">
-            <h2>{{ secao.titulo }}</h2>
-            <div [innerHTML]="secao.texto"></div>
-
-            <div *ngIf="getPerguntasAbertasData().length > 0; else noPerguntasAbertas" style="margin-top: 20px;">
-              <h3 style="margin-bottom: 16px; color: #5C6BC0; font-size: 16px;">{{ 'Perguntas abertas:' | translate }}</h3>
-              <div *ngFor="let item of getPerguntasAbertasData()" style="margin-bottom: 28px;">
-                <h4 style="margin-bottom: 12px; font-weight: 600; color: #333;">{{ item.perguntaTitulo }}</h4>
-                <div *ngFor="let categoria of getCategoriasOrdenadas(item.respostasPorCategoria)" style="margin-bottom: 12px;">
-                  <div style="font-weight: 500; color: #5C6BC0; margin-bottom: 6px; font-size: 14px;">{{ categoria }}</div>
-                  <ul style="margin: 0; padding-left: 20px; color: #555;">
-                    <li *ngFor="let resposta of item.respostasPorCategoria[categoria]" style="margin-bottom: 4px;">{{ resposta }}</li>
-                  </ul>
+            <div *ngSwitchCase="'destaques'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <ng-container *ngIf="gerarTabelaAvaliacoesAltas(competencias.length) as tabelaAltas">
+                <div *ngIf="tabelaAltas.items.length > 0; else noDestaquesData">
+                  <h3 [style.color]="getDestaquesAltasColors(secao).text" style="margin-top: 20px;">Avaliações mais altas</h3>
+                  <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
+                    Esta seção apresenta os comportamentos em que você obteve as maiores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
+                    Pela perspectiva das outras pessoas, seus pontos fortes são estes padrões de comportamento específicos:
+                  </p>
+                  <table class="mat-elevation-z8 tabela-destaques" style="width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed;">
+                    <thead [style.background-color]="getDestaquesAltasColors(secao).header" style="color: white;">
+                      <tr>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 80px;">Classificação</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Comportamento</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média geral</th>
+                        <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média por categoria</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let item of tabelaAltas.items; let isEven = even" [style.background-color]="isEven ? '#f9f9f9' : 'white'">
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">{{ item.classificacao }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 11px; line-height: 1.3;">{{ item.comportamento }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
+                        <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
+              </ng-container>
+              <ng-container *ngIf="gerarTabelaAvaliacoesBaixas(competencias.length) as tabelaBaixas">
+                <div *ngIf="tabelaBaixas.items.length > 0">
+                  <h3 [style.color]="getDestaquesBaixasColors(secao).text" style="margin-top: 30px;">Avaliações mais baixas</h3>
+                  <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
+                    Esta seção apresenta os comportamentos em que você obteve as menores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
+                    Pela perspectiva das outras pessoas, estes são os padrões de comportamento que podem ser desenvolvidos:
+                  </p>
+                  <table class="mat-elevation-z8 tabela-destaques" style="width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed;">
+                    <thead [style.background-color]="getDestaquesBaixasColors(secao).header" style="color: white;">
+                      <tr>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 80px;">Classificação</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Comportamento</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média do(a) avaliado(a)</th>
+                        <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média sem autoavaliação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let item of tabelaBaixas.items; let isEven = even" [style.background-color]="isEven ? '#f9f9f9' : 'white'">
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">{{ item.classificacao }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 11px; line-height: 1.3;">{{ item.comportamento }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">{{ item.pontuacaoMediaAvaliado | number:'1.2-2' }}</td>
+                        <td *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ item.pontuacaoMediaSemAutoavaliacao | number:'1.2-2' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </ng-container>
+              <ng-template #noDestaquesData>
+                <p style="color: #666; font-style: italic; margin-top: 20px;">
+                  <i>Nenhum dado disponível para gerar as tabelas de avaliações. Certifique-se de que há competências cadastradas e dados de avaliação carregados.</i>
+                </p>
+              </ng-template>
+            </div>
+
+            <div *ngSwitchCase="'competencia_detalhada'">
+              <h2>{{ secao.titulo }}</h2>
+              <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let i = index">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; margin-bottom: 20px;">
+                  <div *ngIf="getOrInitTextoCompetencia(secao, comp)">
+                    <h3 style="margin-bottom: 4px;">{{ comp.nome }}</h3>
+                    <p style="color: #666; font-style: italic; margin-top: 0;">{{ comp.descricao }}</p>
+                    <angular-editor [(ngModel)]="secao.textosPorCompetencia![comp.id]" [config]="editorConfig"></angular-editor>
+                  </div>
+                  <div style="height: 250px;">
+                    <ngx-charts-bar-horizontal
+                      [scheme]="getColorSchemeParaSecao(secao)"
+                      [results]="getDadosGraficoPorCompetencia(comp)"
+                      [xAxis]="true"
+                      [yAxis]="true"
+                      [showDataLabel]="true"
+                      [barPadding]="8"
+                      [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
+                    </ngx-charts-bar-horizontal>
+                  </div>
+                </div>
+                <mat-divider *ngIf="i < getCompetenciasSelecionadasParaSecao(secao).length - 1"></mat-divider>
               </div>
             </div>
 
-            <ng-template #noPerguntasAbertas>
-              <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
-                <mat-icon style="font-size: 48px; width: 48px; height: 48px;">forum</mat-icon>
-                <p>{{ 'Nenhuma pergunta aberta com respostas encontrada. Certifique-se de que o formulário possui perguntas de texto livre (continuar, parar, começar a fazer) e que os participantes responderam.' | translate }}</p>
+            <div *ngSwitchCase="'grafico_defasagem'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataDefasagem" style="margin-top: 20px;">
+                <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao)" style="margin-bottom: 30px;">
+                  <h3 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">{{ comp.nome }}</h3>
+                  <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
+                </div>
               </div>
-            </ng-template>
-          </div>
-          <div *ngSwitchDefault>
-            <h2>{{ secao.titulo }}</h2>
-            <div [innerHTML]="secao.texto"></div>
-          </div>
-        </ng-container>
-        <hr class="ui-only" />
+              <ng-template #noDataDefasagem>
+                <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
+                  <mat-icon style="font-size: 48px; width: 48px; height: 48px;">waterfall_chart</mat-icon>
+                  <p>Selecione uma ou mais competências para gerar o gráfico.</p>
+                </div>
+              </ng-template>
+            </div>
+
+            <div *ngSwitchCase="'janela_johari'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataJohari" style="margin-top: 20px;">
+                <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+              </div>
+              <ng-template #noDataJohari>
+                <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
+                  <mat-icon style="font-size: 48px; width: 48px; height: 48px;">view_quilt</mat-icon>
+                  <p>Selecione uma ou mais competências para gerar a Janela de Johari.</p>
+                </div>
+              </ng-template>
+            </div>
+
+            <div *ngSwitchCase="'perguntas_abertas'">
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div *ngIf="getPerguntasAbertasData().length > 0; else noPerguntasAbertas" style="margin-top: 20px;">
+                <h3 style="margin-bottom: 16px; color: #5C6BC0; font-size: 16px;">{{ 'Perguntas abertas:' | translate }}</h3>
+                <div *ngFor="let item of getPerguntasAbertasData()" style="margin-bottom: 28px;">
+                  <h4 style="margin-bottom: 12px; font-weight: 600; color: #333;">{{ item.perguntaTitulo }}</h4>
+                  <div *ngFor="let categoria of getCategoriasOrdenadas(item.respostasPorCategoria)" style="margin-bottom: 12px;">
+                    <div style="font-weight: 500; color: #5C6BC0; margin-bottom: 6px; font-size: 14px;">{{ categoria }}</div>
+                    <ul style="margin: 0; padding-left: 20px; color: #555;">
+                      <li *ngFor="let resposta of item.respostasPorCategoria[categoria]" style="margin-bottom: 4px;">{{ resposta }}</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <ng-template #noPerguntasAbertas>
+                <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
+                  <mat-icon style="font-size: 48px; width: 48px; height: 48px;">forum</mat-icon>
+                  <p>{{ 'Nenhuma pergunta aberta com respostas encontrada. Certifique-se de que o formulário possui perguntas de texto livre (continuar, parar, começar a fazer) e que os participantes responderam.' | translate }}</p>
+                </div>
+              </ng-template>
+            </div>
+
+            <div *ngSwitchDefault>
+              <h2>{{ secao.titulo }}</h2>
+              <div [innerHTML]="safeHtml(secao.texto)"></div>
+            </div>
+
+          </ng-container>
+          <hr class="ui-only" />
+        </div>
+
+        <!-- Rodapé do documento -->
+        <div class="rp-doc-rodape"
+             *ngIf="documentoConfig.rodape.ativo"
+             [style.color]="documentoConfig.rodape.cor"
+             [class.rp-doc-rodape--linha]="documentoConfig.rodape.linhaSuperior">
+          <span class="rp-doc-rodape__text">{{ documentoConfig.rodape.texto }}</span>
+          <span class="rp-doc-rodape__ano" *ngIf="documentoConfig.rodape.mostrarAno">{{ today | date:'yyyy' }}</span>
+          <span class="rp-doc-rodape__pagina" *ngIf="documentoConfig.rodape.mostrarNumeroPagina">Pág. </span>
+        </div>
+
       </div>
+
     </div>
-  </mat-tab>
-</mat-tab-group>
-<!-- TAB GROUP END -->
+  </div>
+
+</div>
+</div><!-- /rp-page-wrapper -->

@@ -1,147 +1,148 @@
-<div class="container mt-4" data-tour="create-assessment-page">
-  <div class="row" style="margin-bottom: 10px">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
+<div class="form-wrapper" data-tour="create-assessment-page">
+
+  <app-page-header
+    eyebrow="Formulários de Avaliação"
+    [title]="isEditMode ? 'Editar Formulário' : 'Criar Formulário'"
+    [subtitle]="isEditMode ? 'Atualize as informações e perguntas do formulário' : 'Configure as informações e crie as perguntas da avaliação'">
+
+    <button mat-button class="btn-back" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      Voltar
+    </button>
+
+    <button mat-raised-button class="btn-save" type="button" [disabled]="form.invalid" (click)="saveForm()">
+      <mat-icon>{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>
+      {{ isEditMode ? 'Salvar Alterações' : 'Salvar Formulário' }}
+    </button>
+
+  </app-page-header>
+
+  <form [formGroup]="form" (ngSubmit)="saveForm()">
+
+    <!-- ── Card: Informações ──────────────────────────────────── -->
+    <div class="info-card">
+
+      <div class="info-card__header">
+        <div class="info-card__icon">
+          <mat-icon>tune</mat-icon>
+        </div>
+        <span class="info-card__title">Configurações do formulário</span>
+        <div class="info-card__ok" *ngIf="form.get('clientId')?.value">
+          <mat-icon>check_circle</mat-icon>
+          Cliente selecionado
+        </div>
+      </div>
+
+      <div class="info-card__body">
+        <div class="info-grid">
+
+          <!-- Título -->
+          <div class="info-field info-field--span2">
+            <label class="info-field__label"><mat-icon>title</mat-icon>Título do Formulário<span class="req">*</span></label>
+            <input class="info-field__input" formControlName="name" placeholder="Ex: Avaliação de Liderança 2026" />
+            <span class="info-field__error" *ngIf="form.get('name')?.invalid && form.get('name')?.touched">Título obrigatório</span>
+          </div>
+
+          <!-- Descrição -->
+          <div class="info-field info-field--span2">
+            <label class="info-field__label"><mat-icon>notes</mat-icon>Descrição</label>
+            <input class="info-field__input" formControlName="description" placeholder="Opcional — descreva o objetivo desta avaliação" />
+          </div>
+
+          <!-- Cliente -->
+          <div class="info-field">
+            <label class="info-field__label"><mat-icon>business</mat-icon>Cliente<span class="req">*</span></label>
+            <mat-form-field appearance="outline" class="info-select-field">
+              <mat-select formControlName="clientId" (selectionChange)="onClientChange($event)">
+                <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <!-- Grupo de Competências -->
+          <div class="info-field" *ngIf="form.get('clientId')?.value && competencyGroups.length > 0">
+            <label class="info-field__label"><mat-icon>folder_special</mat-icon>Grupo de Competências</label>
+            <mat-form-field appearance="outline" class="info-select-field">
+              <mat-select [value]="selectedGroupId" (selectionChange)="onCompetencyGroupChange($event.value)">
+                <mat-option [value]="''">— Nenhum —</mat-option>
+                <mat-option *ngFor="let group of competencyGroups" [value]="group.id">
+                  {{ group.name }} ({{ group.competencias?.length || 0 }})
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <!-- Competências -->
+          <div class="info-field info-field--comp" *ngIf="form.get('clientId')?.value && competencies.length > 0">
+            <label class="info-field__label"><mat-icon>psychology</mat-icon>Competências</label>
+            <div class="info-comp-row">
+              <mat-form-field appearance="outline" class="info-select-field">
+                <mat-select formControlName="competencyIds" multiple>
+                  <mat-option *ngFor="let competency of competencies" [value]="competency.id">{{ competency.name }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <div class="toggle-pill">
+                <mat-slide-toggle color="primary" formControlName="mixQuestions"></mat-slide-toggle>
+                <span>Misturar</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Listas salvas -->
+          <ng-container *ngIf="form.get('clientId')?.value && competencyLists.length > 0">
+            <div class="info-field">
+              <label class="info-field__label"><mat-icon>list_alt</mat-icon>Lista salva</label>
+              <mat-form-field appearance="outline" class="info-select-field">
+                <mat-select (selectionChange)="onCompetencyListChange($event.value)">
+                  <mat-option *ngFor="let list of competencyLists" [value]="list.id">{{ list.name }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="info-field">
+              <label class="info-field__label"><mat-icon>add_box</mat-icon>Salvar como lista</label>
+              <div class="info-comp-row">
+                <input class="info-field__input" #listName placeholder="Nome da nova lista" />
+                <button mat-icon-button class="btn-list-save" type="button"
+                        (click)="saveCurrentSelectionAsList(listName.value)" matTooltip="Salvar lista">
+                  <mat-icon>save</mat-icon>
+                </button>
+              </div>
+            </div>
+          </ng-container>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Card: Construtor ───────────────────────────────────── -->
+    <div class="builder-card">
+      <div class="card-header">
+        <div class="card-icon">
+          <mat-icon>build</mat-icon>
+        </div>
+        <div>
+          <h3 class="card-title">Construtor de Formulários</h3>
+          <p class="card-subtitle">Adicione e configure as perguntas da avaliação</p>
+        </div>
+      </div>
+      <div class="builder-body" *ngIf="creatorModel">
+        <survey-creator [model]="creatorModel"></survey-creator>
+      </div>
+    </div>
+
+    <!-- Bottom save bar -->
+    <div class="save-bar">
+      <button mat-button class="btn-back" type="button" (click)="goBack()">
         <mat-icon>arrow_back</mat-icon>
         Voltar
       </button>
-    </div>
-  </div>
-
-  <h2 class="mb-4">Criar Formulário</h2>
-
-  <form [formGroup]="form" (ngSubmit)="saveForm()">
-    <mat-card>
-      <mat-card-title>Informações do Formulário</mat-card-title>
-      <mat-card-content>
-        <div class="row">
-          <div class="col-md-6">
-            <mat-form-field class="w-100" appearance="outline">
-              <mat-label>Título do Formulário</mat-label>
-              <input
-                matInput
-                formControlName="name"
-                placeholder="Digite o título"
-              />
-              <mat-error *ngIf="form.get('name')?.invalid"
-                >O título é obrigatório.</mat-error
-              >
-            </mat-form-field>
-          </div>
-          <div class="col-md-6">
-            <mat-form-field class="w-100" appearance="outline">
-              <mat-label>Descrição</mat-label>
-              <textarea
-                matInput
-                formControlName="description"
-                rows="2"
-                placeholder="Digite a descrição"
-              ></textarea>
-            </mat-form-field>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col-md-6">
-            <mat-form-field class="w-100" appearance="outline">
-              <mat-label>Cliente</mat-label>
-              <mat-select
-                formControlName="clientId"
-                (selectionChange)="onClientChange($event)"
-              >
-                <mat-option
-                  *ngFor="let client of clients"
-                  [value]="client.id"
-                  >{{ client.name }}</mat-option
-                >
-              </mat-select>
-              <mat-error *ngIf="form.get('clientId')?.invalid"
-                >O cliente é obrigatório.</mat-error
-              >
-            </mat-form-field>
-          </div>
-          <!-- Campo de projeto removido -->
-        </div>
-
-        <!-- Seleção de Grupo de Competências -->
-        <div class="row" *ngIf="form.get('clientId')?.value && competencyGroups.length > 0">
-          <div class="col-md-12">
-            <mat-form-field class="w-100" appearance="outline">
-              <mat-label>Grupo de Competências</mat-label>
-              <mat-select (selectionChange)="onCompetencyGroupChange($event.value)">
-                <mat-option [value]="''">Nenhum grupo selecionado</mat-option>
-                <mat-option *ngFor="let group of competencyGroups" [value]="group.id">
-                  {{ group.name }} ({{ group.competencias?.length || 0 }} competências)
-                </mat-option>
-              </mat-select>
-              <mat-hint>Selecione um grupo de competências para carregar todas as competências do grupo automaticamente.</mat-hint>
-            </mat-form-field>
-          </div>
-        </div>
-        <div class="row" *ngIf="form.get('clientId')?.value && competencies.length > 0">
-          <div class="col-md-8">
-            <mat-form-field class="w-100" appearance="outline">
-              <mat-label>Competências</mat-label>
-              <mat-select formControlName="competencyIds" multiple>
-                <mat-option *ngFor="let competency of competencies" [value]="competency.id">
-                  {{ competency.name }}
-                </mat-option>
-              </mat-select>
-              <mat-hint>Selecione uma ou mais competências para gerar o formulário.</mat-hint>
-            </mat-form-field>
-          </div>
-
-          <div class="col-md-4 d-flex align-items-center">
-            <mat-slide-toggle color="primary" formControlName="mixQuestions">
-              Misturar perguntas
-            </mat-slide-toggle>
-          </div>
-        </div>
-
-        <!-- Listas de competências salvas por cliente -->
-        <div class="row" *ngIf="form.get('clientId')?.value && competencyLists.length > 0">
-          <div class="col-md-6">
-            <mat-form-field class="w-100" appearance="outline">
-              <mat-label>Listas de competências salvas</mat-label>
-              <mat-select (selectionChange)="onCompetencyListChange($event.value)">
-                <mat-option *ngFor="let list of competencyLists" [value]="list.id">
-                  {{ list.name }}
-                </mat-option>
-              </mat-select>
-              <mat-hint>Carregue rapidamente uma seleção pré-salva.</mat-hint>
-            </mat-form-field>
-          </div>
-          <div class="col-md-6 d-flex align-items-end">
-            <mat-form-field class="me-2 flex-grow-1" appearance="outline">
-              <mat-label>Nome da nova lista</mat-label>
-              <input matInput #listName placeholder="Ex.: Liderança + Comunicação" />
-            </mat-form-field>
-            <button mat-stroked-button color="primary" type="button" (click)="saveCurrentSelectionAsList(listName.value)">
-              Salvar seleção como lista
-            </button>
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="mt-4">
-      <mat-card-title>Construtor de Formulários</mat-card-title>
-      <mat-card-content *ngIf="creatorModel">
-        <!-- SurveyJS Form Builder -->
-        <survey-creator [model]="creatorModel"></survey-creator>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Botão de Salvar -->
-    <div class="text-end mt-4">
-      <button
-        mat-flat-button
-        color="primary"
-        type="submit"
-        [disabled]="form.invalid"
-      >
-        <mat-icon>save</mat-icon> Salvar Formulário
+      <span class="save-bar-spacer"></span>
+      <button mat-raised-button class="btn-save" type="submit" [disabled]="form.invalid">
+        <mat-icon>{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>
+        {{ isEditMode ? 'Salvar Alterações' : 'Salvar Formulário' }}
       </button>
     </div>
+
   </form>
 </div>

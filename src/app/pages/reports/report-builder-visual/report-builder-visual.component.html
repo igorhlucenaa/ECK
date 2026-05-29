@@ -25,11 +25,32 @@
       </div>
     </div>
     <div class="toolbar-right">
-      <button mat-raised-button color="warn" (click)="limparTudo()" matTooltip="Limpar tudo">
-        <mat-icon>delete_sweep</mat-icon>
-        Limpar
+      <!-- Indicador de contexto: o que está carregado -->
+      <div class="toolbar-save-context" *ngIf="savedLabel">
+        <mat-icon class="toolbar-save-context__icon">{{ hasUnsavedChanges ? 'edit_note' : 'check_circle' }}</mat-icon>
+        <span class="toolbar-save-context__label">{{ savedLabel }}</span>
+        <span class="toolbar-save-context__status" [class.toolbar-save-context__status--unsaved]="hasUnsavedChanges">
+          {{ hasUnsavedChanges ? 'Não salvo' : 'Salvo' }}
+        </span>
+      </div>
+      <div class="toolbar-save-context toolbar-save-context--empty" *ngIf="!savedLabel">
+        <mat-icon>info_outline</mat-icon>
+        <span>Nenhum template ou relatório carregado</span>
+      </div>
+      <!-- Botão configurações do documento -->
+      <button mat-stroked-button class="toolbar-doc-config-btn"
+              [class.toolbar-doc-config-btn--active]="mostrarPainelDocumento"
+              (click)="togglePainelDocumento()"
+              matTooltip="Configurar cabeçalho, rodapé e layout do documento">
+        <mat-icon>tune</mat-icon>
+        Documento
       </button>
-      <button mat-raised-button color="primary" (click)="emitirMudancas()" matTooltip="Salvar configuração">
+      <!-- Botão salvar -->
+      <button mat-flat-button class="toolbar-save-btn"
+              [class.toolbar-save-btn--unsaved]="hasUnsavedChanges"
+              [disabled]="!savedLabel"
+              (click)="saveRequested.emit()"
+              [matTooltip]="!savedLabel ? 'Carregue um template ou relatório acima para salvar' : 'Salvar em: ' + savedLabel">
         <mat-icon>save</mat-icon>
         Salvar
       </button>
@@ -120,15 +141,39 @@
                   <div class="section-title">{{ secao.titulo || 'Sem título' }}</div>
                   <div class="section-meta">
                     <mat-chip [style.background-color]="getCorSecao(secao)" [style.color]="'white'">
-                      {{ getTemplatePorTipo(secao.tipo)?.nome }}
+                      {{ getNomeTipoSecao(secao) }}
                     </mat-chip>
                     <mat-chip *ngIf="contarCompetencias(secao) > 0" color="accent">
                       {{ contarCompetencias(secao) }} competência(s)
+                    </mat-chip>
+                    <mat-chip *ngIf="secao.tipo !== 'capa' && secao.pageBreakAntes === false"
+                              class="page-break-chip page-break-chip--off"
+                              matTooltip="Sem quebra de página antes">
+                      <mat-icon>first_page</mat-icon>
+                    </mat-chip>
+                    <mat-chip *ngIf="secao.pageBreakDepois === true"
+                              class="page-break-chip"
+                              matTooltip="Quebra de página após esta seção">
+                      <mat-icon>last_page</mat-icon>
                     </mat-chip>
                   </div>
                 </div>
               </div>
               <div class="section-actions">
+                <!-- Indicador de paleta de cores (gráficos e tabelas) -->
+                <div *ngIf="['graficos', 'tabela', 'tabela_detalhada', 'destaques', 'competencia_detalhada'].includes(secao.tipo)"
+                     class="palette-badge"
+                     (click)="editarSecao(secao); $event.stopPropagation()"
+                     matTooltip="Clique para editar a paleta de cores">
+                  <mat-icon class="palette-badge__icon">palette</mat-icon>
+                  <div class="palette-badge__dots">
+                    <span *ngFor="let cor of getPaletteBadgeDots(secao)"
+                          class="palette-badge__dot"
+                          [style.background-color]="cor">
+                    </span>
+                  </div>
+                </div>
+
                 <button mat-icon-button
                         (click)="toggleVisibilidade(secao); $event.stopPropagation()"
                         [color]="secao.visivel ? 'primary' : ''"
@@ -152,6 +197,29 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Barra de salvar inferior -->
+  <div class="bottom-save-bar">
+    <div class="bottom-save-bar__context" *ngIf="savedLabel">
+      <mat-icon>{{ hasUnsavedChanges ? 'edit_note' : 'check_circle' }}</mat-icon>
+      <span>{{ savedLabel }}</span>
+      <span class="bottom-save-bar__status" [class.bottom-save-bar__status--unsaved]="hasUnsavedChanges">
+        {{ hasUnsavedChanges ? 'Alterações não salvas' : 'Salvo' }}
+      </span>
+    </div>
+    <div class="bottom-save-bar__context bottom-save-bar__context--empty" *ngIf="!savedLabel">
+      <mat-icon>info_outline</mat-icon>
+      <span>Nenhum template ou relatório carregado</span>
+    </div>
+    <button mat-flat-button class="bottom-save-bar__btn"
+            [class.bottom-save-bar__btn--unsaved]="hasUnsavedChanges"
+            [disabled]="!savedLabel"
+            (click)="saveRequested.emit()"
+            [matTooltip]="!savedLabel ? 'Carregue um template ou relatório acima para salvar' : 'Salvar em: ' + savedLabel">
+      <mat-icon>save</mat-icon>
+      Salvar
+    </button>
   </div>
 
   <!-- Painel de configuração lateral direito -->
@@ -197,6 +265,20 @@
         Seção visível no relatório
       </mat-checkbox>
 
+      <!-- Quebras de página por seção -->
+      <div *ngIf="secaoEditando.tipo !== 'capa'" class="page-break-controls">
+        <p class="config-section-label">
+          <mat-icon style="font-size:16px;vertical-align:middle;">article</mat-icon>
+          Quebras de página
+        </p>
+        <mat-checkbox [(ngModel)]="secaoEditando.pageBreakAntes" class="full-width">
+          Iniciar em nova página <span class="page-break-hint">(antes desta seção)</span>
+        </mat-checkbox>
+        <mat-checkbox [(ngModel)]="secaoEditando.pageBreakDepois" class="full-width">
+          Forçar nova página após esta seção
+        </mat-checkbox>
+      </div>
+
       <!-- Competências (se aplicável) -->
       <div *ngIf="['graficos', 'tabela', 'tabela_detalhada', 'competencia_detalhada', 'grafico_defasagem', 'janela_johari'].includes(secaoEditando.tipo)">
         <mat-form-field appearance="outline" class="full-width">
@@ -207,6 +289,169 @@
             </mat-option>
           </mat-select>
         </mat-form-field>
+      </div>
+
+      <!-- Paleta de cores para tabelas -->
+      <div *ngIf="['tabela', 'tabela_detalhada'].includes(secaoEditando.tipo)">
+        <div class="palette-picker">
+          <p class="palette-picker__label">Cor das Tabelas</p>
+          <p class="palette-picker__group">Gradientes</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cor Sólida</p>
+          <div class="solid-color-row">
+            <label class="solid-color-btn" [class.solid-color-btn--active]="secaoEditando['paletaCor'] === 'cor_unica'" (click)="$event.stopPropagation()">
+              <span class="solid-color-preview" [style.background]="secaoEditando['corUnica'] || '#1E88E5'"></span>
+              <span>{{ secaoEditando['paletaCor'] === 'cor_unica' ? (secaoEditando['corUnica'] || '#1E88E5') : 'Escolher cor' }}</span>
+              <input type="color" class="solid-color-input"
+                     [value]="secaoEditando['corUnica'] || '#1E88E5'"
+                     (input)="selecionarCorUnica($any($event.target).value)"
+                     (click)="$event.stopPropagation()">
+            </label>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paletas de cores para destaques (altas e baixas) -->
+      <div *ngIf="secaoEditando.tipo === 'destaques'">
+        <div class="palette-picker">
+          <p class="palette-picker__label">Cor — Avaliações mais altas</p>
+          <p class="palette-picker__group">Gradientes</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'verde') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'verde') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cor Sólida</p>
+          <div class="solid-color-row">
+            <label class="solid-color-btn" [class.solid-color-btn--active]="secaoEditando['paletaCor'] === 'cor_unica'" (click)="$event.stopPropagation()">
+              <span class="solid-color-preview" [style.background]="secaoEditando['corUnica'] || '#43A047'"></span>
+              <span>{{ secaoEditando['paletaCor'] === 'cor_unica' ? (secaoEditando['corUnica'] || '#43A047') : 'Escolher cor' }}</span>
+              <input type="color" class="solid-color-input"
+                     [value]="secaoEditando['corUnica'] || '#43A047'"
+                     (input)="selecionarCorUnica($any($event.target).value)">
+            </label>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'verde') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'verde') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
+        <div class="palette-picker" style="margin-top: 16px;">
+          <p class="palette-picker__label">Cor — Avaliações mais baixas</p>
+          <p class="palette-picker__group">Gradientes</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key"
+                 (click)="selecionarPaletaBaixas(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cor Sólida</p>
+          <div class="solid-color-row">
+            <label class="solid-color-btn" [class.solid-color-btn--active]="secaoEditando['paletaCorBaixas'] === 'cor_unica'" (click)="$event.stopPropagation()">
+              <span class="solid-color-preview" [style.background]="secaoEditando['corUnicaBaixas'] || '#E53935'"></span>
+              <span>{{ secaoEditando['paletaCorBaixas'] === 'cor_unica' ? (secaoEditando['corUnicaBaixas'] || '#E53935') : 'Escolher cor' }}</span>
+              <input type="color" class="solid-color-input"
+                     [value]="secaoEditando['corUnicaBaixas'] || '#E53935'"
+                     (input)="selecionarCorUnicaBaixas($any($event.target).value)"
+                     (click)="$event.stopPropagation()">
+            </label>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key"
+                 (click)="selecionarPaletaBaixas(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCorBaixas'] || 'vermelho') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paleta de cores para análise detalhada -->
+      <div *ngIf="secaoEditando.tipo === 'competencia_detalhada'">
+        <div class="palette-picker">
+          <p class="palette-picker__label">Cor das Tabelas Detalhadas</p>
+          <p class="palette-picker__group">Gradientes</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cor Sólida</p>
+          <div class="solid-color-row">
+            <label class="solid-color-btn" [class.solid-color-btn--active]="secaoEditando['paletaCor'] === 'cor_unica'" (click)="$event.stopPropagation()">
+              <span class="solid-color-preview" [style.background]="secaoEditando['corUnica'] || '#1E88E5'"></span>
+              <span>{{ secaoEditando['paletaCor'] === 'cor_unica' ? (secaoEditando['corUnica'] || '#1E88E5') : 'Escolher cor' }}</span>
+              <input type="color" class="solid-color-input"
+                     [value]="secaoEditando['corUnica'] || '#1E88E5'"
+                     (input)="selecionarCorUnica($any($event.target).value)"
+                     (click)="$event.stopPropagation()">
+            </label>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'azul') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'azul') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Tipo de gráfico (se aplicável) -->
@@ -221,6 +466,69 @@
             <mat-option value="barras-individuais">Barras Individuais</mat-option>
           </mat-select>
         </mat-form-field>
+
+        <!-- Paleta de cores -->
+        <div class="palette-picker">
+          <p class="palette-picker__label">Paleta de Cores</p>
+          <p class="palette-picker__group">Gradientes</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasGradiente" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'padrao') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of paleta.value.cores" class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'padrao') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+          <p class="palette-picker__group">Cor Sólida</p>
+          <div class="solid-color-row">
+            <label class="solid-color-btn" [class.solid-color-btn--active]="secaoEditando['paletaCor'] === 'cor_unica'" (click)="$event.stopPropagation()">
+              <span class="solid-color-preview" [style.background]="secaoEditando['corUnica'] || '#1E88E5'"></span>
+              <span>{{ secaoEditando['paletaCor'] === 'cor_unica' ? (secaoEditando['corUnica'] || '#1E88E5') : 'Escolher cor' }}</span>
+              <input type="color" class="solid-color-input"
+                     [value]="secaoEditando['corUnica'] || '#1E88E5'"
+                     (input)="selecionarCorUnica($any($event.target).value)"
+                     (click)="$event.stopPropagation()">
+            </label>
+          </div>
+          <p class="palette-picker__group">Especiais</p>
+          <div class="palette-picker__grid">
+            <div *ngFor="let paleta of paletasEspecial" class="palette-card"
+                 [class.palette-card--selected]="(secaoEditando['paletaCor'] || 'padrao') === paleta.key"
+                 (click)="selecionarPaleta(paleta.key)" [matTooltip]="paleta.value.nome">
+              <div class="palette-card__swatches">
+                <span *ngFor="let cor of (paleta.key === 'personalizada' ? getCoresPersonalizadasAtuais() : paleta.value.cores)"
+                      class="palette-card__swatch" [style.background-color]="cor"></span>
+              </div>
+              <span class="palette-card__name">{{ paleta.value.nome }}</span>
+              <mat-icon *ngIf="(secaoEditando['paletaCor'] || 'padrao') === paleta.key" class="palette-card__check">check_circle</mat-icon>
+            </div>
+          </div>
+
+          <!-- Editor de cores personalizadas — visível quando 'personalizada' está selecionada -->
+          <div class="custom-color-editor" *ngIf="(secaoEditando['paletaCor'] || 'padrao') === 'personalizada'">
+            <p class="custom-color-editor__title">
+              <mat-icon>palette</mat-icon>
+              Editar cores personalizadas
+            </p>
+            <div class="custom-color-editor__slots">
+              <div *ngFor="let cor of getCoresPersonalizadasAtuais(); let i = index" class="custom-color-editor__slot">
+                <input type="color" [value]="cor" (input)="atualizarCorPersonalizada(i, $event)" class="custom-color-editor__input" />
+                <span class="custom-color-editor__hex">{{ cor }}</span>
+              </div>
+            </div>
+            <div class="custom-color-editor__actions">
+              <button mat-stroked-button type="button" (click)="adicionarCorPersonalizada()" [disabled]="getCoresPersonalizadasAtuais().length >= 8">
+                <mat-icon>add</mat-icon> Adicionar cor
+              </button>
+              <button mat-stroked-button type="button" color="warn" (click)="removerUltimaCorPersonalizada()" [disabled]="getCoresPersonalizadasAtuais().length <= 2">
+                <mat-icon>remove</mat-icon> Remover
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Texto (se aplicável) - Rich Text Editor -->
@@ -247,4 +555,175 @@
       </div>
     </div>
   </div>
+
+  <!-- Painel de configuração global do documento -->
+  <div class="doc-config-panel" [class.open]="mostrarPainelDocumento">
+    <div class="doc-config-panel__header">
+      <div class="doc-config-panel__title">
+        <mat-icon>tune</mat-icon>
+        <span>Configurações do Documento</span>
+      </div>
+      <button mat-icon-button (click)="togglePainelDocumento()" matTooltip="Recolher painel">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+
+    <div class="doc-config-panel__content">
+
+      <!-- Cabeçalho -->
+      <div class="doc-config-section" [class.doc-config-section--inactive]="!documentoConfig.cabecalho.ativo">
+        <div class="doc-config-section__header">
+          <mat-icon class="doc-config-section__icon">vertical_align_top</mat-icon>
+          <span class="doc-config-section__label">Cabeçalho</span>
+          <mat-slide-toggle
+            [ngModel]="documentoConfig.cabecalho.ativo"
+            (ngModelChange)="atualizarCabecalho('ativo', $event)"
+            color="primary">
+          </mat-slide-toggle>
+        </div>
+
+        <div *ngIf="documentoConfig.cabecalho.ativo" class="doc-config-section__body">
+          <!-- Preview em tempo real -->
+          <div class="doc-config-preview">
+            <div class="doc-config-preview__row">
+              <span [style.color]="documentoConfig.cabecalho.cor" class="doc-config-preview__left">
+                {{ documentoConfig.cabecalho.textoEsquerda || '…' }}
+                <ng-container *ngIf="documentoConfig.cabecalho.mostrarNomeProjeto"> — [Projeto]</ng-container>
+              </span>
+              <span *ngIf="documentoConfig.cabecalho.mostrarNumeroPagina" [style.color]="documentoConfig.cabecalho.cor" class="doc-config-preview__right">
+                Pág. 1/10
+              </span>
+            </div>
+            <div *ngIf="documentoConfig.cabecalho.linhaInferior" class="doc-config-preview__sep" [style.background]="documentoConfig.cabecalho.cor"></div>
+          </div>
+
+          <!-- Logo da empresa -->
+          <div class="doc-config-logo-row">
+            <div class="doc-config-logo-preview" *ngIf="documentoConfig.cabecalho.logoUrl">
+              <img [src]="documentoConfig.cabecalho.logoUrl" class="doc-config-logo-img" alt="Logo">
+              <button mat-icon-button class="doc-config-logo-remove" (click)="removerLogo()" matTooltip="Remover logo">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+            <label class="doc-config-logo-btn">
+              <mat-icon>upload</mat-icon>
+              {{ documentoConfig.cabecalho.logoUrl ? 'Trocar logo' : 'Adicionar logo' }}
+              <input type="file" accept="image/*" (change)="onLogoFileSelected($event)" hidden>
+            </label>
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Texto à esquerda</mat-label>
+            <input matInput
+                   [ngModel]="documentoConfig.cabecalho.textoEsquerda"
+                   (ngModelChange)="atualizarCabecalho('textoEsquerda', $event)"
+                   placeholder="Ex: ECK - Avaliação 360°">
+          </mat-form-field>
+
+          <div class="doc-config-toggles">
+            <mat-checkbox [ngModel]="documentoConfig.cabecalho.mostrarNomeProjeto"
+              (ngModelChange)="atualizarCabecalho('mostrarNomeProjeto', $event)">
+              Nome do projeto
+            </mat-checkbox>
+            <mat-checkbox [ngModel]="documentoConfig.cabecalho.mostrarNumeroPagina"
+              (ngModelChange)="atualizarCabecalho('mostrarNumeroPagina', $event)">
+              Número de página
+            </mat-checkbox>
+            <mat-checkbox [ngModel]="documentoConfig.cabecalho.linhaInferior"
+              (ngModelChange)="atualizarCabecalho('linhaInferior', $event)">
+              Linha separadora
+            </mat-checkbox>
+            <mat-checkbox [ngModel]="documentoConfig.cabecalho.ocultarNaCapa"
+              (ngModelChange)="atualizarCabecalho('ocultarNaCapa', $event)">
+              Ocultar na capa
+            </mat-checkbox>
+          </div>
+
+          <div class="doc-config-color-row">
+            <label>Cor</label>
+            <input type="color"
+                   [value]="documentoConfig.cabecalho.cor"
+                   (change)="atualizarCabecalho('cor', $any($event.target).value)"
+                   class="doc-config-color-input">
+            <span class="doc-config-color-hex">{{ documentoConfig.cabecalho.cor }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rodapé -->
+      <div class="doc-config-section" [class.doc-config-section--inactive]="!documentoConfig.rodape.ativo">
+        <div class="doc-config-section__header">
+          <mat-icon class="doc-config-section__icon">vertical_align_bottom</mat-icon>
+          <span class="doc-config-section__label">Rodapé</span>
+          <mat-slide-toggle
+            [ngModel]="documentoConfig.rodape.ativo"
+            (ngModelChange)="atualizarRodape('ativo', $event)"
+            color="primary">
+          </mat-slide-toggle>
+        </div>
+
+        <div *ngIf="documentoConfig.rodape.ativo" class="doc-config-section__body">
+          <!-- Preview em tempo real -->
+          <div class="doc-config-preview">
+            <div *ngIf="documentoConfig.rodape.linhaSuperior" class="doc-config-preview__sep" [style.background]="documentoConfig.rodape.cor"></div>
+            <div class="doc-config-preview__row doc-config-preview__row--center">
+              <span [style.color]="documentoConfig.rodape.cor">
+                {{ documentoConfig.rodape.texto || '…' }}
+                <ng-container *ngIf="documentoConfig.rodape.mostrarAno"> | © {{ currentYear }}</ng-container>
+                <ng-container *ngIf="documentoConfig.rodape.mostrarNumeroPagina"> | Pág. 1/10</ng-container>
+              </span>
+            </div>
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Texto central</mat-label>
+            <input matInput
+                   [ngModel]="documentoConfig.rodape.texto"
+                   (ngModelChange)="atualizarRodape('texto', $event)"
+                   placeholder="Ex: ECK Consulting — Confidencial">
+          </mat-form-field>
+
+          <div class="doc-config-toggles">
+            <mat-checkbox [ngModel]="documentoConfig.rodape.mostrarAno"
+              (ngModelChange)="atualizarRodape('mostrarAno', $event)">
+              Ano atual (©)
+            </mat-checkbox>
+            <mat-checkbox [ngModel]="documentoConfig.rodape.mostrarNumeroPagina"
+              (ngModelChange)="atualizarRodape('mostrarNumeroPagina', $event)">
+              Número de página
+            </mat-checkbox>
+            <mat-checkbox [ngModel]="documentoConfig.rodape.linhaSuperior"
+              (ngModelChange)="atualizarRodape('linhaSuperior', $event)">
+              Linha separadora
+            </mat-checkbox>
+            <mat-checkbox [ngModel]="documentoConfig.rodape.ocultarNaCapa"
+              (ngModelChange)="atualizarRodape('ocultarNaCapa', $event)">
+              Ocultar na capa
+            </mat-checkbox>
+          </div>
+
+          <div class="doc-config-color-row">
+            <label>Cor</label>
+            <input type="color"
+                   [value]="documentoConfig.rodape.cor"
+                   (change)="atualizarRodape('cor', $any($event.target).value)"
+                   class="doc-config-color-input">
+            <span class="doc-config-color-hex">{{ documentoConfig.rodape.cor }}</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
+
+<!-- Aba flutuante para reabrir o painel quando fechado -->
+<button class="doc-config-tab"
+        *ngIf="!mostrarPainelDocumento"
+        (click)="togglePainelDocumento()"
+        matTooltip="Configurar cabeçalho e rodapé"
+        matTooltipPosition="left">
+  <mat-icon>tune</mat-icon>
+  <span>Documento</span>
+</button>

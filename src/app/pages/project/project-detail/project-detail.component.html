@@ -1,117 +1,233 @@
-<div class="container my-4">
-  <div class="row" style="margin-bottom: 10px">
-    <div class="col-12">
-      <button mat-button (click)="goBack()" class="mb-3">
-        <mat-icon>arrow_back</mat-icon>
-        Voltar
-      </button>
-    </div>
+<div class="detail-wrapper">
+
+  <app-page-header
+    eyebrow="Projetos"
+    [title]="(isEditMode ? 'Editar Projeto' : 'Novo Projeto') | translate"
+    [subtitle]="isEditMode ? 'Atualize os dados e configurações do projeto' : 'Preencha as informações para criar um novo projeto'">
+
+    <button mat-button class="btn-back" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'Voltar' | translate }}
+    </button>
+
+    <button *ngIf="canConcludeProject" mat-stroked-button class="btn-conclude"
+            [disabled]="isConcluding"
+            (click)="concludeProject()"
+            style="border-color:#10b981;color:#10b981;margin-right:8px;">
+      <mat-spinner *ngIf="isConcluding" diameter="16" style="display:inline-block;margin-right:6px;vertical-align:middle;"></mat-spinner>
+      <mat-icon *ngIf="!isConcluding">task_alt</mat-icon>
+      {{ isConcluding ? 'Concluindo...' : 'Concluir Projeto' }}
+    </button>
+
+    <button mat-raised-button class="btn-save"
+            [disabled]="form.invalid || isLoading || projectStatus === 'concluido'"
+            (click)="saveProject()">
+      <mat-spinner *ngIf="isLoading" diameter="16" style="display:inline-block;margin-right:6px;vertical-align:middle;"></mat-spinner>
+      <mat-icon *ngIf="!isLoading">{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>
+      {{ (isLoading ? 'Salvando...' : (isEditMode ? 'Salvar Alterações' : 'Salvar Projeto')) | translate }}
+    </button>
+
+  </app-page-header>
+
+  <!-- Loading overlay -->
+  <div class="loading-state" *ngIf="isLoading && isEditMode">
+    <mat-spinner diameter="36"></mat-spinner>
+    <span>{{ 'Carregando dados do projeto...' | translate }}</span>
   </div>
-  <mat-card>
-    <mat-card-title style="padding: 20px 20px 5px">
-      {{ isEditMode ? "Editar Projeto" : "Adicionar Projeto" }}
-    </mat-card-title>
-    <mat-card-content>
-      <form [formGroup]="form" (ngSubmit)="saveProject()">
-        <!-- Seleção de Cliente (Somente para admin_master) -->
-        <div *ngIf="clients.length > 0" class="row">
-          <div class="col-12 mb-3">
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Cliente</mat-label>
-              <mat-select formControlName="clientId">
-                <mat-option *ngFor="let client of clients" [value]="client.id">
-                  {{ client.name }}
-                </mat-option>
-              </mat-select>
-              <mat-error *ngIf="form.get('clientId')?.hasError('required')">
-                O cliente é obrigatório.
-              </mat-error>
-            </mat-form-field>
+
+  <form [formGroup]="form" (ngSubmit)="saveProject()" *ngIf="!isLoading || !isEditMode">
+    <div class="form-grid">
+
+      <!-- Card: Dados Gerais -->
+      <div class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-icon">
+            <mat-icon>folder_open</mat-icon>
+          </div>
+          <div>
+            <h3 class="form-card-title">{{ 'Dados do Projeto' | translate }}</h3>
+            <p class="form-card-subtitle">{{ 'Informações gerais de identificação' | translate }}</p>
           </div>
         </div>
 
-        <!-- Restante do formulário -->
-        <!-- Linha 1 -->
-        <div class="row">
-          <div class="col-md-12">
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Nome do Projeto</mat-label>
-              <input matInput formControlName="name" />
-            </mat-form-field>
-          </div>
-          <!-- <div class="col-md-6 mb-3">
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Orçamento</mat-label>
-              <input matInput type="number" formControlName="budget" />
-            </mat-form-field>
-          </div> -->
+        <div class="form-card-body">
 
-          <!-- Grupo de Usuários -->
-          <div class="col-md-12 mb-3">
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Grupos de Usuários</mat-label>
-              <mat-select formControlName="groupIds" multiple>
-                <mat-option *ngFor="let group of groups" [value]="group.id">
-                  {{ group.name }}
-                </mat-option>
-              </mat-select>
-              <mat-error *ngIf="form.get('groupIds')?.hasError('required')">
-                Pelo menos um grupo de usuário é obrigatório.
-              </mat-error>
-            </mat-form-field>
+          <!-- Cliente (apenas admin_master) -->
+          <mat-form-field appearance="outline" class="w-full" *ngIf="clients.length > 0">
+            <mat-label>{{ 'Cliente' | translate }}</mat-label>
+            <mat-icon matPrefix class="field-icon">business</mat-icon>
+            <mat-select formControlName="clientId">
+              <mat-option *ngFor="let client of clients" [value]="client.id">
+                {{ client.name }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="form.get('clientId')?.hasError('required')">
+              {{ 'O cliente é obrigatório.' | translate }}
+            </mat-error>
+          </mat-form-field>
+
+          <!-- Nome -->
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>{{ 'Nome do Projeto' | translate }}</mat-label>
+            <mat-icon matPrefix class="field-icon">title</mat-icon>
+            <input matInput formControlName="name" [placeholder]="'Ex: Avaliação 360° — Q1 2025' | translate" />
+            <mat-error *ngIf="form.get('name')?.hasError('required')">
+              {{ 'O nome é obrigatório.' | translate }}
+            </mat-error>
+          </mat-form-field>
+
+          <!-- Responsável -->
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>{{ 'Responsável' | translate }}</mat-label>
+            <mat-icon matPrefix class="field-icon">person</mat-icon>
+            <input matInput formControlName="responsible" [placeholder]="'Nome do responsável pelo projeto' | translate" />
+          </mat-form-field>
+
+          <!-- Formulário a utilizar -->
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>{{ 'Formulário a utilizar' | translate }}</mat-label>
+            <mat-icon matPrefix class="field-icon">assignment</mat-icon>
+            <mat-select formControlName="assessmentId">
+              <mat-option value="">— Nenhum —</mat-option>
+              <mat-option *ngFor="let a of assessments" [value]="a.id">{{ a.name }}</mat-option>
+            </mat-select>
+            <mat-hint *ngIf="!form.get('clientId')?.value">{{ 'Selecione um cliente para ver os formulários disponíveis' | translate }}</mat-hint>
+            <mat-hint *ngIf="form.get('clientId')?.value && assessments.length === 0">{{ 'Nenhum formulário disponível para este cliente' | translate }}</mat-hint>
+          </mat-form-field>
+
+        </div>
+      </div>
+
+      <!-- Card: Grupos de Usuários -->
+      <div class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-icon form-card-icon--purple">
+            <mat-icon>group_work</mat-icon>
+          </div>
+          <div>
+            <h3 class="form-card-title">{{ 'Grupos de Usuários' | translate }}</h3>
+            <p class="form-card-subtitle">{{ 'Grupos de usuários que participarão deste projeto' | translate }}</p>
+          </div>
+          <span class="participants-badge" *ngIf="usersInGroups.length > 0">
+            {{ usersInGroups.length }} usuário{{ usersInGroups.length !== 1 ? 's' : '' }}
+          </span>
+        </div>
+
+        <div class="form-card-body">
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>{{ 'Grupos de Usuários' | translate }}</mat-label>
+            <mat-icon matPrefix class="field-icon">group_work</mat-icon>
+            <mat-select formControlName="groupIds" multiple (selectionChange)="updateUsersInGroups()">
+              <mat-option *ngFor="let group of groups" [value]="group.id">
+                {{ group.name }}
+              </mat-option>
+            </mat-select>
+            <mat-hint *ngIf="groups.length === 0">{{ 'Nenhum grupo disponível. Crie grupos de usuários primeiro.' | translate }}</mat-hint>
+            <mat-error *ngIf="form.get('groupIds')?.hasError('required')">
+              {{ 'Pelo menos um grupo é obrigatório.' | translate }}
+            </mat-error>
+          </mat-form-field>
+
+          <!-- Atalho para gerenciar usuários e grupos sem sair da página -->
+          <div class="participants-shortcut">
+            <mat-icon class="participants-shortcut__icon">info_outline</mat-icon>
+            <span class="participants-shortcut__text">{{ 'Precisa cadastrar usuários ou criar grupos?' | translate }}</span>
+            <button mat-button color="primary" type="button"
+                    class="participants-shortcut__btn"
+                    (click)="openUsersDialog()">
+              <mat-icon>open_in_new</mat-icon>
+              {{ 'Gerenciar Usuários e Grupos' | translate }}
+            </button>
+          </div>
+
+          <!-- Preview de usuários deduplcados -->
+          <div class="users-preview" *ngIf="usersInGroups.length > 0">
+            <div class="users-preview__header">
+              <span class="users-preview__label">{{ 'Usuários incluídos' | translate }}</span>
+              <span class="users-preview__count">{{ usersInGroups.length }} usuário{{ usersInGroups.length !== 1 ? 's' : '' }} único{{ usersInGroups.length !== 1 ? 's' : '' }}</span>
+            </div>
+            <div class="users-chips">
+              <span class="user-chip" *ngFor="let user of usersInGroups"
+                    [matTooltip]="'Grupos: ' + user.groupNames.join(', ')"
+                    matTooltipPosition="above">
+                <span class="user-chip__avatar">{{ user.name?.charAt(0)?.toUpperCase() }}</span>
+                <span class="user-chip__name">{{ user.name }}</span>
+                <span class="user-chip__groups" *ngIf="user.groupNames.length > 1">
+                  <mat-icon>group_work</mat-icon>{{ user.groupNames.length }}
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Configurações -->
+      <div class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-icon form-card-icon--accent">
+            <mat-icon>tune</mat-icon>
+          </div>
+          <div>
+            <h3 class="form-card-title">{{ 'Configurações' | translate }}</h3>
+            <p class="form-card-subtitle">{{ 'Prazo e status' | translate }}</p>
           </div>
         </div>
 
-        <!-- Linha 2 -->
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Prazo</mat-label>
+        <div class="form-card-body">
+          <div class="fields-row">
+            <mat-form-field appearance="outline" class="flex-1">
+              <mat-label>{{ 'Prazo de Preenchimento' | translate }}</mat-label>
+              <mat-icon matPrefix class="field-icon">event</mat-icon>
               <input
                 matInput
                 [matDatepicker]="picker"
                 formControlName="deadline"
-                [matDatepickerFilter]="filterDates"
+                placeholder="DD/MM/AAAA"
               />
-              <mat-datepicker-toggle
-                matSuffix
-                [for]="picker"
-              ></mat-datepicker-toggle>
+              <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
               <mat-datepicker #picker></mat-datepicker>
               <mat-error *ngIf="form.get('deadline')?.hasError('required')">
                 O prazo é obrigatório.
               </mat-error>
             </mat-form-field>
-          </div>
 
-          <div class="col-md-6 mb-3">
-            <mat-form-field appearance="outline" class="w-100">
-              <mat-label>Status</mat-label>
+            <mat-form-field appearance="outline" class="flex-1">
+              <mat-label>{{ 'Status' | translate }}</mat-label>
+              <mat-icon matPrefix class="field-icon">toggle_on</mat-icon>
               <mat-select formControlName="status">
-                <mat-option value="Ativo">Ativo</mat-option>
-                <mat-option value="Inativo">Inativo</mat-option>
-                <mat-option value="Concluído">Concluído</mat-option>
+                <mat-option value="Em andamento">
+                  <span class="status-option status-em-andamento">● {{ 'Em andamento' | translate }}</span>
+                </mat-option>
+                <mat-option value="Concluído">
+                  <span class="status-option status-concluido">● {{ 'Concluído' | translate }}</span>
+                </mat-option>
+                <mat-option value="Cancelado">
+                  <span class="status-option status-cancelado">● {{ 'Cancelado' | translate }}</span>
+                </mat-option>
               </mat-select>
             </mat-form-field>
           </div>
-        </div>
 
-        <!-- Botões de Ação -->
-        <div class="text-end mt-3">
-          <button mat-flat-button color="warn" (click)="cancel()">
-            Voltar
-          </button>
-          <button
-            mat-flat-button
-            color="primary"
-            type="submit"
-            [disabled]="form.invalid || isLoading"
-          >
-            <span *ngIf="isLoading">Salvando...</span>
-            <span *ngIf="!isLoading">Salvar</span>
-          </button>
         </div>
-      </form>
-    </mat-card-content>
-  </mat-card>
+      </div>
+
+    </div>
+
+    <!-- Bottom save bar -->
+    <div class="save-bar">
+      <button mat-button class="btn-back" type="button" (click)="goBack()">
+        <mat-icon>arrow_back</mat-icon>
+        {{ 'Voltar' | translate }}
+      </button>
+      <span class="save-bar-spacer"></span>
+      <button mat-raised-button class="btn-save" type="submit"
+              [disabled]="form.invalid || isLoading">
+        <mat-spinner *ngIf="isLoading" diameter="16" style="display:inline-block;margin-right:6px;vertical-align:middle;"></mat-spinner>
+        <mat-icon *ngIf="!isLoading">{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>
+        {{ (isLoading ? 'Salvando...' : (isEditMode ? 'Salvar Alterações' : 'Salvar Projeto')) | translate }}
+      </button>
+    </div>
+
+  </form>
+
 </div>

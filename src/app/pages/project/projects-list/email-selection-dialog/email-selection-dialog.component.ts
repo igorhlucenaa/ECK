@@ -472,38 +472,10 @@ export class EmailSelectionDialogComponent implements OnInit {
     this.isLoading.set(true);
 
     try {
-      // Carregar o template
-      const templateRef = doc(
-        this.firestore,
-        'mailTemplates',
-        this.data.templateId
-      );
-      const templateDoc = await getDoc(templateRef);
+      const templateDoc = await getDoc(doc(this.firestore, 'mailTemplates', this.data.templateId));
       if (!templateDoc.exists()) {
-        throw new Error('Template não encontrado.');
+        throw new Error('Template nao encontrado.');
       }
-
-      let templateContent = templateDoc.data()['content'] || '';
-      const originalContent = templateContent;
-      let contentObj = JSON.parse(templateContent);
-
-      // Obter a data de expiração do projeto
-      const projectRef = doc(
-        this.firestore,
-        'projects',
-        this.selectedProjectId
-      );
-      const projectDoc = await getDoc(projectRef);
-      if (!projectDoc.exists()) {
-        throw new Error('Projeto não encontrado.');
-      }
-      let projectDeadline: Date | undefined;
-      if (projectDoc.data()['deadline'] instanceof Timestamp) {
-        projectDeadline = projectDoc.data()['deadline'].toDate();
-      } else if (projectDoc.data()['deadline'] instanceof Date) {
-        projectDeadline = projectDoc.data()['deadline'];
-      }
-      const formattedDeadline = this.formatDate(projectDeadline);
 
       // Enviar e-mails para cada participante selecionado
       for (const key of this.selectedParticipants) {
@@ -511,28 +483,15 @@ export class EmailSelectionDialogComponent implements OnInit {
           (p) => this.getParticipantKey(p) === key
         );
         if (participant) {
-          let participantContent = JSON.parse(JSON.stringify(contentObj));
-
-          participantContent = this.replaceDeadlineInContent(
-            participantContent,
-            formattedDeadline
-          );
-
-          participantContent = this.replaceUserNameInContent(
-            participantContent,
-            participant.name
-          );
-
-          const finalContent = JSON.stringify(participantContent);
-
-          await updateDoc(templateRef, { content: finalContent });
+          const avaliadoId = (participant as any)['avaliadoId'];
 
           await this.emailService
             .sendEmail(
               participant.email,
               this.data.templateId,
               participant.id,
-              this.selectedAssessmentId
+              this.selectedAssessmentId,
+              avaliadoId || undefined
             )
             .toPromise();
 
@@ -552,7 +511,6 @@ export class EmailSelectionDialogComponent implements OnInit {
         }
       }
 
-      await updateDoc(templateRef, { content: originalContent });
       this.dialogRef.close();
     } catch (error) {
       console.error('Erro ao enviar e-mails ou atualizar documentos:', error);
@@ -562,56 +520,31 @@ export class EmailSelectionDialogComponent implements OnInit {
     }
   }
 
-  private replaceUserNameInContent(contentObj: any, userName: string): any {
-    if (contentObj.body && contentObj.body.rows) {
-      contentObj.body.rows.forEach((row: any) => {
-        if (row.columns) {
-          row.columns.forEach((column: any) => {
-            if (column.contents) {
-              column.contents.forEach((content: any) => {
-                if (content.values && content.values.text) {
-                  content.values.text = content.values.text.replace(
-                    /\$%Nome do usuário preenchido dinâmicamente\$%/g,
-                    userName
-                  );
-                }
-              });
-            }
-          });
-        }
-      });
-    }
-    return contentObj;
-  }
+  /** Substitui todas as variáveis dinâmicas (nova sintaxe {{...}} + legado $%...$%) */
+  private replaceAllVariables(contentObj: any, vars: Record<string, string>): any {
+    const replaceInText = (text: string): string => {
+      // Nova sintaxe {{...}}
+      text = text.replace(/\{\{nome_participante\}\}/g, vars['nome_participante'] || '');
+      text = text.replace(/\{\{nome_avaliado\}\}/g, vars['nome_avaliado'] || '');
+      text = text.replace(/\{\{data_expiracao\}\}/g, vars['data_expiracao'] || '');
+      text = text.replace(/\{\{nome_projeto\}\}/g, vars['nome_projeto'] || '');
+      text = text.replace(/\{\{nome_cliente\}\}/g, vars['nome_cliente'] || '');
+      // Sintaxe legada (compatibilidade com templates antigos)
+      text = text.replace(/\$%Nome do usuário preenchido dinâmicamente\$%/g, vars['nome_participante'] || '');
+      text = text.replace(/\$%NOME_DO_AVALIADO\$%/g, vars['nome_avaliado'] || '');
+      text = text.replace(/\*?\$%DATA DE EXPIRAÇÃO DO PROJETO\$%\*?/g, vars['data_expiracao'] || '');
+      return text;
+    };
 
-  private replaceDeadlineInContent(
-    contentObj: any,
-    formattedDeadline: string
-  ): any {
-    if (contentObj.body && contentObj.body.rows) {
+    if (contentObj.body?.rows) {
       contentObj.body.rows.forEach((row: any) => {
-        if (row.columns) {
-          row.columns.forEach((column: any) => {
-            if (column.contents) {
-              column.contents.forEach((content: any) => {
-                if (content.values && content.values.text) {
-                  console.log(
-                    'Texto antes da substituição:',
-                    content.values.text
-                  );
-                  content.values.text = content.values.text.replace(
-                    /\*\$%DATA DE EXPIRAÇÃO DO PROJETO\$%\*/g,
-                    formattedDeadline
-                  );
-                  console.log(
-                    'Texto após a substituição:',
-                    content.values.text
-                  );
-                }
-              });
+        row.columns?.forEach((column: any) => {
+          column.contents?.forEach((content: any) => {
+            if (content.values?.text) {
+              content.values.text = replaceInText(content.values.text);
             }
           });
-        }
+        });
       });
     }
     return contentObj;

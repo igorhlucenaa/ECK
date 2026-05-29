@@ -1,117 +1,131 @@
-<div class="container my-4">
-  <mat-card>
-    <mat-card-title style="margin: 10px" data-tour="new-order-header">Novo Pedido de Crédito</mat-card-title>
-    <mat-card-content data-tour="new-order-form">
-      <form [formGroup]="orderForm" (ngSubmit)="createOrder()">
-        <!-- Seleção de Cliente -->
-        <mat-form-field appearance="outline" class="w-100 mb-3">
-          <mat-label>Cliente</mat-label>
-          <mat-select formControlName="clientId">
-            <mat-option *ngFor="let client of clients" [value]="client.id">
-              {{ client.name || "Cliente sem nome" }}
-            </mat-option>
-          </mat-select>
-          <mat-error *ngIf="orderForm.get('clientId')?.hasError('required')">
-            Selecione um cliente.
-          </mat-error>
-        </mat-form-field>
+<div class="form-wrapper">
 
-        <!-- Quantidade de Créditos -->
-        <mat-form-field appearance="outline" class="w-100 mb-3">
-          <mat-label>Quantidade de Créditos</mat-label>
-          <input
-            matInput
-            formControlName="credits"
-            type="number"
-            placeholder="Digite a quantidade de créditos"
-          />
-          <mat-error *ngIf="orderForm.get('credits')?.hasError('required')">
-            A quantidade de créditos é obrigatória.
-          </mat-error>
-          <mat-error *ngIf="orderForm.get('credits')?.hasError('min')">
-            A quantidade deve ser maior que zero.
-          </mat-error>
-        </mat-form-field>
+  <app-page-header
+    eyebrow="Financeiro"
+    title="Novo Pedido de Crédito"
+    subtitle="Preencha as informações para solicitar créditos ao cliente"
+    data-tour="new-order-header">
 
-        <!-- Valor Total -->
-        <!-- <mat-form-field appearance="outline" class="w-100 mb-3">
-          <mat-label>Valor Total</mat-label>
-          <input
-            matInput
-            formControlName="totalAmount"
-            type="number"
-            placeholder="Digite o valor total"
-          />
-          <mat-error *ngIf="orderForm.get('totalAmount')?.hasError('required')">
-            O valor total é obrigatório.
-          </mat-error>
-          <mat-error *ngIf="orderForm.get('totalAmount')?.hasError('min')">
-            O valor deve ser maior ou igual a zero.
-          </mat-error>
-        </mat-form-field> -->
+    <button mat-button class="btn-back" type="button" (click)="cancel()">
+      <mat-icon>arrow_back</mat-icon>
+      Voltar
+    </button>
 
-        <!-- Data de Início -->
-        <mat-form-field appearance="outline" class="w-100 mb-3">
-          <mat-label>Data de Início</mat-label>
-          <input
-            matInput
-            formControlName="startDate"
-            [matDatepicker]="startDatePicker"
-            placeholder="Selecione a data de início"
-          />
-          <mat-datepicker-toggle
-            matSuffix
-            [for]="startDatePicker"
-          ></mat-datepicker-toggle>
-          <mat-datepicker #startDatePicker></mat-datepicker>
-        </mat-form-field>
+    <button mat-raised-button class="btn-save" type="button"
+      [disabled]="orderForm.invalid" (click)="createOrder()">
+      <mat-icon>add_circle</mat-icon>
+      Criar Pedido
+    </button>
 
-        <!-- Data de Validade -->
-        <mat-form-field appearance="outline" class="w-100 mb-3">
-          <mat-label>Data de Validade</mat-label>
-          <input
-            matInput
-            formControlName="validityDate"
-            [matDatepicker]="validityDatePicker"
-            [min]="orderForm.get('startDate')?.value"
-            placeholder="Selecione a data de validade"
-          />
-          <mat-datepicker-toggle
-            matSuffix
-            [for]="validityDatePicker"
-          ></mat-datepicker-toggle>
-          <mat-datepicker #validityDatePicker></mat-datepicker>
-          <mat-error *ngIf="orderForm.get('validityDate')?.hasError('minDate')">
-            A data de validade deve ser maior ou igual à data de início.
-          </mat-error>
-        </mat-form-field>
+  </app-page-header>
 
-        <!-- Notas -->
-        <mat-form-field appearance="outline" class="w-100 mb-3">
-          <mat-label>Notas Adicionais</mat-label>
-          <textarea
-            matInput
-            formControlName="notes"
-            placeholder="Digite quaisquer observações adicionais"
-            rows="3"
-          ></textarea>
-        </mat-form-field>
+  <form [formGroup]="orderForm" (ngSubmit)="createOrder()">
 
-        <!-- Botões -->
-        <div class="text-end">
-          <button
-            mat-flat-button
-            color="primary"
-            type="submit"
-            style="margin-right: 7px"
-          >
-            Criar Pedido
-          </button>
-          <button mat-flat-button color="warn" type="button" (click)="cancel()">
-            Cancelar
-          </button>
+    <!-- Card: Dados do Pedido -->
+    <div class="info-card" data-tour="new-order-form">
+      <div class="card-header">
+        <div class="card-icon">
+          <mat-icon>receipt_long</mat-icon>
         </div>
-      </form>
-    </mat-card-content>
-  </mat-card>
+        <div>
+          <h3 class="card-title">Dados do Pedido</h3>
+          <p class="card-subtitle">Informe o cliente, a quantidade de créditos e o período de vigência</p>
+        </div>
+      </div>
+
+      <div class="card-body">
+
+        <!-- Linha 1: Cliente -->
+        <div class="fields-row">
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Cliente</mat-label>
+            <mat-icon matPrefix class="field-icon">business</mat-icon>
+            <mat-select formControlName="clientId">
+              <mat-option *ngFor="let client of clients" [value]="client.id">
+                {{ client.name || 'Cliente sem nome' }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="orderForm.get('clientId')?.hasError('required')">
+              Selecione um cliente.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Linha 2: Quantidade de Créditos -->
+        <div class="fields-row">
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Quantidade de Créditos</mat-label>
+            <mat-icon matPrefix class="field-icon">toll</mat-icon>
+            <input matInput formControlName="credits" type="number"
+              placeholder="Ex.: 100" min="1" />
+            <mat-error *ngIf="orderForm.get('credits')?.hasError('required')">
+              A quantidade de créditos é obrigatória.
+            </mat-error>
+            <mat-error *ngIf="orderForm.get('credits')?.hasError('min')">
+              A quantidade deve ser maior que zero.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Linha 3: Datas -->
+        <div class="fields-row">
+          <mat-form-field appearance="outline" class="field-half">
+            <mat-label>Data de Início</mat-label>
+            <mat-icon matPrefix class="field-icon">calendar_today</mat-icon>
+            <input matInput formControlName="startDate"
+              [matDatepicker]="startDatePicker"
+              placeholder="dd/mm/aaaa" />
+            <mat-datepicker-toggle matSuffix [for]="startDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #startDatePicker></mat-datepicker>
+            <mat-error *ngIf="orderForm.get('startDate')?.hasError('required')">
+              A data de início é obrigatória.
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field-half">
+            <mat-label>Data de Validade</mat-label>
+            <mat-icon matPrefix class="field-icon">event_busy</mat-icon>
+            <input matInput formControlName="validityDate"
+              [matDatepicker]="validityDatePicker"
+              [min]="orderForm.get('startDate')?.value"
+              placeholder="dd/mm/aaaa" />
+            <mat-datepicker-toggle matSuffix [for]="validityDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #validityDatePicker></mat-datepicker>
+            <mat-error *ngIf="orderForm.get('validityDate')?.hasError('required')">
+              A data de validade é obrigatória.
+            </mat-error>
+            <mat-error *ngIf="orderForm.get('validityDate')?.hasError('minDate')">
+              A data de validade deve ser igual ou posterior à data de início.
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Linha 4: Notas -->
+        <div class="fields-row">
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Notas Adicionais</mat-label>
+            <mat-icon matPrefix class="field-icon">notes</mat-icon>
+            <textarea matInput formControlName="notes" rows="3"
+              placeholder="Observações sobre o pedido (opcional)"></textarea>
+          </mat-form-field>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Bottom save bar -->
+    <div class="save-bar">
+      <button mat-button class="btn-back" type="button" (click)="cancel()">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+      <span class="save-bar-spacer"></span>
+      <button mat-raised-button class="btn-save" type="submit" [disabled]="orderForm.invalid">
+        <mat-icon>add_circle</mat-icon>
+        Criar Pedido
+      </button>
+    </div>
+
+  </form>
+
 </div>

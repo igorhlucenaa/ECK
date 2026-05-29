@@ -5,41 +5,56 @@ import {
   RouterStateSnapshot,
   Router,
 } from '@angular/router';
+import { Auth, user } from '@angular/fire/auth';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../services/apps/authentication/auth.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthGuard implements CanActivate {
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private auth: Auth
+  ) {}
 
   async canActivate(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Promise<boolean> {
+    // Aguarda o Firebase restaurar a sessão (resolve o bug do refresh que redireciona para login)
+    const currentUser = await firstValueFrom(user(this.auth));
+
+    if (!currentUser) {
+      // Salva a URL atual para restaurar após login
+      if (state.url !== '/authentication/login') {
+        localStorage.setItem('returnUrl', state.url);
+      }
+      this.router.navigate(['/authentication/login']);
+      return false;
+    }
+
     const requiredRole = route.data['role'];
 
     try {
       const userRole = await this.authService.getCurrentUserRole();
 
-      if (userRole === 'admin_master') {
-        // Redireciona para 'products' se o papel for 'admin_master'
-        if (state.url === '/authentication/login') {
-          this.router.navigate(['/projects']);
-          return false;
-        }
+      // Se não há restrição de role na rota, qualquer usuário autenticado passa
+      if (!requiredRole) {
         return true;
       }
 
-      if (Array.isArray(requiredRole)) {
-        if (requiredRole.includes(userRole)) {
-          return true;
-        }
-      } else if (requiredRole === userRole) {
+      const allowed = Array.isArray(requiredRole)
+        ? requiredRole.includes(userRole)
+        : requiredRole === userRole;
+
+      if (allowed) {
         return true;
       }
 
-      this.router.navigate(['/authentication/login']);
+      // Usuário autenticado mas sem permissão → página de não autorizado
+      this.router.navigate(['/nao-autorizado']);
       return false;
     } catch (error) {
       console.error('Erro ao verificar papel do usuário:', error);

@@ -15,6 +15,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 
 @Component({
   selector: 'app-questionnaire-list',
@@ -36,7 +37,8 @@ export class QuestionnaireListComponent implements OnInit {
     private snackBar: MatSnackBar,
     private route: ActivatedRoute,
     private router: Router,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private confirmDialog: ConfirmDialogService
   ) {}
 
   ngOnInit(): void {
@@ -98,6 +100,9 @@ export class QuestionnaireListComponent implements OnInit {
   }
 
   async deleteQuestionnaire(questionnaireId: string): Promise<void> {
+    const nome = this.dataSource.data.find((q: any) => q.id === questionnaireId)?.name || questionnaireId;
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
     try {
       const questionnaireDocRef = doc(
         this.firestore,

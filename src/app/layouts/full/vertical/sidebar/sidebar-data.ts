@@ -1,77 +1,114 @@
-import { NavItem } from './nav-item/nav-item';
+﻿import { NavItem } from './nav-item/nav-item';
 
 export const navItems: NavItem[] = [
+  // ─── Seção principal ───────────────────────
   {
     navCap: 'Bem Vindo!',
-    role: 'any', // Visível para todos
+    role: ['admin_master', 'admin_client'],
   },
   {
     displayName: 'Dashboard',
-    iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando o dashboard
+    iconName: 'solar:pie-chart-2-bold-duotone',
     route: '/dashboard',
-    role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
+    role: ['admin_master', 'admin_client'],
   },
   {
-    displayName: 'Clientes',
-    iconName: 'solar:people-nearby-bold-duotone',
-    route: '/clients', // Caminho correto para a página de clientes
-    role: ['admin_master'],
-  },
-  {
-    displayName: 'Projetos',
-    iconName: 'solar:bill-list-bold-duotone',
-    route: '/projects', // Caminho correto para a página de clientes,
-    role: ['admin_client'],
+    displayName: 'Definições',
+    iconName: 'solar:settings-bold-duotone',
+    route: '',
+    role: ['admin_master', 'admin_client', 'viewer'],
+    children: [
+      {
+        displayName: 'Clientes',
+        iconName: 'solar:people-nearby-bold-duotone',
+        route: '/clients',
+        role: ['admin_master', 'admin_client'],
+      },
+      {
+        displayName: 'Pedidos de Crédito',
+        iconName: 'solar:wallet-money-bold-duotone',
+        route: '/orders',
+        role: ['admin_master'],
+      },
+      {
+        displayName: 'Usuários e Grupos',
+        iconName: 'solar:users-group-two-rounded-bold-duotone',
+        route: '/users',
+        role: ['admin_master', 'admin_client'],
+      },
+      {
+        displayName: 'Modelos de E-mail',
+        iconName: 'solar:mailbox-bold-duotone',
+        route: '/mail-templates',
+        role: ['admin_master', 'admin_client'],
+      },
+      {
+        displayName: 'Lembretes Automáticos',
+        iconName: 'solar:bell-bing-bold-duotone',
+        route: '/settings',
+        role: ['admin_master', 'admin_client', 'viewer'],
+      },
+      {
+        displayName: 'Gerenciar Competências',
+        iconName: 'solar:diploma-bold-duotone',
+        route: '/competencies',
+        role: ['admin_master'],
+      },
+      {
+        displayName: 'Formulários',
+        iconName: 'solar:chart-2-bold-duotone',
+        route: '/assessments',
+        role: ['admin_master'],
+      },
+      {
+        displayName: 'Relatórios',
+        iconName: 'solar:pie-chart-2-bold-duotone',
+        route: '/reports',
+        role: ['admin_master', 'admin_client'],
+      },
+    ],
   },
   {
     displayName: 'Participantes',
     iconName: 'solar:user-id-bold-duotone',
-    route: '/assessments/participants', // Caminho correto para a página de clientes,
-    role: ['admin_client'],
+    route: '/assessments/participants',
+    role: ['admin_master', 'admin_client'],
   },
   {
-    displayName: 'Definições',
-    iconName: 'solar:document-add-bold-duotone',
-    route: '',
-    children: [
-      {
-        displayName: 'Pedidos',
-        iconName: 'solar:wallet-money-bold-duotone', // Ícone representando transações ou dinheiro
-        route: '/orders', // Caminho correto para o componente de gestão de pedidos
-        role: ['admin_client'], // Visível apenas para clientes
-      },
-      {
-        displayName: 'Usuários e Grupos',
-        iconName: 'solar:users-group-two-rounded-bold-duotone', // Ícone representando usuários
-        route: '/users', // Caminho correto para a página de usuários
-        role: ['admin_client'], // Visível apenas para Administrador Master
-      },
-      {
-        displayName: 'Modelos de E-mail',
-        iconName: 'solar:mailbox-bold-duotone', // Ícone representando transações ou dinheiro
-        route: '/mail-templates', // Caminho correto para o componente de gestão de pedidos
-        role: ['admin_client'], // Visível apenas para clientes
-      },
-      {
-        displayName: 'Competências',
-        iconName: 'solar:psychology-bold-duotone', // Ícone representando competências/psicologia
-        route: '/competencies', // Nova rota para competências
-        role: ['admin_master', 'admin_client'], // Visível para admin_master e admin_client
-      },
-      {
-        displayName: 'Formulários',
-        iconName: 'solar:chart-2-bold-duotone', // Ícone representando avaliações ou relatórios
-        route: '/assessments', // Caminho para o componente pai das avaliações
-        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
-      },
-      {
-        displayName: 'Relatórios',
-        iconName: 'solar:pie-chart-2-bold-duotone', // Ícone representando gráficos/relatórios
-        route: '/reports', // Alterado para a nova rota de relatórios
-        role: ['admin_master', 'admin_client', 'viewer'], // Visível para os três papéis
-      },
+    displayName: 'Projetos',
+    iconName: 'solar:bill-list-bold-duotone',
+    route: '/projects',
+    role: ['admin_master', 'admin_client'],
+  },
 
-    ],
+  // ─── Seção viewer ─────────────────────────────────────────────
+  {
+    navCap: 'Minha Área',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Dashboard',
+    iconName: 'solar:pie-chart-2-bold-duotone',
+    route: '/dashboard',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Participantes',
+    iconName: 'solar:user-id-bold-duotone',
+    route: '/assessments/participants',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Projetos',
+    iconName: 'solar:bill-list-bold-duotone',
+    route: '/projects',
+    role: ['viewer'],
+  },
+  {
+    displayName: 'Relatórios',
+    iconName: 'solar:chart-square-bold-duotone',
+    route: '/reports',
+    role: ['viewer'],
   },
 
   // {

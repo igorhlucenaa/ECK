@@ -8,8 +8,8 @@ export const ClientsRoutes: Routes = [
   {
     path: '',
     component: ClientsListComponent,
-    canActivate: [AuthGuard], // Protege a rota
-    data: { role: 'admin_master' }, // Apenas admin_master pode acessar
+    canActivate: [AuthGuard],
+    data: { role: ['admin_master', 'admin_client'] },
   },
   {
     path: 'new',

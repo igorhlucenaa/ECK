@@ -12,10 +12,12 @@ import {
 } from '@angular/forms';
 import {
   Firestore,
+  Timestamp,
   collection,
   query,
   where,
   getDocs,
+  getDoc,
   doc,
   setDoc,
   deleteDoc,
@@ -28,17 +30,19 @@ import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
-import { ReportGenerationModalComponent } from '../report-generation-modal/report-generation-modal.component';
-import { Timestamp } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
 import { AddParticipantModalComponent } from '../add-participant-modal/add-participant-modal.component';
 import { ParticipantsConfirmationDialogComponent } from '../../assessments/participants/participants-confirmation-dialog/participants-confirmation-dialog.component';
+import { SendHistoryDialogComponent } from '../../assessments/participants/send-history-dialog/send-history-dialog.component';
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
+import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 interface ModalData {
   projectId: string;
   clientId: string;
+  projectName?: string;
 }
 
 interface UnifiedParticipant {
@@ -52,6 +56,11 @@ interface UnifiedParticipant {
   category: string;
   type: 'avaliado' | 'avaliador';
   clientId: string;
+  creditReserved?: boolean;
+  creditConsumed?: boolean;
+  reminderCount?: number;
+  nextReminderAt?: Date;
+  sendCount?: number;          // total de envios (convite + lembretes manuais)
 }
 
 interface MailTemplate {
@@ -72,305 +81,180 @@ interface Assessment {
 @Component({
   selector: 'app-participants-modal',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, SendHistoryDialogComponent],
   template: `
-    <h2 mat-dialog-title>{{ 'Lista de Participantes' | translate }}</h2>
-    <mat-dialog-content>
-      <!-- Botões de Upload/Download e Adicionar Participante -->
-      <div class="d-flex justify-content-between mb-3">
+  <div class="si-shell">
+
+    <!-- ── HEADER ── -->
+    <div class="si-header">
+      <div class="si-header__left">
+        <div class="si-header__icon"><mat-icon>send</mat-icon></div>
         <div>
-          <!-- Botão Baixar Planilha -->
-          <button
-            mat-raised-button
-            color="primary"
-            (click)="downloadTemplate()"
-            style="margin-right: 10px"
-          >
-            <mat-icon>download</mat-icon> {{ 'Baixar Planilha de Modelo' | translate }}
-          </button>
-
-          <!-- Botão Upload -->
-          <button mat-raised-button color="accent">
-            <label for="uploadExcel" class="btn btn-secondary">
-              <mat-icon>upload_file</mat-icon> {{ 'Carregar Arquivo Excel' | translate }}
-            </label>
-            <input
-              id="uploadExcel"
-              type="file"
-              accept=".xlsx, .xls"
-              style="display: none"
-              (change)="uploadExcel($event)"
-            />
-          </button>
+          <div class="si-header__title">Disparar Convites</div>
+          <div class="si-header__sub">{{ data.projectName || 'Projeto' }}</div>
         </div>
+      </div>
+      <div class="si-header__right">
 
-        <!-- Botão Adicionar Novo Participante -->
-        <button
-          mat-flat-button
-          color="primary"
-          (click)="openAddParticipantModal()"
-        >
-          {{ 'Adicionar Novo Participante' | translate }}
+        <button mat-icon-button class="si-header__refresh" (click)="refreshParticipants()" [disabled]="isRefreshing" matTooltip="Atualizar">
+          <mat-icon [class.si-spin]="isRefreshing">refresh</mat-icon>
+        </button>
+        <button mat-icon-button class="si-header__close" (click)="dialogRef.close()">
+          <mat-icon>close</mat-icon>
         </button>
       </div>
+    </div>
 
-      <!-- Filtros -->
-      <div class="row mb-3" style="margin-top: 20px">
-        <!-- Filtro por Tipo -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>{{ 'Filtrar por Tipo' | translate }}</mat-label>
-            <mat-select
-              [(ngModel)]="filterType"
-              (ngModelChange)="applyFilter()"
-            >
-              <mat-option value="">{{ 'Todos' | translate }}</mat-option>
-              <mat-option value="avaliado">{{ 'Avaliado' | translate }}</mat-option>
-              <mat-option value="avaliador">{{ 'Avaliador' | translate }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Filtro por Categoria -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>{{ 'Filtrar por Categoria' | translate }}</mat-label>
-            <mat-select
-              [(ngModel)]="filterCategory"
-              (ngModelChange)="applyFilter()"
-            >
-              <mat-option value="">{{ 'Todos' | translate }}</mat-option>
-              <mat-option value="Avaliado">{{ 'Avaliado' | translate }}</mat-option>
-              <mat-option value="Gestor">{{ 'Gestor' | translate }}</mat-option>
-              <mat-option value="Par">{{ 'Par' | translate }}</mat-option>
-              <mat-option value="Subordinado">{{ 'Subordinado' | translate }}</mat-option>
-              <mat-option value="Outros">{{ 'Outros' | translate }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Filtro por Status -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>{{ 'Filtrar por Status' | translate }}</mat-label>
-            <mat-select
-              [(ngModel)]="filterStatus"
-              (ngModelChange)="applyFilter()"
-            >
-              <mat-option value="">{{ 'Todos' | translate }}</mat-option>
-              <mat-option value="Não Enviado">{{ 'Não Enviado' | translate }}</mat-option>
-              <mat-option value="Enviado (Pendente)"
-                >{{ 'Enviado (Pendente)' | translate }}</mat-option
-              >
-              <mat-option value="Respondido">{{ 'Respondido' | translate }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <!-- Campo de Pesquisa -->
-        <div class="col-md-3">
-          <mat-form-field class="w-100" appearance="outline">
-            <mat-label>{{ 'Buscar por Nome ou E-mail' | translate }}</mat-label>
-            <input
-              matInput
-              [(ngModel)]="searchValue"
-              (ngModelChange)="applyFilter()"
-            />
-            <button
-              mat-icon-button
-              matSuffix
-              *ngIf="searchValue"
-              (click)="searchValue = ''; applyFilter()"
-            >
-              <mat-icon>close</mat-icon>
-            </button>
-          </mat-form-field>
-        </div>
-      </div>
-
-      <!-- Campo de Seleção de Template -->
-      <mat-form-field class="w-100 mb-3" appearance="outline">
-        <mat-label>{{ 'Escolha um Modelo de e-mail' | translate }}</mat-label>
-        <mat-select [formControl]="templateFormControl" required>
-          <mat-option
-            *ngFor="let template of mailTemplates"
-            [value]="template.id"
-          >
-            {{ template.name }} -
-            <strong>{{ getFriendlyEmailType(template.emailType) }}</strong>
+    <!-- ── CONFIG ROW: template + assessment ── -->
+    <div class="si-config">
+      <mat-form-field appearance="outline" class="si-config__field">
+        <mat-label>Modelo de E-mail</mat-label>
+        <mat-icon matPrefix style="color:#94a3b8;font-size:18px;margin-right:4px;">mail_outline</mat-icon>
+        <mat-select [formControl]="templateFormControl">
+          <mat-option *ngFor="let t of mailTemplates" [value]="t.id">
+            {{ t.name }} — {{ getFriendlyEmailType(t.emailType) }}
           </mat-option>
         </mat-select>
-        <mat-error *ngIf="templateFormControl.hasError('required')">
-          {{ 'Por favor, selecione um template.' | translate }}
-        </mat-error>
+        <mat-error>Selecione um modelo.</mat-error>
       </mat-form-field>
 
-      <!-- Campo de Seleção de Avaliação -->
-      <mat-form-field class="w-100 mb-3" appearance="outline">
-        <mat-label>{{ 'Selecione um Formulário de Avaliação' | translate }}</mat-label>
-        <mat-select [formControl]="assessmentFormControl" required>
-          <mat-option
-            *ngFor="let assessment of assessments"
-            [value]="assessment.id"
-          >
-            {{ assessment.name }}
-          </mat-option>
+      <mat-form-field appearance="outline" class="si-config__field">
+        <mat-label>Formulário de Avaliação</mat-label>
+        <mat-icon matPrefix style="color:#94a3b8;font-size:18px;margin-right:4px;">assignment</mat-icon>
+        <mat-select [formControl]="assessmentFormControl">
+          <mat-option *ngFor="let a of assessments" [value]="a.id">{{ a.name }}</mat-option>
         </mat-select>
-        <mat-error *ngIf="assessmentFormControl.hasError('required')">
-          {{ 'Por favor, selecione uma avaliação.' | translate }}
-        </mat-error>
+        <mat-error>Selecione uma avaliação.</mat-error>
       </mat-form-field>
+    </div>
 
-      <!-- Tabela de Participantes -->
-      <div class="table-responsive">
-        <table
-          mat-table
-          [dataSource]="dataSource"
-          matSort
-          class="mat-elevation-z8 w-100"
-        >
-          <!-- Checkbox para Seleção -->
-          <ng-container matColumnDef="select">
-            <th mat-header-cell *matHeaderCellDef>
-              <mat-checkbox
-                (change)="toggleAll($event.checked)"
-                [checked]="allSelected()"
-                [indeterminate]="someSelected() && !allSelected()"
-              ></mat-checkbox>
-            </th>
-            <td mat-cell *matCellDef="let participant">
-              <mat-checkbox
-                [(ngModel)]="participant.selected"
-                (ngModelChange)="updateSelection()"
-                [disabled]="participant.completedAt != null"
-              ></mat-checkbox>
-            </td>
-          </ng-container>
-
-          <!-- Nome -->
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome' | translate }}</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.name }}
-            </td>
-          </ng-container>
-
-          <!-- E-mail -->
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'E-mail' | translate }}</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.email }}
-            </td>
-          </ng-container>
-
-          <!-- Tipo -->
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Tipo' | translate }}</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.type }}
-            </td>
-          </ng-container>
-
-          <!-- Categoria -->
-          <ng-container matColumnDef="category">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Categoria' | translate }}</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.category }}
-            </td>
-          </ng-container>
-
-          <!-- Status -->
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Status' | translate }}</th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.status || 'N/A' }}
-            </td>
-          </ng-container>
-
-          <!-- Data de Envio -->
-          <ng-container matColumnDef="sentAt">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              {{ 'Data de Envio' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.sentAt | date : 'short' }}
-            </td>
-          </ng-container>
-
-          <!-- Data de Resposta -->
-          <ng-container matColumnDef="completedAt">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              {{ 'Data de Resposta' | translate }}
-            </th>
-            <td mat-cell *matCellDef="let participant">
-              {{ participant.completedAt | date : 'short' }}
-            </td>
-          </ng-container>
-
-          <!-- Relatório -->
-          <ng-container matColumnDef="relatorio">
-            <th mat-header-cell *matHeaderCellDef>{{ 'Relatório' | translate }}</th>
-            <td mat-cell *matCellDef="let participant">
-              <button
-                mat-icon-button
-                color="primary"
-                (click)="generateReportForParticipant(participant)"
-                matTooltip="{{ 'Gerar Relatório' | translate }}"
-                *ngIf="(participant.type === 'avaliado' || participant.type === 'candidato') && participant.status === 'Respondido'"
-                [disabled]="assessmentFormControl.invalid"
-              >
-                <mat-icon>description</mat-icon>
-              </button>
-            </td>
-          </ng-container>
-
-          <!-- Ações (Excluir) -->
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
-            <td mat-cell *matCellDef="let participant">
-              <button
-                mat-icon-button
-                color="warn"
-                (click)="deleteParticipant(participant.id)"
-                matTooltip="{{ 'Excluir Participante' | translate }}"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-        </table>
+    <!-- ── FILTER BAR ── -->
+    <div class="si-filter">
+      <div class="si-search">
+        <mat-icon>search</mat-icon>
+        <input [(ngModel)]="searchValue" (ngModelChange)="applyFilter()" placeholder="Buscar por nome ou e-mail…" />
+        <button *ngIf="searchValue" (click)="searchValue='';applyFilter()" class="si-search__clear"><mat-icon>close</mat-icon></button>
       </div>
 
-      <!-- Paginação -->
-      <mat-paginator
-        [pageSize]="5"
-        [pageSizeOptions]="[5, 10, 20]"
-        showFirstLastButtons
-      ></mat-paginator>
+      <div class="si-chip-group">
+        <button class="si-chip" [class.si-chip--active]="!filterCategory" (click)="filterCategory='';applyFilter()">Todos</button>
+        <button class="si-chip" [class.si-chip--active]="filterCategory==='Avaliado'" (click)="filterCategory='Avaliado';applyFilter()">Avaliado</button>
+        <button class="si-chip" [class.si-chip--active]="filterCategory==='Gestor'" (click)="filterCategory='Gestor';applyFilter()">Gestor</button>
+        <button class="si-chip" [class.si-chip--active]="filterCategory==='Par'" (click)="filterCategory='Par';applyFilter()">Par</button>
+        <button class="si-chip" [class.si-chip--active]="filterCategory==='Subordinado'" (click)="filterCategory='Subordinado';applyFilter()">Subordinado</button>
+      </div>
 
-      <!-- Botão Enviar Links -->
-      <div class="mt-3 text-end"></div>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button
-        mat-button
-        (click)="resendLinks()"
-        [disabled]="
-          isLoading ||
-          selectedParticipants.length === 0 ||
-          !templateFormControl.valid ||
-          !assessmentFormControl.valid
-        "
-      >
-        <mat-spinner *ngIf="isLoading" [diameter]="20"></mat-spinner>
-        <span *ngIf="isLoading">{{ 'Enviando...' | translate }}</span>
-        <span *ngIf="!isLoading">{{ 'Enviar Links' | translate }}</span>
+      <div class="si-chip-group">
+        <button class="si-chip" [class.si-chip--active]="!filterStatus" (click)="filterStatus='';applyFilter()">Todos</button>
+        <button class="si-chip si-chip--unsent" [class.si-chip--active]="filterStatus==='Não Enviado'" (click)="filterStatus='Não Enviado';applyFilter()">Não Enviado</button>
+        <button class="si-chip si-chip--pending" [class.si-chip--active]="filterStatus==='Enviado (Pendente)'" (click)="filterStatus='Enviado (Pendente)';applyFilter()">Pendente</button>
+        <button class="si-chip si-chip--done" [class.si-chip--active]="filterStatus==='Respondido'" (click)="filterStatus='Respondido';applyFilter()">Respondido</button>
+      </div>
+
+      <button class="si-select-all-btn" (click)="selectAllPending()" [disabled]="!isSelectionReady"
+              [matTooltip]="!isSelectionReady ? 'Selecione um modelo de e-mail primeiro' : ''">
+        <mat-icon>done_all</mat-icon> Selecionar pendentes
       </button>
-      <button mat-button mat-dialog-close>{{ 'Fechar' | translate }}</button>
-    </mat-dialog-actions>
+    </div>
+
+    <!-- ── PARTICIPANTS LIST ── -->
+    <div class="si-list">
+
+      <div class="si-list__empty" *ngIf="!isRefreshing && dataSource.filteredData.length === 0">
+        <mat-icon>group_off</mat-icon>
+        <span>Nenhum participante encontrado</span>
+      </div>
+
+      <div class="si-row" *ngFor="let p of dataSource.filteredData"
+           [class.si-row--selected]="p.selected"
+           [class.si-row--completed]="p.completedAt"
+           (click)="(!p.completedAt && isSelectionReady && applyEmailTypeFilter(p)) ? (p.selected=!p.selected) : null; updateSelection()">
+
+        <mat-checkbox [(ngModel)]="p.selected"
+                      [disabled]="!!p.completedAt || !isSelectionReady || !applyEmailTypeFilter(p)"
+                      (ngModelChange)="updateSelection()" (click)="$event.stopPropagation()"></mat-checkbox>
+
+        <div class="si-row__avatar">{{ p.name.charAt(0).toUpperCase() }}</div>
+
+        <div class="si-row__info">
+          <div class="si-row__name">{{ p.name }}</div>
+          <div class="si-row__email">{{ p.email }}</div>
+        </div>
+
+        <!-- Datas: envio + resposta (mesmo formato da tela de participantes) -->
+        <div class="si-datas-cell">
+          <span class="si-datas-row" [class.si-datas-row--empty]="!p.sentAt"
+                [matTooltip]="p.sentAt ? ('Enviado em ' + (p.sentAt | date:'dd/MM/yyyy HH:mm')) : 'Não enviado'">
+            <mat-icon>send</mat-icon>
+            {{ p.sentAt ? (p.sentAt | date:'dd/MM/yy') : '—' }}
+          </span>
+          <span class="si-datas-row si-datas-row--resp" [class.si-datas-row--empty]="!p.completedAt"
+                [matTooltip]="p.completedAt ? ('Respondido em ' + (p.completedAt | date:'dd/MM/yyyy HH:mm')) : 'Aguardando resposta'">
+            <mat-icon>check_circle</mat-icon>
+            {{ p.completedAt ? (p.completedAt | date:'dd/MM/yy') : '—' }}
+          </span>
+
+        </div>
+
+        <div class="si-row__meta">
+          <span class="si-badge si-badge--cat">{{ p.category }}</span>
+          <span class="si-badge"
+                [class.si-badge--done]="p.completedAt"
+                [class.si-badge--pending]="!p.completedAt && p.sentAt"
+                [class.si-badge--unsent]="!p.completedAt && !p.sentAt">
+            {{ p.completedAt ? 'Respondido' : (p.sentAt ? 'Pendente' : 'Não Enviado') }}
+          </span>
+          <span class="si-badge si-badge--reminder" *ngIf="(p.reminderCount ?? 0) > 0"
+                [matTooltip]="(p.reminderCount) + ' lembrete(s) automático(s) enviado(s)'">
+            <mat-icon style="font-size:11px;width:11px;height:11px;vertical-align:middle;">notifications</mat-icon>
+            {{ p.reminderCount }}
+          </span>
+        </div>
+
+        <!-- Ações por linha -->
+        <div class="si-row__actions">
+          <button class="si-act-btn si-act-btn--history"
+                  *ngIf="p.status !== 'Não Enviado'"
+                  (click)="openSendHistory(p); $event.stopPropagation()"
+                  matTooltip="Histórico de envios">
+            <mat-icon>history</mat-icon>
+          </button>
+          <button class="si-act-btn si-act-btn--cancel"
+                  *ngIf="p.status === 'Enviado (Pendente)'"
+                  (click)="cancelSend(p); $event.stopPropagation()"
+                  matTooltip="Cancelar envio">
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FOOTER ── -->
+    <div class="si-footer">
+      <div class="si-footer__info">
+        <span class="si-footer__count" *ngIf="selectedParticipants.length > 0">
+          <mat-icon>check_circle</mat-icon>
+          {{ selectedParticipants.length }} selecionado{{ selectedParticipants.length !== 1 ? 's' : '' }}
+        </span>
+        <span class="si-footer__hint" *ngIf="!isSelectionReady">
+          Selecione um modelo de e-mail{{ selectedTemplate && selectedTemplate.emailType !== 'cadastro' ? ' e um formulário' : '' }} para habilitar a seleção
+        </span>
+        <span class="si-footer__hint" *ngIf="isSelectionReady && selectedParticipants.length === 0">
+          Selecione ao menos um participante para enviar
+        </span>
+      </div>
+      <div class="si-footer__actions">
+        <button mat-button (click)="dialogRef.close()">Cancelar</button>
+        <button class="si-send-btn" (click)="resendLinks()"
+                [disabled]="isLoading || selectedParticipants.length === 0 || !templateFormControl.valid || !assessmentFormControl.valid">
+          <span class="si-send-btn__spinner" *ngIf="isLoading"></span>
+          <mat-icon *ngIf="!isLoading">send</mat-icon>
+          {{ isLoading ? 'Enviando…' : 'Enviar E-mails' }}
+        </button>
+      </div>
+    </div>
+
+  </div>
   `,
   styleUrls: ['./participants-modal.component.scss'],
 })
@@ -395,10 +279,19 @@ export class ParticipantsModalComponent implements OnInit {
   filterStatus: string = '';
   selectedParticipants: UnifiedParticipant[] = [];
   isLoading: boolean = false;
+  isRefreshing: boolean = false;
+  lastRefreshed: Date | null = null;
   mailTemplates: MailTemplate[] = [];
   assessments: Assessment[] = [];
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
+  selectAllPending(): void {
+    if (!this.isSelectionReady) return;
+    this.dataSource.filteredData.forEach(p => {
+      if (!p.completedAt && this.applyEmailTypeFilter(p)) p.selected = true;
+    });
+    this.updateSelection();
+  }
 
   @ViewChild('participantsPaginator', { static: false })
   participantsPaginator!: MatPaginator;
@@ -415,7 +308,9 @@ export class ParticipantsModalComponent implements OnInit {
     private fb: FormBuilder,
     private dialog: MatDialog,
     private router: Router,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private confirmDialog: ConfirmDialogService,
+    private participantValidationService: ParticipantValidationService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -439,13 +334,31 @@ export class ParticipantsModalComponent implements OnInit {
         !this.filterCategory || data.category === this.filterCategory;
       const statusMatch =
         !this.filterStatus || data.status === this.filterStatus;
+      const emailTypeMatch = this.applyEmailTypeFilter(data);
       return (
         searchStr.includes(this.searchValue.trim().toLowerCase()) &&
         typeMatch &&
         categoryMatch &&
-        statusMatch
+        statusMatch &&
+        emailTypeMatch
       );
     };
+
+    // Re-filter when template changes so incompatible types are hidden
+    this.templateFormControl.valueChanges.subscribe(() => {
+      // Deselect participants that no longer match the new template
+      this.dataSource.data.forEach(p => {
+        if (!this.applyEmailTypeFilter(p)) p.selected = false;
+      });
+      this.applyFilter();
+      this.updateSelection();
+    });
+
+    // Pré-seleciona todos os participantes que ainda não responderam
+    this.dataSource.data.forEach(p => {
+      if (!p.completedAt) p.selected = true;
+    });
+    this.updateSelection();
   }
 
   getFriendlyEmailType(emailType: string): string {
@@ -467,6 +380,13 @@ export class ParticipantsModalComponent implements OnInit {
     }
   }
 
+  async refreshParticipants(): Promise<void> {
+    this.isRefreshing = true;
+    await this.loadParticipants();
+    this.isRefreshing = false;
+    this.lastRefreshed = new Date();
+  }
+
   async loadParticipants(): Promise<void> {
     try {
       const participantsQuery = query(
@@ -475,30 +395,19 @@ export class ParticipantsModalComponent implements OnInit {
       );
       const participantsSnapshot = await getDocs(participantsQuery);
 
-      const assessmentsQuery = query(
-        collection(this.firestore, 'assessments'),
-        where('projectId', '==', this.data.projectId)
-      );
-      const assessmentsSnapshot = await getDocs(assessmentsQuery);
-      const assessmentIds = assessmentsSnapshot.docs.map((doc) => doc.id);
-
+      // Busca todos os links do projeto diretamente por projectId (mais confiável)
       let linkDataMap: { [key: string]: any[] } = {};
-      if (assessmentIds.length > 0) {
-        const assessmentLinksQuery = query(
-          collection(this.firestore, 'assessmentLinks'),
-          where('assessmentId', 'in', assessmentIds)
-        );
-        const linksSnapshot = await getDocs(assessmentLinksQuery);
-
-        linksSnapshot.docs.forEach((doc) => {
-          const data = doc.data();
-          const participantId = data['participantId'];
-          if (!linkDataMap[participantId]) {
-            linkDataMap[participantId] = [];
-          }
+      const linksSnap = await getDocs(
+        query(collection(this.firestore, 'assessmentLinks'), where('projectId', '==', this.data.projectId))
+      );
+      linksSnap.docs.forEach((doc) => {
+        const data = { id: doc.id, ...doc.data() };
+        const participantId = (data as any)['participantId'];
+        if (participantId) {
+          if (!linkDataMap[participantId]) linkDataMap[participantId] = [];
           linkDataMap[participantId].push(data);
-        });
-      }
+        }
+      });
 
       const participants: UnifiedParticipant[] = [];
       for (const doc of participantsSnapshot.docs) {
@@ -511,6 +420,9 @@ export class ParticipantsModalComponent implements OnInit {
         let sentAt: Date | undefined;
         let completedAt: Date | undefined;
         let status: string = 'Não Enviado';
+        let reminderCount = 0;
+        let nextReminderAt: Date | undefined;
+        let sendCount = 0;
 
         const participantLinks = linkDataMap[participantId] || [];
         if (participantLinks.length > 0) {
@@ -530,12 +442,26 @@ export class ParticipantsModalComponent implements OnInit {
               break;
             }
 
-            if (linkSentAt && !completedAt) {
+            if (linkSentAt && !completedAt && linkData['status'] !== 'cancelled') {
               sentAt = linkSentAt;
               status = 'Enviado (Pendente)';
             }
+
+            // Lembretes automáticos
+            const rc = Number(linkData['reminderCount'] || 0);
+            if (rc > reminderCount) reminderCount = rc;
+            if (linkData['nextReminderAt']) {
+              const nra = (linkData['nextReminderAt'] as Timestamp).toDate();
+              if (!nextReminderAt || nra < nextReminderAt) nextReminderAt = nra;
+            }
+
+            // Total de envios manuais
+            sendCount += Number(linkData['resendCount'] || (linkSentAt ? 1 : 0));
           }
         }
+
+        const creditReserved = participantData['creditReserved'] === true;
+        const creditConsumed = participantData['creditConsumed'] === true;
 
         participants.push({
           id: participantId,
@@ -548,6 +474,11 @@ export class ParticipantsModalComponent implements OnInit {
           category: category,
           type: type,
           clientId: this.data.clientId,
+          creditReserved,
+          creditConsumed,
+          reminderCount,
+          nextReminderAt,
+          sendCount,
         });
       }
 
@@ -656,13 +587,40 @@ export class ParticipantsModalComponent implements OnInit {
     return 'Não Enviado';
   }
 
+  get selectedTemplate(): MailTemplate | undefined {
+    return this.mailTemplates.find(t => t.id === this.templateFormControl.value);
+  }
+
+  /** Template must be selected (and assessment if needed) before participants can be chosen */
+  get isSelectionReady(): boolean {
+    if (!this.templateFormControl.valid) return false;
+    const needsAssessment = this.selectedTemplate?.emailType && this.selectedTemplate?.emailType !== 'cadastro';
+    if (needsAssessment && !this.assessmentFormControl.valid) return false;
+    return true;
+  }
+
+  /** Returns true if participant matches the selected template's target audience */
+  applyEmailTypeFilter(data: UnifiedParticipant): boolean {
+    if (!this.selectedTemplate) return true;
+    const emailType = this.selectedTemplate.emailType;
+    if (!emailType) return true;
+    if (emailType === 'cadastro') return true;
+    if (['conviteAvaliador', 'lembreteAvaliador'].includes(emailType)) {
+      return data.type === 'avaliador';
+    }
+    if (['conviteRespondente', 'lembreteRespondente', 'convite', 'lembrete'].includes(emailType)) {
+      return data.type === 'avaliado';
+    }
+    return true;
+  }
+
   applyFilter(): void {
     this.dataSource.filter = 'apply';
   }
 
   toggleAll(checked: boolean): void {
-    this.dataSource.data.forEach((participant) => {
-      if (!participant.completedAt) {
+    this.dataSource.filteredData.forEach((participant) => {
+      if (!participant.completedAt && this.applyEmailTypeFilter(participant)) {
         participant.selected = checked;
       }
     });
@@ -670,26 +628,23 @@ export class ParticipantsModalComponent implements OnInit {
   }
 
   updateSelection(): void {
-    this.selectedParticipants = this.dataSource.data.filter(
-      (p) => p.selected && !p.completedAt
+    this.selectedParticipants = this.dataSource.filteredData.filter(
+      (p) => p.selected && this.applyEmailTypeFilter(p) && !p.completedAt
     );
   }
 
   allSelected(): boolean {
-    const eligibleParticipants = this.dataSource.data.filter(
-      (p) => !p.completedAt
+    const eligible = this.dataSource.filteredData.filter(
+      (p) => this.applyEmailTypeFilter(p) && !p.completedAt
     );
-    return (
-      eligibleParticipants.length > 0 &&
-      eligibleParticipants.every((p) => p.selected)
-    );
+    return eligible.length > 0 && eligible.every((p) => p.selected);
   }
 
   someSelected(): boolean {
-    const eligibleParticipants = this.dataSource.data.filter(
-      (p) => !p.completedAt
+    const eligible = this.dataSource.filteredData.filter(
+      (p) => this.applyEmailTypeFilter(p) && !p.completedAt
     );
-    return eligibleParticipants.some((p) => p.selected) && !this.allSelected();
+    return eligible.some((p) => p.selected) && !this.allSelected();
   }
 
   async resendLinks(): Promise<void> {
@@ -728,12 +683,17 @@ export class ParticipantsModalComponent implements OnInit {
         return;
       }
 
+      // Carrega configurações de lembrete do projeto uma única vez
+      const reminderSettings = await this.loadReminderSettings();
+      const emailCount = this.selectedParticipants.length;
+
       for (const participant of this.selectedParticipants) {
         const emailRequest = {
           email: participant.email,
           templateId: template.id,
           participantId: participant.id,
           assessmentId: assessment.id,
+          evaluatedParticipantId: (participant as any).avaliadoId || undefined,
         };
 
         const response = await fetch(
@@ -761,34 +721,68 @@ export class ParticipantsModalComponent implements OnInit {
         const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
 
         if (existingLinksSnapshot.empty) {
-          const assessmentLinkDoc = doc(
-            collection(this.firestore, 'assessmentLinks')
-          );
-          await setDoc(assessmentLinkDoc, {
+          // Novo link
+          const newLinkData: Record<string, any> = {
             assessmentId: assessment.id,
             participantId: participant.id,
+            clientId: this.data.clientId,
+            projectId: this.data.projectId,
             sentAt: new Date(),
             status: 'pending',
             emailTemplate: template.id,
             participantEmail: participant.email,
-          });
+            creditReserved: false,
+          };
+
+          if (reminderSettings) {
+            const nextAt = this.computeNextReminderAt(
+              reminderSettings.startDate,
+              reminderSettings.intervalDays,
+              reminderSettings.sendTime,
+              reminderSettings.timezone,
+              reminderSettings.weekdays,
+            );
+            newLinkData['nextReminderAt'] = Timestamp.fromDate(nextAt);
+          }
+
+          const assessmentLinkDoc = doc(collection(this.firestore, 'assessmentLinks'));
+          await setDoc(assessmentLinkDoc, newLinkData);
         } else {
           const existingLinkDoc = existingLinksSnapshot.docs[0];
+          const existingData = existingLinkDoc.data();
+          const isPending = existingData['status'] !== 'completed';
+
+          const updateData: Record<string, any> = {
+            clientId: this.data.clientId,
+            projectId: this.data.projectId,
+            sentAt: new Date(),
+            emailTemplate: template.id,
+            status: isPending ? 'pending' : 'completed',
+            creditReserved: false,
+          };
+
+          if (isPending && !existingData['nextReminderAt'] && reminderSettings) {
+            const nextAt = this.computeNextReminderAt(
+              reminderSettings.startDate,
+                reminderSettings.intervalDays,
+                reminderSettings.sendTime,
+                reminderSettings.timezone,
+                reminderSettings.weekdays,
+              );
+            updateData['nextReminderAt'] = Timestamp.fromDate(nextAt);
+          }
+
           await updateDoc(
             doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
-            {
-              sentAt: new Date(),
-              emailTemplate: template.id,
-              status:
-                existingLinkDoc.data()['status'] === 'completed'
-                  ? 'completed'
-                  : 'pending',
-            }
+            updateData
           );
         }
       }
 
-      const msg = this.translate.instant('Links enviados para {{count}} participantes!', { count: this.selectedParticipants.length });
+      // Marca crédito como consumido para avaliados disparados neste envio
+      await this.markCreditsConsumedForDispatch();
+
+      const msg = this.translate.instant('Links enviados para {{count}} participantes!', { count: emailCount });
       this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 3000 });
       this.dialogRef.close();
     } catch (error) {
@@ -799,9 +793,234 @@ export class ParticipantsModalComponent implements OnInit {
     }
   }
 
+  /**
+   * Ao concluir um disparo, marca creditConsumed=true em cada avaliado
+   * presente nos selectedParticipants e define firstFinalDispatchAt no projeto
+   * se ainda não estiver definido (gatilho R4: estorno só antes do 1º disparo).
+   */
+  private async markCreditsConsumedForDispatch(): Promise<void> {
+    const avaliadosToConsume = this.selectedParticipants.filter(
+      (p) => p.type === 'avaliado' && p.creditReserved && !p.creditConsumed
+    );
+
+    if (avaliadosToConsume.length === 0) return;
+
+    const projectRef = doc(this.firestore, `projects/${this.data.projectId}`);
+    const projectSnap = await getDoc(projectRef);
+    const hasFirstDispatch = !!projectSnap.data()?.['firstFinalDispatchAt'];
+
+    const updates: Promise<void>[] = avaliadosToConsume.map((p) =>
+      updateDoc(doc(this.firestore, 'participants', p.id), { creditConsumed: true })
+    );
+
+    if (!hasFirstDispatch) {
+      updates.push(
+        updateDoc(projectRef, { firstFinalDispatchAt: Timestamp.now() })
+      );
+    }
+
+    await Promise.all(updates);
+  }
+
+  /** Carrega as configurações de lembrete ativas para o projeto atual. */
+  private async loadReminderSettings(): Promise<{
+    startDate: Date;
+    intervalDays: number;
+    sendTime: string;
+    timezone: string;
+    maxReminders: number;
+    weekdays: number[];
+  } | null> {
+    try {
+      const docId = `${this.data.clientId}_${this.data.projectId}`;
+      const snap = await getDoc(doc(this.firestore, 'reminderSettings', docId));
+      if (!snap.exists()) return null;
+      const d = snap.data();
+      if (!d['enabled']) return null;
+
+      const startDate: Date | null = d['startDate']?.toDate?.() ?? null;
+      if (!startDate) return null;
+
+      return {
+        startDate,
+        intervalDays: Math.max(1, Number(d['intervalDays'] || 3)),
+        sendTime: String(d['sendTime'] || '09:00'),
+        timezone: String(d['timezone'] || 'America/Fortaleza'),
+        maxReminders: Math.max(0, Number(d['maxReminders'] || 0)),
+        weekdays: this.normalizeWeekdays(d['weekdays']),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Calcula o próximo instante de disparo de lembrete para um participante
+   * novo (sem histórico de envios).
+   * Replica a lógica de ReminderSettingsComponent.computeNextReminder.
+   */
+  private computeNextReminderAt(
+    startDate: Date,
+    intervalDays: number,
+    sendTime: string,
+    timezone: string,
+    weekdays: number[] = [],
+  ): Date {
+    const now = new Date();
+    let next = this.buildReminderOccurrence(startDate, 0, sendTime, timezone);
+    next = this.advanceToAllowedWeekday(next, timezone, weekdays);
+
+    if (next > now) return next;
+
+    const msPerInterval = intervalDays * 86_400_000;
+    const extra = Math.ceil((now.getTime() - next.getTime()) / msPerInterval);
+    next = this.buildReminderOccurrence(startDate, intervalDays * extra, sendTime, timezone);
+    next = this.advanceToAllowedWeekday(next, timezone, weekdays);
+
+    if (next <= now) {
+      next = this.buildReminderOccurrence(startDate, intervalDays * (extra + 1), sendTime, timezone);
+      next = this.advanceToAllowedWeekday(next, timezone, weekdays);
+    }
+
+    return next;
+  }
+
+  private advanceToAllowedWeekday(date: Date, timezone: string, weekdays: number[] = []): Date {
+    const allowedWeekdays = this.normalizeWeekdays(weekdays);
+    if (!allowedWeekdays.length) return date;
+
+    for (let offset = 0; offset < 7; offset++) {
+      const candidate = new Date(date.getTime() + offset * 86_400_000);
+      if (allowedWeekdays.includes(this.getWeekdayInTimezone(candidate, timezone))) {
+        return candidate;
+      }
+    }
+
+    return date;
+  }
+
+  private getWeekdayInTimezone(date: Date, timezone: string): number {
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+    }).format(date).toLowerCase();
+    const map: Record<string, number> = {
+      sun: 0,
+      mon: 1,
+      tue: 2,
+      wed: 3,
+      thu: 4,
+      fri: 5,
+      sat: 6,
+    };
+    return map[weekday.slice(0, 3)] ?? date.getDay();
+  }
+
+  private normalizeWeekdays(value: unknown): number[] {
+    if (!Array.isArray(value)) return [];
+    return Array.from(
+      new Set(
+        value
+          .map((item) => Number(item))
+          .filter((item) => Number.isInteger(item) && item >= 0 && item <= 6)
+      )
+    ).sort((a, b) => a - b);
+  }
+
+  private buildReminderOccurrence(base: Date, offsetDays: number, sendTime: string, timezone: string): Date {
+    const targetDay = new Date(base.getTime() + offsetDays * 86_400_000);
+
+    const dateFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    const dp = dateFmt.formatToParts(targetDay);
+    const year  = dp.find(p => p.type === 'year')?.value  ?? '2000';
+    const month = dp.find(p => p.type === 'month')?.value ?? '01';
+    const day   = dp.find(p => p.type === 'day')?.value   ?? '01';
+    const datePart = `${year}-${month}-${day}`;
+
+    const noonUtc = new Date(`${datePart}T12:00:00Z`);
+    const timeFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, hour: 'numeric', minute: '2-digit', hour12: false,
+    });
+    const tp = timeFmt.formatToParts(noonUtc);
+    const tzH = Number(tp.find(p => p.type === 'hour')?.value   ?? '0');
+    const tzM = Number(tp.find(p => p.type === 'minute')?.value ?? '0');
+    const offsetMin = tzH * 60 + tzM - 720;
+
+    const [sh, sm] = sendTime.split(':').map(Number);
+    const utcMin = sh * 60 + sm - offsetMin;
+    const dayStartUtc = new Date(`${datePart}T00:00:00Z`).getTime();
+    return new Date(dayStartUtc + utcMin * 60_000);
+  }
+
+  openSendHistory(participant: UnifiedParticipant): void {
+    this.dialog.open(SendHistoryDialogComponent, {
+      width: '560px',
+      maxWidth: '95vw',
+      panelClass: 'send-history-panel',
+      data: { participant },
+    });
+  }
+
+  async cancelSend(participant: UnifiedParticipant): Promise<void> {
+    const ok = await this.confirmDialog.confirm({
+      type: 'warning',
+      title: 'Cancelar envio',
+      itemName: participant.name,
+      message: 'Tem certeza que deseja cancelar o envio?',
+    });
+    if (!ok) return;
+
+    // ── Atualização otimista: UI atualiza imediatamente ──────
+    const prevStatus = participant.status;
+    const prevSentAt = participant.sentAt;
+    const prevCreditReserved = participant.creditReserved;
+
+    participant.status = 'Não Enviado';
+    participant.sentAt = undefined;
+    participant.creditReserved = false;
+    this.dataSource.data = [...this.dataSource.data];
+    this.applyFilter();
+    this.updateSelection();
+    // ─────────────────────────────────────────────────────────
+
+    try {
+      const linkQuery = query(
+        collection(this.firestore, 'assessmentLinks'),
+        where('participantId', '==', participant.id),
+        where('status', '==', 'pending')
+      );
+      const linkSnap = await getDocs(linkQuery);
+      if (linkSnap.empty) {
+        this.snackBar.open('Nenhum envio pendente encontrado.', 'Fechar', { duration: 3000 });
+        return;
+      }
+      const linkDoc = linkSnap.docs[0];
+
+      await updateDoc(doc(this.firestore, 'assessmentLinks', linkDoc.id), {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        creditReserved: false,
+      });
+
+      this.snackBar.open('Envio cancelado.', 'Fechar', { duration: 3000 });
+    } catch (e) {
+      // Rollback em caso de erro
+      participant.status = prevStatus;
+      participant.sentAt = prevSentAt;
+      participant.creditReserved = prevCreditReserved;
+      this.dataSource.data = [...this.dataSource.data];
+      this.applyFilter();
+      console.error('Erro ao cancelar envio:', e);
+      this.snackBar.open('Erro ao cancelar envio.', 'Fechar', { duration: 3000 });
+    }
+  }
+
   async deleteParticipant(participantId: string): Promise<void> {
-    const confirmDelete = confirm(this.translate.instant('Tem certeza que deseja excluir este participante?'));
-    if (!confirmDelete) return;
+    const nome = this.dataSource.data.find((p: any) => p.id === participantId)?.name || participantId;
+    const confirmado = await this.confirmDialog.confirmDelete(nome);
+    if (!confirmado) return;
 
     try {
       const participantDoc = doc(
@@ -822,7 +1041,9 @@ export class ParticipantsModalComponent implements OnInit {
 
   openAddParticipantModal(): void {
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
-      width: '500px',
+      width: '480px',
+      maxWidth: '95vw',
+      panelClass: 'add-participant-dialog',
       data: {
         projectId: this.data.projectId,
         clientId: this.data.clientId,
@@ -978,25 +1199,20 @@ export class ParticipantsModalComponent implements OnInit {
       return;
     }
 
-    // Abrir o modal de seleção de template e competências
-    const dialogRef = this.dialog.open(ReportGenerationModalComponent, {
-      width: '700px',
-      maxWidth: '90vw',
-      data: {
-        participant: participant,
+    // Fechar todos os modais e navegar direto para a página de relatórios.
+    // As competências são auto-selecionadas pela página de relatórios.
+    this.dialog.closeAll();
+
+    this.router.navigate(['/reports'], {
+      queryParams: {
+        mode: 'individual',
+        clientId: participant.clientId || this.data.clientId,
         projectId: this.data.projectId,
         assessmentId: selectedAssessmentId,
-        clientId: participant.clientId
-      },
-      disableClose: false
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result && result.success) {
-        console.log('Relatório configurado:', result);
-        // O modal já navegou para a página de reports
-        // Fechar este modal também
-        this.dialogRef.close();
+        participantId: participant.id,
+        participantName: participant.name,
+        autoGenerate: 'true',
+        aba: 'visualizar'
       }
     });
   }

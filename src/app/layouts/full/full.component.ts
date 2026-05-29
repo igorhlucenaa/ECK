@@ -22,6 +22,7 @@ import { AppBreadcrumbComponent } from './shared/breadcrumb/breadcrumb.component
 import { CustomizerComponent } from './shared/customizer/customizer.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TourService } from 'src/app/services/tour/tour.service';
+import { Auth, onAuthStateChanged } from '@angular/fire/auth';
 
 const MOBILE_VIEW = 'screen and (max-width: 768px)';
 const TABLET_VIEW = 'screen and (min-width: 769px) and (max-width: 1024px)';
@@ -65,7 +66,7 @@ interface quicklinks {
   encapsulation: ViewEncapsulation.None,
 })
 export class FullComponent implements OnInit {
-  navItems = navItems;
+  navItems: any[] = [];
 
   @ViewChild('leftsidenav')
   public sidenav: MatSidenav;
@@ -95,7 +96,8 @@ export class FullComponent implements OnInit {
     private breakpointObserver: BreakpointObserver,
     private navService: NavService,
     private authService: AuthService,
-    private tourService: TourService
+    private tourService: TourService,
+    private auth: Auth
   ) {
     this.htmlElement = document.querySelector('html')!;
     this.layoutChangesSubscription = this.breakpointObserver
@@ -127,15 +129,16 @@ export class FullComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.authService.getCurrentUserRole().then((res) => {
-      this.userRole = res;
-
-      // Atualizar os itens do menu de acordo com a role
-      if (this.userRole === 'admin_master') {
-        this.navItems = navItems; // Exibe todas as opções para admin_master
+    // Aguarda Firebase restaurar o estado de auth antes de filtrar o menu.
+    // Sem isso, auth.currentUser é null no primeiro render e o menu fica vazio.
+    const unsub = onAuthStateChanged(this.auth, async (user) => {
+      unsub(); // dispara apenas uma vez
+      if (user) {
+        this.userRole = await this.authService.getCurrentUserRole();
       } else {
-        this.navItems = this.filterNavItemsByRole(navItems, this.userRole);
+        this.userRole = null;
       }
+      this.navItems = this.filterNavItemsByRole(navItems, this.userRole);
     });
   }
 

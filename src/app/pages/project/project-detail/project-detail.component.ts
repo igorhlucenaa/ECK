@@ -9,6 +9,8 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  query,
+  where,
 } from '@angular/fire/firestore';
 import {
   FormGroup,
@@ -22,6 +24,12 @@ import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MatSelectSearchModule } from 'mat-select-search';
 import { MatSelectModule } from '@angular/material/select';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { TranslateModule } from '@ngx-translate/core';
+import { MatDialog } from '@angular/material/dialog';
+import { UsersComponent } from '../../users/users.component';
+import { ProjectService } from 'src/app/services/project.service';
+import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-project-detail',
@@ -32,6 +40,9 @@ import { MatSelectModule } from '@angular/material/select';
     MaterialModule,
     MatSelectSearchModule,
     MatSelectModule,
+    AppPageHeaderComponent,
+    TranslateModule,
+    ConfirmDialogComponent,
   ],
   templateUrl: './project-detail.component.html',
   styleUrls: ['./project-detail.component.scss'],
@@ -39,29 +50,36 @@ import { MatSelectModule } from '@angular/material/select';
 export class ProjectDetailComponent implements OnInit {
   form: FormGroup = new FormGroup({
     name: new FormControl('', Validators.required),
-    budget: new FormControl(''),
     deadline: new FormControl('', Validators.required),
-    status: new FormControl('Ativo', Validators.required),
-    description: new FormControl(''),
+    status: new FormControl('Em andamento', Validators.required),
+    assessmentId: new FormControl(''),
     responsible: new FormControl(''),
     clientId: new FormControl('', Validators.required),
-    groupIds: new FormControl([], Validators.required), // Novo campo para selecionar grupos
+    groupIds: new FormControl([], Validators.required),
   });
 
+  readonly today: Date = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+
   filterDates = (date: Date | null): boolean => {
-    const today = new Date();
-    // Zera as horas, minutos, segundos e milissegundos para comparar apenas a data
-    today.setHours(0, 0, 0, 0);
-    return date ? date >= today : false;
+    return date ? date >= this.today : false;
   };
 
   isEditMode = false;
   projectId: string | null = null;
   clientId: string | null = null;
   clients: { id: string; name: string }[] = [];
-  groups: { id: string; name: string }[] = []; // Lista de grupos de usuários
-  usersInGroups: { id: string; name: string }[] = []; // Lista de usuários para cada grupo
+  groups: { id: string; name: string }[] = [];
+  assessments: { id: string; name: string }[] = [];
+  usersInGroups: { id: string; name: string; groupNames: string[] }[] = [];
   isLoading = false;
+  isConcluding = false;
+  projectStatus: string = '';
+  currentUserRole: string = '';
+  currentUserId: string = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -69,11 +87,20 @@ export class ProjectDetailComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private location: Location,
-    private authService: AuthService
+    private authService: AuthService,
+    private dialog: MatDialog,
+    private projectService: ProjectService,
   ) {}
 
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id');
+
+    // Recarrega formulários sempre que o cliente mudar
+    this.form.get('clientId')?.valueChanges.subscribe(clientId => {
+      this.assessments = [];
+      if (clientId) this.loadAssessments(clientId);
+    });
+
     this.route.queryParamMap.subscribe(async (params) => {
       this.clientId = params.get('clientId');
 
@@ -86,11 +113,15 @@ export class ProjectDetailComponent implements OnInit {
         return;
       }
 
+      this.currentUserRole = currentUser.role || '';
+      this.currentUserId = currentUser.uid || '';
+
       if (currentUser.role === 'admin_master') {
         this.loadClients();
         this.loadUserGroups(); // Carregar grupos de usuários
       } else if (this.clientId) {
         this.form.get('clientId')?.setValue(this.clientId);
+        this.loadUserGroups(); // Também carrega grupos para admin_client
       } else {
         this.snackBar.open(
           'Cliente não identificado. Redirecionando...',
@@ -121,6 +152,20 @@ export class ProjectDetailComponent implements OnInit {
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
         duration: 3000,
       });
+    }
+  }
+
+  async loadAssessments(clientId: string): Promise<void> {
+    try {
+      const snap = await getDocs(
+        query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
+      );
+      this.assessments = snap.docs.map(d => ({
+        id: d.id,
+        name: d.data()['name'] || 'Sem nome',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar formulários:', error);
     }
   }
 
@@ -156,6 +201,7 @@ export class ProjectDetailComponent implements OnInit {
           );
         }
 
+        this.projectStatus = projectData['status'] || '';
         this.form.patchValue(projectData);
         await this.updateUsersInGroups(); // Carregar usuários dos grupos selecionados
       } else {
@@ -175,31 +221,51 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   async updateUsersInGroups(): Promise<void> {
-    const selectedGroups = this.form.get('groupIds')?.value || [];
-    const users: { id: string; name: string }[] = [];
+    const selectedGroupIds: string[] = this.form.get('groupIds')?.value || [];
+    // Map keyed by userId garante deduplicação — usuários em múltiplos grupos
+    // aparecem uma única vez, acumulando os grupos a que pertencem
+    const userMap = new Map<string, { id: string; name: string; groupNames: string[] }>();
 
-    for (const groupId of selectedGroups) {
+    for (const groupId of selectedGroupIds) {
+      const groupName = this.groups.find(g => g.id === groupId)?.name ?? groupId;
       const groupDocRef = doc(this.firestore, `userGroups/${groupId}`);
       const groupDoc = await getDoc(groupDocRef);
-      if (groupDoc.exists()) {
-        const groupData = groupDoc.data();
-        const userIds = groupData?.['userIds'] || [];
-        for (const userId of userIds) {
-          const userDocRef = doc(this.firestore, `users/${userId}`);
-          const userDoc = await getDoc(userDocRef);
+      if (!groupDoc.exists()) continue;
+
+      const userIds: string[] = groupDoc.data()?.['userIds'] ?? [];
+      for (const userId of userIds) {
+        if (userMap.has(userId)) {
+          // Já carregado — só adiciona o grupo ao array
+          userMap.get(userId)!.groupNames.push(groupName);
+        } else {
+          const userDoc = await getDoc(doc(this.firestore, `users/${userId}`));
           if (userDoc.exists()) {
-            users.push({ id: userDoc.id, name: userDoc.data()['name'] });
+            userMap.set(userId, {
+              id: userDoc.id,
+              name: userDoc.data()['name'],
+              groupNames: [groupName],
+            });
           }
         }
       }
     }
-    this.usersInGroups = users;
+    this.usersInGroups = Array.from(userMap.values());
   }
 
   async saveProject(): Promise<void> {
     if (this.form.invalid) {
       this.snackBar.open('Preencha todos os campos obrigatórios!', 'Fechar', {
         duration: 3000,
+      });
+      return;
+    }
+
+    const deadlineValue = this.form.get('deadline')?.value;
+    const deadlineDate = deadlineValue ? new Date(deadlineValue) : null;
+    if (deadlineDate) deadlineDate.setHours(0, 0, 0, 0);
+    if (!deadlineDate || deadlineDate < this.today) {
+      this.snackBar.open('O prazo de preenchimento não pode ser uma data anterior a hoje.', 'Fechar', {
+        duration: 4000,
       });
       return;
     }
@@ -251,6 +317,62 @@ export class ProjectDetailComponent implements OnInit {
 
   goBack(): void {
     this.location.back();
+  }
+
+  openUsersDialog(): void {
+    const ref = this.dialog.open(UsersComponent, {
+      width: '90vw',
+      maxWidth: '1200px',
+      height: '85vh',
+      panelClass: 'users-dialog-panel',
+    });
+    ref.afterClosed().subscribe(() => {
+      this.loadUserGroups();
+    });
+  }
+
+  get canConcludeProject(): boolean {
+    return (
+      this.isEditMode &&
+      this.projectStatus === 'Em andamento' &&
+      ['admin_master', 'admin_client'].includes(this.currentUserRole)
+    );
+  }
+
+  async concludeProject(): Promise<void> {
+    if (!this.projectId) return;
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '480px',
+      data: {
+        title: 'Concluir Projeto',
+        message:
+          'Ao concluir este projeto, todos os links não respondidos serão encerrados e 1 crédito será debitado do saldo do cliente. Esta ação não pode ser desfeita. Deseja continuar?',
+        confirmLabel: 'Concluir',
+        cancelLabel: 'Cancelar',
+      },
+    });
+
+    const confirmed = await dialogRef.afterClosed().toPromise();
+    if (!confirmed) return;
+
+    this.isConcluding = true;
+    try {
+      await this.projectService.concludeProject(this.projectId, this.currentUserId || 'admin');
+      this.projectStatus = 'concluido';
+      this.form.get('status')?.setValue('concluido');
+      this.snackBar.open('Projeto concluído com sucesso! 1 crédito debitado.', 'Fechar', { duration: 4000 });
+    } catch (error: any) {
+      const msg: string = error?.message || '';
+      if (msg.includes('Saldo insuficiente')) {
+        this.snackBar.open(msg, 'Fechar', { duration: 6000 });
+      } else {
+        this.snackBar.open('Erro ao concluir projeto. Tente novamente.', 'Fechar', { duration: 3000 });
+      }
+      console.error('Erro ao concluir projeto:', error);
+    } finally {
+      this.isConcluding = false;
+    }
   }
 
   async updateUserProjects(): Promise<void> {

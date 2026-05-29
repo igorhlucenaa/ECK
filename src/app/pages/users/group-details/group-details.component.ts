@@ -10,11 +10,12 @@ import { RouterModule } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { CreateUserGroupComponent } from '../create-user-group/create-user-group.component';
+import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-group-details',
   standalone: true,
-  imports: [MaterialModule, CommonModule, RouterModule, TranslateModule],
+  imports: [MaterialModule, CommonModule, RouterModule, TranslateModule, AppPageHeaderComponent],
   templateUrl: './group-details.component.html',
   styleUrl: './group-details.component.scss'
 })

@@ -447,6 +447,8 @@ export class ResendAssessmentModalComponent implements OnInit {
         await setDoc(assessmentLinkDoc, {
           assessmentId: participant.assessmentId,
           participantId: participant.id,
+          clientId: this.data.clientId,
+          projectId: this.data.projectId,
           sentAt: new Date(),
           status: 'pending',
           emailTemplate: template.id,

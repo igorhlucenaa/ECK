@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
-import { Firestore, collection, query, where, getDocs } from '@angular/fire/firestore';
+import { Firestore, collection, doc, query, where, getDocs, getDoc } from '@angular/fire/firestore';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 import { TablerIconsModule } from 'angular-tabler-icons';
 import { MaterialModule } from 'src/app/material.module';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
 export interface CreditExpiryData {
   clientName: string;
@@ -27,39 +28,57 @@ export class AppProjectDataComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   private firestore = inject(Firestore);
+  private authService = inject(AuthService);
 
   async ngOnInit(): Promise<void> {
     const data = await this.fetchExpiringCredits();
     this.dataSource2.data = data;
-    this.dataSource2.paginator = this.paginator; // Configura a paginação
+    this.dataSource2.paginator = this.paginator;
   }
 
   private async fetchExpiringCredits(): Promise<CreditExpiryData[]> {
     const creditOrdersCollection = collection(this.firestore, 'creditOrders');
     const now = new Date();
-
-    // Buscar documentos cuja validade esteja próxima (exemplo: nos próximos 30 dias)
     const expiryThreshold = new Date();
     expiryThreshold.setDate(now.getDate() + 30);
 
-    const querySnapshot = await getDocs(
-      query(creditOrdersCollection, where('validityDate', '<=', expiryThreshold))
-    );
+    const userRole = await this.authService.getCurrentUserRole();
+    const userClientIds = await this.authService.getCurrentUserClientIds();
 
-    const clientCollection = collection(this.firestore, 'clients');
+    let querySnapshot;
+    if (userRole === 'admin_client' && userClientIds.length > 0) {
+      querySnapshot = await getDocs(
+        query(creditOrdersCollection,
+          where('clientId', 'in', userClientIds),
+          where('validityDate', '<=', expiryThreshold)
+        )
+      );
+    } else {
+      querySnapshot = await getDocs(
+        query(creditOrdersCollection, where('validityDate', '<=', expiryThreshold))
+      );
+    }
 
     const results = await Promise.all(
-      querySnapshot.docs.map(async (doc) => {
-        const creditOrder = doc.data();
-        const clientSnapshot = await getDocs(
-          query(clientCollection, where('id', '==', creditOrder['clientId']))
-        );
+      querySnapshot.docs.map(async (orderDoc) => {
+        const creditOrder = orderDoc.data();
+        const clientId = creditOrder['clientId'];
 
-        const client = clientSnapshot.docs[0]?.data();
+        let clientName = 'Desconhecido';
+        let logo: string | null = null;
+
+        if (clientId) {
+          const clientRef = doc(this.firestore, 'clients', clientId);
+          const clientSnap = await getDoc(clientRef);
+          if (clientSnap.exists()) {
+            clientName = clientSnap.data()['companyName'] || 'Desconhecido';
+            logo = clientSnap.data()['logo'] || null;
+          }
+        }
 
         return {
-          clientName: client?.['companyName'] || 'Desconhecido',
-          logo: client?.['logo'] || null,
+          clientName,
+          logo,
           validityDate: new Date(creditOrder['validityDate'].seconds * 1000),
           credits: creditOrder['credits'],
           priority: this.getPriority(creditOrder['validityDate'].seconds),

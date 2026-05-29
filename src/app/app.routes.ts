@@ -7,6 +7,7 @@ import { CreditOrdersComponent } from './pages/credit-orders/credit-orders.compo
 import { NewCreditOrderComponent } from './pages/credit-orders/new-credit-order/new-credit-order.component';
 import { EmailTemplateListComponent } from './pages/project/email-template-list/email-template-list.component';
 import { AssessmentComponent } from './pages/assessments/assessment/assessment.component';
+import { NaoAutorizadoComponent } from './pages/authentication/nao-autorizado/nao-autorizado.component';
 
 export const routes: Routes = [
   {
@@ -37,7 +38,7 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'dashboard', // Redireciona para o Dashboard
+        redirectTo: 'dashboard',
         pathMatch: 'full',
       },
       {
@@ -47,26 +48,33 @@ export const routes: Routes = [
             (m) => m.DashboardRoutes
           ),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] }, // Permissões ajustadas
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
       },
       {
         path: 'clients',
         loadChildren: () =>
           import('./pages/clients/clients.routes').then((m) => m.ClientsRoutes),
         canActivate: [AuthGuard],
-        data: { role: 'admin_master' },
+        data: { role: ['admin_master', 'admin_client'] },
       },
       {
         path: 'mail-templates',
         component: EmailTemplateListComponent,
         canActivate: [AuthGuard],
-        data: { role: 'admin_master' },
+        data: { role: ['admin_master', 'admin_client'] },
+      },
+      {
+        path: 'settings',
+        loadChildren: () =>
+          import('./pages/settings/settings.routes').then((m) => m.SettingsRoutes),
+        canActivate: [AuthGuard],
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
       },
       {
         path: 'clients/:id/customization',
         component: ClientCustomizationComponent,
         canActivate: [AuthGuard],
-        data: { role: 'admin_client' },
+        data: { role: ['admin_master'] },
       },
       {
         path: 'projects',
@@ -75,7 +83,7 @@ export const routes: Routes = [
             (m) => m.ProjectsRoutes
           ),
         canActivate: [AuthGuard],
-        data: { role: 'admin_client' },
+        data: { role: ['admin_master', 'admin_client', 'viewer'] },
       },
       {
         path: 'assessments',
@@ -96,15 +104,17 @@ export const routes: Routes = [
       {
         path: 'competencies',
         loadChildren: () =>
-          import('./pages/competencies/competencies.routes').then((m) => m.CompetenciesRoutes),
+          import('./pages/competencies/competencies.routes').then(
+            (m) => m.CompetenciesRoutes
+          ),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { role: ['admin_master'] },
       },
       {
         path: 'orders',
         component: CreditOrdersComponent,
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { role: ['admin_master'] },
       },
       {
         path: 'emails-notifications',
@@ -113,13 +123,13 @@ export const routes: Routes = [
             './pages/emails-notifications/emails-notifications.routes'
           ).then((m) => m.EmailsNotificationsRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { role: ['admin_master'] },
       },
       {
         path: 'orders/new',
         component: NewCreditOrderComponent,
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { role: ['admin_master'] },
       },
       {
         path: 'users',
@@ -131,7 +141,12 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'nao-autorizado',
+    component: NaoAutorizadoComponent,
+  },
+  {
     path: '**',
     redirectTo: 'authentication/error',
   },
 ];
+

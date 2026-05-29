@@ -1,134 +1,241 @@
-<div class="container my-4">
-  <h2 data-tour="projects-title">{{ 'Lista de Projetos' | translate }}</h2>
+<div class="projects-wrapper">
 
-  <!-- Botão Adicionar Projeto -->
-  <div
-    class="mt-3 text-end"
-    style="margin-top: 10px; margin-bottom: 10px; text-align: end"
-    data-tour="projects-add"
-  >
-    <button mat-flat-button color="primary" (click)="openProjectForm()">
+  <app-page-header
+    eyebrow="Gestão"
+    [title]="'Projetos' | translate"
+    subtitle="Gerencie os projetos cadastrados na plataforma"
+    data-tour="projects-title">
+
+    <button mat-raised-button class="btn-action" (click)="openProjectForm()" data-tour="projects-add"
+            *ngIf="isAdminMaster">
+      <mat-icon>add</mat-icon>
       {{ 'Adicionar Projeto' | translate }}
     </button>
+
+  </app-page-header>
+
+  <!-- Card principal -->
+  <div class="projects-card">
+
+    <!-- Barra de busca + filtros -->
+    <div class="search-bar" data-tour="projects-search">
+
+      <!-- Filtro por cliente (admin_master e admin_client com múltiplos clientes) -->
+      <mat-form-field appearance="outline" class="client-filter-field" *ngIf="clients.length > 1">
+        <mat-label>Filtrar por cliente</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:18px;">business</mat-icon>
+        <mat-select [(ngModel)]="selectedClientId" (selectionChange)="onClientChange()"
+                    (closed)="resetClientSearch()">
+          <div class="client-search-wrap">
+            <mat-icon class="client-search-icon">search</mat-icon>
+            <input class="client-search-input" [formControl]="clientSearchCtrl"
+                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   (keydown)="$event.stopPropagation()" />
+          </div>
+          <mat-option [value]="null">Todos os clientes</mat-option>
+          <mat-option *ngFor="let c of clientsFiltered" [value]="c.id">{{ c.name }}</mat-option>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Busca por nome do projeto -->
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Buscar projeto</mat-label>
+        <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:20px;">search</mat-icon>
+        <input matInput (keyup)="applyFilter($event)" placeholder="Nome do projeto..." />
+        <button mat-icon-button matSuffix *ngIf="searchValue" (click)="searchValue=''; applyFilter($event)">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <div class="status-filter-chips">
+        <button *ngFor="let f of STATUS_FILTERS"
+                class="status-chip"
+                [class.status-chip--active]="statusFilter === f.value"
+                [class.status-chip--em-andamento]="f.value === 'Em andamento'"
+                [class.status-chip--concluido]="f.value === 'Concluído'"
+                [class.status-chip--cancelado]="f.value === 'Cancelado'"
+                (click)="applyStatusFilter(f.value)">
+          {{ f.label }}
+        </button>
+      </div>
+
+      <div class="search-count" *ngIf="dataSource.filteredData">
+        {{ dataSource.filteredData.length }} resultado{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
+      </div>
+    </div>
+
+    <!-- Barra de ações em massa (admin_master apenas) -->
+    <div class="bulk-action-bar" *ngIf="isAdminMaster && isSomeProjectsSelected()">
+      <mat-icon>check_circle</mat-icon>
+      <strong>{{ selectedProjectIds.size }}</strong>
+      <span>projeto{{ selectedProjectIds.size !== 1 ? 's' : '' }} selecionado{{ selectedProjectIds.size !== 1 ? 's' : '' }}</span>
+      <span class="bulk-spacer"></span>
+      <button mat-button (click)="toggleAllProjects(false)">
+        <mat-icon>deselect</mat-icon> Limpar seleção
+      </button>
+      <button mat-flat-button color="warn" (click)="deleteSelectedProjects()">
+        <mat-icon>delete_sweep</mat-icon> Excluir selecionados
+      </button>
+    </div>
+
+    <!-- Tabela -->
+    <div class="table-container" data-tour="projects-table">
+      <table mat-table [dataSource]="dataSource" matSort class="projects-table">
+
+        <!-- Seleção (admin_master apenas) -->
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef class="select-col">
+            <mat-checkbox
+              [checked]="isAllProjectsSelected()"
+              [indeterminate]="isSomeProjectsSelected() && !isAllProjectsSelected()"
+              (change)="toggleAllProjects($event.checked)">
+            </mat-checkbox>
+          </th>
+          <td mat-cell *matCellDef="let p" class="select-col">
+            <mat-checkbox
+              [checked]="selectedProjectIds.has(p.id)"
+              (change)="toggleProjectSelect(p.id)">
+            </mat-checkbox>
+          </td>
+        </ng-container>
+
+        <!-- Cliente -->
+        <ng-container matColumnDef="client">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header"><mat-icon class="col-icon">business</mat-icon>{{ 'Cliente' | translate }}</span>
+          </th>
+          <td mat-cell *matCellDef="let p">
+            <span class="client-badge">{{ p.clientName }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Nome -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header"><mat-icon class="col-icon">folder</mat-icon>Projeto</span>
+          </th>
+          <td mat-cell *matCellDef="let p">
+            <div class="project-cell">
+              <div class="project-avatar">{{ getInitial(p.name) }}</div>
+              <div>
+                <div class="project-name">{{ p.name }}</div>
+                <span class="status-badge" [ngClass]="getStatusClass(p.status)">{{ p.status }}</span>
+              </div>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Prazo -->
+        <ng-container matColumnDef="deadline">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header"><mat-icon class="col-icon">event</mat-icon>Prazo</span>
+          </th>
+          <td mat-cell *matCellDef="let p">
+            <span class="deadline-cell" [class.deadline-overdue]="isOverdue(p.deadline)">
+              <mat-icon class="deadline-icon">{{ isOverdue(p.deadline) ? 'warning' : 'calendar_today' }}</mat-icon>
+              {{ p.deadline | date:'dd/MM/yyyy' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Respostas -->
+        <ng-container matColumnDef="responses">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header"><mat-icon class="col-icon">bar_chart</mat-icon>{{ 'Respostas' | translate }}</span>
+          </th>
+          <td mat-cell *matCellDef="let p">
+            <div class="responses-cell">
+              <div class="responses-label">
+                <span class="responses-count">{{ p.respondedCount }}/{{ p.totalParticipants }}</span>
+                <span class="responses-pending" *ngIf="p.pendingCount > 0">{{ p.pendingCount }} pendente{{ p.pendingCount !== 1 ? 's' : '' }}</span>
+              </div>
+              <div class="responses-bar">
+                <div class="responses-bar-fill"
+                  [style.width.%]="p.totalParticipants > 0 ? (p.respondedCount / p.totalParticipants * 100) : 0">
+                </div>
+              </div>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Ações -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="actions-col" data-tour="projects-actions">{{ 'Ações' | translate }}</th>
+          <td mat-cell *matCellDef="let p" class="actions-col">
+            <div class="actions-cell">
+
+              <!-- Participantes — botão primário visível -->
+              <button class="act-btn act-btn--primary"
+                      (click)="openResendModal(p.id, p.clientId)"
+                      [matTooltip]="'Participantes' | translate"
+                      [disabled]="loadingParticipantsProjectId === p.id">
+                <mat-spinner *ngIf="loadingParticipantsProjectId === p.id" diameter="16"></mat-spinner>
+                <mat-icon *ngIf="loadingParticipantsProjectId !== p.id">supervisor_account</mat-icon>
+              </button>
+
+              <!-- Gerar Relatório -->
+              <button class="act-btn act-btn--report"
+                      (click)="goToProjectReport(p.clientId, p.id)"
+                      [matTooltip]="'Gerar Relatório' | translate">
+                <mat-icon>bar_chart</mat-icon>
+              </button>
+
+              <!-- Disparar convites — botão primário visível para perfis operacionais -->
+              <button class="act-btn act-btn--send" *ngIf="isAdminMaster || isClienteAdmin || isViewer"
+                      (click)="openSendInvitesModal(p.clientId, p.id, p.name)"
+                      [matTooltip]="'Disparar Convites / Lembretes' | translate">
+                <mat-icon>send</mat-icon>
+              </button>
+
+              <!-- Menu de ações secundárias (admin_master) -->
+              <button *ngIf="isAdminMaster" class="act-btn act-btn--more" [matMenuTriggerFor]="actionsMenu">
+                <mat-icon>more_horiz</mat-icon>
+              </button>
+
+              <mat-menu #actionsMenu="matMenu" class="proj-actions-menu">
+                <button mat-menu-item (click)="goToProjectUsers(p.id)">
+                  <mat-icon class="menu-icon menu-icon--neutral">groups</mat-icon>
+                  <span>Usuários do projeto</span>
+                </button>
+                <button mat-menu-item (click)="goToProjectQuestionnaires(p.clientId)">
+                  <mat-icon class="menu-icon menu-icon--neutral">assignment</mat-icon>
+                  <span>Formulário de avaliação</span>
+                </button>
+                <button mat-menu-item (click)="openProjectForm(p.id)">
+                  <mat-icon class="menu-icon menu-icon--neutral">edit</mat-icon>
+                  <span>Editar projeto</span>
+                </button>
+                <mat-divider *ngIf="isAdminMaster"></mat-divider>
+                <button mat-menu-item *ngIf="isAdminMaster && p.status !== 'Cancelado'" (click)="cancelProject(p.id)" class="menu-item--warn">
+                  <mat-icon class="menu-icon menu-icon--warn">block</mat-icon>
+                  <span>Cancelar projeto</span>
+                </button>
+                <button mat-menu-item *ngIf="isAdminMaster" (click)="deleteProject(p.id)" class="menu-item--danger">
+                  <mat-icon class="menu-icon menu-icon--danger">delete_outline</mat-icon>
+                  <span>Excluir projeto</span>
+                </button>
+              </mat-menu>
+
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
+
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+            <div class="no-data">
+              <mat-icon>search_off</mat-icon>
+              <span>Nenhum projeto encontrado</span>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <mat-paginator [pageSize]="10" [pageSizeOptions]="[5, 10, 20, 50]" showFirstLastButtons class="projects-paginator"></mat-paginator>
+
   </div>
-
-  <!-- Campo de Busca -->
-  <mat-form-field appearance="outline" class="w-100 my-3" data-tour="projects-search">
-    <mat-label>{{ 'Buscar' | translate }}</mat-label>
-    <input
-      matInput
-      (keyup)="applyFilter($event)"
-      [placeholder]="('Digite para buscar' | translate)"
-    />
-    <button
-      mat-icon-button
-      matSuffix
-      *ngIf="searchValue"
-      (click)="searchValue = ''; applyFilter($event)"
-    >
-      <mat-icon>close</mat-icon>
-    </button>
-  </mat-form-field>
-
-  <!-- Tabela -->
-  <table
-    mat-table
-    data-tour="projects-table"
-    [dataSource]="dataSource"
-    class="mat-elevation-z8 w-100"
-    matSort
-  >
-    <!-- Nome -->
-    <ng-container matColumnDef="name">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome' | translate }}</th>
-      <td mat-cell *matCellDef="let project">{{ project.name }}</td>
-    </ng-container>
-
-    <!-- Prazo -->
-    <ng-container matColumnDef="deadline">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>
-        {{ 'Prazo de Preenchimento' | translate }}
-      </th>
-      <td mat-cell *matCellDef="let project">
-        {{ project.deadline | date : "shortDate" }}
-      </td>
-    </ng-container>
-
-    <!-- Cliente -->
-    <ng-container matColumnDef="client">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Cliente' | translate }}</th>
-      <td mat-cell *matCellDef="let project">{{ project.clientName }}</td>
-    </ng-container>
-
-    <!-- Respostas -->
-    <ng-container matColumnDef="responses">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Respostas' | translate }}</th>
-      <td mat-cell *matCellDef="let project">
-        {{ project.respondedCount }}/{{ project.totalParticipants }} ({{ 'Faltam' | translate }}:
-        {{ project.pendingCount }})
-      </td>
-    </ng-container>
-
-    <!-- Ações -->
-    <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef data-tour="projects-actions">{{ 'Ações' | translate }}</th>
-      <td mat-cell *matCellDef="let project">
-        <button
-          mat-icon-button
-          color="accent"
-          (click)="goToProjectUsers(project.id)"
-          matTooltip="{{ 'Usuários do projeto' | translate }}"
-        >
-          <mat-icon>groups</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          color="primary"
-          matTooltip="{{ 'Modelos de e-mail' | translate }}"
-          (click)="goToProjectTemplates(project.clientId, project.id)"
-        >
-          <mat-icon>mail</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          color="primary"
-          matTooltip="{{ 'Formulário de Avaliação' | translate }}"
-          (click)="goToProjectQuestionnaires(project.clientId)"
-        >
-          <mat-icon>assignment</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          color="accent"
-          matTooltip="{{ 'Participantes' | translate }}"
-          (click)="openResendModal(project.id, project.clientId)"
-        >
-          <mat-icon>supervisor_account</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          color="primary"
-          matTooltip="{{ 'Editar Projeto' | translate }}"
-          (click)="openProjectForm(project.id)"
-        >
-          <mat-icon>edit</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          color="warn"
-          (click)="deleteProject(project.id)"
-          matTooltip="{{ 'Excluir Projeto' | translate }}"
-        >
-          <mat-icon>delete</mat-icon>
-        </button>
-        <!-- Novo Botão de Participantes -->
-      </td>
-    </ng-container>
-
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-  </table>
-
-  <!-- Paginação -->
-  <mat-paginator [pageSize]="5" [pageSizeOptions]="[5, 10, 20]"></mat-paginator>
 </div>

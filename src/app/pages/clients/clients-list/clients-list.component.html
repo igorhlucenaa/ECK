@@ -1,112 +1,252 @@
-<div class="container my-4">
-  <h1 data-tour="clients-header">{{ 'Lista de Clientes' | translate }}</h1>
-  <!-- Campo de Busca -->
+<div class="clients-wrapper">
 
-  <div class="row">
-    <div class="col-12" style="text-align: end; margin-bottom: 10px" data-tour="clients-add">
-      <button mat-flat-button color="primary" (click)="openAddClientDialog()">
-        {{ 'Adicionar Cliente' | translate }}
-      </button>
-    </div>
-    <div class="col-12" data-tour="clients-search">
-      <mat-form-field
-        appearance="outline"
-        class="search-field"
-        style="width: 100%"
-      >
-        <mat-label>{{ 'Buscar' | translate }}</mat-label>
+  <app-page-header
+    [eyebrow]="'Gestão' | translate"
+    [title]="'Clientes' | translate"
+    [subtitle]="'Gerencie os clientes cadastrados na plataforma' | translate"
+    data-tour="clients-header">
+
+    <button mat-raised-button class="btn-action" (click)="openAddClientDialog()" data-tour="clients-add"
+            *ngIf="isAdminMaster">
+      <mat-icon>add</mat-icon>
+      {{ 'Adicionar Cliente' | translate }}
+    </button>
+
+  </app-page-header>
+
+  <!-- Card principal -->
+  <div class="clients-card">
+
+    <!-- Barra de busca e filtros -->
+    <div class="search-bar" data-tour="clients-search">
+
+      <!-- Busca por nome -->
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>{{ 'Buscar por nome' | translate }}</mat-label>
+        <mat-icon matPrefix class="search-prefix-icon">search</mat-icon>
         <input
           matInput
+          [value]="searchValue"
           (keyup)="applyFilter($event)"
-          placeholder="{{ 'Digite para buscar' | translate }}"
+          [placeholder]="'Nome da empresa...' | translate"
         />
-         <button
-          mat-icon-button
-          matSuffix
-          *ngIf="searchValue"
-          (click)="searchValue = ''; applyFilter($event)"
-        >
+        <button mat-icon-button matSuffix *ngIf="searchValue"
+          (click)="searchValue = ''; applyFilters()" [matTooltip]="'Limpar' | translate">
           <mat-icon>close</mat-icon>
         </button>
       </mat-form-field>
+
+      <!-- Filtro por CNPJ -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>{{ 'CNPJ' | translate }}</mat-label>
+        <mat-icon matPrefix class="search-prefix-icon">badge</mat-icon>
+        <input
+          matInput
+          [(ngModel)]="cnpjFilter"
+          (input)="applyFilters()"
+          placeholder="00.000.000/0001-00"
+          maxlength="18"
+        />
+        <button mat-icon-button matSuffix *ngIf="cnpjFilter"
+          (click)="cnpjFilter = ''; applyFilters()" [matTooltip]="'Limpar' | translate">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <!-- Filtro por Setor -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>{{ 'Setor' | translate }}</mat-label>
+        <mat-icon matPrefix class="search-prefix-icon">category</mat-icon>
+        <mat-select [(ngModel)]="sectorFilter" (selectionChange)="applyFilters()">
+          <mat-option value="">{{ 'Todos os setores' | translate }}</mat-option>
+          <mat-option *ngFor="let s of sectors" [value]="s">{{ s }}</mat-option>
+        </mat-select>
+        <button mat-icon-button matSuffix *ngIf="sectorFilter"
+          (click)="sectorFilter = ''; applyFilters(); $event.stopPropagation()" [matTooltip]="'Limpar' | translate">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <div class="search-bar__right">
+        <button mat-stroked-button class="btn-clear-filters"
+                *ngIf="searchValue || cnpjFilter || sectorFilter"
+                (click)="clearFilters()">
+          <mat-icon>filter_list_off</mat-icon>
+          {{ 'Limpar filtros' | translate }}
+        </button>
+        <div class="search-count">
+          {{ dataSource.filteredData.length }} resultado{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
+        </div>
+      </div>
+
     </div>
+
+    <!-- Barra de ações em massa -->
+    <div class="bulk-action-bar" *ngIf="isSomeClientsSelected() && isAdminMaster">
+      <mat-icon>check_circle</mat-icon>
+      <strong>{{ selectedClientIds.size }}</strong>
+      <span>{{ 'cliente(s) selecionado(s)' | translate }}</span>
+      <span class="bulk-spacer"></span>
+      <button mat-button (click)="toggleAllClients(false)">
+        <mat-icon>deselect</mat-icon> {{ 'Limpar seleção' | translate }}
+      </button>
+      <button mat-flat-button color="warn" (click)="deleteSelectedClients()">
+        <mat-icon>delete_sweep</mat-icon> {{ 'Excluir selecionados' | translate }}
+      </button>
+    </div>
+
+    <!-- Tabela -->
+    <div class="table-container" data-tour="clients-table">
+      <table mat-table [dataSource]="dataSource" matSort class="clients-table">
+
+        <!-- Coluna: Seleção -->
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef class="select-col">
+            <mat-checkbox
+              [checked]="isAllClientsSelected()"
+              [indeterminate]="isSomeClientsSelected() && !isAllClientsSelected()"
+              (change)="toggleAllClients($event.checked)">
+            </mat-checkbox>
+          </th>
+          <td mat-cell *matCellDef="let client" class="select-col">
+            <mat-checkbox
+              [checked]="selectedClientIds.has(client.id)"
+              (change)="toggleClientSelect(client.id)">
+            </mat-checkbox>
+          </td>
+        </ng-container>
+
+        <!-- Coluna: Nome -->
+        <ng-container matColumnDef="companyName">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">business</mat-icon>
+              {{ 'Nome do Cliente' | translate }}
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let client">
+            <div class="company-cell">
+              <div class="company-avatar">{{ client.companyName?.[0]?.toUpperCase() || '?' }}</div>
+              <span class="company-name">{{ client.companyName }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Coluna: Setor -->
+        <ng-container matColumnDef="sector">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">category</mat-icon>
+              {{ 'Setor' | translate }}
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let client">
+            <span class="sector-badge">{{ client.sector }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Coluna: CNPJ -->
+        <ng-container matColumnDef="cnpj">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">badge</mat-icon>
+              {{ 'CNPJ' | translate }}
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let client" class="cnpj-cell">
+            {{ client.cnpj | cnpj }}
+          </td>
+        </ng-container>
+
+        <!-- Coluna: Créditos -->
+        <ng-container matColumnDef="credits">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header">
+              <mat-icon class="col-icon">toll</mat-icon>
+              {{ 'Créditos Disponíveis' | translate }}
+            </span>
+          </th>
+          <td mat-cell *matCellDef="let client">
+            <div class="credits-cell">
+              <div class="credits-stat credits-stat--purchased"
+                   [matTooltip]="'Total de créditos comprados em pedidos aprovados' | translate" matTooltipPosition="above">
+                <span class="credits-stat__label">{{ 'Comprados' | translate }}</span>
+                <span class="credits-stat__value">{{ client.creditsPurchased || 0 }}</span>
+              </div>
+              <div class="credits-stat credits-stat--used"
+                   [matTooltip]="'Créditos consumidos na geração de relatórios' | translate" matTooltipPosition="above">
+                <span class="credits-stat__label">{{ 'Usados' | translate }}</span>
+                <span class="credits-stat__value">{{ client.creditsUsed || 0 }}</span>
+              </div>
+              <div class="credits-stat"
+                   [class.credits-stat--available]="client.creditsAvailable > 0"
+                   [class.credits-stat--zero]="client.creditsAvailable === 0"
+                   [matTooltip]="'Créditos disponíveis para uso' | translate" matTooltipPosition="above">
+                <span class="credits-stat__label">{{ 'Disponíveis' | translate }}</span>
+                <span class="credits-stat__value">{{ client.creditsAvailable || 0 }}</span>
+              </div>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Coluna: Ações -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="actions-col" data-tour="clients-actions">{{ 'Ações' | translate }}</th>
+          <td mat-cell *matCellDef="let client" class="actions-col">
+            <div class="actions-cell">
+              <button
+                mat-icon-button
+                class="action-templates"
+                [routerLink]="['/projects', client.id, 'templates']"
+                [queryParams]="{fromClient: client.id}"
+                [matTooltip]="'Ver modelos de e-mail' | translate"
+              >
+                <mat-icon>mail_outline</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                class="action-edit"
+                (click)="openAddClientDialog(client)"
+                [matTooltip]="'Editar cliente' | translate"
+                *ngIf="isAdminMaster"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                class="action-delete"
+                (click)="deleteClient(client.id)"
+                [matTooltip]="'Excluir cliente' | translate"
+                *ngIf="isAdminMaster"
+              >
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
+
+        <!-- Linha vazia -->
+        <tr class="mat-row no-data-row" *matNoDataRow>
+          <td class="mat-cell" [attr.colspan]="displayedColumns.length">
+            <div class="no-data">
+              <mat-icon>search_off</mat-icon>
+              <span>{{ 'Nenhum cliente encontrado' | translate }}</span>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Paginação -->
+    <mat-paginator
+      [pageSize]="10"
+      [pageSizeOptions]="[5, 10, 20, 50]"
+      showFirstLastButtons
+      class="clients-paginator"
+    ></mat-paginator>
+
   </div>
-
-  <!-- Tabela -->
-  <div data-tour="clients-table">
-  <table
-    mat-table
-    [dataSource]="dataSource"
-    class="mat-elevation-z8 custom-table hoverable-rows"
-    matSort
-  >
-    <!-- Coluna: Nome do Cliente -->
-    <ng-container matColumnDef="companyName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome do Cliente' | translate }}</th>
-      <td mat-cell *matCellDef="let client">
-        {{ client.companyName }}
-      </td>
-    </ng-container>
-
-    <!-- Coluna: Setor -->
-    <ng-container matColumnDef="sector">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Setor' | translate }}</th>
-      <td mat-cell *matCellDef="let client">
-        {{ client.sector }}
-      </td>
-    </ng-container>
-
-    <!-- Coluna: CNPJ -->
-    <ng-container matColumnDef="cnpj">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'CNPJ' | translate }}</th>
-      <td mat-cell *matCellDef="let client">
-        {{ client.cnpj | cnpj }}
-      </td>
-    </ng-container>
-
-    <!-- Coluna: Créditos -->
-    <ng-container matColumnDef="credits">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>
-        {{ 'Créditos Remanescentes' | translate }}
-      </th>
-      <td mat-cell *matCellDef="let client">
-        {{ client.credits }}
-      </td>
-    </ng-container>
-
-    <!-- Coluna: Ações -->
-    <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef data-tour="clients-actions">{{ 'Ações' | translate }}</th>
-      <td mat-cell *matCellDef="let client" class="text-center">
-        <button
-          mat-icon-button
-          color="primary"
-          (click)="openAddClientDialog(client)"
-        >
-          <mat-icon>edit</mat-icon>
-        </button>
-        <button mat-icon-button color="warn" (click)="deleteClient(client.id)">
-          <mat-icon>delete</mat-icon>
-        </button>
-      </td>
-    </ng-container>
-
-    <!-- Linha Principal -->
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let client; columns: displayedColumns"></tr>
-  </table>
-  </div>
-
-  <!-- Paginação -->
-  <mat-paginator
-    [pageSize]="5"
-    [pageSizeOptions]="[5, 10, 20]"
-    showFirstLastButtons
-  >
-  </mat-paginator>
-
-  <!-- Botão flutuante: Adicionar -->
-  <!-- <a mat-fab color="primary" (click)="openAddClientDialog()" class="add-button">
-  <mat-icon>add</mat-icon>
-</a> -->
 </div>

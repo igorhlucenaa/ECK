@@ -19,6 +19,7 @@ import {
   getDoc,
   getDocs,
   query,
+  updateDoc,
   where,
 } from '@angular/fire/firestore';
 import { firstValueFrom } from 'rxjs';
@@ -27,6 +28,8 @@ import { firstValueFrom } from 'rxjs';
   providedIn: 'root',
 })
 export class AuthService {
+  private _roleCache: string | null | undefined = undefined;
+
   constructor(private auth: Auth, private firestore: Firestore, private router: Router) {}
 
   async login(
@@ -42,19 +45,46 @@ export class AuthService {
       await this.auth.setPersistence(persistence).then(async () => {
         await signInWithEmailAndPassword(this.auth, email, password);
 
+        // Verificar se o usuário está bloqueado antes de prosseguir
+        const usersCollection = collection(this.firestore, 'users');
+        const emailQuery = query(usersCollection, where('email', '==', email));
+        const snap = await getDocs(emailQuery);
+
+        if (!snap.empty && snap.docs[0].data()['blocked'] === true) {
+          await signOut(this.auth);
+          throw new Error('Seu acesso foi suspenso. Entre em contato com o administrador.');
+        }
+
+        // Registrar acesso: atualiza notificationStatus e lastLoginAt
+        if (!snap.empty) {
+          try {
+            await updateDoc(doc(this.firestore, `users/${snap.docs[0].id}`), {
+              notificationStatus: 'Acessou',
+              lastLoginAt: new Date(),
+            });
+          } catch {
+            // não bloqueia o login em caso de falha
+          }
+        }
+
         // Obter o papel do usuário após login
         const userRole = await this.getCurrentUserRole();
 
-        // Redirecionar com base no papel do usuário
+        const returnUrl = localStorage.getItem('returnUrl');
+        localStorage.removeItem('returnUrl');
+
         if (userRole === 'admin_master') {
+          const target = (returnUrl && returnUrl !== '/authentication/login') ? returnUrl : '/projects';
+          this.router.navigate([target]);
+        } else if (userRole === 'admin_client') {
           this.router.navigate(['/projects']);
         } else {
-          this.router.navigate(['/users']);
+          this.router.navigate(['/dashboard']);
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no login:', error);
-      throw new Error('Falha ao realizar login. Verifique suas credenciais.');
+      throw new Error(error.message || 'Falha ao realizar login. Verifique suas credenciais.');
     }
   }
 
@@ -71,15 +101,14 @@ export class AuthService {
       await this.auth.setPersistence(persistence).then(async () => {
         await signInWithEmailAndPassword(this.auth, email, password);
 
-        // Obter o papel do usuário após login
-        // const userRole = await this.getCurrentUserRole();
-
-        // Redirecionar com base no papel do usuário
-        // if (userRole === 'admin_master') {
-          // location.assign('/projects'); // Redireciona para 'products' diretamente
-        // } else {
-          location.assign('/users'); // Ou outra rota padrão para outros papéis
-        // }
+        const userRole = await this.getCurrentUserRole();
+        if (userRole === 'admin_master') {
+          location.assign('/projects');
+        } else if (userRole === 'admin_client') {
+          location.assign('/projects');
+        } else {
+          location.assign('/dashboard');
+        }
       });
     } catch (error) {
       console.error('Erro no login:', error);
@@ -98,6 +127,7 @@ export class AuthService {
 
   async logout(): Promise<void> {
     try {
+      this._roleCache = undefined;
       await this.auth.setPersistence(browserSessionPersistence); // Redefine persistência
       await signOut(this.auth); // Realiza logout
     } catch (error) {
@@ -107,6 +137,8 @@ export class AuthService {
   }
 
   async getCurrentUserRole(): Promise<string | null> {
+    if (this._roleCache !== undefined) return this._roleCache as string | null;
+
     try {
       const user = this.auth.currentUser;
 
@@ -127,13 +159,15 @@ export class AuthService {
         console.warn(
           `Nenhum documento encontrado para o e-mail ${user.email}.`
         );
+        this._roleCache = null;
         return null;
       }
 
       const docSnap = querySnapshot.docs[0];
       const data = docSnap.data();
 
-      return data?.['role'] || null;
+      this._roleCache = data?.['role'] || null;
+      return this._roleCache as string | null;
     } catch (error) {
       console.error('Erro ao obter papel do usuário:', error);
       return null;
@@ -296,6 +330,7 @@ export class AuthService {
   }
 
   async getCurrentUser(): Promise<{
+    uid: string;
     name: string;
     email: string;
     role: string;
@@ -328,6 +363,7 @@ export class AuthService {
       const data = docSnap.data();
 
       return {
+        uid: user.uid,
         name: data?.['name'] || 'Usuário Desconhecido',
         email: user.email,
         role: data?.['role'] || 'Role não informado',
@@ -349,6 +385,25 @@ export class AuthService {
     }
 
     return null;
+  }
+
+  /** Retorna todos os clientIds vinculados ao usuário (suporta clients[] e campo legado client) */
+  async getCurrentUserClientIds(): Promise<string[]> {
+    try {
+      const user = this.auth.currentUser;
+      if (!user || !user.email) return [];
+      const usersCollection = collection(this.firestore, 'users');
+      const snap = await getDocs(query(usersCollection, where('email', '==', user.email)));
+      if (snap.empty) return [];
+      const data = snap.docs[0].data();
+      if (Array.isArray(data['clients']) && data['clients'].length > 0) {
+        return data['clients'];
+      }
+      if (data['client']) return [data['client']];
+      return [];
+    } catch {
+      return [];
+    }
   }
 
   async getCurrentClientId(): Promise<string | null> {

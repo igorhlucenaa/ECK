@@ -3,106 +3,128 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MaterialModule } from 'src/app/material.module';
+import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 @Component({
   selector: 'app-participants-confirmation-dialog',
   standalone: true,
   imports: [MaterialModule, CommonModule, FormsModule],
-  template: `
-    <h1 mat-dialog-title style="margin-top: 20px">Confirmar Participantes</h1>
-    <div mat-dialog-content>
-      <!-- Exibir Cliente como texto readonly -->
-      <div class="mb-3">
-        <mat-form-field class="w-100" appearance="outline">
-          <mat-label>Cliente</mat-label>
-          <input matInput [value]="data.clientName" readonly />
-        </mat-form-field>
-      </div>
-
-      <!-- Exibir Projeto como texto readonly -->
-      <div class="mb-3">
-        <mat-form-field class="w-100" appearance="outline">
-          <mat-label>Projeto</mat-label>
-          <input matInput [value]="data.projectName" readonly />
-        </mat-form-field>
-      </div>
-
-      <!-- Exibir a avaliação associada ao projeto (opcional, apenas para feedback visual) -->
-      <div class="mb-3" *ngIf="evaluation">
-        <mat-form-field class="w-100" appearance="outline">
-          <mat-label>Avaliação Associada</mat-label>
-          <input matInput [value]="evaluation.name" readonly />
-        </mat-form-field>
-      </div>
-
-      <table mat-table [dataSource]="data.participants" class="w-100">
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>Nome</th>
-          <td mat-cell *matCellDef="let participant">{{ participant.name }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="email">
-          <th mat-header-cell *matHeaderCellDef>Email</th>
-          <td mat-cell *matCellDef="let participant">
-            {{ participant.email }}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="category">
-          <th mat-header-cell *matHeaderCellDef>Categoria</th>
-          <td mat-cell *matCellDef="let participant">
-            {{ participant.category }}
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-      </table>
-    </div>
-
-    <div mat-dialog-actions align="end">
-      <button mat-button (click)="dialogRef.close(null)">Cancelar</button>
-      <button mat-flat-button color="primary" (click)="confirmSelection()">
-        Confirmar
-      </button>
-    </div>
-  `,
+  templateUrl: './participants-confirmation-dialog.component.html',
   styleUrls: ['./participants-confirmation-dialog.component.scss'],
 })
 export class ParticipantsConfirmationDialogComponent implements OnInit {
-  displayedColumns = ['name', 'email', 'category'];
+  displayedColumns = ['index', 'name', 'email', 'category', 'cargo'];
+
+  selectedClientId: string;
+  selectedProjectId: string;
+  filteredProjects: { id: string; name: string; clientId: string }[] = [];
   evaluation: { id: string; name: string } | null = null;
+  isLoadingEval = false;
+  validationError: string | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<ParticipantsConfirmationDialogComponent>,
-    @Inject(MAT_DIALOG_DATA)
-    public data: {
+    @Inject(MAT_DIALOG_DATA) public data: {
       participants: any[];
-      clientId: string; // Novo: ID do cliente
-      clientName: string; // Novo: Nome do cliente
-      projectId: string; // Novo: ID do projeto
-      projectName: string; // Novo: Nome do projeto
-      loadEvaluation: (projectId: string) => Promise<any>; // Manter para carregar a avaliação
-    }
-  ) {}
+      clients: { id: string; name: string }[];
+      projects: { id: string; name: string; clientId: string }[];
+      preselectedClientId?: string;
+      preselectedProjectId?: string;
+      loadEvaluation: (projectId: string) => Promise<{ id: string; name: string } | null>;
+    },
+    private participantValidationService: ParticipantValidationService
+  ) {
+    this.selectedClientId = data.preselectedClientId || '';
+    this.selectedProjectId = data.preselectedProjectId || '';
+  }
 
-  async ngOnInit() {
-    console.log(this.data.participants);
-    // Carregar a avaliação associada ao projectId fornecido
-    if (this.data.projectId) {
-      try {
-        const evalResult = await this.data.loadEvaluation(this.data.projectId);
-        this.evaluation = evalResult || null;
-      } catch (error) {
-        console.error('Erro ao carregar avaliação no modal:', error);
+  async ngOnInit(): Promise<void> {
+    this.filteredProjects = this.selectedClientId
+      ? this.data.projects.filter(p => p.clientId === this.selectedClientId)
+      : [...this.data.projects];
+
+    if (this.selectedProjectId) {
+      await this.loadEval(this.selectedProjectId);
+      // Executar validação quando o projeto já está pré-selecionado
+      await this.onProjectChange();
+    }
+  }
+
+  onClientChange(): void {
+    this.selectedProjectId = '';
+    this.evaluation = null;
+    this.filteredProjects = this.selectedClientId
+      ? this.data.projects.filter(p => p.clientId === this.selectedClientId)
+      : [...this.data.projects];
+  }
+
+  async onProjectChange(): Promise<void> {
+    this.evaluation = null;
+    this.validationError = null;
+
+    if (this.selectedProjectId) {
+      await this.loadEval(this.selectedProjectId);
+
+      // Validar se há mais de um avaliado no arquivo Excel
+      const participantsWithProject = this.data.participants.map(p => ({
+        ...p,
+        projectId: this.selectedProjectId
+      }));
+      const excelValidation = this.participantValidationService.validateExcelParticipants(
+        participantsWithProject
+      );
+
+      if (!excelValidation.valid) {
+        const projectName = this.data.projects.find(p => p.id === this.selectedProjectId)?.name || 'projeto';
+        const error = excelValidation.errors[0];
+        this.validationError = `O arquivo contém ${error.evaluateesCount} avaliados para o projeto "${projectName}". É permitido apenas um avaliado por projeto.`;
+        return;
+      }
+
+      // Validar se já existe um avaliado cadastrado no projeto
+      const hasEvaluateeInFile = this.data.participants.some(p => p.category === 'Avaliado');
+      if (hasEvaluateeInFile) {
+        const existingValidation = await this.participantValidationService.validateSingleEvaluateePerProject(
+          this.selectedProjectId,
+          'Avaliado'
+        );
+
+        if (!existingValidation.valid) {
+          const projectName = this.data.projects.find(p => p.id === this.selectedProjectId)?.name || 'projeto';
+          this.validationError = `O projeto "${projectName}" já possui um avaliado cadastrado (${existingValidation.existingEvaluateeName}). Não é possível adicionar outro avaliado.`;
+        }
       }
     }
   }
 
+  private async loadEval(projectId: string): Promise<void> {
+    this.isLoadingEval = true;
+    try {
+      this.evaluation = await this.data.loadEvaluation(projectId);
+    } catch {
+      this.evaluation = null;
+    } finally {
+      this.isLoadingEval = false;
+    }
+  }
+
+  get isValid(): boolean {
+    return !!this.selectedClientId && !!this.selectedProjectId && !this.validationError;
+  }
+
+  get countByType(): { avaliados: number; avaliadores: number } {
+    return {
+      avaliados: this.data.participants.filter(p => p.type === 'avaliado').length,
+      avaliadores: this.data.participants.filter(p => p.type === 'avaliador').length,
+    };
+  }
+
   confirmSelection(): void {
+    if (!this.isValid) return;
     this.dialogRef.close({
-      client: this.data.clientId, // Retorna o clientId fornecido
-      project: this.data.projectId, // Retorna o projectId fornecido
-      evaluation: this.evaluation?.id || null, // Retorna o ID da avaliação associada
+      client: this.selectedClientId,
+      project: this.selectedProjectId,
+      evaluation: this.evaluation?.id || null,
     });
   }
 }

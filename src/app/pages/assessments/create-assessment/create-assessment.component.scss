@@ -1,112 +1,308 @@
-.container {
-  margin: auto;
-  padding: 20px;
-  width: 100%;
+// ─── Wrapper ─────────────────────────────────────────────────
+.form-wrapper {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-mat-card {
-  border-radius: 10px;
+.btn-back {
+  color: #64748b !important;
+  font-weight: 500;
+  mat-icon { font-size: 18px; vertical-align: middle; }
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #1B2D56, #1B84FF) !important;
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+  &:disabled { opacity: 0.5; }
+}
+
+// ─── Info Card ───────────────────────────────────────────────
+.info-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 1px 12px rgba(27, 45, 86, 0.07);
   margin-bottom: 20px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-mat-card-title {
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-.row {
-  margin-bottom: 20px;
-}
-
-.mat-form-field {
-  margin-bottom: 10px;
-}
-
-.question-container {
-  margin-bottom: 15px;
-}
-
-.question-container mat-card {
-  padding: 15px;
-}
-
-.option-container {
+.info-card__header {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fafbfd;
 }
 
-.option-container mat-form-field {
-  margin-bottom: 0;
+.info-card__icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1B2D56, #1B84FF);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  mat-icon { color: #fff; font-size: 16px; width: 16px; height: 16px; }
 }
 
-.option-container button {
-  margin-top: 5px;
+.info-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
 }
 
-.sidebar {
+.req {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.info-card__ok {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #10b981;
+
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+}
+
+.info-card__body {
+  padding: 20px 24px;
+}
+
+// ─── Info Grid ───────────────────────────────────────────────
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+// ─── Info Field ──────────────────────────────────────────────
+.info-field {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 15px;
-  padding: 15px;
+  gap: 6px;
+
+  &--span2 { grid-column: span 2; }
+  &--comp { grid-column: span 2; }
+
+  &--with-toggle .info-field__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .info-field__select { flex: 1; }
+  }
 }
 
-.sidebar button {
-  width: 50px;
-  height: 50px;
+.info-field__label {
   display: flex;
-  justify-content: center;
   align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+
+  mat-icon { font-size: 14px; width: 14px; height: 14px; color: #94a3b8; }
+}
+
+.info-field__required {
+  color: #ef4444;
+  font-size: 13px;
+}
+
+.info-field__input {
+  height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid #e2e8f0;
   border-radius: 8px;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.sidebar button:hover {
-  background-color: rgba(0, 123, 255, 0.1);
-}
-
-.text-end {
-  margin-top: 20px;
-}
-
-.btn-forms {
-  margin-bottom: 10px;
-}
-
-mat-card-title {
-  margin: 15px;
-}
-
-survey-creator {
-  height: 100vh;
-}
-
-.svc-creator__banner .ng-star-inserted {
-  display: none !important;
-}
-
-.svc-creator__non-commercial-text {
-  display: none !important;
-}
-
-.svc-creator__banner {
+  font-size: 13.5px;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
   width: 100%;
-  line-height: calc(4 * (var(--sjs-base-unit, var(--base-unit, 8px))));
-  background-color: var(
-    --ctr-page-banner-background-color,
-    var(--sjs-secondary-backcolor, var(--secondary, #ff9814))
-  );
-  text-align: center;
-  display: none;
+  box-sizing: border-box;
+  font-family: inherit;
+
+  &::placeholder { color: #94a3b8; }
+  &:focus {
+    border-color: #1B84FF;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(27,132,255,0.08);
+  }
 }
 
-::ng-deep .svc-creator__banner .ng-star-inserted {
-  display: none !important;
+// Mat-form-field flat/compact look for info selects
+::ng-deep .info-select-field {
+  width: 100%;
+
+  .mat-mdc-text-field-wrapper {
+    padding: 0;
+    background: #f8fafc;
+    border-radius: 8px;
+  }
+
+  .mat-mdc-form-field-infix {
+    padding: 9px 12px !important;
+    min-height: unset;
+  }
+
+  .mdc-notched-outline__leading,
+  .mdc-notched-outline__notch,
+  .mdc-notched-outline__trailing {
+    border-color: #e2e8f0 !important;
+  }
+
+  &.mat-focused .mdc-notched-outline__leading,
+  &.mat-focused .mdc-notched-outline__notch,
+  &.mat-focused .mdc-notched-outline__trailing {
+    border-color: #1B84FF !important;
+    border-width: 1.5px !important;
+  }
+
+  .mat-mdc-select-value {
+    font-size: 13.5px;
+    color: #1e293b;
+  }
+
+  .mat-mdc-form-field-subscript-wrapper { display: none; }
 }
 
-::ng-deep .svc-creator__non-commercial-text {
-  display: none !important;
+.info-field__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .info-field__input { flex: 1; }
+}
+
+.info-field__error {
+  font-size: 11px;
+  color: #ef4444;
+  margin-top: -2px;
+}
+
+// ─── Option count badge ───────────────────────────────────────
+.option-count {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-left: 6px;
+}
+
+// ─── Toggle pill ─────────────────────────────────────────────
+.toggle-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 6px 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
+
+  &__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+  }
+}
+
+// ─── Competency field row (select + toggle) ───────────────────
+.info-comp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .info-select-field { flex: 1; }
+}
+
+// ─── Save list icon button ────────────────────────────────────
+.btn-list-save {
+  flex-shrink: 0;
+  color: #1B84FF !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  width: 40px !important;
+  height: 40px !important;
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+}
+
+// ─── Builder Card ─────────────────────────────────────────────
+.builder-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(27, 45, 86, 0.08);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fafbfd;
+}
+
+.card-icon {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1B2D56, #1B84FF);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  mat-icon { color: #fff; font-size: 20px; width: 20px; height: 20px; }
+
+  &--accent { background: linear-gradient(135deg, #0e9488, #43CED7); }
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 2px;
+}
+
+.card-subtitle {
+  font-size: 12.5px;
+  color: #8a8fa8;
+  margin: 0;
+}
+
+// ─── Builder ─────────────────────────────────────────────────
+.builder-body {
+  survey-creator { height: 100vh; display: block; }
+}
+
+// Hide SurveyJS non-commercial banner
+::ng-deep .svc-creator__banner,
+::ng-deep .svc-creator__non-commercial-text { display: none !important; }
+
+// ─── Bottom save bar ─────────────────────────────────────────
+.save-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 8px;
+}
+
+.save-bar-spacer { flex: 1; }
+
+@media (max-width: 768px) {
+  .form-wrapper { padding: 16px 12px; }
+  .info-grid { grid-template-columns: 1fr; }
+  .info-field--span2 { grid-column: span 1; }
+  .toggle-pill { flex-shrink: 0; }
 }

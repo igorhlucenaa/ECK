@@ -1,0 +1,105 @@
+<div class="lem">
+
+  <!-- Header -->
+  <div class="lem__header">
+    <div class="lem__header-icon">
+      <mat-icon>people_alt</mat-icon>
+    </div>
+    <div class="lem__header-text">
+      <h2>Vincular Avaliados</h2>
+      <p>Defina quem cada avaliador irá avaliar antes de enviar</p>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="lem__loading">
+    <mat-spinner diameter="32"></mat-spinner>
+    <span>Verificando vínculos existentes...</span>
+  </div>
+
+  <ng-container *ngIf="!isLoading">
+
+    <!-- Lista de avaliadores -->
+    <mat-dialog-content class="lem__body">
+
+      <div class="lem__section-label">
+        <mat-icon>manage_accounts</mat-icon>
+        Avaliadores selecionados
+      </div>
+
+      <div class="lem__evaluators-list">
+        <div *ngFor="let b of bindings" class="lem__evaluator-row"
+             [class.lem__evaluator-row--sent]="b.alreadySent">
+
+          <div class="lem__evaluator-info">
+            <div class="lem__evaluator-avatar">{{ b.participantName.charAt(0).toUpperCase() }}</div>
+            <div class="lem__evaluator-details">
+              <span class="lem__evaluator-name">{{ b.participantName }}</span>
+              <span class="lem__evaluator-email">{{ b.participantEmail }}</span>
+            </div>
+            <div *ngIf="b.alreadySent" class="lem__sent-badge">
+              <mat-icon>check_circle</mat-icon>
+              já enviado
+            </div>
+          </div>
+
+          <div class="lem__arrow">
+            <mat-icon>arrow_forward</mat-icon>
+          </div>
+
+          <mat-form-field appearance="outline" class="lem__select-field">
+            <mat-label>Avaliando</mat-label>
+            <mat-select
+              [value]="b.avaliadoId"
+              [disabled]="b.alreadySent"
+              (selectionChange)="onAvaliadoChange(b, $event.value)">
+              <mat-option [value]="null">— Selecione —</mat-option>
+              <mat-option *ngFor="let a of data.avaliados" [value]="a.id">
+                {{ a.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+        </div>
+      </div>
+
+      <!-- Painel de cobertura -->
+      <div class="lem__coverage-panel">
+        <div class="lem__section-label">
+          <mat-icon>bar_chart</mat-icon>
+          Cobertura dos avaliados
+        </div>
+        <div class="lem__coverage-list">
+          <div *ngFor="let c of coverage" class="lem__coverage-row">
+            <mat-icon [class]="getCoverageClass(c.evaluatorCount)">
+              {{ getCoverageIcon(c.evaluatorCount) }}
+            </mat-icon>
+            <span class="lem__coverage-name">{{ c.name }}</span>
+            <span class="lem__coverage-count">
+              {{ c.evaluatorCount }} avaliador{{ c.evaluatorCount !== 1 ? 'es' : '' }} vinculado{{ c.evaluatorCount !== 1 ? 's' : '' }}
+            </span>
+          </div>
+          <div *ngIf="coverage.length === 0" class="lem__coverage-empty">
+            Nenhum avaliado no projeto
+          </div>
+        </div>
+      </div>
+
+    </mat-dialog-content>
+
+    <!-- Ações -->
+    <mat-dialog-actions class="lem__actions">
+      <button mat-stroked-button class="lem__btn-cancel" (click)="cancel()">
+        Cancelar
+      </button>
+      <button mat-raised-button class="lem__btn-confirm"
+              [disabled]="!allBound"
+              (click)="confirm()">
+        <mat-icon>send</mat-icon>
+        Confirmar e Enviar
+      </button>
+    </mat-dialog-actions>
+
+  </ng-container>
+
+</div>

@@ -1,34 +1,45 @@
 import { Routes } from '@angular/router';
-import { UsersComponent } from './users.component'; // Página principal de usuários
+import { UsersComponent } from './users.component';
+import { AuthGuard } from 'src/app/guards/auth.guard';
 
 export const UsersRoutes: Routes = [
   {
-    path: '', // Rota principal que exibe as tabelas de usuários e grupos
+    path: '',
     component: UsersComponent,
   },
   {
-    path: 'group/create', // Rota para criar um novo grupo de usuários
+    path: 'group/create',
     loadComponent: () =>
       import('./create-user-group/create-user-group.component').then(
         (c) => c.CreateUserGroupComponent
       ),
   },
   {
-    path: 'group/:groupId/details', // Rota para detalhes de um grupo de usuários
+    path: 'group/:groupId/details',
     loadComponent: () =>
       import('./group-details/group-details.component').then(
         (c) => c.GroupDetailsComponent
       ),
   },
   {
-    path: ':id/edit', // Rota para editar um usuário
+    path: 'group/:groupId/edit',
+    loadComponent: () =>
+      import('./edit-group/edit-group.component').then(
+        (c) => c.EditGroupComponent
+      ),
+  },
+  {
+    // Editar usuário — restrito a admin_master (HTTP 403 equivalente para admin_client)
+    path: ':id/edit',
+    canActivate: [AuthGuard],
+    data: { role: 'admin_master' },
     loadComponent: () =>
       import('./edit-user/edit-user.component').then(
         (c) => c.EditUserComponent
       ),
   },
   {
-    path: ':id/details', // Rota para detalhes de um usuário
+    path: ':id/details',
     loadComponent: () =>
       import('./user-details/user-details.component').then(
         (c) => c.UserDetailsComponent
