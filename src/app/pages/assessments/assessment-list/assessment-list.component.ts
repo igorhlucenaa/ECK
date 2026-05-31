@@ -558,15 +558,27 @@ export class AssessmentListComponent implements OnInit {
 
   async deleteAssessment(id: string): Promise<void> {
     const nome = this.dataSource.data.find((a: any) => a.id === id)?.name || id;
+
+    // Bloquear exclusão se houver respostas completadas
+    const completedLinksSnap = await getDocs(query(
+      collection(this.firestore, 'assessmentLinks'),
+      where('assessmentId', '==', id),
+      where('status', '==', 'completed')
+    ));
+    if (!completedLinksSnap.empty) {
+      this.snackBar.open(
+        `Não é possível excluir: há ${completedLinksSnap.size} resposta(s) registrada(s) para este formulário.`,
+        'Fechar',
+        { duration: 5000 }
+      );
+      return;
+    }
+
     const confirmado = await this.confirmDialog.confirmDelete(nome);
     if (!confirmado) return;
     try {
-
       const assessmentDocRef = doc(this.firestore, `assessments/${id}`);
       await deleteDoc(assessmentDocRef);
-
-      // Removido o updateDoc do projectId, pois não é mais relevante
-
       this.dataSource.data = this.dataSource.data.filter(
         (item) => item.id !== id
       );

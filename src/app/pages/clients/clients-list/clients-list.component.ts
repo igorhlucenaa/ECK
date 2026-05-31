@@ -4,6 +4,7 @@ import {
   collection,
   query,
   getDocs,
+  getDoc,
   where,
   Timestamp,
   deleteDoc,
@@ -196,62 +197,20 @@ export class ClientsListComponent implements OnInit {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
       data: {
-        message: this.translate.instant('Ao remover o cliente, todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?'),
+        message: this.translate.instant('Ao remover o cliente, todos os projetos, participantes, links, avaliações, templates e usuários associados também serão excluídos. Deseja continuar?'),
       },
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (confirmed) {
-        // Referências às coleções relacionadas
-        const projectsCollection = collection(this.firestore, 'projects');
-        const userGroupsCollection = collection(this.firestore, 'userGroups');
-        const usersCollection = collection(this.firestore, 'users');
-
-        // Queries para localizar documentos relacionados
-        const projectsQuery = query(
-          projectsCollection,
-          where('clientId', '==', id)
-        );
-        const userGroupsQuery = query(
-          userGroupsCollection,
-          where('clientId', '==', id)
-        );
-        const usersQuery = query(usersCollection, where('client', '==', id));
-
-        // Função auxiliar para deletar documentos de uma query
-        const deleteDocuments = async (querySnapshot: any) => {
-          const batch = writeBatch(this.firestore);
-          querySnapshot.forEach((doc: any) => {
-            batch.delete(doc.ref);
-          });
-          await batch.commit();
-        };
-
-        // Deletar cliente e seus relacionados
-        Promise.all([
-          getDocs(projectsQuery).then(deleteDocuments),
-          getDocs(userGroupsQuery).then(deleteDocuments),
-          getDocs(usersQuery).then(deleteDocuments),
-        ])
-          .then(() => {
-            // Após excluir documentos relacionados, exclua o cliente
-            const clientDocRef = doc(this.firestore, `clients/${id}`);
-            return deleteDoc(clientDocRef);
-          })
-          .then(() => {
-            this.toast.success(this.translate.instant('Cliente e dados relacionados excluídos com sucesso.'));
-            // Atualizar tabela
-            this.dataSource.data = this.dataSource.data.filter(
-              (client) => client.id !== id
-            );
-          })
-          .catch((error) => {
-            console.error(
-              'Erro ao excluir cliente e dados relacionados:',
-              error
-            );
-            this.toast.error(this.translate.instant('Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.'));
-          });
+        try {
+          await this.cascadeDeleteClient(id);
+          this.toast.success(this.translate.instant('Cliente e dados relacionados excluídos com sucesso.'));
+          this.dataSource.data = this.dataSource.data.filter((client) => client.id !== id);
+        } catch (error) {
+          console.error('Erro ao excluir cliente e dados relacionados:', error);
+          this.toast.error(this.translate.instant('Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.'));
+        }
       }
     });
   }
@@ -287,33 +246,16 @@ export class ClientsListComponent implements OnInit {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
       data: {
-        message: this.translate.instant(`Ao remover ${count} cliente(s), todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?`),
+        message: this.translate.instant(`Ao remover ${count} cliente(s), todos os projetos, participantes, links, avaliações, templates e usuários associados também serão excluídos. Deseja continuar?`),
       },
     });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) return;
       const ids = Array.from(this.selectedClientIds);
-      const projectsCol = collection(this.firestore, 'projects');
-      const groupsCol   = collection(this.firestore, 'userGroups');
-      const usersCol    = collection(this.firestore, 'users');
-
-      const deleteByQuery = async (q: any) => {
-        const snap = await getDocs(q);
-        if (snap.empty) return;
-        const batch = writeBatch(this.firestore);
-        snap.forEach((d: any) => batch.delete(d.ref));
-        await batch.commit();
-      };
-
       try {
         for (const id of ids) {
-          await Promise.all([
-            deleteByQuery(query(projectsCol, where('clientId', '==', id))),
-            deleteByQuery(query(groupsCol,   where('clientId', '==', id))),
-            deleteByQuery(query(usersCol,    where('client',   '==', id))),
-          ]);
-          await deleteDoc(doc(this.firestore, `clients/${id}`));
+          await this.cascadeDeleteClient(id);
         }
         this.dataSource.data = this.dataSource.data.filter(c => !this.selectedClientIds.has(c.id));
         this.selectedClientIds.clear();
@@ -323,6 +265,64 @@ export class ClientsListComponent implements OnInit {
         this.toast.error(this.translate.instant('Erro ao excluir clientes. Tente novamente.'));
       }
     });
+  }
+
+  private async cascadeDeleteClient(clientId: string): Promise<void> {
+    const BATCH_SIZE = 400;
+    const db = this.firestore;
+
+    // 1. Projetos do cliente
+    const projectsSnap = await getDocs(query(collection(db, 'projects'), where('clientId', '==', clientId)));
+    const projectIds = projectsSnap.docs.map(d => d.id);
+
+    // 2. Participantes dos projetos (batches de 10 para query 'in')
+    const participantRefs: any[] = [];
+    const participantIds: string[] = [];
+    for (let i = 0; i < projectIds.length; i += 10) {
+      const chunk = projectIds.slice(i, i + 10);
+      const snap = await getDocs(query(collection(db, 'participants'), where('projectId', 'in', chunk)));
+      snap.docs.forEach(d => { participantRefs.push(d.ref); participantIds.push(d.id); });
+    }
+
+    // 3. AssessmentLinks dos participantes
+    const linkRefs: any[] = [];
+    for (let i = 0; i < participantIds.length; i += 10) {
+      const chunk = participantIds.slice(i, i + 10);
+      const snap = await getDocs(query(collection(db, 'assessmentLinks'), where('participantId', 'in', chunk)));
+      snap.docs.forEach(d => linkRefs.push(d.ref));
+    }
+
+    // 4. ReminderSettings dos projetos (doc key = clientId_projectId)
+    const reminderRefs = projectIds.map(pid => doc(db, `reminderSettings/${clientId}_${pid}`));
+
+    // 5. Apagar links, participantes, projetos e reminderSettings em batches
+    const toDelete = [...linkRefs, ...participantRefs, ...projectsSnap.docs.map(d => d.ref), ...reminderRefs];
+    for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      toDelete.slice(i, i + BATCH_SIZE).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
+
+    // 6. Assessments, mailTemplates, creditOrders, userGroups (por clientId)
+    for (const col of ['assessments', 'mailTemplates', 'creditOrders', 'userGroups']) {
+      const snap = await getDocs(query(collection(db, col), where('clientId', '==', clientId)));
+      for (let i = 0; i < snap.docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        snap.docs.slice(i, i + BATCH_SIZE).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+
+    // 7. Usuários do cliente
+    const usersSnap = await getDocs(query(collection(db, 'users'), where('client', '==', clientId)));
+    for (let i = 0; i < usersSnap.docs.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      usersSnap.docs.slice(i, i + BATCH_SIZE).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+
+    // 8. Deletar o cliente
+    await deleteDoc(doc(db, `clients/${clientId}`));
   }
 
   openAddClientDialog(client?: any) {
