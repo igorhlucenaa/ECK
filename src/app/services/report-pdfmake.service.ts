@@ -115,6 +115,11 @@ interface ReportData {
   documentoConfig?: DocumentoConfig;
 }
 
+interface PdfDocumentRuntimeMeta {
+  documentoConfig?: DocumentoConfig;
+  projectName?: string;
+}
+
 export interface PdfHtmlRenderOptions {
   format?: 'A4' | 'Letter';
   landscape?: boolean;
@@ -489,10 +494,15 @@ export class ReportPdfMakeService {
     const docDefinition = await this.buildDocDefinition(data);
     const safeDocDefinition = this.makeDocDefinitionTransportSafe(docDefinition);
     this.validateTableStructures(safeDocDefinition);
+    const documentMeta: PdfDocumentRuntimeMeta = {
+      documentoConfig: data.documentoConfig,
+      projectName: data.projectName,
+    };
 
     const payload = {
       fileName,
-      docDefinition: safeDocDefinition
+      docDefinition: safeDocDefinition,
+      documentMeta,
     };
 
     const blob = await firstValueFrom(
@@ -1946,7 +1956,7 @@ export class ReportPdfMakeService {
       participantName: component.individualParticipantName || component.selectedAvaliado || 'Participante',
       clientName: component.getClientName ? component.getClientName() : '',
       participantEmail: component.individualParticipantEmail || '',
-      projectName: component.selectedProjectName || 'Projeto',
+      projectName: component.selectedProjectName || (component.getFilterProjectLabel ? component.getFilterProjectLabel() : '') || 'Projeto',
       startDate: component.startDate || '',
       endDate: component.endDate || '',
       totalRespondents: component.totalParticipants || component.dataSource?.length || 0,
@@ -1994,14 +2004,37 @@ export class ReportPdfMakeService {
       if (cfg.textoEsquerda) leftParts.push(cfg.textoEsquerda);
       if (cfg.mostrarNomeProjeto && data.projectName) leftParts.push(data.projectName);
 
-      const columns: any[] = [
-        { text: leftParts.join(' — '), alignment: 'left', fontSize: 8, color: cfg.cor }
-      ];
-      if (cfg.mostrarNumeroPagina) {
-        columns.push({ text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 8, color: cfg.cor });
+      const columns: any[] = [];
+
+      if (cfg.logoUrl) {
+        columns.push({
+          image: cfg.logoUrl,
+          fit: [60, 20],
+          alignment: 'left',
+          width: 'auto',
+          margin: [0, 0, 8, 0]
+        });
       }
 
-      const row: any = columns.length > 1 ? { columns } : { ...columns[0] };
+      columns.push({
+        text: leftParts.join(' — '),
+        alignment: 'left',
+        fontSize: 8,
+        color: cfg.cor,
+        width: '*'
+      });
+
+      if (cfg.mostrarNumeroPagina) {
+        columns.push({
+          text: `Página ${currentPage} de ${pageCount}`,
+          alignment: 'right',
+          fontSize: 8,
+          color: cfg.cor,
+          width: 'auto'
+        });
+      }
+
+      const row = { columns, columnGap: 8 };
 
       if (cfg.linhaInferior) {
         return {

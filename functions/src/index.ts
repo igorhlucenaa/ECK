@@ -92,6 +92,33 @@ interface ZonedDateParts {
   weekday: number;
 }
 
+interface PdfDocumentoConfig {
+  cabecalho?: {
+    ativo?: boolean;
+    ocultarNaCapa?: boolean;
+    textoEsquerda?: string;
+    mostrarNomeProjeto?: boolean;
+    mostrarNumeroPagina?: boolean;
+    cor?: string;
+    linhaInferior?: boolean;
+    logoUrl?: string;
+  };
+  rodape?: {
+    ativo?: boolean;
+    ocultarNaCapa?: boolean;
+    texto?: string;
+    mostrarNumeroPagina?: boolean;
+    mostrarAno?: boolean;
+    cor?: string;
+    linhaSuperior?: boolean;
+  };
+}
+
+interface PdfDocumentRuntimeMeta {
+  documentoConfig?: PdfDocumentoConfig;
+  projectName?: string;
+}
+
 function getTransporter(emailUser: string, emailPass: string): nodemailer.Transporter {
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
@@ -1143,8 +1170,101 @@ function buildPdfFontsMap(): Record<string, unknown> {
   };
 }
 
+function buildRuntimeHeader(meta?: PdfDocumentRuntimeMeta) {
+  const cfg = meta?.documentoConfig?.cabecalho;
+  if (!cfg?.ativo) return undefined;
+
+  return (currentPage: number, pageCount: number) => {
+    if (cfg.ocultarNaCapa && currentPage === 1) return {};
+
+    const color = normalizeOptionalString(cfg.cor) || '#666666';
+    const leftParts: string[] = [];
+    const leftText = normalizeOptionalString(cfg.textoEsquerda);
+    const projectName = normalizeOptionalString(meta?.projectName);
+
+    if (leftText) leftParts.push(leftText);
+    if (cfg.mostrarNomeProjeto && projectName) leftParts.push(projectName);
+
+    const columns: Record<string, unknown>[] = [];
+
+    if (normalizeOptionalString(cfg.logoUrl)) {
+      columns.push({
+        image: cfg.logoUrl,
+        fit: [60, 20],
+        alignment: 'left',
+        width: 'auto',
+        margin: [0, 0, 8, 0],
+      });
+    }
+
+    columns.push({
+      text: leftParts.join(' — '),
+      alignment: 'left',
+      fontSize: 8,
+      color,
+      width: '*',
+    });
+
+    if (cfg.mostrarNumeroPagina) {
+      columns.push({
+        text: `Página ${currentPage} de ${pageCount}`,
+        alignment: 'right',
+        fontSize: 8,
+        color,
+        width: 'auto',
+      });
+    }
+
+    const row = { columns, columnGap: 8 };
+
+    if (cfg.linhaInferior) {
+      return {
+        stack: [
+          { ...row, margin: [0, 0, 0, 3] },
+          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: color }] },
+        ],
+        margin: [40, 15, 40, 0],
+      };
+    }
+
+    return { ...row, margin: [40, 20, 40, 0] };
+  };
+}
+
+function buildRuntimeFooter(meta?: PdfDocumentRuntimeMeta) {
+  const cfg = meta?.documentoConfig?.rodape;
+  if (!cfg?.ativo) return undefined;
+
+  return (currentPage: number, pageCount: number) => {
+    if (cfg.ocultarNaCapa && currentPage === 1) return {};
+
+    const color = normalizeOptionalString(cfg.cor) || '#999999';
+    const parts: string[] = [];
+    const centerText = normalizeOptionalString(cfg.texto);
+
+    if (centerText) parts.push(centerText);
+    if (cfg.mostrarAno) parts.push(`© ${new Date().getFullYear()}`);
+    if (cfg.mostrarNumeroPagina) parts.push(`Página ${currentPage} de ${pageCount}`);
+
+    const textContent = parts.join(' | ');
+
+    if (cfg.linhaSuperior) {
+      return {
+        stack: [
+          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: color }], margin: [0, 0, 0, 3] },
+          { text: textContent, alignment: 'center', fontSize: 8, color },
+        ],
+        margin: [40, 5, 40, 15],
+      };
+    }
+
+    return { text: textContent, alignment: 'center', fontSize: 8, color, margin: [40, 10, 40, 20] };
+  };
+}
+
 function normalizeDocDefinitionForServer(
-  docDefinition: Record<string, unknown>
+  docDefinition: Record<string, unknown>,
+  runtimeMeta?: PdfDocumentRuntimeMeta
 ): Record<string, unknown> {
   const normalized: Record<string, unknown> = { ...docDefinition };
 
@@ -1166,6 +1286,11 @@ function normalizeDocDefinitionForServer(
     normalized.pageMargins = [40, 60, 40, 60];
   }
 
+  const runtimeHeader = buildRuntimeHeader(runtimeMeta);
+  if (runtimeHeader) {
+    normalized.header = runtimeHeader;
+  }
+
   if (!normalized.header) {
     normalized.header = {
       text: 'ECK - Avaliacao 360',
@@ -1174,6 +1299,11 @@ function normalizeDocDefinitionForServer(
       color: '#666666',
       margin: [40, 20, 40, 0],
     };
+  }
+
+  const runtimeFooter = buildRuntimeFooter(runtimeMeta);
+  if (runtimeFooter) {
+    normalized.footer = runtimeFooter;
   }
 
   if (!normalized.footer) {
@@ -1190,10 +1320,11 @@ function normalizeDocDefinitionForServer(
 }
 
 async function createPdfBuffer(
-  docDefinition: Record<string, unknown>
+  docDefinition: Record<string, unknown>,
+  runtimeMeta?: PdfDocumentRuntimeMeta
 ): Promise<Buffer> {
   const printer = new PdfPrinter(buildPdfFontsMap());
-  const pdfDoc = await printer.createPdfKitDocument(normalizeDocDefinitionForServer(docDefinition));
+  const pdfDoc = await printer.createPdfKitDocument(normalizeDocDefinitionForServer(docDefinition, runtimeMeta));
   const chunks: Buffer[] = [];
 
   return await new Promise<Buffer>((resolve, reject) => {
@@ -1357,6 +1488,7 @@ export const generateReportPdf = onRequest(
     const body = (req.body || {}) as Record<string, unknown>;
     const rawDocDefinition = body.docDefinition;
     const rawHtml = body.html;
+    const runtimeMeta = (body.documentMeta || {}) as PdfDocumentRuntimeMeta;
     const htmlOptions = normalizeHtmlPdfOptions(body.options);
 
     const fileName = sanitizePdfFileName(body.fileName);
@@ -1367,7 +1499,7 @@ export const generateReportPdf = onRequest(
       if (typeof rawHtml === 'string' && rawHtml.trim()) {
         pdfBuffer = await createPdfBufferFromHtml(rawHtml, htmlOptions);
       } else if (rawDocDefinition && typeof rawDocDefinition === 'object' && !Array.isArray(rawDocDefinition)) {
-        pdfBuffer = await createPdfBuffer(rawDocDefinition as Record<string, unknown>);
+        pdfBuffer = await createPdfBuffer(rawDocDefinition as Record<string, unknown>, runtimeMeta);
       } else {
         res.status(400).send({
           error: 'Campo obrigatorio ausente: html (string) ou docDefinition (objeto JSON).',

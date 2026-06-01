@@ -1861,6 +1861,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return assessmentName;
   }
 
+  get selectedProjectName(): string {
+    return this.getFilterProjectLabel();
+  }
+
   // Getter para obter apenas o nome do avaliado selecionado
   get selectedAvaliadoName(): string {
     return this.selectedAvaliado || 'Nenhum avaliado selecionado';
@@ -2966,7 +2970,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       : '';
     const leftParts: string[] = [];
     if (cfg.textoEsquerda) leftParts.push(cfg.textoEsquerda);
-    if (cfg.mostrarNomeProjeto && this.selectedAssessmentName) leftParts.push(this.selectedAssessmentName);
+    if (cfg.mostrarNomeProjeto && this.selectedProjectName) leftParts.push(this.selectedProjectName);
     const leftText = leftParts.join(' — ');
     const pageNum = cfg.mostrarNumeroPagina
       ? `<span style="white-space:nowrap;opacity:0.75;">Pág. <span class="pageNumber"></span> / <span class="totalPages"></span></span>`
@@ -3748,7 +3752,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.builderHasUnsavedChanges = false;
     }
   }
-  // Exportar relatorio individual como PDF fiel ao preview (download direto)
+  // Exportar relatório individual fiel à pré-visualização da tela.
   async exportarRelatorioPDF(): Promise<boolean> {
     if (this.isExporting) return false;
 
