@@ -66,42 +66,96 @@ export class ParticipantValidationService {
   }
 
   /**
-   * Valida se um array de participantes do Excel contém apenas um avaliado por projeto.
-   * Retorna erro se houver mais de um avaliado para o mesmo projeto.
-   * 
-   * @param participants - Array de participantes do Excel
+   * Verifica se existe pelo menos um participante com type='avaliado' no projeto.
+   * Usado para bloquear cadastro de avaliadores em projetos sem avaliado definido.
    */
-  validateExcelParticipants(participants: Array<{ projectId: string; category: string; name: string }>): {
+  async validateAvaliadoExistsForProject(
+    projectId: string,
+    projectName: string
+  ): Promise<{ valid: boolean; error?: string; avaliadoId?: string; avaliadoName?: string }> {
+    try {
+      const participantsRef = collection(this.firestore, 'participants');
+      const q = query(
+        participantsRef,
+        where('projectId', '==', projectId),
+        where('type', '==', 'avaliado')
+      );
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        return {
+          valid: false,
+          error: `Não é possível cadastrar avaliadores antes de definir o avaliado do projeto. Cadastre primeiro o avaliado em '${projectName}'.`
+        };
+      }
+
+      const first = snap.docs[0];
+      return {
+        valid: true,
+        avaliadoId: first.id,
+        avaliadoName: (first.data()['name'] as string) || ''
+      };
+    } catch (error) {
+      console.error('Erro ao validar existência de avaliado no projeto:', error);
+      // Em caso de erro técnico, não bloqueia (defesa server-side cobre).
+      return { valid: true };
+    }
+  }
+
+  /**
+   * Valida um lote do Excel para um projeto específico.
+   * - Garante no máximo 1 avaliado por projeto no arquivo.
+   * - Se o arquivo NÃO contém avaliado, verifica no Firestore se já existe um
+   *   avaliado cadastrado no projeto; se não houver, bloqueia o import.
+   */
+  async validateExcelParticipants(
+    participants: Array<{ projectId?: string; category: string; name: string }>,
+    projectId?: string,
+    projectName?: string
+  ): Promise<{
     valid: boolean;
     errors: Array<{ projectId: string; projectName?: string; evaluateesCount: number }>;
-  } {
+    error?: string;
+  }> {
     const projectEvaluateesMap = new Map<string, { count: number; names: string[] }>();
     const errors: Array<{ projectId: string; projectName?: string; evaluateesCount: number }> = [];
 
     for (const participant of participants) {
       if (participant.category === 'Avaliado') {
-        const existing = projectEvaluateesMap.get(participant.projectId);
+        const pid = participant.projectId || projectId || '';
+        const existing = projectEvaluateesMap.get(pid);
         if (existing) {
           existing.count++;
           existing.names.push(participant.name);
         } else {
-          projectEvaluateesMap.set(participant.projectId, { count: 1, names: [participant.name] });
+          projectEvaluateesMap.set(pid, { count: 1, names: [participant.name] });
         }
       }
     }
 
-    for (const [projectId, data] of projectEvaluateesMap.entries()) {
+    for (const [pid, data] of projectEvaluateesMap.entries()) {
       if (data.count > 1) {
-        errors.push({
-          projectId,
-          evaluateesCount: data.count
-        });
+        errors.push({ projectId: pid, evaluateesCount: data.count });
       }
     }
 
-    return {
-      valid: errors.length === 0,
-      errors
-    };
+    if (errors.length > 0) {
+      return { valid: false, errors };
+    }
+
+    // Se o arquivo não contém avaliado e o projeto foi informado,
+    // exigir que já exista um avaliado cadastrado no Firestore.
+    const fileHasAvaliado = projectEvaluateesMap.size > 0;
+    if (!fileHasAvaliado && projectId) {
+      const existsCheck = await this.validateAvaliadoExistsForProject(
+        projectId,
+        projectName || 'projeto'
+      );
+      if (!existsCheck.valid) {
+        return { valid: false, errors: [], error: existsCheck.error };
+      }
+    }
+
+    return { valid: true, errors: [] };
   }
 }

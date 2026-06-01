@@ -1510,16 +1510,57 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       dialogRef.afterClosed().subscribe(async (result) => {
         if (!result) return;
 
+        const projectName = this.projects.find(p => p.id === result.project)?.name || 'projeto';
+
+        // Revalidar antes de gravar (defesa contra mudanças entre confirmação e gravação).
+        const validation = await this.participantValidationService.validateExcelParticipants(
+          participants.map(p => ({ ...p, projectId: result.project })),
+          result.project,
+          projectName
+        );
+        if (!validation.valid) {
+          const msg = validation.error
+            || (validation.errors[0]
+              ? `O arquivo contém ${validation.errors[0].evaluateesCount} avaliados para o projeto "${projectName}". É permitido apenas um avaliado por projeto.`
+              : 'Falha de validação no import.');
+          this.snackBar.open(msg, 'Fechar', { duration: 6000 });
+          return;
+        }
+
+        // Ordena para processar o avaliado primeiro e em seguida os avaliadores.
+        const ordered = [...participants].sort((a, b) => {
+          const aFirst = a.category === 'Avaliado' ? 0 : 1;
+          const bFirst = b.category === 'Avaliado' ? 0 : 1;
+          return aFirst - bFirst;
+        });
+
+        // Descobre avaliadoId: do arquivo (após criação) ou do BD se ele já existe.
+        let avaliadoIdParaVincular: string | undefined;
+        if (!ordered.some(p => p.category === 'Avaliado')) {
+          const existsCheck = await this.participantValidationService.validateAvaliadoExistsForProject(
+            result.project,
+            projectName
+          );
+          avaliadoIdParaVincular = existsCheck.avaliadoId;
+        }
+
         let saved = 0;
-        for (const participant of participants) {
+        for (const participant of ordered) {
           try {
-            await addDoc(collection(this.firestore, 'participants'), {
+            const docData: any = {
               ...participant,
               clientId: result.client,
               projectId: result.project,
               assessments: result.evaluation ? [result.evaluation] : [],
               createdAt: new Date(),
-            });
+            };
+            if (participant.category !== 'Avaliado' && avaliadoIdParaVincular) {
+              docData.avaliadoId = avaliadoIdParaVincular;
+            }
+            const ref = await addDoc(collection(this.firestore, 'participants'), docData);
+            if (participant.category === 'Avaliado' && !avaliadoIdParaVincular) {
+              avaliadoIdParaVincular = ref.id;
+            }
             saved++;
           } catch (error) {
             console.error('Erro ao salvar participante:', error);

@@ -423,6 +423,26 @@ export class AddParticipantModalComponent implements OnInit {
         return;
       }
 
+      const projectName =
+        this.filteredProjects.find(p => p.id === projectId)?.name ||
+        this.projects.find(p => p.id === projectId)?.name ||
+        'projeto';
+
+      // Avaliador exige que o projeto já tenha um avaliado definido.
+      let avaliadoIdParaVincular: string | undefined;
+      if (type === 'avaliador') {
+        const existsCheck = await this.participantValidationService.validateAvaliadoExistsForProject(
+          projectId,
+          projectName
+        );
+        if (!existsCheck.valid) {
+          this.snackBar.open(existsCheck.error || 'Cadastre o avaliado primeiro.', 'Fechar', { duration: 6000 });
+          this.isSaving = false;
+          return;
+        }
+        avaliadoIdParaVincular = existsCheck.avaliadoId;
+      }
+
       // Verifica duplicidade de e-mail no projeto (case-insensitive)
       const dupSnap = await getDocs(
         query(
@@ -448,6 +468,7 @@ export class AddParticipantModalComponent implements OnInit {
           projectId,
           type,
           category,
+          avaliadoId: avaliadoIdParaVincular,
           createdAt: new Date(),
         });
       }
