@@ -1293,8 +1293,14 @@ export class ReportPdfMakeService {
     const johariImage = await this.createJohariWindowImage(johariData);
 
     return [
-      { text: secao.titulo || 'Janela de Johari', style: 'sectionTitle', pageBreak: 'before' },
-      { image: johariImage, width: 500, alignment: 'center', margin: [0, 10, 0, 20] }
+      {
+        stack: [
+          { text: secao.titulo || 'Janela de Johari', style: 'sectionTitle' },
+          { image: johariImage, width: 500, alignment: 'center', margin: [0, 10, 0, 20] }
+        ],
+        pageBreak: 'before',
+        unbreakable: true
+      }
     ];
   }
 

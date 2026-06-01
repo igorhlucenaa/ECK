@@ -1713,7 +1713,7 @@
             <div *ngSwitchCase="'janela_johari'">
               <h2>{{ secao.titulo }}</h2>
               <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataJohari" style="margin-top: 20px;">
+              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataJohari" style="margin-top: 20px; break-before: avoid; page-break-before: avoid;">
                 <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
               </div>
               <ng-template #noDataJohari>

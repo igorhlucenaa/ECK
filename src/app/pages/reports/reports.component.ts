@@ -3066,6 +3066,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       page-break-inside: avoid !important;
       display: block !important;
     }
+    .johari-wrapper {
+      break-before: avoid !important;
+      page-break-before: avoid !important;
+    }
     table {
       break-inside: auto !important;
       page-break-inside: auto !important;
