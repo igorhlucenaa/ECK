@@ -1122,15 +1122,62 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const count = this.selectedParticipants.length;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
-      data: { message: `Tem certeza de que deseja excluir ${count} participante(s)? Esta ação não pode ser desfeita.` },
+      data: { message: `Tem certeza de que deseja excluir ${count} participante(s)? Os links de avaliação e créditos reservados também serão removidos. Esta ação não pode ser desfeita.` },
     });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) return;
+      const BATCH_SIZE = 400;
       try {
-        const batch = writeBatch(this.firestore);
-        this.selectedParticipants.forEach(p => batch.delete(doc(this.firestore, `participants/${p.id}`)));
-        await batch.commit();
+        // 1. Buscar assessmentLinks de cada participante e calcular créditos a estornar
+        const creditRefundByClient = new Map<string, number>();
+        const linkRefs: any[] = [];
+
+        for (const p of this.selectedParticipants) {
+          const linksSnap = await getDocs(query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('participantId', '==', p.id)
+          ));
+          for (const linkDoc of linksSnap.docs) {
+            linkRefs.push(linkDoc.ref);
+            const d = linkDoc.data();
+            if (d['creditReserved'] === true && d['status'] !== 'completed' && d['status'] !== 'cancelled') {
+              const clientId = p.clientId;
+              if (clientId) {
+                creditRefundByClient.set(clientId, (creditRefundByClient.get(clientId) || 0) + 1);
+              }
+            }
+          }
+        }
+
+        // 2. Deletar links em batches
+        for (let i = 0; i < linkRefs.length; i += BATCH_SIZE) {
+          const batch = writeBatch(this.firestore);
+          linkRefs.slice(i, i + BATCH_SIZE).forEach(ref => batch.delete(ref));
+          await batch.commit();
+        }
+
+        // 3. Deletar participantes em batches
+        for (let i = 0; i < this.selectedParticipants.length; i += BATCH_SIZE) {
+          const batch = writeBatch(this.firestore);
+          this.selectedParticipants.slice(i, i + BATCH_SIZE).forEach(p => batch.delete(doc(this.firestore, `participants/${p.id}`)));
+          await batch.commit();
+        }
+
+        // 4. Estornar créditos reservados por cliente (transação atômica)
+        for (const [clientId, refundCount] of creditRefundByClient.entries()) {
+          await runTransaction(this.firestore, async (t) => {
+            const clientRef = doc(this.firestore, `clients/${clientId}`);
+            const snap = await t.get(clientRef);
+            if (!snap.exists()) return;
+            const data = snap.data() as Record<string, any>;
+            t.update(clientRef, {
+              credits: (data['credits'] || 0) + refundCount,
+              reservedCredits: Math.max(0, (data['reservedCredits'] || 0) - refundCount),
+            });
+          });
+        }
+
         const removedIds = new Set(this.selectedParticipants.map(p => p.id));
         this.dataSource.data = this.dataSource.data.filter(p => !removedIds.has(p.id));
         this.selectedParticipants = [];

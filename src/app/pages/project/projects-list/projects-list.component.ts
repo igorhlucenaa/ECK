@@ -2,12 +2,14 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import {
   Firestore,
   Timestamp,
+  arrayRemove,
   collection,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
   query,
+  runTransaction,
   updateDoc,
   where,
   writeBatch,
@@ -582,27 +584,97 @@ export class ProjectsListComponent implements OnInit {
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
-      data: { message: this.translate.instant('Tem certeza de que deseja excluir este projeto?') },
+      data: { message: this.translate.instant('Tem certeza de que deseja excluir este projeto? Participantes, links e créditos reservados também serão removidos.') },
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        const projectDocRef = doc(this.firestore, `projects/${projectId}`);
-        deleteDoc(projectDocRef)
-          .then(() => {
-            this.dataSource.data = this.dataSource.data.filter(
-              (project) => project.id !== projectId
-            );
-            this.snackBar.open(this.translate.instant('Projeto excluído com sucesso.'), this.translate.instant('Fechar'), {
-              duration: 3000,
-            });
-          })
-          .catch((error) => {
-            console.error('Erro ao excluir projeto:', error);
-            this.snackBar.open(this.translate.instant('Erro ao excluir projeto. Tente novamente mais tarde.'), this.translate.instant('Fechar'), { duration: 3000 });
-          });
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        await this.cascadeDeleteProject(projectId);
+        this.dataSource.data = this.dataSource.data.filter(p => p.id !== projectId);
+        this.snackBar.open(this.translate.instant('Projeto excluído com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
+      } catch (error) {
+        console.error('Erro ao excluir projeto:', error);
+        this.snackBar.open(this.translate.instant('Erro ao excluir projeto. Tente novamente mais tarde.'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     });
+  }
+
+  private async cascadeDeleteProject(projectId: string): Promise<void> {
+    const BATCH_SIZE = 400;
+
+    // 1. Dados do projeto (clientId, groupIds)
+    const projectSnap = await getDoc(doc(this.firestore, `projects/${projectId}`));
+    if (!projectSnap.exists()) return;
+    const projectData = projectSnap.data() as Record<string, any>;
+    const clientId: string = projectData['clientId'] || '';
+    const groupIds: string[] = Array.isArray(projectData['groupIds']) ? projectData['groupIds'] : [];
+
+    // 2. Participantes do projeto
+    const participantsSnap = await getDocs(
+      query(collection(this.firestore, 'participants'), where('projectId', '==', projectId))
+    );
+    const participantIds = participantsSnap.docs.map(d => d.id);
+
+    // 3. AssessmentLinks + créditos a estornar
+    let refundCredits = 0;
+    const linkRefs: any[] = [];
+    for (let i = 0; i < participantIds.length; i += 10) {
+      const chunk = participantIds.slice(i, i + 10);
+      const linksSnap = await getDocs(
+        query(collection(this.firestore, 'assessmentLinks'), where('participantId', 'in', chunk))
+      );
+      for (const linkDoc of linksSnap.docs) {
+        linkRefs.push(linkDoc.ref);
+        const d = linkDoc.data();
+        if (d['creditReserved'] === true && d['status'] !== 'completed' && d['status'] !== 'cancelled') {
+          refundCredits++;
+        }
+      }
+    }
+
+    // 4. Deletar links em batches
+    for (let i = 0; i < linkRefs.length; i += BATCH_SIZE) {
+      const batch = writeBatch(this.firestore);
+      linkRefs.slice(i, i + BATCH_SIZE).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
+
+    // 5. Deletar participantes em batches
+    for (let i = 0; i < participantsSnap.docs.length; i += BATCH_SIZE) {
+      const batch = writeBatch(this.firestore);
+      participantsSnap.docs.slice(i, i + BATCH_SIZE).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+
+    // 6. Deletar reminderSettings do projeto
+    if (clientId) {
+      try { await deleteDoc(doc(this.firestore, `reminderSettings/${clientId}_${projectId}`)); } catch { /* não existe */ }
+    }
+
+    // 7. Remover projectId de cada grupo
+    if (groupIds.length > 0) {
+      await Promise.all(groupIds.map(gId =>
+        updateDoc(doc(this.firestore, `userGroups/${gId}`), { projectIds: arrayRemove(projectId) }).catch(() => {})
+      ));
+    }
+
+    // 8. Estornar créditos reservados ao cliente (transação atômica)
+    if (clientId && refundCredits > 0) {
+      await runTransaction(this.firestore, async (t) => {
+        const clientRef = doc(this.firestore, `clients/${clientId}`);
+        const snap = await t.get(clientRef);
+        if (!snap.exists()) return;
+        const data = snap.data() as Record<string, any>;
+        t.update(clientRef, {
+          credits: (data['credits'] || 0) + refundCredits,
+          reservedCredits: Math.max(0, (data['reservedCredits'] || 0) - refundCredits),
+        });
+      });
+    }
+
+    // 9. Deletar o projeto
+    await deleteDoc(doc(this.firestore, `projects/${projectId}`));
   }
 
   openProjectForm(projectId?: string): void {
