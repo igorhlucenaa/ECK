@@ -11,10 +11,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Subject, takeUntil } from 'rxjs';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
+import { DocumentoConfig, DOCUMENTO_CONFIG_PADRAO } from '../../../services/report-pdfmake.service';
 
 // Interface local para evitar dependência circular
 type RelatorioSecaoTipo = 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari' | 'perguntas_abertas';
@@ -42,6 +44,8 @@ interface RelatorioSecaoSimplificada {
   textosPorCompetencia?: { [key: string]: string };
   tipoGrafico?: 'barra' | 'radar' | 'pizza-comparativa' | 'pizza-individual' | 'barras-individuais' | 'janela_johari';
   paletaCor?: string;
+  pageBreakAntes?: boolean;
+  pageBreakDepois?: boolean;
   [key: string]: any;
 }
 
@@ -70,6 +74,7 @@ type TipoGraficoRelatorio =
     MatInputModule,
     MatSelectModule,
     MatCheckboxModule,
+    MatSlideToggleModule,
     DragDropModule,
     AngularEditorModule
   ],
@@ -81,8 +86,16 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   @Input() competencias: any[] = [];
   @Input() savedLabel: string = '';
   @Input() hasUnsavedChanges: boolean = false;
+  @Input() documentoConfig: DocumentoConfig = {
+    cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho },
+    rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape }
+  };
   @Output() configuracaoChange = new EventEmitter<RelatorioSecaoSimplificada[]>();
   @Output() saveRequested = new EventEmitter<void>();
+  @Output() documentoConfigChange = new EventEmitter<DocumentoConfig>();
+
+  mostrarPainelDocumento = true;
+  readonly currentYear = new Date().getFullYear();
 
   private destroy$ = new Subject<void>();
 
@@ -246,15 +259,6 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
     'esmeralda':   { nome: 'Esmeralda',             tipo: 'gradiente', cores: ['#ECFDF5', '#A7F3D0', '#34D399', '#059669', '#064E3B'] },
     'marinho':     { nome: 'Azul Marinho',          tipo: 'gradiente', cores: ['#DBEAFE', '#93C5FD', '#3B82F6', '#1D4ED8', '#1E3A5F'] },
     'slate':       { nome: 'Cinza Azulado',         tipo: 'gradiente', cores: ['#F1F5F9', '#94A3B8', '#64748B', '#334155', '#0F172A'] },
-    // ── CORES SÓLIDAS ───────────────────────────────────────────────────────
-    'flat_material':    { nome: 'Material Flat',       tipo: 'flat', cores: ['#F44336', '#2196F3', '#4CAF50', '#FF9800', '#9C27B0'] },
-    'flat_pastel':      { nome: 'Pastel Suave',        tipo: 'flat', cores: ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#B5EAD7', '#C7CEEA'] },
-    'flat_terra':       { nome: 'Tons de Terra',       tipo: 'flat', cores: ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51'] },
-    'flat_vibrante':    { nome: 'Ultra Vibrante',      tipo: 'flat', cores: ['#EF476F', '#FFD166', '#06D6A0', '#118AB2', '#9B59B6'] },
-    'flat_nordico':     { nome: 'Nórdico & Frio',      tipo: 'flat', cores: ['#2C3E50', '#457B9D', '#A8DADC', '#CDB4DB', '#F4ACB7'] },
-    'flat_tropico':     { nome: 'Tropical',            tipo: 'flat', cores: ['#D62246', '#F79D65', '#FFE66D', '#4ECDC4', '#1A535C'] },
-    'flat_retro':       { nome: 'Retrô',               tipo: 'flat', cores: ['#E07A5F', '#3D405B', '#F2CC8F', '#81B29A', '#F4F1DE'] },
-    'flat_neon':        { nome: 'Neon',                tipo: 'flat', cores: ['#FF0080', '#00FFFF', '#00FF41', '#FF6600', '#7B00FF'] },
     // ── ESPECIAIS ───────────────────────────────────────────────────────────
     'categorias':    { nome: 'Categorias Distintas', tipo: 'especial', cores: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'] },
     'personalizada': { nome: 'Personalizada',        tipo: 'especial', cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] },
@@ -293,11 +297,61 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   selecionarPaleta(key: string): void {
     if (!this.secaoEditando) return;
     this.secaoEditando['paletaCor'] = key;
+    if (key === 'personalizada' && !this.secaoEditando['coresPersonalizadas']?.length) {
+      this.secaoEditando['coresPersonalizadas'] = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
+    }
+  }
+
+  selecionarCorUnica(cor: string): void {
+    if (!this.secaoEditando) return;
+    this.secaoEditando['paletaCor'] = 'cor_unica';
+    this.secaoEditando['corUnica'] = cor;
+  }
+
+  selecionarCorUnicaBaixas(cor: string): void {
+    if (!this.secaoEditando) return;
+    this.secaoEditando['paletaCorBaixas'] = 'cor_unica';
+    this.secaoEditando['corUnicaBaixas'] = cor;
+  }
+
+  getPaletteBadgeDots(secao: any): string[] {
+    const key = secao['paletaCor'] || 'padrao';
+    if (key === 'cor_unica') return [secao['corUnica'] || '#1E88E5'];
+    return (this.paletasCores[key]?.cores || []).slice(0, 4);
   }
 
   selecionarPaletaBaixas(key: string): void {
     if (!this.secaoEditando) return;
     this.secaoEditando['paletaCorBaixas'] = key;
+  }
+
+  getCoresPersonalizadasAtuais(): string[] {
+    const cores = this.secaoEditando?.['coresPersonalizadas'];
+    if (Array.isArray(cores) && cores.length > 0) return cores;
+    return ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
+  }
+
+  atualizarCorPersonalizada(index: number, event: Event): void {
+    if (!this.secaoEditando) return;
+    const cores = [...this.getCoresPersonalizadasAtuais()];
+    cores[index] = (event.target as HTMLInputElement).value;
+    this.secaoEditando['coresPersonalizadas'] = cores;
+  }
+
+  adicionarCorPersonalizada(): void {
+    if (!this.secaoEditando) return;
+    const cores = [...this.getCoresPersonalizadasAtuais()];
+    if (cores.length >= 8) return;
+    cores.push('#808080');
+    this.secaoEditando['coresPersonalizadas'] = cores;
+  }
+
+  removerUltimaCorPersonalizada(): void {
+    if (!this.secaoEditando) return;
+    const cores = [...this.getCoresPersonalizadasAtuais()];
+    if (cores.length <= 2) return;
+    cores.pop();
+    this.secaoEditando['coresPersonalizadas'] = cores;
   }
 
   // Configuração do editor rich text
@@ -335,6 +389,43 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
       this.ordenarSecoes();
       this.fecharPainelConfig();
     }
+  }
+
+  togglePainelDocumento(): void {
+    this.mostrarPainelDocumento = !this.mostrarPainelDocumento;
+    if (this.mostrarPainelDocumento) {
+      this.fecharPainelConfig();
+    }
+  }
+
+  atualizarCabecalho(campo: keyof DocumentoConfig['cabecalho'], valor: any): void {
+    this.documentoConfig = {
+      ...this.documentoConfig,
+      cabecalho: { ...this.documentoConfig.cabecalho, [campo]: valor }
+    };
+    this.documentoConfigChange.emit(this.documentoConfig);
+  }
+
+  onLogoFileSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.atualizarCabecalho('logoUrl', e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removerLogo(): void {
+    this.atualizarCabecalho('logoUrl', undefined);
+  }
+
+  atualizarRodape(campo: keyof DocumentoConfig['rodape'], valor: any): void {
+    this.documentoConfig = {
+      ...this.documentoConfig,
+      rodape: { ...this.documentoConfig.rodape, [campo]: valor }
+    };
+    this.documentoConfigChange.emit(this.documentoConfig);
   }
 
   ngOnDestroy(): void {
@@ -421,8 +512,16 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
     if (secaoNormalizada.tipo === 'graficos') {
       secaoNormalizada.tipoGrafico = this.resolverTipoGraficoSecao(secaoNormalizada);
     }
+    // Default: non-capa sections break before by default; normalize undefined → true
+    if (secaoNormalizada.tipo !== 'capa' && secaoNormalizada.pageBreakAntes === undefined) {
+      secaoNormalizada.pageBreakAntes = true;
+    }
+    if (secaoNormalizada.pageBreakDepois === undefined) {
+      secaoNormalizada.pageBreakDepois = false;
+    }
     this.secaoEditando = secaoNormalizada;
     this.showConfigPanel = true;
+    this.mostrarPainelDocumento = false;
   }
 
   /**

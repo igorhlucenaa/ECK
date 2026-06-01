@@ -50,6 +50,35 @@
       </mat-form-field>
     </div>
 
+    <!-- Projetos do Grupo -->
+    <div class="form-group">
+      <div class="all-projects-toggle">
+        <mat-slide-toggle formControlName="allProjects" color="primary">
+          Todos os projetos do cliente
+        </mat-slide-toggle>
+        <span class="all-projects-toggle__hint">Novos projetos entram automaticamente</span>
+      </div>
+
+      <mat-form-field appearance="outline" class="w-100" *ngIf="!groupForm.get('allProjects')?.value">
+        <mat-label>Projetos com Acesso</mat-label>
+        <mat-icon matPrefix class="field-icon">folder_open</mat-icon>
+        <mat-select formControlName="projectIds" multiple panelClass="custom-dropdown">
+          <mat-option *ngIf="projects.length === 0" disabled>
+            Selecione um cliente para carregar projetos
+          </mat-option>
+          <mat-option *ngFor="let project of projects" [value]="project.id">
+            {{ project.name }}
+          </mat-option>
+        </mat-select>
+        <mat-hint>Viewers do grupo terão acesso apenas a estes projetos · {{ (groupForm.get('projectIds')?.value?.length || 0) }} selecionado(s)</mat-hint>
+      </mat-form-field>
+
+      <div class="all-projects-badge" *ngIf="groupForm.get('allProjects')?.value">
+        <mat-icon>check_circle</mat-icon>
+        Acesso a todos os projetos presentes e futuros do cliente
+      </div>
+    </div>
+
     <!-- Usuários do Grupo -->
     <div class="form-group">
       <mat-form-field appearance="outline" class="w-100">

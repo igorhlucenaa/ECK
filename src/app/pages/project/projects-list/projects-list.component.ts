@@ -24,6 +24,7 @@ import { CommonModule, Location } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ProjectService } from 'src/app/services/project.service';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { EmailSelectionDialogComponent } from './email-selection-dialog/email-selection-dialog.component';
 import { ResendAssessmentModalComponent } from '../resend-assessment-modal/resend-assessment-modal.component';
@@ -31,6 +32,9 @@ import { ParticipantsModalComponent } from '../participants-modal/participants-m
 import { ParticipantsComponent } from '../../assessments/participants/participants.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { fixMojibake } from 'src/app/utils/encoding.utils';
+import { DependencyCheckService } from 'src/app/services/dependency-check.service';
+import { DependencyBlockDialogComponent } from 'src/app/shared/dependency-block-dialog/dependency-block-dialog.component';
 
 @Component({
   selector: 'app-projects-list',
@@ -93,7 +97,10 @@ export class ProjectsListComponent implements OnInit {
 
   private _applyCustomFilter(): void {
     this.dataSource.filterPredicate = (data: any, filter: string) => {
-      const matchSearch = !this.searchValue || data.name.toLowerCase().includes(this.searchValue.trim().toLowerCase());
+      const q = this.searchValue.trim().toLowerCase();
+      const matchSearch = !q
+        || data.name.toLowerCase().includes(q)
+        || (data.clientName || '').toLowerCase().includes(q);
       const matchStatus = this.statusFilter === 'all' || data.status === this.statusFilter;
       return matchSearch && matchStatus;
     };
@@ -110,13 +117,15 @@ export class ProjectsListComponent implements OnInit {
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) return;
       try {
-        await updateDoc(doc(this.firestore, `projects/${projectId}`), { status: 'Cancelado' });
+        const currentUser = await this.authService.getCurrentUser();
+        await this.projectService.cancelProject(projectId, currentUser?.uid || 'manual');
         this.dataSource.data = this.dataSource.data.map(p =>
           p.id === projectId ? { ...p, status: 'Cancelado' } : p
         );
         this.snackBar.open(this.translate.instant('Projeto cancelado com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
-      } catch (e) {
-        this.snackBar.open(this.translate.instant('Erro ao cancelar projeto.'), this.translate.instant('Fechar'), { duration: 3000 });
+      } catch (e: any) {
+        const msg = e?.message || this.translate.instant('Erro ao cancelar projeto.');
+        this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 4000 });
       }
     });
   }
@@ -134,8 +143,10 @@ export class ProjectsListComponent implements OnInit {
     private router: Router,
     private dialog: MatDialog,
     private authService: AuthService,
+    private projectService: ProjectService,
     private location: Location,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private dependencyCheck: DependencyCheckService
   ) {}
 
   ngOnInit(): void {
@@ -160,18 +171,25 @@ export class ProjectsListComponent implements OnInit {
 
       if (this.isAdminMaster) {
         await this.loadClients();
-        this.clientsFiltered = [...this.clients];
-        this.clientSearchCtrl.valueChanges.subscribe(s => {
-          const q = (s || '').toLowerCase();
-          this.clientsFiltered = this.clients.filter(c => c.name.toLowerCase().includes(q));
-        });
       } else if (this.userClientIds.length > 0) {
-        // admin_client: popula clientsMap apenas com os clientes vinculados
-        await Promise.all(this.userClientIds.map(async (id) => {
-          const snap = await getDoc(doc(this.firestore, 'clients', id));
-          if (snap.exists()) this.clientsMap[id] = snap.data()['companyName'] || id;
-        }));
+        // admin_client e viewer: carrega clientes vinculados em clientsMap E clients[]
+        const snaps = await Promise.all(
+          this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
+        );
+        snaps.forEach(snap => {
+          if (snap.exists()) {
+            const name = fixMojibake(snap.data()['companyName'] || snap.id);
+            this.clientsMap[snap.id] = name;
+            this.clients.push({ id: snap.id, name });
+          }
+        });
       }
+      // Inicializar lista filtrada e busca por cliente (disponível para todos os roles)
+      this.clientsFiltered = [...this.clients];
+      this.clientSearchCtrl.valueChanges.subscribe(s => {
+        const q = (s || '').toLowerCase();
+        this.clientsFiltered = this.clients.filter(c => c.name.toLowerCase().includes(q));
+      });
       this.loadProjects();
     });
   }
@@ -198,7 +216,7 @@ export class ProjectsListComponent implements OnInit {
 
       this.clients = snapshot.docs.map((doc) => ({
         id: doc.id,
-        name: doc.data()['companyName'] || 'Cliente Desconhecido',
+        name: fixMojibake(doc.data()['companyName'] || 'Cliente Desconhecido'),
       }));
 
       this.clients.forEach((client) => {
@@ -230,15 +248,19 @@ export class ProjectsListComponent implements OnInit {
           const [respondedCount, totalParticipants] =
             await this.countAssessmentResponses(projectId);
 
-          // Auto-conclusão: se todos responderam, marcar como Concluído
+          // Auto-conclusão: se todos responderam, usar ProjectService para garantir consumo de créditos
           let currentStatus = data['status'];
           if (
             totalParticipants > 0 &&
             respondedCount >= totalParticipants &&
-            !['Concluído', 'Cancelado'].includes(currentStatus)
+            !['Concluído', 'concluido', 'Cancelado', 'cancelado'].includes(currentStatus)
           ) {
-            const projectRef = doc(this.firestore, 'projects', projectId);
-            await updateDoc(projectRef, { status: 'Concluído' });
+            try {
+              await this.projectService.concludeProject(projectId, 'auto');
+            } catch {
+              // fallback: pelo menos atualiza o status
+              await updateDoc(doc(this.firestore, 'projects', projectId), { status: 'Concluído' });
+            }
             currentStatus = 'Concluído';
           }
 
@@ -257,7 +279,29 @@ export class ProjectsListComponent implements OnInit {
       );
 
       this.allProjects = projects;
-      this.dataSource.data = this.filterProjectsByClient(projects);
+
+      // Preencher clientsMap com clientes dos projetos visíveis que ainda não estão mapeados
+      const filteredForMap = this.filterProjectsByClient(projects);
+      const missingClientIds = [...new Set(
+        filteredForMap
+          .map(p => p.clientId)
+          .filter((id: string) => id && !this.clientsMap[id])
+      )];
+      if (missingClientIds.length > 0) {
+        await Promise.all(missingClientIds.map(async (id: string) => {
+          try {
+            const snap = await getDoc(doc(this.firestore, 'clients', id));
+            if (snap.exists()) this.clientsMap[id] = fixMojibake(snap.data()['companyName'] || id);
+          } catch { /* ignora */ }
+        }));
+        // Reatribuir clientName com o mapa atualizado
+        this.allProjects = this.allProjects.map(p => ({
+          ...p,
+          clientName: this.clientsMap[p.clientId] || 'Cliente não encontrado',
+        }));
+      }
+
+      this.dataSource.data = this.filterProjectsByClient(this.allProjects);
       this.dataSource.paginator = this.paginator;
       this._applyCustomFilter();
 
@@ -276,9 +320,6 @@ export class ProjectsListComponent implements OnInit {
         }
       };
       this.dataSource.sort = this.sort;
-
-      this.dataSource.filterPredicate = (data, filter) =>
-        data.name.toLowerCase().includes(filter);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
       this.snackBar.open(this.translate.instant('Erro ao carregar projetos.'), this.translate.instant('Fechar'), {
@@ -374,33 +415,69 @@ export class ProjectsListComponent implements OnInit {
     const email = await this.authService.getCurrentUserEmail();
     if (!email) return;
 
-    const usersQuery = query(
-      collection(this.firestore, 'users'),
-      where('email', '==', email)
+    const usersSnap = await getDocs(
+      query(collection(this.firestore, 'users'), where('email', '==', email))
     );
-    const usersSnap = await getDocs(usersQuery);
     if (usersSnap.empty) return;
 
-    const data = usersSnap.docs[0].data() || {};
-    const fromArray = Array.isArray(data['projects']) ? data['projects'] : [];
-    const fromSingle = typeof data['project'] === 'string' && data['project'].trim()
-      ? [data['project']]
-      : [];
+    const userDocId = usersSnap.docs[0].id;
+    const userData = usersSnap.docs[0].data() || {};
+    const isOnNewStructure = 'groups' in userData;
 
-    [...fromArray, ...fromSingle].forEach((id) => this.viewerProjectIds.add(id));
+    // Fonte principal: grupos onde o viewer aparece em userIds
+    const groupsSnap = await getDocs(
+      query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', userDocId))
+    );
+
+    const allProjectsClientIds = new Set<string>();
+    groupsSnap.forEach(snap => {
+      const data = snap.data();
+      if (data['allProjects'] === true && data['clientId']) {
+        allProjectsClientIds.add(data['clientId']);
+      } else {
+        const projectIds: string[] = data['projectIds'] || [];
+        projectIds.forEach(id => this.viewerProjectIds.add(id));
+      }
+    });
+
+    // Para grupos com allProjects: buscar todos os projetos do cliente
+    if (allProjectsClientIds.size > 0) {
+      const allClientsArr = [...allProjectsClientIds];
+      const projSnap = await getDocs(
+        query(collection(this.firestore, 'projects'), where('clientId', 'in', allClientsArr))
+      );
+      projSnap.forEach(d => this.viewerProjectIds.add(d.id));
+    }
+
+    // Fallback legado: APENAS se o usuário nunca foi migrado para grupos
+    if (!isOnNewStructure && this.viewerProjectIds.size === 0) {
+      const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
+      const fromSingle = typeof userData['project'] === 'string' && userData['project'].trim()
+        ? [userData['project']] : [];
+      [...fromArray, ...fromSingle].forEach(id => this.viewerProjectIds.add(id));
+    }
   }
 
   private filterProjectsByClient(projects: any[]): any[] {
-    if (this.isAdminMaster && this.selectedClientId) {
-      return projects.filter((project) => project.clientId === this.selectedClientId);
+    let result = projects;
+
+    // Viewer: restringir aos projetos atribuídos
+    if (this.isViewer) {
+      result = this.viewerProjectIds.size > 0
+        ? result.filter(p => this.viewerProjectIds.has(p.id))
+        : [];
     }
-    if (this.isViewer && this.viewerProjectIds.size > 0) {
-      return projects.filter((project) => this.viewerProjectIds.has(project.id));
+    // Admin_client: restringir aos clientes vinculados
+    else if (!this.isAdminMaster && this.userClientIds.length > 0) {
+      result = result.filter(p => this.userClientIds.includes(p.clientId));
     }
-    if (!this.isAdminMaster && this.userClientIds.length > 0) {
-      return projects.filter((project) => this.userClientIds.includes(project.clientId));
+
+    // Filtro de cliente selecionado (dropdown) — funciona para todos os roles
+    if (this.selectedClientId) {
+      result = result.filter(p => p.clientId === this.selectedClientId);
     }
-    return projects;
+
+    return result;
   }
 
   onClientChange(): void {
@@ -441,21 +518,48 @@ export class ProjectsListComponent implements OnInit {
     }
   }
 
-  deleteSelectedProjects(): void {
-    const count = this.selectedProjectIds.size;
+  async deleteSelectedProjects(): Promise<void> {
+    const ids = Array.from(this.selectedProjectIds);
+
+    // 1. Verificação prévia por projeto
+    const checks = await Promise.all(
+      ids.map(async id => {
+        const name = this.dataSource.data.find(p => p.id === id)?.name || 'projeto';
+        return { id, name, result: await this.dependencyCheck.checkProject(id, name) };
+      })
+    );
+    const blocked = checks.filter(c => !c.result.canDelete);
+    const deletable = checks.filter(c => c.result.canDelete);
+
+    if (blocked.length > 0) {
+      const aggregated = blocked.flatMap(b =>
+        b.result.blockers.map(bl => ({ ...bl, label: `${bl.label} (${b.name})` }))
+      );
+      this.dialog.open(DependencyBlockDialogComponent, {
+        width: '560px',
+        data: {
+          entityLabel: blocked.length === 1 ? blocked[0].result.entityLabel : `${blocked.length} projetos selecionados`,
+          blockers: aggregated,
+        },
+      });
+      return;
+    }
+
+    if (deletable.length === 0) return;
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
-      data: { message: this.translate.instant(`Tem certeza de que deseja excluir ${count} projeto(s)? Participantes, links e créditos reservados também serão removidos. Esta ação não pode ser desfeita.`) },
+      data: { message: this.translate.instant(`Tem certeza de que deseja excluir ${deletable.length} projeto(s)? Esta ação não pode ser desfeita.`) },
     });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) return;
-      const ids = Array.from(this.selectedProjectIds);
       try {
-        for (const id of ids) {
-          await this.cascadeDeleteProject(id);
-        }
-        this.dataSource.data = this.dataSource.data.filter(p => !this.selectedProjectIds.has(p.id));
+        const batch = writeBatch(this.firestore);
+        deletable.forEach(c => batch.delete(doc(this.firestore, `projects/${c.id}`)));
+        await batch.commit();
+        const deletedIds = new Set(deletable.map(c => c.id));
+        this.dataSource.data = this.dataSource.data.filter(p => !deletedIds.has(p.id));
         this.selectedProjectIds.clear();
         this.snackBar.open(this.translate.instant('Projetos excluídos com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
       } catch (error) {
@@ -465,7 +569,19 @@ export class ProjectsListComponent implements OnInit {
     });
   }
 
-  deleteProject(projectId: string): void {
+  async deleteProject(projectId: string): Promise<void> {
+    const projectName = this.dataSource.data.find(p => p.id === projectId)?.name || 'projeto';
+
+    // 1. Verificação prévia de dependências
+    const depResult = await this.dependencyCheck.checkProject(projectId, projectName);
+    if (!depResult.canDelete) {
+      this.dialog.open(DependencyBlockDialogComponent, {
+        width: '560px',
+        data: { entityLabel: depResult.entityLabel, blockers: depResult.blockers },
+      });
+      return;
+    }
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
       data: { message: this.translate.instant('Tem certeza de que deseja excluir este projeto? Participantes, links e créditos reservados também serão removidos.') },
@@ -603,6 +719,10 @@ export class ProjectsListComponent implements OnInit {
       width: '900px',
       data: { projectId },
     });
+  }
+
+  goToProjectReport(clientId: string, projectId: string): void {
+    this.router.navigate(['/reports'], { queryParams: { clientId, projectId } });
   }
 
   openResendModal(projectId: string, clientId: string): void {

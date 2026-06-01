@@ -27,6 +27,49 @@ interface Competencia {
   perguntasIds: string[];
 }
 
+export interface DocumentoConfig {
+  cabecalho: {
+    ativo: boolean;
+    ocultarNaCapa: boolean;
+    textoEsquerda: string;
+    mostrarNomeProjeto: boolean;
+    mostrarNumeroPagina: boolean;
+    cor: string;
+    linhaInferior: boolean;
+    logoUrl?: string;
+  };
+  rodape: {
+    ativo: boolean;
+    ocultarNaCapa: boolean;
+    texto: string;
+    mostrarNumeroPagina: boolean;
+    mostrarAno: boolean;
+    cor: string;
+    linhaSuperior: boolean;
+  };
+}
+
+export const DOCUMENTO_CONFIG_PADRAO: DocumentoConfig = {
+  cabecalho: {
+    ativo: true,
+    ocultarNaCapa: true,
+    textoEsquerda: 'ECK - Avaliação 360°',
+    mostrarNomeProjeto: false,
+    mostrarNumeroPagina: true,
+    cor: '#666666',
+    linhaInferior: true,
+  },
+  rodape: {
+    ativo: true,
+    ocultarNaCapa: true,
+    texto: 'ECK Consulting — Confidencial',
+    mostrarNumeroPagina: false,
+    mostrarAno: true,
+    cor: '#999999',
+    linhaSuperior: true,
+  },
+};
+
 interface RelatorioSecao {
   id: string;
   tipo: 'capa' | 'introducao' | 'resumo' | 'graficos' | 'tabela' | 'tabela_detalhada' | 'destaques' | 'custom' | 'texto' | 'competencia_detalhada' | 'grafico_defasagem' | 'janela_johari' | 'perguntas_abertas';
@@ -39,6 +82,8 @@ interface RelatorioSecao {
   textosPorCompetencia?: { [key: string]: string };
   tipoGrafico?: 'barra' | 'radar' | 'pizza-comparativa' | 'pizza-individual' | 'barras-individuais' | 'janela_johari';
   paletaCor?: string;
+  pageBreakAntes?: boolean;
+  pageBreakDepois?: boolean;
   [key: string]: any;
 }
 
@@ -67,6 +112,7 @@ interface ReportData {
   mapCategoriaToGrupo?: (categoria: string) => string;
   getPerguntasAbertasData?: () => { perguntaId: string; perguntaTitulo: string; respostasPorCategoria: { [categoria: string]: string[] } }[];
   getCategoriasOrdenadas?: (respostasPorCategoria: { [categoria: string]: string[] }) => string[];
+  documentoConfig?: DocumentoConfig;
 }
 
 export interface PdfHtmlRenderOptions {
@@ -80,6 +126,9 @@ export interface PdfHtmlRenderOptions {
     bottom?: number;
     left?: number;
   };
+  displayHeaderFooter?: boolean;
+  headerTemplate?: string;
+  footerTemplate?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -299,7 +348,7 @@ export class ReportPdfMakeService {
       defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.5 },
       pageMargins: [40, 60, 40, 60],
       header: this.buildHeader(data),
-      footer: this.buildFooter,
+      footer: this.buildFooter(data),
     };
 
     const secoesOrdenadas = [...data.relatorioConfiguracao]
@@ -338,21 +387,23 @@ export class ReportPdfMakeService {
     }
 
     if (!parsed.header) {
+      const ch = DOCUMENTO_CONFIG_PADRAO.cabecalho;
       parsed.header = {
-        text: 'ECK - Avaliacao 360',
-        alignment: 'left',
-        fontSize: 8,
-        color: '#666666',
+        columns: [
+          { text: ch.textoEsquerda, alignment: 'left', fontSize: 8, color: ch.cor },
+          { text: 'Página — de —', alignment: 'right', fontSize: 8, color: ch.cor }
+        ],
         margin: [40, 20, 40, 0]
       };
     }
 
     if (!parsed.footer) {
+      const rf = DOCUMENTO_CONFIG_PADRAO.rodape;
       parsed.footer = {
-        text: `© ${new Date().getFullYear()} ECK Consulting - Confidencial`,
+        text: `${rf.texto} | © ${new Date().getFullYear()}`,
         alignment: 'center',
         fontSize: 8,
-        color: '#999999',
+        color: rf.cor,
         margin: [40, 10, 40, 20]
       };
     }
@@ -503,47 +554,52 @@ export class ReportPdfMakeService {
    * Constrói uma seção do relatório baseada no tipo
    */
   private async buildSection(secao: RelatorioSecao, data: ReportData): Promise<any[]> {
+    let content!: any[];
+
     switch (secao.tipo) {
       case 'capa':
-        return this.buildCover(data);
-
+        content = this.buildCover(data); break;
       case 'introducao':
-        return this.buildIntroduction(data, secao);
-
+        content = this.buildIntroduction(data, secao); break;
       case 'resumo':
-        return this.buildExecutiveSummary(data, secao);
-
+        content = this.buildExecutiveSummary(data, secao); break;
       case 'graficos':
-        return await this.buildChartsSection(data, secao);
-
+        content = await this.buildChartsSection(data, secao); break;
       case 'tabela':
-        return this.buildTablesSection(data, secao);
-
+        content = this.buildTablesSection(data, secao); break;
       case 'tabela_detalhada':
-        return this.buildDetailedDistributionTable(data, secao);
-
+        content = this.buildDetailedDistributionTable(data, secao); break;
       case 'destaques':
-        return this.buildHighlights(data, secao);
-
+        content = this.buildHighlights(data, secao); break;
       case 'competencia_detalhada':
-        return this.buildCompetencyDetail(data, secao);
-
+        content = this.buildCompetencyDetail(data, secao); break;
       case 'grafico_defasagem':
-        return await this.buildGapChart(data, secao);
-
+        content = await this.buildGapChart(data, secao); break;
       case 'janela_johari':
-        return await this.buildJohariWindow(data, secao);
-
+        content = await this.buildJohariWindow(data, secao); break;
       case 'perguntas_abertas':
-        return this.buildPerguntasAbertas(data, secao);
-
+        content = this.buildPerguntasAbertas(data, secao); break;
       case 'texto':
       case 'custom':
-        return this.buildTextSection(secao);
-
+        content = this.buildTextSection(secao); break;
       default:
         return [];
     }
+
+    if (!content || content.length === 0) return [];
+
+    // pageBreakAntes: remove the hardcoded pageBreak:'before' when explicitly disabled
+    if (secao.tipo !== 'capa' && secao.pageBreakAntes === false && content[0]?.pageBreak === 'before') {
+      const { pageBreak: _pb, ...rest } = content[0];
+      content[0] = rest;
+    }
+
+    // pageBreakDepois: append a forced page break after this section
+    if (secao.pageBreakDepois === true) {
+      content.push({ text: '', pageBreak: 'after' });
+    }
+
+    return content;
   }
 
   /**
@@ -1916,47 +1972,72 @@ export class ReportPdfMakeService {
       getPerguntasAbertasData: component.getPerguntasAbertasData ?
         () => component.getPerguntasAbertasData() : () => [],
       getCategoriasOrdenadas: component.getCategoriasOrdenadas ?
-        (r: { [c: string]: string[] }) => component.getCategoriasOrdenadas(r) : () => []
+        (r: { [c: string]: string[] }) => component.getCategoriasOrdenadas(r) : () => [],
+      documentoConfig: component.documentoConfig ?? DOCUMENTO_CONFIG_PADRAO
     };
   }
 
-  /**
-   * Constrói cabeçalho
-   */
   private buildHeader(data: ReportData): any {
+    const cfg = (data.documentoConfig ?? DOCUMENTO_CONFIG_PADRAO).cabecalho;
+    if (!cfg.ativo) return undefined;
+
     return (currentPage: number, pageCount: number) => {
-      return {
-        columns: [
-          {
-            text: 'ECK - Avaliação 360°',
-            alignment: 'left',
-            fontSize: 8,
-            color: '#666666'
-          },
-          {
-            text: `Página ${currentPage} de ${pageCount}`,
-            alignment: 'right',
-            fontSize: 8,
-            color: '#666666'
-          }
-        ],
-        margin: [40, 20, 40, 0]
-      };
+      if (cfg.ocultarNaCapa && currentPage === 1) return {};
+
+      const leftParts: string[] = [];
+      if (cfg.textoEsquerda) leftParts.push(cfg.textoEsquerda);
+      if (cfg.mostrarNomeProjeto && data.projectName) leftParts.push(data.projectName);
+
+      const columns: any[] = [
+        { text: leftParts.join(' — '), alignment: 'left', fontSize: 8, color: cfg.cor }
+      ];
+      if (cfg.mostrarNumeroPagina) {
+        columns.push({ text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 8, color: cfg.cor });
+      }
+
+      const row: any = columns.length > 1 ? { columns } : { ...columns[0] };
+
+      if (cfg.linhaInferior) {
+        return {
+          stack: [
+            { ...row, margin: [0, 0, 0, 3] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: cfg.cor }] }
+          ],
+          margin: [40, 15, 40, 0]
+        };
+      }
+
+      return { ...row, margin: [40, 20, 40, 0] };
     };
   }
 
-  /**
-   * Constrói rodapé
-   */
-  private buildFooter = (currentPage: number, pageCount: number) => {
-    return {
-      text: `© ${new Date().getFullYear()} ECK Consulting - Confidencial`,
-      alignment: 'center',
-      fontSize: 8,
-      color: '#999999',
-      margin: [40, 10, 40, 20]
+  private buildFooter(data: ReportData): any {
+    const cfg = (data.documentoConfig ?? DOCUMENTO_CONFIG_PADRAO).rodape;
+    if (!cfg.ativo) return undefined;
+
+    return (currentPage: number, pageCount: number) => {
+      if (cfg.ocultarNaCapa && currentPage === 1) return {};
+
+      const parts: string[] = [];
+      if (cfg.texto) parts.push(cfg.texto);
+      if (cfg.mostrarAno) parts.push(`© ${new Date().getFullYear()}`);
+      if (cfg.mostrarNumeroPagina) parts.push(`Página ${currentPage} de ${pageCount}`);
+
+      const textContent = parts.join(' | ');
+
+      if (cfg.linhaSuperior) {
+        return {
+          stack: [
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: cfg.cor }], margin: [0, 0, 0, 3] },
+            { text: textContent, alignment: 'center', fontSize: 8, color: cfg.cor }
+          ],
+          margin: [40, 5, 40, 15]
+        };
+      }
+
+      return { text: textContent, alignment: 'center', fontSize: 8, color: cfg.cor, margin: [40, 10, 40, 20] };
     };
-  };
+  }
 
   /**
    * Define estilos do documento

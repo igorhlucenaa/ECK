@@ -30,6 +30,9 @@ import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { DependencyCheckService } from 'src/app/services/dependency-check.service';
+import { DependencyBlockDialogComponent } from 'src/app/shared/dependency-block-dialog/dependency-block-dialog.component';
 
 export interface Order {
   id: string;
@@ -65,6 +68,7 @@ export interface Order {
     ReactiveFormsModule,
     TranslateModule,
     AppPageHeaderComponent,
+    MatDialogModule,
   ],
   templateUrl: './credit-orders.component.html',
   styleUrls: ['./credit-orders.component.scss'],
@@ -105,7 +109,9 @@ export class CreditOrdersComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private dialog: MatDialog,
+    private dependencyCheck: DependencyCheckService
   ) {}
 
   ngOnInit(): void {
@@ -279,46 +285,33 @@ export class CreditOrdersComponent implements OnInit {
     try {
       const orderDoc = doc(this.firestore, `creditOrders/${orderId}`);
       const orderSnapshot = await getDoc(orderDoc);
-
       const orderData = orderSnapshot.data();
 
-      if (!orderData) {
-        throw new Error('Pedido não encontrado.');
-      }
+      if (!orderData) throw new Error('Pedido não encontrado.');
 
       const clientId = orderData['clientId'];
-      const creditsToAdd = orderData['credits'];
+      const creditsToAdd: number = orderData['credits'];
 
-      // Atualiza o status do pedido para "Aprovado" e inicializa remainingCredits
-      await updateDoc(orderDoc, { status: 'Aprovado', remainingCredits: creditsToAdd });
+      // approvedAt = agora; validityDate = approvedAt + 12 meses
+      const now = new Date();
+      const validityDate = new Date(now);
+      validityDate.setMonth(validityDate.getMonth() + 12);
 
-      // Atualiza os créditos remanescentes do cliente
-      const clientDoc = doc(this.firestore, `clients/${clientId}`);
-      const clientSnapshot = await getDoc(clientDoc);
-      const clientData = clientSnapshot.data();
-
-      if (!clientData) {
-        throw new Error('Cliente não encontrado.');
-      }
-
-      const currentCredits = clientData['credits'] || 0;
-
-      await updateDoc(clientDoc, {
-        credits: currentCredits + creditsToAdd,
+      await updateDoc(orderDoc, {
+        status: 'Aprovado',
+        remainingCredits: creditsToAdd,
+        approvedAt: now,
+        validityDate,
       });
 
-      this.snackBar.open(
-        'Pedido aprovado com sucesso e créditos adicionados!',
-        'Fechar',
-        { duration: 3000 }
-      );
+      // Recalcula saldo do cliente a partir dos pedidos aprovados válidos
+      await this.sincronizarCreditosCliente(clientId);
 
+      this.snackBar.open('Pedido aprovado! Créditos adicionados com validade de 12 meses.', 'Fechar', { duration: 3000 });
       await this.loadOrders();
     } catch (error) {
       console.error('Erro ao aprovar pedido:', error);
-      this.snackBar.open('Erro ao aprovar pedido.', 'Fechar', {
-        duration: 3000,
-      });
+      this.snackBar.open('Erro ao aprovar pedido.', 'Fechar', { duration: 3000 });
     }
   }
 
@@ -343,6 +336,16 @@ export class CreditOrdersComponent implements OnInit {
   }
 
   async deleteOrder(orderId: string): Promise<void> {
+    // Verificação prévia: pedido com créditos já usados não pode ser excluído
+    const depResult = await this.dependencyCheck.checkCreditOrder(orderId);
+    if (!depResult.canDelete) {
+      this.dialog.open(DependencyBlockDialogComponent, {
+        width: '560px',
+        data: { entityLabel: depResult.entityLabel, blockers: depResult.blockers },
+      });
+      return;
+    }
+
     try {
       const orderDoc = doc(this.firestore, `creditOrders/${orderId}`);
       const orderSnapshot = await getDoc(orderDoc);
@@ -381,14 +384,14 @@ export class CreditOrdersComponent implements OnInit {
 
   /**
    * Sincroniza créditos de UM único cliente a partir das fontes de verdade.
-   * Usado pelo deleteOrder e pela Cloud Function onAssessmentCompleted.
-   * Para sincronização de todos os clientes use sincronizarCreditosClientes().
+   * Confia nos remainingCredits dos pedidos (mantidos por transações individuais)
+   * e nos campos creditReserved/creditConsumed dos participantes.
    */
   private async sincronizarCreditosCliente(clientId: string): Promise<void> {
     try {
       const now = new Date();
 
-      // 1. Pedidos aprovados válidos para este cliente, ordenados FIFO
+      // 1. Saldo disponível = soma dos remainingCredits dos pedidos válidos
       const ordersSnap = await getDocs(
         query(
           collection(this.firestore, 'creditOrders'),
@@ -396,56 +399,38 @@ export class CreditOrdersComponent implements OnInit {
           where('status', '==', 'Aprovado')
         )
       );
-      const orders = ordersSnap.docs
+      const available = ordersSnap.docs
         .filter(d => {
           const v = d.data()['validityDate']?.toDate();
           return !v || v >= now;
         })
-        .sort((a, b) =>
-          (a.data()['createdAt']?.toMillis?.() ?? 0) -
-          (b.data()['createdAt']?.toMillis?.() ?? 0)
-        )
-        .map(d => ({ id: d.id, credits: (d.data()['credits'] as number) || 0 }));
+        .reduce((s, d) => s + ((d.data()['remainingCredits'] as number) || 0), 0);
 
-      // 2. Links concluídos deste cliente (clientId armazenado no link)
-      const completedSnap = await getDocs(
-        query(
-          collection(this.firestore, 'assessmentLinks'),
-          where('clientId', '==', clientId),
-          where('status', '==', 'completed')
-        )
-      );
-      const used = completedSnap.size;
-
-      // 3. Links pendentes com crédito reservado deste cliente
+      // 2. Reservados = avaliados com creditReserved:true e creditConsumed:false
       const reservedSnap = await getDocs(
         query(
-          collection(this.firestore, 'assessmentLinks'),
+          collection(this.firestore, 'participants'),
           where('clientId', '==', clientId),
           where('creditReserved', '==', true),
-          where('status', '==', 'pending')
+          where('creditConsumed', '==', false)
         )
       );
       const reserved = reservedSnap.size;
 
-      // 4. FIFO: atualiza remainingCredits por pedido
-      let toDeduct = used;
-      for (const order of orders) {
-        const consumed = Math.min(toDeduct, order.credits);
-        const remaining = order.credits - consumed;
-        toDeduct -= consumed;
-        await updateDoc(doc(this.firestore, `creditOrders/${order.id}`), {
-          remainingCredits: remaining,
-        });
-      }
+      // 3. Consumidos = avaliados com creditConsumed:true
+      const consumedSnap = await getDocs(
+        query(
+          collection(this.firestore, 'participants'),
+          where('clientId', '==', clientId),
+          where('creditConsumed', '==', true)
+        )
+      );
+      const consumed = consumedSnap.size;
 
-      // 5. Atualiza o cliente com os três campos
-      const purchased = orders.reduce((s, o) => s + o.credits, 0);
-      const available = Math.max(0, purchased - used - reserved);
       await updateDoc(doc(this.firestore, `clients/${clientId}`), {
         credits: available,
-        creditsUsed: used,
         reservedCredits: reserved,
+        consumedCredits: consumed,
       });
     } catch (error) {
       console.error(`Erro ao sincronizar créditos do cliente ${clientId}:`, error);
@@ -480,47 +465,12 @@ export class CreditOrdersComponent implements OnInit {
       }
       await orderBatch.commit();
 
-      // ── Por cliente afetado: cancela links pendentes reservados ─────────
+      // Recalcula saldo de cada cliente afetado pela expiração
       const affectedClientIds = new Set(
         expiredOrders.map(o => o.clientId).filter(Boolean)
       );
-
       for (const clientId of affectedClientIds) {
-        // Busca links pending com creditReserved=true para este cliente
-        const pendingSnap = await getDocs(
-          query(
-            collection(this.firestore, 'assessmentLinks'),
-            where('clientId', '==', clientId),
-            where('status', '==', 'pending'),
-            where('creditReserved', '==', true)
-          )
-        );
-
-        if (pendingSnap.empty) continue;
-
-        // Batch 2: cancela cada link reservado
-        const linkBatch = writeBatch(this.firestore);
-        for (const linkDoc of pendingSnap.docs) {
-          linkBatch.update(doc(this.firestore, 'assessmentLinks', linkDoc.id), {
-            status: 'expired',
-            creditReserved: false,
-            expiredAt: new Date(),
-          });
-        }
-        await linkBatch.commit();
-
-        // Devolve os créditos reservados ao cliente imediatamente
-        // (sincronizarCreditosClientes vai confirmar os valores exatos depois)
-        const expiredCount = pendingSnap.size;
-        const clientDocRef = doc(this.firestore, `clients/${clientId}`);
-        const clientSnap = await getDoc(clientDocRef);
-        if (clientSnap.exists()) {
-          const d = clientSnap.data();
-          await updateDoc(clientDocRef, {
-            credits:        (d['credits']        || 0) + expiredCount,
-            reservedCredits: Math.max(0, (d['reservedCredits'] || 0) - expiredCount),
-          });
-        }
+        await this.sincronizarCreditosCliente(clientId);
       }
     } catch (error) {
       console.error('Erro ao processar pedidos expirados:', error);
@@ -587,102 +537,15 @@ export class CreditOrdersComponent implements OnInit {
 
   private async sincronizarCreditosClientes(): Promise<void> {
     try {
-      const now = new Date();
-
-      // 1. Pedidos aprovados — sem orderBy para incluir docs sem createdAt indexado
+      // Delega para o método por cliente, coletando todos os clientIds afetados
       const ordersSnap = await getDocs(
         query(collection(this.firestore, 'creditOrders'), where('status', '==', 'Aprovado'))
       );
-
-      // Agrupa pedidos válidos por cliente, ordenados por createdAt ASC (FIFO)
-      const ordersByClient = new Map<string, { id: string; credits: number }[]>();
-      const sortedOrderDocs = ordersSnap.docs.slice().sort((a, b) => {
-        const tA = a.data()['createdAt']?.toMillis?.() ?? 0;
-        const tB = b.data()['createdAt']?.toMillis?.() ?? 0;
-        return tA - tB;
-      });
-      sortedOrderDocs.forEach(d => {
-        const data = d.data();
-        const validityDate = data['validityDate']?.toDate();
-        if (validityDate && validityDate < now) return;
-        const clientId = data['clientId'];
-        if (!clientId) return;
-        if (!ordersByClient.has(clientId)) ordersByClient.set(clientId, []);
-        ordersByClient.get(clientId)!.push({ id: d.id, credits: data['credits'] || 0 });
-      });
-
-      // 2. Créditos usados: assessmentLinks completed por cliente
-      //    Links recentes têm clientId direto; legados resolvem via participante.
-      const completedLinksSnap = await getDocs(
-        query(collection(this.firestore, 'assessmentLinks'), where('status', '==', 'completed'))
+      const clientIds = new Set<string>(
+        ordersSnap.docs.map(d => d.data()['clientId']).filter(Boolean)
       );
-      const usedByClient = new Map<string, number>();
-      const participantClientCache = new Map<string, string>();
-
-      for (const linkDoc of completedLinksSnap.docs) {
-        const linkData = linkDoc.data();
-        let clientId: string | undefined = linkData['clientId'];
-
-        if (!clientId) {
-          // Fallback para links legados sem clientId armazenado
-          const participantId = linkData['participantId'];
-          if (!participantId) continue;
-          clientId = participantClientCache.get(participantId);
-          if (!clientId) {
-            const pSnap = await getDoc(doc(this.firestore, `participants/${participantId}`));
-            clientId = pSnap.exists() ? pSnap.data()['clientId'] : undefined;
-            if (clientId) participantClientCache.set(participantId, clientId);
-          }
-        }
-        if (!clientId) continue;
-        usedByClient.set(clientId, (usedByClient.get(clientId) || 0) + 1);
-      }
-
-      // 3. Créditos reservados: assessmentLinks pending com creditReserved=true por cliente
-      const reservedLinksSnap = await getDocs(
-        query(
-          collection(this.firestore, 'assessmentLinks'),
-          where('creditReserved', '==', true),
-          where('status', '==', 'pending')
-        )
-      );
-      const reservedByClient = new Map<string, number>();
-      reservedLinksSnap.docs.forEach(d => {
-        const clientId = d.data()['clientId'] as string;
-        if (!clientId) return;
-        reservedByClient.set(clientId, (reservedByClient.get(clientId) || 0) + 1);
-      });
-
-      // 4. FIFO: distribui créditos usados nos pedidos e atualiza remainingCredits
-      for (const [clientId, orders] of ordersByClient.entries()) {
-        let toDeduct = usedByClient.get(clientId) || 0;
-        for (const order of orders) {
-          const consumed = Math.min(toDeduct, order.credits);
-          const remaining = order.credits - consumed;
-          toDeduct -= consumed;
-          await updateDoc(doc(this.firestore, `creditOrders/${order.id}`), {
-            remainingCredits: remaining,
-          });
-        }
-      }
-
-      // 5. Atualiza cada cliente: credits = comprado − usado − reservado
-      const allClientIds = new Set([
-        ...ordersByClient.keys(),
-        ...usedByClient.keys(),
-        ...reservedByClient.keys(),
-      ]);
-      for (const clientId of allClientIds) {
-        const orders   = ordersByClient.get(clientId)  || [];
-        const purchased = orders.reduce((sum, o) => sum + o.credits, 0);
-        const used      = usedByClient.get(clientId)    || 0;
-        const reserved  = reservedByClient.get(clientId) || 0;
-        const available = Math.max(0, purchased - used - reserved);
-        await updateDoc(doc(this.firestore, `clients/${clientId}`), {
-          credits: available,
-          creditsUsed: used,
-          reservedCredits: reserved,
-        });
+      for (const clientId of clientIds) {
+        await this.sincronizarCreditosCliente(clientId);
       }
     } catch (error) {
       console.error('Erro ao sincronizar créditos:', error);

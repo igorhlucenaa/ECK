@@ -41,7 +41,9 @@ export class EditGroupComponent implements OnInit {
   memberCount = 0;
 
   clients: { id: string; name: string }[] = [];
+  projects: { id: string; name: string }[] = [];
   users: { id: string; name: string; surname: string }[] = [];
+  private currentRole: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -69,27 +71,30 @@ export class EditGroupComponent implements OnInit {
       name:        ['', Validators.required],
       description: [''],
       clientId:    ['', Validators.required],
+      allProjects: [false],
+      projectIds:  [[]],
       userIds:     [[]],
     });
 
-    // Reload users when client changes
+    // Reload projects + users when client changes
     this.groupForm.get('clientId')!.valueChanges.subscribe(id => {
-      if (id) this.loadUsers(id);
+      if (id) { this.loadProjects(id); this.loadUsers(id); }
     });
   }
 
   private async loadAll(): Promise<void> {
     try {
-      const currentRole = await this.authService.getCurrentUserRole();
+      this.currentRole = await this.authService.getCurrentUserRole();
+      const currentRole = this.currentRole;
 
       // Load clients
       if (currentRole === 'admin_client') {
-        const clientId = await this.authService.getCurrentClientId();
-        if (clientId) {
-          const snap = await getDoc(doc(this.firestore, `clients/${clientId}`));
-          this.clients = snap.exists()
-            ? [{ id: clientId, name: (snap.data() as any)['companyName'] || '' }]
-            : [];
+        const clientIds = await this.authService.getCurrentUserClientIds();
+        if (clientIds.length > 0) {
+          const snaps = await Promise.all(clientIds.map(id => getDoc(doc(this.firestore, `clients/${id}`))));
+          this.clients = snaps
+            .filter(s => s.exists())
+            .map(s => ({ id: s.id, name: (s.data() as any)['companyName'] || '' }));
         }
         this.groupForm.get('clientId')!.disable();
       } else {
@@ -111,15 +116,20 @@ export class EditGroupComponent implements OnInit {
       const savedUserIds: string[] = data['userIds'] || [];
       this.memberCount  = savedUserIds.length;
 
-      // Load users for the saved clientId
+      // Load projects + users for the saved clientId
       if (data['clientId']) {
-        await this.loadUsers(data['clientId']);
+        await Promise.all([
+          this.loadProjects(data['clientId']),
+          this.loadUsers(data['clientId']),
+        ]);
       }
 
       this.groupForm.patchValue({
         name:        data['name']        || '',
         description: data['description'] || '',
         clientId:    data['clientId']    || '',
+        allProjects: data['allProjects'] === true,
+        projectIds:  data['projectIds']  || [],
         userIds:     savedUserIds,
       });
     } catch {
@@ -130,16 +140,46 @@ export class EditGroupComponent implements OnInit {
     }
   }
 
-  async loadUsers(clientId: string): Promise<void> {
+  async loadProjects(clientId: string): Promise<void> {
     try {
       const snap = await getDocs(
-        query(collection(this.firestore, 'users'), where('client', '==', clientId))
+        query(collection(this.firestore, 'projects'), where('clientId', '==', clientId))
       );
-      this.users = snap.docs.map(d => ({
-        id:      d.id,
-        name:    (d.data() as any)['name']    || '',
-        surname: (d.data() as any)['surname'] || '',
-      }));
+      this.projects = snap.docs
+        .map(d => ({ id: d.id, name: (d.data() as any)['name'] || '' }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    } catch {
+      this.projects = [];
+    }
+  }
+
+  async loadUsers(clientId: string): Promise<void> {
+    if (!this.currentRole) {
+      this.currentRole = await this.authService.getCurrentUserRole();
+    }
+    try {
+      const usersCol = collection(this.firestore, 'users');
+
+      if (this.currentRole === 'admin_master') {
+        const snap = await getDocs(
+          query(usersCol, where('role', 'in', ['viewer', 'admin_client']))
+        );
+        const map = new Map<string, any>();
+        snap.docs.forEach(d => map.set(d.id, d));
+        this.users = Array.from(map.values())
+          .map(d => ({ id: d.id, name: (d.data() as any)['name'] || '', surname: (d.data() as any)['surname'] || '' }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      } else {
+        const [snapLegacy, snapArray] = await Promise.all([
+          getDocs(query(usersCol, where('client', '==', clientId))),
+          getDocs(query(usersCol, where('clients', 'array-contains', clientId))),
+        ]);
+        const map = new Map<string, any>();
+        [...snapLegacy.docs, ...snapArray.docs].forEach(d => map.set(d.id, d));
+        this.users = Array.from(map.values())
+          .map(d => ({ id: d.id, name: (d.data() as any)['name'] || '', surname: (d.data() as any)['surname'] || '' }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      }
     } catch {
       this.users = [];
     }
@@ -158,12 +198,14 @@ export class EditGroupComponent implements OnInit {
     if (this.groupForm.invalid || this.isSaving) return;
     this.isSaving = true;
     try {
-      const { name, description, userIds } = this.groupForm.value;
+      const { name, description, allProjects, projectIds, userIds } = this.groupForm.value;
       const clientId = this.groupForm.get('clientId')?.value;
       await updateDoc(doc(this.firestore, `userGroups/${this.groupId}`), {
         name,
         description,
         clientId,
+        allProjects: allProjects === true,
+        projectIds: allProjects ? [] : (projectIds || []),
         userIds,
         updatedAt: new Date(),
       });

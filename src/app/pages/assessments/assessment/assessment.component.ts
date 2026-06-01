@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import * as Survey from 'survey-angular';
 import { SurveyService } from './survey.service';
@@ -7,20 +7,19 @@ import {
   Firestore,
   doc,
   getDoc,
-  updateDoc,
-  runTransaction,
-  increment,
   query,
   where,
   getDocs,
   collection,
+  onSnapshot,
+  Timestamp,
+  updateDoc,
 } from '@angular/fire/firestore';
+import { ProjectService } from 'src/app/services/project.service';
 
-// Defina a interface para o objeto Assessment retornado pelo SurveyService
 interface Assessment {
   surveyJSON: any;
-  ['theme']?: any; // Usando any para flexibilidade, pois ITheme pode não existir nessa versão
-  // Adicione outros campos, se necessário (ex.: clientId, name, etc.)
+  ['theme']?: any;
 }
 
 @Component({
@@ -30,19 +29,26 @@ interface Assessment {
   templateUrl: './assessment.component.html',
   styleUrls: ['./assessment.component.scss'],
 })
-export class AssessmentComponent implements OnInit {
+export class AssessmentComponent implements OnInit, OnDestroy {
   surveyJSON: any;
   token: string | null = null;
   participantId: string | null = null;
   assessmentId: string | null = null;
+
   surveyCompleted = false;
   alreadyCompleted = false;
   linkCancelled = false;
+  showExpiredScreen = false;
+  showMidFillExpiredModal = false;
+  formSubmitted = false;
+
+  private linkUnsubscribe: (() => void) | null = null;
 
   constructor(
     private route: ActivatedRoute,
     private surveyService: SurveyService,
-    private firestore: Firestore // Injetei Firestore para atualizações diretas, se necessário
+    private firestore: Firestore,
+    private projectService: ProjectService,
   ) {}
 
   ngOnInit(): void {
@@ -57,11 +63,14 @@ export class AssessmentComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    this.linkUnsubscribe?.();
+  }
+
   async checkAndLoadSurvey(
     assessmentId: string,
     participantId: string
   ): Promise<void> {
-    // Verifica se o link foi cancelado
     const linkQuery = query(
       collection(this.firestore, 'assessmentLinks'),
       where('assessmentId', '==', assessmentId),
@@ -69,18 +78,30 @@ export class AssessmentComponent implements OnInit {
     );
     const linkSnap = await getDocs(linkQuery);
 
-    // Sem link nenhum = link inválido ou nunca enviado → bloqueia acesso
     if (linkSnap.empty) {
       this.linkCancelled = true;
       return;
     }
 
-    // Todos os links cancelados/expirados → bloqueia acesso
-    const statuses = linkSnap.docs.map(d => d.data()['status'] as string);
-    const allInactive = statuses.every(s => s === 'cancelled' || s === 'expired');
-    if (allInactive) {
-      this.linkCancelled = true;
+    // Encontra o link mais relevante (prioritize: pending > completed > others)
+    const docs = linkSnap.docs;
+    const pendingDoc = docs.find(d => d.data()['status'] === 'pending');
+    const completedDoc = docs.find(d => d.data()['status'] === 'completed');
+    const activeDoc = pendingDoc ?? completedDoc ?? docs[0];
+    const activeStatus: string = activeDoc.data()['status'];
+
+    if (activeStatus === 'expired') {
+      this.showExpiredScreen = true;
       return;
+    }
+
+    if (activeStatus === 'cancelled') {
+      // Verifica se há algum link que não seja cancelled
+      const hasActive = docs.some(d => !['cancelled', 'expired'].includes(d.data()['status']));
+      if (!hasActive) {
+        this.linkCancelled = true;
+        return;
+      }
     }
 
     this.alreadyCompleted = await this.surveyService.checkIfAssessmentCompleted(
@@ -92,13 +113,20 @@ export class AssessmentComponent implements OnInit {
       return;
     }
 
+    // Listener em tempo real: exibe modal se link expirar durante o preenchimento
+    const linkDocRef = doc(this.firestore, 'assessmentLinks', activeDoc.id);
+    this.linkUnsubscribe = onSnapshot(linkDocRef, (snap) => {
+      const data = snap.data();
+      if (data?.['status'] === 'expired' && !this.formSubmitted && !this.showMidFillExpiredModal) {
+        this.showMidFillExpiredModal = true;
+      }
+    });
+
     await this.loadSurvey(assessmentId, participantId);
   }
 
   async loadSurvey(assessmentId: string, participantId: string): Promise<void> {
-    const assessment: any = await this.surveyService.getAssessment(
-      assessmentId
-    );
+    const assessment: any = await this.surveyService.getAssessment(assessmentId);
 
     if (assessment && assessment.surveyJSON) {
       this.surveyJSON = assessment.surveyJSON;
@@ -110,12 +138,10 @@ export class AssessmentComponent implements OnInit {
 
         const participantRef = doc(this.firestore, `participants/${participantId}`);
         const participantSnap = await getDoc(participantRef);
-        console.log('[nome_avaliado] participantId:', participantId, 'exists:', participantSnap.exists());
 
         if (participantSnap.exists()) {
           const participantData = participantSnap.data();
           const participantType: string = participantData['type'] || '';
-          console.log('[nome_avaliado] type:', participantType, 'name:', participantData['name']);
 
           if (participantType === 'avaliador') {
             const linkQuery = query(
@@ -124,10 +150,8 @@ export class AssessmentComponent implements OnInit {
               where('assessmentId', '==', assessmentId)
             );
             const linkSnap = await getDocs(linkQuery);
-            console.log('[nome_avaliado] links found:', linkSnap.size, linkSnap.docs.map(d => d.data()));
             if (!linkSnap.empty) {
               const avaliadoId: string = linkSnap.docs[0].data()['avaliadoId'] || '';
-              console.log('[nome_avaliado] avaliadoId:', avaliadoId);
               if (avaliadoId) {
                 const avaliadoSnap = await getDoc(doc(this.firestore, `participants/${avaliadoId}`));
                 if (avaliadoSnap.exists()) {
@@ -140,7 +164,6 @@ export class AssessmentComponent implements OnInit {
           }
         }
 
-        console.log('[nome_avaliado] avaliadoName resolvido:', avaliadoName);
         const jsonStr = JSON.stringify(surveyJSONFinal)
           .replace(/\{\{nome_avaliado\}\}/g, avaliadoName);
         surveyJSONFinal = JSON.parse(jsonStr);
@@ -148,52 +171,33 @@ export class AssessmentComponent implements OnInit {
         console.warn('Não foi possível substituir {{nome_avaliado}}:', e);
       }
 
-      // Carregar o tema do atributo 'theme' do documento, se existir
-      const theme: any = assessment['theme']; // Usando any para flexibilidade
-
+      const theme: any = assessment['theme'];
       const survey = new Survey.Model(surveyJSONFinal);
 
-      // Configurar locale pelo idioma do navegador (pt, en, es)
       const browserLang = navigator.language?.split('-')[0]?.toLowerCase();
       const supportedLocales = ['pt', 'en', 'es'];
       survey.locale = supportedLocales.includes(browserLang) ? browserLang : 'pt';
 
-      // Aplicar o tema salvo, se existir, com validação para versão 1.12.23
       if (theme && theme.cssVariables) {
         try {
-          // Tentar aplicar as variáveis CSS diretamente
           Object.entries(theme.cssVariables).forEach(([key, value]) => {
-            // Usar notação de colchetes para acessar setCssVariable, se existir
             if ('setCssVariable' in survey) {
               (survey as any)['setCssVariable'](key, value as string);
             } else {
-              // Alternativa: aplicar via CSS dinâmico (se setCssVariable não existe)
               const style = document.createElement('style');
               style.textContent = `:root { ${key}: ${value}; }`;
               document.head.appendChild(style);
-              console.warn(
-                'Usando CSS dinâmico, pois setCssVariable não está disponível.'
-              );
             }
           });
 
-          // Tentar aplicar o tema, se suportado
           if ('theme' in survey) {
-            survey['theme'] = theme; // Usar notação de colchetes
-             // Log para depuração
-          } else {
-            console.warn(
-              'Propriedade theme não suportada nesta versão do SurveyJS.'
-            );
+            survey['theme'] = theme;
           }
         } catch (error) {
           console.error('Erro ao aplicar o tema:', error);
         }
-      } else {
-        console.warn('Nenhum tema ou cssVariables encontrado no documento.');
       }
 
-      // Carrega progresso anterior, se houver
       const existingData = await this.surveyService.getAssessmentProgress(
         assessmentId,
         participantId
@@ -213,7 +217,7 @@ export class AssessmentComponent implements OnInit {
 
   async onValueChanged(sender: Survey.SurveyModel): Promise<void> {
     const surveyData = sender.data;
-    
+
     if (this.assessmentId && this.token && this.participantId) {
       try {
         await this.surveyService.saveAssessmentProgress(
@@ -225,8 +229,6 @@ export class AssessmentComponent implements OnInit {
       } catch (error) {
         console.error('Erro ao salvar progresso:', error);
       }
-    } else {
-      console.warn('Faltam parâmetros para salvar o progresso.');
     }
   }
 
@@ -242,8 +244,10 @@ export class AssessmentComponent implements OnInit {
           surveyData
         );
 
-        // Marca link como completed + deduz crédito atomicamente (idempotente)
-        await this.deductAndMarkCompleted(this.assessmentId, this.participantId);
+        this.formSubmitted = true;
+        this.linkUnsubscribe?.(); // Para o listener — formulário já foi enviado
+
+        await this.markLinkCompletedAndCheckProject(this.assessmentId, this.participantId);
 
         this.surveyCompleted = true;
       } catch (error) {
@@ -255,89 +259,52 @@ export class AssessmentComponent implements OnInit {
   }
 
   /**
-   * Operação atômica e idempotente que:
-   * 1. Marca assessmentLinks.status = 'completed'
-   * 2. Marca participants.creditDeducted = true
-   * 3. Move crédito: reservedCredits-1 + creditsUsed+1 (novo sistema)
-   *    ou credits-1 + creditsUsed+1 (legado sem reserva)
-   *
-   * Não faz FIFO incremental nos creditOrders — isso fica exclusivamente
-   * em sincronizarCreditosClientes / onAssessmentCompleted (Cloud Function).
-   *
-   * CORREÇÃO 4: sem FIFO incremental  |  CORREÇÃO 5: runTransaction idempotente
+   * 1. Marca o assessmentLink como completed.
+   * 2. Verifica se todos os outros links do projeto (mesmo projectId) estão
+   *    concluídos (completed, expired ou cancelled).
+   * 3. Se sim → chama concludeProject('system') via ProjectService.
    */
-  private async deductAndMarkCompleted(
+  private async markLinkCompletedAndCheckProject(
     assessmentId: string,
     participantId: string
   ): Promise<void> {
     try {
-      const participantRef = doc(this.firestore, `participants/${participantId}`);
-
-      // ── Resolve refs FORA da transação (queries não permitidas dentro) ──
-
-      // clientId — direto no participante ou via projeto
-      const pSnap = await getDoc(participantRef);
-      if (!pSnap.exists()) return;
-      const pData = pSnap.data();
-
-      let clientId: string = pData['clientId'] || '';
-      if (!clientId && pData['projectId']) {
-        const projSnap = await getDoc(doc(this.firestore, `projects/${pData['projectId']}`));
-        if (projSnap.exists()) clientId = projSnap.data()['clientId'] || '';
-      }
-      if (!clientId) return;
-
-      const clientRef = doc(this.firestore, `clients/${clientId}`);
-
-      // assessmentLink doc ref (query fora da transação)
+      // Resolve o link ativo
       const linkQ = query(
         collection(this.firestore, 'assessmentLinks'),
         where('assessmentId', '==', assessmentId),
-        where('participantId', '==', participantId)
+        where('participantId', '==', participantId),
+        where('status', '==', 'pending')
       );
       const linkSnap = await getDocs(linkQ);
-      if (linkSnap.empty) {
-        console.warn('Nenhum assessmentLink encontrado — conclusão não registrada.');
-        return;
-      }
+      if (linkSnap.empty) return;
+
       const linkDocRef = doc(this.firestore, 'assessmentLinks', linkSnap.docs[0].id);
+      const projectId: string = linkSnap.docs[0].data()['projectId'] || '';
 
-      // ── Transação atômica ────────────────────────────────────────────────
-      await runTransaction(this.firestore, async (t) => {
-        const freshParticipant = await t.get(participantRef);
-        if (!freshParticipant.exists()) return;
-
-        const freshLink = await t.get(linkDocRef);
-        const creditWasReserved =
-          freshLink.exists() && freshLink.data()?.['creditReserved'] === true;
-
-        // Sempre marca o link como completed
-        t.update(linkDocRef, { status: 'completed', completedAt: new Date() });
-
-        // Idempotência: se já deduziu, apenas o link update é necessário
-        if (freshParticipant.data()['creditDeducted'] === true) return;
-
-        // Marca participante — impede re-execução em caso de retry
-        t.update(participantRef, { creditDeducted: true });
-
-        // Deduz do cliente via FieldValue.increment (atômico, sem ler o valor atual)
-        if (creditWasReserved) {
-          // Novo sistema: crédito já foi debitado de credits no disparo → move reserved→used
-          t.update(clientRef, {
-            reservedCredits: increment(-1),
-            creditsUsed:     increment(1),
-          });
-        } else {
-          // Legado: crédito nunca foi reservado → desconta de credits agora
-          t.update(clientRef, {
-            credits:     increment(-1),
-            creditsUsed: increment(1),
-          });
-        }
+      // Marca o link como completed
+      await updateDoc(linkDocRef, {
+        status: 'completed',
+        completedAt: Timestamp.now(),
       });
+
+      if (!projectId) return;
+
+      // Verifica se ainda há links pendentes no projeto
+      const pendingQ = query(
+        collection(this.firestore, 'assessmentLinks'),
+        where('projectId', '==', projectId),
+        where('status', '==', 'pending')
+      );
+      const pendingSnap = await getDocs(pendingQ);
+
+      if (pendingSnap.empty) {
+        // Todos responderam → conclui o projeto automaticamente
+        await this.projectService.concludeProject(projectId, 'system');
+      }
     } catch (error) {
-      // Não bloqueia a exibição da tela de conclusão
-      console.error('Erro ao registrar conclusão e deduzir crédito:', error);
+      // Não bloqueia a tela de conclusão
+      console.error('Erro ao registrar conclusão e verificar projeto:', error);
     }
   }
 }

@@ -534,6 +534,7 @@
     padding: 8px 18px;
 
     &--used      { background: rgba(245, 158, 11, 0.07); }
+    &--reserved  { background: rgba(124, 58, 237, 0.07); }
     &--available { background: rgba(76, 175, 80, 0.07); }
   }
 
@@ -549,6 +550,7 @@
     line-height: 1.1;
 
     .credits-totals__item--used &      { color: #b45309; }
+    .credits-totals__item--reserved &  { color: #7c3aed; }
     .credits-totals__item--available & { color: #16a34a; }
   }
 
@@ -560,6 +562,7 @@
     margin-top: 1px;
 
     .credits-totals__item--used &      { color: #92400e; }
+    .credits-totals__item--reserved &  { color: #6d28d9; }
     .credits-totals__item--available & { color: #15803d; }
   }
 }
@@ -915,7 +918,7 @@
 // ── Sub-cabeçalho de colunas nos projetos expandidos ─────────
 .credits-project-cols-header {
   display: grid;
-  grid-template-columns: 1fr 80px 80px;
+  grid-template-columns: 1fr 110px;
   gap: 8px;
   padding: 4px 0 6px;
   border-bottom: 1px solid #e2e8f0;
@@ -935,25 +938,19 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     text-align: center;
-
-    &--used     { color: #b45309; }
-    &--reserved { color: #7c3aed; }
+    color: #94a3b8;
   }
 }
 
 .credits-project-item {
   display: grid;
-  grid-template-columns: 1fr 80px 80px;
+  grid-template-columns: 1fr 110px;
   align-items: center;
   gap: 8px;
   padding: 5px 0;
 
   &:not(:last-child) {
     border-bottom: 1px dashed #f1f5f9;
-  }
-
-  &__dot {
-    display: none; // dot replaced by grid layout
   }
 
   &__name {
@@ -969,39 +966,33 @@
     white-space: nowrap;
   }
 
-  &__used {
-    display: flex;
+  &__status-badge {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    font-size: 13px;
-    font-weight: 700;
-    color: #b45309;
-
-    &--zero { color: #cbd5e1; text-align: center; font-size: 13px; }
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
 
     mat-icon {
-      font-size: 13px;
-      width: 13px;
-      height: 13px;
+      font-size: 12px;
+      width: 12px;
+      height: 12px;
     }
-  }
 
-  &__reserved {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    font-size: 13px;
-    font-weight: 700;
-    color: #7c3aed;
+    &--reserved {
+      background: #f3e8ff;
+      color: #7c3aed;
+      border: 1px solid #ddd6fe;
+    }
 
-    &--zero { color: #cbd5e1; text-align: center; font-size: 13px; }
-
-    mat-icon {
-      font-size: 13px;
-      width: 13px;
-      height: 13px;
+    &--consumed {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
     }
   }
 
@@ -1014,7 +1005,6 @@
     flex-shrink: 0;
   }
 
-  // Linha de projeto órfão (excluído ou sem projeto)
   &--orphan {
     background: rgba(245, 158, 11, 0.04);
     border-radius: 6px;
@@ -1094,11 +1084,26 @@
   ::ng-deep .mat-column-responseRate { width: 180px; }
   ::ng-deep .mat-column-deadline   { width: 120px; }
   ::ng-deep .mat-column-status     { width: 130px; }
+  ::ng-deep .mat-column-actions    { width: 48px; text-align: center; padding: 0 8px !important; }
 }
 
 .project-row {
   cursor: pointer;
-  &:hover { background: #f8faff !important; }
+  &:hover {
+    background: #f8faff !important;
+    .row-arrow-icon { color: #1B84FF; transform: translateX(3px); }
+  }
+}
+
+.col-actions { text-align: center; }
+
+.row-arrow-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #cbd5e1;
+  transition: color 0.15s, transform 0.15s;
+  vertical-align: middle;
 }
 
 .col-name { font-weight: 500; }
@@ -1304,6 +1309,7 @@
     &--blue   { background: linear-gradient(135deg, #1B84FF, #1565c0); }
     &--purple { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
     &--green  { background: linear-gradient(135deg, #4caf50, #388e3c); }
+    &--orange { background: linear-gradient(135deg, #ffb22b, #f59e0b); }
   }
 
   &__text {

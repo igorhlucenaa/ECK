@@ -3,9 +3,11 @@ import {
   AbstractControl,
   AsyncValidatorFn,
   FormBuilder,
+  FormControl,
   FormGroup,
   ReactiveFormsModule,
   ValidationErrors,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import {
@@ -26,6 +28,8 @@ import {
   query,
   where,
   addDoc,
+  arrayUnion,
+  arrayRemove,
 } from '@angular/fire/firestore';
 import {
   Auth,
@@ -67,7 +71,14 @@ export class CreateUserComponent implements OnInit {
   userForm!: FormGroup;
   clients: { id: string; name: string }[] = [];
   projects: { id: string; name: string }[] = [];
-  groups: { id: string; name: string }[] = [];
+
+  // Grupos para seleção (viewer)
+  allGroups: { id: string; name: string; clientId: string; clientName: string; projectIds: string[]; projectNames: string[] }[] = [];
+  filteredGroups: typeof this.allGroups = [];
+  clientFilterCtrl = new FormControl('');
+  derivedClientName = '';
+  derivedProjectNames: string[] = [];
+
   roles = [
     { label: 'Admin Master', value: 'admin_master' },
     { label: 'Admin Cliente', value: 'admin_client' },
@@ -122,6 +133,11 @@ export class CreateUserComponent implements OnInit {
     }
   }
 
+  private groupsRequiredValidator(): ValidatorFn {
+    return (ctrl: AbstractControl): ValidationErrors | null =>
+      Array.isArray(ctrl.value) && ctrl.value.length > 0 ? null : { groupRequired: true };
+  }
+
   private initializeForm(): void {
     this.userForm = this.fb.group({
       name: ['', Validators.required],
@@ -129,8 +145,7 @@ export class CreateUserComponent implements OnInit {
       email: ['', [Validators.required, Validators.email], [this.emailUniqueValidator()]],
       password: [''],
       clients: [[] as string[]],
-      project: [''],
-      group: [''],
+      groups: [[] as string[]],
       role: ['', Validators.required],
     });
   }
@@ -179,15 +194,61 @@ export class CreateUserComponent implements OnInit {
 
   get emailCtrl() { return this.userForm.get('email')!; }
 
-  private async prefillForm(user: any): Promise<void> {
-    // Suporta tanto campo legado `client` (string) quanto novo `clients` (array)
-    const existingClients: string[] = Array.isArray(user.clients)
-      ? user.clients
-      : user.client ? [user.client] : [];
+  get selectedRole(): string { return this.userForm.get('role')?.value || ''; }
 
-    if (existingClients.length > 0) {
-      await this.onClientChange(existingClients[0]);
+  onRoleChange(role: string): void {
+    const clientsCtrl = this.userForm.get('clients')!;
+    const groupsCtrl = this.userForm.get('groups')!;
+
+    clientsCtrl.clearValidators(); clientsCtrl.setValue([]);
+    groupsCtrl.clearValidators(); groupsCtrl.setValue([]);
+    this.derivedClientName = ''; this.derivedProjectNames = [];
+    this.filteredGroups = []; this.clientFilterCtrl.setValue('');
+
+    if (role === 'admin_client') {
+      clientsCtrl.setValidators([Validators.required]);
+    } else if (role === 'viewer') {
+      groupsCtrl.setValidators([this.groupsRequiredValidator()]);
+      this.loadAllGroups().then(() => {
+        this.filteredGroups = [...this.allGroups];
+      });
     }
+
+    clientsCtrl.updateValueAndValidity();
+    groupsCtrl.updateValueAndValidity();
+  }
+
+  onClientFilterChange(clientId: string): void {
+    this.filteredGroups = clientId
+      ? this.allGroups.filter(g => g.clientId === clientId)
+      : [...this.allGroups];
+    // Limpa grupos selecionados se não pertencem mais ao filtro
+    const current: string[] = this.userForm.get('groups')?.value || [];
+    const valid = current.filter(id => this.filteredGroups.some(g => g.id === id));
+    if (valid.length !== current.length) {
+      this.userForm.get('groups')?.setValue(valid);
+      this.onGroupsChange(valid);
+    }
+  }
+
+  onGroupsChange(groupIds: string[]): void {
+    if (!groupIds?.length) {
+      this.derivedClientName = ''; this.derivedProjectNames = []; return;
+    }
+    const selected = this.allGroups.filter(g => groupIds.includes(g.id));
+    this.derivedClientName = selected[0]?.clientName || '';
+    const projSet = new Set<string>();
+    selected.forEach(g => g.projectNames.forEach(p => projSet.add(p)));
+    this.derivedProjectNames = [...projSet];
+  }
+
+  private async prefillForm(user: any): Promise<void> {
+    const existingClients: string[] = Array.isArray(user.clients)
+      ? user.clients : user.client ? [user.client] : [];
+    const existingGroups: string[] = Array.isArray(user.groups) ? user.groups : [];
+
+    if (user.role) this.onRoleChange(user.role);
+    if (this.allGroups.length === 0) await this.loadAllGroups();
 
     this.userForm.patchValue({
       name: user.name,
@@ -195,86 +256,72 @@ export class CreateUserComponent implements OnInit {
       email: user.email,
       role: user.role,
       clients: existingClients,
+      groups: existingGroups,
     });
 
-    if (user.project) this.userForm.get('project')?.enable();
-    if (user.group) this.userForm.get('group')?.enable();
+    if (existingGroups.length > 0) this.onGroupsChange(existingGroups);
   }
 
   private async loadClients(): Promise<void> {
     try {
       const userRole = await this.getCurrentUserRole();
-      const clientId = await this.authService.getCurrentClientId();
+      const clientsCollection = collection(this.firestore, 'clients');
+      let snapshot;
 
-      if (userRole === 'admin_client' && clientId) {
-        this.clients = [
-          {
-            id: clientId,
-            name: 'Seu Cliente',
-          },
-        ];
-        this.userForm.get('clients')?.setValue([clientId]);
-        this.userForm.get('clients')?.disable();
-      } else if (userRole === 'admin_master') {
-        const clientsCollection = collection(this.firestore, 'clients');
-        const snapshot = await getDocs(clientsCollection);
-        this.clients = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          name: doc.data()['companyName'] || 'Sem Nome',
-        }));
+      if (userRole === 'admin_client') {
+        const clientIds = await this.authService.getCurrentUserClientIds();
+        if (clientIds.length === 0) { this.clients = []; return; }
+        snapshot = await getDocs(query(clientsCollection, where('__name__', 'in', clientIds)));
+        this.clients = snapshot.docs.map(d => ({ id: d.id, name: d.data()['companyName'] || 'Sem Nome' }));
+        if (this.clients.length > 0) {
+          this.userForm.get('clients')?.setValue([this.clients[0].id]);
+          this.userForm.get('clients')?.disable();
+        }
+      } else {
+        snapshot = await getDocs(clientsCollection);
+        this.clients = snapshot.docs
+          .map(d => ({ id: d.id, name: d.data()['companyName'] || 'Sem Nome' }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
       }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), {
-        duration: 3000,
-      });
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
-  async onClientChange(clientId: string): Promise<void> {
-
-    if (!clientId) {
-      console.warn('Nenhum cliente válido selecionado.');
-      return;
-    }
-
-    // Inicializa os campos dependentes
-    this.projects = [];
-    this.groups = [];
-    this.userForm.patchValue({ project: '', group: '' });
-
+  private async loadAllGroups(): Promise<void> {
     try {
-      // Carrega projetos relacionados ao cliente
-      const projectsCollection = collection(this.firestore, 'projects');
-      const projectsQuery = query(
-        projectsCollection,
-        where('clientId', '==', clientId)
-      );
-      const projectsSnapshot = await getDocs(projectsQuery);
-      this.projects = projectsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'] || 'Sem Nome',
-      }));
+      const userRole = await this.getCurrentUserRole();
+      const groupsSnap = userRole === 'admin_client'
+        ? await getDocs(query(collection(this.firestore, 'userGroups'),
+            where('clientId', 'in', await this.authService.getCurrentUserClientIds())))
+        : await getDocs(collection(this.firestore, 'userGroups'));
 
-      // Carrega grupos relacionados ao cliente
-      const groupsCollection = collection(this.firestore, 'userGroups');
-      const groupsQuery = query(
-        groupsCollection,
-        where('clientId', '==', clientId)
-      );
-      const groupsSnapshot = await getDocs(groupsQuery);
-      this.groups = groupsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'] || 'Sem Nome',
-      }));
+      const clientsSnap = await getDocs(collection(this.firestore, 'clients'));
+      const clientMap = new Map(clientsSnap.docs.map(d => [d.id, d.data()['companyName'] || '']));
 
-                } catch (error) {
-      console.error('Erro ao carregar projetos ou grupos:', error);
-      this.snackBar.open(this.translate.instant('Erro ao carregar projetos ou grupos.'), this.translate.instant('Fechar'), {
-        duration: 3000,
-      });
+      const projectsSnap = await getDocs(collection(this.firestore, 'projects'));
+      const projectMap = new Map(projectsSnap.docs.map(d => [d.id, d.data()['name'] || '']));
+
+      this.allGroups = groupsSnap.docs.map(d => {
+        const data = d.data();
+        const projectIds: string[] = data['projectIds'] || [];
+        return {
+          id: d.id,
+          name: data['name'] || '',
+          clientId: data['clientId'] || '',
+          clientName: clientMap.get(data['clientId']) || '',
+          projectIds,
+          projectNames: projectIds.map(pid => projectMap.get(pid) || pid).filter(Boolean),
+        };
+      }).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+      this.filteredGroups = [...this.allGroups];
+    } catch (e) {
+      console.error('Erro ao carregar grupos:', e);
     }
   }
+
 
   async saveUser(): Promise<void> {
     if (this.userForm.invalid || this.userForm.pending) return;
@@ -299,20 +346,42 @@ export class CreateUserComponent implements OnInit {
     }
 
     try {
-      const { name, surname, email, project, group, role } = this.userForm.value;
-      const clients: string[] = this.userForm.get('clients')?.value || [];
+      const { name, surname, email, role } = this.userForm.value;
+      const selectedGroups: string[] = this.userForm.get('groups')?.value || [];
       const emailLower = (email || '').toLowerCase().trim();
+
+      // Derivar client e projects dos grupos selecionados
+      const groupObjs = this.allGroups.filter(g => selectedGroups.includes(g.id));
+      const derivedClientId = groupObjs[0]?.clientId || '';
+      const derivedProjectIds = [...new Set(groupObjs.flatMap(g => g.projectIds))];
+      const derivedClients = derivedClientId ? [derivedClientId] : (this.userForm.get('clients')?.value || []);
 
       if (this.isEditMode) {
         const usersCollection = collection(this.firestore, 'users');
-        const userQuery = query(usersCollection, where('email', '==', email));
-        const querySnapshot = await getDocs(userQuery);
+        const querySnapshot = await getDocs(query(usersCollection, where('email', '==', email)));
 
         if (!querySnapshot.empty) {
-          await updateDoc(querySnapshot.docs[0].ref, {
-            name, surname, email, emailLower, clients, project, group, role,
-            updatedAt: new Date(),
-          });
+          const userDocRef = querySnapshot.docs[0].ref;
+          const userId = querySnapshot.docs[0].id;
+          const oldGroups: string[] = querySnapshot.docs[0].data()['groups'] || [];
+
+          const updateData: any = {
+            name, surname, emailLower, role, updatedAt: new Date(),
+            groups: selectedGroups,
+            clients: derivedClients,
+            client: derivedClientId || derivedClients[0] || '',
+            projects: derivedProjectIds,
+          };
+          await updateDoc(userDocRef, updateData);
+
+          // Sincronizar membros dos grupos
+          const removed = oldGroups.filter(id => !selectedGroups.includes(id));
+          const added = selectedGroups.filter(id => !oldGroups.includes(id));
+          await Promise.all([
+            ...removed.map(gId => updateDoc(doc(this.firestore, 'userGroups', gId), { userIds: arrayRemove(userId) })),
+            ...added.map(gId => updateDoc(doc(this.firestore, 'userGroups', gId), { userIds: arrayUnion(userId) })),
+          ]);
+
           this.snackBar.open(this.translate.instant('Usuário atualizado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
         } else {
           this.snackBar.open(this.translate.instant('Usuário não encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
@@ -335,19 +404,27 @@ export class CreateUserComponent implements OnInit {
         }
 
         // Cria documento Firestore
-        await addDoc(collection(this.firestore, 'users'), {
-          name, surname, email, emailLower, clients, project, group, role,
+        const newUserData: any = {
+          name, surname, email, emailLower, role,
+          clients: derivedClients,
+          client: derivedClientId || derivedClients[0] || '',
+          projects: derivedProjectIds,
+          groups: selectedGroups,
           status: 'active',
           createdAt: new Date(),
-        });
+        };
+        const newDocRef = await addDoc(collection(this.firestore, 'users'), newUserData);
 
-        // Cria conta Firebase Auth via app secundário (sem deslogar o admin atual)
-        // e envia e-mail de boas-vindas com link para criação de senha (expira em 48h via Firebase Console)
+        // Adicionar usuário aos grupos selecionados
+        await Promise.all(
+          selectedGroups.map(gId => updateDoc(doc(this.firestore, 'userGroups', gId), { userIds: arrayUnion(newDocRef.id) }))
+        );
+
         await this.createAuthAndSendWelcomeEmail(email, name);
 
         this.snackBar.open(
-          this.translate.instant('Usuário criado! E-mail de acesso enviado para {{email}}.', { email }),
-          this.translate.instant('Fechar'),
+          `Usuário criado! E-mail de acesso enviado para ${email}.`,
+          'Fechar',
           { duration: 5000 }
         );
       }

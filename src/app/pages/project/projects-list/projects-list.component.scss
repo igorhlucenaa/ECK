@@ -307,6 +307,14 @@
     }
   }
 
+  // Gerar Relatório
+  &--report:hover:not(:disabled) {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #16a34a;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.12);
+  }
+
   // Mais opções ⋯
   &--more:hover {
     background: #f1f5f9;

@@ -54,6 +54,13 @@
               <span class="eu-profile-info__val">{{ clientNames }}</span>
             </div>
           </div>
+          <div class="eu-profile-info__row" *ngIf="userForm.get('role')?.value === 'viewer' && derivedProjectNames.length > 0">
+            <mat-icon>folder_open</mat-icon>
+            <div>
+              <span class="eu-profile-info__label">Projetos com acesso</span>
+              <span class="eu-profile-info__val">{{ derivedProjectNames.join(', ') }}</span>
+            </div>
+          </div>
         </div>
 
         <div class="eu-profile-card__hint">
@@ -112,7 +119,7 @@
           <mat-form-field appearance="outline" class="eu-field eu-field--full">
             <mat-label>Papel / Perfil</mat-label>
             <mat-icon matPrefix>shield</mat-icon>
-            <mat-select formControlName="role">
+            <mat-select formControlName="role" (selectionChange)="onRoleChange($event.value)">
               <mat-option *ngFor="let role of roles" [value]="role.value">
                 {{ role.label }}
               </mat-option>
@@ -120,18 +127,60 @@
             <mat-error *ngIf="userForm.get('role')?.hasError('required')">Papel é obrigatório</mat-error>
           </mat-form-field>
 
-          <!-- Vínculo -->
-          <p class="eu-section-label">Vínculo com Cliente</p>
-          <mat-form-field appearance="outline" class="eu-field eu-field--full">
-            <mat-label>Clientes</mat-label>
-            <mat-icon matPrefix>business</mat-icon>
-            <mat-select formControlName="clients" multiple>
-              <mat-option *ngFor="let client of clients" [value]="client.id">
-                {{ client.name }}
-              </mat-option>
-            </mat-select>
-            <mat-hint>Selecione um ou mais clientes</mat-hint>
-          </mat-form-field>
+          <!-- Vínculo: cliente (admin_client) ou grupo (viewer) -->
+          <ng-container *ngIf="selectedRole === 'admin_client'">
+            <p class="eu-section-label">Vínculo com Cliente</p>
+            <mat-form-field appearance="outline" class="eu-field eu-field--full">
+              <mat-label>Clientes</mat-label>
+              <mat-icon matPrefix>business</mat-icon>
+              <mat-select formControlName="clients" multiple>
+                <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
+              </mat-select>
+              <mat-hint>Selecione um ou mais clientes</mat-hint>
+            </mat-form-field>
+          </ng-container>
+
+          <ng-container *ngIf="selectedRole === 'viewer'">
+            <p class="eu-section-label">Grupos de Acesso</p>
+
+            <!-- Filtro por cliente (quando há múltiplos clientes) -->
+            <mat-form-field appearance="outline" class="eu-field eu-field--full" *ngIf="clients.length > 1">
+              <mat-label>Filtrar grupos por cliente</mat-label>
+              <mat-icon matPrefix>business</mat-icon>
+              <mat-select [value]="clientFilterValue" (selectionChange)="onClientFilterChange($event.value)">
+                <mat-option value="">Todos os clientes</mat-option>
+                <mat-option *ngFor="let c of clients" [value]="c.id">{{ c.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="eu-field eu-field--full">
+              <mat-label>Grupo(s) *</mat-label>
+              <mat-icon matPrefix>group_work</mat-icon>
+              <mat-select formControlName="groups" multiple (selectionChange)="onGroupsChange($event.value)">
+                <mat-option *ngIf="filteredGroups.length === 0" disabled>
+                  {{ allGroups.length === 0 ? 'Carregando grupos…' : 'Nenhum grupo encontrado' }}
+                </mat-option>
+                <mat-option *ngFor="let group of filteredGroups" [value]="group.id">
+                  <span>{{ group.name }}</span>
+                  <span style="font-size:11px;color:#94a3b8;margin-left:6px">— {{ group.clientName }}</span>
+                </mat-option>
+              </mat-select>
+              <mat-hint>Defina os grupos que este viewer pertence</mat-hint>
+              <mat-error *ngIf="userForm.get('groups')?.hasError('groupRequired')">Selecione pelo menos um grupo</mat-error>
+            </mat-form-field>
+
+            <!-- Info derivada -->
+            <div class="eu-derived-info" *ngIf="derivedClientName || derivedProjectNames.length > 0">
+              <div class="eu-derived-info__item" *ngIf="derivedClientName">
+                <mat-icon>business</mat-icon>
+                <span><strong>Cliente:</strong> {{ derivedClientName }}</span>
+              </div>
+              <div class="eu-derived-info__item" *ngIf="derivedProjectNames.length > 0">
+                <mat-icon>folder_open</mat-icon>
+                <span><strong>Projetos com acesso:</strong> {{ derivedProjectNames.join(', ') }}</span>
+              </div>
+            </div>
+          </ng-container>
 
         </form>
 

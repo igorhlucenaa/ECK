@@ -69,7 +69,7 @@
           <p class="dash-card__sub">{{ 'Utilizados e disponíveis — clientes críticos no topo' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Créditos consumidos = respostas de avaliação recebidas. Disponíveis = saldo restante para novos envios.' | translate"
+                [matTooltip]="'Créditos consumidos = projetos concluídos. Disponíveis = saldo restante para novos projetos.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -77,10 +77,10 @@
         <div class="credits-totals">
           <div class="credits-totals__item credits-totals__item--used">
             <span class="credits-totals__num">{{ totalCreditsUsed }}</span>
-            <span class="credits-totals__lbl">{{ 'Utilizados' | translate }}</span>
+            <span class="credits-totals__lbl">{{ 'Consumidos' | translate }}</span>
           </div>
           <div class="credits-totals__sep"></div>
-          <div class="credits-totals__item" style="color:#f59e0b;">
+          <div class="credits-totals__item credits-totals__item--reserved">
             <span class="credits-totals__num">{{ totalReservedCredits }}</span>
             <span class="credits-totals__lbl">{{ 'Reservados' | translate }}</span>
           </div>
@@ -122,8 +122,8 @@
           <!-- Cabeçalho de colunas -->
           <div class="credits-col-header">
             <div class="credits-col-header__client">{{ 'Cliente' | translate }}</div>
-            <div class="credits-col-header__num credits-col-header__num--used">{{ 'Utilizados' | translate }}</div>
             <div class="credits-col-header__num credits-col-header__num--reserved">{{ 'Reservados' | translate }}</div>
+            <div class="credits-col-header__num credits-col-header__num--used">{{ 'Consumidos' | translate }}</div>
             <div class="credits-col-header__num credits-col-header__num--avail">{{ 'Disponíveis' | translate }}</div>
             <div class="credits-col-header__status">{{ 'Status' | translate }}</div>
             <div class="credits-col-header__expand"></div>
@@ -143,13 +143,12 @@
                 <span class="credits-row-v2__name">{{ r.clientName }}</span>
               </div>
 
-              <div class="credits-row-v2__num credits-row-v2__num--used">
-                <span class="credits-num credits-num--used">{{ r.creditsUsed }}</span>
-              </div>
-
               <div class="credits-row-v2__num credits-row-v2__num--reserved">
                 <span class="credits-num credits-num--reserved">{{ r.reservedCredits }}</span>
-                <mat-icon *ngIf="r.reservedCredits > 0" class="credits-num__icon">lock_outline</mat-icon>
+              </div>
+
+              <div class="credits-row-v2__num credits-row-v2__num--used">
+                <span class="credits-num credits-num--used">{{ r.creditsUsed }}</span>
               </div>
 
               <div class="credits-row-v2__num credits-row-v2__num--avail">
@@ -182,29 +181,27 @@
               <!-- sub-cabeçalho de colunas -->
               <div class="credits-project-cols-header">
                 <span class="credits-project-cols-header__name">{{ 'Projeto' | translate }}</span>
-                <span class="credits-project-cols-header__val credits-project-cols-header__val--used">{{ 'Utilizados' | translate }}</span>
-                <span class="credits-project-cols-header__val credits-project-cols-header__val--reserved">{{ 'Reservados' | translate }}</span>
+                <span class="credits-project-cols-header__val">{{ 'Crédito' | translate }}</span>
               </div>
 
               <div class="credits-project-item" *ngFor="let p of r.projects"
                    [class.credits-project-item--orphan]="p.orphan">
-                <div class="credits-project-item__dot"
-                     [class.credits-project-item__dot--reserved]="p.reserved > 0 && p.used === 0"
-                     [class.credits-project-item__dot--mixed]="p.reserved > 0 && p.used > 0"></div>
                 <span class="credits-project-item__name"
                       [matTooltip]="p.orphan ? 'Projeto não encontrado — ID: ' + p.projectId : ''"
                       [matTooltipDisabled]="!p.orphan">
                   <mat-icon *ngIf="p.orphan" class="credits-project-item__warn">warning_amber</mat-icon>
                   {{ p.projectName }}
                 </span>
-                <span class="credits-project-item__used" *ngIf="p.used > 0">
-                  <mat-icon>toll</mat-icon>{{ p.used }}
+                <span class="credits-project-item__status-badge credits-project-item__status-badge--reserved"
+                      *ngIf="p.reserved"
+                      matTooltip="1 crédito reservado — projeto em andamento">
+                  <mat-icon>lock_outline</mat-icon>Reservado
                 </span>
-                <span class="credits-project-item__used credits-project-item__used--zero" *ngIf="p.used === 0">—</span>
-                <span class="credits-project-item__reserved" *ngIf="p.reserved > 0">
-                  <mat-icon>lock_outline</mat-icon>{{ p.reserved }}
+                <span class="credits-project-item__status-badge credits-project-item__status-badge--consumed"
+                      *ngIf="!p.reserved"
+                      matTooltip="1 crédito consumido — projeto concluído">
+                  <mat-icon>check_circle</mat-icon>Consumido
                 </span>
-                <span class="credits-project-item__reserved credits-project-item__reserved--zero" *ngIf="p.reserved === 0">—</span>
               </div>
             </div>
 
@@ -459,10 +456,17 @@
             </td>
           </ng-container>
 
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row" class="col-actions">
+              <mat-icon class="row-arrow-icon">arrow_forward</mat-icon>
+            </td>
+          </ng-container>
+
           <tr mat-header-row *matHeaderRowDef="masterProjectCols"></tr>
           <tr mat-row *matRowDef="let row; columns: masterProjectCols;"
               class="project-row"
-              [routerLink]="['/projects']"></tr>
+              [routerLink]="['/projects', row.id, 'edit']"></tr>
         </table>
 
         <div class="dash-empty" *ngIf="filteredProjectRows.length === 0">
@@ -638,9 +642,9 @@
 
 
   <!-- ══════════════════════════════════════════════════════════ -->
-  <!-- VISÃO CLIENTE                                             -->
+  <!-- VISÃO CLIENTE / VIEWER                                    -->
   <!-- ══════════════════════════════════════════════════════════ -->
-  <div id="dashboard-content" *ngIf="!isLoading && userRole === 'admin_client'">
+  <div id="dashboard-content" *ngIf="!isLoading && (userRole === 'admin_client' || userRole === 'viewer')">
 
     <!-- ── KPIs (4 cards) ─────────────────────────────────────── -->
     <div class="dash-block-header">
@@ -853,10 +857,22 @@
             </td>
           </ng-container>
 
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row" class="col-actions">
+              <mat-icon class="row-arrow-icon">arrow_forward</mat-icon>
+            </td>
+          </ng-container>
+
           <tr mat-header-row *matHeaderRowDef="clientProjectCols"></tr>
           <tr mat-row *matRowDef="let row; columns: clientProjectCols;"
               class="project-row"
-              [routerLink]="['/projects']"></tr>
+              [routerLink]="userRole === 'viewer'
+                ? ['/reports']
+                : ['/projects', row.id, 'edit']"
+              [queryParams]="userRole === 'viewer'
+                ? { projectId: row.id }
+                : {}"></tr>
         </table>
 
         <div class="dash-empty" *ngIf="filteredProjectRows.length === 0">
@@ -872,6 +888,40 @@
         (page)="onProjectPage($event)"
         class="projects-paginator">
       </mat-paginator>
+    </mat-card>
+
+    <!-- ── Funil de Projetos (admin_client only) ─────────────── -->
+    <mat-card class="dash-card funnel-card" *ngIf="userRole === 'admin_client'">
+      <div class="dash-card__header">
+        <div class="dash-card__header-icon dash-card__header-icon--purple">
+          <mat-icon>filter_alt</mat-icon>
+        </div>
+        <div>
+          <h3 class="dash-card__title">{{ 'Funil de Projetos' | translate }}</h3>
+          <p class="dash-card__sub">{{ 'Progresso dos projetos ativos por etapa' | translate }}</p>
+        </div>
+        <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
+                [matTooltip]="'Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados.' | translate"
+                matTooltipPosition="left" matTooltipClass="dash-tooltip">
+          <mat-icon>info_outline</mat-icon>
+        </button>
+      </div>
+      <div class="funnel-body">
+        <div class="funnel-step funnel-step--active">
+          <div class="funnel-step__value">{{ funnelData.created }}</div>
+          <div class="funnel-step__label">{{ 'Criados' | translate }}</div>
+        </div>
+        <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
+        <div class="funnel-step funnel-step--mid">
+          <div class="funnel-step__value">{{ funnelData.invitesSent }}</div>
+          <div class="funnel-step__label">{{ 'Com convites enviados' | translate }}</div>
+        </div>
+        <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
+        <div class="funnel-step funnel-step--done">
+          <div class="funnel-step__value">{{ funnelData.completed }}</div>
+          <div class="funnel-step__label">{{ 'Concluídos' | translate }}</div>
+        </div>
+      </div>
     </mat-card>
 
     <!-- ── Atalhos Rápidos ────────────────────────────────────── -->
@@ -898,13 +948,26 @@
         <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
       </a>
 
-      <a class="quick-action-btn" routerLink="/users" [queryParams]="{tab: 'groups'}">
+      <a class="quick-action-btn" routerLink="/users" [queryParams]="{tab: 'groups'}"
+         *ngIf="userRole !== 'viewer'">
         <div class="quick-action-btn__icon quick-action-btn__icon--green">
           <mat-icon>group_work</mat-icon>
         </div>
         <div class="quick-action-btn__text">
           <span class="quick-action-btn__label">{{ 'Meus Grupos' | translate }}</span>
           <span class="quick-action-btn__sub">{{ 'Grupos de usuários da empresa' | translate }}</span>
+        </div>
+        <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
+      </a>
+
+      <a class="quick-action-btn" routerLink="/mail-templates"
+         *ngIf="userRole === 'admin_client'">
+        <div class="quick-action-btn__icon quick-action-btn__icon--orange">
+          <mat-icon>email</mat-icon>
+        </div>
+        <div class="quick-action-btn__text">
+          <span class="quick-action-btn__label">{{ 'Modelos de E-mail' | translate }}</span>
+          <span class="quick-action-btn__sub">{{ 'Configurar templates de convites' | translate }}</span>
         </div>
         <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
       </a>
@@ -947,7 +1010,40 @@
         </div>
       </mat-card>
 
-      <mat-card class="dash-card dash-card--table">
+      <!-- Projetos por Status (admin_client only) -->
+      <mat-card class="dash-card" *ngIf="userRole === 'admin_client' && projectsByStatusChart">
+        <div class="dash-card__header">
+          <div class="dash-card__header-icon dash-card__header-icon--purple">
+            <mat-icon>donut_large</mat-icon>
+          </div>
+          <div>
+            <h3 class="dash-card__title">{{ 'Projetos por Status' | translate }}</h3>
+            <p class="dash-card__sub">{{ 'Distribuição de todos os projetos por status atual' | translate }}</p>
+          </div>
+          <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
+                  [matTooltip]="'Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.' | translate"
+                  matTooltipPosition="left" matTooltipClass="dash-tooltip">
+            <mat-icon>info_outline</mat-icon>
+          </button>
+        </div>
+        <div class="dash-card__body">
+          <apx-chart
+            [series]="projectsByStatusChart.series"
+            [chart]="projectsByStatusChart.chart"
+            [plotOptions]="projectsByStatusChart.plotOptions"
+            [colors]="projectsByStatusChart.colors"
+            [dataLabels]="projectsByStatusChart.dataLabels"
+            [xaxis]="projectsByStatusChart.xaxis"
+            [yaxis]="projectsByStatusChart.yaxis"
+            [grid]="projectsByStatusChart.grid"
+            [legend]="projectsByStatusChart.legend"
+            [tooltip]="projectsByStatusChart.tooltip">
+          </apx-chart>
+        </div>
+      </mat-card>
+
+      <!-- Créditos Próximos ao Vencimento (admin_client only) -->
+      <mat-card class="dash-card dash-card--table" *ngIf="userRole === 'admin_client'">
         <div class="dash-card__header">
           <div class="dash-card__header-icon dash-card__header-icon--orange">
             <mat-icon>warning_amber</mat-icon>
@@ -968,6 +1064,6 @@
       </mat-card>
     </div>
 
-  </div><!-- /admin_client -->
+  </div><!-- /admin_client + viewer -->
 
 </div>

@@ -55,7 +55,7 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./pages/clients/clients.routes').then((m) => m.ClientsRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { role: ['admin_master', 'admin_client'] },
       },
       {
         path: 'mail-templates',
@@ -136,7 +136,7 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./pages/users/users.routes').then((m) => m.UsersRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { role: ['admin_master', 'admin_client'] },
       },
     ],
   },

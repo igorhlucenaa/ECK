@@ -22,7 +22,7 @@ import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { EChartsOption } from 'echarts';
 import { ReportsPdfService } from './reports-pdf.service';
-import { ReportPdfMakeService } from '../../services/report-pdfmake.service';
+import { ReportPdfMakeService, DocumentoConfig, DOCUMENTO_CONFIG_PADRAO, PdfHtmlRenderOptions } from '../../services/report-pdfmake.service';
 import { NgxEchartsModule } from 'ngx-echarts';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -439,6 +439,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return '';
   }
 
+  get nomeTemplateSelecionado(): string {
+    return this.savedTemplates.find(t => t.id === this.selectedTemplateId.value)?.name || this.selectedTemplateId.value || '';
+  }
+
   async onBuilderSaveRequested(): Promise<void> {
     if (this.selectedTemplateId.value) {
       await this.atualizarTemplateNoFirebase();
@@ -518,6 +522,93 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return ['admin_client', 'viewer'].includes(this.currentUserRole);
   }
 
+  get selectedAvaliadoReleaseStatus(): 'released' | 'pending' {
+    if (!this.selectedAvaliado) return 'pending';
+    const row = this.dataSource.find(r => r.avaliado === this.selectedAvaliado);
+    return row?.reportStatus === 'released' ? 'released' : 'pending';
+  }
+
+  get reportNeedsPublish(): boolean {
+    return this.selectedAvaliadoReleaseStatus !== 'released'
+      && (this.competencias.length > 0 || this.relatorioConfiguracao.length > 0);
+  }
+
+  // Assinatura do que foi publicado pela última vez (para detectar alterações pendentes)
+  private publishedSignature: string | null = null;
+
+  /** Serializa o estado atual do relatório (competências + seções + layout). */
+  private computeReportSignature(): string {
+    try {
+      return JSON.stringify({
+        c: this.competencias ?? [],
+        s: this.relatorioConfiguracao ?? [],
+        d: this.documentoConfig ?? {},
+      });
+    } catch {
+      return '';
+    }
+  }
+
+  /** True quando o relatório já foi publicado mas há mudanças não publicadas. */
+  get hasUnpublishedChanges(): boolean {
+    if (this.selectedAvaliadoReleaseStatus !== 'released') return false;
+    if (this.publishedSignature === null) return false;
+    return this.computeReportSignature() !== this.publishedSignature;
+  }
+
+  // True quando existe um snapshot ativo (não revogado) que o viewer consegue acessar.
+  hasActiveSnapshot = false;
+
+  /** True quando o viewer tem acesso ao relatório (por status OU por snapshot ativo). */
+  get viewerHasAccess(): boolean {
+    return this.selectedAvaliadoReleaseStatus === 'released' || this.hasActiveSnapshot;
+  }
+
+  /** True quando o status diz "não publicado" mas ainda existe snapshot ativo (estado inconsistente). */
+  get isSnapshotOrphaned(): boolean {
+    return this.selectedAvaliadoReleaseStatus !== 'released' && this.hasActiveSnapshot;
+  }
+
+  /** Verifica no Firestore se há snapshot ativo (não revogado) para o avaliado/projeto atual. */
+  private async checkActiveSnapshot(avaliadoName: string): Promise<void> {
+    this.hasActiveSnapshot = false;
+    if (!this.selectedAssessmentId || !avaliadoName) return;
+    const projectId = this.filterProjectControl.value;
+    try {
+      const qSnap = await getDocs(query(
+        collection(this.firestore, 'releasedReports'),
+        where('assessmentId', '==', this.selectedAssessmentId),
+        where('avaliadoName', '==', avaliadoName)
+      ));
+      this.hasActiveSnapshot = qSnap.docs.some(d => {
+        const data = d.data();
+        if (data['revoked'] === true) return false;
+        const pid = data['projectId'];
+        return !projectId || !pid || pid === projectId;
+      });
+    } catch {
+      this.hasActiveSnapshot = false;
+    }
+  }
+
+  viewerSnapshotLoaded = false;
+
+  get isReportPendingForViewer(): boolean {
+    return ['viewer', 'admin_client'].includes(this.currentUserRole)
+      && this.selectedTabIndex === 2
+      && !!this.selectedAssessmentId
+      && !this.viewerSnapshotLoaded;
+  }
+
+  async toggleReportRelease(): Promise<void> {
+    if (!this.selectedAvaliado) return;
+    if (this.selectedAvaliadoReleaseStatus === 'released') {
+      await this.revokeReportRelease(this.selectedAvaliado);
+    } else {
+      await this.releaseReport(this.selectedAvaliado);
+    }
+  }
+
   consolidation: any[] = [];
   consolidationColumns: string[] = ['pergunta', 'sessao', 'tema', 'resposta', 'respondentes', 'percent', 'score'];
 
@@ -541,15 +632,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     'esmeralda':   { nome: 'Esmeralda',             tipo: 'gradiente', cores: ['#ECFDF5', '#A7F3D0', '#34D399', '#059669', '#064E3B'] },
     'marinho':     { nome: 'Azul Marinho',          tipo: 'gradiente', cores: ['#DBEAFE', '#93C5FD', '#3B82F6', '#1D4ED8', '#1E3A5F'] },
     'slate':       { nome: 'Cinza Azulado',         tipo: 'gradiente', cores: ['#F1F5F9', '#94A3B8', '#64748B', '#334155', '#0F172A'] },
-    // ── CORES SÓLIDAS ───────────────────────────────────────────────────────
-    'flat_material':    { nome: 'Material Flat',       tipo: 'flat', cores: ['#F44336', '#2196F3', '#4CAF50', '#FF9800', '#9C27B0'] },
-    'flat_pastel':      { nome: 'Pastel Suave',        tipo: 'flat', cores: ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#B5EAD7', '#C7CEEA'] },
-    'flat_terra':       { nome: 'Tons de Terra',       tipo: 'flat', cores: ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51'] },
-    'flat_vibrante':    { nome: 'Ultra Vibrante',      tipo: 'flat', cores: ['#EF476F', '#FFD166', '#06D6A0', '#118AB2', '#9B59B6'] },
-    'flat_nordico':     { nome: 'Nórdico & Frio',      tipo: 'flat', cores: ['#2C3E50', '#457B9D', '#A8DADC', '#CDB4DB', '#F4ACB7'] },
-    'flat_tropico':     { nome: 'Tropical',            tipo: 'flat', cores: ['#D62246', '#F79D65', '#FFE66D', '#4ECDC4', '#1A535C'] },
-    'flat_retro':       { nome: 'Retrô',               tipo: 'flat', cores: ['#E07A5F', '#3D405B', '#F2CC8F', '#81B29A', '#F4F1DE'] },
-    'flat_neon':        { nome: 'Neon',                tipo: 'flat', cores: ['#FF0080', '#00FFFF', '#00FF41', '#FF6600', '#7B00FF'] },
     // ── ESPECIAIS ───────────────────────────────────────────────────────────
     'categorias':    { nome: 'Categorias Distintas', tipo: 'especial', cores: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'] },
     'personalizada': { nome: 'Personalizada',        tipo: 'especial', cores: ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] },
@@ -603,6 +685,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Modo de montagem: 'visual' ou 'classico'
   modoMontagem: 'visual' | 'classico' = 'visual';
+
+  documentoConfig: DocumentoConfig = {
+    ...DOCUMENTO_CONFIG_PADRAO,
+    cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho } as DocumentoConfig['cabecalho'],
+    rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape }
+  };
 
   // Exemplo de configuração inicial do relatório
   relatorioConfiguracao: RelatorioSecao[] = [
@@ -929,7 +1017,43 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Processar os queryParams após carregar templates
     this.route.queryParams.subscribe(async params => {
-      if (params['mode'] !== 'individual') return;
+      // Pré-popular filtros a partir de params de projeto (sem modo individual)
+      if (params['mode'] !== 'individual') {
+        const clientId: string | undefined = params['clientId'];
+        const projectId: string | undefined = params['projectId'];
+        if (!clientId && !projectId) return;
+
+        if (clientId) {
+          this.filterClientControl.setValue(clientId, { emitEvent: false });
+          try {
+            const projectsSnap = await getDocs(
+              query(collection(this.firestore, 'projects'), where('clientId', '==', clientId))
+            );
+            this.filterProjects = projectsSnap.docs
+              .filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status'] || ''))
+              .map(d => ({
+                id: d.id,
+                name: d.data()['name'] || '—',
+                assessmentId: d.data()['assessmentId'] || undefined,
+              }))
+              .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+            this.allAssessmentsByProject.clear();
+            this.filterProjects.forEach(p => {
+              if (p['assessmentId']) this.allAssessmentsByProject.set(p.id, p['assessmentId']);
+            });
+          } catch (e) {
+            console.error('[Relatório] Erro ao carregar projetos:', e);
+          }
+        }
+
+        if (projectId) {
+          this.filterProjectControl.setValue(projectId, { emitEvent: false });
+          await this.onFilterProjectChange();
+        }
+
+        this.cdr.markForCheck();
+        return;
+      }
 
       // 1. Flags do modo individual
       this.isIndividualMode = true;
@@ -1209,6 +1333,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.dataSource = [];
     this.displayedColumns = [];
     this.questionMap = {};
+    this.viewerSnapshotLoaded = false;
+    this.hasActiveSnapshot = false;
 
     // Limpar avaliados (em modo individual preserva a seleção definida via query params)
     this.avaliadosDisponiveis = [];
@@ -1331,11 +1457,43 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const resultsSnap = await getDocs(collection(this.firestore, `assessments/${this.selectedAssessmentId}/results`));
     this.debugLog('Resultados encontrados:', resultsSnap.docs.length);
 
+    // Carregar assessmentLinks para identificar a qual avaliado cada avaliador pertence.
+    // Em modo individual: filtrar apenas pelos links do avaliado alvo.
+    // Em modo normal: carregar todos os links para setar corretamente o campo 'avaliado' dos avaliadores.
+    const evaluatorIdsForTarget = new Set<string>();
+    const evaluatorToAvaliadoIdMap = new Map<string, string>(); // participantId → avaliadoId
+    try {
+      if (this.isIndividualMode && this.individualParticipantId) {
+        const linksSnap = await getDocs(query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('assessmentId', '==', this.selectedAssessmentId),
+          where('avaliadoId', '==', this.individualParticipantId)
+        ));
+        linksSnap.docs.forEach(d => {
+          const pid: string = d.data()['participantId'];
+          if (pid) evaluatorIdsForTarget.add(pid);
+        });
+        console.log(`[Relatório Individual] Avaliadores encontrados para ${this.individualParticipantId}:`, evaluatorIdsForTarget.size);
+      } else {
+        const linksSnap = await getDocs(query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('assessmentId', '==', this.selectedAssessmentId)
+        ));
+        linksSnap.docs.forEach(d => {
+          const pid: string = d.data()['participantId'];
+          const aid: string = d.data()['avaliadoId'];
+          if (pid && aid) evaluatorToAvaliadoIdMap.set(pid, aid);
+        });
+      }
+    } catch (e) {
+      console.warn('[Relatório] Erro ao carregar assessmentLinks:', e);
+    }
+
     const results: any[] = [];
     for (const resultDoc of resultsSnap.docs) {
       const resultData = resultDoc.data();
       this.debugLog('Resultado individual:', resultData);
-      this.debugLog('�Y"� Estrutura completa do resultData:', {
+      this.debugLog('Estrutura completa do resultData:', {
         keys: Object.keys(resultData),
         hasSurveyData: 'surveyData' in resultData,
         surveyDataType: resultData['surveyData'] ? typeof resultData['surveyData'] : 'undefined',
@@ -1361,19 +1519,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (participantData) {
         this.debugLog('Dados do participante:', participantData);
 
-        // No modo individual, incluir todos os dados da avaliação
-        // mas marcar os dados do avaliado específico para destaque
         let shouldInclude = true;
         let isTargetParticipant = false;
 
         if (this.isIndividualMode && this.individualParticipantId) {
-          // Marcar se é o participante alvo
           if (resultData['participantId'] === this.individualParticipantId) {
+            // Autoavaliação do avaliado alvo
             isTargetParticipant = true;
+            shouldInclude = true;
+          } else if (evaluatorIdsForTarget.has(resultData['participantId'])) {
+            // Avaliador que está avaliando este avaliado específico
+            shouldInclude = true;
+          } else {
+            // Resultado de outro avaliado ou avaliador sem vínculo com o alvo
+            shouldInclude = false;
           }
-
-          // Incluir todos os dados da avaliação para ter contexto completo
-          shouldInclude = true;
         } else {
           // Modo normal: incluir todos
           shouldInclude = true;
@@ -1384,10 +1544,38 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             ? resultData['completedAt'].toDate()
             : null;
 
+          // Determinar o nome do avaliado associado a este resultado.
+          // Modo individual: todos os resultados pertencem ao avaliado alvo.
+          // Modo normal: avaliados têm seu próprio nome; avaliadores usam o nome
+          // de quem estão avaliando (via assessmentLinks).
+          let avaliadoNome: string;
+          if (this.isIndividualMode && this.individualParticipantName) {
+            avaliadoNome = this.individualParticipantName;
+          } else {
+            const tipoParticipante = participantData['type'] || 'avaliado';
+            if (tipoParticipante === 'avaliador' && evaluatorToAvaliadoIdMap.has(participantId)) {
+              const avaliadoId = evaluatorToAvaliadoIdMap.get(participantId)!;
+              let avaliadoData: any | null = null;
+              if (this.participantsCache.has(avaliadoId)) {
+                avaliadoData = this.participantsCache.get(avaliadoId);
+              } else {
+                const avaliadoRef = doc(this.firestore, 'participants', avaliadoId);
+                const avaliadoSnap = await getDoc(avaliadoRef);
+                if (avaliadoSnap.exists()) {
+                  avaliadoData = avaliadoSnap.data();
+                  this.participantsCache.set(avaliadoId, avaliadoData);
+                }
+              }
+              avaliadoNome = avaliadoData ? (avaliadoData['name'] || 'N/A') : (participantData['name'] || 'N/A');
+            } else {
+              avaliadoNome = participantData['name'] || 'N/A';
+            }
+          }
+
           const row: any = {
             data: '',
             categoria: participantData['category'] || 'N/A',
-            avaliado: participantData['name'] || 'N/A',
+            avaliado: avaliadoNome,
             tipo: participantData['type'] || 'avaliado', // 'avaliado' | 'avaliador' para filtrar lista
             dataAvaliacao: completedAtDate ? completedAtDate.toLocaleDateString('pt-BR') : 'N/A',
             horarioAvaliacao: completedAtDate ? completedAtDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
@@ -1395,7 +1583,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             setor: participantData['setor'] || '',
             isTargetParticipant: isTargetParticipant, // Marcar se é o participante alvo
             reportStatus: participantData['reportStatus'] || 'pending', // Status de liberação do relatório
-            participanteId: participantId // ID do participante para liberar relatório
+            participanteId: participantId, // ID do participante para liberar relatório
+            projectId: participantData['projectId'] || '' // Para filtrar avaliados por projeto
           };
 
           // Adicionar respostas às perguntas
@@ -1463,14 +1652,42 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.debugLog('Resultados processados:', results);
     this.dataSource = results;
 
-    // Filtrar por status de liberação para admin_client e viewer
-    if (this.shouldFilterByReleaseStatus) {
+    // admin_client: filtrar por reportStatus released
+    if (this.currentUserRole === 'admin_client') {
       this.dataSource = this.dataSource.filter(row => row.reportStatus === 'released');
+    }
+
+    // viewer: filtrar por projectId (não por reportStatus — snapshot é o gate de acesso)
+    if (this.currentUserRole === 'viewer') {
+      const selectedProjectId = this.filterProjectControl.value;
+      if (selectedProjectId) {
+        this.dataSource = this.dataSource.filter(row =>
+          !row['projectId'] || row['projectId'] === selectedProjectId
+        );
+      }
     }
 
     // Carregar avaliados disponíveis após processar os dados
     this.avaliadosDisponiveis = this.getAvaliadosDisponiveis();
-    console.log('Avaliados disponíveis:', this.avaliadosDisponiveis);
+
+    // Viewer/admin_client: carregar snapshot e ir direto para Visualizar
+    if (!this.isIndividualMode && ['viewer', 'admin_client'].includes(this.currentUserRole)) {
+      this.viewerSnapshotLoaded = false;
+      this.viewerSnapshotLoaded = await this.loadSnapshotForViewer();
+      this.selectedTabIndex = 2;
+      this.invalidateCache();
+      this.cdr.markForCheck();
+      return;
+    }
+
+    // Admin: auto-selecionar avaliado quando há exatamente 1
+    if (!this.isIndividualMode && this.avaliadosDisponiveis.length === 1 && !this.selectedAvaliado) {
+      const onlyAvaliado = this.avaliadosDisponiveis[0];
+      this.avaliadoControl.setValue(onlyAvaliado, { emitEvent: false });
+      this.selectedAvaliado = onlyAvaliado;
+      this.invalidateCache();
+      this.cdr.markForCheck();
+    }
 
     this.performanceMonitor.endTimer('onAssessmentChange');
 
@@ -2044,6 +2261,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getDestaquesAltasColors(secao: any): { header: string; text: string } {
     const paletaKey = secao?.['paletaCor'] || 'verde';
+    if (paletaKey === 'cor_unica') {
+      const cor = secao?.['corUnica'] || '#43A047';
+      return { header: cor, text: cor };
+    }
     const paleta = (this.paletasCores as any)[paletaKey] || this.paletasCores['verde'];
     const cores = paleta.cores;
     return { header: cores[3] || '#558B2F', text: cores[3] || '#558B2F' };
@@ -2051,6 +2272,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getDestaquesBaixasColors(secao: any): { header: string; text: string } {
     const paletaKey = secao?.['paletaCorBaixas'] || 'vermelho';
+    if (paletaKey === 'cor_unica') {
+      const cor = secao?.['corUnicaBaixas'] || '#E53935';
+      return { header: cor, text: cor };
+    }
     const paleta = (this.paletasCores as any)[paletaKey] || this.paletasCores['vermelho'];
     const cores = paleta.cores;
     return { header: cores[3] || '#C62828', text: cores[3] || '#C62828' };
@@ -2252,6 +2477,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       getColorSchemeParaSecao(secao: any): any {
     const paletaSelecionada = secao?.paletaCor || secao?.['paletaCor'] || 'padrao';
 
+    if (paletaSelecionada === 'cor_unica') {
+      const cor = secao?.corUnica || secao?.['corUnica'] || '#1E88E5';
+      return { domain: Array(10).fill(cor) };
+    }
+
     if (paletaSelecionada === 'personalizada') {
       const coresPersonalizadas = secao?.coresPersonalizadas || secao?.['coresPersonalizadas'] || [];
       if (coresPersonalizadas.length > 0) {
@@ -2401,6 +2631,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     let count = 0;
     for (const pid of carac.perguntasIds || []) {
       for (const row of this.dataSource) {
+        if (this.selectedAvaliado && row['avaliado'] !== this.selectedAvaliado) continue;
         if (this.mapCategoriaToGrupo(row['categoria']) === grupo) {
           let valor = row[pid];
 
@@ -2503,6 +2734,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       assessmentName: assessment ? assessment.name : '',
       competencias: sanitize(this.competencias),
       configuracao: sanitize(this.relatorioConfiguracao),
+      documentoConfig: sanitize(this.documentoConfig),
+      templateId: this.selectedTemplateId.value || null,
       criadoEm: new Date()
     };
     try {
@@ -2545,6 +2778,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       assessmentName: assessment ? assessment.name : '',
       competencias: sanitize(this.competencias),
       configuracao: sanitize(this.relatorioConfiguracao),
+      documentoConfig: sanitize(this.documentoConfig),
+      templateId: this.selectedTemplateId.value || null,
       atualizadoEm: new Date()
     };
     try {
@@ -2565,10 +2800,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         const reportData = reportSnap.data();
         this.relatorioConfiguracao = reportData['configuracao'] || [];
         this.competencias = reportData['competencias'] || [];
+        if (reportData['documentoConfig']) {
+          this.documentoConfig = {
+            cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho, ...reportData['documentoConfig'].cabecalho },
+            rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape, ...reportData['documentoConfig'].rodape }
+          };
+        }
 
         // Preencher automaticamente o nome do relatório no campo de nome
         if (reportData['nome']) {
           this.nomeRelatorioControl.setValue(reportData['nome']);
+        }
+
+        // Restaurar vínculo com template (sem re-aplicar a estrutura, pois a config já foi carregada)
+        if (reportData['templateId']) {
+          this.selectedTemplateId.setValue(reportData['templateId'], { emitEvent: false });
+        } else {
+          this.selectedTemplateId.setValue('', { emitEvent: false });
         }
 
       // Logar conteúdo das seções após carregar
@@ -2683,11 +2931,76 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     await this.waitForPreviewAssets(previewEl);
-    const html = this.buildReportPreviewHtml(previewEl, fileName);
-    await this.pdfMakeService.generateReportFromHtml(html, fileName);
+    const { html, options } = await this.buildReportPreviewHtml(previewEl, fileName);
+    await this.pdfMakeService.generateReportFromHtml(html, fileName, options);
   }
 
-  private buildReportPreviewHtml(previewEl: HTMLElement, fileName: string): string {
+  private async logoUrlToBase64(url: string): Promise<string> {
+    if (!url) return '';
+    return new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          c.getContext('2d')!.drawImage(img, 0, 0);
+          resolve(c.toDataURL('image/png'));
+        } catch { resolve(''); }
+      };
+      img.onerror = () => resolve('');
+      img.src = url;
+    });
+  }
+
+  private buildPdfHeaderTemplate(logoBase64: string): string {
+    const cfg = this.documentoConfig.cabecalho;
+    if (!cfg.ativo) return '<span></span>';
+    const color = cfg.cor || '#666666';
+    const borderBottom = cfg.linhaInferior
+      ? `padding-bottom:4px;border-bottom:0.5pt solid ${color};`
+      : '';
+    const logoHtml = logoBase64
+      ? `<img src="${logoBase64}" style="height:20px;width:auto;object-fit:contain;flex-shrink:0;">`
+      : '';
+    const leftParts: string[] = [];
+    if (cfg.textoEsquerda) leftParts.push(cfg.textoEsquerda);
+    if (cfg.mostrarNomeProjeto && this.selectedAssessmentName) leftParts.push(this.selectedAssessmentName);
+    const leftText = leftParts.join(' — ');
+    const pageNum = cfg.mostrarNumeroPagina
+      ? `<span style="white-space:nowrap;opacity:0.75;">Pág. <span class="pageNumber"></span> / <span class="totalPages"></span></span>`
+      : '';
+    return `<div style="font-family:Roboto,'Helvetica Neue',sans-serif;font-size:0;color:${color};width:100%;margin:0 20px;display:flex;align-items:center;gap:8px;${borderBottom}">` +
+      `<span style="font-size:9px;">${logoHtml}</span>` +
+      `<span style="font-size:9px;flex:1;font-weight:500;">${leftText}</span>` +
+      `<span style="font-size:9px;">${pageNum}</span>` +
+      `</div>`;
+  }
+
+  private buildPdfFooterTemplate(): string {
+    const cfg = this.documentoConfig.rodape;
+    if (!cfg.ativo) return '<span></span>';
+    const color = cfg.cor || '#666666';
+    const borderTop = cfg.linhaSuperior
+      ? `padding-top:4px;border-top:0.5pt solid ${color};`
+      : '';
+    const yearHtml = cfg.mostrarAno
+      ? `<span style="white-space:nowrap;">${new Date().getFullYear()}</span>`
+      : '';
+    const pageNum = cfg.mostrarNumeroPagina
+      ? `<span style="white-space:nowrap;opacity:0.75;">Pág. <span class="pageNumber"></span> / <span class="totalPages"></span></span>`
+      : '';
+    return `<div style="font-family:Roboto,'Helvetica Neue',sans-serif;font-size:0;color:${color};width:100%;margin:0 20px;display:flex;align-items:center;gap:8px;${borderTop}">` +
+      `<span style="font-size:9px;flex:1;">${cfg.texto || ''}</span>` +
+      (yearHtml ? `<span style="font-size:9px;">${yearHtml}</span>` : '') +
+      (pageNum ? `<span style="font-size:9px;">${pageNum}</span>` : '') +
+      `</div>`;
+  }
+
+  private async buildReportPreviewHtml(
+    previewEl: HTMLElement, fileName: string
+  ): Promise<{ html: string; options: PdfHtmlRenderOptions }> {
     const clone = previewEl.cloneNode(true) as HTMLElement;
     this.replaceCanvasWithImages(previewEl, clone);
     this.replaceNgxChartsWithSvgImages(previewEl, clone);
@@ -2695,18 +3008,22 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.replaceReportChipsForPdf(previewEl, clone);
     clone.querySelectorAll('.ui-only').forEach(el => el.remove());
 
+    // Remover header/footer fixos — serão substituídos pelos templates do Puppeteer
+    clone.querySelector('.rp-doc-cabecalho')?.remove();
+    clone.querySelector('.rp-doc-rodape')?.remove();
+
+    // Construir templates do Puppeteer a partir de documentoConfig
+    const logoBase64 = await this.logoUrlToBase64(this.documentoConfig.cabecalho.logoUrl || '');
+    const headerTemplate = this.buildPdfHeaderTemplate(logoBase64);
+    const footerTemplate = this.buildPdfFooterTemplate();
+    const hasHeaderFooter = this.documentoConfig.cabecalho.ativo || this.documentoConfig.rodape.ativo;
+
     const documentStyles = this.collectDocumentStyles();
     const safeTitle = this.escapeHtml(fileName.replace(/\.pdf$/i, ''));
 
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${safeTitle}</title>
-  <base href="${window.location.origin}/">
-  <style>
+    const html = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>${safeTitle}</title>\n  <base href="${window.location.origin}/">\n  <style>
     ${documentStyles}
-    @page { size: A4 portrait; margin: 8mm 7mm; }
+    @page { size: A4 portrait; margin: 18mm 7mm 16mm 7mm; }
     * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
     html, body {
       margin: 0 !important;
@@ -2723,6 +3040,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       box-shadow: none !important;
       border-radius: 0 !important;
       padding: 0 !important;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
       background: #fff !important;
     }
     #report-preview > .report-section {
@@ -2730,8 +3049,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       max-width: none !important;
     }
     .report-section {
-      break-inside: auto !important;
-      page-break-inside: auto !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
       margin-bottom: 4mm;
     }
     h1, h2, h3, h4, h5, h6 {
@@ -2863,6 +3182,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   ${clone.outerHTML}
 </body>
 </html>`;
+
+    return {
+      html,
+      options: {
+        displayHeaderFooter: hasHeaderFooter,
+        headerTemplate,
+        footerTemplate,
+        marginMm: { top: 18, right: 7, bottom: 16, left: 7 },
+      },
+    };
   }
 
   private collectDocumentStyles(): string {
@@ -3161,6 +3490,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.builderHasUnsavedChanges = true;
   }
 
+  onDocumentoConfigChange(config: DocumentoConfig): void {
+    this.documentoConfig = config;
+    this.builderHasUnsavedChanges = true;
+  }
+
   // Métodos auxiliares para UI das seções
   getTipoSecaoColor(tipo: string): string {
     switch (tipo) {
@@ -3304,6 +3638,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const templateData = {
       nome: this.nomeTemplateControl.value,
       configuracao: configuracaoSemCompetencias,
+      documentoConfig: sanitize(this.documentoConfig),
       criadoEm: new Date()
     };
     try {
@@ -3392,6 +3727,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
               sec.competenciasIds = [...compIds];
             }
           });
+        }
+
+        // Restaurar configuração de cabeçalho/rodapé do template, se existir
+        if (templateData['documentoConfig']) {
+          this.documentoConfig = {
+            cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho, ...templateData['documentoConfig'].cabecalho } as DocumentoConfig['cabecalho'],
+            rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape, ...templateData['documentoConfig'].rodape, ativo: true }
+          };
         }
 
         this.atualizarFormArrayComConfiguracao();
@@ -4652,14 +4995,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Método para obter lista de avaliados disponíveis (apenas participantes tipo 'avaliado')
   getAvaliadosDisponiveis(): string[] {
     const avaliados = new Set<string>();
+    const selectedProjectId = this.filterProjectControl.value;
 
     this.dataSource.forEach(row => {
       const tipo = (row['tipo'] || '').toLowerCase();
       const avaliado = row['avaliado'];
-      // Incluir apenas avaliados (pessoas sendo avaliadas), não avaliadores
-      if (tipo === 'avaliado' && avaliado && avaliado.trim()) {
-        avaliados.add(avaliado.trim());
-      }
+      if (tipo !== 'avaliado' || !avaliado || !avaliado.trim()) return;
+      // Quando projeto está selecionado, restringir ao avaliado daquele projeto
+      if (selectedProjectId && row['projectId'] && row['projectId'] !== selectedProjectId) return;
+      avaliados.add(avaliado.trim());
     });
 
     return Array.from(avaliados).sort();
@@ -4726,6 +5070,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       nome: nomeTemplate,
       configuracao: sanitize(this.relatorioConfiguracao),
       competencias: sanitize(this.competencias),
+      documentoConfig: sanitize(this.documentoConfig),
       atualizadoEm: new Date()
     };
     try {
@@ -5405,14 +5750,42 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     );
     if (usersSnap.empty) return;
 
+    const userDocId = usersSnap.docs[0].id;
     const userData = usersSnap.docs[0].data() || {};
-    const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
-    const fromSingle =
-      typeof userData['project'] === 'string' && userData['project'].trim()
-        ? [userData['project']]
-        : [];
+    const isOnNewStructure = 'groups' in userData;
 
-    [...fromArray, ...fromSingle].forEach((projectId) => this.viewerProjectIds.add(projectId));
+    // Fonte principal: grupos onde o viewer aparece em userIds
+    const groupsSnap = await getDocs(
+      query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', userDocId))
+    );
+
+    const allProjectsClientIds = new Set<string>();
+    groupsSnap.forEach(snap => {
+      const data = snap.data();
+      if (data['allProjects'] === true && data['clientId']) {
+        allProjectsClientIds.add(data['clientId']);
+      } else {
+        const projectIds: string[] = data['projectIds'] || [];
+        projectIds.forEach(id => this.viewerProjectIds.add(id));
+      }
+    });
+
+    // Para grupos com allProjects: buscar todos os projetos do cliente
+    if (allProjectsClientIds.size > 0) {
+      const allClientsArr = [...allProjectsClientIds];
+      const projSnap = await getDocs(
+        query(collection(this.firestore, 'projects'), where('clientId', 'in', allClientsArr))
+      );
+      projSnap.forEach(d => this.viewerProjectIds.add(d.id));
+    }
+
+    // Fallback legado: APENAS se o usuário nunca foi migrado para grupos
+    if (!isOnNewStructure && this.viewerProjectIds.size === 0) {
+      const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
+      const fromSingle = typeof userData['project'] === 'string' && userData['project'].trim()
+        ? [userData['project']] : [];
+      [...fromArray, ...fromSingle].forEach(id => this.viewerProjectIds.add(id));
+    }
   }
 
   // Sistema de liberação de relatórios
@@ -5421,53 +5794,218 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return participant?.participanteId || null;
   }
 
-  async releaseReport(participantId: string | null): Promise<void> {
+  async releaseReport(avaliadoName: string): Promise<void> {
     if (!this.canReleaseReport) {
       this.snackBar.open(this.t('Apenas administradores podem liberar relatórios.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
-    if (!participantId) {
-      this.snackBar.open(this.t('Participante inválido para liberação do relatório.'), this.t('Fechar'), { duration: 3000 });
+    if (!avaliadoName) {
+      this.snackBar.open(this.t('Avaliado inválido para liberação do relatório.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
 
     try {
-      const participantRef = doc(this.firestore, 'participants', participantId);
-      await updateDoc(participantRef, { reportStatus: 'released' });
+      // Marcar TODOS os participantes do avaliado (deste projeto) como released
+      const selectedProjectId = this.filterProjectControl.value;
+      const rows = this.dataSource.filter(r =>
+        r.avaliado === avaliadoName &&
+        (!selectedProjectId || !r['projectId'] || r['projectId'] === selectedProjectId)
+      );
+      await Promise.all(rows.map(r =>
+        updateDoc(doc(this.firestore, 'participants', r.participanteId), { reportStatus: 'released' })
+      ));
 
-      // Atualizar o dataSource localmente
-      this.dataSource = this.dataSource.map(row => {
-        if (row.participanteId === participantId) {
-          return { ...row, reportStatus: 'released' };
-        }
-        return row;
+      // Salvar snapshot completo do relatório para viewer/admin_client
+      const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
+      const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
+      const projectPart = selectedProjectId ? `_${selectedProjectId}` : '';
+      const snapshotId = `${this.selectedAssessmentId}${projectPart}_${safeKey}`;
+      await setDoc(doc(this.firestore, `releasedReports/${snapshotId}`), {
+        assessmentId: this.selectedAssessmentId,
+        projectId: selectedProjectId || '',
+        avaliadoName,
+        releasedAt: new Date(),
+        revoked: false,
+        competencias: sanitize(this.competencias),
+        configuracao: sanitize(this.relatorioConfiguracao),
+        documentoConfig: sanitize(this.documentoConfig),
       });
 
-      this.snackBar.open(this.t('Relatório liberado com sucesso.'), this.t('Fechar'), { duration: 3000 });
+      // Registrar a assinatura publicada (base para detectar futuras alterações)
+      this.publishedSignature = this.computeReportSignature();
+      this.hasActiveSnapshot = true;
+
+      // Atualizar o dataSource localmente
+      this.dataSource = this.dataSource.map(row =>
+        row.avaliado === avaliadoName ? { ...row, reportStatus: 'released' } : row
+      );
+
+      this.snackBar.open(this.t('Relatório publicado com sucesso.'), this.t('Fechar'), { duration: 3000 });
       this.cdr.markForCheck();
     } catch (error) {
-      console.error('Erro ao liberar relatório:', error);
-      this.snackBar.open(this.t('Erro ao liberar relatório.'), this.t('Fechar'), { duration: 3000 });
+      console.error('Erro ao publicar relatório:', error);
+      this.snackBar.open(this.t('Erro ao publicar relatório.'), this.t('Fechar'), { duration: 3000 });
     }
   }
 
-  async revokeReportRelease(participantId: string): Promise<void> {
+  /** Para viewer/admin_client: busca snapshot por assessmentId + projectId, sem precisar do nome */
+  private async loadSnapshotForViewer(): Promise<boolean> {
+    if (!this.selectedAssessmentId) return false;
+    const projectId = this.filterProjectControl.value;
+
+    const applySnapshotData = (data: any) => {
+      this.competencias = data['competencias'] || [];
+      this.relatorioConfiguracao = data['configuracao'] || [];
+      this.documentoConfig = data['documentoConfig']
+        ? { ...DOCUMENTO_CONFIG_PADRAO, ...data['documentoConfig'] }
+        : { ...DOCUMENTO_CONFIG_PADRAO };
+      if (data['avaliadoName']) {
+        this.selectedAvaliado = data['avaliadoName'];
+        this.avaliadoControl.setValue(data['avaliadoName'], { emitEvent: false });
+      }
+      this.atualizarFormArrayComConfiguracao();
+      this.cdr.markForCheck();
+    };
+
+    try {
+      // Busca TODOS os snapshots do formulário e filtra em memória.
+      const qSnap = await getDocs(query(
+        collection(this.firestore, 'releasedReports'),
+        where('assessmentId', '==', this.selectedAssessmentId)
+      ));
+
+      const candidate = qSnap.docs
+        .map(d => d.data())
+        .find(data => {
+          // 1) não pode estar revogado
+          if (!data || data['revoked'] === true) return false;
+          // 2) quando há projeto selecionado, só aceita o snapshot DESTE projeto
+          //    (ou snapshots legados sem projectId)
+          if (projectId && data['projectId'] && data['projectId'] !== projectId) return false;
+          return true;
+        });
+
+      if (candidate) { applySnapshotData(candidate); return true; }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Marca/desmarca como revogado TODOS os snapshots de um avaliado (corta acesso do viewer). */
+  private async markSnapshotRevoked(avaliadoName: string, revoked: boolean): Promise<void> {
+    if (!this.selectedAssessmentId || !avaliadoName) return;
+    const projectId = this.filterProjectControl.value;
+    const refsToUpdate = new Map<string, any>();
+
+    // 1) Sempre busca por query — pega QUALQUER doc do avaliado neste formulário,
+    //    independente do esquema de chave (com/sem projectId, chave legada).
+    try {
+      const qSnap = await getDocs(query(
+        collection(this.firestore, 'releasedReports'),
+        where('assessmentId', '==', this.selectedAssessmentId),
+        where('avaliadoName', '==', avaliadoName)
+      ));
+      qSnap.docs.forEach(d => {
+        // Quando há projeto selecionado, só revoga docs deste projeto (ou legados sem projectId)
+        const pid = d.data()['projectId'];
+        if (projectId && pid && pid !== projectId) return;
+        refsToUpdate.set(d.id, d.ref);
+      });
+    } catch { /* ignora */ }
+
+    // 2) Reforço: tenta também as chaves determinísticas (caso a query acima falhe por índice)
+    const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
+    const candidateIds = [
+      projectId ? `${this.selectedAssessmentId}_${projectId}_${safeKey}` : null,
+      `${this.selectedAssessmentId}_${safeKey}`,
+    ].filter(Boolean) as string[];
+    for (const id of candidateIds) {
+      if (!refsToUpdate.has(id)) {
+        try {
+          const ref = doc(this.firestore, `releasedReports/${id}`);
+          const snap = await getDoc(ref);
+          if (snap.exists()) refsToUpdate.set(id, ref);
+        } catch { /* ignora */ }
+      }
+    }
+
+    // 3) Aplica a flag em todos os docs encontrados
+    await Promise.all([...refsToUpdate.values()].map(ref => updateDoc(ref, { revoked })));
+  }
+
+  private async loadReleasedReportSnapshot(avaliadoName: string): Promise<boolean> {
+    if (!this.selectedAssessmentId || !avaliadoName) return false;
+    const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
+    const projectId = this.filterProjectControl.value;
+    const projectPart = projectId ? `_${projectId}` : '';
+
+    const applySnapshotData = (data: any) => {
+      this.competencias = data['competencias'] || [];
+      this.relatorioConfiguracao = data['configuracao'] || [];
+      this.documentoConfig = data['documentoConfig']
+        ? { ...DOCUMENTO_CONFIG_PADRAO, ...data['documentoConfig'] }
+        : { ...DOCUMENTO_CONFIG_PADRAO };
+      this.atualizarFormArrayComConfiguracao();
+      this.cdr.markForCheck();
+    };
+
+    try {
+      // Tentativa 1: chave com projeto (formato atual)
+      let snap = await getDoc(doc(this.firestore, `releasedReports/${this.selectedAssessmentId}${projectPart}_${safeKey}`));
+
+      // Tentativa 2: chave sem projeto (snapshots legados nome-based)
+      if (!snap.exists() && projectId) {
+        snap = await getDoc(doc(this.firestore, `releasedReports/${this.selectedAssessmentId}_${safeKey}`));
+      }
+
+      // Tentativa 3: query por avaliadoName + assessmentId (captura snapshots com chave participantId legada)
+      if (!snap.exists()) {
+        const q = query(
+          collection(this.firestore, 'releasedReports'),
+          where('assessmentId', '==', this.selectedAssessmentId),
+          where('avaliadoName', '==', avaliadoName)
+        );
+        const qSnap = await getDocs(q);
+        if (!qSnap.empty) {
+          applySnapshotData(qSnap.docs[0].data());
+          return true;
+        }
+        return false;
+      }
+
+      applySnapshotData(snap.data() as any);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async revokeReportRelease(avaliadoName: string): Promise<void> {
     if (!this.canReleaseReport) {
       this.snackBar.open(this.t('Apenas administradores podem revogar liberação.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
 
     try {
-      const participantRef = doc(this.firestore, 'participants', participantId);
-      await updateDoc(participantRef, { reportStatus: 'pending' });
+      // Revogar TODOS os participantes do avaliado (deste projeto)
+      const selectedProjectId = this.filterProjectControl.value;
+      const rows = this.dataSource.filter(r =>
+        r.avaliado === avaliadoName &&
+        (!selectedProjectId || !r['projectId'] || r['projectId'] === selectedProjectId)
+      );
+      await Promise.all(rows.map(r =>
+        updateDoc(doc(this.firestore, 'participants', r.participanteId), { reportStatus: 'pending' })
+      ));
+
+      // Marcar o snapshot como revogado para cortar o acesso do viewer
+      await this.markSnapshotRevoked(avaliadoName, true);
+      this.hasActiveSnapshot = false;
 
       // Atualizar o dataSource localmente
-      this.dataSource = this.dataSource.map(row => {
-        if (row.participanteId === participantId) {
-          return { ...row, reportStatus: 'pending' };
-        }
-        return row;
-      });
+      this.dataSource = this.dataSource.map(row =>
+        row.avaliado === avaliadoName ? { ...row, reportStatus: 'pending' } : row
+      );
 
       this.snackBar.open(this.t('Liberação de relatório revogada.'), this.t('Fechar'), { duration: 3000 });
       this.cdr.markForCheck();
@@ -5566,6 +6104,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   goToTab(index: number): void {
+    if (this.currentUserRole === 'viewer' && index < 2) return;
     this.selectedTabIndex = index;
     this.cdr.detectChanges();
   }
@@ -5714,72 +6253,61 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   getContagemRespondentesPorCategoria(): { categoria: string; quantidade: number }[] {
     const contagem: { [key: string]: number } = {};
 
-    // Mapear categorias para nomes amigáveis
-    const categoriaMap: { [key: string]: string } = {
-      'Avaliado(a)': 'Avaliado(a)',
+    // Apenas avaliadores (não inclui o avaliado — ele já aparece pelo nome acima)
+    const avaliadorCategorias: { [key: string]: string } = {
       'Gestor(es)': 'Gestor(es)',
       'Pares': 'Pares',
       'Subordinados': 'Subordinados',
-      'Outros': 'Outros'
+      'Outros': 'Outros',
+      // variações de nome vindas do Firestore
+      'Gestor': 'Gestor(es)',
+      'Par': 'Pares',
+      'Subordinado': 'Subordinados',
+      'Outro': 'Outros',
     };
 
-    // Se não há dados carregados, retornar array vazio
     if (!this.dataSource || this.dataSource.length === 0 || !this.dataIndexes.participantsByCategory) {
       return [];
     }
 
-    // Contar participantes por categoria que responderam (têm respostas)
     this.dataIndexes.participantsByCategory.forEach((indices, grupo) => {
+      // Ignora a categoria do avaliado (autoavaliação)
+      const grupoNorm = grupo.trim();
+      if (grupoNorm === 'Avaliado(a)' || grupoNorm === 'Avaliado' || grupoNorm === 'Autoavaliação') {
+        return;
+      }
+
       let quantidade = 0;
       indices.forEach(index => {
         const participant = this.dataSource[index];
-        if (participant) {
-          // Verificar se o participante tem pelo menos uma resposta válida
-          // Verificar nas colunas dinâmicas se disponíveis, senão verificar qualquer propriedade numérica
-          let temResposta = false;
+        if (!participant) return;
 
-          if (this.dynamicColumns && this.dynamicColumns.length > 0) {
-            temResposta = this.dynamicColumns.some(col => {
-              const valor = participant[col];
-              return valor !== undefined && valor !== null && valor !== '' && !isNaN(Number(valor));
-            });
-          } else {
-            // Se não há colunas dinâmicas, verificar propriedades numéricas no objeto
-            temResposta = Object.keys(participant).some(key => {
-              if (key === 'categoria' || key === 'avaliado' || key === 'data' || key === 'dataAvaliacao' || key === 'participante' || key === 'id') {
-                return false;
-              }
-              const valor = participant[key];
-              return valor !== undefined && valor !== null && valor !== '' && !isNaN(Number(valor));
-            });
-          }
-
-          if (temResposta) {
-            quantidade++;
-          }
+        let temResposta = false;
+        if (this.dynamicColumns && this.dynamicColumns.length > 0) {
+          temResposta = this.dynamicColumns.some(col => {
+            const valor = participant[col];
+            return valor !== undefined && valor !== null && valor !== '' && !isNaN(Number(valor));
+          });
+        } else {
+          temResposta = Object.keys(participant).some(key => {
+            if (['categoria', 'avaliado', 'data', 'dataAvaliacao', 'participante', 'id'].includes(key)) return false;
+            const valor = participant[key];
+            return valor !== undefined && valor !== null && valor !== '' && !isNaN(Number(valor));
+          });
         }
+        if (temResposta) quantidade++;
       });
 
       if (quantidade > 0) {
-        const categoriaNome = categoriaMap[grupo] || grupo;
-        contagem[categoriaNome] = quantidade;
+        const nome = avaliadorCategorias[grupoNorm] || grupoNorm;
+        contagem[nome] = (contagem[nome] || 0) + quantidade;
       }
     });
 
-    // Retornar como array ordenado
+    const ordem: { [key: string]: number } = { 'Gestor(es)': 1, 'Pares': 2, 'Subordinados': 3, 'Outros': 4 };
     return Object.keys(contagem)
       .map(categoria => ({ categoria, quantidade: contagem[categoria] }))
-      .sort((a, b) => {
-        // Ordenar: Avaliado primeiro, depois Gestor, Pares, Subordinados, Outros
-        const ordem: { [key: string]: number } = {
-          'Avaliado(a)': 1,
-          'Gestor(es)': 2,
-          'Pares': 3,
-          'Subordinados': 4,
-          'Outros': 5
-        };
-        return (ordem[a.categoria] || 99) - (ordem[b.categoria] || 99);
-      });
+      .sort((a, b) => (ordem[a.categoria] || 99) - (ordem[b.categoria] || 99));
   }
 
   // Método para substituir variáveis dinâmicas na capa
@@ -6355,7 +6883,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Método para lidar com mudança de avaliado selecionado
-  onAvaliadoChange(): void {
+  async onAvaliadoChange(): Promise<void> {
     this.selectedAvaliado = this.avaliadoControl.value;
     console.log('Avaliado selecionado:', this.selectedAvaliado);
 
@@ -6363,8 +6891,30 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.invalidateCache('media-competencia');
     this.invalidateCache('tabela-competencia');
 
+    // Viewer e admin_client carregam snapshot publicado pelo admin_master
+    if (['viewer', 'admin_client'].includes(this.currentUserRole)) {
+      this.viewerSnapshotLoaded = false;
+      this.viewerSnapshotLoaded = await this.loadSnapshotForViewer();
+      this.selectedTabIndex = 2;
+    } else if (this.canReleaseReport && this.selectedAvaliado) {
+      // Admin: carregar baseline de assinatura + detectar snapshot ativo (mesmo se status pending)
+      await this.loadPublishedSignature(this.selectedAvaliado);
+      await this.checkActiveSnapshot(this.selectedAvaliado);
+    }
+
     // Forçar atualização da view para refletir mudanças
     this.cdr.detectChanges();
+  }
+
+  /**
+   * Admin: ao abrir um relatório já publicado, captura o estado atual ao vivo como
+   * baseline. O indicador "alterações pendentes" só aparece após uma edição real
+   * nesta sessão. (Evita falsos positivos por diferenças estruturais do snapshot.)
+   */
+  private async loadPublishedSignature(_avaliadoName: string): Promise<void> {
+    this.publishedSignature = this.selectedAvaliadoReleaseStatus === 'released'
+      ? this.computeReportSignature()
+      : null;
   }
 
   // Método para limpar a seleção de avaliado
@@ -6376,7 +6926,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Forçar atualização da view
     this.cdr.detectChanges();
 
-    this.snackBar.open(this.t('Seleção de avaliado limpa. Visualizando dados de todos os avaliados.'), this.t('Fechar'), { duration: 3000 });
+    this.snackBar.open(this.t('Seleção de avaliado limpa.'), this.t('Fechar'), { duration: 3000 });
   }
 
   // Método de debug específico para investigar dados da tabela de competência

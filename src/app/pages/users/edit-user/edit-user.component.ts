@@ -16,6 +16,8 @@ import {
   updateDoc,
   query,
   where,
+  arrayUnion,
+  arrayRemove,
 } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterModule } from '@angular/router';
@@ -40,6 +42,15 @@ export class EditUserComponent implements OnInit {
   userName = '';
 
   clients: { id: string; name: string }[] = [];
+  projects: { id: string; name: string }[] = [];
+
+  // Grupos para viewer
+  allGroups: { id: string; name: string; clientId: string; clientName: string; projectIds: string[]; projectNames: string[] }[] = [];
+  filteredGroups: typeof this.allGroups = [];
+  clientFilterValue = '';
+  derivedClientName = '';
+  derivedProjectNames: string[] = [];
+
   roles = [
     { label: 'Admin Master', value: 'admin_master' },
     { label: 'Admin Cliente', value: 'admin_client' },
@@ -74,7 +85,86 @@ export class EditUserComponent implements OnInit {
       email: [{ value: '', disabled: true }],
       role: ['', Validators.required],
       clients: [[] as string[]],
+      groups: [[] as string[]],
+      project: [''],
     });
+  }
+
+  private groupsRequiredValidator() {
+    return (ctrl: any) =>
+      Array.isArray(ctrl.value) && ctrl.value.length > 0 ? null : { groupRequired: true };
+  }
+
+  get selectedRole(): string { return this.userForm.get('role')?.value || ''; }
+
+  get projectName(): string {
+    const id = this.userForm.get('project')?.value;
+    return this.projects.find(p => p.id === id)?.name || '';
+  }
+
+  onRoleChange(role: string): void {
+    const clientsCtrl = this.userForm.get('clients')!;
+    const groupsCtrl = this.userForm.get('groups')!;
+    const projectCtrl = this.userForm.get('project')!;
+
+    clientsCtrl.clearValidators(); groupsCtrl.clearValidators(); projectCtrl.clearValidators();
+    projectCtrl.setValue(''); this.projects = [];
+    this.derivedClientName = ''; this.derivedProjectNames = [];
+
+    if (role === 'viewer') {
+      groupsCtrl.setValidators([this.groupsRequiredValidator()]);
+      if (this.allGroups.length === 0) this.loadAllGroups().then(() => { this.filteredGroups = [...this.allGroups]; });
+      else this.filteredGroups = [...this.allGroups];
+    } else if (role === 'admin_client') {
+      clientsCtrl.setValidators([Validators.required]);
+    }
+
+    clientsCtrl.updateValueAndValidity();
+    groupsCtrl.updateValueAndValidity();
+  }
+
+  onClientFilterChange(clientId: string): void {
+    this.clientFilterValue = clientId;
+    this.filteredGroups = clientId ? this.allGroups.filter(g => g.clientId === clientId) : [...this.allGroups];
+    const cur: string[] = this.userForm.get('groups')?.value || [];
+    const valid = cur.filter(id => this.filteredGroups.some(g => g.id === id));
+    if (valid.length !== cur.length) { this.userForm.get('groups')?.setValue(valid); this.onGroupsChange(valid); }
+  }
+
+  onGroupsChange(groupIds: string[]): void {
+    if (!groupIds?.length) { this.derivedClientName = ''; this.derivedProjectNames = []; return; }
+    const selected = this.allGroups.filter(g => groupIds.includes(g.id));
+    this.derivedClientName = selected[0]?.clientName || '';
+    const ps = new Set<string>();
+    selected.forEach(g => g.projectNames.forEach(p => ps.add(p)));
+    this.derivedProjectNames = [...ps];
+  }
+
+  private async loadAllGroups(): Promise<void> {
+    try {
+      const currentRole = await this.authService.getCurrentUserRole();
+      const groupsSnap = currentRole === 'admin_client'
+        ? await getDocs(query(collection(this.firestore, 'userGroups'),
+            where('clientId', 'in', await this.authService.getCurrentUserClientIds())))
+        : await getDocs(collection(this.firestore, 'userGroups'));
+
+      const clientsSnap = await getDocs(collection(this.firestore, 'clients'));
+      const clientMap = new Map(clientsSnap.docs.map(d => [d.id, (d.data() as any)['companyName'] || '']));
+      const projectsSnap = await getDocs(collection(this.firestore, 'projects'));
+      const projectMap = new Map(projectsSnap.docs.map(d => [d.id, (d.data() as any)['name'] || '']));
+
+      this.allGroups = groupsSnap.docs.map(d => {
+        const data = d.data() as any;
+        const projectIds: string[] = data['projectIds'] || [];
+        return {
+          id: d.id, name: data['name'] || '',
+          clientId: data['clientId'] || '', clientName: clientMap.get(data['clientId']) || '',
+          projectIds, projectNames: projectIds.map(pid => projectMap.get(pid) || '').filter(Boolean),
+        };
+      }).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+      this.filteredGroups = [...this.allGroups];
+    } catch (e) { console.error('Erro ao carregar grupos:', e); }
   }
 
   private async loadAll(): Promise<void> {
@@ -106,10 +196,8 @@ export class EditUserComponent implements OnInit {
       this.userInitial = (data['name'] || '?')[0].toUpperCase();
       this.userName = `${data['name'] || ''} ${data['surname'] || ''}`.trim();
 
-      // Retrocompatibilidade: lê campo legado 'client' ou novo 'clients'
       const existingClients: string[] = Array.isArray(data['clients'])
-        ? data['clients']
-        : data['client'] ? [data['client']] : [];
+        ? data['clients'] : data['client'] ? [data['client']] : [];
 
       this.userForm.patchValue({
         name: data['name'] || '',
@@ -118,6 +206,20 @@ export class EditUserComponent implements OnInit {
         role: data['role'] || '',
         clients: existingClients,
       });
+
+      if (data['role'] === 'viewer') {
+        // Carregar grupos e detectar grupos atuais do viewer via Firestore
+        await this.loadAllGroups();
+        const currentGroupsSnap = await getDocs(
+          query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', this.userId))
+        );
+        const currentGroupIds = currentGroupsSnap.docs.map(d => d.id);
+        this.userForm.get('groups')?.setValue(currentGroupIds);
+        this.onGroupsChange(currentGroupIds);
+        this.filteredGroups = [...this.allGroups];
+      }
+
+      this.onRoleChange(data['role'] || '');
     } catch {
       this.snackBar.open(this.translate.instant('Erro ao carregar usuário.'), this.translate.instant('Fechar'), { duration: 3000 });
       this.router.navigate(['/users']);
@@ -131,16 +233,39 @@ export class EditUserComponent implements OnInit {
     this.isSaving = true;
     try {
       const { name, surname, role, clients } = this.userForm.value;
-      await updateDoc(doc(this.firestore, `users/${this.userId}`), {
-        name,
-        surname,
-        role,
-        clients: clients || [],
-        updatedAt: new Date(),
-      });
+      const selectedGroups: string[] = this.userForm.get('groups')?.value || [];
+      const updateData: any = { name, surname, role, updatedAt: new Date() };
+
+      if (role === 'viewer') {
+        // Derivar cliente e projetos dos grupos selecionados
+        const groupObjs = this.allGroups.filter(g => selectedGroups.includes(g.id));
+        const derivedClientId = groupObjs[0]?.clientId || '';
+        const derivedProjectIds = [...new Set(groupObjs.flatMap(g => g.projectIds))];
+        updateData.groups = selectedGroups;
+        updateData.clients = derivedClientId ? [derivedClientId] : [];
+        updateData.client = derivedClientId;
+        updateData.projects = derivedProjectIds;
+
+        // Sincronizar userIds nos grupos
+        const oldGroupsSnap = await getDocs(
+          query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', this.userId))
+        );
+        const oldGroupIds = oldGroupsSnap.docs.map(d => d.id);
+        const removed = oldGroupIds.filter(id => !selectedGroups.includes(id));
+        const added = selectedGroups.filter(id => !oldGroupIds.includes(id));
+        await Promise.all([
+          ...removed.map(gId => updateDoc(doc(this.firestore, 'userGroups', gId), { userIds: arrayRemove(this.userId) })),
+          ...added.map(gId => updateDoc(doc(this.firestore, 'userGroups', gId), { userIds: arrayUnion(this.userId) })),
+        ]);
+      } else {
+        updateData.clients = clients || [];
+      }
+
+      await updateDoc(doc(this.firestore, `users/${this.userId}`), updateData);
       this.snackBar.open(this.translate.instant('Usuário atualizado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
       this.router.navigate(['/users']);
-    } catch {
+    } catch (e) {
+      console.error(e);
       this.snackBar.open(this.translate.instant('Erro ao salvar usuário.'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.isSaving = false;

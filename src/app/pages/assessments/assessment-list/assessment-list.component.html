@@ -2,8 +2,8 @@
 
   <app-page-header
     eyebrow="Projetos"
-    [title]="'FormulÃ¡rios de AvaliaÃ§Ã£o' | translate"
-    subtitle="Gerencie os formulÃ¡rios de avaliaÃ§Ã£o dos projetos"
+    [title]="'Formulários de Avaliação' | translate"
+    subtitle="Gerencie os formulários de avaliação dos projetos"
     data-tour="assessments-header">
 
     <button mat-button class="btn-back" (click)="goBack()">
@@ -13,7 +13,7 @@
 
     <button mat-raised-button class="btn-action" *ngIf="canManageAssessments" (click)="createNewAssessment()" data-tour="assessments-create">
       <mat-icon>add</mat-icon>
-      {{ 'Criar FormulÃ¡rio' | translate }}
+      {{ 'Criar Formulário' | translate }}
     </button>
 
   </app-page-header>
@@ -28,14 +28,14 @@
       <mat-form-field appearance="outline" class="filter-search">
         <mat-label>{{ 'Buscar por Nome' | translate }}</mat-label>
         <mat-icon matPrefix class="filter-icon">search</mat-icon>
-        <input matInput [placeholder]="('Nome do formulÃ¡rio...' | translate)"
+        <input matInput [placeholder]="('Nome do formulário...' | translate)"
           [(ngModel)]="searchValue" (ngModelChange)="applyFilters()" />
         <button mat-icon-button matSuffix *ngIf="searchValue" (click)="searchValue = ''; applyFilters()">
           <mat-icon>close</mat-icon>
         </button>
       </mat-form-field>
 
-      <!-- Filtro por cliente (oculto quando jÃ¡ filtrado por clientId) -->
+      <!-- Filtro por cliente (oculto quando já filtrado por clientId) -->
       <mat-form-field appearance="outline" class="filter-field" *ngIf="!clientId">
         <mat-label>{{ 'Cliente' | translate }}</mat-label>
         <mat-icon matPrefix class="filter-icon">business</mat-icon>
@@ -73,9 +73,9 @@
         <mat-datepicker #pickerFrom></mat-datepicker>
       </mat-form-field>
 
-      <!-- Filtro por data: AtÃ© -->
+      <!-- Filtro por data: Até -->
       <mat-form-field appearance="outline" class="filter-date">
-        <mat-label>{{ 'Criado atÃ©' | translate }}</mat-label>
+        <mat-label>{{ 'Criado até' | translate }}</mat-label>
         <mat-icon matPrefix class="filter-icon">event</mat-icon>
         <input matInput [matDatepicker]="pickerTo" [(ngModel)]="dateTo"
           (dateChange)="applyFilters()" placeholder="DD/MM/AAAA" />
@@ -89,7 +89,7 @@
     <div class="filters-info">
       <span class="results-count">
         {{ dataSource.filteredData?.length || 0 }}
-        formulÃ¡rio{{ (dataSource.filteredData?.length || 0) !== 1 ? 's' : '' }} encontrado{{ (dataSource.filteredData?.length || 0) !== 1 ? 's' : '' }}
+        formulário{{ (dataSource.filteredData?.length || 0) !== 1 ? 's' : '' }} encontrado{{ (dataSource.filteredData?.length || 0) !== 1 ? 's' : '' }}
       </span>
       <button mat-stroked-button class="btn-clear-filters" *ngIf="hasActiveFilters" (click)="clearFilters()">
         <mat-icon>filter_list_off</mat-icon>
@@ -111,7 +111,7 @@
 
         <!-- Nome -->
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome do FormulÃ¡rio' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Nome do Formulário' | translate }}</th>
           <td mat-cell *matCellDef="let item">
             <div class="name-cell">
               <div class="name-avatar">{{ (item.name || 'F').charAt(0).toUpperCase() }}</div>
@@ -128,9 +128,9 @@
           </td>
         </ng-container>
 
-        <!-- Data de CriaÃ§Ã£o -->
+        <!-- Data de Criação -->
         <ng-container matColumnDef="createdAt">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Data de CriaÃ§Ã£o' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Data de Criação' | translate }}</th>
           <td mat-cell *matCellDef="let item" class="date-cell">
             {{ item.createdAt | date:'dd/MM/yyyy' }}
           </td>
@@ -144,12 +144,12 @@
           </td>
         </ng-container>
 
-        <!-- AÃ§Ãµes -->
+        <!-- Ações -->
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef>{{ 'AÃ§Ãµes' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let item">
             <button mat-icon-button class="action-preview"
-              [matTooltip]="'PrÃ©-visualizar' | translate"
+              [matTooltip]="'Pré-visualizar' | translate"
               (click)="previewAssessment(item)">
               <mat-icon>visibility</mat-icon>
             </button>
@@ -176,7 +176,7 @@
           <td [attr.colspan]="displayedColumns.length">
             <div class="empty-state">
               <mat-icon>assignment</mat-icon>
-              <span>{{ 'Nenhum formulÃ¡rio encontrado.' | translate }}</span>
+              <span>{{ 'Nenhum formulário encontrado.' | translate }}</span>
             </div>
           </td>
         </tr>

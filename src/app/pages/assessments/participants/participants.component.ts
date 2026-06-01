@@ -39,7 +39,6 @@ import {
 import { FormBuilder, Validators } from '@angular/forms';
 import { ParticipantsConfirmationDialogComponent } from './participants-confirmation-dialog/participants-confirmation-dialog.component';
 import { EditParticipantDialogComponent } from './edit-participant-dialog/edit-participant-dialog.component';
-import { LinkEvaluateeModalComponent, LinkEvaluateeModalResult } from './link-evaluatee-modal/link-evaluatee-modal.component';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { AddParticipantModalComponent } from '../../project/add-participant-modal/add-participant-modal.component';
 import { RelatorioPreviewDialogComponent } from '../../project/participants-modal/relatorio-preview-dialog.component';
@@ -49,7 +48,14 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ProjectService } from 'src/app/services/project.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
+import { HasPermissionDirective } from 'src/app/directives/has-permission.directive';
+import { hasPermission, AppRole } from 'src/app/config/permissions.config';
+import { Auth, sendPasswordResetEmail, ActionCodeSettings } from '@angular/fire/auth';
+import { FirebaseApp } from '@angular/fire/app';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 
 interface ModalData {
   projectId?: string;
@@ -91,6 +97,10 @@ interface UnifiedParticipant {
 interface Client {
   id: string;
   name: string;
+  credits?: number;
+  reservedCredits?: number;
+  consumedCredits?: number;
+  creditsPurchased?: number;
 }
 
 interface Project {
@@ -116,7 +126,7 @@ interface Assessment {
 @Component({
   selector: 'app-participants',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent, RouterLink],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule, AppPageHeaderComponent, RouterLink, HasPermissionDirective],
   templateUrl: './participants.component.html',
   styleUrls: ['./participants.component.scss'],
 })
@@ -149,8 +159,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   selectedParticipants: UnifiedParticipant[] = [];
   isLoading: boolean = false;
   isInitializing: boolean = true; // overlay de tela cheia durante carregamento inicial
-  clientCredits: number | null = null;
-  clientReservedCredits: number | null = null;
   // Inicia como true: spinner aparece no primeiro frame do dialog,
   // antes mesmo de ngOnInit carregar os dados — evita cliques acidentais
   isTableLoading: boolean = true;
@@ -161,8 +169,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   selectedTemplate: MailTemplate | any = null;
   userRole: string = '';
   userClientIds: string[] = [];
+  viewerProjectIds: string[] = [];
   isClientDisabled: boolean = false;
   isProjectDisabled: boolean = false;
+  projectStatus: string = '';
   isEmailSendingMode: boolean = false;
   emailType: string | undefined;
   reportTemplates: any[] = [];
@@ -173,7 +183,32 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   @ViewChild(MatSort) sort!: MatSort;
 
   get canManageParticipantData(): boolean {
-    return this.userRole !== 'viewer';
+    return hasPermission(this.userRole as AppRole, 'criar');
+  }
+
+  get canManageViewers(): boolean {
+    return hasPermission(this.userRole as AppRole, 'gerenciar_viewers');
+  }
+
+  get isProjectConcluded(): boolean {
+    return ['Concluído', 'concluido'].includes(this.projectStatus);
+  }
+
+  get isProjectCancelled(): boolean {
+    return ['Cancelado', 'cancelado'].includes(this.projectStatus);
+  }
+
+  get projectStatusLabel(): string {
+    if (this.isProjectConcluded) return 'Concluído';
+    if (this.isProjectCancelled) return 'Cancelado';
+    if (this.projectStatus) return 'Em andamento';
+    return '';
+  }
+
+  get projectStatusClass(): string {
+    if (this.isProjectConcluded) return 'project-status--green';
+    if (this.isProjectCancelled) return 'project-status--red';
+    return 'project-status--blue';
   }
 
   constructor(
@@ -183,7 +218,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     private fb: FormBuilder,
     private router: Router,
     private authService: AuthService,
+    private projectService: ProjectService,
     private participantValidationService: ParticipantValidationService,
+    private auth: Auth,
+    private firebaseApp: FirebaseApp,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: ModalData | null,
     @Optional() public dialogRef: MatDialogRef<ParticipantsComponent>
   ) {}
@@ -193,6 +231,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
     this.userRole = await this.authService.getCurrentUserRole() || '';
     this.userClientIds = await this.authService.getCurrentUserClientIds();
+
+    if (this.userRole === 'viewer') {
+      await this.loadViewerProjectIds();
+    }
 
     await this.loadReportTemplates();
 
@@ -211,10 +253,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
     this.configureDataSource();
 
-    // Após configureDataSource definir filterClient (modo email), atualizar créditos
-    if (this.filterClient) {
-      this.updateClientCredits(this.filterClient);
-    }
   }
 
   ngAfterViewInit(): void {
@@ -326,6 +364,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.filterProject = this.data.projectId;
       this.isClientDisabled = true;
       this.isProjectDisabled = true;
+      this.loadProjectStatus();
 
       Promise.all([this.loadMailTemplates(), this.loadAssessments()]).then(
         () => {
@@ -394,61 +433,108 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     return true;
   }
 
+  private async loadViewerProjectIds(): Promise<void> {
+    this.viewerProjectIds = [];
+    const email = await this.authService.getCurrentUserEmail();
+    if (!email) return;
+
+    const usersSnap = await getDocs(query(collection(this.firestore, 'users'), where('email', '==', email)));
+    if (usersSnap.empty) return;
+
+    const userDocId = usersSnap.docs[0].id;
+    const userData = usersSnap.docs[0].data();
+    const isOnNewStructure = 'groups' in userData;
+    const projectIds = new Set<string>();
+
+    // Fonte principal: grupos onde o viewer aparece em userIds
+    const groupsSnap = await getDocs(
+      query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', userDocId))
+    );
+
+    const allProjectsClientIds = new Set<string>();
+    groupsSnap.forEach(snap => {
+      const gData = snap.data();
+      if (gData['allProjects'] === true && gData['clientId']) {
+        allProjectsClientIds.add(gData['clientId']);
+      } else {
+        (gData['projectIds'] || []).forEach((id: string) => projectIds.add(id));
+      }
+    });
+
+    // Grupos com allProjects: buscar todos os projetos do cliente
+    if (allProjectsClientIds.size > 0) {
+      const projSnap = await getDocs(
+        query(collection(this.firestore, 'projects'), where('clientId', 'in', [...allProjectsClientIds]))
+      );
+      projSnap.forEach(d => projectIds.add(d.id));
+    }
+
+    // Fallback legado: apenas se nunca foi migrado para grupos
+    if (!isOnNewStructure && projectIds.size === 0) {
+      const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
+      const fromSingle = userData['project'] ? [userData['project']] : [];
+      [...fromArray, ...fromSingle].forEach((id: string) => projectIds.add(id));
+    }
+
+    this.viewerProjectIds = [...projectIds];
+  }
+
   async loadClients(): Promise<void> {
     try {
       let docs: any[] = [];
-      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+      if (this.userRole !== 'admin_master' && this.userClientIds.length > 0) {
         const snaps = await Promise.all(
           this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
         );
         docs = snaps.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }));
-      } else {
+      } else if (this.userRole === 'admin_master') {
         const snapshot = await getDocs(collection(this.firestore, 'clients'));
         docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       }
       this.clients = docs.map(d => ({
         id: d.id,
         name: d['companyName'] || 'Cliente Sem Nome',
-        credits: d['credits'] || 0,
-        creditsUsed: d['creditsUsed'] || 0,
-        reservedCredits: d['reservedCredits'] || 0,
+        credits: d['credits'] ?? 0,
+        reservedCredits: d['reservedCredits'] ?? 0,
+        consumedCredits: d['consumedCredits'] ?? 0,
+        creditsPurchased: 0, // calculado abaixo
       }));
-      if (this.filterClient) {
-        this.updateClientCredits(this.filterClient);
-      }
+
+      // Calcular créditos comprados (pedidos aprovados e vigentes) para cada cliente
+      const now = new Date();
+      await Promise.all(this.clients.map(async client => {
+        try {
+          const ordersSnap = await getDocs(query(
+            collection(this.firestore, 'creditOrders'),
+            where('clientId', '==', client.id),
+            where('status', '==', 'Aprovado')
+          ));
+          let purchased = 0;
+          ordersSnap.docs.forEach(d => {
+            const validity = d.data()['validityDate']?.toDate();
+            if (validity && validity > now) purchased += (d.data()['credits'] || 0);
+          });
+          client.creditsPurchased = purchased;
+        } catch { client.creditsPurchased = 0; }
+      }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       this.snackBar.open('Erro ao carregar clientes.', 'Fechar', { duration: 3000 });
     }
   }
 
-  updateClientCredits(clientId: string): void {
-    const client = (this.clients as any[]).find(c => c.id === clientId);
-    this.clientCredits = client ? (client.credits ?? 0) : null;
-    this.clientReservedCredits = client ? (client.reservedCredits ?? 0) : null;
-  }
 
-  get reservedParticipantNames(): string[] {
-    return this.dataSource.data
-      .filter(p => p.creditReserved && !p.completedAt)
-      .map(p => p.name);
-  }
 
-  /** Participantes com crédito reservado (envio pendente, não responderam) */
-  get reservedParticipants() {
-    return this.dataSource.data.filter(p => p.creditReserved && !p.completedAt);
-  }
-
-  /** Participantes que responderam (crédito consumido) */
-  get usedParticipants() {
-    return this.dataSource.data.filter(p => !!p.completedAt);
-  }
 
   async loadProjects(): Promise<void> {
     try {
       const projectsCollection = collection(this.firestore, 'projects');
       let snapshot;
-      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+      if (this.userRole === 'viewer' && this.viewerProjectIds.length > 0) {
+        snapshot = await getDocs(query(projectsCollection, where('__name__', 'in', this.viewerProjectIds)));
+      } else if (this.userRole === 'viewer') {
+        this.projects = []; this.filteredProjects = []; return;
+      } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
         snapshot = await getDocs(query(projectsCollection, where('clientId', 'in', this.userClientIds)));
       } else {
         snapshot = await getDocs(projectsCollection);
@@ -477,7 +563,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     try {
       const participantsCollection = collection(this.firestore, 'participants');
       let participantsSnapshot;
-      if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
+      if (this.userRole === 'viewer' && this.viewerProjectIds.length > 0) {
+        participantsSnapshot = await getDocs(query(participantsCollection, where('projectId', 'in', this.viewerProjectIds)));
+      } else if (this.userRole === 'viewer') {
+        this.dataSource.data = []; return;
+      } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
         participantsSnapshot = await getDocs(query(participantsCollection, where('clientId', 'in', this.userClientIds)));
       } else {
         participantsSnapshot = await getDocs(participantsCollection);
@@ -893,7 +983,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.assessmentFormControl.setValue('');
     this.mailTemplates = [];
     this.assessments = [];
-    this.updateClientCredits(this.filterClient);
     if (this.filterClient) {
       this.filteredProjects = this.projects.filter(
         (project) => project.clientId === this.filterClient
@@ -908,10 +997,52 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   onProjectChange(): void {
     this.applyFilter();
+    this.loadProjectStatus();
+  }
+
+  private async loadProjectStatus(): Promise<void> {
+    if (!this.filterProject) { this.projectStatus = ''; return; }
+    try {
+      const snap = await getDoc(doc(this.firestore, 'projects', this.filterProject));
+      if (!snap.exists()) { this.projectStatus = ''; return; }
+      const status: string = snap.data()['status'] || '';
+      this.projectStatus = status;
+
+      // Migração automática: se o projeto está Concluído mas ainda tem créditos reservados,
+      // dispara o concludeProject para mover reservedCredits → consumedCredits
+      if (['Concluído', 'concluido'].includes(status)) {
+        const reserved = await getDocs(query(
+          collection(this.firestore, 'participants'),
+          where('projectId', '==', this.filterProject),
+          where('creditReserved', '==', true),
+          where('creditConsumed', '==', false)
+        ));
+        if (!reserved.empty) {
+          await this.projectService.concludeProject(this.filterProject, 'auto-migration').catch(() => {});
+          // Recarrega os créditos do cliente após migração
+          await this.loadClients();
+        }
+      }
+    } catch { this.projectStatus = ''; }
   }
 
   getSelectedClientName(): string {
     return this.clients.find(c => c.id === this.filterClient)?.name || '';
+  }
+
+  get currentClientCredits(): { disponivel: number; reservado: number; consumido: number; totalComprado: number } | null {
+    if (!this.filterClient) return null;
+    const c = this.clients.find(cl => cl.id === this.filterClient);
+    if (!c) return null;
+    const totalComprado = c.creditsPurchased ?? 0;
+    const reservado = c.reservedCredits ?? 0;
+    const consumido = c.consumedCredits ?? 0;
+    return {
+      totalComprado,
+      reservado,
+      consumido,
+      disponivel: totalComprado - reservado - consumido,
+    };
   }
 
   getSelectedProjectName(): string {
@@ -1060,102 +1191,29 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async resendLinks(): Promise<void> {
-    // ── Interceptar se há avaliadores (não-avaliados) na seleção ──────────────
+    // Auto-link: gestores/avaliadores são automaticamente vinculados ao único avaliado do projeto
     const assessmentId = this.assessmentFormControl.value;
     const nonAvaliados = this.selectedParticipants.filter(p => p.type !== 'avaliado');
     if (nonAvaliados.length > 0 && assessmentId) {
-      // Buscar todos os avaliados do mesmo projeto
       const projectId = this.filterProject || this.selectedParticipants[0]?.projectId;
-      let avaliados: Array<{ id: string; name: string }> = [];
       if (projectId) {
         const snap = await getDocs(query(
           collection(this.firestore, 'participants'),
           where('projectId', '==', projectId),
           where('type', '==', 'avaliado')
         ));
-        avaliados = snap.docs.map(d => ({ id: d.id, name: d.data()['name'] || '' }));
-      }
-
-      const dialogRef = this.dialog.open(LinkEvaluateeModalComponent, {
-        width: '600px',
-        disableClose: true,
-        data: {
-          evaluators: nonAvaliados.map(p => ({
-            id: p.id,
-            name: p.name,
-            email: p.email,
-            avaliadoId: p.avaliadoId,
-            assessmentId,
-          })),
-          avaliados,
-          assessmentId,
-          projectId: projectId || '',
-        },
-      });
-
-      const result: LinkEvaluateeModalResult | null = await dialogRef.afterClosed().toPromise();
-      if (!result) return; // cancelou
-
-      // Propagar os avaliadoIds para os participantes selecionados
-      for (const binding of result.bindings) {
-        const p = this.selectedParticipants.find(x => x.id === binding.participantId);
-        if (p) p.avaliadoId = binding.avaliadoId ?? undefined;
+        const singleAvaliadoId = snap.docs.length > 0 ? snap.docs[0].id : null;
+        if (singleAvaliadoId) {
+          for (const p of nonAvaliados) {
+            p.avaliadoId = singleAvaliadoId;
+          }
+        }
       }
     }
-    // ─────────────────────────────────────────────────────────────────────────
 
     this.isLoading = true;
     this.isTableLoading = true;
     try {
-      // ── Verificar e reservar créditos do cliente ──────────────
-      const clientId = this.filterClient || this.data?.clientId;
-      let clientRef: any = null;
-      let creditsToReserve = 0; // contados durante o loop
-      let currentClientCredits = 0;
-      let currentReservedCredits = 0;
-
-      if (clientId) {
-        clientRef = doc(this.firestore, `clients/${clientId}`);
-
-        // CORREÇÃO 8: leitura direta do Firestore — nunca usa estado local em cache
-        const clientSnap = await getDoc(clientRef);
-        if (clientSnap.exists()) {
-          const clientData = clientSnap.data() as Record<string, any>;
-          currentClientCredits = clientData['credits'] || 0;
-          currentReservedCredits = clientData['reservedCredits'] || 0;
-
-          // Descobre quais participantes JÁ têm crédito reservado
-          const pendingParticipants = this.selectedParticipants.filter(p => !p.completedAt);
-          const assessmentIdForCheck = this.assessmentFormControl.value;
-          let alreadyReservedCount = 0;
-          for (const p of pendingParticipants) {
-            // Filtra pelo assessmentId do envio atual para não contar reservas de outras avaliações
-            const existConstraints: any[] = [
-              where('participantId', '==', p.id),
-            ];
-            if (assessmentIdForCheck) {
-              existConstraints.push(where('assessmentId', '==', assessmentIdForCheck));
-            }
-            const existQ = query(collection(this.firestore, 'assessmentLinks'), ...existConstraints);
-            const existSnap = await getDocs(existQ);
-            const hasReservation = existSnap.docs.some(
-              d => d.data()['creditReserved'] === true && d.data()['status'] !== 'cancelled'
-            );
-            if (hasReservation) alreadyReservedCount++;
-          }
-
-          const newCreditsNeeded = pendingParticipants.length - alreadyReservedCount;
-          if (currentClientCredits < newCreditsNeeded) {
-            this.snackBar.open(
-              `Créditos insuficientes. Disponíveis: ${currentClientCredits} — necessários: ${newCreditsNeeded}. Adquira mais créditos para continuar.`,
-              'Fechar',
-              { duration: 6000 }
-            );
-            return;
-          }
-        }
-      }
-      // ──────────────────────────────────────────────────────────
 
       let selectedTemplateId: any;
       if (this.isEmailSendingMode) {
@@ -1225,6 +1283,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const reminderClientId = this.filterClient || this.selectedParticipants[0]?.clientId || '';
       const reminderSettings = await this.loadReminderSettingsForProject(reminderClientId, projectIdForDeadline || '');
 
+      // Captura antes do loop — selectedParticipants pode ser alterado por change detection
+      const emailCount = this.selectedParticipants.length;
+
       // Envio sequencial: cada participante recebe template com variáveis próprias
       for (const participant of this.selectedParticipants) {
         const response = await fetch(sendEmailUrl, {
@@ -1269,7 +1330,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             emailTemplate: selectedTemplateId,
             participantEmail: participant.email,
             emailHistory: [inviteHistoryEntry],
-            creditReserved: true,
+            creditReserved: false,
           };
           if (participant.type === 'avaliador' && participant.avaliadoId) {
             linkData['avaliadoId'] = participant.avaliadoId;
@@ -1286,18 +1347,16 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             );
           }
           await setDoc(assessmentLinkDoc, linkData);
-          if (!participant.completedAt) creditsToReserve++;
         } else {
           const existingLinkDoc = existingLinksSnapshot.docs[0];
           const existingData = existingLinkDoc.data();
           const isPending = existingData['status'] !== 'completed';
-          const alreadyReserved = existingData['creditReserved'] === true && existingData['status'] !== 'cancelled';
           const updateData: any = {
             sentAt: new Date(),
             emailTemplate: selectedTemplateId,
             status: isPending ? 'pending' : 'completed',
             emailHistory: arrayUnion(inviteHistoryEntry),
-            creditReserved: true,
+            creditReserved: false,
           };
           if (participant.type !== 'avaliado' && participant.avaliadoId) {
             updateData['avaliadoId'] = participant.avaliadoId;
@@ -1314,7 +1373,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             );
           }
           await updateDoc(doc(this.firestore, 'assessmentLinks', existingLinkDoc.id), updateData);
-          if (!participant.completedAt && !alreadyReserved) creditsToReserve++;
         }
 
         const participantRef = doc(this.firestore, 'participants', participant.id);
@@ -1328,34 +1386,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       }
 
 
-      // ── CORREÇÃO 2: Reservar créditos em transação atômica ─────────────
-      // runTransaction garante que a leitura + verificação + escrita ocorrem
-      // sem race condition, mesmo com dois processos paralelos para o mesmo cliente.
-      if (clientRef && creditsToReserve > 0) {
-        await runTransaction(this.firestore, async (t) => {
-          const latestSnap = await t.get(clientRef!);
-          if (!latestSnap.exists()) throw new Error('Cliente não encontrado.');
-
-          const latestData = latestSnap.data() as Record<string, any>;
-          const latestCredits: number = latestData['credits'] || 0;
-
-          if (latestCredits < creditsToReserve) {
-            throw new Error(
-              `Créditos insuficientes no momento da reserva: ` +
-              `${latestCredits} disponíveis, ${creditsToReserve} necessários.`
-            );
-          }
-
-          t.update(clientRef!, {
-            credits:         latestCredits - creditsToReserve,
-            reservedCredits: (latestData['reservedCredits'] || 0) + creditsToReserve,
-          });
-        });
-      }
-      // ────────────────────────────────────────────────────────────────────
-
       this.snackBar.open(
-        `E-mails enviados para ${this.selectedParticipants.length} participantes! ${creditsToReserve > 0 ? `(${creditsToReserve} crédito${creditsToReserve !== 1 ? 's' : ''} reservado${creditsToReserve !== 1 ? 's' : ''})` : ''}`,
+        `E-mails enviados para ${emailCount} participante${emailCount !== 1 ? 's' : ''}!`,
         'Fechar',
         { duration: 3000 }
       );
@@ -1503,10 +1535,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         if (!this.filterClient) {
           this.filterClient = result.client;
           this.filteredProjects = this.projects.filter(p => p.clientId === result.client);
-          this.updateClientCredits(result.client);
         }
         if (!this.filterProject) this.filterProject = result.project;
-        await this.loadParticipants();
+        await Promise.all([this.loadParticipants(), this.loadClients()]);
       });
     };
     reader.readAsArrayBuffer(file);
@@ -1595,7 +1626,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
         if (this.filterProject) await this.revertProjectIfConcluded(this.filterProject);
-        this.loadParticipants();
+        await Promise.all([this.loadParticipants(), this.loadClients()]);
       }
     });
   }
@@ -1699,15 +1730,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const prevStatus = participant.status;
     const prevSentAt = participant.sentAt;
     const prevCreditReserved = participant.creditReserved;
-    const hadCredit = participant.creditReserved === true;
 
     participant.status = 'Não Enviado';
     participant.sentAt = undefined;
     participant.creditReserved = false;
-    if (hadCredit) {
-      if (this.clientCredits !== null) this.clientCredits += 1;
-      if (this.clientReservedCredits !== null) this.clientReservedCredits = Math.max(0, this.clientReservedCredits - 1);
-    }
     this.dataSource.data = [...this.dataSource.data];
     this.applyFilter();
     // ─────────────────────────────────────────────────────────
@@ -1727,48 +1753,23 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         participant.status = prevStatus;
         participant.sentAt = prevSentAt;
         participant.creditReserved = prevCreditReserved;
-        if (hadCredit) {
-          if (this.clientCredits !== null) this.clientCredits -= 1;
-          if (this.clientReservedCredits !== null) this.clientReservedCredits += 1;
-        }
         this.dataSource.data = [...this.dataSource.data];
         this.snackBar.open('Nenhum envio pendente encontrado.', 'Fechar', { duration: 3000 });
         return;
       }
 
-      const linkDoc = linkSnap.docs[0];
-      const linkData = linkDoc.data();
-      const creditWasReserved = linkData['creditReserved'] === true;
-      const clientIdForCancel = linkData['clientId'] || participant.clientId;
-
-      await updateDoc(doc(this.firestore, 'assessmentLinks', linkDoc.id), {
+      await updateDoc(doc(this.firestore, 'assessmentLinks', linkSnap.docs[0].id), {
         status: 'cancelled',
         cancelledAt: new Date(),
         creditReserved: false,
       });
 
-      if (creditWasReserved && clientIdForCancel) {
-        const clientRef = doc(this.firestore, `clients/${clientIdForCancel}`);
-        const clientSnap = await getDoc(clientRef);
-        if (clientSnap.exists()) {
-          const d = clientSnap.data();
-          await updateDoc(clientRef, {
-            credits: (d['credits'] || 0) + 1,
-            reservedCredits: Math.max(0, (d['reservedCredits'] || 0) - 1),
-          });
-        }
-      }
-
-      this.snackBar.open('Envio cancelado e crédito liberado.', 'Fechar', { duration: 3000 });
+      this.snackBar.open('Envio cancelado.', 'Fechar', { duration: 3000 });
     } catch (e) {
       // Rollback em caso de erro
       participant.status = prevStatus;
       participant.sentAt = prevSentAt;
       participant.creditReserved = prevCreditReserved;
-      if (hadCredit) {
-        if (this.clientCredits !== null) this.clientCredits -= 1;
-        if (this.clientReservedCredits !== null) this.clientReservedCredits += 1;
-      }
       this.dataSource.data = [...this.dataSource.data];
       console.error('Erro ao cancelar envio:', e);
       this.snackBar.open('Erro ao cancelar envio.', 'Fechar', { duration: 3000 });
@@ -1905,5 +1906,103 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const utcMin = sh * 60 + sm - offsetMin;
     const dayStartUtc = new Date(`${datePart}T00:00:00Z`).getTime();
     return new Date(dayStartUtc + utcMin * 60_000);
+  }
+
+  async linkParticipantAsViewer(participant: UnifiedParticipant): Promise<void> {
+    if (!participant.email) {
+      this.snackBar.open('Participante não tem e-mail cadastrado.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const emailLower = participant.email.toLowerCase().trim();
+
+    // Verifica se já existe usuário com esse e-mail
+    const [snapLower, snapEmail] = await Promise.all([
+      getDocs(query(collection(this.firestore, 'users'), where('emailLower', '==', emailLower))),
+      getDocs(query(collection(this.firestore, 'users'), where('email', '==', participant.email))),
+    ]);
+    const existing = snapLower.empty ? snapEmail : snapLower;
+
+    if (!existing.empty) {
+      const existingData = existing.docs[0].data();
+      if (existingData['role'] === 'viewer') {
+        // Garante que o projeto está na lista de projetos do viewer
+        const currentProjects: string[] = existingData['projects'] || [];
+        if (!currentProjects.includes(participant.projectId)) {
+          await updateDoc(existing.docs[0].ref, { projects: arrayUnion(participant.projectId) });
+          this.snackBar.open('Projeto adicionado ao acesso do visualizador existente.', 'Fechar', { duration: 3000 });
+        } else {
+          this.snackBar.open('Este participante já possui acesso como visualizador.', 'Fechar', { duration: 3000 });
+        }
+      } else {
+        this.snackBar.open(
+          `Este e-mail já está cadastrado com o perfil "${existingData['role']}". Edite o usuário para alterar permissões.`,
+          'Fechar',
+          { duration: 5000 }
+        );
+      }
+      return;
+    }
+
+    // Cria o usuário no Firestore
+    try {
+      await addDoc(collection(this.firestore, 'users'), {
+        name: participant.name,
+        surname: '',
+        email: participant.email,
+        emailLower,
+        role: 'viewer',
+        clients: participant.clientId ? [participant.clientId] : [],
+        projects: [participant.projectId],
+        status: 'active',
+        createdAt: new Date(),
+      });
+    } catch (err: any) {
+      this.snackBar.open(`Erro ao criar visualizador: ${err?.message}`, 'Fechar', { duration: 5000 });
+      return;
+    }
+
+    // Cria conta Firebase Auth via app secundário e envia e-mail de boas-vindas
+    const appName = `viewer_link_${Date.now()}`;
+    const secondaryApp = initializeApp((this.firebaseApp as any).options, appName);
+    const secondaryAuth = getAuth(secondaryApp);
+    try {
+      const tempPassword =
+        Math.random().toString(36).slice(2) +
+        Math.random().toString(36).toUpperCase().slice(2) + '!8';
+      await createUserWithEmailAndPassword(secondaryAuth, participant.email, tempPassword);
+      await firebaseSignOut(secondaryAuth);
+    } catch (err: any) {
+      if (err?.code !== 'auth/email-already-in-use') {
+        this.snackBar.open(
+          `Conta Firestore criada, mas erro ao criar Auth: ${err?.message}`,
+          'Fechar', { duration: 6000 }
+        );
+        try { await deleteApp(secondaryApp); } catch {}
+        return;
+      }
+    } finally {
+      try { await deleteApp(secondaryApp); } catch {}
+    }
+
+    // Envia e-mail com link de acesso
+    try {
+      const actionCodeSettings: ActionCodeSettings = {
+        url: `${window.location.origin}/authentication/login`,
+        handleCodeInApp: false,
+      };
+      await sendPasswordResetEmail(this.auth, participant.email, actionCodeSettings);
+    } catch (err: any) {
+      this.snackBar.open(
+        `Visualizador criado, mas o e-mail não foi enviado: ${err?.message}`,
+        'Fechar', { duration: 6000 }
+      );
+      return;
+    }
+
+    this.snackBar.open(
+      `Acesso criado! E-mail de acesso enviado para ${participant.email}.`,
+      'Fechar', { duration: 4000 }
+    );
   }
 }

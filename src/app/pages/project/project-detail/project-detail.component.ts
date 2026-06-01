@@ -28,6 +28,8 @@ import { AppPageHeaderComponent } from 'src/app/components/page-header/page-head
 import { TranslateModule } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { UsersComponent } from '../../users/users.component';
+import { ProjectService } from 'src/app/services/project.service';
+import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-project-detail',
@@ -40,6 +42,7 @@ import { UsersComponent } from '../../users/users.component';
     MatSelectModule,
     AppPageHeaderComponent,
     TranslateModule,
+    ConfirmDialogComponent,
   ],
   templateUrl: './project-detail.component.html',
   styleUrls: ['./project-detail.component.scss'],
@@ -73,6 +76,10 @@ export class ProjectDetailComponent implements OnInit {
   assessments: { id: string; name: string }[] = [];
   usersInGroups: { id: string; name: string; groupNames: string[] }[] = [];
   isLoading = false;
+  isConcluding = false;
+  projectStatus: string = '';
+  currentUserRole: string = '';
+  currentUserId: string = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -81,7 +88,8 @@ export class ProjectDetailComponent implements OnInit {
     private snackBar: MatSnackBar,
     private location: Location,
     private authService: AuthService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private projectService: ProjectService,
   ) {}
 
   ngOnInit(): void {
@@ -104,6 +112,9 @@ export class ProjectDetailComponent implements OnInit {
         });
         return;
       }
+
+      this.currentUserRole = currentUser.role || '';
+      this.currentUserId = currentUser.uid || '';
 
       if (currentUser.role === 'admin_master') {
         this.loadClients();
@@ -190,6 +201,7 @@ export class ProjectDetailComponent implements OnInit {
           );
         }
 
+        this.projectStatus = projectData['status'] || '';
         this.form.patchValue(projectData);
         await this.updateUsersInGroups(); // Carregar usuários dos grupos selecionados
       } else {
@@ -317,6 +329,50 @@ export class ProjectDetailComponent implements OnInit {
     ref.afterClosed().subscribe(() => {
       this.loadUserGroups();
     });
+  }
+
+  get canConcludeProject(): boolean {
+    return (
+      this.isEditMode &&
+      this.projectStatus === 'Em andamento' &&
+      ['admin_master', 'admin_client'].includes(this.currentUserRole)
+    );
+  }
+
+  async concludeProject(): Promise<void> {
+    if (!this.projectId) return;
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '480px',
+      data: {
+        title: 'Concluir Projeto',
+        message:
+          'Ao concluir este projeto, todos os links não respondidos serão encerrados e 1 crédito será debitado do saldo do cliente. Esta ação não pode ser desfeita. Deseja continuar?',
+        confirmLabel: 'Concluir',
+        cancelLabel: 'Cancelar',
+      },
+    });
+
+    const confirmed = await dialogRef.afterClosed().toPromise();
+    if (!confirmed) return;
+
+    this.isConcluding = true;
+    try {
+      await this.projectService.concludeProject(this.projectId, this.currentUserId || 'admin');
+      this.projectStatus = 'concluido';
+      this.form.get('status')?.setValue('concluido');
+      this.snackBar.open('Projeto concluído com sucesso! 1 crédito debitado.', 'Fechar', { duration: 4000 });
+    } catch (error: any) {
+      const msg: string = error?.message || '';
+      if (msg.includes('Saldo insuficiente')) {
+        this.snackBar.open(msg, 'Fechar', { duration: 6000 });
+      } else {
+        this.snackBar.open('Erro ao concluir projeto. Tente novamente.', 'Fechar', { duration: 3000 });
+      }
+      console.error('Erro ao concluir projeto:', error);
+    } finally {
+      this.isConcluding = false;
+    }
   }
 
   async updateUserProjects(): Promise<void> {

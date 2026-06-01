@@ -20,8 +20,8 @@
     <!-- Barra de busca + filtros -->
     <div class="search-bar" data-tour="projects-search">
 
-      <!-- Filtro por cliente (admin_master) -->
-      <mat-form-field appearance="outline" class="client-filter-field" *ngIf="isAdminMaster && clients.length > 0">
+      <!-- Filtro por cliente (admin_master e admin_client com múltiplos clientes) -->
+      <mat-form-field appearance="outline" class="client-filter-field" *ngIf="clients.length > 1">
         <mat-label>Filtrar por cliente</mat-label>
         <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:18px;">business</mat-icon>
         <mat-select [(ngModel)]="selectedClientId" (selectionChange)="onClientChange()"
@@ -172,6 +172,13 @@
                       [disabled]="loadingParticipantsProjectId === p.id">
                 <mat-spinner *ngIf="loadingParticipantsProjectId === p.id" diameter="16"></mat-spinner>
                 <mat-icon *ngIf="loadingParticipantsProjectId !== p.id">supervisor_account</mat-icon>
+              </button>
+
+              <!-- Gerar Relatório -->
+              <button class="act-btn act-btn--report"
+                      (click)="goToProjectReport(p.clientId, p.id)"
+                      [matTooltip]="'Gerar Relatório' | translate">
+                <mat-icon>bar_chart</mat-icon>
               </button>
 
               <!-- Disparar convites — botão primário visível para perfis operacionais -->
