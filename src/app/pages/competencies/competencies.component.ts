@@ -451,24 +451,17 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         // Usar o método auxiliar que já tem lógica para encontrar perguntas
         perguntasCustom = this.getPerguntasCustomCompetencia(idCompetenciaEditando);
       } else {
-        // Se não há ID, tentar encontrar por qualquer ID temporário que possa existir
+        // Apenas chaves temporárias da sessão atual — evita pegar perguntas de outras competências
         const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
-          k.startsWith('comp_temp_') || k.startsWith('comp_')
+          k.startsWith('comp_temp_')
         );
         if (tempKeys.length > 0) {
-          // Pegar a primeira chave temporária encontrada
           perguntasCustom = this.customQuestionsByCompetency[tempKeys[0]] || [];
         }
       }
 
-      // Filtrar apenas perguntas que têm título preenchido (ou permitir sem título para edição posterior)
-      // Mas garantir que pelo menos uma pergunta existe
+      // Modo sem avaliação: usar perguntas custom da competência (se houver)
       perguntasIdsFinais = perguntasCustom.map(q => q.id);
-
-      if (perguntasIdsFinais.length === 0) {
-        this.snackBar.open(this.t('Adicione pelo menos uma pergunta custom à competência ou selecione uma avaliação.'), this.t('Fechar'), { duration: 3000 });
-        return;
-      }
     } else {
       // Modo com avaliação: validar se há perguntas selecionadas OU perguntas custom
       const idCompetenciaEditando = this.competenciaEditando.id;
@@ -565,12 +558,6 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       console.log(`  - Total: ${perguntasIdsFinais.length}`);
       console.log(`  - IDs:`, perguntasIdsFinais);
       console.log(`  - Perguntas custom no dropdown: ${perguntasIdsFinais.filter(id => id.startsWith('custom_')).length}`);
-
-      // Validar se há pelo menos uma pergunta (da avaliação ou custom)
-      if (perguntasIdsFinais.length === 0) {
-        this.snackBar.open(this.t('Selecione pelo menos uma pergunta da avaliação ou adicione uma pergunta custom.'), this.t('Fechar'), { duration: 3000 });
-        return;
-      }
 
       // Verificar se todas as perguntas custom vinculadas estão na lista
       perguntasIdsVinculadas.forEach((perguntaId: string) => {
@@ -877,6 +864,18 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
     this.perguntasCustomCache = []; // Limpar cache ao cancelar edição
     this.atualizarPerguntasBloqueadas();
+  }
+
+  startNewCompetencia(): void {
+    this.competenciaEditando = { id: '', nome: '', descricao: '', perguntasIds: [] };
+    this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
+    this.perguntasCustomCache = [];
+    this.atualizarPerguntasBloqueadas();
+    this.showCompForm = true;
+  }
+
+  isCompetenciaSalva(id: string | null | undefined): boolean {
+    return !!id && this.competencias.some(c => c.id === id);
   }
 
   private atualizarPerguntasBloqueadas(): void {
@@ -1965,16 +1964,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     this.groupNameControl.setValue(group.name);
     this.competencyGroupControl.setValue(group.id);
 
-    // Restaurar avaliação vinculada
-    if (group.assessmentId) {
-      this.selectedAssessmentId = group.assessmentId;
-      this.assessmentControl.setValue(group.assessmentId);
-    } else {
-      this.selectedAssessmentId = null;
-      this.assessmentControl.reset();
-    }
-
-    // Restaurar competências
+    // Restaurar competências antes de mexer na avaliação (evita race com valueChanges)
     this.competencias = (group.competencias || []).map((c: any) => ({
       id: c.id,
       nome: c.nome,
@@ -1985,8 +1975,23 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     // Restaurar perguntas custom por competência
     if (group.customQuestionsByCompetency) {
       this.customQuestionsByCompetency = { ...group.customQuestionsByCompetency };
-    } else if (group.customQuestions && group.customQuestions.length > 0) {
-      this.customQuestions = group.customQuestions;
+    } else {
+      this.customQuestionsByCompetency = {};
+    }
+    this.customQuestions = group.customQuestions?.length ? [...group.customQuestions] : [];
+
+    // Restaurar avaliação vinculada
+    if (group.assessmentId) {
+      this.selectedAssessmentId = group.assessmentId;
+      this.assessmentControl.setValue(group.assessmentId, { emitEvent: false });
+      void this.onAssessmentChange();
+    } else {
+      this.selectedAssessmentId = null;
+      this.assessmentControl.reset('', { emitEvent: false });
+      this.allQuestions = [];
+      this.filteredQuestions = [];
+      this.questionMap = {};
+      this.dynamicColumns = [];
     }
 
     this.cancelarEdicaoCompetencia();

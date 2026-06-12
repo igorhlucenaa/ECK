@@ -42,25 +42,25 @@
 
     <div class="step-node"
          [class.step-node--done]="!!selectedAssessmentId"
-         [class.step-node--active]="!!currentGroupId && !selectedAssessmentId"
+         [class.step-node--optional]="!!currentGroupId && !selectedAssessmentId"
          [class.step-node--locked]="!currentGroupId">
       <div class="step-node__circle">
         <mat-icon *ngIf="selectedAssessmentId">check</mat-icon>
         <span *ngIf="!selectedAssessmentId">3</span>
       </div>
       <div class="step-node__label">
-        <span class="step-node__title">Avaliação</span>
-        <span class="step-node__sub" *ngIf="!selectedAssessmentId">Vincule uma avaliação</span>
+        <span class="step-node__title">Avaliação <span class="step-node__optional-tag">opcional</span></span>
+        <span class="step-node__sub" *ngIf="!selectedAssessmentId">Vincule para usar perguntas do formulário</span>
         <span class="step-node__sub step-node__sub--done" *ngIf="selectedAssessmentId">{{ getAssessmentLabel() }}</span>
       </div>
     </div>
 
-    <div class="step-line" [class.step-line--done]="!!selectedAssessmentId"></div>
+    <div class="step-line" [class.step-line--done]="!!currentGroupId"></div>
 
     <div class="step-node"
          [class.step-node--done]="competencias.length > 0"
-         [class.step-node--active]="!!selectedAssessmentId && competencias.length === 0"
-         [class.step-node--locked]="!selectedAssessmentId">
+         [class.step-node--active]="!!currentGroupId && competencias.length === 0"
+         [class.step-node--locked]="!currentGroupId">
       <div class="step-node__circle">
         <mat-icon *ngIf="competencias.length > 0">check</mat-icon>
         <span *ngIf="competencias.length === 0">4</span>
@@ -298,14 +298,14 @@
           </div>
         </div>
 
-        <!-- Etapa 3: vincular avaliação (visível na tela principal) -->
-        <div class="ws-assessment-banner" *ngIf="!selectedAssessmentId">
+        <!-- Avaliação opcional -->
+        <div class="ws-assessment-banner ws-assessment-banner--optional" *ngIf="!selectedAssessmentId">
           <div class="ws-assessment-banner__icon">
             <mat-icon>assignment</mat-icon>
           </div>
           <div class="ws-assessment-banner__content">
-            <strong>Vincule uma avaliação para continuar</strong>
-            <p>Selecione o formulário cujas perguntas serão associadas às competências deste grupo.</p>
+            <strong>Vincular avaliação (opcional)</strong>
+            <p>Você já pode cadastrar competências. Vincule um formulário se quiser associar perguntas existentes às competências deste grupo.</p>
             <div class="ws-assessment-banner__row">
               <mat-form-field appearance="outline" class="ws-assessment-banner__select">
                 <mat-label>Avaliação</mat-label>
@@ -360,9 +360,9 @@
               <mat-icon style="font-size:18px;width:18px;height:18px">{{ competenciaEditando.id ? 'edit' : 'add_circle' }}</mat-icon>
             </div>
             <div>
-              <h3>{{ competenciaEditando.id ? 'Editar Competência' : 'Nova Competência' }}</h3>
-              <p *ngIf="!selectedAssessmentId">Selecione uma avaliação para vincular perguntas</p>
-              <p *ngIf="selectedAssessmentId">Preencha os dados e vincule as perguntas</p>
+              <h3>{{ isCompetenciaSalva(competenciaEditando.id) ? 'Editar Competência' : 'Nova Competência' }}</h3>
+              <p *ngIf="!selectedAssessmentId">Preencha nome e descrição. Você pode adicionar perguntas manualmente ou vincular uma avaliação depois.</p>
+              <p *ngIf="selectedAssessmentId">Preencha os dados e vincule as perguntas do formulário</p>
             </div>
             <button mat-icon-button class="form-back-btn" type="button"
                     matTooltip="Voltar para a lista"
@@ -387,7 +387,41 @@
                           placeholder="Descreva brevemente esta competência..."></textarea>
               </mat-form-field>
 
-              <!-- Perguntas -->
+              <!-- Perguntas manuais (sem avaliação) -->
+              <div class="ws-custom-questions" *ngIf="!selectedAssessmentId">
+                <div class="ws-custom-questions__header">
+                  <mat-icon>quiz</mat-icon>
+                  <div>
+                    <strong>Perguntas (opcional)</strong>
+                    <span>Crie perguntas manualmente ou vincule uma avaliação depois</span>
+                  </div>
+                  <button mat-stroked-button class="btn-new-question" type="button"
+                          (click)="adicionarPerguntaCustom(competenciaEditando.id || '')">
+                    <mat-icon>add_circle_outline</mat-icon>
+                    Nova Pergunta
+                  </button>
+                </div>
+                <div class="ws-custom-questions__list"
+                     *ngIf="perguntasCustomCache.length > 0; else semPerguntasCustom">
+                  <div class="ws-custom-questions__item"
+                       *ngFor="let q of perguntasCustomCache; let i = index; trackBy: trackByPerguntaCustom">
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>Pergunta {{ i + 1 }}</mat-label>
+                      <input matInput [value]="q.title"
+                             (input)="atualizarPerguntaCustomCompetencia(competenciaEditando.id || '', i, 'title', $any($event.target).value)" />
+                    </mat-form-field>
+                    <button mat-icon-button type="button" color="warn"
+                            (click)="removerPerguntaCustomCompetencia(competenciaEditando.id || '', i)">
+                      <mat-icon>delete_outline</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <ng-template #semPerguntasCustom>
+                  <p class="ws-custom-questions__empty">Nenhuma pergunta adicionada ainda.</p>
+                </ng-template>
+              </div>
+
+              <!-- Perguntas do formulário (com avaliação) -->
               <mat-form-field *ngIf="selectedAssessmentId" appearance="outline" class="w-full">
                 <mat-label>Questões Vinculadas</mat-label>
                 <mat-icon matPrefix class="field-icon">quiz</mat-icon>
@@ -412,9 +446,9 @@
 
               <div class="form-actions">
                 <button mat-raised-button class="btn-add-comp" type="submit"
-                        [disabled]="!competenciaForm.valid || !selectedAssessmentId">
-                  <mat-icon>{{ competenciaEditando.id ? 'save' : 'add' }}</mat-icon>
-                  {{ competenciaEditando.id ? 'Salvar Alterações' : 'Adicionar Competência' }}
+                        [disabled]="!competenciaForm.valid">
+                  <mat-icon>{{ isCompetenciaSalva(competenciaEditando.id) ? 'save' : 'add' }}</mat-icon>
+                  {{ isCompetenciaSalva(competenciaEditando.id) ? 'Salvar Alterações' : 'Adicionar Competência' }}
                 </button>
                 <button mat-button class="btn-cancel" type="button"
                         (click)="cancelarEdicaoCompetencia()">
@@ -441,8 +475,7 @@
               </div>
             </div>
             <button mat-raised-button class="btn-add-comp-inline"
-                    [disabled]="!selectedAssessmentId"
-                    (click)="showCompForm = true">
+                    (click)="startNewCompetencia()">
               <mat-icon>add</mat-icon>
               Nova Competência
             </button>
@@ -488,7 +521,7 @@
                 <div *ngIf="(c.perguntasIds?.length || 0) > 0" class="comp-card__question-list">
                   <div *ngFor="let pId of c.perguntasIds; let qi = index" class="comp-card__question-item">
                     <span class="comp-card__q-num">{{ qi + 1 }}</span>
-                    <span class="comp-card__q-text">{{ questionMap[pId] || pId }}</span>
+                    <span class="comp-card__q-text">{{ getTituloPerguntaCustom(c.id, pId) }}</span>
                     <button mat-icon-button class="comp-card__q-edit" *ngIf="selectedAssessmentId"
                             matTooltip="Editar texto da pergunta"
                             (click)="openEditQuestionDialog(pId); $event.stopPropagation()">
@@ -499,8 +532,7 @@
                 <div *ngIf="!(c.perguntasIds?.length)" class="comp-card__no-questions">
                   <mat-icon>quiz</mat-icon>
                   <span>Nenhuma pergunta vinculada.</span>
-                  <button mat-stroked-button class="comp-card__no-q-cta" (click)="editarCompetencia(c)"
-                          [disabled]="!selectedAssessmentId">
+                  <button mat-stroked-button class="comp-card__no-q-cta" (click)="editarCompetencia(c)">
                     <mat-icon>edit</mat-icon> Editar e vincular
                   </button>
                 </div>
@@ -512,10 +544,8 @@
           <div class="ws-comp-list__empty" *ngIf="competencias.length === 0">
             <div class="empty-state__icon"><mat-icon>psychology</mat-icon></div>
             <h4>Nenhuma competência cadastrada</h4>
-            <p *ngIf="selectedAssessmentId">Clique em "Nova Competência" para começar.</p>
-            <p *ngIf="!selectedAssessmentId">Vincule uma avaliação acima para habilitar o cadastro de competências.</p>
-            <button mat-raised-button class="btn-add-comp" (click)="showCompForm = true"
-                    [disabled]="!selectedAssessmentId">
+            <p>Clique em "Nova Competência" para começar.</p>
+            <button mat-raised-button class="btn-add-comp" (click)="startNewCompetencia()">
               <mat-icon>add</mat-icon> Nova Competência
             </button>
           </div>
