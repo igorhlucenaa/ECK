@@ -2045,6 +2045,17 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     return assessment ? assessment.name : 'Avaliação vinculada';
   }
 
+  async linkAssessmentToGroup(): Promise<void> {
+    const assessmentId = this.assessmentControl.value;
+    if (!assessmentId) {
+      this.snackBar.open(this.t('Selecione uma avaliação.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    this.selectedAssessmentId = assessmentId;
+    await this.onAssessmentChange();
+    await this.saveCompetencyGroup();
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
 }
 

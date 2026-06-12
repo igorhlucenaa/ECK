@@ -439,6 +439,60 @@
 
 .ws-context-bar__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
+.ws-assessment-banner {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.ws-assessment-banner__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ws-assessment-banner__content {
+  flex: 1;
+  min-width: 0;
+
+  strong {
+    display: block;
+    font-size: 14px;
+    color: #92400e;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #b45309;
+  }
+}
+
+.ws-assessment-banner__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ws-assessment-banner__select {
+  flex: 1;
+  min-width: 220px;
+  margin: 0;
+}
+
 .btn-edit-meta {
   border-color: #e8edf3 !important;
   color: #374151 !important;
