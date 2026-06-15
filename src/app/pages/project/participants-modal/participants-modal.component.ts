@@ -55,6 +55,7 @@ interface UnifiedParticipant {
   selected?: boolean;
   category: string;
   type: 'avaliado' | 'avaliador';
+  avaliadoId?: string;
   clientId: string;
   creditReserved?: boolean;
   creditConsumed?: boolean;
@@ -473,6 +474,7 @@ export class ParticipantsModalComponent implements OnInit {
           selected: false,
           category: category,
           type: type,
+          avaliadoId: participantData['avaliadoId'] || undefined,
           clientId: this.data.clientId,
           creditReserved,
           creditConsumed,
