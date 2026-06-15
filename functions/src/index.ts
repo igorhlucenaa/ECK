@@ -398,7 +398,12 @@ function applyTemplateVariables(source: string, replacements: Record<string, str
   text = text.replace(/\{\{\s*nome_avaliado\s*\}\}/gi, avaliadoName);
   text = text.replace(/\{\{\s*data_expiracao\s*\}\}/gi, projectDeadline);
   text = text.replace(/\{\{\s*nome_projeto\s*\}\}/gi, projectName);
+  text = text.replace(/\{\{\s*nome_projeto\s*\}\}+/gi, projectName);
   text = text.replace(/\{\{\s*nome_cliente\s*\}\}/gi, clientName);
+
+  text = text.replace(/\$%NOME DO PROJETO\$%/gi, projectName);
+  text = text.replace(/\$%NOME_DO_PROJETO\$%/gi, projectName);
+  text = text.replace(/\$%NOME DO CLIENTE\$%/gi, clientName);
 
   if (projectDeadline) {
     text = text.replace(/\*\$%DATA DE EXPIRACAO DO PROJETO\$%\*/gi, projectDeadline);
@@ -482,6 +487,12 @@ function renderTemplateToHtml(
           const textContent = applyTemplateVariables(rawText, replacements);
 
           html += `<div style="padding:${containerPadding};font-size:${textSize};text-align:${textAlign};line-height:${textLineHeight};">${textContent}</div>`;
+          continue;
+        }
+
+        if (contentType === 'html') {
+          const htmlContent = applyTemplateVariables(rawText, replacements);
+          html += `<div style="padding:${containerPadding};">${htmlContent}</div>`;
           continue;
         }
 
@@ -615,6 +626,15 @@ async function sendAssessmentEmail(
     clientName,
   });
 
+  const templateReplacements = {
+    LINK_AVALIACAO: assessmentLink,
+    participantName,
+    avaliadoName: avaliadoName || '-',
+    projectDeadline,
+    projectName,
+    clientName,
+  };
+
   if (persistParticipantLink) {
     const assessmentLinkObj = {
       assessmentId,
@@ -628,7 +648,8 @@ async function sendAssessmentEmail(
     });
   }
 
-  const subject = normalizeOptionalString(template.subject) || 'Avaliacao 360';
+  const subjectRaw = normalizeOptionalString(template.subject) || 'Avaliacao 360';
+  const subject = applyTemplateVariables(subjectRaw, templateReplacements);
   await transporter.sendMail({
     from: `ECK Avaliacao 360 <${emailUser}>`,
     to: email,
