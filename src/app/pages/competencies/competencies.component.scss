@@ -70,6 +70,18 @@
   &--done { color: #10b981; font-weight: 500; }
 }
 
+.step-node__optional-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: lowercase;
+}
+
+.step-node--optional .step-node__circle {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
 .step-line {
   flex: 1;
   height: 2px;
@@ -438,6 +450,127 @@
 .ws-context-bar__meta { display: block; font-size: 12px; color: #94a3b8; }
 
 .ws-context-bar__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.ws-assessment-banner {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+
+  &--optional {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+  }
+}
+
+.ws-assessment-banner__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .ws-assessment-banner--optional & {
+    background: #e0f2fe;
+    color: #0284c7;
+  }
+}
+
+.ws-assessment-banner__content {
+  flex: 1;
+  min-width: 0;
+
+  strong {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0 0 12px;
+    font-size: 13px;
+  }
+
+  .ws-assessment-banner--optional & {
+    strong { color: #0c4a6e; }
+    p { color: #0369a1; }
+  }
+}
+
+.ws-assessment-banner__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ws-assessment-banner__select {
+  flex: 1;
+  min-width: 220px;
+  margin: 0;
+}
+
+.ws-custom-questions {
+  border: 1px solid #e8edf3;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: #fafbfc;
+}
+
+.ws-custom-questions__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+
+  mat-icon {
+    color: #6366f1;
+    margin-top: 2px;
+  }
+
+  div {
+    flex: 1;
+    min-width: 0;
+
+    strong {
+      display: block;
+      font-size: 13px;
+      color: #1a1a2e;
+    }
+
+    span {
+      display: block;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+  }
+}
+
+.ws-custom-questions__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ws-custom-questions__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  mat-form-field { flex: 1; margin: 0; }
+}
+
+.ws-custom-questions__empty {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
 
 .btn-edit-meta {
   border-color: #e8edf3 !important;
