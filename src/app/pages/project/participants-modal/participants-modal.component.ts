@@ -22,6 +22,8 @@ import {
   setDoc,
   deleteDoc,
   addDoc,
+  runTransaction,
+  increment,
   updateDoc,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
@@ -703,7 +705,11 @@ export class ParticipantsModalComponent implements OnInit {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(emailRequest),
+            body: JSON.stringify({
+              ...emailRequest,
+              projectId: this.data.projectId,
+              clientId: this.data.clientId,
+            }),
           }
         );
 
@@ -715,69 +721,24 @@ export class ParticipantsModalComponent implements OnInit {
           );
         }
 
-        const assessmentLinkQuery = query(
-          collection(this.firestore, 'assessmentLinks'),
-          where('participantId', '==', participant.id),
-          where('assessmentId', '==', assessment.id)
-        );
-        const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
+        const sendResult = await response.json();
+        const linkId: string | undefined = sendResult.linkId;
 
-        if (existingLinksSnapshot.empty) {
-          // Novo link
-          const newLinkData: Record<string, any> = {
-            assessmentId: assessment.id,
-            participantId: participant.id,
-            clientId: this.data.clientId,
-            projectId: this.data.projectId,
-            sentAt: new Date(),
-            status: 'pending',
-            emailTemplate: template.id,
-            participantEmail: participant.email,
-            creditReserved: false,
-          };
-
-          if (reminderSettings) {
-            const nextAt = this.computeNextReminderAt(
-              reminderSettings.startDate,
-              reminderSettings.intervalDays,
-              reminderSettings.sendTime,
-              reminderSettings.timezone,
-              reminderSettings.weekdays,
-            );
-            newLinkData['nextReminderAt'] = Timestamp.fromDate(nextAt);
-          }
-
-          const assessmentLinkDoc = doc(collection(this.firestore, 'assessmentLinks'));
-          await setDoc(assessmentLinkDoc, newLinkData);
-        } else {
-          const existingLinkDoc = existingLinksSnapshot.docs[0];
-          const existingData = existingLinkDoc.data();
-          const isPending = existingData['status'] !== 'completed';
-
-          const updateData: Record<string, any> = {
-            clientId: this.data.clientId,
-            projectId: this.data.projectId,
-            sentAt: new Date(),
-            emailTemplate: template.id,
-            status: isPending ? 'pending' : 'completed',
-            creditReserved: false,
-          };
-
-          if (isPending && !existingData['nextReminderAt'] && reminderSettings) {
-            const nextAt = this.computeNextReminderAt(
-              reminderSettings.startDate,
-                reminderSettings.intervalDays,
-                reminderSettings.sendTime,
-                reminderSettings.timezone,
-                reminderSettings.weekdays,
-              );
-            updateData['nextReminderAt'] = Timestamp.fromDate(nextAt);
-          }
-
-          await updateDoc(
-            doc(this.firestore, 'assessmentLinks', existingLinkDoc.id),
-            updateData
+        if (linkId && reminderSettings) {
+          const nextAt = this.computeNextReminderAt(
+            reminderSettings.startDate,
+            reminderSettings.intervalDays,
+            reminderSettings.sendTime,
+            reminderSettings.timezone,
+            reminderSettings.weekdays,
           );
+          const linkRef = doc(this.firestore, 'assessmentLinks', linkId);
+          const linkSnap = await getDoc(linkRef);
+          if (linkSnap.exists() && !linkSnap.data()['nextReminderAt']) {
+            await updateDoc(linkRef, {
+              nextReminderAt: Timestamp.fromDate(nextAt),
+            });
+          }
         }
       }
 
@@ -1006,6 +967,8 @@ export class ParticipantsModalComponent implements OnInit {
         creditReserved: false,
       });
 
+      await this.releaseParticipantCreditIfEligible(participant.id);
+
       this.snackBar.open('Envio cancelado.', 'Fechar', { duration: 3000 });
     } catch (e) {
       // Rollback em caso de erro
@@ -1019,12 +982,57 @@ export class ParticipantsModalComponent implements OnInit {
     }
   }
 
+  private async releaseParticipantCreditIfEligible(participantId: string): Promise<void> {
+    await runTransaction(this.firestore, async (t) => {
+      const pRef = doc(this.firestore, 'participants', participantId);
+      const pSnap = await t.get(pRef);
+      if (!pSnap.exists()) return;
+
+      const data = pSnap.data()!;
+      if (data['type'] !== 'avaliado' || !data['creditReserved'] || data['creditConsumed']) {
+        return;
+      }
+
+      const clientId: string = data['clientId'] || this.data.clientId;
+      if (!clientId) return;
+
+      const cRef = doc(this.firestore, 'clients', clientId);
+      const cSnap = await t.get(cRef);
+      if (!cSnap.exists()) return;
+
+      t.update(pRef, { creditReserved: false });
+      t.update(cRef, {
+        credits: (cSnap.data()['credits'] || 0) + 1,
+        reservedCredits: Math.max(0, (cSnap.data()['reservedCredits'] || 0) - 1),
+      });
+
+      const orderId = data['orderId'];
+      if (orderId) {
+        t.update(doc(this.firestore, 'creditOrders', orderId), {
+          remainingCredits: increment(1),
+        });
+      }
+    });
+  }
+
   async deleteParticipant(participantId: string): Promise<void> {
     const nome = this.dataSource.data.find((p: any) => p.id === participantId)?.name || participantId;
     const confirmado = await this.confirmDialog.confirmDelete(nome);
     if (!confirmado) return;
 
     try {
+      await this.releaseParticipantCreditIfEligible(participantId);
+
+      const linksSnap = await getDocs(
+        query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('participantId', '==', participantId)
+        )
+      );
+      for (const linkDoc of linksSnap.docs) {
+        await deleteDoc(linkDoc.ref);
+      }
+
       const participantDoc = doc(
         this.firestore,
         `participants/${participantId}`

@@ -28,9 +28,8 @@ export class ProjectService {
     if (!projectSnap.exists()) throw new Error('Projeto não encontrado.');
 
     const projectData = projectSnap.data();
-    // Idempotência: retorna só se status é 'concluido' (lowercase, já processado por este serviço)
-    // Projetos com 'Concluído' (title case, auto-concluídos sem crédito) ainda precisam do processamento
-    if (projectData['status'] === 'concluido') return;
+    // Idempotência: retorna só se status já foi processado por este serviço
+    if (['concluido', 'Concluído'].includes(projectData['status'])) return;
 
     const clientId: string = projectData['clientId'];
     if (!clientId) throw new Error('Projeto sem clientId.');
@@ -65,10 +64,10 @@ export class ProjectService {
 
     await runTransaction(this.firestore, async (t) => {
       const freshProject = await t.get(projectRef);
-      if (freshProject.data()?.['status'] === 'concluido') return;
+      if (['concluido', 'Concluído'].includes(freshProject.data()?.['status'])) return;
 
       t.update(projectRef, {
-        status: 'Concluído',
+        status: 'concluido',
         concludedAt: Timestamp.now(),
         concludedBy,
       });

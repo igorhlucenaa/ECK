@@ -1,3 +1,27 @@
+<!-- Link inválido ou expirado na URL -->
+<div *ngIf="invalidToken" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;background:#f8faff;padding:40px;">
+  <div style="background:#fff;border-radius:16px;padding:48px 40px;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+    <div style="font-size:64px;margin-bottom:16px;">🔗</div>
+    <h2 style="font-size:24px;font-weight:700;color:#0f1b35;margin:0 0 12px;">Link inválido</h2>
+    <p style="font-size:15px;color:#64748b;line-height:1.6;margin:0;">
+      Este link de avaliação não é válido ou já foi substituído por um novo envio.<br><br>
+      Verifique se está usando o link mais recente recebido por e-mail ou entre em contato com o responsável pelo projeto.
+    </p>
+  </div>
+</div>
+
+<!-- Formulário sem perguntas configuradas -->
+<div *ngIf="surveyEmpty && !linkCancelled && !invalidToken" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;background:#f8faff;padding:40px;">
+  <div style="background:#fff;border-radius:16px;padding:48px 40px;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+    <div style="font-size:64px;margin-bottom:16px;">📋</div>
+    <h2 style="font-size:24px;font-weight:700;color:#0f1b35;margin:0 0 12px;">Formulário indisponível</h2>
+    <p style="font-size:15px;color:#64748b;line-height:1.6;margin:0;">
+      Esta avaliação ainda não possui perguntas configuradas.<br><br>
+      Entre em contato com o responsável pelo projeto para que o formulário seja preparado.
+    </p>
+  </div>
+</div>
+
 <!-- Link cancelado pelo admin -->
 <div *ngIf="linkCancelled" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;background:#f8faff;padding:40px;">
   <div style="background:#fff;border-radius:16px;padding:48px 40px;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
@@ -26,7 +50,7 @@
 </div>
 
 <!-- Formulário ativo -->
-<div *ngIf="!linkCancelled && !showExpiredScreen && !alreadyCompleted">
+<div *ngIf="!linkCancelled && !invalidToken && !surveyEmpty && !showExpiredScreen && !alreadyCompleted">
   <div id="surveyContainer"></div>
   <div *ngIf="surveyCompleted" style="text-align: center; margin-top: 20px">
     <p>Obrigado por completar a avaliação!</p>

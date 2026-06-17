@@ -267,11 +267,10 @@ export class EvaluatorsModalComponent implements OnInit {
           templateId: templateId,
           participantId: this.data.evaluatee.id,
           assessmentId: assessmentId,
+          projectId: this.data.evaluatee.projectId,
+          clientId: this.data.evaluatee.clientId,
         };
 
-         // Log para depuração
-
-        // Faz a chamada à função Firebase Cloud Function
         const response = await fetch(
           (await import('src/enviroments/environment')).environment.functions.sendEmailUrl,
           {
@@ -285,21 +284,6 @@ export class EvaluatorsModalComponent implements OnInit {
           throw new Error('Erro ao enviar e-mail: ' + (await response.text()));
         }
 
-        // Atualiza no Firestore (assessmentLinks)
-        const assessmentLinkDoc = doc(
-          collection(this.firestore, 'assessmentLinks')
-        );
-        await setDoc(assessmentLinkDoc, {
-          assessmentId: assessmentId,
-          participantId: this.data.evaluatee.id,
-          sentAt: new Date(),
-          status: 'pending',
-          emailTemplate: templateId,
-          participantEmail: this.data.evaluatee.email,
-          isResponded: false, // Novo campo no Firestore
-        });
-
-        // Atualiza o status no Firestore para refletir o envio
         await this.updateParticipantAssessmentStatus(assessmentId);
 
         this.snackBar.open('Link de avaliação enviado com sucesso!', 'Fechar', {

@@ -16,9 +16,18 @@ export class EmailService {
     templateId: string,
     participantId: string,
     assessmentId: string,
-    evaluatedParticipantId?: string
-  ): Observable<any> {
-    const body = { email, templateId, participantId, assessmentId, evaluatedParticipantId };
-    return this.http.post(this.apiUrl, body);
+    evaluatedParticipantId?: string,
+    options?: { projectId?: string; clientId?: string }
+  ): Observable<{ success: boolean; token: string; linkId?: string }> {
+    const body = {
+      email,
+      templateId,
+      participantId,
+      assessmentId,
+      evaluatedParticipantId,
+      projectId: options?.projectId,
+      clientId: options?.clientId,
+    };
+    return this.http.post<{ success: boolean; token: string; linkId?: string }>(this.apiUrl, body);
   }
 }

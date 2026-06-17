@@ -506,13 +506,17 @@ export class EmailSelectionDialogComponent implements OnInit {
         if (participant) {
           const avaliadoId = participant['avaliadoId'];
 
-          await this.emailService
+          const sendResult = await this.emailService
             .sendEmail(
               participant.email,
               this.data.templateId,
               participant.id,
               this.selectedAssessmentId,
-              avaliadoId || undefined
+              avaliadoId || undefined,
+              {
+                projectId: participant.projectId || this.selectedProjectId || undefined,
+                clientId: this.data.clientId,
+              }
             )
             .toPromise();
 
@@ -526,6 +530,22 @@ export class EmailSelectionDialogComponent implements OnInit {
             status: 'pending',
             lastEmailSentAt: serverTimestamp(),
           });
+
+          if (sendResult?.linkId && this.selectedAssessmentId) {
+            const linkRef = doc(this.firestore, 'assessmentLinks', sendResult.linkId);
+            const linkSnap = await getDoc(linkRef);
+            if (linkSnap.exists()) {
+              const inviteHistoryEntry = {
+                type: 'convite',
+                sentAt: new Date(),
+                status: 'enviado',
+                templateId: this.data.templateId,
+              };
+              await updateDoc(linkRef, {
+                emailHistory: arrayUnion(inviteHistoryEntry),
+              });
+            }
+          }
 
           const msg = this.translate.instant('E-mail enviado para {{name}}', { name: participant.name });
           this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 3000 });

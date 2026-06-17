@@ -422,6 +422,8 @@ export class ResendAssessmentModalComponent implements OnInit {
           templateId: template.id,
           participantId: participant.id,
           assessmentId: participant.assessmentId,
+          projectId: this.data.projectId,
+          clientId: this.data.clientId,
         };
 
       const response = await fetch(
@@ -440,20 +442,6 @@ export class ResendAssessmentModalComponent implements OnInit {
             }: ${await response.text()}`
           );
         }
-
-        const assessmentLinkDoc = doc(
-          collection(this.firestore, 'assessmentLinks')
-        );
-        await setDoc(assessmentLinkDoc, {
-          assessmentId: participant.assessmentId,
-          participantId: participant.id,
-          clientId: this.data.clientId,
-          projectId: this.data.projectId,
-          sentAt: new Date(),
-          status: 'pending',
-          emailTemplate: template.id,
-          participantEmail: participant.email,
-        });
       }
 
       const msg = this.translate.instant('Links enviados para {{count}} respondentes!', { count: this.selectedParticipants.length });

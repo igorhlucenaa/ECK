@@ -13,6 +13,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  increment,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -248,7 +249,7 @@ export class ProjectsListComponent implements OnInit {
           const [respondedCount, totalParticipants] =
             await this.countAssessmentResponses(projectId);
 
-          // Auto-conclusão: se todos responderam, usar ProjectService para garantir consumo de créditos
+          // Auto-conclusão: só quando houve convites e todos responderam
           let currentStatus = data['status'];
           if (
             totalParticipants > 0 &&
@@ -258,10 +259,9 @@ export class ProjectsListComponent implements OnInit {
             try {
               await this.projectService.concludeProject(projectId, 'auto');
             } catch {
-              // fallback: pelo menos atualiza o status
-              await updateDoc(doc(this.firestore, 'projects', projectId), { status: 'Concluído' });
+              await updateDoc(doc(this.firestore, 'projects', projectId), { status: 'concluido' });
             }
-            currentStatus = 'Concluído';
+            currentStatus = 'concluido';
           }
 
           return {
@@ -332,78 +332,32 @@ export class ProjectsListComponent implements OnInit {
     projectId: string
   ): Promise<[number, number]> {
     try {
-      // Passo 1: Obter o clientId do projeto
-      const projectRef = doc(this.firestore, 'projects', projectId);
-      const projectSnapshot = await getDoc(projectRef);
-      if (!projectSnapshot.exists()) {
-        console.warn(`Projeto ${projectId} não encontrado.`);
-        return [0, 0];
-      }
-      const projectData = projectSnapshot.data();
-      const clientId = projectData['clientId'];
-      if (!clientId) {
-        console.warn(`Projeto ${projectId} não tem clientId associado.`);
-        return [0, 0];
-      }
-
-      // Passo 2: Obter todos os assessments associados ao clientId
-      const assessmentsQuery = query(
-        collection(this.firestore, 'assessments'),
-        where('clientId', '==', clientId)
-      );
-      const assessmentsSnapshot = await getDocs(assessmentsQuery);
-      const assessmentIds = assessmentsSnapshot.docs.map((doc) => doc.id);
-      if (assessmentIds.length === 0) {
-        console.warn(
-          `Nenhum assessment encontrado para o clientId ${clientId}.`
-        );
-        return [0, 0];
-      }
-
-      // Passo 3: Contar todos os participantes do projeto
-      const participantsQuery = query(
-        collection(this.firestore, 'participants'),
+      const linksQuery = query(
+        collection(this.firestore, 'assessmentLinks'),
         where('projectId', '==', projectId)
       );
-      const participantsSnapshot = await getDocs(participantsQuery);
-      const totalParticipants = participantsSnapshot.docs.length;
-      console.log(
-        `Projeto ${projectId} - Total de participantes: ${totalParticipants}`
+      const linksSnapshot = await getDocs(linksQuery);
+
+      const sentStatuses = new Set(['pending', 'completed', 'expired']);
+      const sentLinks = linksSnapshot.docs.filter((d) =>
+        sentStatuses.has(d.data()['status'] || '')
       );
 
-      // Passo 4: Contar respostas completadas em assessmentLinks
-      let respondedCount = 0;
-      const participantIds = participantsSnapshot.docs.map((doc) => doc.id);
+      const invitedParticipants = new Set<string>();
+      const completedParticipants = new Set<string>();
 
-      if (participantIds.length > 0 && assessmentIds.length > 0) {
-        // Dividir os assessmentIds em lotes de 10 (limite do Firestore para cláusula 'in')
-        const batchSize = 10;
-        const completedParticipants = new Set<string>(); // Para evitar contar o mesmo participante mais de uma vez
+      sentLinks.forEach((linkDoc) => {
+        const linkData = linkDoc.data();
+        const participantId = linkData['participantId'];
+        if (!participantId) return;
 
-        for (let i = 0; i < assessmentIds.length; i += batchSize) {
-          const assessmentBatch = assessmentIds.slice(i, i + batchSize);
-          const assessmentLinksQuery = query(
-            collection(this.firestore, 'assessmentLinks'),
-            where('participantId', 'in', participantIds),
-            where('assessmentId', 'in', assessmentBatch)
-          );
-          const linksSnapshot = await getDocs(assessmentLinksQuery);
-
-          linksSnapshot.docs.forEach((doc) => {
-            const linkData = doc.data();
-            if (linkData['status'] === 'completed') {
-              completedParticipants.add(linkData['participantId']);
-            }
-          });
+        invitedParticipants.add(participantId);
+        if (linkData['status'] === 'completed') {
+          completedParticipants.add(participantId);
         }
+      });
 
-        respondedCount = completedParticipants.size;
-      }
-
-      console.log(
-        `Projeto ${projectId} - Respostas completadas: ${respondedCount}`
-      );
-      return [respondedCount, totalParticipants];
+      return [completedParticipants.size, invitedParticipants.size];
     } catch (error) {
       console.error('Erro ao contar respostas da avaliação:', error);
       return [0, 0];
@@ -616,8 +570,32 @@ export class ProjectsListComponent implements OnInit {
     );
     const participantIds = participantsSnap.docs.map(d => d.id);
 
-    // 3. AssessmentLinks + créditos a estornar
-    let refundCredits = 0;
+    // 3. Estornar créditos reservados por participante (fonte: participants)
+    for (const pDoc of participantsSnap.docs) {
+      const d = pDoc.data();
+      if (d['type'] !== 'avaliado' || !d['creditReserved'] || d['creditConsumed']) continue;
+      if (!clientId) continue;
+
+      await runTransaction(this.firestore, async (t) => {
+        const cRef = doc(this.firestore, 'clients', clientId);
+        const cSnap = await t.get(cRef);
+        if (!cSnap.exists()) return;
+
+        t.update(cRef, {
+          credits: (cSnap.data()['credits'] || 0) + 1,
+          reservedCredits: Math.max(0, (cSnap.data()['reservedCredits'] || 0) - 1),
+        });
+
+        const orderId = d['orderId'];
+        if (orderId) {
+          t.update(doc(this.firestore, 'creditOrders', orderId), {
+            remainingCredits: increment(1),
+          });
+        }
+      });
+    }
+
+    // 4. Coletar assessmentLinks para exclusão
     const linkRefs: any[] = [];
     for (let i = 0; i < participantIds.length; i += 10) {
       const chunk = participantIds.slice(i, i + 10);
@@ -626,10 +604,6 @@ export class ProjectsListComponent implements OnInit {
       );
       for (const linkDoc of linksSnap.docs) {
         linkRefs.push(linkDoc.ref);
-        const d = linkDoc.data();
-        if (d['creditReserved'] === true && d['status'] !== 'completed' && d['status'] !== 'cancelled') {
-          refundCredits++;
-        }
       }
     }
 
@@ -659,21 +633,7 @@ export class ProjectsListComponent implements OnInit {
       ));
     }
 
-    // 8. Estornar créditos reservados ao cliente (transação atômica)
-    if (clientId && refundCredits > 0) {
-      await runTransaction(this.firestore, async (t) => {
-        const clientRef = doc(this.firestore, `clients/${clientId}`);
-        const snap = await t.get(clientRef);
-        if (!snap.exists()) return;
-        const data = snap.data() as Record<string, any>;
-        t.update(clientRef, {
-          credits: (data['credits'] || 0) + refundCredits,
-          reservedCredits: Math.max(0, (data['reservedCredits'] || 0) - refundCredits),
-        });
-      });
-    }
-
-    // 9. Deletar o projeto
+    // 8. Deletar o projeto
     await deleteDoc(doc(this.firestore, `projects/${projectId}`));
   }
 

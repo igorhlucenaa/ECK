@@ -2,6 +2,7 @@ import { onRequest, onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onDocumentUpdated, onDocumentDeleted } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
 import { randomBytes } from 'crypto';
 import { defineString } from 'firebase-functions/params';
@@ -72,6 +73,8 @@ interface SendAssessmentEmailInput {
   participantId: string;
   assessmentId: string;
   evaluatedParticipantId?: string;
+  projectId?: string;
+  clientId?: string;
   tokenOverride?: string;
   persistParticipantLink?: boolean;
   transporter: nodemailer.Transporter;
@@ -81,6 +84,64 @@ interface SendAssessmentEmailInput {
 interface SendAssessmentEmailResult {
   token: string;
   clientId?: string;
+  linkId?: string;
+}
+
+interface UpsertAssessmentLinkInput {
+  participantId: string;
+  assessmentId: string;
+  token: string;
+  participantEmail: string;
+  emailTemplateId: string;
+  clientId?: string;
+  projectId?: string;
+  avaliadoId?: string;
+}
+
+async function upsertAssessmentLinkAfterSend(
+  input: UpsertAssessmentLinkInput
+): Promise<string> {
+  const db = getDb();
+  const snap = await db
+    .collection('assessmentLinks')
+    .where('participantId', '==', input.participantId)
+    .where('assessmentId', '==', input.assessmentId)
+    .get();
+
+  const sentAt = FieldValue.serverTimestamp();
+  const basePayload: Record<string, unknown> = {
+    token: input.token,
+    participantEmail: input.participantEmail,
+    emailTemplate: input.emailTemplateId,
+    sentAt,
+    creditReserved: false,
+  };
+  if (input.clientId) basePayload.clientId = input.clientId;
+  if (input.projectId) basePayload.projectId = input.projectId;
+  if (input.avaliadoId) basePayload.avaliadoId = input.avaliadoId;
+
+  if (snap.empty) {
+    const ref = await db.collection('assessmentLinks').add({
+      ...basePayload,
+      participantId: input.participantId,
+      assessmentId: input.assessmentId,
+      status: 'pending',
+    });
+    return ref.id;
+  }
+
+  const pendingDoc = snap.docs.find((d) => d.data().status === 'pending');
+  const cancelledDoc = snap.docs.find((d) => d.data().status === 'cancelled');
+  const targetDoc = pendingDoc ?? cancelledDoc ?? snap.docs[0];
+  const currentStatus = normalizeOptionalString(targetDoc.data().status) || 'pending';
+
+  const updatePayload: Record<string, unknown> = {
+    ...basePayload,
+    status: currentStatus === 'completed' ? 'completed' : 'pending',
+  };
+
+  await targetDoc.ref.set(updatePayload, { merge: true });
+  return targetDoc.id;
 }
 
 interface ZonedDateParts {
@@ -171,7 +232,7 @@ function normalizeOptionalString(value: unknown): string | undefined {
 function asDate(value: unknown): Date | undefined {
   if (!value) return undefined;
   if (value instanceof Date) return value;
-  if (value instanceof admin.firestore.Timestamp) return value.toDate();
+  if (value instanceof Timestamp) return value.toDate();
 
   if (typeof value === 'object' && value !== null) {
     const candidate = value as { toDate?: () => Date };
@@ -209,7 +270,7 @@ function buildNextReminderAt(
   sendTime: string,
   timezone: string,
   weekdays: number[] = []
-): admin.firestore.Timestamp {
+): Timestamp {
   let targetDay = new Date(base.getTime() + intervalDays * 86400000);
   const allowedWeekdays = normalizeWeekdays(weekdays);
 
@@ -252,7 +313,7 @@ function buildNextReminderAt(
   const utcMin = sendMin - offsetMin;
 
   const dayStartUtc = new Date(`${datePart}T00:00:00Z`).getTime();
-  return admin.firestore.Timestamp.fromDate(new Date(dayStartUtc + utcMin * 60000));
+  return Timestamp.fromDate(new Date(dayStartUtc + utcMin * 60000));
 }
 
 function pad2(value: number): string {
@@ -530,6 +591,8 @@ async function sendAssessmentEmail(
     participantId,
     assessmentId,
     evaluatedParticipantId,
+    projectId: inputProjectId,
+    clientId: inputClientId,
     tokenOverride,
     persistParticipantLink = true,
     transporter,
@@ -635,19 +698,6 @@ async function sendAssessmentEmail(
     clientName,
   };
 
-  if (persistParticipantLink) {
-    const assessmentLinkObj = {
-      assessmentId,
-      token,
-      status: 'sent',
-    };
-
-    await participantRef.update({
-      assessmentLinks: admin.firestore.FieldValue.arrayUnion(assessmentLinkObj),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  }
-
   const subjectRaw = normalizeOptionalString(template.subject) || 'Avaliacao 360';
   const subject = applyTemplateVariables(subjectRaw, templateReplacements);
   await transporter.sendMail({
@@ -657,12 +707,39 @@ async function sendAssessmentEmail(
     html: emailHtml,
   });
 
-  await participantRef.update({
-    deliveryStatus: 'sent',
-    lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  const resolvedProjectId =
+    normalizeOptionalString(inputProjectId) || projectId || undefined;
+  const resolvedClientId =
+    normalizeOptionalString(inputClientId) || clientId || undefined;
+  const resolvedAvaliadoId = evaluatedId || undefined;
 
-  return { token, clientId };
+  let linkId: string | undefined;
+  if (persistParticipantLink) {
+    linkId = await upsertAssessmentLinkAfterSend({
+      participantId,
+      assessmentId,
+      token,
+      participantEmail: email,
+      emailTemplateId: templateId,
+      clientId: resolvedClientId,
+      projectId: resolvedProjectId,
+      avaliadoId: resolvedAvaliadoId,
+    });
+
+    const assessmentLinkObj = {
+      assessmentId,
+      token,
+      status: 'sent',
+    };
+
+    await participantRef.update({
+      assessmentLinks: FieldValue.arrayUnion(assessmentLinkObj),
+      deliveryStatus: 'sent',
+      lastEmailSentAt: FieldValue.serverTimestamp(),
+    });
+  }
+
+  return { token, clientId: resolvedClientId, linkId };
 }
 
 function isReminderDue(
@@ -730,7 +807,7 @@ async function persistReminderRunStats(
     const scheduleState = scheduleByDocId.get(docId);
     const setting = settingsByDocId.get(docId);
     const payload: Record<string, unknown> = {
-      lastRunAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastRunAt: FieldValue.serverTimestamp(),
       lastRunSummary: stats,
     };
     if (setting?.clientId) payload.clientId = setting.clientId;
@@ -826,8 +903,8 @@ async function claimReminderLink(
         clientId: scope.clientId,
         projectId: scope.projectId,
         reminderProcessingRunId: runId,
-        reminderProcessingStartedAt: admin.firestore.Timestamp.fromDate(now),
-        lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+        reminderProcessingStartedAt: Timestamp.fromDate(now),
+        lastReminderAttemptAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
     );
@@ -1026,7 +1103,7 @@ async function processPendingAssessmentReminders(
           {
             clientId,
             projectId,
-            lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastReminderAttemptAt: FieldValue.serverTimestamp(),
             lastReminderError: 'Template de lembrete nao configurado.',
           },
           { merge: true }
@@ -1045,7 +1122,7 @@ async function processPendingAssessmentReminders(
           {
             clientId,
             projectId,
-            lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastReminderAttemptAt: FieldValue.serverTimestamp(),
             lastReminderError: 'Email do participante ausente ou invalido.',
           },
           { merge: true }
@@ -1065,7 +1142,22 @@ async function processPendingAssessmentReminders(
       const timezone = (setting.timezone && isValidTimeZone(setting.timezone))
         ? setting.timezone
         : 'America/Fortaleza';
-      const token = normalizeOptionalString(claimedLinkData.token) || generateSecureToken();
+      const token = normalizeOptionalString(claimedLinkData.token);
+      if (!token) {
+        stats.errors += 1;
+        await linkDoc.ref.set(
+          {
+            clientId,
+            projectId,
+            lastReminderAttemptAt: FieldValue.serverTimestamp(),
+            lastReminderError: 'Token ausente no link — reenvie o convite original.',
+            reminderProcessingRunId: FieldValue.delete(),
+            reminderProcessingStartedAt: FieldValue.delete(),
+          },
+          { merge: true }
+        );
+        continue;
+      }
       const avaliadoId = normalizeOptionalString(claimedLinkData.avaliadoId);
 
       try {
@@ -1096,18 +1188,18 @@ async function processPendingAssessmentReminders(
             projectId,
             participantEmail,
             token: sendResult.token,
-            sentAt: admin.firestore.FieldValue.serverTimestamp(),
+            sentAt: FieldValue.serverTimestamp(),
             reminderTemplateId: templateId,
-            reminderCount: admin.firestore.FieldValue.increment(1),
-            lastReminderSentAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+            reminderCount: FieldValue.increment(1),
+            lastReminderSentAt: FieldValue.serverTimestamp(),
+            lastReminderAttemptAt: FieldValue.serverTimestamp(),
             nextReminderAt,
-            reminderProcessingRunId: admin.firestore.FieldValue.delete(),
-            reminderProcessingStartedAt: admin.firestore.FieldValue.delete(),
-            lastReminderError: admin.firestore.FieldValue.delete(),
-            emailHistory: admin.firestore.FieldValue.arrayUnion({
+            reminderProcessingRunId: FieldValue.delete(),
+            reminderProcessingStartedAt: FieldValue.delete(),
+            lastReminderError: FieldValue.delete(),
+            emailHistory: FieldValue.arrayUnion({
               type: 'lembrete',
-              sentAt: admin.firestore.Timestamp.fromDate(now),
+              sentAt: Timestamp.fromDate(now),
               status: 'enviado',
               templateId: templateId || '',
             }),
@@ -1132,13 +1224,13 @@ async function processPendingAssessmentReminders(
           {
             clientId,
             projectId,
-            lastReminderAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
-            reminderProcessingRunId: admin.firestore.FieldValue.delete(),
-            reminderProcessingStartedAt: admin.firestore.FieldValue.delete(),
+            lastReminderAttemptAt: FieldValue.serverTimestamp(),
+            reminderProcessingRunId: FieldValue.delete(),
+            reminderProcessingStartedAt: FieldValue.delete(),
             lastReminderError: err.message || 'Falha desconhecida ao enviar lembrete.',
-            emailHistory: admin.firestore.FieldValue.arrayUnion({
+            emailHistory: FieldValue.arrayUnion({
               type: 'lembrete',
-              sentAt: admin.firestore.Timestamp.fromDate(now),
+              sentAt: Timestamp.fromDate(now),
               status: 'erro',
               error: err.message || 'Falha desconhecida',
             }),
@@ -1553,7 +1645,7 @@ export const sendEmail = onRequest(
     cors: true,
   },
   async (req, res) => {
-    const { email, templateId, participantId, assessmentId, evaluatedParticipantId } =
+    const { email, templateId, participantId, assessmentId, evaluatedParticipantId, projectId, clientId } =
       req.body || {};
 
     if (!email || !templateId || !participantId || !assessmentId) {
@@ -1578,12 +1670,14 @@ export const sendEmail = onRequest(
         participantId,
         assessmentId,
         evaluatedParticipantId,
+        projectId,
+        clientId,
         transporter,
         emailUser,
         persistParticipantLink: true,
       });
 
-      res.status(200).send({ success: true, token: result.token });
+      res.status(200).send({ success: true, token: result.token, linkId: result.linkId });
     } catch (error) {
       const err = error as Error;
       console.error('Erro ao enviar e-mail:', err);
@@ -1616,7 +1710,6 @@ async function sincronizarCreditosCliente(clientId: string): Promise<void> {
   const db = getDb();
   const now = new Date();
 
-  // 1. Pedidos aprovados válidos deste cliente, ordenados FIFO
   const ordersSnap = await db
     .collection('creditOrders')
     .where('clientId', '==', clientId)
@@ -1624,54 +1717,41 @@ async function sincronizarCreditosCliente(clientId: string): Promise<void> {
     .get();
 
   const orders = ordersSnap.docs
-    .filter(d => {
-      const v = (d.data()['validityDate'] as admin.firestore.Timestamp | undefined)?.toDate();
+    .filter((d) => {
+      const v = (d.data()['validityDate'] as Timestamp | undefined)?.toDate();
       return !v || v >= now;
     })
     .sort((a, b) => {
-      const tA = (a.data()['createdAt'] as admin.firestore.Timestamp | undefined)?.toMillis() ?? 0;
-      const tB = (b.data()['createdAt'] as admin.firestore.Timestamp | undefined)?.toMillis() ?? 0;
+      const tA = (a.data()['createdAt'] as Timestamp | undefined)?.toMillis() ?? 0;
+      const tB = (b.data()['createdAt'] as Timestamp | undefined)?.toMillis() ?? 0;
       return tA - tB;
     })
-    .map(d => ({ id: d.id, credits: (d.data()['credits'] as number) || 0 }));
+    .map((d) => ({
+      id: d.id,
+      credits: (d.data()['remainingCredits'] as number) ?? (d.data()['credits'] as number) ?? 0,
+    }));
 
-  // 2. Links concluídos deste cliente
-  const completedSnap = await db
-    .collection('assessmentLinks')
-    .where('clientId', '==', clientId)
-    .where('status', '==', 'completed')
-    .get();
-  const used = completedSnap.size;
-
-  // 3. Links pendentes com crédito reservado deste cliente
   const reservedSnap = await db
-    .collection('assessmentLinks')
+    .collection('participants')
     .where('clientId', '==', clientId)
     .where('creditReserved', '==', true)
-    .where('status', '==', 'pending')
+    .where('creditConsumed', '==', false)
     .get();
   const reserved = reservedSnap.size;
 
-  // 4. Calcula saldo disponível
-  const purchased = orders.reduce((sum, o) => sum + o.credits, 0);
-  const available = Math.max(0, purchased - used - reserved);
+  const consumedSnap = await db
+    .collection('participants')
+    .where('clientId', '==', clientId)
+    .where('creditConsumed', '==', true)
+    .get();
+  const consumed = consumedSnap.size;
 
-  // 5. FIFO: atualiza remainingCredits por pedido + cliente num único batch
+  const available = orders.reduce((sum, o) => sum + o.credits, 0);
+
   const batch = db.batch();
-
-  let toDeduct = used;
-  for (const order of orders) {
-    const consumed = Math.min(toDeduct, order.credits);
-    const remaining = order.credits - consumed;
-    toDeduct -= consumed;
-    batch.update(db.collection('creditOrders').doc(order.id), {
-      remainingCredits: remaining,
-    });
-  }
-
   batch.update(db.collection('clients').doc(clientId), {
-    credits:        available,
-    creditsUsed:    used,
+    credits: available,
+    consumedCredits: consumed,
     reservedCredits: reserved,
   });
 
@@ -1807,7 +1887,7 @@ async function pullFromArrayField(
   for (let i = 0; i < snap.docs.length; i += 450) {
     const batch = db.batch();
     snap.docs.slice(i, i + 450).forEach(d =>
-      batch.update(d.ref, { [field]: admin.firestore.FieldValue.arrayRemove(value) })
+      batch.update(d.ref, { [field]: FieldValue.arrayRemove(value) })
     );
     await batch.commit();
   }

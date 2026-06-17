@@ -21,6 +21,7 @@ import {
   writeBatch,
   arrayUnion,
   runTransaction,
+  increment,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -688,7 +689,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           assessments.length > 0
             ? assessments[0]
             : (selectedAssessmentId || projectsMap[projectId]?.assessmentId || undefined);
-        let creditReserved = false;
 
         const processLinks = (linksSnapshot: any) => {
           linksSnapshot.docs.forEach((linkDoc: any) => {
@@ -720,9 +720,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             if (linkData['lastReminderSentAt']) {
               const lrs = (linkData['lastReminderSentAt'] as Timestamp).toDate();
               if (!lastReminderAt || lrs > lastReminderAt) lastReminderAt = lrs;
-            }
-            if (linkData['creditReserved'] === true) {
-              creditReserved = true;
             }
           });
         };
@@ -772,7 +769,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             avaliadoId: participantData['avaliadoId'] || undefined,
             cargo: participantData['cargo'] || undefined,
             setor: participantData['setor'] || undefined,
-            creditReserved,
+            creditReserved: participantData['creditReserved'] === true,
             reminderCount,
             nextReminderAt,
             lastReminderAt,
@@ -1129,24 +1126,18 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       if (!confirmed) return;
       const BATCH_SIZE = 400;
       try {
-        // 1. Buscar assessmentLinks de cada participante e calcular créditos a estornar
-        const creditRefundByClient = new Map<string, number>();
+        // 1. Liberar créditos reservados e coletar links para exclusão
         const linkRefs: any[] = [];
 
         for (const p of this.selectedParticipants) {
+          await this.releaseParticipantCreditIfEligible(p.id, p.clientId);
+
           const linksSnap = await getDocs(query(
             collection(this.firestore, 'assessmentLinks'),
             where('participantId', '==', p.id)
           ));
           for (const linkDoc of linksSnap.docs) {
             linkRefs.push(linkDoc.ref);
-            const d = linkDoc.data();
-            if (d['creditReserved'] === true && d['status'] !== 'completed' && d['status'] !== 'cancelled') {
-              const clientId = p.clientId;
-              if (clientId) {
-                creditRefundByClient.set(clientId, (creditRefundByClient.get(clientId) || 0) + 1);
-              }
-            }
           }
         }
 
@@ -1162,20 +1153,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           const batch = writeBatch(this.firestore);
           this.selectedParticipants.slice(i, i + BATCH_SIZE).forEach(p => batch.delete(doc(this.firestore, `participants/${p.id}`)));
           await batch.commit();
-        }
-
-        // 4. Estornar créditos reservados por cliente (transação atômica)
-        for (const [clientId, refundCount] of creditRefundByClient.entries()) {
-          await runTransaction(this.firestore, async (t) => {
-            const clientRef = doc(this.firestore, `clients/${clientId}`);
-            const snap = await t.get(clientRef);
-            if (!snap.exists()) return;
-            const data = snap.data() as Record<string, any>;
-            t.update(clientRef, {
-              credits: (data['credits'] || 0) + refundCount,
-              reservedCredits: Math.max(0, (data['reservedCredits'] || 0) - refundCount),
-            });
-          });
         }
 
         const removedIds = new Set(this.selectedParticipants.map(p => p.id));
@@ -1297,6 +1274,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             participantId: participant.id,
             assessmentId: selectedAssessmentId,
             evaluatedParticipantId: participant.avaliadoId || undefined,
+            projectId: participant.projectId,
+            clientId: participant.clientId,
           }),
         });
 
@@ -1304,12 +1283,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           throw new Error(`Erro ao enviar e-mail para ${participant.email}: ${await response.text()}`);
         }
 
-        const assessmentLinkQuery = query(
-          collection(this.firestore, 'assessmentLinks'),
-          where('participantId', '==', participant.id),
-          where('assessmentId', '==', selectedAssessmentId)
-        );
-        const existingLinksSnapshot = await getDocs(assessmentLinkQuery);
+        const sendResult = await response.json();
+        const linkId: string | undefined = sendResult.linkId;
 
         const inviteHistoryEntry = {
           type: 'convite',
@@ -1318,61 +1293,27 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           templateId: selectedTemplateId,
         };
 
-        if (existingLinksSnapshot.empty) {
-          const assessmentLinkDoc = doc(collection(this.firestore, 'assessmentLinks'));
-          const linkData: any = {
-            assessmentId: selectedAssessmentId,
-            participantId: participant.id,
-            clientId: participant.clientId,
-            projectId: participant.projectId,
-            sentAt: new Date(),
-            status: 'pending',
-            emailTemplate: selectedTemplateId,
-            participantEmail: participant.email,
-            emailHistory: [inviteHistoryEntry],
-            creditReserved: false,
-          };
-          if (participant.type === 'avaliador' && participant.avaliadoId) {
-            linkData['avaliadoId'] = participant.avaliadoId;
+        if (linkId) {
+          const linkRef = doc(this.firestore, 'assessmentLinks', linkId);
+          const linkSnap = await getDoc(linkRef);
+          if (reminderSettings && linkSnap.exists() && !linkSnap.data()['nextReminderAt']) {
+            await updateDoc(linkRef, {
+              emailHistory: arrayUnion(inviteHistoryEntry),
+              nextReminderAt: Timestamp.fromDate(
+                this.computeNextReminderAt(
+                  reminderSettings.startDate,
+                  reminderSettings.intervalDays,
+                  reminderSettings.sendTime,
+                  reminderSettings.timezone,
+                  reminderSettings.weekdays
+                )
+              ),
+            });
+          } else {
+            await updateDoc(linkRef, {
+              emailHistory: arrayUnion(inviteHistoryEntry),
+            });
           }
-          if (reminderSettings) {
-            linkData['nextReminderAt'] = Timestamp.fromDate(
-              this.computeNextReminderAt(
-                reminderSettings.startDate,
-                reminderSettings.intervalDays,
-                reminderSettings.sendTime,
-                reminderSettings.timezone,
-                reminderSettings.weekdays
-              )
-            );
-          }
-          await setDoc(assessmentLinkDoc, linkData);
-        } else {
-          const existingLinkDoc = existingLinksSnapshot.docs[0];
-          const existingData = existingLinkDoc.data();
-          const isPending = existingData['status'] !== 'completed';
-          const updateData: any = {
-            sentAt: new Date(),
-            emailTemplate: selectedTemplateId,
-            status: isPending ? 'pending' : 'completed',
-            emailHistory: arrayUnion(inviteHistoryEntry),
-            creditReserved: false,
-          };
-          if (participant.type !== 'avaliado' && participant.avaliadoId) {
-            updateData['avaliadoId'] = participant.avaliadoId;
-          }
-          if (isPending && !existingData['nextReminderAt'] && reminderSettings) {
-            updateData['nextReminderAt'] = Timestamp.fromDate(
-              this.computeNextReminderAt(
-                reminderSettings.startDate,
-                reminderSettings.intervalDays,
-                reminderSettings.sendTime,
-                reminderSettings.timezone,
-                reminderSettings.weekdays
-              )
-            );
-          }
-          await updateDoc(doc(this.firestore, 'assessmentLinks', existingLinkDoc.id), updateData);
         }
 
         const participantRef = doc(this.firestore, 'participants', participant.id);
@@ -1805,6 +1746,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         creditReserved: false,
       });
 
+      await this.releaseParticipantCreditIfEligible(participant.id, participant.clientId);
+
       this.snackBar.open('Envio cancelado.', 'Fechar', { duration: 3000 });
     } catch (e) {
       // Rollback em caso de erro
@@ -1818,6 +1761,42 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   /** Carrega as configurações de lembrete ativas para o projeto. */
+  private async releaseParticipantCreditIfEligible(
+    participantId: string,
+    clientId?: string
+  ): Promise<void> {
+    await runTransaction(this.firestore, async (t) => {
+      const pRef = doc(this.firestore, 'participants', participantId);
+      const pSnap = await t.get(pRef);
+      if (!pSnap.exists()) return;
+
+      const data = pSnap.data()!;
+      if (data['type'] !== 'avaliado' || !data['creditReserved'] || data['creditConsumed']) {
+        return;
+      }
+
+      const resolvedClientId = clientId || data['clientId'];
+      if (!resolvedClientId) return;
+
+      const cRef = doc(this.firestore, 'clients', resolvedClientId);
+      const cSnap = await t.get(cRef);
+      if (!cSnap.exists()) return;
+
+      t.update(pRef, { creditReserved: false });
+      t.update(cRef, {
+        credits: (cSnap.data()['credits'] || 0) + 1,
+        reservedCredits: Math.max(0, (cSnap.data()['reservedCredits'] || 0) - 1),
+      });
+
+      const orderId = data['orderId'];
+      if (orderId) {
+        t.update(doc(this.firestore, 'creditOrders', orderId), {
+          remainingCredits: increment(1),
+        });
+      }
+    });
+  }
+
   private async loadReminderSettingsForProject(clientId: string, projectId: string): Promise<{
     startDate: Date;
     intervalDays: number;

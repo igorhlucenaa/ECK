@@ -270,6 +270,21 @@ export class ProjectDetailComponent implements OnInit {
       return;
     }
 
+    const requestedStatus = this.form.get('status')?.value;
+    if (
+      this.isEditMode &&
+      ['Concluído', 'concluido'].includes(requestedStatus) &&
+      !['Concluído', 'concluido'].includes(this.projectStatus)
+    ) {
+      this.form.get('status')?.setValue(this.projectStatus || 'Em andamento');
+      this.snackBar.open(
+        'Use o botão "Concluir Projeto" para concluir e debitar créditos corretamente.',
+        'Fechar',
+        { duration: 5000 }
+      );
+      return;
+    }
+
     this.isLoading = true;
 
     const projectData = {
