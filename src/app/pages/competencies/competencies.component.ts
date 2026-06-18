@@ -12,6 +12,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
+import { CompetencyQuestionsService } from '../../services/competency-questions.service';
 
 // Interface igual ao reports
 interface Competencia {
@@ -103,7 +104,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog,
     private route: ActivatedRoute,
-    private confirmDialog: ConfirmDialogService
+    private confirmDialog: ConfirmDialogService,
+    private competencyQuestionsService: CompetencyQuestionsService
   ) {
     // Formulário igual ao reports (perguntasIds não é obrigatório quando não há avaliação)
     this.competenciaForm = this.fb.group({
@@ -1175,8 +1177,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         });
 
         // Limpar perguntas custom existentes antes de carregar
-        this.customQuestionsByCompetency = {};
-        this.customQuestions = [];
+        this.customQuestionsByCompetency = this.competencyQuestionsService.normalizeCustomQuestionsByCompetency(groupData);
+        this.customQuestions = Array.isArray(groupData['customQuestions']) ? [...groupData['customQuestions']] : [];
 
         // IDs das competências que estão sendo carregadas
         const idsCompetenciasCarregadas = new Set(this.competencias.map(c => c.id));
@@ -1878,35 +1880,12 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   }
 
   getTituloPerguntaCustom(competenciaId: string, perguntaId: string): string {
-    // Se é uma pergunta custom (começa com custom_), buscar em customQuestionsByCompetency
-    if (perguntaId.startsWith('custom_')) {
-      const perguntas = this.getPerguntasCustomCompetencia(competenciaId);
-      const pergunta = perguntas.find(q => q.id === perguntaId);
-      if (pergunta?.title) {
-        console.log(`✅ getTituloPerguntaCustom: Encontrado título "${pergunta.title}" para ${perguntaId} na competência ${competenciaId}`);
-        return pergunta.title;
-      }
-      // Tentar encontrar em todas as competências (caso tenha sido migrada)
-      const todasPerguntasCustom = Object.values(this.customQuestionsByCompetency).flat();
-      const perguntaEncontrada = todasPerguntasCustom.find(q => q.id === perguntaId);
-      if (perguntaEncontrada?.title) {
-        console.log(`✅ getTituloPerguntaCustom: Encontrado título "${perguntaEncontrada.title}" para ${perguntaId} em outra competência`);
-        return perguntaEncontrada.title;
-      }
-      // Fallback: retornar ID se não encontrou título
-      console.warn(`⚠️ getTituloPerguntaCustom: NÃO encontrado título para pergunta custom ${perguntaId} na competência ${competenciaId}`);
-      console.warn(`  - Perguntas custom na competência:`, perguntas.map(p => ({ id: p.id, title: p.title })));
-      console.warn(`  - Total de perguntas custom em todas as competências: ${todasPerguntasCustom.length}`);
-      return perguntaId;
-    }
-
-    // Se não é custom, buscar no questionMap (perguntas da avaliação)
-    if (this.questionMap && this.questionMap[perguntaId]) {
-      return this.questionMap[perguntaId];
-    }
-
-    // Último fallback: retornar o próprio ID
-    return perguntaId;
+    return this.competencyQuestionsService.resolveQuestionTitle(
+      perguntaId,
+      competenciaId,
+      this.questionMap,
+      this.customQuestionsByCompetency
+    );
   }
 
   temPerguntaCustom(competenciaId: string, perguntaId: string): boolean {

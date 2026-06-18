@@ -676,18 +676,21 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         let lastReminderAt: Date | undefined;
 
         const selectedAssessmentId = this.assessmentFormControl.value;
+        const projectAssessmentId = projectsMap[projectId]?.assessmentId;
         let assessmentIdsToQuery: string[] = [];
 
         if (selectedAssessmentId) {
           assessmentIdsToQuery = [selectedAssessmentId];
         } else if (assessments.length > 0) {
           assessmentIdsToQuery = assessments;
+        } else if (projectAssessmentId) {
+          assessmentIdsToQuery = [projectAssessmentId];
         }
 
         let resolvedAssessmentId: string | undefined =
           assessments.length > 0
             ? assessments[0]
-            : (selectedAssessmentId || projectsMap[projectId]?.assessmentId || undefined);
+            : (selectedAssessmentId || projectAssessmentId || undefined);
         let creditReserved = false;
 
         const processLinks = (linksSnapshot: any) => {
@@ -727,7 +730,25 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           });
         };
 
-        if (assessmentIdsToQuery.length > 0) {
+        let linksLoaded = false;
+
+        // 1) Links do projeto (fonte mais confiável ao abrir a partir de /projects)
+        if (projectId) {
+          const projectLinksQuery = query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('participantId', '==', participantId),
+            where('projectId', '==', projectId)
+          );
+          const projectLinksSnap = await getDocs(projectLinksQuery);
+          if (!projectLinksSnap.empty) {
+            processLinks(projectLinksSnap);
+            status = this.determineStatus(sentAt, completedAt);
+            linksLoaded = true;
+          }
+        }
+
+        // 2) Links da(s) avaliação(ões) vinculada(s)
+        if (!linksLoaded && assessmentIdsToQuery.length > 0) {
           const batchSize = 10;
           for (let i = 0; i < assessmentIdsToQuery.length; i += batchSize) {
             const batch = assessmentIdsToQuery.slice(i, i + batchSize);
@@ -737,11 +758,16 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
               where('assessmentId', 'in', batch)
             );
             const linksSnapshot = await getDocs(assessmentLinksQuery);
-            processLinks(linksSnapshot);
+            if (!linksSnapshot.empty) {
+              processLinks(linksSnapshot);
+              status = this.determineStatus(sentAt, completedAt);
+              linksLoaded = true;
+            }
           }
-          status = this.determineStatus(sentAt, completedAt);
-        } else if (!resolvedAssessmentId) {
-          // Discovery: find any assessmentLinks for this participant
+        }
+
+        // 3) Discovery: qualquer link do participante (links legados sem projectId)
+        if (!linksLoaded) {
           const discoveryQuery = query(
             collection(this.firestore, 'assessmentLinks'),
             where('participantId', '==', participantId)

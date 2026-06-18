@@ -442,8 +442,7 @@ export class CompetencyDialogComponent implements OnInit, OnDestroy {
       if (assessmentId) {
         groupData.assessmentId = assessmentId;
       } else {
-        // Persistir perguntas custom criadas quando não houver avaliação
-        groupData.customQuestions = this.customQuestionsByCompetency;
+        groupData.customQuestionsByCompetency = this.customQuestionsByCompetency;
       }
 
       await addDoc(collection(this.firestore, 'competencyGroups'), groupData);

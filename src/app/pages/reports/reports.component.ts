@@ -1,4 +1,4 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
+﻿import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { parseNumeric, exportToCSV, filterQuestionsByType, computeConsolidation, getQuestionTypeStats } from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from '@angular/fire/firestore';
@@ -38,6 +38,7 @@ import { AppPageHeaderComponent } from '../../components/page-header/page-header
 import { LoadingService } from '../../services/loading.service';
 import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
 import { AuthService } from '../../services/apps/authentication/auth.service';
+import { CompetencyQuestionsService } from '../../services/competency-questions.service';
 import { query, where } from '@angular/fire/firestore';
 import { JohariWindowChartComponent, JohariWindowData } from './charts/johari-window-chart/johari-window-chart.component';
 import { MatRadioModule } from '@angular/material/radio';
@@ -806,7 +807,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     private reportsPdf: ReportsPdfService,
     private pdfMakeService: ReportPdfMakeService,
     private sanitizer: DomSanitizer,
-    private confirmDialog: ConfirmDialogService
+    private confirmDialog: ConfirmDialogService,
+    private competencyQuestionsService: CompetencyQuestionsService
   ) {
     this.dummyForm = this.fb.group({
       relatorioFormArray: this.fb.array([])
@@ -1374,7 +1376,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           console.log(`�Y"� Elemento ${elementIndex}:`, element);
 
           // Para elementos do tipo matrix, extrair as rows (questões)
-          if (element.type === 'matrix' && element.rows && Array.isArray(element.rows)) {
+          if ((element.type === 'matrix' || element.type === 'matrixdropdown') && element.rows && Array.isArray(element.rows)) {
             console.log(`�o. Matriz encontrada: ${element.name} com ${element.rows.length} questões`);
 
             element.rows.forEach((row: any, rowIndex: number) => {
@@ -4148,29 +4150,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Para cada pergunta da competência, calcular distribuição de notas
     competencia.perguntasIds.forEach(perguntaId => {
-      // Buscar título da pergunta: primeiro no questionMap (avaliação), depois em customQuestionsByCompetency
-      let perguntaTexto = this.questionMap[perguntaId];
-
-      // Se não encontrou no questionMap e é uma pergunta custom, buscar em customQuestionsByCompetency
-      if (!perguntaTexto && perguntaId.startsWith('custom_')) {
-        const perguntasCustom = this.customQuestionsByCompetency[competencia.id] || [];
-        const perguntaCustom = perguntasCustom.find(q => q.id === perguntaId);
-        if (perguntaCustom && perguntaCustom.title) {
-          perguntaTexto = perguntaCustom.title;
-        } else {
-          // Tentar encontrar em todas as competências (caso tenha sido migrada)
-          const todasPerguntasCustom = Object.values(this.customQuestionsByCompetency).flat();
-          const perguntaEncontrada = todasPerguntasCustom.find(q => q.id === perguntaId);
-          if (perguntaEncontrada && perguntaEncontrada.title) {
-            perguntaTexto = perguntaEncontrada.title;
-          }
-        }
-      }
-
-      // Fallback se ainda não encontrou
-      if (!perguntaTexto) {
-        perguntaTexto = `Pergunta ${perguntaId}`;
-      }
+      const perguntaTexto = this.getQuestionTitle(perguntaId, competencia.id);
 
       console.log(`\n�Y"� Processando pergunta: ${perguntaId} - "${perguntaTexto}"`);
       const categorias: DadosCategoria[] = [];
@@ -6075,13 +6055,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         // Carregar competências do grupo
         this.competencias = groupData['competencias'] || [];
 
-        // Carregar perguntas custom por competência se existirem
-        if (groupData['customQuestionsByCompetency'] && typeof groupData['customQuestionsByCompetency'] === 'object') {
-          this.customQuestionsByCompetency = { ...groupData['customQuestionsByCompetency'] };
-          console.log('�o. Perguntas custom carregadas do grupo:', Object.keys(this.customQuestionsByCompetency).length, 'competências');
-        } else {
-          this.customQuestionsByCompetency = {};
-        }
+        // Carregar perguntas custom por competência (inclui formatos legados)
+        this.customQuestionsByCompetency = this.competencyQuestionsService.normalizeCustomQuestionsByCompetency(groupData);
+        this.competencyQuestionsService.populateQuestionMapFromCustom(this.customQuestionsByCompetency, this.questionMap);
 
         // Se o grupo tem assessmentId associado, selecionar a avaliação
         if (groupData['assessmentId']) {
@@ -6793,6 +6769,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.snackBar.open(this.t('Debug executado! Veja o console.'), this.t('Fechar'), { duration: 5000 });
   }
 
+  getQuestionTitle(perguntaId: string, competenciaId: string): string {
+    const title = this.competencyQuestionsService.resolveQuestionTitle(
+      perguntaId,
+      competenciaId,
+      this.questionMap,
+      this.customQuestionsByCompetency
+    );
+    return title === perguntaId ? `Pergunta ${perguntaId}` : title;
+  }
+
   async loadAllCompetencies(): Promise<void> {
     try {
       const seen = new Set<string>();
@@ -6811,6 +6797,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         );
         groupsSnap.docs.forEach(groupDoc => {
           const groupData = groupDoc.data();
+          this.competencyQuestionsService.mergeCustomQuestionsFromGroup(groupData, this.customQuestionsByCompetency);
+          this.competencyQuestionsService.populateQuestionMapFromCustom(this.customQuestionsByCompetency, this.questionMap);
+
           const competencias: any[] = Array.isArray(groupData['competencias']) ? groupData['competencias'] : [];
           competencias.forEach((c: any) => {
             const compId = c.id || `${groupDoc.id}_${c.nome || c.name}`;

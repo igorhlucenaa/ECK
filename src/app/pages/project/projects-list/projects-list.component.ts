@@ -346,21 +346,9 @@ export class ProjectsListComponent implements OnInit {
         return [0, 0];
       }
 
-      // Passo 2: Obter todos os assessments associados ao clientId
-      const assessmentsQuery = query(
-        collection(this.firestore, 'assessments'),
-        where('clientId', '==', clientId)
-      );
-      const assessmentsSnapshot = await getDocs(assessmentsQuery);
-      const assessmentIds = assessmentsSnapshot.docs.map((doc) => doc.id);
-      if (assessmentIds.length === 0) {
-        console.warn(
-          `Nenhum assessment encontrado para o clientId ${clientId}.`
-        );
-        return [0, 0];
-      }
+      const projectAssessmentId = projectData['assessmentId'] as string | undefined;
 
-      // Passo 3: Contar todos os participantes do projeto
+      // Passo 2: Contar todos os participantes do projeto
       const participantsQuery = query(
         collection(this.firestore, 'participants'),
         where('projectId', '==', projectId)
@@ -371,30 +359,44 @@ export class ProjectsListComponent implements OnInit {
         `Projeto ${projectId} - Total de participantes: ${totalParticipants}`
       );
 
-      // Passo 4: Contar respostas completadas em assessmentLinks
+      // Passo 3: Contar respostas completadas — apenas deste projeto
       let respondedCount = 0;
       const participantIds = participantsSnapshot.docs.map((doc) => doc.id);
+      const participantIdSet = new Set(participantIds);
 
-      if (participantIds.length > 0 && assessmentIds.length > 0) {
-        // Dividir os assessmentIds em lotes de 10 (limite do Firestore para cláusula 'in')
+      if (participantIds.length > 0) {
         const batchSize = 10;
-        const completedParticipants = new Set<string>(); // Para evitar contar o mesmo participante mais de uma vez
+        const completedParticipants = new Set<string>();
 
-        for (let i = 0; i < assessmentIds.length; i += batchSize) {
-          const assessmentBatch = assessmentIds.slice(i, i + batchSize);
-          const assessmentLinksQuery = query(
-            collection(this.firestore, 'assessmentLinks'),
-            where('participantId', 'in', participantIds),
-            where('assessmentId', 'in', assessmentBatch)
-          );
-          const linksSnapshot = await getDocs(assessmentLinksQuery);
+        // Fonte principal: links com projectId (formato atual)
+        const projectLinksQuery = query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('projectId', '==', projectId),
+          where('status', '==', 'completed')
+        );
+        const projectLinksSnapshot = await getDocs(projectLinksQuery);
+        projectLinksSnapshot.docs.forEach((linkDoc) => {
+          const participantId = linkDoc.data()['participantId'];
+          if (participantIdSet.has(participantId)) {
+            completedParticipants.add(participantId);
+          }
+        });
 
-          linksSnapshot.docs.forEach((doc) => {
-            const linkData = doc.data();
-            if (linkData['status'] === 'completed') {
-              completedParticipants.add(linkData['participantId']);
-            }
-          });
+        // Fallback legado: links sem projectId, mas da avaliação vinculada ao projeto
+        if (projectAssessmentId) {
+          for (let i = 0; i < participantIds.length; i += batchSize) {
+            const participantBatch = participantIds.slice(i, i + batchSize);
+            const legacyLinksQuery = query(
+              collection(this.firestore, 'assessmentLinks'),
+              where('participantId', 'in', participantBatch),
+              where('assessmentId', '==', projectAssessmentId),
+              where('status', '==', 'completed')
+            );
+            const legacyLinksSnapshot = await getDocs(legacyLinksQuery);
+            legacyLinksSnapshot.docs.forEach((linkDoc) => {
+              completedParticipants.add(linkDoc.data()['participantId']);
+            });
+          }
         }
 
         respondedCount = completedParticipants.size;

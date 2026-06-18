@@ -29,18 +29,11 @@ import 'survey-creator-core/survey-creator-core.i18n.js';
 import { editorLocalization } from 'survey-creator-core';
 import { TranslateModule } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { CompetencyQuestionsService, CompetencyQuestionSource } from 'src/app/services/competency-questions.service';
 
 // Sobrescrevendo traduções
 const ptBRLocale = editorLocalization.getLocale('pt');
 ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
-
-interface CompetencyQuestionSource {
-  id: string;
-  text: string;
-  type: string;
-  required: boolean;
-  options?: string[];
-}
 
 @Component({
   selector: 'app-create-assessment',
@@ -74,7 +67,8 @@ export class CreateAssessmentComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router,
     private route: ActivatedRoute,
-    private location: Location
+    private location: Location,
+    private competencyQuestionsService: CompetencyQuestionsService
   ) {
     // Inicializa o formulário de metadados
     this.form = this.fb.group({
@@ -257,15 +251,15 @@ export class CreateAssessmentComponent implements OnInit {
       let questionCounter = 0;
       const mixQuestions = !!this.form.get('mixQuestions')?.value;
       const allQuestions: any[] = [];
-      const groupCache = new Map<string, any>();
-      const assessmentCache = new Map<string, any>();
+      const groupCache = new Map<string, Record<string, unknown> | null>();
+      const assessmentCache = new Map<string, Record<string, unknown> | null>();
       let competenciesWithoutQuestions = 0;
 
       for (const id of competencyIds) {
         let competencyName = '';
         let questions: CompetencyQuestionSource[] = [];
 
-        const parsedGroupComp = this.parseGroupCompetencyId(id);
+        const parsedGroupComp = this.competencyQuestionsService.parseGroupCompetencyId(id);
         if (parsedGroupComp) {
           const { groupId, groupIndex } = parsedGroupComp;
 
@@ -275,15 +269,29 @@ export class CreateAssessmentComponent implements OnInit {
           }
 
           const groupData = groupCache.get(groupId);
-          const competencias = groupData?.['competencias'] || [];
+          const competencias = (groupData?.['competencias'] as unknown[]) || [];
 
           if (groupData && competencias[groupIndex]) {
-            const comp = competencias[groupIndex];
-            competencyName = comp.nome || comp.name || '';
-            questions = await this.resolveCompetencyQuestions(
-              comp,
+            const comp = competencias[groupIndex] as Record<string, unknown>;
+            competencyName = String(comp['nome'] || comp['name'] || '');
+
+            let assessmentSurveyJSON: Record<string, unknown> | null = null;
+            const assessmentId = groupData['assessmentId'] as string | undefined;
+            if (assessmentId) {
+              if (!assessmentCache.has(assessmentId)) {
+                const assessmentSnap = await getDoc(doc(this.firestore, 'assessments', assessmentId));
+                assessmentCache.set(
+                  assessmentId,
+                  assessmentSnap.exists() ? (assessmentSnap.data()?.['surveyJSON'] as Record<string, unknown>) || null : null
+                );
+              }
+              assessmentSurveyJSON = assessmentCache.get(assessmentId) || null;
+            }
+
+            questions = this.competencyQuestionsService.resolveCompetencyQuestions(
+              comp as any,
               groupData,
-              assessmentCache
+              assessmentSurveyJSON
             );
           }
         } else {
@@ -310,7 +318,9 @@ export class CreateAssessmentComponent implements OnInit {
           continue;
         }
 
-        const surveyQuestions = questions.map((q) => this.toSurveyQuestion(q, questionCounter++));
+        const surveyQuestions = questions.map((q) =>
+          this.competencyQuestionsService.toSurveyQuestion(q, questionCounter++)
+        );
 
         if (mixQuestions) {
           allQuestions.push(...surveyQuestions);
@@ -334,14 +344,12 @@ export class CreateAssessmentComponent implements OnInit {
         });
       }
 
-      const surveyJSON = {
+      this.creatorModel.JSON = {
         title: this.form.get('name')?.value || 'Avaliação de Competências',
         description: this.form.get('description')?.value || '',
         showProgressBar: 'top',
         pages,
       };
-
-      this.creatorModel.JSON = surveyJSON;
 
       if (pages.length === 0) {
         this.snackBar.open(
@@ -360,198 +368,6 @@ export class CreateAssessmentComponent implements OnInit {
       console.error('Erro ao gerar formulário a partir das competências:', error);
       this.snackBar.open('Erro ao gerar formulário a partir das competências', 'Fechar', { duration: 3000 });
     }
-  }
-
-  private parseGroupCompetencyId(id: string): { groupId: string; groupIndex: number } | null {
-    const marker = '_comp_';
-    const markerIndex = id.lastIndexOf(marker);
-    if (markerIndex === -1) return null;
-
-    return {
-      groupId: id.substring(0, markerIndex),
-      groupIndex: parseInt(id.substring(markerIndex + marker.length), 10) || 0,
-    };
-  }
-
-  private resolveLocalizedText(value: any, fallback = ''): string {
-    if (!value) return fallback;
-    if (typeof value === 'string') return value.trim();
-    if (typeof value === 'object') {
-      return (value.pt || value.default || value.en || Object.values(value)[0] || fallback).toString().trim();
-    }
-    return fallback;
-  }
-
-  private async resolveCompetencyQuestions(
-    comp: any,
-    groupData: any,
-    assessmentCache: Map<string, any>
-  ): Promise<CompetencyQuestionSource[]> {
-    const perguntasIds: string[] = Array.isArray(comp.perguntasIds) ? comp.perguntasIds : [];
-    const customByCompetency: { id: string; title: string; type?: string }[] =
-      groupData['customQuestionsByCompetency']?.[comp.id] || [];
-    const legacyCustomQuestions: { id: string; title: string; type?: string }[] =
-      groupData['customQuestions'] || [];
-
-    const collected = new Map<string, CompetencyQuestionSource>();
-
-    const addQuestions = (items: CompetencyQuestionSource[]) => {
-      for (const item of items) {
-        if (item?.id && !collected.has(item.id)) {
-          collected.set(item.id, item);
-        }
-      }
-    };
-
-    if (groupData['assessmentId'] && perguntasIds.length > 0) {
-      const assessmentId = groupData['assessmentId'];
-
-      if (!assessmentCache.has(assessmentId)) {
-        const assessmentSnap = await getDoc(doc(this.firestore, 'assessments', assessmentId));
-        assessmentCache.set(
-          assessmentId,
-          assessmentSnap.exists() ? assessmentSnap.data()?.['surveyJSON'] || null : null
-        );
-      }
-
-      const surveyJSON = assessmentCache.get(assessmentId);
-      if (surveyJSON) {
-        addQuestions(this.extractQuestionsFromAssessment(surveyJSON, perguntasIds));
-      }
-    }
-
-    const customIds = perguntasIds.length > 0
-      ? perguntasIds
-      : customByCompetency.map((q) => q.id);
-
-    addQuestions(this.extractQuestionsFromCustomList(customByCompetency, customIds));
-    addQuestions(this.extractQuestionsFromCustomList(legacyCustomQuestions, customIds));
-
-    if (collected.size === 0 && perguntasIds.length > 0) {
-      const allCustom = [
-        ...customByCompetency,
-        ...legacyCustomQuestions,
-        ...Object.values(groupData['customQuestionsByCompetency'] || {}).flat() as { id: string; title: string; type?: string }[],
-      ];
-      addQuestions(this.extractQuestionsFromCustomList(allCustom, perguntasIds));
-    }
-
-    const order = perguntasIds.length > 0 ? perguntasIds : customByCompetency.map((q) => q.id);
-    return order.filter((id) => collected.has(id)).map((id) => collected.get(id)!);
-  }
-
-  private extractQuestionsFromAssessment(
-    surveyJSON: any,
-    perguntasIds: string[]
-  ): CompetencyQuestionSource[] {
-    const idsSet = new Set(perguntasIds);
-    const found = new Map<string, CompetencyQuestionSource>();
-    const pages = surveyJSON?.pages || [];
-
-    for (const page of pages) {
-      for (const el of page.elements || []) {
-        if ((el.type === 'matrix' || el.type === 'matrixdropdown') && Array.isArray(el.rows)) {
-          for (const row of el.rows) {
-            if (!row) continue;
-            const questionId = `${el.name}_${row.value}`;
-            if (idsSet.has(questionId)) {
-              found.set(questionId, {
-                id: questionId,
-                text: this.resolveLocalizedText(row.text, 'Questão'),
-                type: 'rating',
-                required: !!el.isRequired,
-              });
-            }
-          }
-        }
-
-        if (el.name && idsSet.has(el.name)) {
-          found.set(el.name, {
-            id: el.name,
-            text: this.resolveLocalizedText(el.title, el.name),
-            type: this.mapSurveyTypeToCompetencyType(el.type),
-            required: !!el.isRequired,
-            options: el.choices,
-          });
-        }
-      }
-    }
-
-    return perguntasIds.filter((id) => found.has(id)).map((id) => found.get(id)!);
-  }
-
-  private extractQuestionsFromCustomList(
-    customQuestions: { id: string; title: string; type?: string }[],
-    perguntasIds: string[]
-  ): CompetencyQuestionSource[] {
-    if (!customQuestions?.length || !perguntasIds?.length) return [];
-
-    const idsSet = new Set(perguntasIds);
-    return customQuestions
-      .filter((q) => idsSet.has(q.id))
-      .map((q) => ({
-        id: q.id,
-        text: q.title || '',
-        type: this.mapSurveyTypeToCompetencyType(q.type || 'rating'),
-        required: false,
-      }));
-  }
-
-  private toSurveyQuestion(q: CompetencyQuestionSource, fallbackIndex: number): any {
-    const questionName = q.id || `q_${fallbackIndex}`;
-
-    const surveyQuestion: any = {
-      name: questionName,
-      title: q.text,
-      isRequired: q.required,
-    };
-
-    switch (q.type) {
-      case 'likert':
-      case 'rating':
-        surveyQuestion.type = 'rating';
-        surveyQuestion.rateValues = [
-          { value: 1, text: '1' },
-          { value: 2, text: '2' },
-          { value: 3, text: '3' },
-          { value: 4, text: '4' },
-          { value: 5, text: '5' },
-          { value: '?', text: '?' },
-        ];
-        surveyQuestion.minRateDescription = 'Discordo Totalmente';
-        surveyQuestion.maxRateDescription = 'Concordo Totalmente';
-        break;
-      case 'multiple_choice':
-      case 'radiogroup':
-        surveyQuestion.type = 'radiogroup';
-        surveyQuestion.choices = q.options || [];
-        break;
-      case 'text':
-      case 'comment':
-        surveyQuestion.type = 'comment';
-        break;
-      case 'number':
-        surveyQuestion.type = 'text';
-        surveyQuestion.inputType = 'number';
-        break;
-      default:
-        surveyQuestion.type = 'text';
-    }
-
-    return surveyQuestion;
-  }
-
-  private mapSurveyTypeToCompetencyType(surveyType: string): string {
-    const typeMap: { [key: string]: string } = {
-      'rating': 'rating',
-      'radiogroup': 'radiogroup',
-      'text': 'text',
-      'comment': 'comment',
-      'checkbox': 'checkbox',
-      'dropdown': 'dropdown',
-      'boolean': 'boolean'
-    };
-    return typeMap[surveyType] || 'text';
   }
 
   private shuffleArray<T>(array: T[]): void {
@@ -635,7 +451,7 @@ export class CreateAssessmentComponent implements OnInit {
     if (!competencyIds || competencyIds.length === 0) return;
     const groupIds = new Set<string>();
     for (const id of competencyIds) {
-      const parsed = this.parseGroupCompetencyId(id);
+      const parsed = this.competencyQuestionsService.parseGroupCompetencyId(id);
       if (parsed) {
         groupIds.add(parsed.groupId);
       }
