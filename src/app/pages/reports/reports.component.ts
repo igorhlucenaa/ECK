@@ -4870,155 +4870,105 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Método para gerar tabela de avaliações mais altas
   gerarTabelaAvaliacoesAltas(numeroItems: number = 5, avaliadoSelecionado?: string): TabelaAvaliacoesAltas {
     const items: ItemAvaliacao[] = [];
-
-    // Usar o avaliado selecionado se não foi passado como parâmetro
     const avaliado = avaliadoSelecionado || this.selectedAvaliado;
 
-    // Percorrer todas as competências e suas perguntas
     this.competencias.forEach(competencia => {
       competencia.perguntasIds.forEach(perguntaId => {
-        const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
+        const medias = this.calcularMediasComportamentoDestaque(perguntaId, avaliado);
+        if (!medias) return;
 
-        // Se há um avaliado específico selecionado, usar dados dele
-        let mediaGeral = 0;
-        let mediaPorCategoria = 0;
-
-        if (avaliado) {
-          // Buscar dados específicos do avaliado
-          const mediaAvaliado = this.getMediaPorPerguntaEAvaliadoEspecifico(competencia, 'Todos', avaliado);
-          if (mediaAvaliado !== null) {
-            mediaGeral = mediaAvaliado;
-            mediaPorCategoria = mediaAvaliado;
-          }
-        } else {
-          // Calcular média geral da pergunta (todas as categorias)
-          const respostasGerais = this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
-          mediaGeral = respostasGerais.length > 0 ?
-            respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length : 0;
-
-          // Calcular média por categoria
-          const grupos = this.getGrupos();
-          let somaPorCategoria = 0;
-          let contadorCategorias = 0;
-
-          grupos.forEach(grupo => {
-            const respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
-            if (respostasGrupo.length > 0) {
-              const mediaGrupo = respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
-              somaPorCategoria += mediaGrupo;
-              contadorCategorias++;
-            }
-          });
-
-          mediaPorCategoria = contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : 0;
-        }
-
-        // Só adicionar se tiver dados válidos
-        if (mediaGeral > 0 && !isNaN(mediaGeral)) {
-          items.push({
-            classificacao: 0, // Será definido depois da ordenação
-            comportamento: perguntaTexto,
-            pontuacaoMediaAvaliado: mediaGeral,
-            pontuacaoMediaSemAutoavaliacao: mediaPorCategoria,
-            perguntaId: perguntaId,
-            competenciaId: competencia.id
-          });
-        }
+        items.push({
+          classificacao: 0,
+          comportamento: this.questionMap[perguntaId] || `Pergunta ${perguntaId}`,
+          pontuacaoMediaAvaliado: medias.mediaGeral,
+          pontuacaoMediaSemAutoavaliacao: medias.mediaPorCategoria,
+          perguntaId,
+          competenciaId: competencia.id,
+        });
       });
     });
 
-    // Ordenar por pontuação média geral (decrescente)
     items.sort((a, b) => b.pontuacaoMediaAvaliado - a.pontuacaoMediaAvaliado);
-
-    // Adicionar classificação
     items.forEach((item, index) => {
       item.classificacao = index + 1;
     });
 
-    // Retornar apenas os primeiros N items ou todas as competências
-    const itemsSelecionados = items.slice(0, Math.min(numeroItems, this.competencias.length));
-
+    const limite = Math.max(1, numeroItems || this.competencias.length || 5);
     return {
-      items: itemsSelecionados,
-      totalItems: items.length
+      items: items.slice(0, limite),
+      totalItems: items.length,
     };
   }
 
   // Método para gerar tabela de avaliações mais baixas
   gerarTabelaAvaliacoesBaixas(numeroItems: number = 5, avaliadoSelecionado?: string): TabelaAvaliacoesAltas {
     const items: ItemAvaliacao[] = [];
-
-    // Usar o avaliado selecionado se não foi passado como parâmetro
     const avaliado = avaliadoSelecionado || this.selectedAvaliado;
 
-    // Percorrer todas as competências e suas perguntas
     this.competencias.forEach(competencia => {
       competencia.perguntasIds.forEach(perguntaId => {
-        const perguntaTexto = this.questionMap[perguntaId] || `Pergunta ${perguntaId}`;
+        const medias = this.calcularMediasComportamentoDestaque(perguntaId, avaliado);
+        if (!medias) return;
 
-        // Se há um avaliado específico selecionado, usar dados dele
-        let mediaGeral = 0;
-        let mediaPorCategoria = 0;
-
-        if (avaliado) {
-          // Buscar dados específicos do avaliado
-          const mediaAvaliado = this.getMediaPorPerguntaEAvaliadoEspecifico(competencia, 'Todos', avaliado);
-          if (mediaAvaliado !== null) {
-            mediaGeral = mediaAvaliado;
-            mediaPorCategoria = mediaAvaliado;
-          }
-        } else {
-          // Calcular média geral da pergunta (todas as categorias)
-          const respostasGerais = this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
-          mediaGeral = respostasGerais.length > 0 ?
-            respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length : 0;
-
-          // Calcular média por categoria
-          const grupos = this.getGrupos();
-          let somaPorCategoria = 0;
-          let contadorCategorias = 0;
-
-          grupos.forEach(grupo => {
-            const respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
-            if (respostasGrupo.length > 0) {
-              const mediaGrupo = respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
-              somaPorCategoria += mediaGrupo;
-              contadorCategorias++;
-            }
-          });
-
-          mediaPorCategoria = contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : 0;
-        }
-
-        // Só adicionar se tiver dados válidos
-        if (mediaGeral > 0 && !isNaN(mediaGeral)) {
-          items.push({
-            classificacao: 0, // Será definido depois da ordenação
-            comportamento: perguntaTexto,
-            pontuacaoMediaAvaliado: mediaGeral,
-            pontuacaoMediaSemAutoavaliacao: mediaPorCategoria,
-            perguntaId: perguntaId,
-            competenciaId: competencia.id
-          });
-        }
+        items.push({
+          classificacao: 0,
+          comportamento: this.questionMap[perguntaId] || `Pergunta ${perguntaId}`,
+          pontuacaoMediaAvaliado: medias.mediaGeral,
+          pontuacaoMediaSemAutoavaliacao: medias.mediaPorCategoria,
+          perguntaId,
+          competenciaId: competencia.id,
+        });
       });
     });
 
-    // Ordenar por pontuação média geral (crescente - menores primeiro)
     items.sort((a, b) => a.pontuacaoMediaAvaliado - b.pontuacaoMediaAvaliado);
-
-    // Adicionar classificação
     items.forEach((item, index) => {
       item.classificacao = index + 1;
     });
 
-    // Retornar apenas os primeiros N items ou todas as competências
-    const itemsSelecionados = items.slice(0, Math.min(numeroItems, this.competencias.length));
-
+    const limite = Math.max(1, numeroItems || this.competencias.length || 5);
     return {
-      items: itemsSelecionados,
-      totalItems: items.length
+      items: items.slice(0, limite),
+      totalItems: items.length,
     };
+  }
+
+  /** Médias por pergunta/comportamento para a seção Destaques. */
+  private calcularMediasComportamentoDestaque(
+    perguntaId: string,
+    avaliadoSelecionado?: string | null
+  ): { mediaGeral: number; mediaPorCategoria: number } | null {
+    const avaliado = avaliadoSelecionado || this.selectedAvaliado;
+
+    const respostasGerais = avaliado
+      ? this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, 'Todos', avaliado)
+      : this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
+
+    if (respostasGerais.length === 0) return null;
+
+    const mediaGeral =
+      respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length;
+
+    const grupos = this.getGrupos();
+    let somaPorCategoria = 0;
+    let contadorCategorias = 0;
+
+    grupos.forEach(grupo => {
+      const respostasGrupo = avaliado
+        ? this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, avaliado)
+        : this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+      if (respostasGrupo.length > 0) {
+        somaPorCategoria += respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
+        contadorCategorias++;
+      }
+    });
+
+    const mediaPorCategoria =
+      contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : mediaGeral;
+
+    if (isNaN(mediaGeral) || mediaGeral <= 0) return null;
+
+    return { mediaGeral, mediaPorCategoria };
   }
 
   // Método para obter média por pergunta e avaliado específico
