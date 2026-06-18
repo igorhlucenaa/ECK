@@ -412,7 +412,7 @@
                 <div *ngIf="(c.perguntasIds?.length || 0) > 0; else semPerguntas" class="rp-comp-panel__question-list">
                   <div *ngFor="let pId of c.perguntasIds; let qi = index" class="rp-comp-panel__question-item">
                     <span class="rp-comp-panel__question-num">{{ qi + 1 }}</span>
-                    <span class="rp-comp-panel__question-text">{{ questionMap[pId] || pId }}</span>
+                    <span class="rp-comp-panel__question-text">{{ getQuestionLabel(pId) }}</span>
                   </div>
                 </div>
                 <ng-template #semPerguntas>
@@ -1377,7 +1377,7 @@
                 </div>
 
                 <ng-container [ngSwitch]="getTipoGraficoControl(i).value || 'barra'">
-                  <div *ngSwitchCase="'janela_johari'">
+                  <div *ngSwitchCase="'janela_johari'" class="rp-johari-wrap">
                     <app-johari-window-chart [data]="getJohariWindowDataCached(secao)"></app-johari-window-chart>
                   </div>
                   <div *ngSwitchCase="'barra'">
@@ -1407,7 +1407,11 @@
                     </div>
                   </div>
                   <div *ngSwitchCase="'radar'">
-                    <div echarts [options]="getSecaoRadarOptions(secao)" [style.height.px]="400"></div>
+                    <div class="rp-radar-chart"
+                         echarts
+                         [id]="getRadarChartId(secao)"
+                         [options]="getSecaoRadarOptions(secao)"
+                         [style.height.px]="400"></div>
                   </div>
                   <div *ngSwitchCase="'pizza-comparativa'">
                     <ng-container *ngIf="getSecaoPieData(secao) as dadosPizza">
@@ -1696,8 +1700,8 @@
             <div *ngSwitchCase="'grafico_defasagem'">
               <h2>{{ secao.titulo }}</h2>
               <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataDefasagem" style="margin-top: 20px;">
-                <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao)" style="margin-bottom: 30px;">
+              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataDefasagem" class="rp-defasagem-preview">
+                <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao)" class="rp-defasagem-item">
                   <h3 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">{{ comp.nome }}</h3>
                   <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
                 </div>
@@ -1713,7 +1717,7 @@
             <div *ngSwitchCase="'janela_johari'">
               <h2>{{ secao.titulo }}</h2>
               <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataJohari" style="margin-top: 20px; break-before: avoid; page-break-before: avoid;">
+              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataJohari" class="rp-johari-wrap">
                 <app-johari-window-chart [data]="getJohariWindowDataCached(secao)"></app-johari-window-chart>
               </div>
               <ng-template #noDataJohari>

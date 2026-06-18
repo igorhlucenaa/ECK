@@ -290,7 +290,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           'Área/Setor': row['setor'] || '',
           Competência: resolverCompetenciaPorPergunta(perguntaId),
           PerguntaId: perguntaId,
-          Pergunta: this.questionMap[perguntaId] || perguntaId,
+          Pergunta: this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || perguntaId),
           Resposta: respostaExportacao,
         });
       }
@@ -1905,6 +1905,22 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.selectedAvaliado || 'Nenhum avaliado selecionado';
   }
 
+  /** Substitui placeholders dinâmicos (capa, perguntas, textos do relatório). */
+  substituirVariaveisRelatorio(texto: string | undefined | null): string {
+    if (!texto) return '';
+    const nomeAvaliado = this.selectedAvaliado?.trim() || '';
+    const dataRelatorio = this.today.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+    return texto
+      .replace(/\{\{\s*nome_avaliado\s*\}\}/gi, nomeAvaliado)
+      .replace(/\$%NOME_AVALIADO\$%/g, nomeAvaliado)
+      .replace(/\$%NOME_DO_AVALIADO\$%/g, nomeAvaliado)
+      .replace(/\$%DATA_RELATORIO\$%/g, dataRelatorio);
+  }
+
   // Métodos utilitários para manipular as seções do relatório
   getSecoesVisiveisOrdenadas(): RelatorioSecao[] {
     return this.getCachedCalculation('secoes-visiveis', () =>
@@ -2541,14 +2557,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       value: stackedData.map((d: any) => d.value)
     }];
 
-    return {
-      legend: { top: 'bottom' },
-      radar: { indicator },
-      series: [{
-        type: 'radar' as const,
-        data: seriesData
-      }]
-    };
+    return this.buildRadarChartOptions(indicator, seriesData, [comp.nome]);
   }
 
   getSecaoRadarOptions(secao: any): EChartsOption {
@@ -2559,10 +2568,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return {};
     }
 
-    // Criar indicadores baseados nos grupos de avaliadores
     const indicator = grupos.map(grupo => ({ name: grupo, max: 5 }));
 
-    // Criar dados das séries para cada competência
     const seriesData = competenciasSelecionadas.map(comp => {
       const values = grupos.map(grupo => {
         const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
@@ -2575,16 +2582,47 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       };
     });
 
+    return this.buildRadarChartOptions(
+      indicator,
+      seriesData,
+      competenciasSelecionadas.map(comp => comp.nome)
+    );
+  }
+
+  getRadarChartId(secao: RelatorioSecao): string {
+    const labels = this.getCompetenciasGraficosCached(secao).map(c => c.nome).join('-');
+    return `chart-radar-${labels.replace(/\s+/g, '-').toLowerCase() || secao.id}`;
+  }
+
+  private buildRadarChartOptions(
+    indicator: { name: string; max: number }[],
+    seriesData: { name: string; value: number[] }[],
+    legendNames: string[]
+  ): EChartsOption {
     return {
+      backgroundColor: '#ffffff',
+      textStyle: { color: '#333333' },
+      color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272'],
       legend: {
         top: 'bottom',
-        data: competenciasSelecionadas.map(comp => comp.nome)
+        data: legendNames,
+        textStyle: { color: '#333333' },
       },
-      radar: { indicator },
+      radar: {
+        indicator,
+        axisName: { color: '#333333' },
+        splitArea: {
+          areaStyle: {
+            color: ['rgba(250, 250, 250, 0.8)', 'rgba(255, 255, 255, 0.8)'],
+          },
+        },
+        axisLine: { lineStyle: { color: '#cccccc' } },
+        splitLine: { lineStyle: { color: '#eeeeee' } },
+      },
       series: [{
         type: 'radar' as const,
-        data: seriesData
-      }]
+        data: seriesData,
+      }],
     };
   }
 
@@ -3226,15 +3264,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       max-width: none !important;
     }
     .report-section {
-      break-inside: avoid !important;
-      page-break-inside: avoid !important;
+      break-inside: auto !important;
+      page-break-inside: auto !important;
       margin-bottom: 4mm;
     }
     h1, h2, h3, h4, h5, h6 {
       break-after: avoid-page !important;
       page-break-after: avoid !important;
     }
+    .rp-johari-wrap,
+    .johari-wrapper,
     app-johari-window-chart,
+    .legend-table,
+    .legend-table table,
+    .rp-defasagem-item,
+    .gap-chart-container,
     app-gap-chart,
     ngx-charts-bar-horizontal,
     .pdf-svg-chart,
@@ -3243,15 +3287,32 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       page-break-inside: avoid !important;
       display: block !important;
     }
+    .rp-johari-wrap,
     .johari-wrapper {
-      break-before: avoid !important;
-      page-break-before: avoid !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
     }
-    table {
+    .johari-wrapper .plot-area {
+      width: 100% !important;
+      max-width: 100% !important;
+      aspect-ratio: 1 / 1 !important;
+      height: auto !important;
+    }
+    .johari-wrapper .legend-table {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    .tabela-frequencia,
+    .tabela-distribuicao-notas,
+    .tabela-destaques {
       break-inside: auto !important;
       page-break-inside: auto !important;
     }
-    tr {
+    .tabela-frequencia tr,
+    .tabela-distribuicao-notas tr,
+    .tabela-destaques tr {
       break-inside: avoid !important;
       page-break-inside: avoid !important;
     }
@@ -3939,7 +4000,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
 
     try {
-      this.invalidateCache();
+      this.prewarmPreviewCache();
+      this.cdr.markForCheck();
+      await new Promise(resolve => setTimeout(resolve, 0));
       const fileName = `${this.getExportBaseName()}.pdf`;
       await this.exportReportPreviewAsPdf(fileName);
       return true;
@@ -4124,7 +4187,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             const perguntas = secao.perguntasIds || [];
             if (!perguntas.length) { children.push(p('Sem perguntas configuradas.')); break; }
             const rows = perguntas.map((pId: string) => {
-              const titulo = this.questionMap[pId] || pId;
+              const titulo = this.substituirVariaveisRelatorio(this.questionMap[pId] || pId);
               const dados = this.getDadosPerguntaDefasagem(pId);
               return [
                 titulo,
@@ -4798,7 +4861,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     return perguntasAbertas.map((q: any) => {
       const perguntaId = q.id;
-      const perguntaTitulo = this.questionMap[perguntaId] || q.title || perguntaId;
+      const perguntaTitulo = this.substituirVariaveisRelatorio(
+        this.questionMap[perguntaId] || q.title || perguntaId
+      );
       const respostasPorCategoria: { [categoria: string]: string[] } = {};
 
       this.dataSource.forEach((row: any) => {
@@ -4874,7 +4939,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         items.push({
           classificacao: 0,
-          comportamento: this.questionMap[perguntaId] || `Pergunta ${perguntaId}`,
+          comportamento: this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || `Pergunta ${perguntaId}`),
           pontuacaoMediaAvaliado: medias.mediaGeral,
           pontuacaoMediaSemAutoavaliacao: medias.mediaPorCategoria,
           perguntaId,
@@ -4907,7 +4972,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         items.push({
           classificacao: 0,
-          comportamento: this.questionMap[perguntaId] || `Pergunta ${perguntaId}`,
+          comportamento: this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || `Pergunta ${perguntaId}`),
           pontuacaoMediaAvaliado: medias.mediaGeral,
           pontuacaoMediaSemAutoavaliacao: medias.mediaPorCategoria,
           perguntaId,
@@ -6313,12 +6378,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getCapaComDadosDinamicos(textoOriginal: string | undefined): string {
-    if (!textoOriginal) return '';
-    const nomeAvaliado = this.selectedAvaliadoName || '';
-    const dataRelatorio = this.today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    return textoOriginal
-      .replace(/\$%NOME_AVALIADO\$%/g, nomeAvaliado)
-      .replace(/\$%DATA_RELATORIO\$%/g, dataRelatorio);
+    return this.substituirVariaveisRelatorio(textoOriginal);
   }
 
   _getCapaComDadosDinamicos_UNUSED(textoOriginal: string | undefined): string {
@@ -6789,7 +6849,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.questionMap,
       this.customQuestionsByCompetency
     );
-    return title === perguntaId ? `Pergunta ${perguntaId}` : title;
+    const resolved = title === perguntaId ? `Pergunta ${perguntaId}` : title;
+    return this.substituirVariaveisRelatorio(resolved);
+  }
+
+  getQuestionLabel(perguntaId: string): string {
+    return this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || perguntaId);
   }
 
   async loadAllCompetencies(): Promise<void> {
@@ -7201,7 +7266,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const perguntasIds = comp.perguntasIds || [];
 
       perguntasIds.forEach(perguntaId => {
-        const perguntaTexto = this.questionMap[perguntaId] || perguntaId;
+        const perguntaTexto = this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || perguntaId);
 
         // Buscar dados de resposta para esta pergunta específica
         const dadosPergunta = this.getDadosPerguntaDefasagem(perguntaId);
@@ -7265,7 +7330,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const dadosPorPergunta: GapChartDataItem[] = [];
 
     competencia.perguntasIds.forEach((perguntaId) => {
-      const perguntaTexto = this.questionMap[perguntaId] || perguntaId;
+      const perguntaTexto = this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || perguntaId);
       const dadosPergunta = this.getDadosPerguntaDefasagem(perguntaId);
 
       if (dadosPergunta) {

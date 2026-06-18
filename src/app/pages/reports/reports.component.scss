@@ -39,6 +39,11 @@ h1, h2, h3, h4, h5, h6 {
 
 app-johari-window-chart,
 app-gap-chart,
+.rp-johari-wrap,
+.rp-defasagem-item,
+.johari-wrapper,
+.legend-table,
+.gap-chart-container,
 ngx-charts-bar-horizontal,
 .pdf-svg-chart,
 .capa-info-block {
@@ -47,12 +52,21 @@ ngx-charts-bar-horizontal,
   display: block !important;
 }
 
-table {
+.legend-table table {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.tabela-frequencia,
+.tabela-distribuicao-notas,
+.tabela-destaques {
   page-break-inside: auto !important;
   break-inside: auto !important;
 }
 
-tr {
+.tabela-frequencia tr,
+.tabela-distribuicao-notas tr,
+.tabela-destaques tr {
   page-break-inside: avoid !important;
   break-inside: avoid !important;
 }
@@ -1449,7 +1463,6 @@ tr {
   /* Nenhum elemento pode ser cortado no meio entre páginas */
   .report-section,
   .rp-section,
-  table,
   mat-table,
   .rp-chart-wrap,
   .rp-table-wrap,
@@ -1460,10 +1473,38 @@ tr {
   ngx-charts-chart,
   .rp-summary-card,
   .rp-johari-wrap,
+  .johari-wrapper,
+  .legend-table,
+  .gap-chart-container,
+  .rp-defasagem-item,
   tr,
   .rp-perguntas-abertas-item {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  .tabela-frequencia,
+  .tabela-distribuicao-notas,
+  .tabela-destaques {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .rp-johari-wrap,
+  .johari-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .johari-wrapper .plot-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    height: auto !important;
+  }
+
+  .johari-wrapper .legend-table {
+    width: 100% !important;
   }
 
   /* Títulos de seção sempre ficam com o conteúdo seguinte */
@@ -2782,6 +2823,11 @@ tr {
   margin-top: 20px;
 }
 
+.rp-johari-wrap {
+  margin-top: 20px;
+  width: 100%;
+}
+
 .rp-defasagem-item {
   margin-bottom: 24px;
 
@@ -3536,3 +3582,8 @@ mat-table {
   line-height: 1;
 }
 
+.rp-radar-chart {
+  background: #ffffff;
+  border-radius: 4px;
+  width: 100%;
+}

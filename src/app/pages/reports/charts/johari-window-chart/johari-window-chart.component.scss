@@ -3,6 +3,8 @@
   width: 100%;
   max-width: 860px;
   margin: 12px auto 24px auto;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .y-title {
@@ -82,9 +84,13 @@
 
 .legend-table {
   margin-top: 24px;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .legend-table table {
+  page-break-inside: avoid;
+  break-inside: avoid;
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
