@@ -1491,6 +1491,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       console.warn('[Relatório] Erro ao carregar assessmentLinks:', e);
     }
 
+    const filterProjectId = this.filterProjectControl.value || '';
+    const soleAvaliadoIdByProject = new Map<string, string>();
+    if (filterProjectId) {
+      try {
+        const avaliadosSnap = await getDocs(query(
+          collection(this.firestore, 'participants'),
+          where('projectId', '==', filterProjectId),
+          where('type', '==', 'avaliado')
+        ));
+        if (avaliadosSnap.docs.length === 1) {
+          soleAvaliadoIdByProject.set(filterProjectId, avaliadosSnap.docs[0].id);
+        }
+      } catch (e) {
+        console.warn('[Relatório] Erro ao resolver avaliado único do projeto:', e);
+      }
+    }
+
     const results: any[] = [];
     for (const resultDoc of resultsSnap.docs) {
       const resultData = resultDoc.data();
@@ -1521,6 +1538,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (participantData) {
         this.debugLog('Dados do participante:', participantData);
 
+        if (participantData['type'] === 'avaliador' && participantData['avaliadoId']) {
+          evaluatorToAvaliadoIdMap.set(participantId, participantData['avaliadoId']);
+        }
+
         let shouldInclude = true;
         let isTargetParticipant = false;
 
@@ -1537,8 +1558,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             shouldInclude = false;
           }
         } else {
-          // Modo normal: incluir todos
-          shouldInclude = true;
+          // Modo normal: incluir participantes do projeto filtrado (se houver)
+          shouldInclude = !filterProjectId || participantData['projectId'] === filterProjectId;
         }
 
         if (shouldInclude) {
@@ -1546,47 +1567,48 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             ? resultData['completedAt'].toDate()
             : null;
 
-          // Determinar o nome do avaliado associado a este resultado.
-          // Modo individual: todos os resultados pertencem ao avaliado alvo.
-          // Modo normal: avaliados têm seu próprio nome; avaliadores usam o nome
-          // de quem estão avaliando (via assessmentLinks).
+          // Determinar o avaliado associado a este resultado.
+          // Avaliadores devem apontar para quem avaliam (assessmentLinks.avaliadoId
+          // ou participants.avaliadoId), não para o próprio nome.
           let avaliadoNome: string;
+          let avaliadoIdResolved: string;
+          const tipoParticipante = participantData['type'] || 'avaliado';
+
           if (this.isIndividualMode && this.individualParticipantName) {
             avaliadoNome = this.individualParticipantName;
-          } else {
-            const tipoParticipante = participantData['type'] || 'avaliado';
-            if (tipoParticipante === 'avaliador' && evaluatorToAvaliadoIdMap.has(participantId)) {
-              const avaliadoId = evaluatorToAvaliadoIdMap.get(participantId)!;
-              let avaliadoData: any | null = null;
-              if (this.participantsCache.has(avaliadoId)) {
-                avaliadoData = this.participantsCache.get(avaliadoId);
-              } else {
-                const avaliadoRef = doc(this.firestore, 'participants', avaliadoId);
-                const avaliadoSnap = await getDoc(avaliadoRef);
-                if (avaliadoSnap.exists()) {
-                  avaliadoData = avaliadoSnap.data();
-                  this.participantsCache.set(avaliadoId, avaliadoData);
-                }
-              }
-              avaliadoNome = avaliadoData ? (avaliadoData['name'] || 'N/A') : (participantData['name'] || 'N/A');
+            avaliadoIdResolved = this.individualParticipantId || participantId;
+          } else if (tipoParticipante === 'avaliador') {
+            let avaliadoId =
+              evaluatorToAvaliadoIdMap.get(participantId) || participantData['avaliadoId'];
+            if (!avaliadoId && participantData['projectId']) {
+              avaliadoId = soleAvaliadoIdByProject.get(participantData['projectId']);
+            }
+            if (avaliadoId) {
+              avaliadoIdResolved = avaliadoId;
+              avaliadoNome = await this.resolveParticipantName(avaliadoId);
             } else {
+              avaliadoIdResolved = participantId;
               avaliadoNome = participantData['name'] || 'N/A';
             }
+          } else {
+            avaliadoIdResolved = participantId;
+            avaliadoNome = participantData['name'] || 'N/A';
           }
 
           const row: any = {
             data: '',
             categoria: participantData['category'] || 'N/A',
             avaliado: avaliadoNome,
-            tipo: participantData['type'] || 'avaliado', // 'avaliado' | 'avaliador' para filtrar lista
+            avaliadoId: avaliadoIdResolved,
+            tipo: tipoParticipante,
             dataAvaliacao: completedAtDate ? completedAtDate.toLocaleDateString('pt-BR') : 'N/A',
             horarioAvaliacao: completedAtDate ? completedAtDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
             cargo: participantData['cargo'] || '',
             setor: participantData['setor'] || '',
-            isTargetParticipant: isTargetParticipant, // Marcar se é o participante alvo
-            reportStatus: participantData['reportStatus'] || 'pending', // Status de liberação do relatório
-            participanteId: participantId, // ID do participante para liberar relatório
-            projectId: participantData['projectId'] || '' // Para filtrar avaliados por projeto
+            isTargetParticipant: isTargetParticipant,
+            reportStatus: participantData['reportStatus'] || 'pending',
+            participanteId: participantId,
+            projectId: participantData['projectId'] || ''
           };
 
           // Adicionar respostas às perguntas
@@ -1671,6 +1693,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Carregar avaliados disponíveis após processar os dados
     this.avaliadosDisponiveis = this.getAvaliadosDisponiveis();
+    this.updateSelectedAvaliadoParticipantId();
 
     // Viewer/admin_client: carregar snapshot e ir direto para Visualizar
     if (!this.isIndividualMode && ['viewer', 'admin_client'].includes(this.currentUserRole)) {
@@ -1687,6 +1710,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const onlyAvaliado = this.avaliadosDisponiveis[0];
       this.avaliadoControl.setValue(onlyAvaliado, { emitEvent: false });
       this.selectedAvaliado = onlyAvaliado;
+      this.updateSelectedAvaliadoParticipantId();
       this.invalidateCache();
       this.cdr.markForCheck();
     }
@@ -2021,6 +2045,48 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       'Outros': 'Outros',
     };
     return map[categoria] || categoria;
+  }
+
+  /** ID Firestore do avaliado selecionado (para vincular respostas de avaliadores). */
+  private selectedAvaliadoParticipantId: string | null = null;
+
+  private updateSelectedAvaliadoParticipantId(): void {
+    if (!this.selectedAvaliado) {
+      this.selectedAvaliadoParticipantId = null;
+      return;
+    }
+    const avaliadoRow = this.dataSource.find(
+      (row) =>
+        (row['tipo'] || 'avaliado') === 'avaliado' &&
+        row['avaliado'] === this.selectedAvaliado
+    );
+    this.selectedAvaliadoParticipantId = avaliadoRow?.['participanteId'] || null;
+  }
+
+  /** Inclui autoavaliação e avaliadores vinculados ao avaliado selecionado. */
+  private matchesSelectedAvaliado(row: Record<string, unknown>, avaliadoSelecionado: string): boolean {
+    if (row['avaliado'] === avaliadoSelecionado) return true;
+    if (
+      this.selectedAvaliadoParticipantId &&
+      row['avaliadoId'] === this.selectedAvaliadoParticipantId
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  private async resolveParticipantName(participantId: string): Promise<string> {
+    let participantData: Record<string, unknown> | null = null;
+    if (this.participantsCache.has(participantId)) {
+      participantData = this.participantsCache.get(participantId) as Record<string, unknown>;
+    } else {
+      const snap = await getDoc(doc(this.firestore, 'participants', participantId));
+      if (snap.exists()) {
+        participantData = snap.data() as Record<string, unknown>;
+        this.participantsCache.set(participantId, participantData);
+      }
+    }
+    return String(participantData?.['name'] || 'N/A');
   }
 
   // Retorna as médias por competência e grupo de avaliadores para o bloco de Resumo
@@ -2637,7 +2703,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     let count = 0;
     for (const pid of carac.perguntasIds || []) {
       for (const row of this.dataSource) {
-        if (this.selectedAvaliado && row['avaliado'] !== this.selectedAvaliado) continue;
+        if (this.selectedAvaliado && !this.matchesSelectedAvaliado(row, this.selectedAvaliado)) continue;
         if (this.mapCategoriaToGrupo(row['categoria']) === grupo) {
           let valor = row[pid];
 
@@ -4351,7 +4417,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (grupo === 'Todos') {
       this.dataSource.forEach((participant, index) => {
         // Verificar se o participante é o avaliado selecionado
-        if (participant && participant['avaliado'] === avaliadoSelecionado && participant[perguntaId] !== undefined) {
+        if (participant && this.matchesSelectedAvaliado(participant, avaliadoSelecionado) && participant[perguntaId] !== undefined) {
           let valor = participant[perguntaId];
 
           console.log(`  �o. Participante ${index}: avaliado="${participant['avaliado']}", pergunta=${perguntaId}, valor="${valor}"`);
@@ -4390,7 +4456,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         // Verificar se o participante pertence ao grupo especificado E é o avaliado selecionado
         const categoriaParticipante = this.mapCategoriaToGrupo(participant.categoria);
         if (categoriaParticipante === grupo &&
-            participant['avaliado'] === avaliadoSelecionado &&
+            this.matchesSelectedAvaliado(participant, avaliadoSelecionado) &&
             participant[perguntaId] !== undefined) {
           let valor = participant[perguntaId];
 
@@ -4964,8 +5030,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     perguntasIds.forEach(perguntaId => {
       const respostasGrupo = this.dataSource.filter(row => {
         const grupoMapeado = this.mapCategoriaToGrupo(row['categoria']);
-        const avaliado = row['avaliado'];
-        return grupoMapeado === grupo && avaliado === avaliadoSelecionado;
+        return grupoMapeado === grupo && this.matchesSelectedAvaliado(row, avaliadoSelecionado);
       });
 
       respostasGrupo.forEach(row => {
@@ -6882,6 +6947,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Método para lidar com mudança de avaliado selecionado
   async onAvaliadoChange(): Promise<void> {
     this.selectedAvaliado = this.avaliadoControl.value;
+    this.updateSelectedAvaliadoParticipantId();
     console.log('Avaliado selecionado:', this.selectedAvaliado);
 
     // Invalidar cache relacionado a cálculos de competências
