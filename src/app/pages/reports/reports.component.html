@@ -1297,17 +1297,17 @@
             <div *ngSwitchCase="'capa'" class="capa-section">
               <div [innerHTML]="safeHtml(secao.texto)"></div>
               <!-- Bloco dinâmico: participante + respondentes (renderizado por Angular, não injetado no HTML) -->
-              <div class="capa-info-block" *ngIf="selectedAvaliado || getContagemRespondentesPorCategoria().length > 0">
+              <div class="capa-info-block" *ngIf="selectedAvaliado || getContagemRespondentesCached().length > 0">
                 <div class="capa-info-block__avaliado" *ngIf="selectedAvaliado">
                   <span class="capa-info-block__label">Avaliado(a)</span>
                   <span class="capa-info-block__name">{{ selectedAvaliadoName }}</span>
                   <span class="capa-info-block__date">{{ today | date:'dd/MM/yyyy' }}</span>
                 </div>
-                <div class="capa-info-block__respondentes" *ngIf="getContagemRespondentesPorCategoria().length > 0">
+                <div class="capa-info-block__respondentes" *ngIf="getContagemRespondentesCached().length > 0">
                   <span class="capa-info-block__resp-title">Avaliadores por Perfil</span>
                   <div class="capa-info-block__resp-chips">
                     <span class="capa-info-block__chip"
-                          *ngFor="let item of getContagemRespondentesPorCategoria()">
+                          *ngFor="let item of getContagemRespondentesCached()">
                       {{ item.categoria }}: <strong>{{ item.quantidade }}</strong>
                     </span>
                   </div>
@@ -1350,7 +1350,7 @@
               <h2>{{ secao.titulo }}</h2>
               <div [innerHTML]="safeHtml(secao.texto)"></div>
 
-              <div *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length > 0">
+              <div *ngIf="getCompetenciasGraficosCached(secao).length > 0">
                 <mat-form-field appearance="outline" class="ui-only" style="width: 250px; margin-bottom: 16px;">
                   <mat-label>Tipo de gráfico</mat-label>
                   <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao, i)">
@@ -1366,7 +1366,7 @@
                 <div style="margin-bottom: 16px;">
                   <h4>Competências analisadas:</h4>
                   <mat-chip-set>
-                    <mat-chip *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)" [matTooltip]="comp.descricao">
+                    <mat-chip *ngFor="let comp of getCompetenciasGraficosCached(secao)" [matTooltip]="comp.descricao">
                       <mat-icon matChipAvatar>psychology</mat-icon>
                       {{ comp.nome }}
                       <ng-container *ngIf="isTipoGraficoPizza(getTipoGraficoControl(i).value)">
@@ -1378,11 +1378,11 @@
 
                 <ng-container [ngSwitch]="getTipoGraficoControl(i).value || 'barra'">
                   <div *ngSwitchCase="'janela_johari'">
-                    <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+                    <app-johari-window-chart [data]="getJohariWindowDataCached(secao)"></app-johari-window-chart>
                   </div>
                   <div *ngSwitchCase="'barra'">
                     <div style="display: flex; flex-direction: column; gap: 30px;">
-                      <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                         <ng-container *ngIf="getCompetenciaBarraComparativaData(comp) as dadosGrafico">
@@ -1424,7 +1424,7 @@
                   </div>
                   <div *ngSwitchCase="'pizza-individual'">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                      <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                         <ngx-charts-pie-chart
@@ -1441,7 +1441,7 @@
                   </div>
                   <div *ngSwitchCase="'barras-individuais'">
                     <div style="display: flex; flex-direction: column; gap: 30px;">
-                      <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                         <div style="height: 300px; width: 100%;">
@@ -1464,7 +1464,7 @@
                 </ng-container>
               </div>
 
-              <p *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length === 0">
+              <p *ngIf="getCompetenciasGraficosCached(secao).length === 0">
                 <i>Nenhuma competência selecionada para exibir gráficos.</i>
               </p>
             </div>
@@ -1540,8 +1540,8 @@
             <div *ngSwitchCase="'tabela_detalhada'">
               <h2>{{ secao.titulo }}</h2>
               <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0">
-                <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let compIndex = index">
+              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0">
+                <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let compIndex = index; let lastComp = last">
                   <div style="margin-bottom: 30px;">
                     <div style="margin-bottom: 20px;">
                       <h3>{{ comp.nome }}</h3>
@@ -1595,11 +1595,11 @@
                         </div>
                       </ng-container>
                     </div>
-                    <mat-divider *ngIf="compIndex < getCompetenciasSelecionadasParaSecao(secao).length - 1" style="margin: 30px 0;"></mat-divider>
+                    <mat-divider *ngIf="!lastComp" style="margin: 30px 0;"></mat-divider>
                   </div>
                 </div>
               </div>
-              <p *ngIf="getCompetenciasSelecionadasParaSecao(secao).length === 0">
+              <p *ngIf="getCompetenciasParaSecaoCached(secao).length === 0">
                 <i>Selecione uma ou mais competências na aba "Montar Relatório" para visualizar as tabelas detalhadas.</i>
               </p>
             </div>
@@ -1607,7 +1607,7 @@
             <div *ngSwitchCase="'destaques'">
               <h2>{{ secao.titulo }}</h2>
               <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <ng-container *ngIf="gerarTabelaAvaliacoesAltas(secao['numeroItems'] || competencias.length || 5) as tabelaAltas">
+              <ng-container *ngIf="getDestaquesAltasCached(secao) as tabelaAltas">
                 <div *ngIf="tabelaAltas.items.length > 0; else noDestaquesData">
                   <h3 [style.color]="getDestaquesAltasColors(secao).text" style="margin-top: 20px;">Avaliações mais altas</h3>
                   <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
@@ -1634,7 +1634,7 @@
                   </table>
                 </div>
               </ng-container>
-              <ng-container *ngIf="gerarTabelaAvaliacoesBaixas(secao['numeroItems'] || competencias.length || 5) as tabelaBaixas">
+              <ng-container *ngIf="getDestaquesBaixasCached(secao) as tabelaBaixas">
                 <div *ngIf="tabelaBaixas.items.length > 0">
                   <h3 [style.color]="getDestaquesBaixasColors(secao).text" style="margin-top: 30px;">Avaliações mais baixas</h3>
                   <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
@@ -1670,7 +1670,7 @@
 
             <div *ngSwitchCase="'competencia_detalhada'">
               <h2>{{ secao.titulo }}</h2>
-              <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let i = index">
+              <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let i = index; let lastComp = last">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; margin-bottom: 20px;">
                   <div *ngIf="getOrInitTextoCompetencia(secao, comp)">
                     <h3 style="margin-bottom: 4px;">{{ comp.nome }}</h3>
@@ -1680,7 +1680,7 @@
                   <div style="height: 250px;">
                     <ngx-charts-bar-horizontal
                       [scheme]="getColorSchemeParaSecao(secao)"
-                      [results]="getDadosGraficoPorCompetencia(comp)"
+                      [results]="getDadosGraficoCompetenciaCached(comp)"
                       [xAxis]="true"
                       [yAxis]="true"
                       [showDataLabel]="true"
@@ -1689,15 +1689,15 @@
                     </ngx-charts-bar-horizontal>
                   </div>
                 </div>
-                <mat-divider *ngIf="i < getCompetenciasSelecionadasParaSecao(secao).length - 1"></mat-divider>
+                <mat-divider *ngIf="!lastComp"></mat-divider>
               </div>
             </div>
 
             <div *ngSwitchCase="'grafico_defasagem'">
               <h2>{{ secao.titulo }}</h2>
               <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataDefasagem" style="margin-top: 20px;">
-                <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao)" style="margin-bottom: 30px;">
+              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataDefasagem" style="margin-top: 20px;">
+                <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao)" style="margin-bottom: 30px;">
                   <h3 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">{{ comp.nome }}</h3>
                   <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
                 </div>
@@ -1713,8 +1713,8 @@
             <div *ngSwitchCase="'janela_johari'">
               <h2>{{ secao.titulo }}</h2>
               <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataJohari" style="margin-top: 20px; break-before: avoid; page-break-before: avoid;">
-                <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataJohari" style="margin-top: 20px; break-before: avoid; page-break-before: avoid;">
+                <app-johari-window-chart [data]="getJohariWindowDataCached(secao)"></app-johari-window-chart>
               </div>
               <ng-template #noDataJohari>
                 <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">

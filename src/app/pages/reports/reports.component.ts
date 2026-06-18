@@ -892,31 +892,35 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return `${this.getExportBaseName()}.${extension}`;
   }
 
-  // �Ys? PERFORMANCE: Sistema de cache
+  private readonly PREVIEW_CACHE_PATTERNS = [
+    'secao-', 'tabela-competencia', 'destaques-', 'competencias-secao-',
+    'competencias-graficos-', 'contagem-respondentes', 'secoes-visiveis',
+    'johari-data-', 'grafico-comp-', 'resumo-',
+  ];
+
   private getCachedCalculation<T>(key: string, calculationFn: () => T): T {
     if (!this.calculosCache.has(key)) {
-      console.log(`�Y"S Calculando e armazenando no cache: ${key}`);
       this.calculosCache.set(key, calculationFn());
     }
     return this.calculosCache.get(key);
   }
 
   private invalidateCache(pattern?: string) {
-    if (pattern) {
-      // Invalidar apenas chaves que correspondem ao padrão
-      const keysToDelete = Array.from(this.calculosCache.keys()).filter(key => key.includes(pattern));
-      keysToDelete.forEach(key => this.calculosCache.delete(key));
-      console.log(`Cache invalidado para padrão: ${pattern} (${keysToDelete.length} entradas)`);
+    let keysToDelete: string[];
+    if (!pattern) {
+      keysToDelete = Array.from(this.calculosCache.keys());
+    } else if (pattern === 'secao-') {
+      keysToDelete = Array.from(this.calculosCache.keys()).filter(key =>
+        this.PREVIEW_CACHE_PATTERNS.some(p => key.includes(p))
+      );
     } else {
-      // Invalidar todo o cache
-      this.calculosCache.clear();
-      console.log('Cache completamente invalidado');
+      keysToDelete = Array.from(this.calculosCache.keys()).filter(key => key.includes(pattern));
     }
+    keysToDelete.forEach(key => this.calculosCache.delete(key));
   }
 
-  // �Ys? PERFORMANCE: Indexação de dados
+  // Indexação de dados
   private createDataIndexes() {
-    console.log('�Y"� Criando índices de dados...');
 
     this.dataIndexes.participantsByCategory.clear();
     this.dataIndexes.responsesByParticipant.clear();
@@ -1701,6 +1705,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.viewerSnapshotLoaded = await this.loadSnapshotForViewer();
       this.selectedTabIndex = 2;
       this.invalidateCache();
+      this.prewarmPreviewCache();
       this.cdr.markForCheck();
       return;
     }
@@ -1736,6 +1741,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Criar índices de dados para performance
     this.createDataIndexes();
+
+    if (this.selectedTabIndex === 2) {
+      this.prewarmPreviewCache();
+    }
 
           // Debug: Verificar dados no modo individual
       if (this.isIndividualMode) {
@@ -1898,19 +1907,115 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Métodos utilitários para manipular as seções do relatório
   getSecoesVisiveisOrdenadas(): RelatorioSecao[] {
-    return this.relatorioConfiguracao
-      .filter(secao => secao.visivel)
-      .sort((a, b) => a.ordem - b.ordem);
+    return this.getCachedCalculation('secoes-visiveis', () =>
+      this.relatorioConfiguracao
+        .filter(secao => secao.visivel)
+        .sort((a, b) => a.ordem - b.ordem)
+    );
+  }
+
+  getCompetenciasParaSecaoCached(secao: RelatorioSecao): Competencia[] {
+    const idsKey = (secao.competenciasIds || []).join(',');
+    const cacheKey = `competencias-secao-${secao.id}-${idsKey}`;
+    return this.getCachedCalculation(cacheKey, () => this.getCompetenciasSelecionadasParaSecao(secao));
+  }
+
+  getCompetenciasGraficosCached(secao: RelatorioSecao): Competencia[] {
+    const idsKey = (secao.competenciasIds || []).join(',');
+    const cacheKey = `competencias-graficos-${secao.id}-${idsKey}`;
+    return this.getCachedCalculation(cacheKey, () => this.getCompetenciasSelecionadasParaGraficos(secao));
+  }
+
+  getDestaquesAltasCached(secao: RelatorioSecao): TabelaAvaliacoesAltas {
+    const n = secao['numeroItems'] || this.competencias.length || 5;
+    const cacheKey = `destaques-altas-${secao.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}-${n}`;
+    return this.getCachedCalculation(cacheKey, () => this.gerarTabelaAvaliacoesAltas(n));
+  }
+
+  getDestaquesBaixasCached(secao: RelatorioSecao): TabelaAvaliacoesAltas {
+    const n = secao['numeroItems'] || this.competencias.length || 5;
+    const cacheKey = `destaques-baixas-${secao.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}-${n}`;
+    return this.getCachedCalculation(cacheKey, () => this.gerarTabelaAvaliacoesBaixas(n));
+  }
+
+  getContagemRespondentesCached(): { categoria: string; quantidade: number }[] {
+    const cacheKey = `contagem-respondentes-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}-${this.dataSource.length}`;
+    return this.getCachedCalculation(cacheKey, () => this.getContagemRespondentesPorCategoria());
+  }
+
+  getJohariWindowDataCached(secao: RelatorioSecao): JohariWindowData {
+    const cacheKey = `johari-data-${secao.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}`;
+    return this.getCachedCalculation(cacheKey, () => this.getJohariWindowData(secao));
+  }
+
+  getDadosGraficoCompetenciaCached(competencia: Competencia): { name: string; value: number }[] {
+    const cacheKey = `grafico-comp-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}`;
+    return this.getCachedCalculation(cacheKey, () => this.getDadosGraficoPorCompetencia(competencia));
+  }
+
+  private prewarmPreviewCache(): void {
+    if (!this.dataSource.length) return;
+
+    this.getSecoesVisiveisOrdenadas();
+    this.getContagemRespondentesCached();
+
+    this.getSecoesVisiveisOrdenadas().forEach((secao, i) => {
+      switch (secao.tipo) {
+        case 'destaques':
+          this.getDestaquesAltasCached(secao);
+          this.getDestaquesBaixasCached(secao);
+          break;
+        case 'tabela':
+          this.getCompetenciasSelecionadasParaTabela().forEach(c => this.getTabelaCompetencia(c));
+          break;
+        case 'tabela_detalhada':
+          this.getCompetenciasParaSecaoCached(secao).forEach(c => this.getTabelaCompetencia(c));
+          break;
+        case 'competencia_detalhada':
+          this.getCompetenciasParaSecaoCached(secao).forEach(c => {
+            this.getTabelaCompetencia(c);
+            this.getDadosGraficoCompetenciaCached(c);
+          });
+          break;
+        case 'graficos':
+          this.getCompetenciasGraficosCached(secao).forEach(c => {
+            this.getCompetenciaBarraComparativaData(c);
+            this.getCompetenciaPieData(c);
+            this.getCompetenciaStackedData(c);
+          });
+          if (this.getTipoGraficoControl(i)?.value === 'janela_johari') {
+            this.getJohariWindowDataCached(secao);
+          }
+          break;
+        case 'resumo':
+          this.getResumoMedias();
+          this.getResumoMediasPorCompetencia();
+          break;
+        case 'grafico_defasagem':
+        case 'janela_johari':
+          this.getCompetenciasParaSecaoCached(secao);
+          this.getJohariWindowDataCached(secao);
+          break;
+        default:
+          break;
+      }
+    });
   }
 
   mostrarSecao(id: string) {
     const secao = this.relatorioConfiguracao.find(s => s.id === id);
-    if (secao) secao.visivel = true;
+    if (secao) {
+      secao.visivel = true;
+      this.calculosCache.delete('secoes-visiveis');
+    }
   }
 
   ocultarSecao(id: string) {
     const secao = this.relatorioConfiguracao.find(s => s.id === id);
-    if (secao) secao.visivel = false;
+    if (secao) {
+      secao.visivel = false;
+      this.calculosCache.delete('secoes-visiveis');
+    }
   }
 
   atualizarTextoSecao(id: string, texto: string) {
@@ -4188,21 +4293,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Método para gerar tabela detalhada de competência com distribuição de notas
   gerarTabelaCompetencia(competencia: Competencia): TabelaCompetencia {
-    console.log(`�Y"� gerarTabelaCompetencia:`, {
-      competencia: competencia.nome,
-      selectedAssessmentId: this.selectedAssessmentId,
-      selectedAvaliado: this.selectedAvaliado,
-      dataSourceLength: this.dataSource.length,
-      perguntasIds: competencia.perguntasIds
-    });
-
-    // Debug específico quando há avaliado selecionado
-    if (this.selectedAvaliado) {
-      this.debugTabelaCompetencia(competencia);
-    }
-
     if (!this.selectedAssessmentId || !this.dataSource.length) {
-      console.log(`�O Dados insuficientes: assessmentId=${this.selectedAssessmentId}, dataSource=${this.dataSource.length}`);
       return {
         competencia,
         linhas: [],
@@ -4211,31 +4302,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const grupos = this.getGrupos();
-    console.log(`�Y"S Grupos disponíveis:`, grupos);
     const linhas: LinhaTabela[] = [];
 
-    // Para cada pergunta da competência, calcular distribuição de notas
     competencia.perguntasIds.forEach(perguntaId => {
       const perguntaTexto = this.getQuestionTitle(perguntaId, competencia.id);
-
-      console.log(`\n�Y"� Processando pergunta: ${perguntaId} - "${perguntaTexto}"`);
       const categorias: DadosCategoria[] = [];
 
       grupos.forEach(grupo => {
-        // Se um avaliado específico foi selecionado, usar dados filtrados
-        let respostasGrupo: number[];
-        if (this.selectedAvaliado) {
-          console.log(`  �YZ� Usando filtro para avaliado específico: ${this.selectedAvaliado}`);
-          respostasGrupo = this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, this.selectedAvaliado);
-        } else {
-          console.log(`  �YO� Usando dados de todos os avaliados`);
-          respostasGrupo = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
-        }
+        const respostasGrupo = this.selectedAvaliado
+          ? this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, this.selectedAvaliado)
+          : this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
 
         const distribuicao = this.calcularDistribuicaoNotas(respostasGrupo);
         const media = this.calcularMediaDistribuicao(distribuicao);
-
-        console.log(`  �Y"S Grupo "${grupo}": ${respostasGrupo.length} respostas, média: ${media.toFixed(2)}`);
 
         categorias.push({
           categoria: grupo,
@@ -4252,25 +4331,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     });
 
-    // Calcular médias gerais por categoria
     const mediasGerais: DadosCategoria[] = grupos.map(grupo => {
       const todasRespostasGrupo: number[] = [];
 
       competencia.perguntasIds.forEach(perguntaId => {
-        // Se um avaliado específico foi selecionado, usar dados filtrados
-        let respostas: number[];
-        if (this.selectedAvaliado) {
-          respostas = this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, this.selectedAvaliado);
-        } else {
-          respostas = this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
-        }
+        const respostas = this.selectedAvaliado
+          ? this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, this.selectedAvaliado)
+          : this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
         todasRespostasGrupo.push(...respostas);
       });
 
       const distribuicao = this.calcularDistribuicaoNotas(todasRespostasGrupo);
       const media = this.calcularMediaDistribuicao(distribuicao);
-
-      console.log(`�Y"S Média geral grupo "${grupo}": ${media.toFixed(2)} (${todasRespostasGrupo.length} respostas)`);
 
       return {
         categoria: grupo,
@@ -4280,18 +4352,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       };
     });
 
-    const resultado = {
+    return {
       competencia,
       linhas,
       mediasGerais
     };
-
-    console.log(`�o. Tabela gerada com sucesso:`, {
-      totalLinhas: resultado.linhas.length,
-      totalMediasGerais: resultado.mediasGerais.length
-    });
-
-    return resultado;
   }
 
   // Método auxiliar para obter respostas de uma pergunta específica para um grupo
@@ -4406,93 +4471,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private getRespostasParaPerguntaEGrupoEAvaliado(perguntaId: string, grupo: string, avaliadoSelecionado: string): number[] {
     const respostas: number[] = [];
 
-    console.log(`�Y"� getRespostasParaPerguntaEGrupoEAvaliado:`, {
-      perguntaId,
-      grupo,
-      avaliadoSelecionado,
-      totalDataSource: this.dataSource.length
-    });
+    for (const participant of this.dataSource) {
+      if (!participant) continue;
 
-    // Se o grupo for 'Todos', processar todos os dados do avaliado específico
-    if (grupo === 'Todos') {
-      this.dataSource.forEach((participant, index) => {
-        // Verificar se o participante é o avaliado selecionado
-        if (participant && this.matchesSelectedAvaliado(participant, avaliadoSelecionado) && participant[perguntaId] !== undefined) {
-          let valor = participant[perguntaId];
-
-          console.log(`  �o. Participante ${index}: avaliado="${participant['avaliado']}", pergunta=${perguntaId}, valor="${valor}"`);
-
-          // Tratar diferentes formatos de dados
-          if (typeof valor === 'string') {
-            // Se for string, tentar extrair número
-            if (valor.includes('Column')) {
-              // Formato: "Column 1" �?' 1
-              const match = valor.match(/Column (\d+)/);
-              if (match) {
-                valor = parseInt(match[1]);
-              }
-            } else {
-              // Tentar converter string diretamente para número
-              valor = parseFloat(valor);
-            }
-          }
-
-          const valorNumerico = Number(valor);
-          if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
-            respostas.push(valorNumerico);
-            console.log(`    �z. Valor válido adicionado: ${valorNumerico}`);
-          } else {
-            console.log(`    �O Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
-          }
-        } else {
-          if (participant) {
-            console.log(`  �O Participante ${index}: avaliado="${participant['avaliado']}", temPergunta=${participant[perguntaId] !== undefined}`);
-          }
-        }
-      });
-    } else {
-      // Processar grupo específico para o avaliado selecionado
-      this.dataSource.forEach((participant, index) => {
-        // Verificar se o participante pertence ao grupo especificado E é o avaliado selecionado
+      if (grupo !== 'Todos') {
         const categoriaParticipante = this.mapCategoriaToGrupo(participant.categoria);
-        if (categoriaParticipante === grupo &&
-            this.matchesSelectedAvaliado(participant, avaliadoSelecionado) &&
-            participant[perguntaId] !== undefined) {
-          let valor = participant[perguntaId];
+        if (categoriaParticipante !== grupo) continue;
+      }
 
-          console.log(`  �o. Participante ${index}: grupo="${categoriaParticipante}", avaliado="${participant['avaliado']}", pergunta=${perguntaId}, valor="${valor}"`);
+      if (!this.matchesSelectedAvaliado(participant, avaliadoSelecionado)) continue;
+      if (participant[perguntaId] === undefined) continue;
 
-          // Tratar diferentes formatos de dados
-          if (typeof valor === 'string') {
-            // Se for string, tentar extrair número
-            if (valor.includes('Column')) {
-              // Formato: "Column 1" �?' 1
-              const match = valor.match(/Column (\d+)/);
-              if (match) {
-                valor = parseInt(match[1]);
-              }
-            } else {
-              // Tentar converter string diretamente para número
-              valor = parseFloat(valor);
-            }
-          }
-
-          const valorNumerico = Number(valor);
-          if (!isNaN(valorNumerico) && valorNumerico >= 1 && valorNumerico <= 5) {
-            respostas.push(valorNumerico);
-            console.log(`    �z. Valor válido adicionado: ${valorNumerico}`);
-          } else {
-            console.log(`    �O Valor inválido: ${valorNumerico} (original: "${participant[perguntaId]}")`);
-          }
-        } else {
-          if (participant) {
-            console.log(`  �O Participante ${index}: grupo="${categoriaParticipante}", avaliado="${participant['avaliado']}", temPergunta=${participant[perguntaId] !== undefined}`);
-          }
-        }
-      });
+      const valorNumerico = this.parseLikertAnswer(participant[perguntaId]);
+      if (valorNumerico !== null) {
+        respostas.push(valorNumerico);
+      }
     }
 
-    console.log(`�Y"S Total de respostas encontradas: ${respostas.length} - [${respostas.join(', ')}]`);
     return respostas;
   }
 
@@ -6105,7 +6100,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   goToTab(index: number): void {
     if (this.currentUserRole === 'viewer' && index < 2) return;
     this.selectedTabIndex = index;
-    this.cdr.detectChanges();
+    if (index === 2) {
+      this.prewarmPreviewCache();
+    }
+    this.cdr.markForCheck();
   }
 
   isCompetenciaAtiva(id: string): boolean {
@@ -7026,10 +7024,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   getTabelaCompetencia(competencia: Competencia): TabelaCompetencia | null {
     const cacheKey = `tabela-competencia-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}`;
 
-    return this.getCachedCalculation(cacheKey, () => {
-      console.log(`�Y"" Gerando tabela para competência: ${competencia.nome} (cache: ${cacheKey})`);
-      return this.gerarTabelaCompetencia(competencia);
-    });
+    return this.getCachedCalculation(cacheKey, () => this.gerarTabelaCompetencia(competencia));
   }
 
   // Método de debug para verificar estrutura dos dados
