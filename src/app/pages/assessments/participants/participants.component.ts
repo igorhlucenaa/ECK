@@ -512,7 +512,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           let purchased = 0;
           ordersSnap.docs.forEach(d => {
             const validity = d.data()['validityDate']?.toDate();
-            if (validity && validity > now) purchased += (d.data()['credits'] || 0);
+            // Alinhado ao restante do sistema: pedido sem validade ou ainda vigente
+            if (!validity || validity >= now) purchased += (d.data()['credits'] || 0);
           });
           client.creditsPurchased = purchased;
         } catch { client.creditsPurchased = 0; }
@@ -1063,11 +1064,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const totalComprado = c.creditsPurchased ?? 0;
     const reservado = c.reservedCredits ?? 0;
     const consumido = c.consumedCredits ?? 0;
+    // Saldo real fica em clients.credits (debitado na reserva, não recalculado na conclusão)
+    const disponivel = Math.max(0, c.credits ?? 0);
     return {
       totalComprado,
       reservado,
       consumido,
-      disponivel: totalComprado - reservado - consumido,
+      disponivel,
     };
   }
 
