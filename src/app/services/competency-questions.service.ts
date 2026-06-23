@@ -147,7 +147,7 @@ export class CompetencyQuestionsService {
                 id: questionId,
                 text: this.resolveLocalizedText(row['text'], 'Questão'),
                 type: 'rating',
-                required: !!el['isRequired'],
+                required: el['isRequired'] !== false,
               });
             }
           }
@@ -158,7 +158,7 @@ export class CompetencyQuestionsService {
             id: String(el['name']),
             text: this.resolveLocalizedText(el['title'], String(el['name'])),
             type: this.mapSurveyTypeToCompetencyType(elType),
-            required: !!el['isRequired'],
+            required: el['isRequired'] !== false,
             options: el['choices'] as string[] | undefined,
           });
         }
@@ -181,7 +181,7 @@ export class CompetencyQuestionsService {
         id: q.id,
         text: q.title || '',
         type: this.mapSurveyTypeToCompetencyType(q.type || 'rating'),
-        required: false,
+        required: true,
       }));
   }
 
@@ -290,7 +290,7 @@ export class CompetencyQuestionsService {
     const surveyQuestion: Record<string, unknown> = {
       name: questionName,
       title: q.text,
-      isRequired: q.required,
+      isRequired: true,
     };
 
     switch (q.type) {
