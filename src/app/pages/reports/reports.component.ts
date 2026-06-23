@@ -199,6 +199,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private isFilterContextStale(expectedGeneration: number): boolean {
+    return expectedGeneration !== this.filterContextGeneration;
+  }
+
   /** Carrega participantes do ciclo e monta o set de bloqueados (sempre do Firestore, sem cache stale). */
   private async loadParticipantsForReport(
     projectId: string,
@@ -722,6 +726,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   projectAutoDeduced = false;
   /** Evita auto-seleção de avaliação enquanto query params de projeto estão sendo aplicados. */
   private pendingQueryProjectId: string | null = null;
+  /** Incrementado ao limpar filtros — invalida cargas assíncronas em andamento. */
+  private filterContextGeneration = 0;
   /** IDs de participantes do projeto filtrado (para incluir avaliadores mesmo sem projectId no doc). */
   private projectParticipantIdsForFilter = new Set<string>();
   /** Quando o projeto tem exatamente 1 avaliado, usado para vincular gestores/pares. */
@@ -1482,11 +1488,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(async id => {
         if (this.pendingQueryProjectId) return;
+        const loadGeneration = this.filterContextGeneration;
         this.selectedAssessmentId = id;
         if (id) {
           const ready = await this.resolveProjectForAssessment(id);
+          if (loadGeneration !== this.filterContextGeneration) return;
           if (ready) {
-            await this.onAssessmentChange();
+            await this.onAssessmentChange(loadGeneration);
+            if (loadGeneration !== this.filterContextGeneration) return;
             await this.calcularMediasPorCompetencia();
           } else {
             this.dataSource = [];
@@ -1636,7 +1645,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filteredAssessments = [...this.assessments];
   }
 
-  async onAssessmentChange() {
+  async onAssessmentChange(expectedGeneration = this.filterContextGeneration) {
     if (!this.selectedAssessmentId) {
       this.dataSource = [];
       this.displayedColumns = [];
@@ -1650,6 +1659,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Carregar todas as competências disponíveis
     await this.loadAllCompetencies();
+    if (this.isFilterContextStale(expectedGeneration)) return;
     this.debugLog('Avaliação selecionada:', this.selectedAssessmentId, 'modo individual:', this.isIndividualMode);
 
     // PERFORMANCE: Monitorar tempo de carregamento
@@ -1674,6 +1684,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
     const assessmentRef = doc(this.firestore, 'assessments', this.selectedAssessmentId);
     const assessmentSnap = await getDoc(assessmentRef);
+    if (this.isFilterContextStale(expectedGeneration)) return;
     if (!assessmentSnap.exists()) {
       return; // finally handles hide()
     }
@@ -1763,6 +1774,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Carregar resultados
     const resultsSnap = await getDocs(collection(this.firestore, `assessments/${this.selectedAssessmentId}/results`));
+    if (this.isFilterContextStale(expectedGeneration)) return;
     this.debugLog('Resultados encontrados:', resultsSnap.docs.length);
 
     const filterProjectId = this.filterProjectControl.value || '';
@@ -2016,6 +2028,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.debugLog('Resultados processados:', results);
+    if (this.isFilterContextStale(expectedGeneration)) return;
     this.dataSource = results.filter(
       row => !row.participanteId || !this.blockedParticipantIds.has(row.participanteId)
     );
@@ -2140,10 +2153,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         { duration: 4000 }
       );
     } finally {
-      // �o. Sempre executado �?" garante que o loading nunca fique preso
-      this.loadingService.hide();
-      this.isLoading = false;
-      this.cdr.markForCheck();
+      if (expectedGeneration === this.filterContextGeneration) {
+        this.loadingService.hide();
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      }
     }
   }
 
@@ -6202,6 +6216,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async onFilterClientChange(): Promise<void> {
+    const loadGeneration = this.filterContextGeneration;
     const clientId = this.filterClientControl.value;
     this.filterProjectControl.setValue('');
     this.filterProjects = [];
@@ -6262,9 +6277,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.clientAssessments.length === 1 && !this.pendingQueryProjectId) {
         const only = this.clientAssessments[0];
         this.assessmentSearchControl.setValue(only.name, { emitEvent: false });
-        this.assessmentControl.setValue(only.id);
+        if (loadGeneration === this.filterContextGeneration) {
+          this.assessmentControl.setValue(only.id);
+        }
       }
 
+      if (loadGeneration !== this.filterContextGeneration) return;
       this.cdr.markForCheck();
     } catch (e) {
       console.error('Erro ao carregar projetos para filtro:', e);
@@ -6279,9 +6297,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.filterProjects.find(p => p.id === this.filterProjectControl.value)?.name || '';
   }
 
+  /** Fecha painéis mat-select cujo overlay pode ficar preso após *ngIf destruir o componente. */
+  private dismissOpenSelectOverlays(): void {
+    document.querySelectorAll('.cdk-overlay-backdrop').forEach(node => {
+      (node as HTMLElement).click();
+    });
+  }
+
   clearFilterContext(): void {
-    this.filterClientControl.setValue('');
-    this.filterProjectControl.setValue('');
+    this.filterContextGeneration++;
+    this.dismissOpenSelectOverlays();
+    this.loadingService.reset();
+    this.isLoading = false;
+
+    this.filterClientControl.setValue('', { emitEvent: false });
+    this.filterProjectControl.setValue('', { emitEvent: false });
     this.filterProjects = [];
     this.filteredAssessments = [];
     this.clientAssessments = [];
@@ -6289,8 +6319,30 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.projectSelectionRequired = false;
     this.projectAutoDeduced = false;
     this.assessmentProjectsMap.clear();
+    this.selectedAssessmentId = '';
+    this.selectedClientId = null;
+    this.dataSource = [];
+    this.displayedColumns = [];
+    this.dynamicColumns = [];
+    this.avaliadosDisponiveis = [];
+    this.selectedAvaliado = null;
+    this.competencias = [];
+    this.mediasPorCompetencia = [];
+    this.savedReports = [];
+    this.savedTemplates = [];
+    this.competencyGroups = [];
     this.assessmentControl.setValue('', { emitEvent: false });
     this.assessmentSearchControl.setValue('', { emitEvent: false });
+    this.avaliadoControl.setValue('', { emitEvent: false });
+    this.invalidateCache();
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {},
+      replaceUrl: true,
+    });
+
+    this.cdr.markForCheck();
   }
 
   /** Usuário escolheu o projeto quando há ambiguidade (vários ciclos). */
