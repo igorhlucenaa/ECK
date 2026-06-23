@@ -10,7 +10,7 @@ export const AssessmentsRoutes: Routes = [
       {
         path: '',
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { appRoute: 'assessments' },
         loadComponent: () =>
           import('./assessment-list/assessment-list.component').then(
             (m) => m.AssessmentListComponent
@@ -19,7 +19,7 @@ export const AssessmentsRoutes: Routes = [
       {
         path: 'upload',
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { appRoute: 'assessments' },
         loadComponent: () =>
           import('./upload-list/upload-list.component').then(
             (m) => m.UploadListComponent
@@ -28,7 +28,7 @@ export const AssessmentsRoutes: Routes = [
       {
         path: 'dashboard',
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { appRoute: 'assessments' },
         loadComponent: () =>
           import('./dashboard/dashboard.component').then(
             (m) => m.DashboardComponent
@@ -37,23 +37,14 @@ export const AssessmentsRoutes: Routes = [
       {
         path: 'export',
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { appRoute: 'assessments' },
         loadComponent: () =>
           import('./export/export.component').then((m) => m.ExportComponent),
       },
       {
         path: 'new',
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
-        loadComponent: () =>
-          import('./create-assessment/create-assessment.component').then(
-            (m) => m.CreateAssessmentComponent
-          ),
-      },
-      {
-        path: ':id/edit',
-        canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { appRoute: 'assessments' },
         loadComponent: () =>
           import('./create-assessment/create-assessment.component').then(
             (m) => m.CreateAssessmentComponent
@@ -62,13 +53,21 @@ export const AssessmentsRoutes: Routes = [
       {
         path: 'participants',
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client', 'viewer'] },
+        data: { appRoute: 'participants' },
         loadComponent: () =>
           import('./participants/participants.component').then(
             (m) => m.ParticipantsComponent
           ),
       },
+      {
+        path: ':id/edit',
+        canActivate: [AuthGuard],
+        data: { appRoute: 'assessments' },
+        loadComponent: () =>
+          import('./create-assessment/create-assessment.component').then(
+            (m) => m.CreateAssessmentComponent
+          ),
+      },
     ],
   },
 ];
-

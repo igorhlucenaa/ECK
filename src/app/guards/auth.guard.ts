@@ -8,6 +8,7 @@ import {
 import { Auth, user } from '@angular/fire/auth';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../services/apps/authentication/auth.service';
+import { AppRole, resolveRequiredRoles } from '../config/permissions.config';
 
 @Injectable({
   providedIn: 'root',
@@ -23,11 +24,9 @@ export class AuthGuard implements CanActivate {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Promise<boolean> {
-    // Aguarda o Firebase restaurar a sessão (resolve o bug do refresh que redireciona para login)
     const currentUser = await firstValueFrom(user(this.auth));
 
     if (!currentUser) {
-      // Salva a URL atual para restaurar após login
       if (state.url !== '/authentication/login') {
         localStorage.setItem('returnUrl', state.url);
       }
@@ -35,25 +34,19 @@ export class AuthGuard implements CanActivate {
       return false;
     }
 
-    const requiredRole = route.data['role'];
+    const requiredRoles = resolveRequiredRoles(route.data);
 
     try {
-      const userRole = await this.authService.getCurrentUserRole();
+      const userRole = (await this.authService.getCurrentUserRole()) as AppRole | null;
 
-      // Se não há restrição de role na rota, qualquer usuário autenticado passa
-      if (!requiredRole) {
+      if (requiredRoles.length === 0) {
         return true;
       }
 
-      const allowed = Array.isArray(requiredRole)
-        ? requiredRole.includes(userRole)
-        : requiredRole === userRole;
-
-      if (allowed) {
+      if (userRole && requiredRoles.includes(userRole)) {
         return true;
       }
 
-      // Usuário autenticado mas sem permissão → página de não autorizado
       this.router.navigate(['/nao-autorizado']);
       return false;
     } catch (error) {

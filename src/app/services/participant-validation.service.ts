@@ -181,7 +181,7 @@ export class ParticipantValidationService {
    * Valida lote Excel + avaliado existente no Firestore quando necessário.
    */
   async validateExcelParticipants(
-    participants: Array<{ projectId?: string; category: string; name: string }>,
+    participants: Array<{ projectId?: string; category: string; name: string; email?: string }>,
     projectId?: string,
     projectName?: string
   ): Promise<{
@@ -189,6 +189,11 @@ export class ParticipantValidationService {
     errors: Array<{ projectId: string; projectName?: string; evaluateesCount: number }>;
     error?: string;
   }> {
+    const duplicateCheck = this.validateDuplicateEmailsInBatch(participants);
+    if (!duplicateCheck.valid) {
+      return { valid: false, errors: [], error: duplicateCheck.error };
+    }
+
     const projectEvaluateesMap = new Map<string, { count: number; names: string[] }>();
     const errors: Array<{ projectId: string; projectName?: string; evaluateesCount: number }> = [];
 
@@ -261,5 +266,58 @@ export class ParticipantValidationService {
 
   syncTypeWithCategory(category: string): 'avaliado' | 'avaliador' {
     return category === 'Avaliado' ? 'avaliado' : 'avaliador';
+  }
+
+  validateDuplicateEmailsInBatch(
+    participants: Array<{ email?: string; name?: string }>
+  ): { valid: boolean; error?: string } {
+    const seen = new Set<string>();
+    for (const participant of participants) {
+      const email = (participant.email || '').trim();
+      if (!email) continue;
+      const normalized = this.normalizeEmail(email);
+      if (seen.has(normalized)) {
+        return {
+          valid: false,
+          error: `E-mail duplicado no arquivo: ${email}`,
+        };
+      }
+      seen.add(normalized);
+    }
+    return { valid: true };
+  }
+
+  async validateImportParticipantsForProject(
+    projectId: string,
+    participants: Array<{ name: string; email: string; category: string }>,
+    projectName?: string
+  ): Promise<{ valid: boolean; error?: string }> {
+    const excelValidation = await this.validateExcelParticipants(
+      participants.map((p) => ({ ...p, projectId })),
+      projectId,
+      projectName
+    );
+    if (!excelValidation.valid) {
+      return {
+        valid: false,
+        error:
+          excelValidation.error
+          || (excelValidation.errors[0]
+            ? `O arquivo contém ${excelValidation.errors[0].evaluateesCount} avaliados. É permitido apenas um avaliado por projeto.`
+            : 'Falha de validação no import.'),
+      };
+    }
+
+    for (const participant of participants) {
+      if (!this.isValidEmailFormat(participant.email)) {
+        return { valid: false, error: `E-mail inválido: ${participant.email}` };
+      }
+      const emailCheck = await this.validateEmailUniqueInProject(projectId, participant.email);
+      if (!emailCheck.valid) {
+        return { valid: false, error: emailCheck.error };
+      }
+    }
+
+    return { valid: true };
   }
 }

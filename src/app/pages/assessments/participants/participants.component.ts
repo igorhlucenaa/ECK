@@ -191,6 +191,38 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     return hasPermission(this.userRole as AppRole, 'criar');
   }
 
+  get canEditParticipants(): boolean {
+    return hasPermission(this.userRole as AppRole, 'editar');
+  }
+
+  get canDeleteParticipants(): boolean {
+    return hasPermission(this.userRole as AppRole, 'excluir');
+  }
+
+  get canMutateProjectParticipants(): boolean {
+    return (
+      !this.isProjectConcluded &&
+      !this.isProjectCancelled &&
+      (this.canManageParticipantData || this.canEditParticipants || this.canDeleteParticipants)
+    );
+  }
+
+  private ensureCanMutateParticipants(action: 'criar' | 'editar' | 'excluir' = 'editar'): boolean {
+    if (!hasPermission(this.userRole as AppRole, action)) {
+      this.snackBar.open('Você não tem permissão para esta ação.', 'Fechar', { duration: 4000 });
+      return false;
+    }
+    if (this.isProjectConcluded || this.isProjectCancelled) {
+      this.snackBar.open(
+        `Ação bloqueada: projeto ${this.projectStatusLabel || 'indisponível'}.`,
+        'Fechar',
+        { duration: 4000 }
+      );
+      return false;
+    }
+    return true;
+  }
+
   get canManageViewers(): boolean {
     return hasPermission(this.userRole as AppRole, 'gerenciar_viewers');
   }
@@ -1232,6 +1264,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async deleteSelectedParticipants(): Promise<void> {
+    if (!this.ensureCanMutateParticipants('excluir')) return;
     const count = this.selectedParticipants.length;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
@@ -1297,6 +1330,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async resendLinks(): Promise<void> {
+    if (!this.ensureCanMutateParticipants('criar')) return;
     // Auto-link: gestores/avaliadores são automaticamente vinculados ao único avaliado do projeto
     const assessmentId = this.assessmentFormControl.value;
     const nonAvaliados = this.selectedParticipants.filter(p => p.type !== 'avaliado');
@@ -1557,6 +1591,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async uploadExcel(event: any): Promise<void> {
+    if (!this.ensureCanMutateParticipants('criar')) return;
     const file = event.target.files[0];
     if (!file) return;
     // Reset input so the same file can be selected again
@@ -1615,17 +1650,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         const projectName = this.projects.find(p => p.id === result.project)?.name || 'projeto';
 
         // Revalidar antes de gravar (defesa contra mudanças entre confirmação e gravação).
-        const validation = await this.participantValidationService.validateExcelParticipants(
-          participants.map(p => ({ ...p, projectId: result.project })),
+        const importValidation = await this.participantValidationService.validateImportParticipantsForProject(
           result.project,
+          participants,
           projectName
         );
-        if (!validation.valid) {
-          const msg = validation.error
-            || (validation.errors[0]
-              ? `O arquivo contém ${validation.errors[0].evaluateesCount} avaliados para o projeto "${projectName}". É permitido apenas um avaliado por projeto.`
-              : 'Falha de validação no import.');
-          this.snackBar.open(msg, 'Fechar', { duration: 6000 });
+        if (!importValidation.valid) {
+          this.snackBar.open(importValidation.error || 'Falha de validação no import.', 'Fechar', { duration: 6000 });
           return;
         }
 
@@ -1756,6 +1787,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   private async openEditParticipantDialogAsync(participant: UnifiedParticipant): Promise<void> {
+    if (!this.ensureCanMutateParticipants('editar')) return;
+
     const evaluateeCheck = await this.participantValidationService.validateSingleEvaluateePerProject(
       participant.projectId,
       'Avaliado',
@@ -1971,6 +2004,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   openAddParticipantModal(): void {
+    if (!this.ensureCanMutateParticipants('criar')) return;
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
       width: '480px',
       maxWidth: '95vw',
@@ -2079,6 +2113,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async cancelSend(participant: UnifiedParticipant): Promise<void> {
+    if (!this.ensureCanMutateParticipants('editar')) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '420px',
       data: { message: `Deseja cancelar o envio pendente para ${participant.name}?` },

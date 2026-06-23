@@ -432,13 +432,20 @@ export class AssessmentListComponent implements OnInit {
         const assessmentLinkDoc = doc(
           collection(this.firestore, 'assessmentLinks')
         );
+        const participantSnap = await getDoc(doc(this.firestore, 'participants', participant.id));
+        const participantData = participantSnap.data() || {};
+
         await setDoc(assessmentLinkDoc, {
           assessmentId: assessmentId,
           participantId: participant.id,
+          clientId: participantData['clientId'] ?? null,
+          projectId: participantData['projectId'] ?? null,
+          avaliadoId: participantData['avaliadoId'] ?? null,
           sentAt: new Date(),
           status: 'pending',
           emailTemplate: templateId,
           participantEmail: participant.email,
+          creditReserved: false,
         });
       }
 

@@ -1167,17 +1167,13 @@ export class ParticipantsModalComponent implements OnInit {
           this.data.projectName ||
           'projeto';
 
-        const validation = await this.participantValidationService.validateExcelParticipants(
-          participants.map((p) => ({ ...p, projectId: result.project })),
+        const validation = await this.participantValidationService.validateImportParticipantsForProject(
           result.project,
+          participants,
           projectName
         );
         if (!validation.valid) {
-          const msg = validation.error
-            || (validation.errors[0]
-              ? `O arquivo contém ${validation.errors[0].evaluateesCount} avaliados para o projeto "${projectName}". É permitido apenas um avaliado por projeto.`
-              : 'Falha de validação no import.');
-          this.snackBar.open(msg, 'Fechar', { duration: 6000 });
+          this.snackBar.open(validation.error || 'Falha de validação no import.', 'Fechar', { duration: 6000 });
           return;
         }
 

@@ -87,19 +87,6 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
         }
         return;
       }
-
-      // Validar se já existe um avaliado cadastrado no projeto
-      const hasEvaluateeInFile = this.data.participants.some(p => p.category === 'Avaliado');
-      if (hasEvaluateeInFile) {
-        const existingValidation = await this.participantValidationService.validateSingleEvaluateePerProject(
-          this.selectedProjectId,
-          'Avaliado'
-        );
-
-        if (!existingValidation.valid) {
-          this.validationError = `O projeto "${projectName}" já possui um avaliado cadastrado (${existingValidation.existingEvaluateeName}). Não é possível adicionar outro avaliado.`;
-        }
-      }
     }
   }
 
