@@ -23,10 +23,16 @@ import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor
 import { EChartsOption } from 'echarts';
 import { ReportsPdfService } from './reports-pdf.service';
 import { ReportPdfMakeService, DocumentoConfig, DOCUMENTO_CONFIG_PADRAO, PdfHtmlRenderOptions } from '../../services/report-pdfmake.service';
+import { ReportClientExportService } from '../../services/report-client-export.service';
+import {
+  ClientExportDialogComponent,
+  ClientExportDialogResult,
+} from './client-export-dialog/client-export-dialog.component';
 import { NgxEchartsModule } from 'ngx-echarts';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -309,6 +315,64 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     XLSX.writeFile(workbook, fileName);
     this.snackBar.open(this.translate.instant('Base exportada com sucesso!'), this.translate.instant('Fechar'), { duration: 2500 });
+  }
+
+  async abrirExtratoClienteExcel(): Promise<void> {
+    if (!this.clients.length) {
+      this.snackBar.open(
+        this.t('Nenhum cliente disponível para exportação.'),
+        this.t('Fechar'),
+        { duration: 3500 }
+      );
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ClientExportDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: {
+        clients: this.clients,
+        preselectedClientId: this.filterClientControl.value || this.selectedClientId || undefined,
+        releasedOnly: this.shouldFilterByReleaseStatus,
+      },
+    });
+
+    const result = await dialogRef.afterClosed().toPromise() as ClientExportDialogResult | undefined;
+    if (!result) return;
+
+    this.isExporting = true;
+    this.exportingLabel = this.t('Gerando extrato do cliente...');
+    this.cdr.markForCheck();
+
+    try {
+      const exportResult = await this.clientExportService.exportClientExtract(
+        {
+          clientId: result.clientId,
+          clientName: result.clientName,
+          projectIds: result.projectIds,
+          releasedOnly: this.shouldFilterByReleaseStatus,
+        },
+        message => {
+          this.exportingLabel = message;
+          this.cdr.markForCheck();
+        }
+      );
+
+      this.snackBar.open(
+        this.t('Extrato exportado: {{resumo}} linhas (Resumo), {{respostas}} linhas (Respostas).')
+          .replace('{{resumo}}', String(exportResult.resumoCount))
+          .replace('{{respostas}}', String(exportResult.respostasCount)),
+        this.t('Fechar'),
+        { duration: 5000 }
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : this.t('Erro ao exportar extrato.');
+      this.snackBar.open(message, this.t('Fechar'), { duration: 5000 });
+    } finally {
+      this.isExporting = false;
+      this.exportingLabel = '';
+      this.cdr.markForCheck();
+    }
   }
 
   // Calcula a "Média sem autoavaliação" a partir das médias por categoria da tabela
@@ -840,7 +904,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     private pdfMakeService: ReportPdfMakeService,
     private sanitizer: DomSanitizer,
     private confirmDialog: ConfirmDialogService,
-    private competencyQuestionsService: CompetencyQuestionsService
+    private competencyQuestionsService: CompetencyQuestionsService,
+    private dialog: MatDialog,
+    private clientExportService: ReportClientExportService
   ) {
     this.dummyForm = this.fb.group({
       relatorioFormArray: this.fb.array([])

@@ -1165,6 +1165,9 @@
         <button mat-flat-button color="primary" *ngIf="canExportExcel" (click)="exportarBaseExcel()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>grid_on</mat-icon> {{ 'Exportar base (Excel)' | translate }}
         </button>
+        <button mat-stroked-button color="primary" *ngIf="canExportExcel && !isIndividualMode" (click)="abrirExtratoClienteExcel()" [disabled]="isExporting || isBatchGenerating">
+          <mat-icon>table_view</mat-icon> {{ 'Extrato do cliente (Excel)' | translate }}
+        </button>
         <button mat-flat-button color="primary" *ngIf="canExportDocx" (click)="exportarRelatorioDOCX()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>description</mat-icon> {{ 'Exportar DOCX' | translate }}
         </button>
