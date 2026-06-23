@@ -97,6 +97,7 @@
 .status-respondido  { background: rgba(76, 175, 80, 0.1);   color: #2e7d32; }
 .status-enviado     { background: rgba(27, 132, 255, 0.1);  color: #1565C0; }
 .status-nao-enviado { background: rgba(100, 116, 139, 0.1); color: #475569; }
+.status-bloqueado   { background: rgba(239, 68, 68, 0.1);   color: #b91c1c; }
 
 // ─── Participant cell (dialog) ────────────────────────────────
 .participant-cell { display: flex; align-items: center; gap: 10px; }
@@ -711,6 +712,8 @@
 }
 
 .row-selected { background: #eff6ff !important; }
+.row-blocked { background: #fef2f2 !important; }
+.row-blocked:hover { background: #fee2e2 !important; }
 
 // ─── Participant cell ─────────────────────────────────────────
 .participant-cell {
@@ -922,6 +925,28 @@
     border-color: #c4b5fd;
     color: #7c3aed;
     box-shadow: 0 2px 8px rgba(124,58,237,0.12);
+  }
+
+  &--block {
+    color: #ef4444;
+    border-color: #fecaca;
+    &:hover {
+      background: #fef2f2;
+      border-color: #ef4444;
+      color: #dc2626;
+      box-shadow: 0 2px 8px rgba(239,68,68,0.12);
+    }
+  }
+
+  &--unblock {
+    color: #16a34a;
+    border-color: #bbf7d0;
+    &:hover {
+      background: #f0fdf4;
+      border-color: #16a34a;
+      color: #15803d;
+      box-shadow: 0 2px 8px rgba(22,163,74,0.12);
+    }
   }
 
   &[disabled], &:disabled {

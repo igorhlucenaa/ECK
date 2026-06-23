@@ -92,6 +92,9 @@ interface UnifiedParticipant {
   intervalDays?: number;
   reminderSendTime?: string;
   reminderTimezone?: string;
+  blocked?: boolean;
+  blockedAt?: Date;
+  blockedBy?: string;
 }
 
 interface Client {
@@ -190,6 +193,15 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     return hasPermission(this.userRole as AppRole, 'gerenciar_viewers');
   }
 
+  canBlockParticipant(participant: UnifiedParticipant): boolean {
+    if (!hasPermission(this.userRole as AppRole, 'bloquear')) return false;
+    if (this.userRole === 'admin_master') return true;
+    if (this.userRole === 'admin_client') {
+      return this.userClientIds.includes(participant.clientId);
+    }
+    return false;
+  }
+
   get isProjectConcluded(): boolean {
     return ['Concluído', 'concluido'].includes(this.projectStatus);
   }
@@ -268,8 +280,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const typeMatch = !this.filterType || data.type === this.filterType;
       const categoryMatch =
         !this.filterCategory || data.category === this.filterCategory;
-      const statusMatch =
-        !this.filterStatus || data.status === this.filterStatus;
+      const statusMatch = !this.filterStatus || (
+        this.filterStatus === '__blocked__'
+          ? data.blocked === true
+          : data.status === this.filterStatus && !data.blocked
+      );
       const clientMatch =
         !this.filterClient || data.clientId === this.filterClient;
       const projectMatch =
@@ -807,6 +822,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             intervalDays: reminderSettingsMap[`${clientId}_${projectId}`]?.intervalDays ?? 3,
             reminderSendTime: reminderSettingsMap[`${clientId}_${projectId}`]?.sendTime ?? '09:00',
             reminderTimezone: reminderSettingsMap[`${clientId}_${projectId}`]?.timezone ?? 'America/Fortaleza',
+            blocked: participantData['blocked'] === true,
+            blockedAt: participantData['blockedAt']?.toDate?.() ?? undefined,
+            blockedBy: participantData['blockedBy'] || undefined,
           });
         }
       }
@@ -924,6 +942,63 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     if (completedAt) return 'Respondido';
     if (sentAt) return 'Enviado (Pendente)';
     return 'Não Enviado';
+  }
+
+  async toggleBlockParticipant(participant: UnifiedParticipant): Promise<void> {
+    if (!this.canBlockParticipant(participant)) {
+      this.snackBar.open('Você não tem permissão para bloquear este participante.', 'Fechar', {
+        duration: 4000,
+      });
+      return;
+    }
+
+    const newBlocked = !participant.blocked;
+    const actionKey = newBlocked ? 'bloquear' : 'desbloquear';
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        message: newBlocked
+          ? `Bloquear "${participant.name}"? Ele não poderá responder à avaliação, mesmo que o e-mail já tenha sido enviado.`
+          : `Desbloquear "${participant.name}"? Ele voltará a poder acessar e responder a avaliação pelo link recebido.`,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+
+      try {
+        const blockedBy = this.auth.currentUser?.email || this.auth.currentUser?.uid || '';
+        await updateDoc(doc(this.firestore, `participants/${participant.id}`), {
+          blocked: newBlocked,
+          blockedAt: newBlocked ? Timestamp.now() : null,
+          blockedBy: newBlocked ? blockedBy : null,
+        });
+
+        const patch = (p: UnifiedParticipant) =>
+          p.id === participant.id
+            ? {
+                ...p,
+                blocked: newBlocked,
+                blockedAt: newBlocked ? new Date() : undefined,
+                blockedBy: newBlocked ? blockedBy : undefined,
+                selected: false,
+              }
+            : p;
+
+        this.dataSource.data = this.dataSource.data.map(patch);
+        this.applyFilter();
+
+        const msg = newBlocked
+          ? 'Participante bloqueado com sucesso.'
+          : 'Participante desbloqueado com sucesso.';
+        this.snackBar.open(msg, 'Fechar', { duration: 3000 });
+      } catch (error) {
+        console.error(`Erro ao ${actionKey} participante:`, error);
+        this.snackBar.open('Erro ao alterar o bloqueio do participante.', 'Fechar', {
+          duration: 4000,
+        });
+      }
+    });
   }
 
   getReminderTooltip(p: UnifiedParticipant): string {
@@ -1108,7 +1183,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   toggleAll(checked: boolean): void {
     this.dataSource.filteredData.forEach((participant) => {
-      if (!participant.completedAt && this.applyEmailTypeFilter(participant)) {
+      if (!participant.completedAt && !participant.blocked && this.applyEmailTypeFilter(participant)) {
         participant.selected = checked;
       }
     });
@@ -1132,13 +1207,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   updateSelection(): void {
     this.selectedParticipants = this.dataSource.filteredData.filter(
-      (p) => p.selected && this.applyEmailTypeFilter(p) && !p.completedAt
+      (p) => p.selected && this.applyEmailTypeFilter(p) && !p.completedAt && !p.blocked
     );
   }
 
   allSelected(): boolean {
     const eligibleParticipants = this.dataSource.filteredData.filter(
-      (p) => this.applyEmailTypeFilter(p) && !p.completedAt
+      (p) => this.applyEmailTypeFilter(p) && !p.completedAt && !p.blocked
     );
     return (
       eligibleParticipants.length > 0 &&
@@ -1148,7 +1223,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   someSelected(): boolean {
     const eligibleParticipants = this.dataSource.filteredData.filter(
-      (p) => this.applyEmailTypeFilter(p) && !p.completedAt
+      (p) => this.applyEmailTypeFilter(p) && !p.completedAt && !p.blocked
     );
     return eligibleParticipants.some((p) => p.selected) && !this.allSelected();
   }

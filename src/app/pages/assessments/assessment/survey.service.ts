@@ -2,11 +2,22 @@ import { Injectable } from '@angular/core';
 import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
 import { Assessment } from './assessment.model';
 
+export const PARTICIPANT_BLOCKED_ERROR = 'PARTICIPANT_BLOCKED';
+
 @Injectable({
   providedIn: 'root',
 })
 export class SurveyService {
   constructor(private firestore: Firestore) {}
+
+  private async assertParticipantNotBlocked(participantId: string): Promise<void> {
+    const participantRef = doc(this.firestore, `participants/${participantId}`);
+    const participantSnap = await getDoc(participantRef);
+
+    if (participantSnap.exists() && participantSnap.data()?.['blocked'] === true) {
+      throw new Error(PARTICIPANT_BLOCKED_ERROR);
+    }
+  }
 
   async getAssessment(assessmentId: string): Promise<Assessment | null> {
     try {
@@ -32,6 +43,8 @@ export class SurveyService {
     surveyData: any
   ): Promise<void> {
     try {
+      await this.assertParticipantNotBlocked(participantId);
+
       const resultRef = doc(
         this.firestore,
         `assessments/${assessmentId}/results/${participantId}`
@@ -47,7 +60,7 @@ export class SurveyService {
         },
         { merge: true }
       );
-          } catch (error) {
+    } catch (error) {
       console.error('Erro ao salvar progresso:', error);
       throw error;
     }
@@ -60,6 +73,8 @@ export class SurveyService {
     surveyData: any
   ): Promise<void> {
     try {
+      await this.assertParticipantNotBlocked(participantId);
+
       const resultRef = doc(
         this.firestore,
         `assessments/${assessmentId}/results/${participantId}`
@@ -75,7 +90,7 @@ export class SurveyService {
         },
         { merge: true }
       );
-          } catch (error) {
+    } catch (error) {
       console.error('Erro ao salvar conclusão da avaliação:', error);
       throw error;
     }
@@ -93,12 +108,12 @@ export class SurveyService {
       const resultSnap = await getDoc(resultRef);
 
       if (resultSnap.exists() && resultSnap.data()?.['completedAt']) {
-                return true;
+        return true;
       }
       return false;
     } catch (error) {
       console.error('Erro ao verificar conclusão da avaliação:', error);
-      return false; // Assume não concluído em caso de erro
+      return false;
     }
   }
 

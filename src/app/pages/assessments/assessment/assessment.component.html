@@ -1,5 +1,18 @@
+<!-- Participante bloqueado pelo administrador -->
+<div *ngIf="participantBlocked" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;background:#f8faff;padding:40px;">
+  <div style="background:#fff;border-radius:16px;padding:48px 40px;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+    <div style="font-size:64px;margin-bottom:16px;">🔒</div>
+    <h2 style="font-size:24px;font-weight:700;color:#0f1b35;margin:0 0 12px;">Acesso bloqueado</h2>
+    <p style="font-size:15px;color:#64748b;line-height:1.6;margin:0;">
+      Seu acesso a esta avaliação foi bloqueado pelo administrador.<br>
+      Não é possível preencher o formulário neste momento.<br><br>
+      Se isso parecer um erro, entre em contato com o responsável pelo projeto.
+    </p>
+  </div>
+</div>
+
 <!-- Link cancelado pelo admin -->
-<div *ngIf="linkCancelled" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;background:#f8faff;padding:40px;">
+<div *ngIf="!participantBlocked && linkCancelled" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;background:#f8faff;padding:40px;">
   <div style="background:#fff;border-radius:16px;padding:48px 40px;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
     <div style="font-size:64px;margin-bottom:16px;">⛔</div>
     <h2 style="font-size:24px;font-weight:700;color:#0f1b35;margin:0 0 12px;">Link cancelado</h2>
@@ -12,7 +25,7 @@
 </div>
 
 <!-- Projeto encerrado (link expirado por conclusão do projeto) -->
-<div *ngIf="!linkCancelled && showExpiredScreen && !surveyCompleted && !alreadyCompleted"
+<div *ngIf="!participantBlocked && !linkCancelled && showExpiredScreen && !surveyCompleted && !alreadyCompleted"
      style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;background:#f8faff;padding:40px;">
   <div style="background:#fff;border-radius:16px;padding:48px 40px;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
     <div style="font-size:64px;margin-bottom:16px;">🔒</div>
@@ -26,7 +39,7 @@
 </div>
 
 <!-- Formulário ativo -->
-<div *ngIf="!linkCancelled && !showExpiredScreen && !alreadyCompleted">
+<div *ngIf="!participantBlocked && !linkCancelled && !showExpiredScreen && !alreadyCompleted">
   <div id="surveyContainer"></div>
   <div *ngIf="surveyCompleted" style="text-align: center; margin-top: 20px">
     <p>Obrigado por completar a avaliação!</p>
@@ -34,10 +47,24 @@
 </div>
 
 <!-- Já respondeu -->
-<div *ngIf="!linkCancelled && !showExpiredScreen && alreadyCompleted" style="text-align: center; margin-top: 20px">
+<div *ngIf="!participantBlocked && !linkCancelled && !showExpiredScreen && alreadyCompleted" style="text-align: center; margin-top: 20px">
   <p style="font-weight: bold; font-size: 30px">
     Esta avaliação já foi concluída. Obrigado pela sua participação!
   </p>
+</div>
+
+<!-- Overlay mid-fill: participante bloqueado enquanto preenchia -->
+<div *ngIf="showMidFillBlockedModal"
+     style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#fff;border-radius:16px;padding:40px 36px;max-width:460px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.18);">
+    <div style="font-size:56px;margin-bottom:16px;">🔒</div>
+    <h2 style="font-size:22px;font-weight:700;color:#0f1b35;margin:0 0 12px;">Acesso bloqueado</h2>
+    <p style="font-size:15px;color:#64748b;line-height:1.6;margin:0;">
+      Seu acesso foi bloqueado enquanto você preenchia o formulário.<br>
+      Seu progresso não será mais salvo.<br><br>
+      Entre em contato com o responsável se tiver dúvidas.
+    </p>
+  </div>
 </div>
 
 <!-- Overlay mid-fill: projeto encerrado enquanto participante preenchia -->

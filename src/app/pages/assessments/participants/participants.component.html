@@ -89,6 +89,7 @@
           <mat-option value="Não Enviado">{{ 'Não Enviado' | translate }}</mat-option>
           <mat-option value="Enviado (Pendente)">{{ 'Enviado (Pendente)' | translate }}</mat-option>
           <mat-option value="Respondido">{{ 'Respondido' | translate }}</mat-option>
+          <mat-option value="__blocked__">{{ 'Bloqueado' | translate }}</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -489,6 +490,7 @@
               <mat-option value="Não Enviado">{{ 'Não Enviado' | translate }}</mat-option>
               <mat-option value="Enviado (Pendente)">{{ 'Enviado (Pendente)' | translate }}</mat-option>
               <mat-option value="Respondido">{{ 'Respondido' | translate }}</mat-option>
+              <mat-option value="__blocked__">{{ 'Bloqueado' | translate }}</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
@@ -641,7 +643,12 @@
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Status' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
-            <span class="status-chip" [ngClass]="{
+            <span *ngIf="participant.blocked" class="status-chip status-bloqueado"
+                  [matTooltip]="'Participante bloqueado — não pode responder à avaliação' | translate">
+              <mat-icon class="status-chip__icon">lock</mat-icon>
+              {{ 'Bloqueado' | translate }}
+            </span>
+            <span *ngIf="!participant.blocked" class="status-chip" [ngClass]="{
               'status-respondido': participant.status === 'Respondido',
               'status-enviado': participant.status === 'Enviado (Pendente)',
               'status-nao-enviado': participant.status === 'Não Enviado' || !participant.status
@@ -771,12 +778,22 @@
                 [matTooltip]="'Vincular como Visualizador' | translate">
                 <mat-icon>person_add</mat-icon>
               </button>
+              <button class="act-btn"
+                *ngIf="canBlockParticipant(participant)"
+                [class.act-btn--block]="!participant.blocked"
+                [class.act-btn--unblock]="participant.blocked"
+                (click)="toggleBlockParticipant(participant); $event.stopPropagation()"
+                [matTooltip]="(participant.blocked ? 'Desbloquear participante' : 'Bloquear participante') | translate">
+                <mat-icon>{{ participant.blocked ? 'lock_open' : 'lock' }}</mat-icon>
+              </button>
             </div>
           </td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns" [class.row-selected]="row.selected"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"
+            [class.row-selected]="row.selected"
+            [class.row-blocked]="row.blocked"></tr>
       </table>
 
       <mat-paginator [pageSize]="15" [pageSizeOptions]="[10, 15, 25, 50]" showFirstLastButtons></mat-paginator>

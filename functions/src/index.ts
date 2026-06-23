@@ -545,6 +545,9 @@ async function sendAssessmentEmail(
   }
 
   const participantData = (participantDoc.data() || {}) as Record<string, unknown>;
+  if (participantData.blocked === true) {
+    throw new Error('Participante bloqueado. Nao e possivel enviar e-mail.');
+  }
   const participantName = normalizeOptionalString(participantData.name) || 'Participante';
   const participantType = (normalizeOptionalString(participantData.type) || '').toLowerCase();
   const participantCategory =
@@ -1025,6 +1028,10 @@ async function processPendingAssessmentReminders(
       }
 
       const participantData = await getParticipantData(participantId);
+      if (participantData?.blocked === true) {
+        stats.skipped += 1;
+        continue;
+      }
       const participantType = (normalizeOptionalString(participantData?.type) || '').toLowerCase();
       const templateId = resolveTemplateIdForParticipant(setting, linkData, participantType);
       if (!templateId) {

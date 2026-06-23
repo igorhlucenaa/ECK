@@ -59,7 +59,7 @@ export const PERMISSIONS: Record<AppRole, RolePermissions> = {
 
   admin_client: {
     routes: ['dashboard', 'projects', 'assessments', 'reports'],
-    actions: ['criar', 'editar', 'excluir', 'visualizar', 'exportar', 'gerenciar_viewers'],
+    actions: ['criar', 'editar', 'excluir', 'visualizar', 'exportar', 'bloquear', 'gerenciar_viewers'],
   },
 
   viewer: {
