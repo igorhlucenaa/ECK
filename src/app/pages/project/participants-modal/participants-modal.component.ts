@@ -23,6 +23,7 @@ import {
   deleteDoc,
   addDoc,
   updateDoc,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -38,6 +39,7 @@ import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
+import { ParticipantCreditService } from 'src/app/services/participant-credit.service';
 
 interface ModalData {
   projectId: string;
@@ -311,7 +313,8 @@ export class ParticipantsModalComponent implements OnInit {
     private router: Router,
     private translate: TranslateService,
     private confirmDialog: ConfirmDialogService,
-    private participantValidationService: ParticipantValidationService
+    private participantValidationService: ParticipantValidationService,
+    private participantCreditService: ParticipantCreditService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -819,17 +822,14 @@ export class ParticipantsModalComponent implements OnInit {
     const projectSnap = await getDoc(projectRef);
     const hasFirstDispatch = !!projectSnap.data()?.['firstFinalDispatchAt'];
 
-    const updates: Promise<void>[] = avaliadosToConsume.map((p) =>
-      updateDoc(doc(this.firestore, 'participants', p.id), { creditConsumed: true })
-    );
-
-    if (!hasFirstDispatch) {
-      updates.push(
-        updateDoc(projectRef, { firstFinalDispatchAt: Timestamp.now() })
-      );
+    for (const p of avaliadosToConsume) {
+      await this.participantCreditService.consumeParticipantCreditOnDispatch(p.id);
+      p.creditConsumed = true;
     }
 
-    await Promise.all(updates);
+    if (!hasFirstDispatch) {
+      await updateDoc(projectRef, { firstFinalDispatchAt: Timestamp.now() });
+    }
   }
 
   /** Carrega as configurações de lembrete ativas para o projeto atual. */
@@ -985,15 +985,12 @@ export class ParticipantsModalComponent implements OnInit {
     // ── Atualização otimista: UI atualiza imediatamente ──────
     const prevStatus = participant.status;
     const prevSentAt = participant.sentAt;
-    const prevCreditReserved = participant.creditReserved;
 
     participant.status = 'Não Enviado';
     participant.sentAt = undefined;
-    participant.creditReserved = false;
     this.dataSource.data = [...this.dataSource.data];
     this.applyFilter();
     this.updateSelection();
-    // ─────────────────────────────────────────────────────────
 
     try {
       const linkQuery = query(
@@ -1003,10 +1000,15 @@ export class ParticipantsModalComponent implements OnInit {
       );
       const linkSnap = await getDocs(linkQuery);
       if (linkSnap.empty) {
+        participant.status = prevStatus;
+        participant.sentAt = prevSentAt;
+        this.dataSource.data = [...this.dataSource.data];
+        this.applyFilter();
         this.snackBar.open('Nenhum envio pendente encontrado.', 'Fechar', { duration: 3000 });
         return;
       }
       const linkDoc = linkSnap.docs[0];
+      const linkData = linkDoc.data();
 
       await updateDoc(doc(this.firestore, 'assessmentLinks', linkDoc.id), {
         status: 'cancelled',
@@ -1014,12 +1016,17 @@ export class ParticipantsModalComponent implements OnInit {
         creditReserved: false,
       });
 
+      if (linkData['creditReserved'] === true) {
+        await this.participantCreditService.refundLegacyLinkCredits(
+          [linkDoc],
+          participant.clientId || this.data.clientId
+        );
+      }
+
       this.snackBar.open('Envio cancelado.', 'Fechar', { duration: 3000 });
     } catch (e) {
-      // Rollback em caso de erro
       participant.status = prevStatus;
       participant.sentAt = prevSentAt;
-      participant.creditReserved = prevCreditReserved;
       this.dataSource.data = [...this.dataSource.data];
       this.applyFilter();
       console.error('Erro ao cancelar envio:', e);
@@ -1028,20 +1035,31 @@ export class ParticipantsModalComponent implements OnInit {
   }
 
   async deleteParticipant(participantId: string): Promise<void> {
-    const nome = this.dataSource.data.find((p: any) => p.id === participantId)?.name || participantId;
+    const participant = this.dataSource.data.find((p) => p.id === participantId);
+    const nome = participant?.name || participantId;
     const confirmado = await this.confirmDialog.confirmDelete(nome);
     if (!confirmado) return;
 
     try {
-      const participantDoc = doc(
-        this.firestore,
-        `participants/${participantId}`
-      );
-      await deleteDoc(participantDoc);
+      const linksSnap = await getDocs(query(
+        collection(this.firestore, 'assessmentLinks'),
+        where('participantId', '==', participantId)
+      ));
 
-      this.dataSource.data = this.dataSource.data.filter(
-        (p) => p.id !== participantId
-      );
+      if (participant?.clientId) {
+        await this.participantCreditService.refundLegacyLinkCredits(
+          linksSnap.docs,
+          participant.clientId
+        );
+      }
+      await this.participantCreditService.refundParticipantReservedCredit(participantId);
+
+      const batch = writeBatch(this.firestore);
+      linksSnap.docs.forEach((linkDoc) => batch.delete(linkDoc.ref));
+      batch.delete(doc(this.firestore, `participants/${participantId}`));
+      await batch.commit();
+
+      this.dataSource.data = this.dataSource.data.filter((p) => p.id !== participantId);
       this.snackBar.open(this.translate.instant('Participante excluído com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
     } catch (error) {
       console.error('Erro ao excluir participante:', error);
@@ -1142,6 +1160,27 @@ export class ParticipantsModalComponent implements OnInit {
       );
 
       dialogRef.afterClosed().subscribe(async (result) => {
+        if (!result) return;
+
+        const projectName =
+          this.projects.find((p) => p.id === result.project)?.name ||
+          this.data.projectName ||
+          'projeto';
+
+        const validation = await this.participantValidationService.validateExcelParticipants(
+          participants.map((p) => ({ ...p, projectId: result.project })),
+          result.project,
+          projectName
+        );
+        if (!validation.valid) {
+          const msg = validation.error
+            || (validation.errors[0]
+              ? `O arquivo contém ${validation.errors[0].evaluateesCount} avaliados para o projeto "${projectName}". É permitido apenas um avaliado por projeto.`
+              : 'Falha de validação no import.');
+          this.snackBar.open(msg, 'Fechar', { duration: 6000 });
+          return;
+        }
+
         if (result) {
           const ordered = [...participants].sort((a, b) => {
             const aFirst = a.category === 'Avaliado' ? 0 : 1;
@@ -1150,30 +1189,50 @@ export class ParticipantsModalComponent implements OnInit {
           });
 
           let avaliadoIdParaVincular: string | undefined;
+          if (!ordered.some((p) => p.category === 'Avaliado')) {
+            avaliadoIdParaVincular =
+              (await this.participantValidationService.getProjectEvaluateeId(result.project)) || undefined;
+          }
 
           for (const participant of ordered) {
             try {
-              const docData: Record<string, unknown> = {
-                ...participant,
-                clientId: result.client,
-                projectId: result.project,
-                createdAt: new Date(),
-              };
-
-              if (participant.category !== 'Avaliado' && avaliadoIdParaVincular) {
-                docData['avaliadoId'] = avaliadoIdParaVincular;
-              }
-
-              const docRef = await addDoc(
-                collection(this.firestore, 'participants'),
-                docData
+              const baseFields = this.participantValidationService.buildParticipantWriteFields(
+                participant.name,
+                participant.email,
+                {
+                  category: participant.category,
+                  type: participant.type,
+                  clientId: result.client,
+                  projectId: result.project,
+                }
               );
 
-              if (participant.category === 'Avaliado' && !avaliadoIdParaVincular) {
-                avaliadoIdParaVincular = docRef.id;
+              if (participant.category === 'Avaliado') {
+                const evaluateeId = await this.participantCreditService.createEvaluateeWithCredit(
+                  baseFields,
+                  result.client,
+                  result.project
+                );
+                if (!avaliadoIdParaVincular) {
+                  avaliadoIdParaVincular = evaluateeId;
+                }
+              } else {
+                const docData: Record<string, unknown> = {
+                  ...baseFields,
+                  createdAt: new Date(),
+                };
+                if (avaliadoIdParaVincular) {
+                  docData['avaliadoId'] = avaliadoIdParaVincular;
+                }
+                await addDoc(collection(this.firestore, 'participants'), docData);
               }
-            } catch (error) {
+            } catch (error: unknown) {
               console.error('Erro ao salvar participante:', error);
+              const err = error as { code?: string };
+              if (err.code === 'insufficient-credits') {
+                this.snackBar.open('Créditos insuficientes para importar o avaliado.', 'Fechar', { duration: 6000 });
+                break;
+              }
             }
           }
 

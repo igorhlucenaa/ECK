@@ -56,9 +56,11 @@ export class EditParticipantDialogComponent {
   }
 
   get isValid(): boolean {
+    const email = this.email.trim();
     return (
       this.name.trim().length > 0 &&
-      this.email.trim().length > 0 &&
+      email.length > 0 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
       this.category.trim().length > 0
     );
   }
