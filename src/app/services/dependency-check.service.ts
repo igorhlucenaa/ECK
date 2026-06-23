@@ -78,6 +78,7 @@ export class DependencyCheckService {
     const [
       projects, userGroups, participants, assessments,
       creditOrders, competencies, competencyGroups, mailTemplates,
+      savedReports, reportTemplates, releasedReports,
       usersLegacy, usersArray,
     ] = await Promise.all([
       this.countWhere('projects', 'clientId', clientId),
@@ -88,6 +89,9 @@ export class DependencyCheckService {
       this.countWhere('competencies', 'clientId', clientId),
       this.countWhere('competencyGroups', 'clientId', clientId),
       this.countWhere('mailTemplates', 'clientId', clientId),
+      this.countWhere('reports', 'clientId', clientId),
+      this.countWhere('reportTemplates', 'clientId', clientId),
+      this.countWhere('releasedReports', 'clientId', clientId),
       this.countWhere('users', 'client', clientId),
       this.countArrayContains('users', 'clients', clientId),
     ]);
@@ -106,6 +110,9 @@ export class DependencyCheckService {
     add(competencies, 'competencies', 'Competências', '/competencies', 'Gerenciar Competências > apague');
     add(competencyGroups, 'competencyGroups', 'Grupos de competências', '/competencies', 'Gerenciar Competências > apague os grupos');
     add(mailTemplates, 'mailTemplates', 'Modelos de e-mail', '/mail-templates', 'Modelos de E-mail > apague');
+    add(savedReports, 'reports', 'Relatórios salvos', '/reports', 'Relatórios > apague os relatórios do cliente');
+    add(reportTemplates, 'reportTemplates', 'Templates de relatório', '/reports', 'Relatórios > apague os templates do cliente');
+    add(releasedReports, 'releasedReports', 'Relatórios publicados', '/reports', 'Relatórios > despublique os relatórios');
     add(creditOrders, 'creditOrders', 'Pedidos de crédito', '/orders', 'Pedidos de Crédito > apague os pedidos');
 
     return { canDelete: blockers.length === 0, entityLabel: `o cliente "${clientName}"`, blockers };
@@ -115,11 +122,10 @@ export class DependencyCheckService {
   // PROJETO — bloqueia se houver participantes/formulários/links/snapshots
   // ─────────────────────────────────────────────────────────────
   async checkProject(projectId: string, projectName: string): Promise<DependencyResult> {
-    const [participants, assessments, links, snapshots, mailTemplates, groups] = await Promise.all([
+    const [participants, assessments, links, mailTemplates, groups] = await Promise.all([
       this.countWhere('participants', 'projectId', projectId),
       this.countWhere('assessments', 'projectId', projectId),
       this.countWhere('assessmentLinks', 'projectId', projectId),
-      this.countWhere('releasedReports', 'projectId', projectId),
       this.countWhere('mailTemplates', 'projectId', projectId),
       this.countArrayContains('userGroups', 'projectIds', projectId),
     ]);
@@ -132,7 +138,6 @@ export class DependencyCheckService {
     add(participants, 'participants', 'Participantes', '/assessments/participants', undefined, 'Participantes > selecione o projeto > apague os participantes');
     add(assessments, 'assessments', 'Formulários', '/assessments', undefined, 'Formulários > apague o formulário deste projeto');
     add(links, 'assessmentLinks', 'Convites de avaliação enviados', undefined, undefined, 'Cancele/expire os envios pendentes nos Participantes');
-    add(snapshots, 'releasedReports', 'Relatórios publicados', '/reports', undefined, 'Relatórios > despublique o relatório');
     add(mailTemplates, 'mailTemplates', 'Modelos de e-mail', '/mail-templates', undefined, 'Modelos de E-mail > apague');
     add(groups, 'userGroups', 'Grupos vinculados', '/users', undefined, 'Usuários e Grupos > remova o projeto do grupo');
 

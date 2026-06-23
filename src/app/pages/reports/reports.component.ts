@@ -570,23 +570,45 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.selectedAvaliadoReleaseStatus !== 'released' && this.hasActiveSnapshot;
   }
 
-  /** Verifica no Firestore se há snapshot ativo (não revogado) para o avaliado/projeto atual. */
+  /** ID do cliente ativo nos filtros de relatório. */
+  private getReportClientId(): string {
+    return this.filterClientControl.value || this.selectedClientId || '';
+  }
+
+  private buildReleasedSnapshotId(clientId: string, assessmentId: string, avaliadoName: string): string {
+    const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
+    return clientId
+      ? `${clientId}_${assessmentId}_${safeKey}`
+      : `${assessmentId}_${safeKey}`;
+  }
+
+  /** Verifica se um snapshot pertence ao escopo do cliente (com fallback legado por projeto). */
+  private snapshotMatchesScope(data: Record<string, unknown> | undefined): boolean {
+    if (!data || data['revoked'] === true) return false;
+    const clientId = this.getReportClientId();
+    const projectId = this.filterProjectControl.value;
+    const snapClientId = data['clientId'] as string | undefined;
+    if (snapClientId) {
+      return !!clientId && snapClientId === clientId;
+    }
+    const snapProjectId = data['projectId'] as string | undefined;
+    if (snapProjectId && projectId) {
+      return snapProjectId === projectId;
+    }
+    return !snapProjectId;
+  }
+
+  /** Verifica no Firestore se há snapshot ativo (não revogado) para o avaliado/cliente atual. */
   private async checkActiveSnapshot(avaliadoName: string): Promise<void> {
     this.hasActiveSnapshot = false;
     if (!this.selectedAssessmentId || !avaliadoName) return;
-    const projectId = this.filterProjectControl.value;
     try {
       const qSnap = await getDocs(query(
         collection(this.firestore, 'releasedReports'),
         where('assessmentId', '==', this.selectedAssessmentId),
         where('avaliadoName', '==', avaliadoName)
       ));
-      this.hasActiveSnapshot = qSnap.docs.some(d => {
-        const data = d.data();
-        if (data['revoked'] === true) return false;
-        const pid = data['projectId'];
-        return !projectId || !pid || pid === projectId;
-      });
+      this.hasActiveSnapshot = qSnap.docs.some(d => this.snapshotMatchesScope(d.data()));
     } catch {
       this.hasActiveSnapshot = false;
     }
@@ -1025,35 +1047,29 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.route.queryParams.subscribe(async params => {
       // Pré-popular filtros a partir de params de projeto (sem modo individual)
       if (params['mode'] !== 'individual') {
-        const clientId: string | undefined = params['clientId'];
-        const projectId: string | undefined = params['projectId'];
-        if (!clientId && !projectId) return;
+        const clientIdParam: string | undefined = params['clientId'];
+        const projectIdParam: string | undefined = params['projectId'];
+        if (!clientIdParam && !projectIdParam) return;
 
-        if (clientId) {
-          this.filterClientControl.setValue(clientId, { emitEvent: false });
+        let resolvedClientId = clientIdParam;
+        if (!resolvedClientId && projectIdParam) {
           try {
-            const projectsSnap = await getDocs(
-              query(collection(this.firestore, 'projects'), where('clientId', '==', clientId))
-            );
-            this.filterProjects = projectsSnap.docs
-              .filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status'] || ''))
-              .map(d => ({
-                id: d.id,
-                name: d.data()['name'] || '—',
-                assessmentId: d.data()['assessmentId'] || undefined,
-              }))
-              .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-            this.allAssessmentsByProject.clear();
-            this.filterProjects.forEach(p => {
-              if (p['assessmentId']) this.allAssessmentsByProject.set(p.id, p['assessmentId']);
-            });
+            const projectDoc = await getDoc(doc(this.firestore, 'projects', projectIdParam));
+            if (projectDoc.exists()) {
+              resolvedClientId = projectDoc.data()['clientId'] || undefined;
+            }
           } catch (e) {
-            console.error('[Relatório] Erro ao carregar projetos:', e);
+            console.error('[Relatório] Erro ao resolver cliente do projeto:', e);
           }
         }
 
-        if (projectId) {
-          this.filterProjectControl.setValue(projectId, { emitEvent: false });
+        if (resolvedClientId) {
+          this.filterClientControl.setValue(resolvedClientId, { emitEvent: false });
+          await this.onFilterClientChange();
+        }
+
+        if (projectIdParam) {
+          this.filterProjectControl.setValue(projectIdParam, { emitEvent: false });
           await this.onFilterProjectChange();
         }
 
@@ -1080,24 +1096,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (clientIdParam) {
         this.filterClientControl.setValue(clientIdParam, { emitEvent: false });
+        await this.onFilterClientChange();
+      } else if (projectIdParam) {
         try {
-          const projectsSnap = await getDocs(
-            query(collection(this.firestore, 'projects'), where('clientId', '==', clientIdParam))
-          );
-          this.filterProjects = projectsSnap.docs
-            .filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status'] || ''))
-            .map(d => ({
-              id: d.id,
-              name: d.data()['name'] || '—',
-              assessmentId: d.data()['assessmentId'] || undefined,
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-          this.allAssessmentsByProject.clear();
-          this.filterProjects.forEach(p => {
-            if (p.assessmentId) this.allAssessmentsByProject.set(p.id, p.assessmentId);
-          });
+          const projectDoc = await getDoc(doc(this.firestore, 'projects', projectIdParam));
+          const resolvedClientId = projectDoc.data()?.['clientId'];
+          if (resolvedClientId) {
+            this.filterClientControl.setValue(resolvedClientId, { emitEvent: false });
+            await this.onFilterClientChange();
+          }
         } catch (e) {
-          console.error('[Relatório Individual] Erro ao carregar projetos:', e);
+          console.error('[Relatório Individual] Erro ao resolver cliente do projeto:', e);
         }
       }
 
@@ -2931,8 +2940,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Por favor, dê um nome ao relatório.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de salvar o relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
 
-    // Verificar nome duplicado
+    // Verificar nome duplicado (escopo do cliente)
     const nomeExistente = this.savedReports.find(
       r => r.name.toLowerCase() === this.nomeRelatorioControl.value!.toLowerCase()
     );
@@ -2945,6 +2959,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     const reportData = {
       nome: this.nomeRelatorioControl.value,
+      clientId,
       assessmentId: this.selectedAssessmentId,
       assessmentName: assessment ? assessment.name : '',
       competencias: sanitize(this.competencias),
@@ -2965,7 +2980,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async carregarRelatoriosSalvos() {
-    const reportsSnap = await getDocs(collection(this.firestore, 'reports'));
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.savedReports = [];
+      return;
+    }
+    const reportsSnap = await getDocs(
+      query(collection(this.firestore, 'reports'), where('clientId', '==', clientId))
+    );
     this.savedReports = reportsSnap.docs.map(doc => ({
       id: doc.id,
       name: doc.data()['nome'] || doc.id
@@ -2984,11 +3006,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Por favor, dê um nome ao relatório.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de atualizar o relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
     const assessment = this.assessments.find(a => a.id === this.selectedAssessmentId);
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     const reportRef = doc(this.firestore, 'reports', this.selectedReportId.value);
     const reportData = {
       nome: nomeRelatorio,
+      clientId,
       assessmentId: this.selectedAssessmentId,
       assessmentName: assessment ? assessment.name : '',
       competencias: sanitize(this.competencias),
@@ -3870,8 +3898,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de salvar o template.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
-    // Salvar configuração de seções com competenciasIds zerados �?" templates são reutilizáveis
+    // Salvar configuração de seções com competenciasIds zerados — templates são reutilizáveis
     // entre avaliações, então não devem fixar competências de uma avaliação específica.
     const configuracaoSemCompetencias = sanitize(this.relatorioConfiguracao).map((sec: any) => ({
       ...sec,
@@ -3879,6 +3912,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }));
     const templateData = {
       nome: this.nomeTemplateControl.value,
+      clientId,
       configuracao: configuracaoSemCompetencias,
       documentoConfig: sanitize(this.documentoConfig),
       criadoEm: new Date()
@@ -3896,7 +3930,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Carregar lista de templates salvos
   async carregarTemplatesSalvos() {
-    const templatesSnap = await getDocs(collection(this.firestore, 'reportTemplates'));
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.savedTemplates = [];
+      return;
+    }
+    const templatesSnap = await getDocs(
+      query(collection(this.firestore, 'reportTemplates'), where('clientId', '==', clientId))
+    );
     this.savedTemplates = templatesSnap.docs.map(doc => ({
       id: doc.id,
       name: doc.data()['nome'] || doc.id
@@ -5217,7 +5258,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (firstId) {
           this.selectedClientId = firstId;
           this.clientControl.setValue(firstId);
-          await this.loadCompetencyGroups(firstId);
+          if (!this.filterClientControl.value) {
+            this.filterClientControl.setValue(firstId, { emitEvent: false });
+            await this.onFilterClientChange();
+          } else {
+            await this.loadCompetencyGroups(firstId);
+          }
         }
       } else if (userRole === 'admin_master') {
         const clientsSnapshot = await getDocs(clientsCollection);
@@ -5637,15 +5683,29 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const clientId = this.filterClientControl.value;
     this.filterProjectControl.setValue('');
     this.filterProjects = [];
+    this.selectedClientId = clientId || null;
+    this.selectedReportId.setValue('', { emitEvent: false });
+    this.selectedTemplateId.setValue('', { emitEvent: false });
 
     // Limpa avaliação ao mudar de cliente
     this.assessmentControl.setValue('', { emitEvent: false });
     this.assessmentSearchControl.setValue('', { emitEvent: false });
     this.filteredAssessments = [];
 
-    if (!clientId) return;
+    if (!clientId) {
+      this.savedReports = [];
+      this.savedTemplates = [];
+      this.competencyGroups = [];
+      return;
+    }
 
     try {
+      await Promise.all([
+        this.carregarRelatoriosSalvos(),
+        this.carregarTemplatesSalvos(),
+        this.loadCompetencyGroups(clientId),
+      ]);
+
       const projectsSnap = await getDocs(
         query(collection(this.firestore, 'projects'), where('clientId', '==', clientId))
       );
@@ -5752,7 +5812,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.filteredAssessments = Array.from(found.values());
       } else {
         // Nenhum vínculo direto encontrado: mostra todas as avaliações do cliente
-        const clientId = this.filterClientControl.value;
+        const clientId = this.getReportClientId();
         if (clientId) {
           const clientSnap = await getDocs(
             query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
@@ -5866,9 +5926,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Avaliado inválido para liberação do relatório.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de publicar o relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    if (!this.selectedAssessmentId) {
+      this.snackBar.open(this.t('Selecione uma avaliação antes de publicar o relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
 
     try {
-      // Marcar TODOS os participantes do avaliado (deste projeto) como released
+      // Marcar participantes do avaliado (deste projeto) como released
       const selectedProjectId = this.filterProjectControl.value;
       const rows = this.dataSource.filter(r =>
         r.avaliado === avaliadoName &&
@@ -5878,14 +5947,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         updateDoc(doc(this.firestore, 'participants', r.participanteId), { reportStatus: 'released' })
       ));
 
-      // Salvar snapshot completo do relatório para viewer/admin_client
+      // Snapshot vinculado ao cliente (reutilizável entre projetos do mesmo cliente)
       const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
-      const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
-      const projectPart = selectedProjectId ? `_${selectedProjectId}` : '';
-      const snapshotId = `${this.selectedAssessmentId}${projectPart}_${safeKey}`;
+      const snapshotId = this.buildReleasedSnapshotId(clientId, this.selectedAssessmentId, avaliadoName);
       await setDoc(doc(this.firestore, `releasedReports/${snapshotId}`), {
+        clientId,
         assessmentId: this.selectedAssessmentId,
-        projectId: selectedProjectId || '',
         avaliadoName,
         releasedAt: new Date(),
         revoked: false,
@@ -5911,10 +5978,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  /** Para viewer/admin_client: busca snapshot por assessmentId + projectId, sem precisar do nome */
+  /** Para viewer/admin_client: busca snapshot por cliente + assessmentId. */
   private async loadSnapshotForViewer(): Promise<boolean> {
     if (!this.selectedAssessmentId) return false;
-    const projectId = this.filterProjectControl.value;
+    const clientId = this.getReportClientId();
+    const preferredNames = this.avaliadosDisponiveis.length > 0
+      ? this.avaliadosDisponiveis
+      : (this.selectedAvaliado ? [this.selectedAvaliado] : []);
 
     const applySnapshotData = (data: any) => {
       this.competencias = data['competencias'] || [];
@@ -5931,25 +6001,31 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     try {
-      // Busca TODOS os snapshots do formulário e filtra em memória.
       const qSnap = await getDocs(query(
         collection(this.firestore, 'releasedReports'),
         where('assessmentId', '==', this.selectedAssessmentId)
       ));
 
-      const candidate = qSnap.docs
+      const candidates = qSnap.docs
         .map(d => d.data())
-        .find(data => {
-          // 1) não pode estar revogado
+        .filter(data => {
           if (!data || data['revoked'] === true) return false;
-          // 2) quando há projeto selecionado, só aceita o snapshot DESTE projeto
-          //    (ou snapshots legados sem projectId)
-          if (projectId && data['projectId'] && data['projectId'] !== projectId) return false;
+          if (clientId && data['clientId'] && data['clientId'] !== clientId) return false;
+          if (!data['clientId'] && !this.snapshotMatchesScope(data)) return false;
+          if (preferredNames.length > 0 && data['avaliadoName'] && !preferredNames.includes(data['avaliadoName'])) {
+            return false;
+          }
           return true;
         });
 
-      if (candidate) { applySnapshotData(candidate); return true; }
-      return false;
+      if (candidates.length === 0) return false;
+
+      const candidate = preferredNames.length === 1
+        ? candidates.find(c => c['avaliadoName'] === preferredNames[0]) || candidates[0]
+        : candidates[0];
+
+      applySnapshotData(candidate);
+      return true;
     } catch {
       return false;
     }
@@ -5958,11 +6034,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Marca/desmarca como revogado TODOS os snapshots de um avaliado (corta acesso do viewer). */
   private async markSnapshotRevoked(avaliadoName: string, revoked: boolean): Promise<void> {
     if (!this.selectedAssessmentId || !avaliadoName) return;
+    const clientId = this.getReportClientId();
     const projectId = this.filterProjectControl.value;
     const refsToUpdate = new Map<string, any>();
 
-    // 1) Sempre busca por query — pega QUALQUER doc do avaliado neste formulário,
-    //    independente do esquema de chave (com/sem projectId, chave legada).
     try {
       const qSnap = await getDocs(query(
         collection(this.firestore, 'releasedReports'),
@@ -5970,16 +6045,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         where('avaliadoName', '==', avaliadoName)
       ));
       qSnap.docs.forEach(d => {
-        // Quando há projeto selecionado, só revoga docs deste projeto (ou legados sem projectId)
-        const pid = d.data()['projectId'];
-        if (projectId && pid && pid !== projectId) return;
-        refsToUpdate.set(d.id, d.ref);
+        if (this.snapshotMatchesScope(d.data())) {
+          refsToUpdate.set(d.id, d.ref);
+        }
       });
     } catch { /* ignora */ }
 
-    // 2) Reforço: tenta também as chaves determinísticas (caso a query acima falhe por índice)
     const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
     const candidateIds = [
+      clientId ? `${clientId}_${this.selectedAssessmentId}_${safeKey}` : null,
       projectId ? `${this.selectedAssessmentId}_${projectId}_${safeKey}` : null,
       `${this.selectedAssessmentId}_${safeKey}`,
     ].filter(Boolean) as string[];
@@ -5993,13 +6067,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // 3) Aplica a flag em todos os docs encontrados
     await Promise.all([...refsToUpdate.values()].map(ref => updateDoc(ref, { revoked })));
   }
 
   private async loadReleasedReportSnapshot(avaliadoName: string): Promise<boolean> {
     if (!this.selectedAssessmentId || !avaliadoName) return false;
     const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
+    const clientId = this.getReportClientId();
     const projectId = this.filterProjectControl.value;
     const projectPart = projectId ? `_${projectId}` : '';
 
@@ -6014,15 +6088,25 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     try {
-      // Tentativa 1: chave com projeto (formato atual)
+      // Formato atual: cliente + formulário + avaliado
+      if (clientId) {
+        const clientSnap = await getDoc(
+          doc(this.firestore, `releasedReports/${clientId}_${this.selectedAssessmentId}_${safeKey}`)
+        );
+        if (clientSnap.exists() && clientSnap.data()?.['revoked'] !== true) {
+          applySnapshotData(clientSnap.data());
+          return true;
+        }
+      }
+
+      // Legado: chave com projeto
       let snap = await getDoc(doc(this.firestore, `releasedReports/${this.selectedAssessmentId}${projectPart}_${safeKey}`));
 
-      // Tentativa 2: chave sem projeto (snapshots legados nome-based)
+      // Legado: chave sem projeto
       if (!snap.exists() && projectId) {
         snap = await getDoc(doc(this.firestore, `releasedReports/${this.selectedAssessmentId}_${safeKey}`));
       }
 
-      // Tentativa 3: query por avaliadoName + assessmentId (captura snapshots com chave participantId legada)
       if (!snap.exists()) {
         const q = query(
           collection(this.firestore, 'releasedReports'),
@@ -6030,8 +6114,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           where('avaliadoName', '==', avaliadoName)
         );
         const qSnap = await getDocs(q);
-        if (!qSnap.empty) {
-          applySnapshotData(qSnap.docs[0].data());
+        const match = qSnap.docs.find(d => this.snapshotMatchesScope(d.data()));
+        if (match) {
+          applySnapshotData(match.data());
           return true;
         }
         return false;

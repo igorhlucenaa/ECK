@@ -1869,6 +1869,9 @@ async function deleteClientSafe(db: admin.firestore.Firestore, id: string) {
     ['competencies',    db.collection('competencies').where('clientId', '==', id),     'Competências'],
     ['competencyGroups',db.collection('competencyGroups').where('clientId', '==', id), 'Grupos de competências'],
     ['mailTemplates',   db.collection('mailTemplates').where('clientId', '==', id),    'Modelos de e-mail'],
+    ['reports',         db.collection('reports').where('clientId', '==', id),           'Relatórios salvos'],
+    ['reportTemplates', db.collection('reportTemplates').where('clientId', '==', id),   'Templates de relatório'],
+    ['releasedReports', db.collection('releasedReports').where('clientId', '==', id),  'Relatórios publicados'],
   ];
   const blockers: BlockerInfo[] = [];
   for (const [coll, q, label] of checks) {
@@ -1893,10 +1896,9 @@ async function deleteProjectSafe(db: admin.firestore.Firestore, id: string) {
     await db.recursiveDelete(a.ref);
   }
 
-  // Apaga participantes, links, snapshots e templates do projeto
+  // Apaga participantes, links e templates de e-mail do projeto
   await deleteQueryInBatches(db.collection('participants').where('projectId', '==', id));
   await deleteQueryInBatches(db.collection('assessmentLinks').where('projectId', '==', id));
-  await deleteQueryInBatches(db.collection('releasedReports').where('projectId', '==', id));
   await deleteQueryInBatches(db.collection('mailTemplates').where('projectId', '==', id));
 
   // Desvincula o projeto dos grupos
@@ -1992,7 +1994,6 @@ export const onProjectDeleted = onDocumentDeleted(
       for (const a of assessmentsSnap.docs) await db.recursiveDelete(a.ref);
       await deleteQueryInBatches(db.collection('participants').where('projectId', '==', projectId));
       await deleteQueryInBatches(db.collection('assessmentLinks').where('projectId', '==', projectId));
-      await deleteQueryInBatches(db.collection('releasedReports').where('projectId', '==', projectId));
       await deleteQueryInBatches(db.collection('mailTemplates').where('projectId', '==', projectId));
       await pullFromArrayField('userGroups', 'projectIds', projectId);
       if (clientId) await sincronizarCreditosCliente(clientId);

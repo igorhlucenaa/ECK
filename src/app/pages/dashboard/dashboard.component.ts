@@ -46,6 +46,7 @@ export interface AlertItem {
 export interface ProjectRow {
   id: string;
   name: string;
+  clientId: string;
   clientName: string;
   totalParticipants: number;
   respondedParticipants: number;
@@ -618,6 +619,7 @@ export class DashboardComponent implements OnInit {
         return {
           id: d.id,
           name: fixMojibake(data['name'] || ''),
+          clientId: data['clientId'] || '',
           clientName: fixMojibake(clientData?.['companyName'] || ''),
           totalParticipants: stats.total,
           respondedParticipants: stats.responded,

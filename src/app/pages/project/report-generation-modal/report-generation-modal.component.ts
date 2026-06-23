@@ -447,7 +447,15 @@ export class ReportGenerationModalComponent implements OnInit {
 
   async loadReportTemplates(): Promise<void> {
     try {
-      const snap = await getDocs(collection(this.firestore, 'reportTemplates'));
+      if (!this.data.clientId) {
+        this.reportTemplates = [];
+        return;
+      }
+      const templatesRef = query(
+        collection(this.firestore, 'reportTemplates'),
+        where('clientId', '==', this.data.clientId)
+      );
+      const snap = await getDocs(templatesRef);
       this.reportTemplates = snap.docs.map(doc => {
         const d: any = doc.data();
         return {

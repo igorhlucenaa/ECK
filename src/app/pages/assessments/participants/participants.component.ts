@@ -236,8 +236,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       await this.loadViewerProjectIds();
     }
 
-    await this.loadReportTemplates();
-
     this.isEmailSendingMode =
       !!this.data && !!this.data.templateId && !!this.data.emailType;
     this.emailType = this.data?.emailType;
@@ -338,6 +336,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           this.filteredProjects = this.projects.filter(
             (project) => project.clientId === this.filterClient
           );
+          this.loadReportTemplates();
 
           if (
             ['conviteAvaliador', 'lembreteAvaliador'].includes(
@@ -366,7 +365,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.isProjectDisabled = true;
       this.loadProjectStatus();
 
-      Promise.all([this.loadMailTemplates(), this.loadAssessments()]).then(
+      Promise.all([this.loadMailTemplates(), this.loadAssessments(), this.loadReportTemplates()]).then(
         () => {
           this.filteredProjects = this.projects.filter(
             (project) => project.clientId === this.filterClient
@@ -907,8 +906,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async loadReportTemplates(): Promise<void> {
+    if (!this.filterClient) {
+      this.reportTemplates = [];
+      return;
+    }
     const templatesCollection = collection(this.firestore, 'reportTemplates');
-    const snapshot = await getDocs(templatesCollection);
+    const snapshot = await getDocs(
+      query(templatesCollection, where('clientId', '==', this.filterClient))
+    );
     this.reportTemplates = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -1016,6 +1021,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       );
       if (!this.isEmailSendingMode) this.loadMailTemplates();
       this.loadAssessments();
+      this.loadReportTemplates();
     } else {
       this.filteredProjects = [...this.projects];
     }
