@@ -1325,7 +1325,7 @@
           <ng-container [ngSwitch]="secao.tipo">
 
             <div *ngSwitchCase="'capa'" class="capa-section">
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <!-- Bloco dinâmico: participante + respondentes (renderizado por Angular, não injetado no HTML) -->
               <div class="capa-info-block" *ngIf="selectedAvaliado || getContagemRespondentesCached().length > 0">
                 <div class="capa-info-block__avaliado" *ngIf="selectedAvaliado">
@@ -1347,12 +1347,12 @@
 
             <div *ngSwitchCase="'introducao'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
             </div>
 
             <div *ngSwitchCase="'resumo'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getResumoMedias().length">
                 <div *ngFor="let compData of getResumoMediasPorCompetencia()">
                   <h3>{{ compData.nome }}</h3>
@@ -1378,7 +1378,7 @@
 
             <div *ngSwitchCase="'graficos'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
 
               <div *ngIf="getCompetenciasGraficosCached(secao).length > 0">
                 <mat-form-field appearance="outline" class="ui-only" style="width: 250px; margin-bottom: 16px;">
@@ -1505,7 +1505,7 @@
 
             <div *ngSwitchCase="'tabela'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
 
               <div *ngIf="getCompetenciasSelecionadasParaTabela().length > 0; else noTabelaData">
                 <div *ngFor="let comp of getCompetenciasSelecionadasParaTabela()">
@@ -1573,7 +1573,7 @@
 
             <div *ngSwitchCase="'tabela_detalhada'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0">
                 <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let compIndex = index; let lastComp = last">
                   <div style="margin-bottom: 30px;">
@@ -1640,7 +1640,7 @@
 
             <div *ngSwitchCase="'destaques'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <ng-container *ngIf="getDestaquesAltasCached(secao) as tabelaAltas">
                 <div *ngIf="tabelaAltas.items.length > 0; else noDestaquesData">
                   <h3 [style.color]="getDestaquesAltasColors(secao).text" style="margin-top: 20px;">Avaliações mais altas</h3>
@@ -1729,7 +1729,7 @@
 
             <div *ngSwitchCase="'grafico_defasagem'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataDefasagem" class="rp-defasagem-preview">
                 <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao)" class="rp-defasagem-item">
                   <h3 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">{{ comp.nome }}</h3>
@@ -1746,7 +1746,7 @@
 
             <div *ngSwitchCase="'janela_johari'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataJohari" class="rp-johari-wrap">
                 <app-johari-window-chart [data]="getJohariWindowDataCached(secao)"></app-johari-window-chart>
               </div>
@@ -1760,7 +1760,7 @@
 
             <div *ngSwitchCase="'perguntas_abertas'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getPerguntasAbertasData().length > 0; else noPerguntasAbertas" style="margin-top: 20px;">
                 <h3 style="margin-bottom: 16px; color: #5C6BC0; font-size: 16px;">{{ 'Perguntas abertas:' | translate }}</h3>
                 <div *ngFor="let item of getPerguntasAbertasData()" style="margin-bottom: 28px;">
@@ -1783,7 +1783,7 @@
 
             <div *ngSwitchDefault>
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
             </div>
 
           </ng-container>

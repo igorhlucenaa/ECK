@@ -1956,17 +1956,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Substitui placeholders dinâmicos (capa, perguntas, textos do relatório). */
   substituirVariaveisRelatorio(texto: string | undefined | null): string {
     if (!texto) return '';
-    const nomeAvaliado = this.selectedAvaliado?.trim() || '';
+    const nomeAvaliado = (this.selectedAvaliado || this.individualParticipantName || '').trim();
     const dataRelatorio = this.today.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
     });
-    return texto
-      .replace(/\{\{\s*nome_avaliado\s*\}\}/gi, nomeAvaliado)
-      .replace(/\$%NOME_AVALIADO\$%/g, nomeAvaliado)
-      .replace(/\$%NOME_DO_AVALIADO\$%/g, nomeAvaliado)
-      .replace(/\$%DATA_RELATORIO\$%/g, dataRelatorio);
+    const applyNome = (value: string) =>
+      value
+        .replace(/\{\{\s*nome_avaliado\s*\}\}/gi, nomeAvaliado)
+        .replace(/&#123;&#123;\s*nome_avaliado\s*&#125;&#125;/gi, nomeAvaliado)
+        .replace(/&lcub;&lcub;\s*nome_avaliado\s*&rcub;&rcub;/gi, nomeAvaliado)
+        .replace(/\$%NOME_AVALIADO\$%/g, nomeAvaliado)
+        .replace(/\$%NOME_DO_AVALIADO\$%/g, nomeAvaliado)
+        .replace(/\$%DATA_RELATORIO\$%/g, dataRelatorio);
+    return applyNome(texto);
   }
 
   // Métodos utilitários para manipular as seções do relatório
@@ -6585,9 +6589,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       .sort((a, b) => (ordem[a.categoria] || 99) - (ordem[b.categoria] || 99));
   }
 
-  // Método para substituir variáveis dinâmicas na capa
   safeHtml(html: string | undefined): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(html || '');
+  }
+
+  /** HTML de seção com placeholders dinâmicos já resolvidos (capa, intro, textos). */
+  getSecaoHtmlComVariaveis(texto: string | undefined): SafeHtml {
+    return this.safeHtml(this.substituirVariaveisRelatorio(texto));
   }
 
   getCapaComDadosDinamicos(textoOriginal: string | undefined): string {
