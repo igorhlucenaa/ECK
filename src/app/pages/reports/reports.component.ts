@@ -53,7 +53,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { GapChartComponent, GapChartDataItem } from './charts/gap-chart/gap-chart.component';
 import { ReportBuilderVisualComponent } from './report-builder-visual/report-builder-visual.component';
 import { SurveyDashboardComponent } from './survey-dashboard/survey-dashboard.component';
-import { Subject, from, of, takeUntil, tap, debounceTime, switchMap, filter } from 'rxjs';
+import { Subject, from, of, takeUntil, tap, debounceTime, switchMap, filter, distinctUntilChanged } from 'rxjs';
 import { ConfirmDialogService } from '../../shared/confirm-dialog/confirm-dialog.service';
 import { environment } from 'src/enviroments/environment';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -219,6 +219,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           this.projectParticipantIdsForFilter.add(d.id);
           const data = d.data() as Record<string, unknown>;
           this.participantDataById.set(d.id, data);
+          this.participantsCache.set(d.id, data);
           if (data['blocked'] === true) {
             this.blockedParticipantIds.add(d.id);
           }
@@ -235,6 +236,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (!snap.exists()) return;
         const data = snap.data() as Record<string, unknown>;
         this.participantDataById.set(participantId, data);
+        this.participantsCache.set(participantId, data);
         if (data['blocked'] === true) {
           this.blockedParticipantIds.add(participantId);
         }
@@ -309,14 +311,42 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return [...this.blockedParticipantIds].sort().join('|') || 'none';
   }
 
+  /** Atualiza flags de bloqueio sem recarregar todo o dataSource (ex.: retorno à aba). */
+  private async refreshBlockedParticipantsStatus(projectId: string): Promise<void> {
+    this.blockedParticipantIds.clear();
+
+    if (projectId) {
+      try {
+        const snap = await getDocs(query(
+          collection(this.firestore, 'participants'),
+          where('projectId', '==', projectId)
+        ));
+        snap.docs.forEach(d => {
+          const data = d.data() as Record<string, unknown>;
+          this.participantDataById.set(d.id, data);
+          this.participantsCache.set(d.id, data);
+          if (data['blocked'] === true) {
+            this.blockedParticipantIds.add(d.id);
+          }
+        });
+        return;
+      } catch (error) {
+        console.warn('[Relatório] Erro ao atualizar status de bloqueio:', error);
+      }
+    }
+
+    this.participantDataById.forEach((data, id) => {
+      if (data['blocked'] === true) {
+        this.blockedParticipantIds.add(id);
+      }
+    });
+  }
+
   /** Remove linhas de participantes bloqueados do dataSource e recalcula índices/cache. */
   private async applyBlockedParticipantsFilter(): Promise<void> {
     const projectId = this.filterProjectControl.value || '';
-    const resultParticipantIds = this.dataSource
-      .map(row => row.participanteId as string)
-      .filter(Boolean);
 
-    await this.loadParticipantsForReport(projectId, resultParticipantIds);
+    await this.refreshBlockedParticipantsStatus(projectId);
 
     this.dataSource = this.dataSource.filter(
       row => !row.participanteId || !this.blockedParticipantIds.has(row.participanteId)
@@ -1271,7 +1301,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Processar os queryParams após carregar templates
-    this.route.queryParams.subscribe(async params => {
+    this.route.queryParams.pipe(
+      takeUntil(this.destroy$),
+      distinctUntilChanged((a, b) =>
+        a['mode'] === b['mode'] &&
+        a['clientId'] === b['clientId'] &&
+        a['projectId'] === b['projectId'] &&
+        a['assessmentId'] === b['assessmentId'] &&
+        a['participantId'] === b['participantId'] &&
+        a['templateId'] === b['templateId'] &&
+        a['competencyIds'] === b['competencyIds']
+      )
+    ).subscribe(async params => {
       // Pré-popular filtros a partir de params de projeto (sem modo individual)
       if (params['mode'] !== 'individual') {
         this.resetIndividualMode();
@@ -1601,7 +1642,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.displayedColumns = [];
       this.dynamicColumns = [];
       this.questionMap = {};
-      console.log('�O Nenhuma avaliação selecionada');
       return;
     }
 
@@ -1610,12 +1650,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Carregar todas as competências disponíveis
     await this.loadAllCompetencies();
-    console.log('�Y�� QuestionMap limpo');
-    console.log('�o. Avaliação selecionada:', this.selectedAssessmentId);
-    console.log('�o. Modo individual:', this.isIndividualMode);
-    console.log('�o. Participante ID:', this.individualParticipantId);
+    this.debugLog('Avaliação selecionada:', this.selectedAssessmentId, 'modo individual:', this.isIndividualMode);
 
-    // �Ys? PERFORMANCE: Monitorar tempo de carregamento
+    // PERFORMANCE: Monitorar tempo de carregamento
     this.performanceMonitor.startTimer('onAssessmentChange');
     this.loadingService.show('Carregando dados da avaliação...');
     this.participantsCache.clear();
@@ -1641,33 +1678,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return; // finally handles hide()
     }
     const assessmentData = assessmentSnap.data();
-    console.log('�Y"S AssessmentData:', assessmentData);
 
     const surveyJSON = assessmentData['surveyJSON'];
-    console.log('�Y"S SurveyJSON encontrado:', !!surveyJSON);
-    console.log('�Y"S SurveyJSON:', surveyJSON);
 
     if (!surveyJSON || !surveyJSON.pages) {
-      console.log('�O SurveyJSON não encontrado ou sem páginas');
       return; // finally handles hide()
     }
 
     // Extrair questões (rows) das perguntas do surveyJSON
     const questions: any[] = [];
-    console.log('�Y"� Extraindo questões do surveyJSON:', surveyJSON);
-    console.log('�Y"� Páginas encontradas:', surveyJSON.pages?.length || 0);
 
-    surveyJSON.pages.forEach((page: any, pageIndex: number) => {
-      console.log(`�Y"� Processando página ${pageIndex}:`, page);
+    surveyJSON.pages.forEach((page: any) => {
       if (page.elements) {
-        console.log(`�Y"� Elementos na página ${pageIndex}:`, page.elements.length);
-        page.elements.forEach((element: any, elementIndex: number) => {
-          console.log(`�Y"� Elemento ${elementIndex}:`, element);
-
+        page.elements.forEach((element: any) => {
           // Para elementos do tipo matrix, extrair as rows (questões)
           if ((element.type === 'matrix' || element.type === 'matrixdropdown') && element.rows && Array.isArray(element.rows)) {
-            console.log(`�o. Matriz encontrada: ${element.name} com ${element.rows.length} questões`);
-
             element.rows.forEach((row: any, rowIndex: number) => {
               if (row.value && row.text) {
                 // Extrair o texto da questão
@@ -1692,14 +1717,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
                 });
 
                 this.questionMap[questionId] = questionText;
-                console.log(`�Y"� Questão extraída: ${questionId} = "${questionText}"`);
               }
             });
           }
           // Para outros tipos de perguntas, capturar TODOS os tipos agora
           else if (element.name) {
-            console.log(`�o. Pergunta encontrada: ${element.name} - ${JSON.stringify(element.title)} (tipo: ${element.type})`);
-
             // Garantir que o título seja uma string válida
             let questionTitle = '';
             if (element.title && typeof element.title === 'object' && element.title.pt) {
@@ -1721,15 +1743,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             });
 
             this.questionMap[element.name] = questionTitle;
-            console.log(`�Y"� QuestionMap[${element.name}] = "${questionTitle}" (tipo: ${element.type})`);
-            console.log(`   �""�"? Extraído de: ${JSON.stringify(element.title)}`);
           }
         });
       }
     });
-
-    console.log('�Y"S Questões extraídas:', questions);
-    console.log('�Y"S QuestionMap:', this.questionMap);
 
     // Armazenar todas as perguntas
     this.allQuestions = questions;
@@ -1782,10 +1799,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         });
         console.log(`[Relatório Individual] Avaliadores encontrados para ${this.individualParticipantId}:`, evaluatorIdsForTarget.size);
       } else {
-        const linksSnap = await getDocs(query(
-          collection(this.firestore, 'assessmentLinks'),
-          where('assessmentId', '==', this.selectedAssessmentId)
-        ));
+        const linksQuery = filterProjectId
+          ? query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('assessmentId', '==', this.selectedAssessmentId),
+            where('projectId', '==', filterProjectId)
+          )
+          : query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('assessmentId', '==', this.selectedAssessmentId)
+          );
+        const linksSnap = await getDocs(linksQuery);
         linksSnap.docs.forEach(d => {
           const data = d.data();
           const linkProjectId = data['projectId'] as string | undefined;
@@ -1830,6 +1854,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (participantSnap.exists()) {
           participantData = participantSnap.data();
           this.participantDataById.set(participantId, participantData as Record<string, unknown>);
+          this.participantsCache.set(participantId, participantData as Record<string, unknown>);
           if (participantData['blocked'] === true) {
             this.blockedParticipantIds.add(participantId);
             continue;
@@ -1902,7 +1927,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             );
             if (avaliadoId) {
               avaliadoIdResolved = avaliadoId;
-              avaliadoNome = await this.resolveParticipantName(avaliadoId);
+              avaliadoNome = this.getParticipantNameSync(avaliadoId);
             } else {
               avaliadoIdResolved = participantId;
               avaliadoNome = participantData['name'] || 'N/A';
@@ -2559,18 +2584,36 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.individualTemplateName = null;
   }
 
+  private getParticipantNameSync(participantId: string): string {
+    const fromMap = this.participantDataById.get(participantId);
+    if (fromMap) {
+      return String(fromMap['name'] || 'N/A');
+    }
+    const fromCache = this.participantsCache.get(participantId);
+    if (fromCache) {
+      return String(fromCache['name'] || 'N/A');
+    }
+    return 'N/A';
+  }
+
   private async resolveParticipantName(participantId: string): Promise<string> {
-    let participantData: Record<string, unknown> | null = null;
-    if (this.participantsCache.has(participantId)) {
-      participantData = this.participantsCache.get(participantId) as Record<string, unknown>;
-    } else {
+    const cachedName = this.getParticipantNameSync(participantId);
+    if (cachedName !== 'N/A') {
+      return cachedName;
+    }
+
+    try {
       const snap = await getDoc(doc(this.firestore, 'participants', participantId));
       if (snap.exists()) {
-        participantData = snap.data() as Record<string, unknown>;
+        const participantData = snap.data() as Record<string, unknown>;
+        this.participantDataById.set(participantId, participantData);
         this.participantsCache.set(participantId, participantData);
+        return String(participantData['name'] || 'N/A');
       }
+    } catch (error) {
+      console.warn(`[Relatório] Erro ao resolver nome do participante ${participantId}:`, error);
     }
-    return String(participantData?.['name'] || 'N/A');
+    return 'N/A';
   }
 
   // Retorna as médias por competência e grupo de avaliadores para o bloco de Resumo
@@ -2580,26 +2623,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const grupos = ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
       const secaoResumo = this.relatorioConfiguracao.find(s => s.tipo === 'resumo');
       if (!secaoResumo || !secaoResumo.competenciasIds?.length) {
-        console.log('[Resumo] Nenhuma competência selecionada na seção de resumo.');
         return [];
       }
       const competenciasSelecionadas = this.competencias.filter(c => secaoResumo.competenciasIds!.includes(c.id));
-      console.log('[Resumo] Competências selecionadas:', competenciasSelecionadas.map(c => ({ id: c.id, nome: c.nome, perguntasIds: c.perguntasIds })));
-
-      if (this.dataSource.length) {
-        console.log('[Resumo] Exemplo de linha do dataSource:', this.dataSource[0]);
-      }
 
       const resultado: any[] = [];
       for (const comp of competenciasSelecionadas) {
         const perguntas = comp.perguntasIds;
-        console.log(`[Resumo] Processando competência: ${comp.nome} (Perguntas: ${perguntas})`);
 
         for (const grupo of grupos) {
           let soma = 0;
           let count = 0;
 
-          // �Ys? PERFORMANCE: Usar índice para buscar dados por categoria
+          // PERFORMANCE: Usar índice para buscar dados por categoria
           const indicesGrupo = this.dataIndexes.participantsByCategory.get(grupo) || [];
 
           for (const index of indicesGrupo) {
@@ -2607,7 +2643,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             if (this.isRowFromBlockedParticipant(row)) continue;
             for (const pid of perguntas) {
               const val = parseNumeric(row[pid]);
-              console.log(`[Resumo] Valor encontrado para pid='${pid}':`, val);
               if (val !== null) {
                 soma += val;
                 count++;
@@ -2615,7 +2650,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           }
 
-          console.log(`[Resumo] Competência: ${comp.nome}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${count ? soma / count : null}`);
           resultado.push({
             competencia: comp.nome,
             descricao: comp.descricao,
