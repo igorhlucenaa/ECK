@@ -1,5 +1,5 @@
 ﻿import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
-import { parseNumeric, exportToCSV, filterQuestionsByType, computeConsolidation, getQuestionTypeStats } from './reports-utils';
+import { parseNumeric, exportToCSV, filterQuestionsByType, computeConsolidation, getQuestionTypeStats, isParticipantIncludedInReports } from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
@@ -37,7 +37,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, NavigationEnd } from '@angular/router';
 import { Input } from '@angular/core';
 import { Router } from '@angular/router';
 import { AppPageHeaderComponent } from '../../components/page-header/page-header.component';
@@ -53,7 +53,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { GapChartComponent, GapChartDataItem } from './charts/gap-chart/gap-chart.component';
 import { ReportBuilderVisualComponent } from './report-builder-visual/report-builder-visual.component';
 import { SurveyDashboardComponent } from './survey-dashboard/survey-dashboard.component';
-import { Subject, from, of, takeUntil, tap, debounceTime, switchMap } from 'rxjs';
+import { Subject, from, of, takeUntil, tap, debounceTime, switchMap, filter } from 'rxjs';
 import { ConfirmDialogService } from '../../shared/confirm-dialog/confirm-dialog.service';
 import { environment } from 'src/enviroments/environment';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -177,6 +177,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly LABEL_MEDIA_SEM_AUTO = 'Média sem autoavaliação';
   // Cache de participantes para evitar múltiplas idas ao Firestore
   private participantsCache: Map<string, any> = new Map<string, any>();
+  /** Snapshot autoritativo dos participantes do ciclo (recarregado do Firestore). */
+  private participantDataById = new Map<string, Record<string, unknown>>();
+  /** IDs de participantes bloqueados no projeto atual (consulta fresca ao Firestore). */
+  private blockedParticipantIds = new Set<string>();
 
   // Configuração externa para uso embarcado (geração programática de PDF)
   @Input() externalConfig?: {
@@ -193,6 +197,83 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // eslint-disable-next-line no-console
       console.log(...args);
     }
+  }
+
+  /** Carrega participantes do ciclo e monta o set de bloqueados (sempre do Firestore, sem cache stale). */
+  private async loadParticipantsForReport(
+    projectId: string,
+    resultParticipantIds: string[]
+  ): Promise<void> {
+    this.blockedParticipantIds.clear();
+    this.participantDataById.clear();
+    this.participantsCache.clear();
+
+    if (projectId) {
+      try {
+        const snap = await getDocs(query(
+          collection(this.firestore, 'participants'),
+          where('projectId', '==', projectId)
+        ));
+        snap.docs.forEach(d => {
+          const data = d.data() as Record<string, unknown>;
+          this.participantDataById.set(d.id, data);
+          if (data['blocked'] === true) {
+            this.blockedParticipantIds.add(d.id);
+          }
+        });
+      } catch (error) {
+        console.warn('[Relatório] Erro ao carregar participantes do projeto:', error);
+      }
+    }
+
+    const missingIds = [...new Set(resultParticipantIds.filter(id => id && !this.participantDataById.has(id)))];
+    await Promise.all(missingIds.map(async (participantId) => {
+      try {
+        const snap = await getDoc(doc(this.firestore, 'participants', participantId));
+        if (!snap.exists()) return;
+        const data = snap.data() as Record<string, unknown>;
+        this.participantDataById.set(participantId, data);
+        if (data['blocked'] === true) {
+          this.blockedParticipantIds.add(participantId);
+        }
+      } catch (error) {
+        console.warn(`[Relatório] Erro ao carregar participante ${participantId}:`, error);
+      }
+    }));
+  }
+
+  private getBlockedCacheSuffix(): string {
+    return [...this.blockedParticipantIds].sort().join('|') || 'none';
+  }
+
+  /** Remove linhas de participantes bloqueados do dataSource e recalcula índices/cache. */
+  private async applyBlockedParticipantsFilter(): Promise<void> {
+    const projectId = this.filterProjectControl.value || '';
+    const resultParticipantIds = this.dataSource
+      .map(row => row.participanteId as string)
+      .filter(Boolean);
+
+    await this.loadParticipantsForReport(projectId, resultParticipantIds);
+
+    this.dataSource = this.dataSource.filter(
+      row => !row.participanteId || !this.blockedParticipantIds.has(row.participanteId)
+    );
+
+    this.createDataIndexes();
+    this.invalidateCache();
+    this.cdr.markForCheck();
+  }
+
+  private isRowFromBlockedParticipant(row: Record<string, unknown> | null | undefined): boolean {
+    const participantId = row?.['participanteId'] as string | undefined;
+    if (!participantId) return false;
+    if (this.blockedParticipantIds.has(participantId)) return true;
+    const data = this.participantDataById.get(participantId);
+    return data?.['blocked'] === true;
+  }
+
+  private getRowsForReportCalculations(): any[] {
+    return this.dataSource.filter(row => !this.isRowFromBlockedParticipant(row));
   }
 
   // Converte respostas tipo "Column N" para número (1..5)
@@ -1026,6 +1107,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Indexar participantes por categoria (armazenar índices numéricos)
     this.dataSource.forEach((row, index) => {
+      if (this.isRowFromBlockedParticipant(row)) return;
       if (row.categoria) {
         const grupo = this.mapCategoriaToGrupo(row.categoria);
         if (!this.dataIndexes.participantsByCategory.has(grupo)) {
@@ -1269,6 +1351,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.atualizarPerguntasBloqueadas();
 
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      takeUntil(this.destroy$)
+    ).subscribe((event) => {
+      if (!event.urlAfterRedirects.includes('/reports')) return;
+      if (!this.selectedAssessmentId || this.dataSource.length === 0) return;
+      void this.applyBlockedParticipantsFilter().then(() => {
+        if (this.selectedTabIndex === 2) {
+          this.prewarmPreviewCache();
+        }
+      });
+    });
+
     // Subscription única para seleção manual de avaliação pelo usuário
     this.assessmentControl.valueChanges
       .pipe(takeUntil(this.destroy$))
@@ -1450,6 +1545,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // �Ys? PERFORMANCE: Monitorar tempo de carregamento
     this.performanceMonitor.startTimer('onAssessmentChange');
     this.loadingService.show('Carregando dados da avaliação...');
+    this.participantsCache.clear();
+    this.participantDataById.clear();
+    this.blockedParticipantIds.clear();
     this.dataSource = [];
     this.displayedColumns = [];
     this.questionMap = {};
@@ -1610,6 +1708,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const filterProjectId = this.filterProjectControl.value || '';
+    const resultParticipantIds = resultsSnap.docs
+      .map(d => d.data()['participantId'] as string)
+      .filter(Boolean);
+    await this.loadParticipantsForReport(filterProjectId, resultParticipantIds);
+
     const soleAvaliadoIdByProject = new Map<string, string>();
     if (filterProjectId) {
       try {
@@ -1639,22 +1742,32 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         completedAt: resultData['completedAt']
       });
 
-      // Buscar dados do participante com cache local para reduzir leituras
+      // Buscar dados do participante (mapa autoritativo recarregado do Firestore)
       let participantData: any | null = null;
       const participantId: string = resultData['participantId'];
-      if (this.participantsCache.has(participantId)) {
-        participantData = this.participantsCache.get(participantId);
-      } else {
-        const participantRef = doc(this.firestore, 'participants', participantId);
-        const participantSnap = await getDoc(participantRef);
+      if (!participantId || this.blockedParticipantIds.has(participantId)) {
+        continue;
+      }
+
+      participantData = this.participantDataById.get(participantId) ?? null;
+      if (!participantData) {
+        const participantSnap = await getDoc(doc(this.firestore, 'participants', participantId));
         if (participantSnap.exists()) {
           participantData = participantSnap.data();
-          this.participantsCache.set(participantId, participantData);
+          this.participantDataById.set(participantId, participantData as Record<string, unknown>);
+          if (participantData['blocked'] === true) {
+            this.blockedParticipantIds.add(participantId);
+            continue;
+          }
         }
       }
 
       if (participantData) {
         this.debugLog('Dados do participante:', participantData);
+
+        if (!isParticipantIncludedInReports(participantData)) {
+          continue;
+        }
 
         if (participantData['type'] === 'avaliador' && participantData['avaliadoId']) {
           evaluatorToAvaliadoIdMap.set(participantId, participantData['avaliadoId']);
@@ -1792,7 +1905,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.debugLog('Resultados processados:', results);
-    this.dataSource = results;
+    this.dataSource = results.filter(
+      row => !row.participanteId || !this.blockedParticipantIds.has(row.participanteId)
+    );
 
     // admin_client: filtrar por reportStatus released
     if (this.currentUserRole === 'admin_client') {
@@ -1855,8 +1970,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Criar índices de dados para performance
     this.createDataIndexes();
+    this.invalidateCache();
 
     if (this.selectedTabIndex === 2) {
+      await this.applyBlockedParticipantsFilter();
       this.prewarmPreviewCache();
     }
 
@@ -2330,7 +2447,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Retorna as médias por competência e grupo de avaliadores para o bloco de Resumo
   getResumoMedias() {
-    return this.getCachedCalculation('resumo-medias', () => {
+    const cacheKey = `resumo-medias-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}-${this.dataSource.length}-${this.getBlockedCacheSuffix()}`;
+    return this.getCachedCalculation(cacheKey, () => {
       const grupos = ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
       const secaoResumo = this.relatorioConfiguracao.find(s => s.tipo === 'resumo');
       if (!secaoResumo || !secaoResumo.competenciasIds?.length) {
@@ -2358,6 +2476,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           for (const index of indicesGrupo) {
             const row = this.dataSource[index];
+            if (this.isRowFromBlockedParticipant(row)) continue;
             for (const pid of perguntas) {
               const val = parseNumeric(row[pid]);
               console.log(`[Resumo] Valor encontrado para pid='${pid}':`, val);
@@ -2952,7 +3071,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Lista de respostas para uma pergunta e grupo
   getRespostasPorPerguntaEGrupo(perguntaId: string, grupo: string) {
-    return this.dataSource
+    return this.getRowsForReportCalculations()
       .filter(row => this.mapCategoriaToGrupo(row['categoria']) === grupo)
       .map(row => row[perguntaId])
       .filter(val => val !== undefined && val !== null && val !== '');
@@ -2963,7 +3082,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     let soma = 0;
     let count = 0;
     for (const pid of carac.perguntasIds || []) {
-      for (const row of this.dataSource) {
+      for (const row of this.getRowsForReportCalculations()) {
         if (this.selectedAvaliado && !this.matchesSelectedAvaliado(row, this.selectedAvaliado)) continue;
         if (this.mapCategoriaToGrupo(row['categoria']) === grupo) {
           let valor = row[pid];
@@ -4538,7 +4657,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Método para gerar tabela detalhada de competência com distribuição de notas
   gerarTabelaCompetencia(competencia: Competencia): TabelaCompetencia {
-    if (!this.selectedAssessmentId || !this.dataSource.length) {
+    if (!this.selectedAssessmentId || !this.getRowsForReportCalculations().length) {
       return {
         competencia,
         linhas: [],
@@ -4607,17 +4726,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Método auxiliar para obter respostas de uma pergunta específica para um grupo
   private getRespostasParaPerguntaEGrupo(perguntaId: string, grupo: string): number[] {
     const respostas: number[] = [];
+    const rows = this.getRowsForReportCalculations();
 
     this.debugLog(`�Y"� getRespostasParaPerguntaEGrupo:`, {
       perguntaId,
       grupo,
-      totalDataSource: this.dataSource.length
+      totalDataSource: rows.length
     });
 
     // Se o grupo for 'Todos', processar todos os dados
     if (grupo === 'Todos') {
       this.debugLog(`  �YO� Processando grupo 'Todos'`);
-      this.dataSource.forEach((participant, index) => {
+      rows.forEach((participant, index) => {
         this.debugLog(`  �Y"< Participante ${index}:`, {
           categoria: participant?.categoria,
           avaliado: participant?.avaliado,
@@ -4657,9 +4777,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
     } else {
-      // Processar grupo específico - usar filtro direto no dataSource
+      // Processar grupo específico
       this.debugLog(`  �YZ� Processando grupo específico: "${grupo}"`);
-      this.dataSource.forEach((participant, index) => {
+      rows.forEach((participant, index) => {
         // Verificar se o participante pertence ao grupo especificado
         const categoriaParticipante = this.mapCategoriaToGrupo(participant.categoria);
         this.debugLog(`  �Y"< Participante ${index}:`, {
@@ -4715,8 +4835,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Método auxiliar para obter respostas de uma pergunta específica para um grupo e avaliado específico
   private getRespostasParaPerguntaEGrupoEAvaliado(perguntaId: string, grupo: string, avaliadoSelecionado: string): number[] {
     const respostas: number[] = [];
+    const rows = this.getRowsForReportCalculations();
 
-    for (const participant of this.dataSource) {
+    for (const participant of rows) {
       if (!participant) continue;
 
       if (grupo !== 'Todos') {
@@ -5220,7 +5341,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     let count = 0;
 
     perguntasIds.forEach(perguntaId => {
-      const respostasGrupo = this.dataSource.filter(row => {
+      const respostasGrupo = this.getRowsForReportCalculations().filter(row => {
         const grupoMapeado = this.mapCategoriaToGrupo(row['categoria']);
         return grupoMapeado === grupo && this.matchesSelectedAvaliado(row, avaliadoSelecionado);
       });
@@ -6449,7 +6570,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.currentUserRole === 'viewer' && index < 2) return;
     this.selectedTabIndex = index;
     if (index === 2) {
-      this.prewarmPreviewCache();
+      void this.applyBlockedParticipantsFilter().then(() => {
+        this.prewarmPreviewCache();
+        this.cdr.markForCheck();
+      });
+      return;
     }
     this.cdr.markForCheck();
   }
@@ -6625,7 +6750,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       let quantidade = 0;
       indices.forEach(index => {
         const participant = this.dataSource[index];
-        if (!participant) return;
+        if (!participant || this.isRowFromBlockedParticipant(participant)) return;
 
         let temResposta = false;
         if (this.dynamicColumns && this.dynamicColumns.length > 0) {
@@ -7250,6 +7375,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.updateSelectedAvaliadoParticipantId();
     console.log('Avaliado selecionado:', this.selectedAvaliado);
 
+    await this.applyBlockedParticipantsFilter();
+
     // Invalidar cache relacionado a cálculos de competências
     this.invalidateCache('media-competencia');
     this.invalidateCache('tabela-competencia');
@@ -7374,7 +7501,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Getter para tabela de competência com cache otimizado
   getTabelaCompetencia(competencia: Competencia): TabelaCompetencia | null {
-    const cacheKey = `tabela-competencia-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}`;
+    const cacheKey = `tabela-competencia-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}-${this.dataSource.length}-${this.getBlockedCacheSuffix()}`;
 
     return this.getCachedCalculation(cacheKey, () => this.gerarTabelaCompetencia(competencia));
   }
@@ -7582,6 +7709,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const respostasOutros: number[] = [];
 
     this.dataSource.forEach((row) => {
+      if (this.isRowFromBlockedParticipant(row)) return;
       if (row[perguntaId] !== undefined) {
         const valor = this.parseLikertAnswer(row[perguntaId]);
 

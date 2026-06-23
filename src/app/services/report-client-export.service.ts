@@ -9,6 +9,7 @@ import {
   where,
 } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
+import { isParticipantIncludedInReports } from '../pages/reports/reports-utils';
 
 export interface ClientExportProjectOption {
   id: string;
@@ -527,6 +528,7 @@ export class ReportClientExportService {
       }
       const participantData = participantsCache.get(participantId)!;
       if (participantData['projectId'] !== projectId) continue;
+      if (!isParticipantIncludedInReports(participantData)) continue;
 
       if (participantData['type'] === 'avaliador' && participantData['avaliadoId']) {
         evaluatorToAvaliadoId.set(participantId, String(participantData['avaliadoId']));

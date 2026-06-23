@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
+import { isParticipantIncludedInReports } from '../../reports/reports-utils';
 import { MaterialModule } from 'src/app/material.module';
 import { Model, PageModel, QuestionMatrixModel } from 'survey-core';
 import { Firestore, collection, getDocs, doc, getDoc, query, where, documentId } from '@angular/fire/firestore';
@@ -66,6 +67,7 @@ interface QuestionChart {
 interface ParticipantInfo {
   id: string;
   category: string; // 'Autoavaliação', 'Gestor', 'Pares', 'Liderados', 'Outros'
+  blocked?: boolean;
 }
 
 // Mapeamento de categorias do Firestore para categorias do relatório
@@ -296,6 +298,20 @@ export class DashboardComponent implements OnInit {
          console.warn("Nenhum participantId encontrado nos resultados.");
       }
 
+      this.surveyResults = this.surveyResults.filter((result) => {
+        if (!result.participantId) return false;
+        const participant = this.participantMap.get(result.participantId);
+        return isParticipantIncludedInReports(
+          participant ? { blocked: participant.blocked } : null
+        );
+      });
+
+      if (this.surveyResults.length === 0) {
+        this.snackBar.open('Não há resultados elegíveis para esta avaliação.', 'Fechar', { duration: 3000 });
+        this.loadingService.hide();
+        return;
+      }
+
       // Extrair perguntas do modelo
       this.extractQuestions(surveyModel);
       console.log('Perguntas extraídas:', this.surveyQuestions);
@@ -340,7 +356,8 @@ export class DashboardComponent implements OnInit {
                     console.log(`Participant ${doc.id}: Raw Category='${rawCategory}', Mapped Category='${mappedCategory}'`);
                     this.participantMap.set(doc.id, {
                         id: doc.id,
-                        category: mappedCategory
+                        category: mappedCategory,
+                        blocked: data['blocked'] === true,
                     });
                 });
               } catch (error) {

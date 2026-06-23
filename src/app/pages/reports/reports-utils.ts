@@ -1,3 +1,11 @@
+/** Participantes bloqueados ficam fora de médias, tabelas e exportações de relatório. */
+export function isParticipantIncludedInReports(
+  participantData: Record<string, unknown> | null | undefined
+): boolean {
+  if (!participantData) return false;
+  return participantData['blocked'] !== true;
+}
+
 export function parseNumeric(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
   const num = Number(value);
