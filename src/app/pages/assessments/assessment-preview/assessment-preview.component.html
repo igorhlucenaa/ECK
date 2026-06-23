@@ -1,55 +1,73 @@
-<!-- Header -->
-<div class="preview-header">
-  <div class="preview-header-icon">
-    <mat-icon>assignment</mat-icon>
-  </div>
-  <div class="preview-header-text">
-    <h2 class="preview-title">{{ data.name }}</h2>
-    <p class="preview-subtitle">Pré-visualização do Formulário</p>
-  </div>
-  <button mat-icon-button class="preview-close-btn" (click)="closeDialog()">
-    <mat-icon>close</mat-icon>
-  </button>
-</div>
-
-<!-- Meta info -->
-<div class="preview-meta" *ngIf="data.description || data.createdBy || data.createdAt">
-  <div class="meta-item" *ngIf="data.description">
-    <mat-icon class="meta-icon">notes</mat-icon>
-    <span class="meta-label">Descrição:</span>
-    <span class="meta-value">{{ data.description }}</span>
-  </div>
-  <div class="meta-item" *ngIf="data.createdBy?.name">
-    <mat-icon class="meta-icon">person</mat-icon>
-    <span class="meta-label">Criado por:</span>
-    <span class="meta-value">{{ data.createdBy.name }}</span>
-  </div>
-  <div class="meta-item" *ngIf="data.createdAt">
-    <mat-icon class="meta-icon">event</mat-icon>
-    <span class="meta-label">Data:</span>
-    <span class="meta-value">
-      {{ data.createdAt?.toDate ? (data.createdAt.toDate() | date:'dd/MM/yyyy') : (data.createdAt | date:'dd/MM/yyyy') }}
-    </span>
-  </div>
-</div>
-
-<!-- Survey -->
-<div class="preview-body">
-  <div *ngIf="surveyModel; else noSurvey">
-    <survey [model]="surveyModel"></survey>
-  </div>
-  <ng-template #noSurvey>
-    <div class="no-survey">
-      <mat-icon>info_outline</mat-icon>
-      <span>Este formulário não possui perguntas configuradas.</span>
+<div class="preview-dialog">
+  <!-- Header -->
+  <div class="preview-header">
+    <div class="preview-header-icon">
+      <mat-icon>assignment</mat-icon>
     </div>
-  </ng-template>
-</div>
+    <div class="preview-header-text">
+      <h2 class="preview-title">{{ data.name }}</h2>
+      <p class="preview-subtitle">Pré-visualização do Formulário</p>
+    </div>
+    <button mat-icon-button class="preview-close-btn" (click)="closeDialog()" [disabled]="isExportingPdf">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
 
-<!-- Footer -->
-<div class="preview-footer">
-  <button mat-raised-button class="btn-close-dialog" (click)="closeDialog()">
-    <mat-icon>close</mat-icon>
-    Fechar
-  </button>
+  <!-- Conteúdo exportável para PDF -->
+  <div class="preview-body" #previewBody>
+    <div class="preview-pdf-content" #pdfContent>
+      <div class="preview-meta preview-meta--embedded" *ngIf="data.description || createdByName || createdAtLabel">
+        <div class="meta-item" *ngIf="data.description">
+          <mat-icon class="meta-icon">notes</mat-icon>
+          <span class="meta-label">Descrição:</span>
+          <span class="meta-value">{{ data.description }}</span>
+        </div>
+        <div class="meta-item" *ngIf="createdByName">
+          <mat-icon class="meta-icon">person</mat-icon>
+          <span class="meta-label">Criado por:</span>
+          <span class="meta-value">{{ createdByName }}</span>
+        </div>
+        <div class="meta-item" *ngIf="createdAtLabel">
+          <mat-icon class="meta-icon">event</mat-icon>
+          <span class="meta-label">Data:</span>
+          <span class="meta-value">{{ createdAtLabel }}</span>
+        </div>
+      </div>
+
+      <div *ngIf="surveyModel; else noSurvey">
+        <survey [model]="surveyModel"></survey>
+      </div>
+      <ng-template #noSurvey>
+        <div class="no-survey">
+          <mat-icon>info_outline</mat-icon>
+          <span>Este formulário não possui perguntas configuradas.</span>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="preview-footer">
+    <button
+      mat-stroked-button
+      class="btn-download-pdf"
+      (click)="downloadPdf()"
+      [disabled]="!surveyModel || isExportingPdf">
+      <mat-icon>picture_as_pdf</mat-icon>
+      Baixar PDF
+    </button>
+    <button mat-raised-button class="btn-close-dialog" (click)="closeDialog()" [disabled]="isExportingPdf">
+      <mat-icon>close</mat-icon>
+      Fechar
+    </button>
+  </div>
+
+  <!-- Loading overlay -->
+  <div class="preview-export-overlay" *ngIf="isExportingPdf">
+    <div class="preview-export-overlay__box">
+      <mat-spinner diameter="48"></mat-spinner>
+      <span class="preview-export-overlay__label">Gerando PDF do formulário...</span>
+      <span class="preview-export-overlay__hint">Gerando PDF em página contínua (sem quebras). Aguarde...</span>
+    </div>
+  </div>
 </div>
