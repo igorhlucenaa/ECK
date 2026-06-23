@@ -472,6 +472,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   filterProjectControl = new FormControl('');
   filterProjects: { id: string; name: string; assessmentId?: string }[] = [];
   allAssessmentsByProject = new Map<string, string>(); // projectId → assessmentId
+  /** Avaliações do cliente selecionado (passo 2). */
+  clientAssessments: AssessmentOption[] = [];
+  /** assessmentId → projectIds que usam esse formulário. */
+  private assessmentProjectsMap = new Map<string, string[]>();
+  /** Projetos candidatos quando a avaliação mapeia para mais de um ciclo. */
+  projectsForAssessment: { id: string; name: string }[] = [];
+  /** true quando o usuário precisa escolher o projeto manualmente. */
+  projectSelectionRequired = false;
+  /** true quando o projeto foi deduzido automaticamente (1 candidato). */
+  projectAutoDeduced = false;
 
   // Controles para cliente e grupos de competências
   clients: any[] = [];
@@ -857,7 +867,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(term => {
         const t = (term || '').toLowerCase();
-        this.filteredAssessments = this.assessments.filter(a =>
+        this.filteredAssessments = this.clientAssessments.filter(a =>
           a.name.toLowerCase().includes(t)
         );
       });
@@ -869,7 +879,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         const name = this.displayAssessmentName(id);
         if (name && this.assessmentSearchControl.value !== name) {
           this.assessmentSearchControl.setValue(name, { emitEvent: false });
-          this.filteredAssessments = [...this.assessments];
+          this.filteredAssessments = [...this.clientAssessments];
         }
       });
     this.avaliadoControl.valueChanges
@@ -1070,7 +1080,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if (projectIdParam) {
           this.filterProjectControl.setValue(projectIdParam, { emitEvent: false });
-          await this.onFilterProjectChange();
+          const project = this.filterProjects.find(p => p.id === projectIdParam);
+          if (project?.assessmentId) {
+            this.projectAutoDeduced = true;
+            this.projectSelectionRequired = false;
+            this.assessmentControl.setValue(project.assessmentId);
+          }
         }
 
         this.cdr.markForCheck();
@@ -1112,6 +1127,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (projectIdParam) {
         this.filterProjectControl.setValue(projectIdParam, { emitEvent: false });
+        this.projectAutoDeduced = true;
+        this.projectSelectionRequired = false;
       }
 
       // 2. Setar avaliação nos controles (sem disparar subscriptions)
@@ -1125,6 +1142,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // Garantir que filteredAssessments contenha esta avaliação (para o filtro sequencial)
       if (!this.filteredAssessments.find(a => a.id === assessmentId)) {
         this.filteredAssessments = [{ id: assessmentId, name: assessmentName }];
+      }
+      if (!this.clientAssessments.find(a => a.id === assessmentId)) {
+        this.clientAssessments = [...this.filteredAssessments];
+      }
+
+      if (!projectIdParam) {
+        await this.resolveProjectForAssessment(assessmentId);
       }
 
       // 4. Definir competências pendentes ANTES de onAssessmentChange
@@ -1185,14 +1209,24 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe(async id => {
         this.selectedAssessmentId = id;
         if (id) {
-          await this.onAssessmentChange();
-          await this.calcularMediasPorCompetencia();
+          const ready = await this.resolveProjectForAssessment(id);
+          if (ready) {
+            await this.onAssessmentChange();
+            await this.calcularMediasPorCompetencia();
+          } else {
+            this.dataSource = [];
+            this.avaliadosDisponiveis = [];
+          }
         } else {
+          this.filterProjectControl.setValue('', { emitEvent: false });
+          this.projectSelectionRequired = false;
+          this.projectAutoDeduced = false;
+          this.projectsForAssessment = [];
           this.dataSource = [];
           this.competencias = [];
           this.mediasPorCompetencia = [];
         }
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       });
 
     this.selectedReportId.valueChanges.subscribe(id => {
@@ -1286,7 +1320,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   displayAssessmentName(id: string | null): string {
     if (!id) return '';
-    return this.assessments.find(a => a.id === id)?.name || '';
+    return (
+      this.clientAssessments.find(a => a.id === id)?.name ||
+      this.filteredAssessments.find(a => a.id === id)?.name ||
+      this.assessments.find(a => a.id === id)?.name ||
+      ''
+    );
   }
 
   /** Resolve o nome da avaliação: tenta cache local primeiro, depois Firestore direto */
@@ -5717,6 +5756,98 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ── Filtros de Cliente/Projeto no topo ─────────────────────────
 
+  private registerAssessmentProjectLink(assessmentId: string, projectId: string): void {
+    if (!assessmentId || !projectId) return;
+    const existing = this.assessmentProjectsMap.get(assessmentId) || [];
+    if (!existing.includes(projectId)) {
+      existing.push(projectId);
+      this.assessmentProjectsMap.set(assessmentId, existing);
+    }
+  }
+
+  private async loadClientAssessmentsAndProjectMap(clientId: string): Promise<void> {
+    this.assessmentProjectsMap.clear();
+    this.filterProjects.forEach(p => {
+      if (p.assessmentId) {
+        this.registerAssessmentProjectLink(p.assessmentId, p.id);
+      }
+    });
+
+    const assessmentsSnap = await getDocs(
+      query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
+    );
+    this.clientAssessments = assessmentsSnap.docs
+      .map(d => ({
+        id: d.id,
+        name: d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+    assessmentsSnap.docs.forEach(d => {
+      const projectId = d.data()['projectId'] as string | undefined;
+      if (projectId && this.filterProjects.some(p => p.id === projectId)) {
+        this.registerAssessmentProjectLink(d.id, projectId);
+      }
+      const entry = { id: d.id, name: d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id };
+      if (!this.assessments.find(a => a.id === entry.id)) {
+        this.assessments.push(entry);
+      }
+    });
+
+    this.filteredAssessments = [...this.clientAssessments];
+  }
+
+  private getProjectsForAssessment(assessmentId: string): { id: string; name: string }[] {
+    const ids = new Set<string>(this.assessmentProjectsMap.get(assessmentId) || []);
+    this.filterProjects.forEach(p => {
+      if (p.assessmentId === assessmentId) {
+        ids.add(p.id);
+      }
+    });
+    return this.filterProjects.filter(p => ids.has(p.id));
+  }
+
+  /** Deduz o projeto a partir da avaliação selecionada. */
+  private async resolveProjectForAssessment(assessmentId: string): Promise<boolean> {
+    const candidates = this.getProjectsForAssessment(assessmentId);
+    this.projectsForAssessment = candidates;
+
+    if (candidates.length === 0) {
+      this.projectSelectionRequired = false;
+      this.projectAutoDeduced = false;
+      this.filterProjectControl.setValue('', { emitEvent: false });
+      this.snackBar.open(
+        this.t('Nenhum projeto ativo utiliza esta avaliação.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return false;
+    }
+
+    if (candidates.length === 1) {
+      this.projectSelectionRequired = false;
+      this.projectAutoDeduced = true;
+      this.filterProjectControl.setValue(candidates[0].id, { emitEvent: false });
+      return true;
+    }
+
+    this.projectAutoDeduced = false;
+    const current = this.filterProjectControl.value;
+    if (current && candidates.some(c => c.id === current)) {
+      this.projectSelectionRequired = false;
+      return true;
+    }
+
+    this.projectSelectionRequired = true;
+    this.filterProjectControl.setValue('', { emitEvent: false });
+    this.snackBar.open(
+      this.t('Esta avaliação existe em mais de um projeto — selecione o ciclo desejado.'),
+      this.t('Fechar'),
+      { duration: 4500 }
+    );
+    return false;
+  }
+
   async onFilterClientChange(): Promise<void> {
     const clientId = this.filterClientControl.value;
     this.filterProjectControl.setValue('');
@@ -5724,6 +5855,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedClientId = clientId || null;
     this.selectedReportId.setValue('', { emitEvent: false });
     this.selectedTemplateId.setValue('', { emitEvent: false });
+    this.projectSelectionRequired = false;
+    this.projectAutoDeduced = false;
+    this.projectsForAssessment = [];
+    this.clientAssessments = [];
 
     // Limpa avaliação ao mudar de cliente
     this.assessmentControl.setValue('', { emitEvent: false });
@@ -5768,7 +5903,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (p.assessmentId) this.allAssessmentsByProject.set(p.id, p.assessmentId);
       });
 
-      this.cdr.detectChanges();
+      await this.loadClientAssessmentsAndProjectMap(clientId);
+
+      if (this.clientAssessments.length === 1) {
+        const only = this.clientAssessments[0];
+        this.assessmentSearchControl.setValue(only.name, { emitEvent: false });
+        this.assessmentControl.setValue(only.id);
+      }
+
+      this.cdr.markForCheck();
     } catch (e) {
       console.error('Erro ao carregar projetos para filtro:', e);
     }
@@ -5787,98 +5930,45 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterProjectControl.setValue('');
     this.filterProjects = [];
     this.filteredAssessments = [];
+    this.clientAssessments = [];
+    this.projectsForAssessment = [];
+    this.projectSelectionRequired = false;
+    this.projectAutoDeduced = false;
+    this.assessmentProjectsMap.clear();
     this.assessmentControl.setValue('', { emitEvent: false });
     this.assessmentSearchControl.setValue('', { emitEvent: false });
   }
 
+  /** Usuário escolheu o projeto quando há ambiguidade (vários ciclos). */
   async onFilterProjectChange(): Promise<void> {
     const projectId = this.filterProjectControl.value;
-
-    // Sempre limpa a seleção de avaliação ao trocar de projeto
-    this.assessmentControl.setValue('', { emitEvent: false });
-    this.assessmentSearchControl.setValue('', { emitEvent: false });
-    this.filteredAssessments = [];
-
     if (!projectId) {
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
       return;
     }
 
-    try {
-      // Fonte 1: assessments que têm projectId diretamente (forma mais confiável)
-      const byProjectSnap = await getDocs(
-        query(collection(this.firestore, 'assessments'), where('projectId', '==', projectId))
-      );
+    this.projectAutoDeduced = false;
 
-      const found = new Map<string, AssessmentOption>();
-      byProjectSnap.docs.forEach(d => {
-        const name = d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id;
-        found.set(d.id, { id: d.id, name });
-      });
-
-      // Fonte 2: project.assessmentId (vínculo manual via detalhes do projeto)
-      const project = this.filterProjects.find(p => p.id === projectId);
-      let linkedAssessmentId = project?.assessmentId;
-
-      if (!linkedAssessmentId) {
-        const projectDoc = await getDoc(doc(this.firestore, 'projects', projectId));
-        if (projectDoc.exists()) {
-          linkedAssessmentId = projectDoc.data()['assessmentId'] || '';
-          if (project && linkedAssessmentId) project.assessmentId = linkedAssessmentId;
-        }
+    const assessmentId = this.assessmentControl.value;
+    if (assessmentId) {
+      const candidates = this.getProjectsForAssessment(assessmentId);
+      if (candidates.length > 0 && !candidates.some(c => c.id === projectId)) {
+        this.snackBar.open(
+          this.t('Este projeto não utiliza a avaliação selecionada.'),
+          this.t('Fechar'),
+          { duration: 3500 }
+        );
+        this.filterProjectControl.setValue('', { emitEvent: false });
+        this.cdr.markForCheck();
+        return;
       }
-
-      if (linkedAssessmentId && !found.has(linkedAssessmentId)) {
-        // Busca a avaliação vinculada se ainda não está no mapa
-        let linked = this.assessments.find(a => a.id === linkedAssessmentId);
-        if (!linked) {
-          const snap = await getDoc(doc(this.firestore, 'assessments', linkedAssessmentId));
-          if (snap.exists()) {
-            const d = snap.data();
-            linked = { id: linkedAssessmentId, name: d['name'] || d['surveyJSON']?.['title'] || linkedAssessmentId };
-          }
-        }
-        if (linked) found.set(linked.id, linked);
-      }
-
-      // Atualiza cache global e popula dropdown
-      found.forEach(a => {
-        if (!this.assessments.find(x => x.id === a.id)) this.assessments.push(a);
-      });
-
-      if (found.size > 0) {
-        this.filteredAssessments = Array.from(found.values());
-      } else {
-        // Nenhum vínculo direto encontrado: mostra todas as avaliações do cliente
-        const clientId = this.getReportClientId();
-        if (clientId) {
-          const clientSnap = await getDocs(
-            query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
-          );
-          this.filteredAssessments = clientSnap.docs.map(d => ({
-            id: d.id,
-            name: d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id,
-          }));
-          this.filteredAssessments.forEach(a => {
-            if (!this.assessments.find(x => x.id === a.id)) this.assessments.push(a);
-          });
-        } else {
-          this.filteredAssessments = [...this.assessments];
-        }
-      }
-
-      // Auto-seleciona se houver exatamente uma avaliação
-      if (this.filteredAssessments.length === 1) {
-        const only = this.filteredAssessments[0];
-        this.assessmentSearchControl.setValue(only.name, { emitEvent: false });
-        this.assessmentControl.setValue(only.id);
-      }
-    } catch (e) {
-      console.error('[onFilterProjectChange] Erro ao carregar avaliações do projeto:', e);
-      this.filteredAssessments = [...this.assessments];
+      this.projectSelectionRequired = false;
+      this.selectedAssessmentId = assessmentId;
+      await this.onAssessmentChange();
+      await this.calcularMediasPorCompetencia();
     }
 
-    this.cdr.detectChanges();
+    this.cdr.markForCheck();
   }
 
   async loadCompetencyGroups(clientId: string): Promise<void> {

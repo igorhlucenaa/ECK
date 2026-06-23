@@ -1700,8 +1700,53 @@ ngx-charts-bar-horizontal,
   }
 }
 
-/* Quando o passo 4 usa badge (sem form-field), o número não precisa de offset */
-.rp-seq-step:has(> .rp-avaliado-badge) .rp-seq-step__num {
+.rp-project-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #eff6ff;
+  border: 1.5px solid #93c5fd;
+  border-radius: 10px;
+  min-width: 160px;
+  max-width: 280px;
+
+  &__icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #2563eb;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+  }
+
+  &__label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #2563eb;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1b2d56;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Quando o passo usa badge (sem form-field), o número não precisa de offset */
+.rp-seq-step:has(> .rp-avaliado-badge) .rp-seq-step__num,
+.rp-seq-step:has(> .rp-project-badge) .rp-seq-step__num {
   margin-top: 0;
 }
 
