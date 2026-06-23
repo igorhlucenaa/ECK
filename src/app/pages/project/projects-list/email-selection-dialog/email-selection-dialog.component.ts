@@ -547,6 +547,7 @@ export class EmailSelectionDialogComponent implements OnInit {
       // Nova sintaxe {{...}}
       text = text.replace(/\{\{nome_participante\}\}/g, vars['nome_participante'] || '');
       text = text.replace(/\{\{nome_avaliado\}\}/g, vars['nome_avaliado'] || '');
+      text = text.replace(/\{\{categoria\}\}/g, vars['categoria'] || '');
       text = text.replace(/\{\{data_expiracao\}\}/g, vars['data_expiracao'] || '');
       text = text.replace(/\{\{nome_projeto\}\}/g, vars['nome_projeto'] || '');
       text = text.replace(/\{\{nome_cliente\}\}/g, vars['nome_cliente'] || '');

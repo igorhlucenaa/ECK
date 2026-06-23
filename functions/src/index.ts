@@ -391,11 +391,13 @@ function applyTemplateVariables(source: string, replacements: Record<string, str
   const projectDeadline = replacements.projectDeadline || '';
   const projectName = replacements.projectName || '';
   const clientName = replacements.clientName || '';
+  const participantCategory = replacements.participantCategory || '-';
   const linkAvaliacao = replacements.LINK_AVALIACAO || '';
   const linkRelatorio = replacements.LINK_RELATORIO || '';
 
   text = text.replace(/\{\{\s*nome_participante\s*\}\}/gi, participantName);
   text = text.replace(/\{\{\s*nome_avaliado\s*\}\}/gi, avaliadoName);
+  text = text.replace(/\{\{\s*categoria\s*\}\}/gi, participantCategory);
   text = text.replace(/\{\{\s*data_expiracao\s*\}\}/gi, projectDeadline);
   text = text.replace(/\{\{\s*nome_projeto\s*\}\}/gi, projectName);
   text = text.replace(/\{\{\s*nome_projeto\s*\}\}+/gi, projectName);
@@ -545,6 +547,9 @@ async function sendAssessmentEmail(
   const participantData = (participantDoc.data() || {}) as Record<string, unknown>;
   const participantName = normalizeOptionalString(participantData.name) || 'Participante';
   const participantType = (normalizeOptionalString(participantData.type) || '').toLowerCase();
+  const participantCategory =
+    normalizeOptionalString(participantData.category) ||
+    (participantType === 'avaliado' ? 'Avaliado' : '-');
   const projectId = normalizeOptionalString(participantData.projectId);
   let clientId = normalizeOptionalString(participantData.clientId);
   const participantAvaliadoId = normalizeOptionalString(participantData.avaliadoId);
@@ -620,6 +625,7 @@ async function sendAssessmentEmail(
   const emailHtml = renderTemplateToHtml(parsedContent, {
     LINK_AVALIACAO: assessmentLink,
     participantName,
+    participantCategory,
     avaliadoName: avaliadoName || '-',
     projectDeadline,
     projectName,
@@ -629,6 +635,7 @@ async function sendAssessmentEmail(
   const templateReplacements = {
     LINK_AVALIACAO: assessmentLink,
     participantName,
+    participantCategory,
     avaliadoName: avaliadoName || '-',
     projectDeadline,
     projectName,

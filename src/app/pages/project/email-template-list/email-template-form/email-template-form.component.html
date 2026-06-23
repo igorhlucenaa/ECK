@@ -74,8 +74,8 @@
           </mat-form-field>
         </div>
 
-        <!-- Cliente como texto (admin_client ou clientId da rota) -->
-        <div *ngIf="!clientIdFromRoute || userRole === 'admin_client'" class="client-info">
+        <!-- Cliente como texto (admin_client ou rota com clientId) -->
+        <div *ngIf="(clientIdFromRoute || userRole === 'admin_client') && userRole !== 'admin_master'" class="client-info">
           <mat-icon>business</mat-icon>
           <span><strong>{{ 'Cliente' | translate }}:</strong> {{ clientNameFromRoute || 'Não identificado' }}</span>
           <input type="hidden" formControlName="clientId" [value]="clientIdFromRoute || userClientId" />
@@ -124,6 +124,21 @@
               </button>
             </div>
             <p class="var-desc">Nome completo de quem receberá o e-mail.</p>
+            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+          </div>
+
+          <div class="var-item var-item--amber">
+            <div class="var-header">
+              <div class="var-icon var-icon--amber"><mat-icon>groups</mat-icon></div>
+              <span class="var-name">Categoria do participante</span>
+            </div>
+            <div class="var-pill var-pill--amber">
+              <code class="var-pill__text" ngNonBindable>{{categoria}}</code>
+              <button class="var-pill__copy" (click)="copyVar('{{categoria}}')">
+                <mat-icon>content_copy</mat-icon>Copiar
+              </button>
+            </div>
+            <p class="var-desc">Papel do participante no ciclo 360° (ex.: Avaliado, Gestor, Par, Subordinado, Outros).</p>
             <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
           </div>
 
@@ -227,6 +242,7 @@
             <div class="var-tags">
               <span class="var-tag var-tag--blue">Convite</span>
               <span class="var-tag var-tag--blue">Lembrete</span>
+              <span class="var-tag var-tag--teal">Cadastro do Usuário</span>
             </div>
           </div>
 
@@ -258,7 +274,7 @@
         </div>
         <pre class="vars-example__code" ngNonBindable>Olá, <span class="ex-var">{{nome_participante}}</span>!
 
-Você foi convidado(a) a avaliar <span class="ex-var">{{nome_avaliado}}</span>
+Como <span class="ex-var">{{categoria}}</span>, você foi convidado(a) a avaliar <span class="ex-var">{{nome_avaliado}}</span>
 no projeto <span class="ex-var">{{nome_projeto}}</span>.
 
 Prazo: <span class="ex-var">{{data_expiracao}}</span>
