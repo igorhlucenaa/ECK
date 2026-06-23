@@ -1316,7 +1316,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         a['assessmentId'] === b['assessmentId'] &&
         a['participantId'] === b['participantId'] &&
         a['templateId'] === b['templateId'] &&
-        a['competencyIds'] === b['competencyIds']
+        a['competencyIds'] === b['competencyIds'] &&
+        a['exportAction'] === b['exportAction']
       )
     ).subscribe(async params => {
       // Pré-popular filtros a partir de params de projeto (sem modo individual)
@@ -1347,6 +1348,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if (projectIdParam) {
           await this.initializeReportFromProject(projectIdParam, params['templateId']);
+          const exportAction = params['exportAction'] as string | undefined;
+          if (exportAction && exportAction !== 'openReports') {
+            await this.executeProjectExportAction(exportAction);
+          } else if (params['templateId'] || exportAction === 'openReports') {
+            this.selectedTabIndex = 2;
+          }
         }
 
         this.cdr.markForCheck();
@@ -6439,8 +6446,86 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       console.error('[Relatório] Erro ao carregar dados do projeto:', e);
     }
 
-    if (!templateIdParam) {
+    if (templateIdParam) {
+      this.selectedTemplateId.setValue(templateIdParam, { emitEvent: false });
+      try {
+        await this.aplicarTemplateSelecionado();
+      } catch (e) {
+        console.error('[Relatório] Erro ao aplicar template informado:', e);
+      }
+    } else {
       await this.applyProjectReportTemplate(projectId);
+    }
+
+    this.fillCompetenciasInReportSections();
+  }
+
+  /** Preenche competências nas seções do relatório a partir das competências carregadas. */
+  private fillCompetenciasInReportSections(): void {
+    if (!this.competencias.length) return;
+    const compIds = this.competencias.map(c => c.id);
+    this.relatorioConfiguracao.forEach(sec => {
+      if (['resumo', 'graficos', 'tabela', 'tabela_detalhada', 'grafico_defasagem', 'competencia_detalhada'].includes(sec.tipo)) {
+        sec.competenciasIds = [...compIds];
+      }
+    });
+    this.atualizarFormArrayComConfiguracao();
+    this.invalidateCache();
+  }
+
+  /** Executa exportação solicitada pelo modal de projetos (query param exportAction). */
+  private async executeProjectExportAction(action: string): Promise<void> {
+    this.fillCompetenciasInReportSections();
+    this.selectedTabIndex = 2;
+    this.cdr.markForCheck();
+
+    if (action === 'excelBase') {
+      if (!this.dataSource.length) {
+        this.snackBar.open(this.t('Sem dados para exportar.'), this.t('Fechar'), { duration: 3500 });
+        return;
+      }
+      this.exportarBaseExcel();
+      return;
+    }
+
+    if (!this.avaliadosDisponiveis.length) {
+      this.snackBar.open(
+        this.t('Nenhum avaliado com respostas para exportar neste projeto.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return;
+    }
+
+    if (this.competencias.length === 0) {
+      this.snackBar.open(
+        this.t('Configure as competências antes de gerar relatórios.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return;
+    }
+
+    await this.waitForReportReady(8000);
+
+    const avaliado = this.avaliadosDisponiveis[0];
+    this.selectedAvaliado = avaliado;
+    this.avaliadoControl.setValue(avaliado, { emitEvent: false });
+    this.invalidateCache();
+
+    if (action === 'individualPdf') {
+      await this.exportarRelatorioPDF();
+      return;
+    }
+
+    if (action === 'batchPdf') {
+      this.batchSelectedParticipants = new Set(this.avaliadosDisponiveis);
+      await this.generateBatchReports();
+      return;
+    }
+
+    if (action === 'docx') {
+      await this.exportarRelatorioDOCX();
     }
   }
 

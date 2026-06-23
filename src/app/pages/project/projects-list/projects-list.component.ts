@@ -35,6 +35,12 @@ import { AppPageHeaderComponent } from 'src/app/components/page-header/page-head
 import { fixMojibake } from 'src/app/utils/encoding.utils';
 import { DependencyCheckService } from 'src/app/services/dependency-check.service';
 import { DependencyBlockDialogComponent } from 'src/app/shared/dependency-block-dialog/dependency-block-dialog.component';
+import {
+  ProjectExportDialogComponent,
+  ProjectExportDialogResult,
+} from '../project-export-dialog/project-export-dialog.component';
+import { ReportClientExportService } from 'src/app/services/report-client-export.service';
+import { LoadingService } from 'src/app/services/loading.service';
 
 @Component({
   selector: 'app-projects-list',
@@ -146,7 +152,9 @@ export class ProjectsListComponent implements OnInit {
     private projectService: ProjectService,
     private location: Location,
     private translate: TranslateService,
-    private dependencyCheck: DependencyCheckService
+    private dependencyCheck: DependencyCheckService,
+    private clientExportService: ReportClientExportService,
+    private loadingService: LoadingService
   ) {}
 
   ngOnInit(): void {
@@ -723,8 +731,79 @@ export class ProjectsListComponent implements OnInit {
     });
   }
 
-  goToProjectReport(clientId: string, projectId: string): void {
-    this.router.navigate(['/reports'], { queryParams: { clientId, projectId } });
+  async goToProjectReport(project: {
+    id: string;
+    clientId: string;
+    name: string;
+    assessmentId?: string;
+    reportTemplateId?: string;
+  }): Promise<void> {
+    const user = await this.authService.getCurrentUser();
+    const dialogRef = this.dialog.open(ProjectExportDialogComponent, {
+      width: '580px',
+      maxWidth: '95vw',
+      panelClass: 'project-export-dialog-panel',
+      autoFocus: false,
+      data: {
+        clientId: project.clientId,
+        clientName: this.clientsMap[project.clientId] || project.clientId,
+        projectId: project.id,
+        projectName: project.name,
+        assessmentId: project.assessmentId,
+        reportTemplateId: project.reportTemplateId,
+        userRole: user?.role || '',
+      },
+    });
+
+    const result = (await dialogRef.afterClosed().toPromise()) as ProjectExportDialogResult | undefined;
+    if (!result) return;
+
+    if (result.action === 'excelClient') {
+      await this.exportProjectExcelExtract(project.clientId, project.id);
+      return;
+    }
+
+    const queryParams: Record<string, string> = {
+      clientId: project.clientId,
+      projectId: project.id,
+    };
+
+    if (result.templateId) {
+      queryParams['templateId'] = result.templateId;
+    }
+
+    if (result.action !== 'openReports') {
+      queryParams['exportAction'] = result.action;
+    }
+
+    this.router.navigate(['/reports'], { queryParams });
+  }
+
+  private async exportProjectExcelExtract(clientId: string, projectId: string): Promise<void> {
+    const clientName = this.clientsMap[clientId] || clientId;
+    this.loadingService.show(this.translate.instant('Gerando extrato do cliente...'));
+
+    try {
+      const exportResult = await this.clientExportService.exportClientExtract({
+        clientId,
+        clientName,
+        projectIds: [projectId],
+        releasedOnly: this.isViewer || this.isClienteAdmin,
+      });
+
+      this.snackBar.open(
+        this.translate.instant('Extrato exportado: {{resumo}} linhas (Resumo), {{respostas}} linhas (Respostas).')
+          .replace('{{resumo}}', String(exportResult.resumoCount))
+          .replace('{{respostas}}', String(exportResult.respostasCount)),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : this.translate.instant('Erro ao exportar extrato.');
+      this.snackBar.open(message, this.translate.instant('Fechar'), { duration: 5000 });
+    } finally {
+      this.loadingService.hide();
+    }
   }
 
   openResendModal(projectId: string, clientId: string): void {
