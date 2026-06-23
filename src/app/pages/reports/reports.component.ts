@@ -2985,13 +2985,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.savedReports = [];
       return;
     }
-    const reportsSnap = await getDocs(
+    const byClientSnap = await getDocs(
       query(collection(this.firestore, 'reports'), where('clientId', '==', clientId))
     );
-    this.savedReports = reportsSnap.docs.map(doc => ({
+    const byClient = byClientSnap.docs.map(doc => ({
       id: doc.id,
       name: doc.data()['nome'] || doc.id
     }));
+
+    // Legado: relatórios criados antes do escopo por cliente (sem clientId)
+    const allSnap = await getDocs(collection(this.firestore, 'reports'));
+    const legacy = allSnap.docs
+      .filter(d => !d.data()['clientId'])
+      .map(doc => ({ id: doc.id, name: doc.data()['nome'] || doc.id }));
+
+    const merged = new Map<string, { id: string; name: string }>();
+    [...legacy, ...byClient].forEach(r => merged.set(r.id, r));
+    this.savedReports = [...merged.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
 
   async atualizarRelatorioNoFirebase() {
@@ -3935,13 +3945,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.savedTemplates = [];
       return;
     }
-    const templatesSnap = await getDocs(
+    const byClientSnap = await getDocs(
       query(collection(this.firestore, 'reportTemplates'), where('clientId', '==', clientId))
     );
-    this.savedTemplates = templatesSnap.docs.map(doc => ({
+    const byClient = byClientSnap.docs.map(doc => ({
       id: doc.id,
       name: doc.data()['nome'] || doc.id
     }));
+
+    // Legado: templates criados antes do escopo por cliente (sem clientId)
+    const allSnap = await getDocs(collection(this.firestore, 'reportTemplates'));
+    const legacy = allSnap.docs
+      .filter(d => !d.data()['clientId'])
+      .map(doc => ({ id: doc.id, name: doc.data()['nome'] || doc.id }));
+
+    const merged = new Map<string, { id: string; name: string }>();
+    [...legacy, ...byClient].forEach(t => merged.set(t.id, t));
+    this.savedTemplates = [...merged.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
 
   async excluirRelatorio() {
@@ -3985,10 +4005,22 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Aplicar template selecionado ao relatório atual
   async aplicarTemplateSelecionado() {
     if (!this.selectedTemplateId.value) return;
-      const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
-      const templateSnap = await getDoc(templateRef);
-      if (templateSnap.exists()) {
-        const templateData = templateSnap.data();
+    const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
+    const templateSnap = await getDoc(templateRef);
+    if (!templateSnap.exists()) {
+      this.snackBar.open(this.t('Template não encontrado.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    const templateData = templateSnap.data();
+    const secoesRaw = templateData['configuracao'] || [];
+    if (!Array.isArray(secoesRaw) || secoesRaw.length === 0) {
+      this.snackBar.open(
+        this.t('Este template não possui seções salvas. Atualize o template ou crie um novo.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return;
+    }
         // Carregar seções do template zerando competenciasIds �?" serão preenchidas
         // pelas competências da avaliação atual, não do momento em que o template foi salvo
         const secoes: RelatorioSecao[] = (templateData['configuracao'] || []).map((sec: any) => ({
@@ -4020,12 +4052,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           };
         }
 
-        this.atualizarFormArrayComConfiguracao();
-        // Atualizar perguntas bloqueadas após carregar competências
-        this.atualizarPerguntasBloqueadas();
-        this.snackBar.open(this.t('Template aplicado!'), this.t('Fechar'), { duration: 2500 });
-        this.builderHasUnsavedChanges = false;
-    }
+    this.atualizarFormArrayComConfiguracao();
+    this.atualizarPerguntasBloqueadas();
+    this.invalidateCache();
+    this.builderHasUnsavedChanges = false;
+    this.snackBar.open(this.t('Template aplicado!'), this.t('Fechar'), { duration: 2500 });
+    this.cdr.markForCheck();
   }
   // Exportar relatório individual fiel à pré-visualização da tela.
   async exportarRelatorioPDF(): Promise<boolean> {
@@ -5167,11 +5199,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de atualizar o template.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
     const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
     // Sanitizar undefined antes de salvar no Firestore (JSON.parse/stringify remove undefined)
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     const templateData = {
       nome: nomeTemplate,
+      clientId,
       configuracao: sanitize(this.relatorioConfiguracao),
       competencias: sanitize(this.competencias),
       documentoConfig: sanitize(this.documentoConfig),
