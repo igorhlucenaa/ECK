@@ -1,0 +1,127 @@
+﻿PDF gerado com sucesso usando PDFMake!
+Erro ao gerar PDF: {{error}}
+ADM Cliente n├úo possui permiss├úo para editar usu├írios
+Voc├¬ n├úo pode editar sua pr├│pria conta MASTER
+Apenas um admin MASTER pode editar outro admin MASTER
+ADM Cliente n├úo possui permiss├úo para excluir usu├írios
+Voc├¬ n├úo pode remover sua pr├│pria conta MASTER. Solicite a outro admin MASTER que realize esta a├º├úo
+Voc├¬ n├úo pode excluir sua pr├│pria conta
+Apenas um admin MASTER pode remover outro admin MASTER
+Apenas um admin MASTER pode remover outro admin MASTER.
+Voc├¬ n├úo pode remover sua pr├│pria conta MASTER.
+N├úo ├⌐ poss├¡vel remover o ├║nico admin MASTER da plataforma.
+Usu├írios exclu├¡dos com sucesso!
+Erro ao excluir usu├írios.
+Grupos exclu├¡dos com sucesso!
+Erro ao excluir grupos.
+Tem certeza de que deseja excluir o grupo
+Voc├¬ n├úo pode remover sua pr├│pria conta MASTER. Solicite a outro admin MASTER que realize esta a├º├úo.
+Tem certeza de que deseja excluir o usu├írio
+Erro ao carregar usu├írio.
+Cliente exclu├¡do com sucesso.
+Erro ao excluir cliente. Tente novamente.
+Clientes exclu├¡dos com sucesso.
+Erro ao excluir clientes. Tente novamente.
+Erro ao carregar grupo.
+Erro ao salvar usu├írio.
+Erro ao carregar os detalhes do cliente.
+Erro ao salvar grupo.
+Erro ao atualizar documentos dos usu├írios.
+ADM Cliente n├úo possui permiss├úo para criar ou editar usu├írios.
+Acesso negado (403): ADM Cliente n├úo pode criar ou editar usu├írios.
+Elemento do dashboard n├úo encontrado.
+Preparando impress├úo...
+Dashboard exportado com sucesso!
+Erro ao exportar o dashboard.
+Exportando
+Exportado com sucesso!
+Tem certeza de que deseja cancelar este projeto? Ele n├úo aparecer├í mais no Dashboard.
+Projeto cancelado com sucesso.
+Erro ao cancelar projeto.
+Projetos exclu├¡dos com sucesso.
+Erro ao excluir projetos. Tente novamente.
+Tem certeza de que deseja excluir este projeto? Participantes, links e cr├⌐ditos reservados tamb├⌐m ser├úo removidos.
+Usu├írios
+Visualizar clientes vinculados e saldo de cr├⌐ditos
+Visualizar grupos de usu├írios da empresa
+Acessar relat├│rios publicados pelo administrador
+N├úo cadastra, edita ou exclui clientes
+Sem acesso ├á lista de usu├írios
+Sem acesso a formul├írios de avalia├º├úo
+Ver relat├│rios publicados pelo administrador
+Buscar por nome
+Avalia├º├úo
+T├¡tulo da se├º├úo
+Este t├¡tulo aparecer├í no relat├│rio final
+Dica para Capa:
+Aplicar Template
+Dica para Introdu├º├úo:
+Compet├¬ncias para os gr├íficos
+Selecione as compet├¬ncias que devem aparecer nesta se├º├úo de gr├íficos.
+Tipo de gr├ífico
+Gr├ífico de Barras Comparativo:
+Cada categoria ter├í uma cor distinta para melhor visualiza├º├úo.
+Paleta de cores
+Debug das cores
+Cores personalizadas:
+Adicionar cor
+Remover cor
+Clique nas cores para edit├í-las. Adicione pelo menos 3 cores para melhores resultados.
+Exibe as respostas de todos os participantes (avaliado e avaliadores) ├ás perguntas: o que continuar, parar e come├ºar a fazer. As respostas s├úo agrupadas por categoria (Avaliado(a), Gestor(es), Pares, Subordinados, Outros).
+Extrato do cliente (Excel)
+Formul├írio
+Consumidos
+Cr├⌐dito
+Distribui├º├úo de todos os projetos por status atual
+Configurar templates de convites
+Distribui├º├úo dos participantes da empresa
+Todos os projetos
+Form Wizard
+Account
+Name
+Password
+Next
+Profile
+First Name
+Last Name
+Address
+Back
+Finish
+Terms and condition
+Agree with terms?
+Nenhum cliente dispon├¡vel para exporta├º├úo.
+Gerando extrato do cliente...
+Extrato exportado: {{resumo}} linhas (Resumo), {{respostas}} linhas (Respostas).
+Erro ao exportar extrato.
+Erro ao carregar dados da avalia├º├úo. Tente novamente.
+Selecione um cliente antes de salvar o relat├│rio.
+Selecione um cliente antes de atualizar o relat├│rio.
+Selecione um cliente antes de salvar o template.
+Selecione um relat├│rio para excluir.
+Relat├│rio exclu├¡do com sucesso!
+Erro ao excluir relat├│rio.
+Selecione um template para excluir.
+Template exclu├¡do com sucesso!
+Erro ao excluir template.
+Template n├úo encontrado.
+Este template n├úo possui se├º├╡es salvas. Atualize o template ou crie um novo.
+DOCX exportado com sucesso!
+Erro ao gerar o DOCX.
+Selecione um cliente antes de atualizar o template.
+Configure as compet├¬ncias antes de gerar relat├│rios em lote.
+Nenhum projeto ativo utiliza esta avalia├º├úo.
+Esta avalia├º├úo existe em mais de um projeto ΓÇö selecione o ciclo desejado.
+Este projeto n├úo utiliza a avalia├º├úo selecionada.
+Apenas administradores podem liberar relat├│rios.
+Avaliado inv├ílido para libera├º├úo do relat├│rio.
+Selecione um cliente antes de publicar o relat├│rio.
+Selecione uma avalia├º├úo antes de publicar o relat├│rio.
+Relat├│rio publicado com sucesso.
+Erro ao publicar relat├│rio.
+Apenas administradores podem revogar libera├º├úo.
+Libera├º├úo de relat├│rio revogada.
+Erro ao revogar libera├º├úo.
+Sele├º├úo de avaliado limpa.
+Pergunta n├úo encontrada.
+N├úo ├⌐ poss├¡vel remover uma pergunta que est├í vinculada a uma compet├¬ncia.
+Erro ao remover pergunta.
