@@ -736,6 +736,10 @@ export class ParticipantsModalComponent implements OnInit {
             creditReserved: false,
           };
 
+          if (participant.type === 'avaliador' && participant.avaliadoId) {
+            newLinkData['avaliadoId'] = participant.avaliadoId;
+          }
+
           if (reminderSettings) {
             const nextAt = this.computeNextReminderAt(
               reminderSettings.startDate,
@@ -762,6 +766,10 @@ export class ParticipantsModalComponent implements OnInit {
             status: isPending ? 'pending' : 'completed',
             creditReserved: false,
           };
+
+          if (participant.type === 'avaliador' && participant.avaliadoId) {
+            updateData['avaliadoId'] = participant.avaliadoId;
+          }
 
           if (isPending && !existingData['nextReminderAt'] && reminderSettings) {
             const nextAt = this.computeNextReminderAt(
@@ -1135,24 +1143,35 @@ export class ParticipantsModalComponent implements OnInit {
 
       dialogRef.afterClosed().subscribe(async (result) => {
         if (result) {
-          const savedParticipants = [];
+          const ordered = [...participants].sort((a, b) => {
+            const aFirst = a.category === 'Avaliado' ? 0 : 1;
+            const bFirst = b.category === 'Avaliado' ? 0 : 1;
+            return aFirst - bFirst;
+          });
 
-          for (const participant of participants) {
+          let avaliadoIdParaVincular: string | undefined;
+
+          for (const participant of ordered) {
             try {
+              const docData: Record<string, unknown> = {
+                ...participant,
+                clientId: result.client,
+                projectId: result.project,
+                createdAt: new Date(),
+              };
+
+              if (participant.category !== 'Avaliado' && avaliadoIdParaVincular) {
+                docData['avaliadoId'] = avaliadoIdParaVincular;
+              }
+
               const docRef = await addDoc(
                 collection(this.firestore, 'participants'),
-                {
-                  ...participant,
-                  clientId: result.client,
-                  projectId: result.project,
-                  createdAt: new Date(),
-                }
+                docData
               );
 
-              savedParticipants.push({
-                ...participant,
-                id: docRef.id,
-              });
+              if (participant.category === 'Avaliado' && !avaliadoIdParaVincular) {
+                avaliadoIdParaVincular = docRef.id;
+              }
             } catch (error) {
               console.error('Erro ao salvar participante:', error);
             }

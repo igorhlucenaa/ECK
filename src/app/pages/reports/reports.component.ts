@@ -207,6 +207,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.blockedParticipantIds.clear();
     this.participantDataById.clear();
     this.participantsCache.clear();
+    this.projectParticipantIdsForFilter.clear();
 
     if (projectId) {
       try {
@@ -215,6 +216,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           where('projectId', '==', projectId)
         ));
         snap.docs.forEach(d => {
+          this.projectParticipantIdsForFilter.add(d.id);
           const data = d.data() as Record<string, unknown>;
           this.participantDataById.set(d.id, data);
           if (data['blocked'] === true) {
@@ -240,6 +242,67 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         console.warn(`[Relatório] Erro ao carregar participante ${participantId}:`, error);
       }
     }));
+    this.soleAvaliadoIdForCurrentProject = projectId
+      ? this.resolveSoleAvaliadoIdFromLoadedProject(projectId) ?? null
+      : null;
+  }
+
+  private normalizeCategory(raw: unknown): string {
+    return String(raw || '').trim();
+  }
+
+  /** Infere tipo a partir de type ou category (Excel/modal às vezes omitem type). */
+  private inferParticipantType(participantData: Record<string, unknown>): 'avaliado' | 'avaliador' {
+    const type = String(participantData['type'] || '').toLowerCase();
+    if (type === 'avaliador') return 'avaliador';
+    if (type === 'avaliado') return 'avaliado';
+    const cat = this.normalizeCategory(participantData['category'] || participantData['categoria']);
+    if (cat === 'Avaliado' || cat === 'Avaliado(a)') return 'avaliado';
+    return 'avaliador';
+  }
+
+  private inferRowTipo(row: Record<string, unknown>): 'avaliado' | 'avaliador' {
+    const tipo = String(row['tipo'] || '').toLowerCase();
+    if (tipo === 'avaliador') return 'avaliador';
+    if (tipo === 'avaliado') return 'avaliado';
+    const cat = this.normalizeCategory(row['categoria']);
+    if (cat === 'Avaliado' || cat === 'Avaliado(a)') return 'avaliado';
+    return 'avaliador';
+  }
+
+  /** Único avaliado do projeto a partir dos participantes já carregados. */
+  private resolveSoleAvaliadoIdFromLoadedProject(projectId: string): string | undefined {
+    if (!projectId) return undefined;
+    const avaliadoIds: string[] = [];
+    this.participantDataById.forEach((data, id) => {
+      if (!this.projectParticipantIdsForFilter.has(id)) return;
+      if (String(data['projectId'] || '') !== projectId && !this.projectParticipantIdsForFilter.has(id)) return;
+      if (this.inferParticipantType(data) === 'avaliado') {
+        avaliadoIds.push(id);
+      }
+    });
+    return avaliadoIds.length === 1 ? avaliadoIds[0] : undefined;
+  }
+
+  private resolveEvaluatorAvaliadoId(
+    participantId: string,
+    participantData: Record<string, unknown>,
+    filterProjectId: string,
+    soleAvaliadoId: string | undefined,
+    evaluatorToAvaliadoIdMap: Map<string, string>
+  ): string | undefined {
+    const inProject = this.projectParticipantIdsForFilter.has(participantId)
+      || participantData['projectId'] === filterProjectId;
+
+    // Regra de negócio 360: 1 avaliado por projeto → todo avaliador do ciclo avalia esse avaliado
+    if (soleAvaliadoId && inProject) {
+      return soleAvaliadoId;
+    }
+
+    const fromParticipant = participantData['avaliadoId'] as string | undefined;
+    if (fromParticipant) return fromParticipant;
+
+    return evaluatorToAvaliadoIdMap.get(participantId);
   }
 
   private getBlockedCacheSuffix(): string {
@@ -615,7 +678,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Filtros de Cliente e Projeto no topo do relatório
   filterClientControl = new FormControl('');
   filterProjectControl = new FormControl('');
-  filterProjects: { id: string; name: string; assessmentId?: string }[] = [];
+  filterProjects: { id: string; name: string; assessmentId?: string; reportTemplateId?: string }[] = [];
   allAssessmentsByProject = new Map<string, string>(); // projectId → assessmentId
   /** Avaliações do cliente selecionado (passo 2). */
   clientAssessments: AssessmentOption[] = [];
@@ -627,6 +690,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   projectSelectionRequired = false;
   /** true quando o projeto foi deduzido automaticamente (1 candidato). */
   projectAutoDeduced = false;
+  /** Evita auto-seleção de avaliação enquanto query params de projeto estão sendo aplicados. */
+  private pendingQueryProjectId: string | null = null;
+  /** IDs de participantes do projeto filtrado (para incluir avaliadores mesmo sem projectId no doc). */
+  private projectParticipantIdsForFilter = new Set<string>();
+  /** Quando o projeto tem exatamente 1 avaliado, usado para vincular gestores/pares. */
+  private soleAvaliadoIdForCurrentProject: string | null = null;
 
   // Controles para cliente e grupos de competências
   clients: any[] = [];
@@ -1205,6 +1274,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.route.queryParams.subscribe(async params => {
       // Pré-popular filtros a partir de params de projeto (sem modo individual)
       if (params['mode'] !== 'individual') {
+        this.resetIndividualMode();
         const clientIdParam: string | undefined = params['clientId'];
         const projectIdParam: string | undefined = params['projectId'];
         if (!clientIdParam && !projectIdParam) return;
@@ -1222,18 +1292,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         if (resolvedClientId) {
+          this.pendingQueryProjectId = projectIdParam || null;
           this.filterClientControl.setValue(resolvedClientId, { emitEvent: false });
           await this.onFilterClientChange();
+          this.pendingQueryProjectId = null;
         }
 
         if (projectIdParam) {
-          this.filterProjectControl.setValue(projectIdParam, { emitEvent: false });
-          const project = this.filterProjects.find(p => p.id === projectIdParam);
-          if (project?.assessmentId) {
-            this.projectAutoDeduced = true;
-            this.projectSelectionRequired = false;
-            this.assessmentControl.setValue(project.assessmentId);
-          }
+          await this.initializeReportFromProject(projectIdParam, params['templateId']);
         }
 
         this.cdr.markForCheck();
@@ -1258,9 +1324,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const projectIdParam: string | null = params['projectId'] || null;
 
       if (clientIdParam) {
+        this.pendingQueryProjectId = projectIdParam || null;
         this.filterClientControl.setValue(clientIdParam, { emitEvent: false });
         await this.onFilterClientChange();
+        this.pendingQueryProjectId = null;
       } else if (projectIdParam) {
+        this.pendingQueryProjectId = projectIdParam;
         try {
           const projectDoc = await getDoc(doc(this.firestore, 'projects', projectIdParam));
           const resolvedClientId = projectDoc.data()?.['clientId'];
@@ -1271,6 +1340,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         } catch (e) {
           console.error('[Relatório Individual] Erro ao resolver cliente do projeto:', e);
         }
+        this.pendingQueryProjectId = null;
       }
 
       if (projectIdParam) {
@@ -1331,6 +1401,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         } catch (e) {
           console.error('[Relatório Individual] Erro ao aplicar template:', e);
         }
+      } else if (projectIdParam) {
+        await this.applyProjectReportTemplate(projectIdParam);
       }
 
       // 8. Preencher competências em todas as seções compatíveis
@@ -1368,6 +1440,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.assessmentControl.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(async id => {
+        if (this.pendingQueryProjectId) return;
         this.selectedAssessmentId = id;
         if (id) {
           const ready = await this.resolveProjectForAssessment(id);
@@ -1675,11 +1748,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const resultsSnap = await getDocs(collection(this.firestore, `assessments/${this.selectedAssessmentId}/results`));
     this.debugLog('Resultados encontrados:', resultsSnap.docs.length);
 
+    const filterProjectId = this.filterProjectControl.value || '';
+
+    const resultParticipantIds = resultsSnap.docs
+      .map(d => d.data()['participantId'] as string)
+      .filter(Boolean);
+    await this.loadParticipantsForReport(filterProjectId, resultParticipantIds);
+    const soleAvaliadoId = this.soleAvaliadoIdForCurrentProject || undefined;
+
     // Carregar assessmentLinks para identificar a qual avaliado cada avaliador pertence.
     // Em modo individual: filtrar apenas pelos links do avaliado alvo.
     // Em modo normal: carregar todos os links para setar corretamente o campo 'avaliado' dos avaliadores.
     const evaluatorIdsForTarget = new Set<string>();
     const evaluatorToAvaliadoIdMap = new Map<string, string>(); // participantId → avaliadoId
+    const projectScopedLinkParticipantIds = new Set<string>();
     try {
       if (this.isIndividualMode && this.individualParticipantId) {
         const linksSnap = await getDocs(query(
@@ -1688,8 +1770,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           where('avaliadoId', '==', this.individualParticipantId)
         ));
         linksSnap.docs.forEach(d => {
-          const pid: string = d.data()['participantId'];
-          if (pid) evaluatorIdsForTarget.add(pid);
+          const data = d.data();
+          const linkProjectId = data['projectId'] as string | undefined;
+          const pid: string = data['participantId'];
+          if (!pid) return;
+          if (filterProjectId) {
+            if (linkProjectId && linkProjectId !== filterProjectId) return;
+            if (!linkProjectId && !this.projectParticipantIdsForFilter.has(pid)) return;
+          }
+          evaluatorIdsForTarget.add(pid);
         });
         console.log(`[Relatório Individual] Avaliadores encontrados para ${this.individualParticipantId}:`, evaluatorIdsForTarget.size);
       } else {
@@ -1698,35 +1787,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           where('assessmentId', '==', this.selectedAssessmentId)
         ));
         linksSnap.docs.forEach(d => {
-          const pid: string = d.data()['participantId'];
-          const aid: string = d.data()['avaliadoId'];
-          if (pid && aid) evaluatorToAvaliadoIdMap.set(pid, aid);
+          const data = d.data();
+          const linkProjectId = data['projectId'] as string | undefined;
+          const pid: string = data['participantId'];
+          if (!pid) return;
+          if (filterProjectId) {
+            if (linkProjectId && linkProjectId !== filterProjectId) return;
+            if (!linkProjectId && !this.projectParticipantIdsForFilter.has(pid)) return;
+            projectScopedLinkParticipantIds.add(pid);
+          }
+          const aid: string = data['avaliadoId'];
+          if (aid) evaluatorToAvaliadoIdMap.set(pid, aid);
         });
       }
     } catch (e) {
       console.warn('[Relatório] Erro ao carregar assessmentLinks:', e);
-    }
-
-    const filterProjectId = this.filterProjectControl.value || '';
-    const resultParticipantIds = resultsSnap.docs
-      .map(d => d.data()['participantId'] as string)
-      .filter(Boolean);
-    await this.loadParticipantsForReport(filterProjectId, resultParticipantIds);
-
-    const soleAvaliadoIdByProject = new Map<string, string>();
-    if (filterProjectId) {
-      try {
-        const avaliadosSnap = await getDocs(query(
-          collection(this.firestore, 'participants'),
-          where('projectId', '==', filterProjectId),
-          where('type', '==', 'avaliado')
-        ));
-        if (avaliadosSnap.docs.length === 1) {
-          soleAvaliadoIdByProject.set(filterProjectId, avaliadosSnap.docs[0].id);
-        }
-      } catch (e) {
-        console.warn('[Relatório] Erro ao resolver avaliado único do projeto:', e);
-      }
     }
 
     const results: any[] = [];
@@ -1771,7 +1846,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if (participantData['type'] === 'avaliador' && participantData['avaliadoId']) {
           evaluatorToAvaliadoIdMap.set(participantId, participantData['avaliadoId']);
+        } else if (this.inferParticipantType(participantData) === 'avaliador' && participantData['avaliadoId']) {
+          evaluatorToAvaliadoIdMap.set(participantId, participantData['avaliadoId']);
         }
+
+        const participantInFilteredProject = (pid: string, pdata: Record<string, unknown>): boolean => {
+          if (!filterProjectId) return true;
+          if (pdata['projectId'] === filterProjectId) return true;
+          if (this.projectParticipantIdsForFilter.has(pid)) return true;
+          if (projectScopedLinkParticipantIds.has(pid)) return true;
+          return false;
+        };
 
         let shouldInclude = true;
         let isTargetParticipant = false;
@@ -1789,8 +1874,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             shouldInclude = false;
           }
         } else {
-          // Modo normal: incluir participantes do projeto filtrado (se houver)
-          shouldInclude = !filterProjectId || participantData['projectId'] === filterProjectId;
+          shouldInclude = participantInFilteredProject(participantId, participantData);
         }
 
         if (shouldInclude) {
@@ -1798,22 +1882,24 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             ? resultData['completedAt'].toDate()
             : null;
 
-          // Determinar o avaliado associado a este resultado.
-          // Avaliadores devem apontar para quem avaliam (assessmentLinks.avaliadoId
-          // ou participants.avaliadoId), não para o próprio nome.
           let avaliadoNome: string;
           let avaliadoIdResolved: string;
-          const tipoParticipante = participantData['type'] || 'avaliado';
+          const tipoParticipante = this.inferParticipantType(participantData);
+          const categoriaParticipante = this.normalizeCategory(
+            participantData['category'] || participantData['categoria'] || 'N/A'
+          );
 
           if (this.isIndividualMode && this.individualParticipantName) {
             avaliadoNome = this.individualParticipantName;
             avaliadoIdResolved = this.individualParticipantId || participantId;
           } else if (tipoParticipante === 'avaliador') {
-            let avaliadoId =
-              evaluatorToAvaliadoIdMap.get(participantId) || participantData['avaliadoId'];
-            if (!avaliadoId && participantData['projectId']) {
-              avaliadoId = soleAvaliadoIdByProject.get(participantData['projectId']);
-            }
+            const avaliadoId = this.resolveEvaluatorAvaliadoId(
+              participantId,
+              participantData,
+              filterProjectId,
+              soleAvaliadoId,
+              evaluatorToAvaliadoIdMap
+            );
             if (avaliadoId) {
               avaliadoIdResolved = avaliadoId;
               avaliadoNome = await this.resolveParticipantName(avaliadoId);
@@ -1828,7 +1914,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           const row: any = {
             data: '',
-            categoria: participantData['category'] || 'N/A',
+            categoria: categoriaParticipante,
             avaliado: avaliadoNome,
             avaliadoId: avaliadoIdResolved,
             tipo: tipoParticipante,
@@ -2388,6 +2474,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Mapeamento de categorias do banco para os grupos do relatório
   mapCategoriaToGrupo(categoria: string): string {
     if (!categoria) return 'Outros';
+    const normalized = this.normalizeCategory(categoria);
     const map: { [key: string]: string } = {
       'Avaliado': 'Avaliado(a)',
       'Avaliado(a)': 'Avaliado(a)',
@@ -2400,7 +2487,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       'Outro': 'Outros',
       'Outros': 'Outros',
     };
-    return map[categoria] || categoria;
+    if (map[normalized]) return map[normalized];
+    const lower = normalized.toLowerCase();
+    const lowerMap: { [key: string]: string } = {
+      avaliado: 'Avaliado(a)',
+      'avaliado(a)': 'Avaliado(a)',
+      gestor: 'Gestor(es)',
+      'gestor(es)': 'Gestor(es)',
+      par: 'Pares',
+      pares: 'Pares',
+      subordinado: 'Subordinados',
+      subordinados: 'Subordinados',
+      outro: 'Outros',
+      outros: 'Outros',
+    };
+    return lowerMap[lower] || normalized;
   }
 
   /** ID Firestore do avaliado selecionado (para vincular respostas de avaliadores). */
@@ -2411,24 +2512,51 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.selectedAvaliadoParticipantId = null;
       return;
     }
-    const avaliadoRow = this.dataSource.find(
-      (row) =>
-        (row['tipo'] || 'avaliado') === 'avaliado' &&
-        row['avaliado'] === this.selectedAvaliado
-    );
-    this.selectedAvaliadoParticipantId = avaliadoRow?.['participanteId'] || null;
+    const nomeSel = this.selectedAvaliado.trim();
+    const avaliadoRow = this.dataSource.find((row) => {
+      if (this.inferRowTipo(row) !== 'avaliado') return false;
+      const categoria = this.normalizeCategory(row['categoria']);
+      const isAvaliadoCategoria = categoria === 'Avaliado' || categoria === 'Avaliado(a)';
+      return isAvaliadoCategoria && String(row['avaliado'] || '').trim() === nomeSel;
+    });
+    this.selectedAvaliadoParticipantId =
+      avaliadoRow?.['participanteId'] || this.soleAvaliadoIdForCurrentProject || null;
   }
 
   /** Inclui autoavaliação e avaliadores vinculados ao avaliado selecionado. */
   private matchesSelectedAvaliado(row: Record<string, unknown>, avaliadoSelecionado: string): boolean {
-    if (row['avaliado'] === avaliadoSelecionado) return true;
+    if (!avaliadoSelecionado) return true;
+
+    const tipo = this.inferRowTipo(row);
+    const nomeSel = avaliadoSelecionado.trim();
+    const participanteId = String(row['participanteId'] || '');
+
+    if (tipo === 'avaliado') {
+      return String(row['avaliado'] || '').trim() === nomeSel;
+    }
+
+    const targetId = this.selectedAvaliadoParticipantId || this.soleAvaliadoIdForCurrentProject;
+    if (targetId && row['avaliadoId'] === targetId) return true;
+
+    // Projeto com único avaliado: qualquer avaliador do ciclo conta para esse avaliado
     if (
-      this.selectedAvaliadoParticipantId &&
-      row['avaliadoId'] === this.selectedAvaliadoParticipantId
+      targetId &&
+      this.soleAvaliadoIdForCurrentProject === targetId &&
+      participanteId &&
+      this.projectParticipantIdsForFilter.has(participanteId)
     ) {
       return true;
     }
-    return false;
+
+    return String(row['avaliado'] || '').trim() === nomeSel;
+  }
+
+  private resetIndividualMode(): void {
+    this.isIndividualMode = false;
+    this.individualParticipantId = null;
+    this.individualParticipantName = null;
+    this.individualTemplateId = null;
+    this.individualTemplateName = null;
   }
 
   private async resolveParticipantName(participantId: string): Promise<string> {
@@ -6079,6 +6207,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           id: d.id,
           name: d.data()['name'] || '—',
           assessmentId: d.data()['assessmentId'] || undefined,
+          reportTemplateId: d.data()['reportTemplateId'] || undefined,
         }))
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
@@ -6096,7 +6225,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       await this.loadClientAssessmentsAndProjectMap(clientId);
 
-      if (this.clientAssessments.length === 1) {
+      if (this.clientAssessments.length === 1 && !this.pendingQueryProjectId) {
         const only = this.clientAssessments[0];
         this.assessmentSearchControl.setValue(only.name, { emitEvent: false });
         this.assessmentControl.setValue(only.id);
@@ -6159,7 +6288,74 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       await this.calcularMediasPorCompetencia();
     }
 
+    await this.applyProjectReportTemplate(projectId);
+
     this.cdr.markForCheck();
+  }
+
+  /** Pré-seleciona o template de relatório vinculado ao projeto (campo opcional). */
+  private async applyProjectReportTemplate(projectId: string): Promise<void> {
+    if (!projectId) return;
+
+    let reportTemplateId = this.filterProjects.find(p => p.id === projectId)?.reportTemplateId;
+    if (!reportTemplateId) {
+      try {
+        const projectDoc = await getDoc(doc(this.firestore, 'projects', projectId));
+        if (projectDoc.exists()) {
+          reportTemplateId = projectDoc.data()['reportTemplateId'] || undefined;
+        }
+      } catch (e) {
+        console.error('[Relatório] Erro ao carregar template do projeto:', e);
+        return;
+      }
+    }
+
+    if (!reportTemplateId) return;
+
+    this.selectedTemplateId.setValue(reportTemplateId, { emitEvent: false });
+    try {
+      await this.aplicarTemplateSelecionado();
+    } catch (e) {
+      console.error('[Relatório] Erro ao aplicar template do projeto:', e);
+    }
+  }
+
+  /** Inicializa filtros e dados a partir do projeto (ex.: botão Gerar Relatório na lista). */
+  private async initializeReportFromProject(projectId: string, templateIdParam?: string): Promise<void> {
+    const project = this.filterProjects.find(p => p.id === projectId);
+    if (!project?.assessmentId) {
+      this.filterProjectControl.setValue(projectId, { emitEvent: false });
+      return;
+    }
+
+    this.filterProjectControl.setValue(projectId, { emitEvent: false });
+    this.projectAutoDeduced = true;
+    this.projectSelectionRequired = false;
+    this.projectsForAssessment = this.getProjectsForAssessment(project.assessmentId);
+
+    this.selectedAssessmentId = project.assessmentId;
+    this.assessmentControl.setValue(project.assessmentId, { emitEvent: false });
+
+    const assessmentName = await this.resolveAssessmentName(project.assessmentId);
+    this.assessmentSearchControl.setValue(assessmentName, { emitEvent: false });
+
+    if (!this.filteredAssessments.find(a => a.id === project.assessmentId)) {
+      this.filteredAssessments = [
+        ...this.filteredAssessments,
+        { id: project.assessmentId, name: assessmentName },
+      ];
+    }
+
+    try {
+      await this.onAssessmentChange();
+      await this.calcularMediasPorCompetencia();
+    } catch (e) {
+      console.error('[Relatório] Erro ao carregar dados do projeto:', e);
+    }
+
+    if (!templateIdParam) {
+      await this.applyProjectReportTemplate(projectId);
+    }
   }
 
   async loadCompetencyGroups(clientId: string): Promise<void> {
@@ -7501,7 +7697,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Getter para tabela de competência com cache otimizado
   getTabelaCompetencia(competencia: Competencia): TabelaCompetencia | null {
-    const cacheKey = `tabela-competencia-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}-${this.dataSource.length}-${this.getBlockedCacheSuffix()}`;
+    const cacheKey = `tabela-competencia-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}-${this.selectedAvaliadoParticipantId || 'na'}-${this.dataSource.length}-${this.getBlockedCacheSuffix()}`;
 
     return this.getCachedCalculation(cacheKey, () => this.gerarTabelaCompetencia(competencia));
   }
