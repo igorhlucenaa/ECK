@@ -15,12 +15,14 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteField,
   where,
   addDoc,
   deleteDoc,
   writeBatch,
   arrayUnion,
   runTransaction,
+  increment,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -1737,29 +1739,293 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   openEditParticipantDialog(participant: UnifiedParticipant): void {
+    void this.openEditParticipantDialogAsync(participant);
+  }
+
+  private async openEditParticipantDialogAsync(participant: UnifiedParticipant): Promise<void> {
+    const evaluateeCheck = await this.participantValidationService.validateSingleEvaluateePerProject(
+      participant.projectId,
+      'Avaliado',
+      participant.id
+    );
+
     const dialogRef = this.dialog.open(EditParticipantDialogComponent, {
       width: '440px',
       maxWidth: '95vw',
-      data: { name: participant.name, email: participant.email },
+      data: {
+        name: participant.name,
+        email: participant.email,
+        category: participant.category,
+        type: participant.type,
+        canSelectAvaliado: evaluateeCheck.valid,
+        existingEvaluateeName: evaluateeCheck.existingEvaluateeName,
+      },
     });
 
     dialogRef.afterClosed().subscribe(async (result) => {
       if (!result) return;
-      const updates: any = {};
-      if (result.name !== participant.name) updates['name'] = result.name;
-      if (result.email !== participant.email) updates['email'] = result.email;
-      if (!Object.keys(updates).length) return;
+
+      if (result.category === 'Avaliado' && result.category !== participant.category) {
+        const validation = await this.participantValidationService.validateSingleEvaluateePerProject(
+          participant.projectId,
+          'Avaliado',
+          participant.id
+        );
+        if (!validation.valid) {
+          this.snackBar.open(
+            `Este projeto já possui um avaliado cadastrado (${validation.existingEvaluateeName}). É permitido apenas um avaliado por projeto.`,
+            'Fechar',
+            { duration: 5000 }
+          );
+          return;
+        }
+      }
+
       try {
-        await updateDoc(doc(this.firestore, `participants/${participant.id}`), updates);
-        if (updates['name']) participant.name = updates['name'];
-        if (updates['email']) participant.email = updates['email'];
-        // Força re-render da tabela: MatTableDataSource detecta mudança só por referência de array
+        await this.saveParticipantEdit(participant, result);
         this.dataSource.data = [...this.dataSource.data];
         this.snackBar.open('Participante atualizado com sucesso!', 'Fechar', { duration: 2500 });
-      } catch (e) {
-        this.snackBar.open('Erro ao atualizar participante.', 'Fechar', { duration: 3000 });
+      } catch (error: unknown) {
+        console.error('Erro ao atualizar participante:', error);
+        const message =
+          (error as { message?: string })?.message || 'Erro ao atualizar participante.';
+        this.snackBar.open(message, 'Fechar', { duration: 5000 });
       }
     });
+  }
+
+  private async saveParticipantEdit(
+    participant: UnifiedParticipant,
+    result: { name: string; email: string; category: string; type: 'avaliado' | 'avaliador' }
+  ): Promise<void> {
+    const participantRef = doc(this.firestore, `participants/${participant.id}`);
+    const oldType = participant.type;
+    const newType = result.type;
+    const categoryChanged = result.category !== participant.category;
+    const typeChanged = newType !== oldType;
+
+    if (newType === 'avaliado' && oldType !== 'avaliado') {
+      await this.promoteParticipantToAvaliado(participant, result.name, result.email, result.category);
+    } else if (oldType === 'avaliado' && newType !== 'avaliado') {
+      await this.demoteParticipantFromAvaliado(participant, result.name, result.email, result.category, newType);
+    } else {
+      const updates: Record<string, any> = {};
+      if (result.name !== participant.name) updates['name'] = result.name;
+      if (result.email !== participant.email) updates['email'] = result.email;
+      if (categoryChanged) updates['category'] = result.category;
+      if (!Object.keys(updates).length) return;
+
+      await updateDoc(participantRef, updates);
+      if (updates['name']) participant.name = result.name;
+      if (updates['email']) participant.email = result.email;
+      if (categoryChanged) participant.category = result.category;
+    }
+
+    if (typeChanged) {
+      participant.type = newType;
+    } else if (categoryChanged) {
+      participant.category = result.category;
+    }
+    if (result.name !== participant.name) participant.name = result.name;
+    if (result.email !== participant.email) participant.email = result.email;
+
+    if (newType === 'avaliado') {
+      participant.avaliadoId = undefined;
+      await this.linkAvaliadoresToEvaluatee(participant.projectId, participant.id);
+      for (const row of this.dataSource.data) {
+        if (row.projectId === participant.projectId && row.type === 'avaliador') {
+          row.avaliadoId = participant.id;
+        }
+      }
+    } else if (oldType === 'avaliado' && newType === 'avaliador') {
+      participant.avaliadoId = undefined;
+      await this.clearAvaliadoLinks(participant.projectId, participant.id);
+      for (const row of this.dataSource.data) {
+        if (row.projectId === participant.projectId && row.avaliadoId === participant.id) {
+          row.avaliadoId = undefined;
+        }
+      }
+    } else if (newType === 'avaliador') {
+      const avaliadoId = await this.getProjectAvaliadoId(participant.projectId);
+      if (avaliadoId) {
+        await updateDoc(participantRef, { avaliadoId });
+        participant.avaliadoId = avaliadoId;
+      }
+    }
+  }
+
+  private async getProjectAvaliadoId(projectId: string): Promise<string | null> {
+    const snap = await getDocs(query(
+      collection(this.firestore, 'participants'),
+      where('projectId', '==', projectId),
+      where('type', '==', 'avaliado')
+    ));
+    return snap.docs.length > 0 ? snap.docs[0].id : null;
+  }
+
+  private async linkAvaliadoresToEvaluatee(projectId: string, avaliadoId: string): Promise<void> {
+    const snap = await getDocs(query(
+      collection(this.firestore, 'participants'),
+      where('projectId', '==', projectId),
+      where('type', '==', 'avaliador')
+    ));
+    if (snap.empty) return;
+
+    const batch = writeBatch(this.firestore);
+    for (const docSnap of snap.docs) {
+      batch.update(docSnap.ref, { avaliadoId });
+    }
+    await batch.commit();
+  }
+
+  private async clearAvaliadoLinks(projectId: string, avaliadoId: string): Promise<void> {
+    const snap = await getDocs(query(
+      collection(this.firestore, 'participants'),
+      where('projectId', '==', projectId),
+      where('avaliadoId', '==', avaliadoId)
+    ));
+    if (snap.empty) return;
+
+    const batch = writeBatch(this.firestore);
+    for (const docSnap of snap.docs) {
+      batch.update(docSnap.ref, { avaliadoId: deleteField() });
+    }
+    await batch.commit();
+  }
+
+  private async promoteParticipantToAvaliado(
+    participant: UnifiedParticipant,
+    name: string,
+    email: string,
+    category: string
+  ): Promise<void> {
+    const clientId = participant.clientId;
+    const projectId = participant.projectId;
+    const participantRef = doc(this.firestore, `participants/${participant.id}`);
+
+    const orderSnap = await getDocs(query(
+      collection(this.firestore, 'creditOrders'),
+      where('clientId', '==', clientId),
+      where('status', '==', 'Aprovado')
+    ));
+
+    const nowMs = Date.now();
+    const validOrders = orderSnap.docs
+      .filter(d => {
+        const data = d.data();
+        const validity = data['validityDate'] as Timestamp | undefined;
+        const remaining = (data['remainingCredits'] as number) ?? 0;
+        return remaining > 0 && (!validity || validity.toMillis() >= nowMs);
+      })
+      .sort((a, b) => {
+        const aMs = (a.data()['createdAt'] as Timestamp)?.toMillis() ?? 0;
+        const bMs = (b.data()['createdAt'] as Timestamp)?.toMillis() ?? 0;
+        return aMs - bMs;
+      });
+
+    if (validOrders.length === 0) {
+      throw new Error('Créditos insuficientes para definir este participante como avaliado.');
+    }
+
+    const orderRef = validOrders[0].ref;
+    const clientRef = doc(this.firestore, `clients/${clientId}`);
+    const txRef = doc(collection(this.firestore, 'creditTransactions'));
+
+    await runTransaction(this.firestore, async (t) => {
+      const freshClient = await t.get(clientRef);
+      const freshOrder = await t.get(orderRef);
+
+      const clientCredits: number = freshClient.data()?.['credits'] ?? 0;
+      const orderRemaining: number = freshOrder.data()?.['remainingCredits'] ?? 0;
+      const orderValidity: Timestamp | undefined = freshOrder.data()?.['validityDate'];
+
+      if (clientCredits < 1 || orderRemaining < 1) {
+        throw new Error('Créditos insuficientes para definir este participante como avaliado.');
+      }
+      if (orderValidity && orderValidity.toMillis() < Date.now()) {
+        throw new Error('Créditos insuficientes para definir este participante como avaliado.');
+      }
+
+      const updateData: Record<string, any> = {
+        type: 'avaliado',
+        category,
+        creditReserved: true,
+        creditConsumed: false,
+        orderId: orderRef.id,
+        avaliadoId: deleteField(),
+      };
+      if (name !== participant.name) updateData['name'] = name;
+      if (email !== participant.email) updateData['email'] = email;
+
+      t.update(participantRef, updateData);
+      t.update(clientRef, {
+        credits: increment(-1),
+        reservedCredits: increment(1),
+      });
+      t.update(orderRef, {
+        remainingCredits: increment(-1),
+      });
+      t.set(txRef, {
+        type: 'reserve',
+        clientId,
+        projectId,
+        participantId: participant.id,
+        orderId: orderRef.id,
+        createdAt: Timestamp.now(),
+      });
+    });
+
+    participant.creditReserved = true;
+    participant.category = category;
+    if (name !== participant.name) participant.name = name;
+    if (email !== participant.email) participant.email = email;
+    await this.loadClients();
+  }
+
+  private async demoteParticipantFromAvaliado(
+    participant: UnifiedParticipant,
+    name: string,
+    email: string,
+    category: string,
+    newType: 'avaliado' | 'avaliador'
+  ): Promise<void> {
+    const participantRef = doc(this.firestore, `participants/${participant.id}`);
+    const participantSnap = await getDoc(participantRef);
+    const participantData = participantSnap.data() as Record<string, unknown> | undefined;
+
+    if (participantData?.['creditReserved'] === true && participantData?.['creditConsumed'] !== true) {
+      const clientId = participant.clientId;
+      const orderId = participantData['orderId'] as string | undefined;
+      const clientRef = doc(this.firestore, `clients/${clientId}`);
+
+      await runTransaction(this.firestore, async (t) => {
+        t.update(clientRef, {
+          credits: increment(1),
+          reservedCredits: increment(-1),
+        });
+        if (orderId) {
+          t.update(doc(this.firestore, `creditOrders/${orderId}`), {
+            remainingCredits: increment(1),
+          });
+        }
+      });
+      participant.creditReserved = false;
+      await this.loadClients();
+    }
+
+    const updateData: Record<string, any> = {
+      type: newType,
+      category,
+      avaliadoId: deleteField(),
+      creditReserved: false,
+    };
+    if (name !== participant.name) updateData['name'] = name;
+    if (email !== participant.email) updateData['email'] = email;
+
+    await updateDoc(participantRef, updateData);
+    participant.category = category;
+    if (name !== participant.name) participant.name = name;
+    if (email !== participant.email) participant.email = email;
   }
 
   openAddParticipantModal(): void {
