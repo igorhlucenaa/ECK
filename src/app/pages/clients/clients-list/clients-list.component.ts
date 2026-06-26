@@ -156,16 +156,15 @@ export class ClientsListComponent implements OnInit {
         const orderData = orderDoc.data();
         const validityDate = orderData['validityDate']?.toDate();
         const credits = orderData['credits'] || 0;
-        // Comprados = soma de pedidos aprovados ainda válidos
+        // Adquiridos = soma de pedidos aprovados ainda válidos
         if (validityDate && validityDate > currentDate) {
           creditsPurchased += credits;
         }
       });
 
       client.creditsPurchased = creditsPurchased;
-      // creditsUsed e credits (disponíveis) vêm diretamente do doc do cliente no Firestore
-      // — são mantidos incrementalmente pelo sistema (respostas, aprovações, expirações)
-      client.creditsUsed = client.creditsUsed || 0;
+      // consumedCredits e credits (disponíveis) vêm do doc do cliente no Firestore
+      client.creditsUsed = client.consumedCredits ?? client.creditsUsed ?? 0;
       client.creditsAvailable = client.credits || 0;
     } catch (error) {
       console.error('Erro ao calcular créditos:', error);

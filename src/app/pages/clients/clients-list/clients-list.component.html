@@ -169,8 +169,8 @@
           <td mat-cell *matCellDef="let client">
             <div class="credits-cell">
               <div class="credits-stat credits-stat--purchased"
-                   [matTooltip]="'Total de créditos comprados em pedidos aprovados' | translate" matTooltipPosition="above">
-                <span class="credits-stat__label">{{ 'Comprados' | translate }}</span>
+                   [matTooltip]="'Total de créditos adquiridos em pedidos aprovados' | translate" matTooltipPosition="above">
+                <span class="credits-stat__label">{{ 'Adquiridos' | translate }}</span>
                 <span class="credits-stat__value">{{ client.creditsPurchased || 0 }}</span>
               </div>
               <div class="credits-stat credits-stat--used"
