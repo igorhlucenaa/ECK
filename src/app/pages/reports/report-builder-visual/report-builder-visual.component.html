@@ -531,12 +531,31 @@
         </div>
       </div>
 
-      <!-- Texto (se aplicável) - Rich Text Editor -->
+      <!-- Texto (se aplicável) - Rich Text Editor ou HTML bruto (capa) -->
       <div *ngIf="['texto', 'capa', 'introducao'].includes(secaoEditando.tipo)" class="full-width">
         <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-          Conteúdo
+          {{ 'Conteúdo' | translate }}
         </label>
-        <angular-editor
+
+        <div *ngIf="secaoEditando.tipo === 'capa'" class="capa-editor-mode">
+          <mat-button-toggle-group
+            [value]="secaoEditando['htmlBruto'] ? 'html' : 'rich'"
+            (change)="secaoEditando['htmlBruto'] = $event.value === 'html'">
+            <mat-button-toggle value="rich">{{ 'Editor visual' | translate }}</mat-button-toggle>
+            <mat-button-toggle value="html">{{ 'Modo HTML' | translate }}</mat-button-toggle>
+          </mat-button-toggle-group>
+          <p class="capa-editor-mode__hint" *ngIf="secaoEditando['htmlBruto']">
+            {{ 'Cole ou edite HTML completo. O preview respeitará tags, estilos inline e classes.' | translate }}
+          </p>
+        </div>
+
+        <textarea *ngIf="secaoEditando.tipo === 'capa' && secaoEditando['htmlBruto']"
+                  class="html-raw-editor"
+                  [(ngModel)]="secaoEditando.texto"
+                  rows="16"
+                  [placeholder]="'Cole o HTML da capa aqui...' | translate"></textarea>
+
+        <angular-editor *ngIf="secaoEditando.tipo !== 'capa' || !secaoEditando['htmlBruto']"
           [(ngModel)]="secaoEditando.texto"
           [config]="editorConfig"
           style="margin-bottom: 16px;">

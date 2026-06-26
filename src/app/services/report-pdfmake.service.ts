@@ -518,7 +518,11 @@ export class ReportPdfMakeService {
     return blob;
   }
 
-  async generateReportFromHtml(html: string, fileName: string, options?: PdfHtmlRenderOptions): Promise<void> {
+  async generateReportBlobFromHtml(
+    html: string,
+    fileName: string,
+    options?: PdfHtmlRenderOptions
+  ): Promise<Blob> {
     try {
       const functionUrl = this.getGeneratePdfFunctionUrl();
       const blob = await firstValueFrom(
@@ -531,11 +535,16 @@ export class ReportPdfMakeService {
         throw new Error('Cloud Function retornou PDF vazio.');
       }
 
-      this.triggerBrowserDownload(blob, fileName);
+      return blob;
     } catch (error) {
       const message = await this.buildCloudFunctionErrorMessage(error);
       throw new Error(message);
     }
+  }
+
+  async generateReportFromHtml(html: string, fileName: string, options?: PdfHtmlRenderOptions): Promise<void> {
+    const blob = await this.generateReportBlobFromHtml(html, fileName, options);
+    this.triggerBrowserDownload(blob, fileName);
   }
 
   /**

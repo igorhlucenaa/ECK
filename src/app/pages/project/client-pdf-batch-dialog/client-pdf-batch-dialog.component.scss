@@ -1,0 +1,78 @@
+.client-pdf-batch-dialog {
+  min-width: 560px;
+  max-width: 720px;
+
+  &__intro {
+    margin: 0 0 8px;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  &__hint {
+    margin: 0 0 16px;
+    color: #94a3b8;
+    font-size: 13px;
+  }
+
+  &__error,
+  &__empty {
+    color: #b91c1c;
+    font-size: 13px;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) minmax(220px, 280px);
+    gap: 12px;
+    align-items: start;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__project {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  &__project-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e293b;
+    word-break: break-word;
+  }
+
+  &__linked {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #1B84FF;
+    font-weight: 500;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  &__template-field {
+    width: 100%;
+    margin: 0;
+  }
+}

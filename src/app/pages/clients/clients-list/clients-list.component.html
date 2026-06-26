@@ -75,7 +75,7 @@
           {{ 'Limpar filtros' | translate }}
         </button>
         <div class="search-count">
-          {{ dataSource.filteredData.length }} resultado{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
+          {{ dataSource.filteredData.length }} {{ (dataSource.filteredData.length === 1 ? 'resultado' : 'resultados') | translate }}
         </div>
       </div>
 

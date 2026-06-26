@@ -21,6 +21,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { EChartsOption } from 'echarts';
+import { getInstanceByDom } from 'echarts/core';
 import { ReportsPdfService } from './reports-pdf.service';
 import { ReportPdfMakeService, DocumentoConfig, DOCUMENTO_CONFIG_PADRAO, PdfHtmlRenderOptions } from '../../services/report-pdfmake.service';
 import { ReportClientExportService } from '../../services/report-client-export.service';
@@ -726,6 +727,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   projectAutoDeduced = false;
   /** Evita auto-seleção de avaliação enquanto query params de projeto estão sendo aplicados. */
   private pendingQueryProjectId: string | null = null;
+  /** Sentinel em pendingQueryProjectId durante export ZIP multi-projeto. */
+  private static readonly CLIENT_BATCH_QUERY_SENTINEL = '__clientBatch__';
+  /** Evita reentrada do handler de query params (ex.: ao limpar params do batch). */
+  private suppressQueryParamsHandler = false;
   /** Incrementado ao limpar filtros — invalida cargas assíncronas em andamento. */
   private filterContextGeneration = 0;
   /** IDs de participantes do projeto filtrado (para incluir avaliadores mesmo sem projectId no doc). */
@@ -1317,9 +1322,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         a['participantId'] === b['participantId'] &&
         a['templateId'] === b['templateId'] &&
         a['competencyIds'] === b['competencyIds'] &&
-        a['exportAction'] === b['exportAction']
+        a['exportAction'] === b['exportAction'] &&
+        a['projectIds'] === b['projectIds'] &&
+        a['projectTemplates'] === b['projectTemplates']
       )
     ).subscribe(async params => {
+      if (this.suppressQueryParamsHandler) return;
+
       // Pré-popular filtros a partir de params de projeto (sem modo individual)
       if (params['mode'] !== 'individual') {
         this.resetIndividualMode();
@@ -1339,16 +1348,43 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         }
 
+        const exportAction = params['exportAction'] as string | undefined;
+        const batchProjectIds = (params['projectIds'] as string | undefined)
+          ?.split(',')
+          .map(id => id.trim())
+          .filter(Boolean) || [];
+        const isClientBatchExport = exportAction === 'clientBatchPdf' && batchProjectIds.length > 0;
+
         if (resolvedClientId) {
-          this.pendingQueryProjectId = projectIdParam || null;
+          this.pendingQueryProjectId = isClientBatchExport
+            ? ReportsComponent.CLIENT_BATCH_QUERY_SENTINEL
+            : (projectIdParam || null);
           this.filterClientControl.setValue(resolvedClientId, { emitEvent: false });
           await this.onFilterClientChange();
           this.pendingQueryProjectId = null;
         }
 
+        if (isClientBatchExport) {
+          // Geração em lote PDF multi-projeto desabilitada nesta versão.
+          this.snackBar.open(
+            'Exportação em lote de PDF temporariamente indisponível.',
+            this.t('Fechar'),
+            { duration: 4000 }
+          );
+          this.clearClientBatchQueryParams();
+          this.cdr.markForCheck();
+          return;
+          /*
+          if (this.isBatchGenerating) return;
+          const templateByProject = this.parseProjectTemplateMap(params['projectTemplates'] as string | undefined);
+          await this.executeClientBatchPdfExport(batchProjectIds, templateByProject);
+          this.cdr.markForCheck();
+          return;
+          */
+        }
+
         if (projectIdParam) {
           await this.initializeReportFromProject(projectIdParam, params['templateId']);
-          const exportAction = params['exportAction'] as string | undefined;
           if (exportAction && exportAction !== 'openReports') {
             await this.executeProjectExportAction(exportAction);
           } else if (params['templateId'] || exportAction === 'openReports') {
@@ -1494,17 +1530,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.assessmentControl.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(async id => {
-        if (this.pendingQueryProjectId) return;
+        if (this.pendingQueryProjectId || this.isBatchGenerating) return;
         const loadGeneration = this.filterContextGeneration;
         this.selectedAssessmentId = id;
         if (id) {
           const ready = await this.resolveProjectForAssessment(id);
-          if (loadGeneration !== this.filterContextGeneration) return;
+          if (loadGeneration !== this.filterContextGeneration || this.isBatchGenerating) return;
           if (ready) {
             await this.onAssessmentChange(loadGeneration);
-            if (loadGeneration !== this.filterContextGeneration) return;
+            if (loadGeneration !== this.filterContextGeneration || this.isBatchGenerating) return;
             await this.calcularMediasPorCompetencia();
-          } else {
+          } else if (loadGeneration === this.filterContextGeneration && !this.isBatchGenerating) {
             this.dataSource = [];
             this.avaliadosDisponiveis = [];
           }
@@ -1671,7 +1707,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // PERFORMANCE: Monitorar tempo de carregamento
     this.performanceMonitor.startTimer('onAssessmentChange');
-    this.loadingService.show('Carregando dados da avaliação...');
+    if (!this.isBatchGenerating) {
+      this.loadingService.show('Carregando dados da avaliação...');
+    }
     this.participantsCache.clear();
     this.participantDataById.clear();
     this.blockedParticipantIds.clear();
@@ -2143,8 +2181,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('�Y"" DynamicColumns final:', this.dynamicColumns);
     console.log('�Y"" QuestionMap final:', this.questionMap);
 
-    // Forçar detecção de mudanças do Angular
-    this.cdr.detectChanges();
+    // Forçar detecção de mudanças do Angular (markForCheck no batch evita loop de CD)
+    if (this.isBatchGenerating) {
+      this.cdr.markForCheck();
+    } else {
+      this.cdr.detectChanges();
+    }
 
     // Verificação final
     console.log('�o. Verificação final:');
@@ -2160,7 +2202,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         { duration: 4000 }
       );
     } finally {
-      if (expectedGeneration === this.filterContextGeneration) {
+      if (!this.isBatchGenerating && expectedGeneration === this.filterContextGeneration) {
         this.loadingService.hide();
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -2661,7 +2703,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           for (const index of indicesGrupo) {
             const row = this.dataSource[index];
-            if (this.isRowFromBlockedParticipant(row)) continue;
+            if (!row || this.isRowFromBlockedParticipant(row)) continue;
+            if (this.selectedAvaliado && !this.matchesSelectedAvaliado(row, this.selectedAvaliado)) continue;
             for (const pid of perguntas) {
               const val = parseNumeric(row[pid]);
               if (val !== null) {
@@ -3588,15 +3631,79 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
   }
 
-  private async exportReportPreviewAsPdf(fileName: string): Promise<void> {
+  private async exportReportPreviewAsPdfBlob(fileName: string): Promise<Blob> {
+    const previewEl = await this.prepareReportPreviewForPdfExport();
+    const { html, options } = await this.buildReportPreviewHtml(previewEl, fileName);
+    return this.pdfMakeService.generateReportBlobFromHtml(html, fileName, options);
+  }
+
+  /**
+   * Prepara a preview para exportação PDF (individual ou lote).
+   * Garante dados, change detection (OnPush) e renderização de gráficos antes da captura HTML.
+   */
+  private async prepareReportPreviewForPdfExport(): Promise<HTMLElement> {
+    this.prewarmPreviewCache();
+    await this.calcularMediasPorCompetencia();
+    this.prepareGapChartData();
+    this.cdr.detectChanges();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+    const ready = await this.waitForReportReady(12000);
+    if (!ready) {
+      throw new Error('Preview do relatorio nao ficou pronta a tempo.');
+    }
+
     const previewEl = document.getElementById('report-preview') as HTMLElement | null;
     if (!previewEl) {
       throw new Error('Pre-visualizacao do relatorio nao encontrada.');
     }
 
-    await this.waitForPreviewAssets(previewEl);
-    const { html, options } = await this.buildReportPreviewHtml(previewEl, fileName);
-    await this.pdfMakeService.generateReportFromHtml(html, fileName, options);
+    this.refreshEchartsInPreview(previewEl);
+    await this.waitForPreviewAssets(previewEl, 10000);
+    return previewEl;
+  }
+
+  private refreshEchartsInPreview(previewEl: HTMLElement): void {
+    window.dispatchEvent(new Event('resize'));
+    previewEl.querySelectorAll('.rp-radar-chart, [echarts]').forEach(node => {
+      const host = node as HTMLElement;
+      const instance = getInstanceByDom(host);
+      instance?.resize();
+    });
+  }
+
+  private canvasHasVisibleContent(canvas: HTMLCanvasElement): boolean {
+    if (canvas.width < 2 || canvas.height < 2) return false;
+    try {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return false;
+      const samplePoints: Array<[number, number]> = [
+        [0.5, 0.5],
+        [0.25, 0.25],
+        [0.75, 0.75],
+        [0.5, 0.15],
+        [0.15, 0.5],
+      ];
+      for (const [rx, ry] of samplePoints) {
+        const x = Math.min(canvas.width - 1, Math.max(0, Math.floor(canvas.width * rx)));
+        const y = Math.min(canvas.height - 1, Math.max(0, Math.floor(canvas.height * ry)));
+        const alpha = ctx.getImageData(x, y, 1, 1).data[3];
+        if (alpha > 0) return true;
+      }
+      return false;
+    } catch {
+      return canvas.offsetWidth > 10 && canvas.offsetHeight > 10;
+    }
+  }
+
+  private async exportReportPreviewAsPdf(fileName: string): Promise<void> {
+    const blob = await this.exportReportPreviewAsPdfBlob(fileName);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   private async logoUrlToBase64(url: string): Promise<string> {
@@ -3667,6 +3774,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   ): Promise<{ html: string; options: PdfHtmlRenderOptions }> {
     const clone = previewEl.cloneNode(true) as HTMLElement;
     this.replaceCanvasWithImages(previewEl, clone);
+    this.replaceEchartsHostsWithImages(previewEl, clone);
     this.replaceNgxChartsWithSvgImages(previewEl, clone);
     this.preserveSvgDimensions(previewEl, clone);
     this.replaceReportChipsForPdf(previewEl, clone);
@@ -3766,6 +3874,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       page-break-inside: avoid !important;
     }
     img, canvas { max-width: 100% !important; height: auto; }
+    .pdf-echarts-chart,
+    .rp-radar-chart img {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      display: block !important;
+    }
     svg { max-width: 100% !important; }
     .pdf-svg-chart {
       display: flex !important;
@@ -3912,14 +4027,25 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private replaceCanvasWithImages(source: HTMLElement, clone: HTMLElement): void {
     const sourceCanvases = Array.from(source.querySelectorAll('canvas')) as HTMLCanvasElement[];
-    const clonedCanvases = Array.from(clone.querySelectorAll('canvas')) as HTMLCanvasElement[];
 
-    clonedCanvases.forEach((clonedCanvas, index) => {
-      const sourceCanvas = sourceCanvases[index];
-      if (!sourceCanvas) return;
+    sourceCanvases.forEach(sourceCanvas => {
+      if (!this.canvasHasVisibleContent(sourceCanvas)) return;
+
+      const host = sourceCanvas.closest('.rp-radar-chart, [echarts], ngx-charts-bar-horizontal, ngx-charts-pie-chart') as HTMLElement | null;
+      let clonedCanvas: HTMLCanvasElement | null = null;
+
+      if (host?.id) {
+        clonedCanvas = clone.querySelector(`#${CSS.escape(host.id)} canvas`) as HTMLCanvasElement | null;
+      }
+      if (!clonedCanvas) {
+        const clonedCanvases = Array.from(clone.querySelectorAll('canvas')) as HTMLCanvasElement[];
+        const sourceIndex = sourceCanvases.indexOf(sourceCanvas);
+        clonedCanvas = clonedCanvases[sourceIndex] || null;
+      }
+      if (!clonedCanvas) return;
 
       try {
-        const dataUrl = sourceCanvas.toDataURL('image/jpeg', 0.92);
+        const dataUrl = sourceCanvas.toDataURL('image/png');
         if (!dataUrl) return;
 
         const img = document.createElement('img');
@@ -3931,6 +4057,39 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
       } catch {
         // Se um canvas externo bloquear leitura, mantemos o canvas no HTML clonado.
+      }
+    });
+  }
+
+  private replaceEchartsHostsWithImages(source: HTMLElement, clone: HTMLElement): void {
+    const hosts = Array.from(source.querySelectorAll('.rp-radar-chart, [echarts]')) as HTMLElement[];
+
+    hosts.forEach(sourceHost => {
+      const sourceCanvas = sourceHost.querySelector('canvas') as HTMLCanvasElement | null;
+      if (!sourceCanvas || !this.canvasHasVisibleContent(sourceCanvas)) return;
+
+      const clonedHost = sourceHost.id
+        ? clone.querySelector(`#${CSS.escape(sourceHost.id)}`) as HTMLElement | null
+        : null;
+      if (!clonedHost) return;
+
+      try {
+        const dataUrl = sourceCanvas.toDataURL('image/png');
+        if (!dataUrl) return;
+
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.className = 'pdf-echarts-chart';
+        img.alt = 'Grafico radar do relatorio';
+        img.style.width = sourceHost.style.width || `${sourceHost.offsetWidth || sourceCanvas.offsetWidth}px`;
+        img.style.height = sourceHost.style.height || `${sourceHost.offsetHeight || sourceCanvas.offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+
+        clonedHost.innerHTML = '';
+        clonedHost.appendChild(img);
+      } catch (error) {
+        console.warn('[Relatório] Nao foi possivel converter grafico ECharts para imagem.', error);
       }
     });
   }
@@ -4123,7 +4282,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       .replace(/'/g, '&#039;');
   }
 
-  private async waitForPreviewAssets(previewEl?: HTMLElement): Promise<void> {
+  private async waitForPreviewAssets(previewEl?: HTMLElement, chartsTimeoutMs = 6000): Promise<void> {
     if ((document as any).fonts?.ready) {
       try {
         await (document as any).fonts.ready;
@@ -4133,14 +4292,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     if (previewEl) {
-      await this.waitForReportCharts(previewEl);
+      this.refreshEchartsInPreview(previewEl);
+      await this.waitForReportCharts(previewEl, chartsTimeoutMs);
+      await this.waitForEchartsCharts(previewEl, chartsTimeoutMs);
     }
   }
 
-  private async waitForReportCharts(previewEl: HTMLElement): Promise<void> {
+  private async waitForReportCharts(previewEl: HTMLElement, timeoutMs = 6000): Promise<void> {
     const chartHosts = Array.from(
       previewEl.querySelectorAll('ngx-charts-bar-horizontal, ngx-charts-pie-chart')
     ) as HTMLElement[];
@@ -4148,7 +4309,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (chartHosts.length === 0) return;
 
     const startedAt = Date.now();
-    while (Date.now() - startedAt < 2500) {
+    while (Date.now() - startedAt < timeoutMs) {
       const allChartsReady = chartHosts.every(chart => {
         const svg = chart.querySelector('svg') as SVGSVGElement | null;
         const rect = svg?.getBoundingClientRect();
@@ -4159,6 +4320,32 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       await new Promise(resolve => requestAnimationFrame(resolve));
     }
+  }
+
+  private async waitForEchartsCharts(previewEl: HTMLElement, timeoutMs = 6000): Promise<void> {
+    const chartHosts = Array.from(
+      previewEl.querySelectorAll('.rp-radar-chart, [echarts]')
+    ) as HTMLElement[];
+
+    if (chartHosts.length === 0) return;
+
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      this.refreshEchartsInPreview(previewEl);
+
+      const allChartsReady = chartHosts.every(host => {
+        const canvas = host.querySelector('canvas') as HTMLCanvasElement | null;
+        if (!canvas) return false;
+        const rect = canvas.getBoundingClientRect();
+        return rect.width > 10 && rect.height > 10 && this.canvasHasVisibleContent(canvas);
+      });
+
+      if (allChartsReady) return;
+
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+    console.warn('[Relatório] Timeout aguardando graficos ECharts na preview antes do PDF.');
   }
 
   /**
@@ -4484,9 +4671,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
 
     try {
-      this.prewarmPreviewCache();
-      this.cdr.markForCheck();
-      await new Promise(resolve => setTimeout(resolve, 0));
       const fileName = `${this.getExportBaseName()}.pdf`;
       await this.exportReportPreviewAsPdf(fileName);
       return true;
@@ -5875,11 +6059,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             this.dataSource = originalDataSource;
           }
 
+          this.updateSelectedAvaliadoParticipantId();
+          this.createDataIndexes();
           this.invalidateCache();
-          const reportData = this.pdfMakeService.prepareReportDataFromComponent(this);
-          const filename = `relatorio-${avaliado.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.pdf`;
-          // Usa Cloud Function para gerar PDF (mesma qualidade do individual)
-          const blob = await this.pdfMakeService.generateReportBlobFromCloudFunction(reportData, filename);
+
+          const filename = `${this.getExportBaseName()}.pdf`;
+          const blob = await this.exportReportPreviewAsPdfBlob(filename);
           zip.file(filename, blob);
         } catch (err: any) {
           this.batchErrors.push({ name: avaliado, error: err?.message || 'Erro desconhecido' });
@@ -6214,11 +6399,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.projectSelectionRequired = true;
     this.filterProjectControl.setValue('', { emitEvent: false });
-    this.snackBar.open(
-      this.t('Esta avaliação existe em mais de um projeto — selecione o ciclo desejado.'),
-      this.t('Fechar'),
-      { duration: 4500 }
-    );
+    if (!this.isBatchGenerating) {
+      this.snackBar.open(
+        this.t('Esta avaliação existe em mais de um projeto — selecione o ciclo desejado.'),
+        this.t('Fechar'),
+        { duration: 4500 }
+      );
+    }
     return false;
   }
 
@@ -6281,7 +6468,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       await this.loadClientAssessmentsAndProjectMap(clientId);
 
-      if (this.clientAssessments.length === 1 && !this.pendingQueryProjectId) {
+      if (
+        this.clientAssessments.length === 1 &&
+        !this.pendingQueryProjectId &&
+        !this.isBatchGenerating
+      ) {
         const only = this.clientAssessments[0];
         this.assessmentSearchControl.setValue(only.name, { emitEvent: false });
         if (loadGeneration === this.filterContextGeneration) {
@@ -6519,13 +6710,177 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (action === 'batchPdf') {
+      // Geração em lote PDF desabilitada nesta versão.
+      this.snackBar.open(
+        'Exportação em lote de PDF temporariamente indisponível.',
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return;
+      /*
       this.batchSelectedParticipants = new Set(this.avaliadosDisponiveis);
       await this.generateBatchReports();
       return;
+      */
     }
 
     if (action === 'docx') {
       await this.exportarRelatorioDOCX();
+    }
+  }
+
+  /** Exporta PDFs de vários projetos do mesmo cliente em um único ZIP. */
+  private parseProjectTemplateMap(param: string | undefined): Map<string, string> {
+    const map = new Map<string, string>();
+    if (!param) return map;
+
+    param.split('|').forEach(pair => {
+      const separatorIndex = pair.indexOf(':');
+      if (separatorIndex <= 0) return;
+      const projectId = pair.slice(0, separatorIndex);
+      const templateId = pair.slice(separatorIndex + 1);
+      if (projectId && templateId) {
+        map.set(projectId, templateId);
+      }
+    });
+
+    return map;
+  }
+
+  private clearClientBatchQueryParams(): void {
+    this.suppressQueryParamsHandler = true;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        exportAction: null,
+        projectIds: null,
+        projectTemplates: null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    }).finally(() => {
+      queueMicrotask(() => {
+        this.suppressQueryParamsHandler = false;
+      });
+    });
+  }
+
+  private async executeClientBatchPdfExport(
+    projectIds: string[],
+    templateByProject: Map<string, string>
+  ): Promise<void> {
+    if (this.isBatchGenerating) return;
+
+    this.isBatchGenerating = true;
+    this.batchErrors = [];
+    this.batchTotal = projectIds.length;
+    this.batchProgress = 0;
+    this.batchCurrentName = '';
+    this.selectedTabIndex = 2;
+    this.loadingService.show('Gerando relatórios em ZIP...');
+    this.cdr.markForCheck();
+
+    const originalDataSource = this.dataSource;
+    const originalSelectedAvaliado = this.selectedAvaliado;
+    let generatedCount = 0;
+
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      for (let p = 0; p < projectIds.length; p++) {
+        const projectId = projectIds[p];
+        const project = this.filterProjects.find(item => item.id === projectId);
+        const projectLabel = project?.name || projectId;
+        this.batchProgress = p;
+        this.batchCurrentName = projectLabel;
+        this.cdr.markForCheck();
+        await new Promise(r => setTimeout(r, 0));
+
+        try {
+          const templateId = templateByProject.get(projectId);
+          if (!templateId) {
+            this.batchErrors.push({
+              name: projectLabel,
+              error: this.t('Template não selecionado para o projeto.'),
+            });
+            continue;
+          }
+
+          await this.initializeReportFromProject(projectId, templateId);
+          this.fillCompetenciasInReportSections();
+
+          if (!this.avaliadosDisponiveis.length || this.competencias.length === 0) {
+            this.batchErrors.push({
+              name: projectLabel,
+              error: this.t('Sem avaliados ou competências configuradas.'),
+            });
+            continue;
+          }
+
+          const projectDataSource = [...this.dataSource];
+          const folderName = this.sanitizeFileNamePart(projectLabel, 'Projeto');
+
+          for (const avaliado of this.avaliadosDisponiveis) {
+            this.selectedAvaliado = avaliado;
+            this.avaliadoControl.setValue(avaliado, { emitEvent: false });
+            this.dataSource = projectDataSource;
+            this.updateSelectedAvaliadoParticipantId();
+            this.createDataIndexes();
+            this.invalidateCache();
+
+            const filename = `${this.getExportBaseName()}.pdf`;
+            const blob = await this.exportReportPreviewAsPdfBlob(filename);
+            zip.file(`${folderName}/${filename}`, blob);
+            generatedCount++;
+          }
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : this.t('Erro desconhecido');
+          this.batchErrors.push({ name: projectLabel, error: message });
+        }
+      }
+
+      if (generatedCount === 0) {
+        this.snackBar.open(
+          this.t('Nenhum relatório gerado para os projetos selecionados.'),
+          this.t('Fechar'),
+          { duration: 5000 }
+        );
+        return;
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const clientName = this.sanitizeFileNamePart(this.getClientName(), 'Cliente');
+      const zipFilename = `${clientName}-relatorios-${new Date().toISOString().slice(0, 10)}.zip`;
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = zipFilename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      this.snackBar.open(
+        this.batchErrors.length
+          ? this.t('{{count}} PDF(s) gerados. {{errors}} projeto(s) com falha.')
+              .replace('{{count}}', String(generatedCount))
+              .replace('{{errors}}', String(this.batchErrors.length))
+          : this.t('{{count}} relatório(s) empacotados em {{file}}!')
+              .replace('{{count}}', String(generatedCount))
+              .replace('{{file}}', zipFilename),
+        this.t('Fechar'),
+        { duration: 6000 }
+      );
+    } finally {
+      this.dataSource = originalDataSource;
+      this.selectedAvaliado = originalSelectedAvaliado;
+      this.updateSelectedAvaliadoParticipantId();
+      this.createDataIndexes();
+      this.invalidateCache();
+      this.isBatchGenerating = false;
+      this.batchProgress = this.batchTotal;
+      this.loadingService.hide();
+      this.clearClientBatchQueryParams();
+      this.cdr.markForCheck();
     }
   }
 
@@ -7083,6 +7438,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Métodos para tipos de seção
   isSecaoTipo(secaoCtrl: any, tipo: string): boolean {
     return secaoCtrl.get('tipo')?.value === tipo;
+  }
+
+  isSecaoHtmlBruto(index: number): boolean {
+    const secao = this.relatorioConfiguracao[index];
+    return secao?.tipo === 'capa' && secao['htmlBruto'] === true;
+  }
+
+  setSecaoHtmlBruto(index: number, htmlBruto: boolean): void {
+    const secao = this.relatorioConfiguracao[index];
+    if (!secao || secao.tipo !== 'capa') return;
+    secao['htmlBruto'] = htmlBruto;
+    this.atualizarSecaoConfiguracao(index);
   }
 
   // Método para aplicar template rico à seção

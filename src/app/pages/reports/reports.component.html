@@ -803,7 +803,7 @@
                   </mat-form-field>
 
                   <div *ngIf="isSecaoTipo(secaoCtrl, 'texto') || isSecaoTipo(secaoCtrl, 'custom') || isSecaoTipo(secaoCtrl, 'capa') || isSecaoTipo(secaoCtrl, 'introducao')">
-                    <label class="rp-content-label">Conteúdo:</label>
+                    <label class="rp-content-label">{{ 'Conteúdo' | translate }}:</label>
 
                     <div *ngIf="isSecaoTipo(secaoCtrl, 'capa')" class="rp-tip-card rp-tip-card--blue">
                       <div class="rp-tip-card__header">
@@ -833,7 +833,29 @@
                       <p>{{ 'Crie uma introdução atrativa usando formatação rica. Adicione títulos, listas, destaques e imagens para explicar o propósito e contexto do relatório. Clique em "Aplicar Template" para usar um modelo pré-formatado.' | translate }}</p>
                     </div>
 
-                    <angular-editor formControlName="texto" (blur)="atualizarSecaoConfiguracao(i)" [config]="editorConfig"></angular-editor>
+                    <div *ngIf="isSecaoTipo(secaoCtrl, 'capa')" class="rp-capa-editor-mode">
+                      <mat-button-toggle-group
+                        [value]="isSecaoHtmlBruto(i) ? 'html' : 'rich'"
+                        (change)="setSecaoHtmlBruto(i, $event.value === 'html')">
+                        <mat-button-toggle value="rich">{{ 'Editor visual' | translate }}</mat-button-toggle>
+                        <mat-button-toggle value="html">{{ 'Modo HTML' | translate }}</mat-button-toggle>
+                      </mat-button-toggle-group>
+                      <p class="rp-capa-editor-mode__hint" *ngIf="isSecaoHtmlBruto(i)">
+                        {{ 'Cole ou edite HTML completo. O preview respeitará tags, estilos inline e classes.' | translate }}
+                      </p>
+                    </div>
+
+                    <textarea *ngIf="isSecaoHtmlBruto(i)"
+                              class="rp-html-editor"
+                              formControlName="texto"
+                              rows="16"
+                              (blur)="atualizarSecaoConfiguracao(i)"
+                              [placeholder]="'Cole o HTML da capa aqui...' | translate"></textarea>
+
+                    <angular-editor *ngIf="!isSecaoHtmlBruto(i)"
+                                    formControlName="texto"
+                                    (blur)="atualizarSecaoConfiguracao(i)"
+                                    [config]="editorConfig"></angular-editor>
                   </div>
 
                   <div *ngIf="isSecaoTipo(secaoCtrl, 'graficos')">
@@ -1173,7 +1195,7 @@
         </button>
       </div>
 
-      <!-- ── GERAÇÃO EM LOTE (somente na tab Visualizar) ── -->
+      <!-- ── GERAÇÃO EM LOTE (somente na tab Visualizar) — desabilitada nesta versão ──
       <div class="rp-batch-panel ui-only"
            *ngIf="!isIndividualMode && avaliadosDisponiveis.length > 0">
 
@@ -1191,7 +1213,6 @@
 
         <div class="rp-batch-body" *ngIf="batchPanelOpen">
 
-          <!-- Seleção de participantes -->
           <div class="rp-batch-section">
             <div class="rp-batch-section__header">
               <mat-icon>people</mat-icon>
@@ -1210,7 +1231,6 @@
             </div>
           </div>
 
-          <!-- Categorias de avaliadores -->
           <div class="rp-batch-section rp-batch-section--evaluators" *ngIf="availableCategoriesForBatch.length > 0">
             <div class="rp-batch-section__header rp-batch-section__header--clickable"
                  (click)="batchShowEvaluatorConfig = !batchShowEvaluatorConfig">
@@ -1240,7 +1260,6 @@
             </div>
           </div>
 
-          <!-- Erros da última execução -->
           <div class="rp-batch-errors" *ngIf="batchErrors.length > 0">
             <div class="rp-batch-error" *ngFor="let e of batchErrors">
               <mat-icon>error_outline</mat-icon>
@@ -1248,7 +1267,6 @@
             </div>
           </div>
 
-          <!-- Progresso -->
           <div class="rp-batch-progress-inline" *ngIf="isBatchGenerating">
             <mat-spinner diameter="20"></mat-spinner>
             <span>Gerando {{ batchProgress + 1 }}/{{ batchTotal }}: <strong>{{ batchCurrentName }}</strong></span>
@@ -1259,7 +1277,6 @@
             <span>{{ batchTotal > 0 ? ((batchProgress / batchTotal) * 100 | number:'1.0-0') : 0 }}%</span>
           </div>
 
-          <!-- Botão gerar -->
           <div class="rp-batch-actions">
             <button mat-flat-button color="primary"
                     class="rp-batch-generate-btn"
@@ -1271,8 +1288,9 @@
             <span class="rp-batch-hint" *ngIf="competencias.length === 0">Configure as competências primeiro</span>
           </div>
 
-        </div><!-- /rp-batch-body -->
-      </div><!-- /rp-batch-panel -->
+        </div>
+      </div>
+      -->
 
       <!-- Export loading overlay -->
       <div class="rp-export-overlay" *ngIf="isExporting">
@@ -1332,12 +1350,12 @@
               <!-- Bloco dinâmico: participante + respondentes (renderizado por Angular, não injetado no HTML) -->
               <div class="capa-info-block" *ngIf="selectedAvaliado || getContagemRespondentesCached().length > 0">
                 <div class="capa-info-block__avaliado" *ngIf="selectedAvaliado">
-                  <span class="capa-info-block__label">Avaliado(a)</span>
+                  <span class="capa-info-block__label">{{ 'Avaliado(a)' | translate }}</span>
                   <span class="capa-info-block__name">{{ selectedAvaliadoName }}</span>
                   <span class="capa-info-block__date">{{ today | date:'dd/MM/yyyy' }}</span>
                 </div>
                 <div class="capa-info-block__respondentes" *ngIf="getContagemRespondentesCached().length > 0">
-                  <span class="capa-info-block__resp-title">Avaliadores por Perfil</span>
+                  <span class="capa-info-block__resp-title">{{ 'Avaliadores por Perfil' | translate }}</span>
                   <div class="capa-info-block__resp-chips">
                     <span class="capa-info-block__chip"
                           *ngFor="let item of getContagemRespondentesCached()">

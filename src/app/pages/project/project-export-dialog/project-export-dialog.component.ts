@@ -67,6 +67,7 @@ export class ProjectExportDialogComponent implements OnInit {
       requiresTemplate: true,
       roles: ['admin_master', 'admin_client', 'viewer'],
     },
+    /*
     {
       id: 'batchPdf',
       icon: 'archive',
@@ -75,6 +76,7 @@ export class ProjectExportDialogComponent implements OnInit {
       requiresTemplate: true,
       roles: ['admin_master', 'admin_client', 'viewer'],
     },
+    */
     {
       id: 'excelBase',
       icon: 'grid_on',

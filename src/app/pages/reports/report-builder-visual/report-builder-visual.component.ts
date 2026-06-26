@@ -15,6 +15,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Subject, takeUntil } from 'rxjs';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
+import { TranslateModule } from '@ngx-translate/core';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { DocumentoConfig, DOCUMENTO_CONFIG_PADRAO } from '../../../services/report-pdfmake.service';
 
@@ -76,7 +78,9 @@ type TipoGraficoRelatorio =
     MatCheckboxModule,
     MatSlideToggleModule,
     DragDropModule,
-    AngularEditorModule
+    AngularEditorModule,
+    TranslateModule,
+    MatButtonToggleModule
   ],
   templateUrl: './report-builder-visual.component.html',
   styleUrls: ['./report-builder-visual.component.scss']

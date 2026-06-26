@@ -137,7 +137,7 @@
 
           <div class="search-bar__right">
             <div class="search-count">
-              {{ userDataSource.filteredData.length }} resultado{{ userDataSource.filteredData.length !== 1 ? 's' : '' }}
+              {{ userDataSource.filteredData.length }} {{ (userDataSource.filteredData.length === 1 ? 'resultado' : 'resultados') | translate }}
             </div>
             <button mat-raised-button class="btn-action"
               *ngIf="currentUserRole === 'admin_master'"

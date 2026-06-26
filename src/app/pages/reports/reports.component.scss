@@ -2593,6 +2593,29 @@ ngx-charts-bar-horizontal,
   color: #333;
 }
 
+.rp-capa-editor-mode {
+  margin-bottom: 12px;
+
+  &__hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #64748b;
+  }
+}
+
+.rp-html-editor {
+  width: 100%;
+  min-height: 280px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+  margin-bottom: 12px;
+}
+
 /* Tip cards */
 .rp-tip-card {
   padding: 12px 14px;

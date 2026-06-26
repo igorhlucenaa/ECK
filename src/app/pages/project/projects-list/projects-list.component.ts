@@ -39,6 +39,10 @@ import {
   ProjectExportDialogComponent,
   ProjectExportDialogResult,
 } from '../project-export-dialog/project-export-dialog.component';
+import {
+  ClientPdfBatchDialogComponent,
+  ClientPdfBatchDialogResult,
+} from '../client-pdf-batch-dialog/client-pdf-batch-dialog.component';
 import { ReportClientExportService } from 'src/app/services/report-client-export.service';
 import { LoadingService } from 'src/app/services/loading.service';
 
@@ -169,7 +173,7 @@ export class ProjectsListComponent implements OnInit {
       }
 
       this.displayedColumns = [
-        ...(this.isAdminMaster ? ['select'] : []),
+        ...(this.canBulkSelectProjects() ? ['select'] : []),
         'client',
         'name',
         'deadline',
@@ -526,6 +530,81 @@ export class ProjectsListComponent implements OnInit {
     } else {
       this.selectedProjectIds.add(id);
     }
+  }
+
+  canBulkSelectProjects(): boolean {
+    return this.isAdminMaster || this.isClienteAdmin || this.isViewer;
+  }
+
+  getSelectedProjects(): any[] {
+    return this.dataSource.data.filter(p => this.selectedProjectIds.has(p.id));
+  }
+
+  getSelectedProjectsClientId(): string | null {
+    const selected = this.getSelectedProjects();
+    if (selected.length === 0) return null;
+    const clientIds = new Set(selected.map(p => p.clientId).filter(Boolean));
+    return clientIds.size === 1 ? selected[0].clientId : null;
+  }
+
+  canExportSelectedProjectsPdf(): boolean {
+    // Geração em lote PDF desabilitada nesta versão.
+    return false;
+    /*
+    if (!this.isSomeProjectsSelected()) return false;
+    return !!this.getSelectedProjectsClientId();
+    */
+  }
+
+  async exportSelectedProjectsPdfZip(): Promise<void> {
+    // Geração em lote PDF desabilitada nesta versão — reativar ao subir a feature.
+    return;
+    /*
+    const selected = this.getSelectedProjects();
+    const clientId = this.getSelectedProjectsClientId();
+
+    if (!selected.length || !clientId) {
+      this.snackBar.open(
+        this.translate.instant('Selecione projetos do mesmo cliente para exportar em lote.'),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+      return;
+    }
+
+    const clientName = this.clientsMap[clientId] || clientId;
+    const dialogRef = this.dialog.open(ClientPdfBatchDialogComponent, {
+      width: '680px',
+      maxWidth: '95vw',
+      panelClass: 'client-pdf-batch-dialog-panel',
+      autoFocus: false,
+      data: {
+        clientId,
+        clientName,
+        projects: selected.map(p => ({
+          id: p.id,
+          name: p.name || p.id,
+          reportTemplateId: p.reportTemplateId as string | undefined,
+        })),
+      },
+    });
+
+    const result = (await dialogRef.afterClosed().toPromise()) as ClientPdfBatchDialogResult | undefined;
+    if (!result?.projectTemplates?.length) return;
+
+    const projectTemplates = result.projectTemplates
+      .map(item => `${item.projectId}:${item.templateId}`)
+      .join('|');
+
+    this.router.navigate(['/reports'], {
+      queryParams: {
+        clientId,
+        projectIds: result.projectTemplates.map(item => item.projectId).join(','),
+        projectTemplates,
+        exportAction: 'clientBatchPdf',
+      },
+    });
+    */
   }
 
   async deleteSelectedProjects(): Promise<void> {
