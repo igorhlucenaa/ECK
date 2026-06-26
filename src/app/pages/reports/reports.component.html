@@ -490,180 +490,177 @@
     </div>
     <div class="rp-tab-content">
 
-      <!-- Save/Load + Templates -->
-      <div class="rp-persist-cols">
+      <!-- Opção A: template como foco principal -->
+      <div class="rp-montar-flow">
 
-        <!-- ── Coluna: Meu Relatório ── -->
-        <div class="rp-persist-col">
-          <div class="rp-persist-col__header">
-            <div class="rp-persist-col__icon-wrap rp-persist-col__icon-wrap--report">
-              <mat-icon>bookmark</mat-icon>
-            </div>
-            <div>
-              <p class="rp-persist-col__title">Meu Relatório</p>
-              <p class="rp-persist-col__desc">Salve e recupere configurações específicas por avaliado</p>
-            </div>
+        <div class="rp-montar-guide">
+          <div class="rp-montar-guide__step">
+            <span class="rp-montar-guide__num">1</span>
+            <span class="rp-montar-guide__text">Escolha um template</span>
           </div>
-
-          <!-- Salvar -->
-          <div class="rp-persist-card">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon">save</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Salvar relatório</p>
-                <p class="rp-persist-card__hint">Registra a configuração atual com um nome</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon"
-                matTooltip="Salva a configuração atual das seções, textos e gráficos com um nome personalizado. Use para guardar um trabalho em andamento ou criar versões específicas para um avaliado."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <mat-form-field appearance="outline" class="rp-persist-card__field">
-              <mat-label>Nome do relatório</mat-label>
-              <input matInput [formControl]="nomeRelatorioControl" placeholder="Ex: Relatório João Silva">
-            </mat-form-field>
-            <!-- Badge de vínculo com template -->
-            <div class="rp-template-link-badge" *ngIf="selectedTemplateId.value">
-              <mat-icon>link</mat-icon>
-              <span>Vinculado ao template: <strong>{{ nomeTemplateSelecionado }}</strong></span>
-            </div>
-            <div class="rp-template-link-badge rp-template-link-badge--none" *ngIf="!selectedTemplateId.value">
-              <mat-icon>link_off</mat-icon>
-              <span>Sem vínculo — aplique um template ao lado para vincular ao salvar</span>
-            </div>
-            <div class="rp-persist-card__actions">
-              <button mat-flat-button class="btn-pc-primary" (click)="salvarRelatorioNoFirebase()">
-                <mat-icon>save</mat-icon> Salvar
-              </button>
-            </div>
+          <mat-icon class="rp-montar-guide__arrow">chevron_right</mat-icon>
+          <div class="rp-montar-guide__step">
+            <span class="rp-montar-guide__num">2</span>
+            <span class="rp-montar-guide__text">Edite seções abaixo</span>
           </div>
-
-          <!-- Carregar / Excluir -->
-          <div class="rp-persist-card">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon">history</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Carregar ou excluir relatório</p>
-                <p class="rp-persist-card__hint">Selecione um relatório salvo para carregar ou remover</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon"
-                matTooltip="Escolha um relatório salvo anteriormente para continuar editando, atualizar com as mudanças atuais ou removê-lo permanentemente."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <mat-form-field appearance="outline" class="rp-persist-card__field">
-              <mat-label>Selecionar relatório</mat-label>
-              <mat-select [formControl]="selectedReportId">
-                <mat-option *ngFor="let report of savedReports" [value]="report.id">{{ report.name }}</mat-option>
-              </mat-select>
-            </mat-form-field>
-            <div class="rp-persist-card__actions">
-              <button mat-stroked-button class="btn-pc-outline" (click)="carregarRelatorioSelecionado()" [disabled]="!selectedReportId.value">
-                <mat-icon>download</mat-icon> Carregar
-              </button>
-              <button mat-flat-button class="btn-pc-primary" *ngIf="selectedReportId.value" (click)="atualizarRelatorioNoFirebase()">
-                <mat-icon>sync</mat-icon> Atualizar
-              </button>
-              <button mat-stroked-button class="btn-pc-danger" *ngIf="selectedReportId.value" (click)="excluirRelatorio()"
-                matTooltip="Excluir este relatório permanentemente">
-                <mat-icon>delete_outline</mat-icon>
-              </button>
-              <button mat-icon-button class="btn-pc-clear" *ngIf="selectedReportId.value" (click)="selectedReportId.setValue(null)"
-                matTooltip="Remover seleção">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-          </div>
-
-          <!-- Resetar configuração -->
-          <div class="rp-persist-card rp-persist-card--reset">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon rp-persist-card__icon--reset">restart_alt</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Limpar configuração</p>
-                <p class="rp-persist-card__hint">Restaura o relatório para a estrutura padrão</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon rp-persist-card__info-icon--danger"
-                matTooltip="Descarta todas as seções e configurações atuais, restaurando o relatório para a estrutura padrão. Ação irreversível — salve antes se necessário."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <div class="rp-persist-card__actions">
-              <button mat-stroked-button class="btn-pc-danger" (click)="resetarRelatorio()">
-                <mat-icon>restart_alt</mat-icon> Limpar e resetar
-              </button>
-            </div>
+          <mat-icon class="rp-montar-guide__arrow">chevron_right</mat-icon>
+          <div class="rp-montar-guide__step">
+            <span class="rp-montar-guide__num">3</span>
+            <span class="rp-montar-guide__text">Visualize na aba Pré-visualizar</span>
           </div>
         </div>
 
-        <!-- ── Coluna: Templates ── -->
-        <div class="rp-persist-col">
-          <div class="rp-persist-col__header">
+        <div class="rp-template-active">
+          <div class="rp-template-active__header">
             <div class="rp-persist-col__icon-wrap rp-persist-col__icon-wrap--template">
-              <mat-icon>file_copy</mat-icon>
+              <mat-icon>layers</mat-icon>
             </div>
             <div>
-              <p class="rp-persist-col__title">Templates</p>
-              <p class="rp-persist-col__desc">Estruturas reutilizáveis para qualquer avaliado</p>
+              <p class="rp-template-active__title">Template ativo</p>
+              <p class="rp-template-active__desc">Estrutura reutilizável — aplique antes de editar</p>
             </div>
           </div>
 
-          <!-- Criar template -->
-          <div class="rp-persist-card">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon rp-persist-card__icon--template">add_circle</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Criar novo template</p>
-                <p class="rp-persist-card__hint">Salva a estrutura atual como template reutilizável</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon rp-persist-card__info-icon--template"
-                matTooltip="Cria um template com a estrutura atual de seções e textos. Templates são reutilizáveis para qualquer avaliado, sem guardar dados específicos de pessoa."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <mat-form-field appearance="outline" class="rp-persist-card__field">
-              <mat-label>Nome do template</mat-label>
-              <input matInput [formControl]="nomeTemplateControl" placeholder="Ex: Padrão Liderança">
-            </mat-form-field>
-            <div class="rp-persist-card__actions">
-              <button mat-flat-button class="btn-pc-template" (click)="salvarTemplateNoFirebase()">
-                <mat-icon>file_copy</mat-icon> Criar template
-              </button>
-            </div>
+          <div class="rp-template-active__chips">
+            <mat-chip-set>
+              <mat-chip *ngIf="builderHasUnsavedChanges" class="rp-chip--warn">
+                <mat-icon matChipAvatar>edit_note</mat-icon>
+                Alterações não salvas
+              </mat-chip>
+              <mat-chip *ngIf="nomeTemplateAplicado" class="rp-chip--template">
+                <mat-icon matChipAvatar>check_circle</mat-icon>
+                {{ nomeTemplateAplicado }}
+              </mat-chip>
+              <mat-chip *ngIf="!nomeTemplateAplicado && !builderHasUnsavedChanges" class="rp-chip--muted">
+                Nenhum template aplicado
+              </mat-chip>
+            </mat-chip-set>
           </div>
 
-          <!-- Aplicar / Atualizar / Excluir template -->
-          <div class="rp-persist-card">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon rp-persist-card__icon--template">layers</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Aplicar ou gerenciar template</p>
-                <p class="rp-persist-card__hint">Carregue, atualize ou exclua um template existente</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon rp-persist-card__info-icon--template"
-                matTooltip="Selecione um template para aplicá-lo ao relatório atual, sobrescrevendo a estrutura existente. Também é possível atualizar o template com as mudanças feitas ou excluí-lo permanentemente."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <mat-form-field appearance="outline" class="rp-persist-card__field">
-              <mat-label>Selecionar template</mat-label>
-              <mat-select [formControl]="selectedTemplateId">
-                <mat-option *ngFor="let template of savedTemplates" [value]="template.id">{{ template.name }}</mat-option>
-              </mat-select>
-            </mat-form-field>
-            <div class="rp-persist-card__actions">
-              <button mat-stroked-button class="btn-pc-outline-template" (click)="aplicarTemplateSelecionado()" [disabled]="!selectedTemplateId.value">
-                <mat-icon>download</mat-icon> Aplicar
-              </button>
-              <button mat-flat-button class="btn-pc-template" *ngIf="selectedTemplateId.value" (click)="atualizarTemplateNoFirebase()">
-                <mat-icon>sync</mat-icon> Atualizar
-              </button>
-              <button mat-stroked-button class="btn-pc-danger" *ngIf="selectedTemplateId.value" (click)="excluirTemplate()"
-                matTooltip="Excluir este template permanentemente">
-                <mat-icon>delete_outline</mat-icon>
-              </button>
-              <button mat-icon-button class="btn-pc-clear" *ngIf="selectedTemplateId.value" (click)="selectedTemplateId.setValue(null)"
-                matTooltip="Remover seleção">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
+          <mat-form-field appearance="outline" class="rp-template-active__field">
+            <mat-label>Template</mat-label>
+            <mat-select [formControl]="selectedTemplateId">
+              <mat-option *ngFor="let template of savedTemplates" [value]="template.id">
+                {{ template.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="rp-template-active__actions">
+            <button
+              mat-stroked-button
+              class="btn-pc-outline-template"
+              (click)="aplicarTemplateSelecionado()"
+              [disabled]="!selectedTemplateId.value">
+              <mat-icon>download</mat-icon>
+              Aplicar template
+            </button>
+            <button
+              mat-flat-button
+              class="btn-pc-template"
+              (click)="salvarAlteracoesNoTemplate()"
+              [disabled]="!appliedTemplateId"
+              matTooltip="Grava no Firebase a estrutura atual do editor no template aplicado">
+              <mat-icon>save</mat-icon>
+              Salvar alterações
+            </button>
+            <button mat-button type="button" class="rp-template-active__manage" (click)="abrirGerenciarTemplatesDialog()">
+              Gerenciar templates…
+            </button>
           </div>
         </div>
+
+        <mat-expansion-panel class="rp-rascunhos-panel">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon class="rp-rascunhos-panel__icon">bookmark</mat-icon>
+              Rascunho por avaliado (opcional)
+            </mat-panel-title>
+            <mat-panel-description>
+              Snapshots com competências e dados específicos
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <div class="rp-rascunhos-panel__content">
+            <div class="rp-persist-card">
+              <div class="rp-persist-card__top">
+                <mat-icon class="rp-persist-card__icon">save</mat-icon>
+                <div>
+                  <p class="rp-persist-card__name">Salvar rascunho</p>
+                  <p class="rp-persist-card__hint">Guarda a configuração atual vinculada a um avaliado</p>
+                </div>
+              </div>
+              <mat-form-field appearance="outline" class="rp-persist-card__field">
+                <mat-label>Nome do rascunho</mat-label>
+                <input matInput [formControl]="nomeRelatorioControl" placeholder="Ex: Relatório João Silva">
+              </mat-form-field>
+              <div class="rp-template-link-badge" *ngIf="appliedTemplateId">
+                <mat-icon>link</mat-icon>
+                <span>Vinculado ao template: <strong>{{ nomeTemplateAplicado }}</strong></span>
+              </div>
+              <div class="rp-template-link-badge rp-template-link-badge--none" *ngIf="!appliedTemplateId">
+                <mat-icon>link_off</mat-icon>
+                <span>Sem template aplicado — aplique um template acima antes de salvar</span>
+              </div>
+              <div class="rp-persist-card__actions">
+                <button mat-flat-button class="btn-pc-primary" (click)="salvarRelatorioNoFirebase()">
+                  <mat-icon>save</mat-icon>
+                  Salvar rascunho
+                </button>
+              </div>
+            </div>
+
+            <div class="rp-persist-card">
+              <div class="rp-persist-card__top">
+                <mat-icon class="rp-persist-card__icon">history</mat-icon>
+                <div>
+                  <p class="rp-persist-card__name">Carregar rascunho salvo</p>
+                  <p class="rp-persist-card__hint">Selecione e clique em Carregar — não carrega automaticamente</p>
+                </div>
+              </div>
+              <mat-form-field appearance="outline" class="rp-persist-card__field">
+                <mat-label>Rascunho salvo</mat-label>
+                <mat-select [formControl]="selectedReportId">
+                  <mat-option *ngFor="let report of savedReports" [value]="report.id">{{ report.name }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <div class="rp-persist-card__actions">
+                <button mat-stroked-button class="btn-pc-outline" (click)="carregarRelatorioSelecionado()" [disabled]="!selectedReportId.value">
+                  <mat-icon>download</mat-icon>
+                  Carregar rascunho
+                </button>
+                <button mat-flat-button class="btn-pc-primary" *ngIf="selectedReportId.value" (click)="atualizarRelatorioNoFirebase()">
+                  <mat-icon>sync</mat-icon>
+                  Atualizar rascunho
+                </button>
+                <button mat-stroked-button class="btn-pc-danger" *ngIf="selectedReportId.value" (click)="excluirRelatorio()">
+                  <mat-icon>delete_outline</mat-icon>
+                  Excluir
+                </button>
+                <button mat-icon-button class="btn-pc-clear" *ngIf="selectedReportId.value" (click)="selectedReportId.setValue(null)"
+                  matTooltip="Remover seleção">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <div class="rp-persist-card rp-persist-card--reset">
+              <div class="rp-persist-card__top">
+                <mat-icon class="rp-persist-card__icon rp-persist-card__icon--reset">restart_alt</mat-icon>
+                <div>
+                  <p class="rp-persist-card__name">Restaurar estrutura padrão</p>
+                  <p class="rp-persist-card__hint">Descarta seções atuais e volta ao layout inicial</p>
+                </div>
+              </div>
+              <div class="rp-persist-card__actions">
+                <button mat-stroked-button class="btn-pc-danger" (click)="resetarRelatorio()">
+                  <mat-icon>restart_alt</mat-icon>
+                  Limpar e resetar
+                </button>
+              </div>
+            </div>
+          </div>
+        </mat-expansion-panel>
 
       </div>
 
@@ -1340,8 +1337,9 @@
         </div>
 
         <div class="report-section"
-             [class.report-section--page-break-before]="secao['pageBreakAntes']"
+             [class.report-section--page-break-before]="secao['pageBreakAntes'] && secao.tipo !== 'janela_johari'"
              [class.report-section--page-break-after]="secao['pageBreakDepois']"
+             [class.report-section--johari]="secao.tipo === 'janela_johari'"
              *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
           <ng-container [ngSwitch]="secao.tipo">
 
@@ -1748,12 +1746,14 @@
               </div>
             </div>
 
-            <div *ngSwitchCase="'grafico_defasagem'">
-              <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+            <div *ngSwitchCase="'grafico_defasagem'" class="rp-defasagem-section">
+              <div class="rp-secao-header">
+                <h2>{{ secao.titulo }}</h2>
+                <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              </div>
               <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataDefasagem" class="rp-defasagem-preview">
                 <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao)" class="rp-defasagem-item">
-                  <h3 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">{{ comp.nome }}</h3>
+                  <h3 class="rp-defasagem-item__title">{{ comp.nome }}</h3>
                   <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
                 </div>
               </div>
@@ -1765,9 +1765,11 @@
               </ng-template>
             </div>
 
-            <div *ngSwitchCase="'janela_johari'">
-              <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+            <div *ngSwitchCase="'janela_johari'" class="rp-johari-section">
+              <div class="rp-secao-header">
+                <h2>{{ secao.titulo }}</h2>
+                <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              </div>
               <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataJohari" class="rp-johari-wrap">
                 <app-johari-window-chart [data]="getJohariWindowDataCached(secao)"></app-johari-window-chart>
               </div>

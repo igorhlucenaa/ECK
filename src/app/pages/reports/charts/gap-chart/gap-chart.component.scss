@@ -10,6 +10,18 @@
   padding: 16px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  page-break-inside: auto;
+  break-inside: auto;
+}
+
+.gap-chart-container .table-header {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  page-break-after: avoid;
+  break-after: avoid-page;
+}
+
+.gap-chart-container .table-row {
   page-break-inside: avoid;
   break-inside: avoid;
 }

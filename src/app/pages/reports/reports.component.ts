@@ -54,7 +54,11 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { GapChartComponent, GapChartDataItem } from './charts/gap-chart/gap-chart.component';
 import { ReportBuilderVisualComponent } from './report-builder-visual/report-builder-visual.component';
 import { SurveyDashboardComponent } from './survey-dashboard/survey-dashboard.component';
-import { Subject, from, of, takeUntil, tap, debounceTime, switchMap, filter, distinctUntilChanged } from 'rxjs';
+import { Subject, from, of, takeUntil, tap, debounceTime, switchMap, filter, distinctUntilChanged, firstValueFrom } from 'rxjs';
+import {
+  ReportTemplateManageDialogComponent,
+  ReportTemplateManageDialogData,
+} from './report-template-manage-dialog/report-template-manage-dialog.component';
 import { ConfirmDialogService } from '../../shared/confirm-dialog/confirm-dialog.service';
 import { environment } from 'src/enviroments/environment';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -687,16 +691,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.savedTemplates.find(t => t.id === this.selectedTemplateId.value)?.name || this.selectedTemplateId.value || '';
   }
 
+  get nomeTemplateAplicado(): string {
+    if (!this.appliedTemplateId) return '';
+    return this.savedTemplates.find(t => t.id === this.appliedTemplateId)?.name || this.appliedTemplateId;
+  }
+
   async onBuilderSaveRequested(): Promise<void> {
-    if (this.selectedTemplateId.value) {
-      await this.atualizarTemplateNoFirebase();
-      this.builderHasUnsavedChanges = false;
+    if (this.appliedTemplateId) {
+      await this.salvarAlteracoesNoTemplate();
     } else if (this.selectedReportId.value) {
       await this.atualizarRelatorioNoFirebase();
       this.builderHasUnsavedChanges = false;
     } else {
       this.snackBar.open(
-        this.t('Carregue um template ou relatório nos cards acima antes de salvar.'),
+        this.t('Aplique um template ou carregue um rascunho antes de salvar.'),
         this.t('Fechar'),
         { duration: 4000 }
       );
@@ -1058,6 +1066,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   nomeTemplateControl = new FormControl('');
   savedTemplates: { id: string, name: string }[] = [];
   selectedTemplateId = new FormControl('');
+  /** Template efetivamente aplicado ao editor (distinto da seleção no dropdown). */
+  appliedTemplateId: string | null = null;
 
   // �Ys? PERFORMANCE: Cache para cálculos pesados
   private calculosCache = new Map<string, any>();
@@ -1555,18 +1565,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         this.cdr.markForCheck();
       });
-
-    this.selectedReportId.valueChanges.subscribe(id => {
-      if (id) {
-        this.carregarRelatorioSelecionado();
-      }
-    });
-
-    this.selectedTemplateId.valueChanges.subscribe(id => {
-      if (id) {
-        this.aplicarTemplateSelecionado();
-      }
-    });
 
     // Invalidação de cache quando seções são adicionadas/removidas/reordenadas
     this.relatorioFormArray.valueChanges.subscribe(() => {
@@ -3419,7 +3417,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       competencias: sanitize(this.competencias),
       configuracao: sanitize(this.relatorioConfiguracao),
       documentoConfig: sanitize(this.documentoConfig),
-      templateId: this.selectedTemplateId.value || null,
+      templateId: this.appliedTemplateId || null,
       criadoEm: new Date()
     };
     try {
@@ -3486,7 +3484,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       competencias: sanitize(this.competencias),
       configuracao: sanitize(this.relatorioConfiguracao),
       documentoConfig: sanitize(this.documentoConfig),
-      templateId: this.selectedTemplateId.value || null,
+      templateId: this.appliedTemplateId || null,
       atualizadoEm: new Date()
     };
     try {
@@ -3522,8 +3520,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         // Restaurar vínculo com template (sem re-aplicar a estrutura, pois a config já foi carregada)
         if (reportData['templateId']) {
           this.selectedTemplateId.setValue(reportData['templateId'], { emitEvent: false });
+          this.appliedTemplateId = reportData['templateId'];
         } else {
           this.selectedTemplateId.setValue('', { emitEvent: false });
+          this.appliedTemplateId = null;
         }
 
       // Logar conteúdo das seções após carregar
@@ -3769,6 +3769,95 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       `</div>`;
   }
 
+  private normalizePdfPageBreaks(root: HTMLElement): void {
+    const sections = Array.from(root.querySelectorAll('.report-section'));
+    sections.forEach((node, index) => {
+      const section = node as HTMLElement;
+      if (!section.classList.contains('report-section--johari')) {
+        return;
+      }
+
+      section.classList.remove('report-section--page-break-before');
+      section.style.setProperty('break-before', 'auto', 'important');
+      section.style.setProperty('page-break-before', 'auto', 'important');
+      section.style.setProperty('break-after', 'auto', 'important');
+      section.style.setProperty('page-break-after', 'auto', 'important');
+      section.style.setProperty('break-inside', 'auto', 'important');
+      section.style.setProperty('page-break-inside', 'auto', 'important');
+      section.style.setProperty('min-height', '0', 'important');
+      section.style.setProperty('max-height', 'none', 'important');
+      section.style.setProperty('margin-bottom', '0', 'important');
+      section.style.setProperty('display', 'block', 'important');
+
+      const prev = sections[index - 1] as HTMLElement | undefined;
+      const prevForcedBreak = !!prev?.classList.contains('report-section--page-break-after');
+
+      if (!prevForcedBreak) {
+        const breaker = document.createElement('div');
+        breaker.className = 'pdf-page-break';
+        breaker.setAttribute('aria-hidden', 'true');
+        breaker.style.cssText =
+          'display:block;height:0;margin:0;padding:0;border:0;line-height:0;overflow:hidden;' +
+          'break-before:page !important;page-break-before:always !important;';
+        section.parentNode?.insertBefore(breaker, section);
+      }
+
+      const inner = section.querySelector('.rp-johari-section') as HTMLElement | null;
+      if (inner) {
+        inner.style.setProperty('display', 'flex', 'important');
+        inner.style.setProperty('flex-direction', 'column', 'important');
+        inner.style.setProperty('height', '252mm', 'important');
+        inner.style.setProperty('min-height', '252mm', 'important');
+        inner.style.setProperty('max-height', '252mm', 'important');
+        inner.style.setProperty('break-inside', 'avoid', 'important');
+        inner.style.setProperty('page-break-inside', 'avoid', 'important');
+        inner.style.setProperty('box-sizing', 'border-box', 'important');
+      }
+
+      const wrap = section.querySelector('.rp-johari-wrap') as HTMLElement | null;
+      if (wrap) {
+        wrap.style.setProperty('flex', '1 1 auto', 'important');
+        wrap.style.setProperty('display', 'flex', 'important');
+        wrap.style.setProperty('flex-direction', 'column', 'important');
+        wrap.style.setProperty('min-height', '0', 'important');
+      }
+
+      const chartHost = section.querySelector('app-johari-window-chart') as HTMLElement | null;
+      if (chartHost) {
+        chartHost.style.setProperty('flex', '1 1 auto', 'important');
+        chartHost.style.setProperty('display', 'flex', 'important');
+        chartHost.style.setProperty('flex-direction', 'column', 'important');
+        chartHost.style.setProperty('min-height', '0', 'important');
+      }
+
+      section.querySelectorAll('.johari-wrapper').forEach((wrapper) => {
+        const el = wrapper as HTMLElement;
+        el.style.setProperty('flex', '1 1 auto', 'important');
+        el.style.setProperty('display', 'flex', 'important');
+        el.style.setProperty('flex-direction', 'column', 'important');
+        el.style.setProperty('min-height', '0', 'important');
+        el.style.setProperty('max-width', '100%', 'important');
+        el.style.setProperty('margin', '0', 'important');
+      });
+
+      section.querySelectorAll('.plot-area').forEach((plot) => {
+        const el = plot as HTMLElement;
+        el.style.setProperty('flex', '1 1 auto', 'important');
+        el.style.setProperty('min-height', '0', 'important');
+        el.style.setProperty('height', 'auto', 'important');
+        el.style.setProperty('max-height', 'none', 'important');
+        el.style.setProperty('aspect-ratio', 'unset', 'important');
+        el.style.setProperty('width', '100%', 'important');
+      });
+
+      section.querySelectorAll('.legend-table').forEach((legend) => {
+        const el = legend as HTMLElement;
+        el.style.setProperty('flex', '0 0 auto', 'important');
+        el.style.setProperty('margin-top', '8px', 'important');
+      });
+    });
+  }
+
   private async buildReportPreviewHtml(
     previewEl: HTMLElement, fileName: string
   ): Promise<{ html: string; options: PdfHtmlRenderOptions }> {
@@ -3779,6 +3868,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.preserveSvgDimensions(previewEl, clone);
     this.replaceReportChipsForPdf(previewEl, clone);
     clone.querySelectorAll('.ui-only').forEach(el => el.remove());
+    this.normalizePdfPageBreaks(clone);
 
     // Remover header/footer fixos — serão substituídos pelos templates do Puppeteer
     clone.querySelector('.rp-doc-cabecalho')?.remove();
@@ -3829,14 +3919,108 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       break-after: avoid-page !important;
       page-break-after: avoid !important;
     }
-    .rp-johari-wrap,
-    .johari-wrapper,
-    app-johari-window-chart,
-    .legend-table,
-    .legend-table table,
+    .rp-secao-header {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
+    .pdf-page-break {
+      display: block !important;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      line-height: 0 !important;
+      overflow: hidden !important;
+      break-before: page !important;
+      page-break-before: always !important;
+    }
+    .report-section--johari {
+      break-before: auto !important;
+      page-break-before: auto !important;
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+      break-after: auto !important;
+      page-break-after: auto !important;
+      margin-bottom: 0 !important;
+      display: block !important;
+    }
+    .report-section--johari .rp-johari-section {
+      display: flex !important;
+      flex-direction: column !important;
+      height: 252mm !important;
+      min-height: 252mm !important;
+      max-height: 252mm !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    .report-section--johari .rp-secao-header {
+      flex: 0 0 auto !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    .report-section--johari .rp-johari-wrap {
+      flex: 1 1 auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      margin-top: 4px !important;
+      width: 100% !important;
+    }
+    .report-section--johari app-johari-window-chart,
+    .report-section--johari .johari-wrapper {
+      flex: 1 1 auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+    }
+    .report-section--johari .x-title {
+      flex: 0 0 auto !important;
+    }
+    .report-section--johari .plot-area {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: auto !important;
+      max-height: none !important;
+      aspect-ratio: unset !important;
+      width: 100% !important;
+    }
+    .report-section--johari .legend-table {
+      flex: 0 0 auto !important;
+      margin-top: 8px !important;
+      width: 100% !important;
+      font-size: 11px !important;
+    }
+    .report-section--johari .legend-table th,
+    .report-section--johari .legend-table td {
+      padding: 6px 8px !important;
+    }
+    .rp-defasagem-section,
+    .rp-defasagem-preview,
     .rp-defasagem-item,
-    .gap-chart-container,
-    app-gap-chart,
+    .gap-chart-container {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+    .gap-chart-container .table-header,
+    .gap-chart-container .table-row {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    .gap-chart-container .table-header {
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
+    .rp-defasagem-item__title {
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
     ngx-charts-bar-horizontal,
     .pdf-svg-chart,
     .capa-info-block {
@@ -3844,22 +4028,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       page-break-inside: avoid !important;
       display: block !important;
     }
-    .rp-johari-wrap,
-    .johari-wrapper {
-      width: 100% !important;
-      max-width: 100% !important;
-      margin-left: 0 !important;
-      margin-right: 0 !important;
-    }
-    .johari-wrapper .plot-area {
-      width: 100% !important;
-      max-width: 100% !important;
-      aspect-ratio: 1 / 1 !important;
-      height: auto !important;
-    }
-    .johari-wrapper .legend-table {
-      width: 100% !important;
-      max-width: 100% !important;
+    .report-section--page-break-after + .report-section.report-section--page-break-before:not(.report-section--johari) {
+      break-before: auto !important;
+      page-break-before: auto !important;
     }
     .tabela-frequencia,
     .tabela-distribuicao-notas,
@@ -4428,7 +4599,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Resetar relatório para configuração padrão
-  resetarRelatorio() {
+  async resetarRelatorio() {
+    const confirmado = await this.confirmDialog.confirm({
+      type: 'warning',
+      title: 'Limpar configuração',
+      message: 'Todas as seções serão restauradas para a estrutura padrão. Esta ação não pode ser desfeita.',
+      confirmText: 'Sim, limpar',
+      cancelText: 'Cancelar',
+    });
+    if (!confirmado) return;
+
+    this.appliedTemplateId = null;
+    this.selectedTemplateId.setValue('', { emitEvent: false });
     this.relatorioConfiguracao = [
       {
         id: 'capa',
@@ -4497,19 +4679,22 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.avaliadoControl.setValue('');
 
     this.atualizarFormArrayComConfiguracao();
+    this.builderHasUnsavedChanges = false;
     this.snackBar.open(this.t('Relatório resetado para configuração padrão!'), this.t('Fechar'), { duration: 2500 });
+    this.cdr.markForCheck();
   }
 
   // Salvar template no Firestore
-  async salvarTemplateNoFirebase() {
-    if (!this.nomeTemplateControl.value) {
+  async salvarTemplateNoFirebase(nomeOverride?: string): Promise<boolean> {
+    const nome = (nomeOverride ?? this.nomeTemplateControl.value ?? '').trim();
+    if (!nome) {
       this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
     }
     const clientId = this.getReportClientId();
     if (!clientId) {
       this.snackBar.open(this.t('Selecione um cliente antes de salvar o template.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
     }
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     // Salvar configuração de seções com competenciasIds zerados — templates são reutilizáveis
@@ -4519,20 +4704,22 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       competenciasIds: []
     }));
     const templateData = {
-      nome: this.nomeTemplateControl.value,
+      nome,
       clientId,
       configuracao: configuracaoSemCompetencias,
       documentoConfig: sanitize(this.documentoConfig),
       criadoEm: new Date()
     };
     try {
-      const docRef = await addDoc(collection(this.firestore, 'reportTemplates'), templateData);
+      await addDoc(collection(this.firestore, 'reportTemplates'), templateData);
       this.snackBar.open(this.t('Template salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
       this.nomeTemplateControl.reset();
-      this.carregarTemplatesSalvos();
+      await this.carregarTemplatesSalvos();
+      return true;
     } catch (e) {
       console.error('Erro ao salvar template: ', e);
       this.snackBar.open(this.t('Ocorreu um erro ao salvar o template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
     }
   }
 
@@ -4581,28 +4768,97 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  async excluirTemplate() {
+  async excluirTemplate(): Promise<boolean> {
     const id = this.selectedTemplateId.value;
     if (!id) {
       this.snackBar.open(this.t('Selecione um template para excluir.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
     }
     const nome = this.savedTemplates.find(t => t.id === id)?.name || id;
     const confirmado = await this.confirmDialog.confirmDelete(nome);
-    if (!confirmado) return;
+    if (!confirmado) return false;
+    return this.excluirTemplatePorId(id);
+  }
+
+  private async excluirTemplatePorId(id: string): Promise<boolean> {
     try {
       await deleteDoc(doc(this.firestore, 'reportTemplates', id));
       this.snackBar.open(this.t('Template excluído com sucesso!'), this.t('Fechar'), { duration: 3000 });
-      this.selectedTemplateId.setValue('');
+      if (this.appliedTemplateId === id) {
+        this.appliedTemplateId = null;
+      }
+      if (this.selectedTemplateId.value === id) {
+        this.selectedTemplateId.setValue('');
+      }
       await this.carregarTemplatesSalvos();
+      this.cdr.markForCheck();
+      return true;
     } catch {
       this.snackBar.open(this.t('Erro ao excluir template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
     }
+  }
+
+  async salvarAlteracoesNoTemplate(): Promise<void> {
+    if (!this.appliedTemplateId) {
+      this.snackBar.open(
+        this.t('Aplique um template antes de salvar alterações.'),
+        this.t('Fechar'),
+        { duration: 3500 }
+      );
+      return;
+    }
+    this.selectedTemplateId.setValue(this.appliedTemplateId, { emitEvent: false });
+    const ok = await this.atualizarTemplateNoFirebase();
+    if (ok) {
+      this.builderHasUnsavedChanges = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async abrirGerenciarTemplatesDialog(): Promise<void> {
+    const dialogData: ReportTemplateManageDialogData = {
+      templates: [...this.savedTemplates],
+      onCreate: (nome: string) => this.salvarTemplateNoFirebase(nome),
+      onUpdate: (id: string) => {
+        this.selectedTemplateId.setValue(id, { emitEvent: false });
+        return this.atualizarTemplateNoFirebase();
+      },
+      onDelete: (id: string) => this.excluirTemplatePorId(id),
+    };
+
+    const ref = this.dialog.open(ReportTemplateManageDialogComponent, {
+      width: '520px',
+      panelClass: 'report-template-manage-dialog-panel',
+      data: dialogData,
+    });
+
+    const result = await firstValueFrom(ref.afterClosed());
+    if (result?.refresh) {
+      await this.carregarTemplatesSalvos();
+    }
+    if (result?.selectedTemplateId) {
+      this.selectedTemplateId.setValue(result.selectedTemplateId, { emitEvent: false });
+    }
+    this.cdr.markForCheck();
   }
 
   // Aplicar template selecionado ao relatório atual
   async aplicarTemplateSelecionado() {
     if (!this.selectedTemplateId.value) return;
+
+    if (this.builderHasUnsavedChanges) {
+      const confirmado = await this.confirmDialog.confirm({
+        type: 'warning',
+        title: 'Aplicar template',
+        message: 'Isso substituirá as alterações não salvas na estrutura atual.',
+        itemName: this.nomeTemplateSelecionado,
+        confirmText: 'Sim, aplicar',
+        cancelText: 'Cancelar',
+      });
+      if (!confirmado) return;
+    }
+
     const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
     const templateSnap = await getDoc(templateRef);
     if (!templateSnap.exists()) {
@@ -4653,6 +4909,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.atualizarFormArrayComConfiguracao();
     this.atualizarPerguntasBloqueadas();
     this.invalidateCache();
+    this.appliedTemplateId = this.selectedTemplateId.value;
     this.builderHasUnsavedChanges = false;
     this.snackBar.open(this.t('Template aplicado!'), this.t('Fechar'), { duration: 2500 });
     this.cdr.markForCheck();
@@ -5783,10 +6040,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Adiciona método para atualizar template existente
-  async atualizarTemplateNoFirebase() {
+  async atualizarTemplateNoFirebase(): Promise<boolean> {
     if (!this.selectedTemplateId.value) {
       this.snackBar.open(this.t('Selecione um template para editar.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
     }
     // Usa o nome do campo ou, se vazio, o nome do template já salvo
     const nomeTemplate = this.nomeTemplateControl.value
@@ -5794,12 +6051,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       || '';
     if (!nomeTemplate) {
       this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
     }
     const clientId = this.getReportClientId();
     if (!clientId) {
       this.snackBar.open(this.t('Selecione um cliente antes de atualizar o template.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
     }
     const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
     // Sanitizar undefined antes de salvar no Firestore (JSON.parse/stringify remove undefined)
@@ -5815,10 +6072,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       await setDoc(templateRef, templateData, { merge: true });
       this.snackBar.open(this.t('Template atualizado com sucesso!'), this.t('Fechar'), { duration: 3000 });
-      this.carregarTemplatesSalvos();
+      await this.carregarTemplatesSalvos();
+      return true;
     } catch (e) {
       console.error('Erro ao atualizar template: ', e);
       this.snackBar.open(this.t('Ocorreu um erro ao atualizar o template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
     }
   }
 
@@ -6184,6 +6443,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           });
 
           clone.querySelectorAll('.ui-only').forEach(el => el.remove());
+          this.normalizePdfPageBreaks(clone);
 
           htmlBlocks.push(clone.innerHTML);
         } catch (err: any) {

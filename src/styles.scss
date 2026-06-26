@@ -65,14 +65,82 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
     page-break-after: avoid !important;
   }
 
-  body.printing app-johari-window-chart,
-  body.printing app-gap-chart,
+  body.printing .report-section--johari {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0 !important;
+  }
+
+  body.printing .report-section--johari .rp-johari-section {
+    min-height: 252mm;
+    max-height: 252mm;
+    height: 252mm;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.printing .report-section--johari .rp-johari-wrap,
+  body.printing .report-section--johari app-johari-window-chart,
+  body.printing .report-section--johari .johari-wrapper {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.printing .report-section--johari app-johari-window-chart {
+    display: flex !important;
+  }
+
+  body.printing .report-section--johari .plot-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+    max-height: none !important;
+    aspect-ratio: unset !important;
+  }
+
+  body.printing .report-section--johari .legend-table {
+    flex: 0 0 auto;
+  }
+
+  body.printing .report-section--page-break-after + .report-section.report-section--page-break-before:not(.report-section--johari) {
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  body.printing .rp-defasagem-section,
+  body.printing .rp-defasagem-preview,
+  body.printing .rp-defasagem-item,
+  body.printing .gap-chart-container {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  body.printing .gap-chart-container .table-header,
+  body.printing .gap-chart-container .table-row {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
   body.printing ngx-charts-bar-horizontal,
   body.printing .pdf-svg-chart,
   body.printing .capa-info-block {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     display: block !important;
+  }
+
+  body.printing .rp-secao-header {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
   }
 
   body.printing table {

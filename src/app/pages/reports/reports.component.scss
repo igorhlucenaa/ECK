@@ -32,18 +32,134 @@
   break-after: page !important;
 }
 
+.report-section--page-break-after + .report-section.report-section--page-break-before:not(.report-section--johari) {
+  page-break-before: auto !important;
+  break-before: auto !important;
+}
+
+.report-section--johari {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin-bottom: 0 !important;
+}
+
+.report-section--johari .rp-johari-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 920px;
+  width: 100%;
+}
+
+.report-section--johari .rp-secao-header {
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+}
+
+.report-section--johari .rp-johari-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.report-section--johari app-johari-window-chart {
+  flex: 1 1 auto;
+  display: flex !important;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.report-section--johari .johari-wrapper {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.report-section--johari .x-title {
+  flex: 0 0 auto;
+}
+
+.report-section--johari .plot-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto !important;
+  max-height: none !important;
+  aspect-ratio: unset !important;
+  width: 100%;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.report-section--johari .legend-table {
+  flex: 0 0 auto;
+  margin-top: 10px;
+  font-size: 11px !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.report-section--johari .legend-table th,
+.report-section--johari .legend-table td {
+  padding: 6px 8px !important;
+}
+
 h1, h2, h3, h4, h5, h6 {
   page-break-after: avoid !important;
   break-after: avoid-page !important;
 }
 
-app-johari-window-chart,
-app-gap-chart,
-.rp-johari-wrap,
-.rp-defasagem-item,
-.johari-wrapper,
-.legend-table,
-.gap-chart-container,
+.rp-defasagem-section,
+.rp-defasagem-preview {
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+}
+
+.rp-defasagem-item {
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+  margin-bottom: 20px;
+}
+
+.rp-defasagem-item__title {
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  page-break-after: avoid !important;
+  break-after: avoid-page !important;
+}
+
+.gap-chart-container {
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+}
+
+.gap-chart-container .table-header {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+  page-break-after: avoid !important;
+  break-after: avoid-page !important;
+}
+
+.gap-chart-container .table-row {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
 ngx-charts-bar-horizontal,
 .pdf-svg-chart,
 .capa-info-block {
@@ -52,9 +168,11 @@ ngx-charts-bar-horizontal,
   display: block !important;
 }
 
-.legend-table table {
+.rp-secao-header {
   page-break-inside: avoid !important;
   break-inside: avoid !important;
+  page-break-after: avoid !important;
+  break-after: avoid-page !important;
 }
 
 .tabela-frequencia,
@@ -1460,8 +1578,7 @@ ngx-charts-bar-horizontal,
     display: none !important;
   }
 
-  /* Nenhum elemento pode ser cortado no meio entre páginas */
-  .report-section,
+  /* Evita cortar blocos pequenos; seções longas podem quebrar entre sub-blocos */
   .rp-section,
   mat-table,
   .rp-chart-wrap,
@@ -1472,15 +1589,76 @@ ngx-charts-bar-horizontal,
   .mat-mdc-table,
   ngx-charts-chart,
   .rp-summary-card,
-  .rp-johari-wrap,
-  .johari-wrapper,
-  .legend-table,
-  .gap-chart-container,
-  .rp-defasagem-item,
   tr,
-  .rp-perguntas-abertas-item {
+  .rp-perguntas-abertas-item,
+  .rp-secao-header,
+  .gap-chart-container .table-header,
+  .gap-chart-container .table-row,
+  ngx-charts-bar-horizontal,
+  .pdf-svg-chart,
+  .capa-info-block {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  .report-section,
+  .rp-defasagem-section,
+  .rp-defasagem-preview,
+  .rp-defasagem-item,
+  .gap-chart-container {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .report-section--johari {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0 !important;
+  }
+
+  .report-section--johari .rp-johari-section {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 920px;
+  }
+
+  .report-section--johari .rp-johari-wrap {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .report-section--johari app-johari-window-chart {
+    flex: 1 1 auto;
+    display: flex !important;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .report-section--johari .johari-wrapper {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .report-section--johari .plot-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+    max-height: none !important;
+    aspect-ratio: unset !important;
+    width: 100% !important;
+  }
+
+  .report-section--johari .legend-table {
+    flex: 0 0 auto;
+    width: 100% !important;
+    font-size: 11px !important;
   }
 
   .tabela-frequencia,
@@ -1488,23 +1666,6 @@ ngx-charts-bar-horizontal,
   .tabela-destaques {
     page-break-inside: auto !important;
     break-inside: auto !important;
-  }
-
-  .rp-johari-wrap,
-  .johari-wrapper {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .johari-wrapper .plot-area {
-    width: 100% !important;
-    max-width: 100% !important;
-    aspect-ratio: 1 / 1 !important;
-    height: auto !important;
-  }
-
-  .johari-wrapper .legend-table {
-    width: 100% !important;
   }
 
   /* Títulos de seção sempre ficam com o conteúdo seguinte */
@@ -2272,6 +2433,145 @@ ngx-charts-bar-horizontal,
 }
 
 /* ===================== TAB 2: MONTAR RELATÓRIO ===================== */
+.rp-montar-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.rp-montar-guide {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  border: 1px solid #e2e8f0;
+
+  &__step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #1B84FF;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  &__arrow {
+    color: #94a3b8;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.rp-template-active {
+  background: #fff;
+  border: 1px solid #ddd6fe;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 1px 3px rgba(91, 33, 182, 0.06);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  &__desc {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: #94a3b8;
+  }
+
+  &__chips {
+    mat-chip {
+      font-size: 12px;
+    }
+  }
+
+  &__field {
+    width: 100%;
+    max-width: 480px;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__manage {
+    margin-left: auto;
+    color: #7c3aed !important;
+    font-weight: 600;
+  }
+}
+
+.rp-chip--warn {
+  --mdc-chip-elevated-container-color: #fff7ed;
+  --mdc-chip-label-text-color: #c2410c;
+}
+
+.rp-chip--template {
+  --mdc-chip-elevated-container-color: #ede9fe;
+  --mdc-chip-label-text-color: #5b21b6;
+}
+
+.rp-chip--muted {
+  --mdc-chip-elevated-container-color: #f1f5f9;
+  --mdc-chip-label-text-color: #64748b;
+}
+
+.rp-rascunhos-panel {
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+
+  &__icon {
+    margin-right: 8px;
+    color: #1B84FF;
+    vertical-align: middle;
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 4px;
+  }
+}
+
 .rp-persist-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2896,15 +3196,12 @@ ngx-charts-bar-horizontal,
   width: 100%;
 }
 
+.rp-johari-section {
+  width: 100%;
+}
+
 .rp-defasagem-item {
   margin-bottom: 24px;
-
-  h4 {
-    margin-bottom: 12px;
-    color: #333;
-    border-bottom: 2px solid #e0e0e0;
-    padding-bottom: 8px;
-  }
 }
 
 /* Empty placeholder */
@@ -3296,6 +3593,12 @@ mat-table {
 
   .rp-persist-cols {
     grid-template-columns: 1fr;
+  }
+
+  .rp-template-active__manage {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .rp-config-selectors {

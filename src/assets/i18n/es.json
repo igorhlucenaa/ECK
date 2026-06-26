@@ -66,6 +66,8 @@
   "Apenas um admin MASTER pode remover outro admin MASTER.": "Apenas um admin MASTER pode remover outro admin MASTER.",
   "Aplicar template": "Aplicar plantilla",
   "Aplicar Template": "Aplicar Plantilla",
+  "Aplique um template antes de salvar alterações.": "Aplique una plantilla antes de guardar cambios.",
+  "Aplique um template ou carregue um rascunho antes de salvar.": "Aplique una plantilla o cargue un borrador antes de guardar.",
   "Aprovado": "Approved",
   "Aprovar Pedido": "Approve Order",
   "Are you sure you want to delete the group \"{{name}}\"?": "Are you sure you want to delete the group \"{{name}}\"?",
