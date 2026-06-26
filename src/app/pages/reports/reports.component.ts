@@ -7,6 +7,7 @@ import {
   getQuestionTypeStats,
   isParticipantIncludedInReports,
   resolveExportAnswer,
+  getExportAnswerTipoResposta,
   parseLikertAnswerForExport,
   normalizeQuestionType,
 } from './reports-utils';
@@ -447,7 +448,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           Competência: resolverCompetenciaPorPergunta(perguntaId),
           PerguntaId: perguntaId,
           Pergunta: this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || perguntaId),
-          TipoResposta: exportAnswer.kind === 'open' ? 'Aberta' : 'Escala',
+          TipoResposta: getExportAnswerTipoResposta(exportAnswer.kind),
           Resposta: exportAnswer.value,
         });
       }

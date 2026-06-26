@@ -13,6 +13,7 @@ import {
   isParticipantIncludedInReports,
   extractSurveyQuestions,
   resolveExportAnswer,
+  getExportAnswerTipoResposta,
   normalizeQuestionType,
   parseLikertAnswerForExport,
   resolveSurveyAnswer,
@@ -66,7 +67,7 @@ export interface RespostaExportRow {
   Competência: string;
   PerguntaId: string;
   Pergunta: string;
-  TipoResposta: 'Aberta' | 'Escala';
+  TipoResposta: 'Aberta' | 'Escala' | 'Sem resposta numérica';
   Resposta: number | string;
 }
 
@@ -414,7 +415,7 @@ export class ReportClientExportService {
           Competência: compPorPergunta.get(q.id) || '',
           PerguntaId: q.id,
           Pergunta: bundle.questionMap[q.id] || q.title || q.id,
-          TipoResposta: exportAnswer.kind === 'open' ? 'Aberta' : 'Escala',
+          TipoResposta: getExportAnswerTipoResposta(exportAnswer.kind),
           Resposta: exportAnswer.value,
         });
       }

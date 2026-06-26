@@ -222,6 +222,19 @@ export function formatOpenAnswerForExport(answer: unknown): string {
   return String(answer).trim();
 }
 
+/** Resposta "?" / não aplicável na escala Likert (não entra em médias). */
+export function isNonApplicableLikertAnswer(answer: unknown): boolean {
+  if (answer === null || answer === undefined || answer === '') return false;
+
+  if (typeof answer === 'string') {
+    const trimmed = answer.trim();
+    if (trimmed === '?') return true;
+    if (/^Column\s*\?$/i.test(trimmed)) return true;
+  }
+
+  return false;
+}
+
 export function parseLikertAnswerForExport(answer: unknown): number | null {
   if (typeof answer === 'number') {
     return answer >= 1 && answer <= 5 ? answer : null;
@@ -241,7 +254,23 @@ export function parseLikertAnswerForExport(answer: unknown): number | null {
 export type ExportAnswerResult =
   | { kind: 'open'; value: string }
   | { kind: 'likert'; value: number }
+  | { kind: 'na'; value: '?' }
   | { kind: 'skip' };
+
+export type ExportAnswerTipoResposta = 'Aberta' | 'Escala' | 'Sem resposta numérica';
+
+export function getExportAnswerTipoResposta(
+  kind: Exclude<ExportAnswerResult['kind'], 'skip'>
+): ExportAnswerTipoResposta {
+  switch (kind) {
+    case 'open':
+      return 'Aberta';
+    case 'likert':
+      return 'Escala';
+    case 'na':
+      return 'Sem resposta numérica';
+  }
+}
 
 /** Decide se a resposta é escala Likert ou texto aberto para exportação Excel. */
 export function resolveExportAnswer(
@@ -255,6 +284,10 @@ export function resolveExportAnswer(
     return texto ? { kind: 'open', value: texto } : { kind: 'skip' };
   }
 
+  if (isNonApplicableLikertAnswer(answer)) {
+    return { kind: 'na', value: '?' };
+  }
+
   if (tipo === 'question' || CLOSED_QUESTION_TYPES.includes(tipo as (typeof CLOSED_QUESTION_TYPES)[number])) {
     const likert = parseLikertAnswerForExport(answer);
     return likert !== null ? { kind: 'likert', value: likert } : { kind: 'skip' };
@@ -263,10 +296,6 @@ export function resolveExportAnswer(
   const likert = parseLikertAnswerForExport(answer);
   if (likert !== null) {
     return { kind: 'likert', value: likert };
-  }
-
-  if (typeof answer === 'string' && /Column\s*\d+/i.test(answer)) {
-    return { kind: 'skip' };
   }
 
   const texto = formatOpenAnswerForExport(answer);
