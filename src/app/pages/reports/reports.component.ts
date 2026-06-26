@@ -1,5 +1,15 @@
 ﻿import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
-import { parseNumeric, exportToCSV, filterQuestionsByType, computeConsolidation, getQuestionTypeStats, isParticipantIncludedInReports } from './reports-utils';
+import {
+  parseNumeric,
+  exportToCSV,
+  filterQuestionsByType,
+  computeConsolidation,
+  getQuestionTypeStats,
+  isParticipantIncludedInReports,
+  resolveExportAnswer,
+  parseLikertAnswerForExport,
+  normalizeQuestionType,
+} from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
@@ -380,40 +390,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Converte respostas tipo "Column N" para número (1..5)
   private parseLikertAnswer(answer: unknown): number | null {
-    if (typeof answer === 'number') {
-      return answer >= 1 && answer <= 5 ? answer : null;
-    }
-    if (typeof answer === 'string') {
-      const match = answer.match(/Column\s*(\d+)/);
-      if (match) {
-        const n = parseInt(match[1], 10);
-        return n >= 1 && n <= 5 ? n : null;
-      }
-      const parsed = parseFloat(answer);
-      return parsed >= 1 && parsed <= 5 ? parsed : null;
-    }
-    return null;
-  }
-
-  private formatOpenAnswerForExport(answer: unknown): string {
-    if (answer === null || answer === undefined) return '';
-
-    if (typeof answer === 'string') {
-      return answer.trim();
-    }
-
-    if (Array.isArray(answer)) {
-      return answer.map(item => String(item ?? '').trim()).filter(Boolean).join(' | ');
-    }
-
-    if (typeof answer === 'object') {
-      const entries = Object.entries(answer as Record<string, unknown>)
-        .map(([key, value]) => `${key}: ${String(value ?? '').trim()}`)
-        .filter(item => !item.endsWith(':'));
-      return entries.join(' | ');
-    }
-
-    return String(answer).trim();
+    return parseLikertAnswerForExport(answer);
   }
 
   // Exporta base de dados plana (uma linha por resposta por pergunta)
@@ -423,10 +400,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Coletar perguntas visíveis (ou todas)
     const perguntasIds: string[] = this.allQuestions?.map(q => q.id) || Object.keys(this.questionMap || {});
-    const openTypes = new Set(['text', 'comment', 'multipletext']);
-    const tipoPerguntaPorId = new Map((this.allQuestions || []).map(q => [q.id, (q.type || '').toLowerCase()]));
+    const tipoPerguntaPorId = new Map(
+      (this.allQuestions || []).map(q => [q.id, normalizeQuestionType(q.type)])
+    );
     const competenciaPorPergunta = new Map<string, string>();
 
     for (const comp of this.competencias || []) {
@@ -451,23 +428,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return '';
     };
 
-    const linhas: any[] = [];
+    const linhas: Record<string, string | number>[] = [];
     for (const row of this.dataSource) {
       for (const perguntaId of perguntasIds) {
         if (!(perguntaId in row)) continue;
-        const valorOriginal = row[perguntaId];
-        const tipoPergunta = tipoPerguntaPorId.get(perguntaId) || '';
 
-        let respostaExportacao: number | string | null = null;
-        if (openTypes.has(tipoPergunta)) {
-          const texto = this.formatOpenAnswerForExport(valorOriginal);
-          if (!texto) continue;
-          respostaExportacao = texto;
-        } else {
-          const valorLikert = this.parseLikertAnswer(valorOriginal);
-          if (valorLikert === null) continue;
-          respostaExportacao = valorLikert;
-        }
+        const exportAnswer = resolveExportAnswer(row[perguntaId], tipoPerguntaPorId.get(perguntaId));
+        if (exportAnswer.kind === 'skip') continue;
 
         linhas.push({
           AssessmentId: this.selectedAssessmentId || '',
@@ -480,7 +447,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           Competência: resolverCompetenciaPorPergunta(perguntaId),
           PerguntaId: perguntaId,
           Pergunta: this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || perguntaId),
-          Resposta: respostaExportacao,
+          TipoResposta: exportAnswer.kind === 'open' ? 'Aberta' : 'Escala',
+          Resposta: exportAnswer.value,
         });
       }
     }
@@ -490,9 +458,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(linhas);
+    const linhasAbertas = linhas.filter(l => l['TipoResposta'] === 'Aberta');
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Base');
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(linhas), 'Base');
+    if (linhasAbertas.length > 0) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(linhasAbertas),
+        'Perguntas Abertas'
+      );
+    }
 
     const fileName = this.getExportFileName('xlsx');
 
@@ -2019,8 +1994,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             questions.forEach(question => {
               let resposta: any = null;
 
-              // Suporte a estrutura aninhada: perguntaX -> Row N -> "Column M"
-              // Ex.: question.id = "pergunta4_Row 1" �?' baseId = "pergunta4", rowKey = "Row 1"
               const matrixMatch = question.id.match(/^(pergunta\d+)_Row\s*(\d+)$/);
               if (matrixMatch) {
                 const baseId = matrixMatch[1];
@@ -2031,14 +2004,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
                 }
               }
 
-              // Fallback: tentar acesso direto (para perguntas não-matriz ou quando já vem "perguntaX_Row N")
               if (resposta === null || resposta === undefined) {
                 resposta = resultData['surveyData'][question.id] ?? null;
               }
 
               row[question.id] = resposta ?? null;
 
-              this.debugLog(`  �Y"� Pergunta ${question.id}:`, {
+              this.debugLog(`  Pergunta ${question.id}:`, {
                 resposta,
                 tipo: typeof resposta,
                 valorFinal: row[question.id]

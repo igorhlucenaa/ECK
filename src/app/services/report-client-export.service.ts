@@ -9,7 +9,14 @@ import {
   where,
 } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
-import { isParticipantIncludedInReports } from '../pages/reports/reports-utils';
+import {
+  isParticipantIncludedInReports,
+  extractSurveyQuestions,
+  resolveExportAnswer,
+  normalizeQuestionType,
+  parseLikertAnswerForExport,
+  resolveSurveyAnswer,
+} from '../pages/reports/reports-utils';
 
 export interface ClientExportProjectOption {
   id: string;
@@ -59,6 +66,7 @@ export interface RespostaExportRow {
   Competência: string;
   PerguntaId: string;
   Pergunta: string;
+  TipoResposta: 'Aberta' | 'Escala';
   Resposta: number | string;
 }
 
@@ -226,6 +234,14 @@ export class ReportClientExportService {
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(resumoRows), 'Resumo');
     if (respostaRows.length > 0) {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(respostaRows), 'Respostas');
+      const respostasAbertas = respostaRows.filter(r => r.TipoResposta === 'Aberta');
+      if (respostasAbertas.length > 0) {
+        XLSX.utils.book_append_sheet(
+          workbook,
+          XLSX.utils.json_to_sheet(respostasAbertas),
+          'Perguntas Abertas'
+        );
+      }
     }
     XLSX.writeFile(workbook, fileName);
 
@@ -263,19 +279,7 @@ export class ReportClientExportService {
   }
 
   private parseLikertAnswer(answer: unknown): number | null {
-    if (typeof answer === 'number') {
-      return answer >= 1 && answer <= 5 ? answer : null;
-    }
-    if (typeof answer === 'string') {
-      const match = answer.match(/Column\s*(\d+)/i);
-      if (match) {
-        const n = parseInt(match[1], 10);
-        return n >= 1 && n <= 5 ? n : null;
-      }
-      const parsed = parseFloat(answer);
-      return parsed >= 1 && parsed <= 5 ? parsed : null;
-    }
-    return null;
+    return parseLikertAnswerForExport(answer);
   }
 
   private matchesAvaliado(row: DataRow, avaliadoNome: string, avaliadoId: string): boolean {
@@ -378,8 +382,7 @@ export class ReportClientExportService {
     avaliadoNome: string,
     avaliadoId: string
   ): RespostaExportRow[] {
-    const openTypes = new Set(['text', 'comment', 'multipletext']);
-    const tipoPorId = new Map(bundle.questions.map(q => [q.id, (q.type || '').toLowerCase()]));
+    const tipoPorId = new Map(bundle.questions.map(q => [q.id, normalizeQuestionType(q.type)]));
     const compPorPergunta = new Map<string, string>();
     for (const comp of bundle.competencias) {
       for (const pid of comp.perguntasIds || []) {
@@ -393,19 +396,9 @@ export class ReportClientExportService {
 
       for (const q of bundle.questions) {
         if (!(q.id in row)) continue;
-        const valorOriginal = row[q.id];
-        const tipo = tipoPorId.get(q.id) || '';
-        let resposta: number | string | null = null;
 
-        if (openTypes.has(tipo)) {
-          const texto = this.formatOpenAnswer(valorOriginal);
-          if (!texto) continue;
-          resposta = texto;
-        } else {
-          const likert = this.parseLikertAnswer(valorOriginal);
-          if (likert === null) continue;
-          resposta = likert;
-        }
+        const exportAnswer = resolveExportAnswer(row[q.id], tipoPorId.get(q.id));
+        if (exportAnswer.kind === 'skip') continue;
 
         linhas.push({
           Cliente: clientName,
@@ -421,26 +414,12 @@ export class ReportClientExportService {
           Competência: compPorPergunta.get(q.id) || '',
           PerguntaId: q.id,
           Pergunta: bundle.questionMap[q.id] || q.title || q.id,
-          Resposta: resposta,
+          TipoResposta: exportAnswer.kind === 'open' ? 'Aberta' : 'Escala',
+          Resposta: exportAnswer.value,
         });
       }
     }
     return linhas;
-  }
-
-  private formatOpenAnswer(answer: unknown): string {
-    if (answer === null || answer === undefined) return '';
-    if (typeof answer === 'string') return answer.trim();
-    if (Array.isArray(answer)) {
-      return answer.map(item => String(item ?? '').trim()).filter(Boolean).join(' | ');
-    }
-    if (typeof answer === 'object') {
-      return Object.entries(answer as Record<string, unknown>)
-        .map(([key, value]) => `${key}: ${String(value ?? '').trim()}`)
-        .filter(item => !item.endsWith(':'))
-        .join(' | ');
-    }
-    return String(answer).trim();
   }
 
   private async loadProjectDataBundle(
@@ -461,7 +440,7 @@ export class ReportClientExportService {
     const assessmentData = assessmentSnap.data();
     const assessmentName =
       assessmentData['name'] || assessmentData['surveyJSON']?.['title'] || assessmentId;
-    const { questions, questionMap } = this.extractQuestions(assessmentData['surveyJSON']);
+    const { questions, questionMap } = extractSurveyQuestions(assessmentData['surveyJSON']);
     const competencias = await this.loadCompetencias(assessmentId);
 
     const evaluatorToAvaliadoId = new Map<string, string>();
@@ -581,20 +560,7 @@ export class ReportClientExportService {
       const surveyData = resultData['surveyData'] as Record<string, unknown> | undefined;
       if (surveyData) {
         for (const question of questions) {
-          let resposta: unknown = null;
-          const matrixMatch = question.id.match(/^(pergunta\d+)_Row\s*(\d+)$/i);
-          if (matrixMatch) {
-            const baseId = matrixMatch[1];
-            const rowKey = `Row ${matrixMatch[2]}`;
-            const grupo = surveyData[baseId];
-            if (grupo && typeof grupo === 'object') {
-              resposta = (grupo as Record<string, unknown>)[rowKey] ?? null;
-            }
-          }
-          if (resposta === null || resposta === undefined) {
-            resposta = surveyData[question.id] ?? null;
-          }
-          row[question.id] = resposta;
+          row[question.id] = resolveSurveyAnswer(surveyData, question);
         }
       }
 
@@ -627,63 +593,6 @@ export class ReportClientExportService {
       competencias,
       dataSource,
     };
-  }
-
-  private extractQuestions(surveyJSON: unknown): {
-    questions: QuestionExport[];
-    questionMap: Record<string, string>;
-  } {
-    const questions: QuestionExport[] = [];
-    const questionMap: Record<string, string> = {};
-    if (!surveyJSON || typeof surveyJSON !== 'object') {
-      return { questions, questionMap };
-    }
-
-    const pages = (surveyJSON as { pages?: unknown[] }).pages || [];
-    for (const page of pages) {
-      const elements = (page as { elements?: unknown[] }).elements || [];
-      for (const element of elements) {
-        const el = element as {
-          type?: string;
-          name?: string;
-          title?: string | { pt?: string };
-          rows?: { value?: string; text?: string | { pt?: string } }[];
-        };
-
-        if (
-          (el.type === 'matrix' || el.type === 'matrixdropdown') &&
-          Array.isArray(el.rows)
-        ) {
-          for (const row of el.rows) {
-            if (!row.value) continue;
-            let questionText = '';
-            if (row.text && typeof row.text === 'object' && row.text.pt) {
-              questionText = row.text.pt.trim();
-            } else if (typeof row.text === 'string') {
-              questionText = row.text.trim();
-            } else {
-              questionText = `Questão ${row.value}`;
-            }
-            const questionId = `${el.name}_${row.value}`;
-            questions.push({ id: questionId, title: questionText, type: 'question' });
-            questionMap[questionId] = questionText;
-          }
-        } else if (el.name) {
-          let questionTitle = '';
-          if (el.title && typeof el.title === 'object' && el.title.pt) {
-            questionTitle = el.title.pt.trim();
-          } else if (typeof el.title === 'string') {
-            questionTitle = el.title.trim();
-          } else {
-            questionTitle = el.name;
-          }
-          questions.push({ id: el.name, title: questionTitle, type: el.type || 'text' });
-          questionMap[el.name] = questionTitle;
-        }
-      }
-    }
-
-    return { questions, questionMap };
   }
 
   private async loadCompetencias(assessmentId: string): Promise<CompetenciaExport[]> {
