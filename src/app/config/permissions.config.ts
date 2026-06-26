@@ -70,17 +70,18 @@ export const PERMISSIONS: Record<AppRole, RolePermissions> = {
       'projects',
       'participants',
       'reports',
-      'users',
+      'orders',
+      'users', // página Usuários e Grupos — admin_client acessa apenas a aba Grupos
       'mail-templates',
       'settings',
       'emails-notifications',
     ],
-    actions: ['criar', 'editar', 'excluir', 'visualizar', 'exportar', 'bloquear', 'gerenciar_viewers'],
+    actions: ['criar', 'editar', 'visualizar', 'exportar', 'bloquear', 'gerenciar_viewers'],
   },
 
   viewer: {
     routes: ['dashboard', 'projects', 'participants', 'reports', 'settings'],
-    actions: ['visualizar', 'exportar', 'responder_avaliacao', 'visualizar_proprio_relatorio'],
+    actions: ['visualizar', 'exportar', 'visualizar_proprio_relatorio'],
   },
 };
 
