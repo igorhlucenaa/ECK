@@ -2903,6 +2903,11 @@ ngx-charts-bar-horizontal,
   }
 }
 
+.rp-capa-info-toggle {
+  display: block;
+  margin: 0 0 12px;
+}
+
 .rp-html-editor {
   width: 100%;
   min-height: 280px;
@@ -3449,6 +3454,21 @@ ngx-charts-bar-horizontal,
 }
 
 .capa-section {
+  .capa-section__html {
+    display: block;
+    width: 100%;
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      max-width: 100%;
+    }
+  }
+
   .capa-info-block {
     margin-top: 24px;
     padding: 20px 24px;

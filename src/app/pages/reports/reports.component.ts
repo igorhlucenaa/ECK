@@ -60,6 +60,13 @@ import { CompetencyQuestionsService } from '../../services/competency-questions.
 import { query, where } from '@angular/fire/firestore';
 import { JohariWindowChartComponent, JohariWindowData } from './charts/johari-window-chart/johari-window-chart.component';
 import { JOHARI_THRESHOLD } from './charts/johari-window-chart/johari-window.utils';
+import {
+  CAPA_HTML_PDF_STYLES,
+  DEFAULT_CAPA_HTML,
+  REPORT_CAPA_EDITOR_CONFIG,
+  REPORT_RICH_TEXT_EDITOR_CONFIG,
+  secaoSuportaHtmlBruto,
+} from './report-rich-text.config';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -591,7 +598,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Aplicar template, se fornecido
     if (cfg.templateId) {
-      this.selectedTemplateId.setValue(cfg.templateId);
+      this.selectedTemplateId.setValue(cfg.templateId, { emitEvent: false });
       await this.aplicarTemplateSelecionado();
     }
 
@@ -928,22 +935,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   dadosTextControl = new FormControl('');
   competenciasTextControl = new FormControl('');
   graficosTextControl = new FormControl('');
-  editorConfig: AngularEditorConfig = {
-    editable: true,
-    spellcheck: true,
-    height: '300px',
-    minHeight: '200px',
-    placeholder: 'Escreva seu texto... Use as ferramentas de formatação para criar títulos, adicionar imagens, listas e muito mais...',
-    toolbarPosition: 'top',
-    showToolbar: true,
-    toolbarHiddenButtons: [
-      ['subscript', 'superscript'],
-      ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'],
-      ['indent', 'outdent'],
-      ['insertUnorderedList', 'insertOrderedList'],
-      ['fontName']
-    ]
-  };
+  editorConfig: AngularEditorConfig = REPORT_RICH_TEXT_EDITOR_CONFIG;
+  capaEditorConfig: AngularEditorConfig = REPORT_CAPA_EDITOR_CONFIG;
 
   polarData: any[] = [];
   radarOptions: EChartsOption = {};
@@ -971,7 +964,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       id: 'capa',
       tipo: 'capa',
       titulo: 'Relatório Feedback 360°',
-      texto: '<h1 style="text-align: center; color: #1976d2; margin-bottom: 20px;">Relatório Feedback 360°</h1><p style="text-align: center; font-size: 18px; color: #666; margin-bottom: 30px;">Avaliação de Competências e Desenvolvimento</p><div style="text-align: center; margin: 40px 0;"><div style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);"><h2 style="margin: 0; font-size: 24px;">Avaliação Completa</h2><p style="margin: 10px 0 0 0; opacity: 0.9;">Feedback 360° Profissional</p></div></div>',
+      texto: DEFAULT_CAPA_HTML,
       visivel: true,
       ordem: 1
     },
@@ -1045,6 +1038,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   selectedTemplateId = new FormControl('');
   /** Template efetivamente aplicado ao editor (distinto da seleção no dropdown). */
   appliedTemplateId: string | null = null;
+  private templateAutoApplyReady = false;
+  private applyingTemplate = false;
 
   // �Ys? PERFORMANCE: Cache para cálculos pesados
   private calculosCache = new Map<string, any>();
@@ -1105,6 +1100,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.carregarRelatoriosSalvos();
     this.carregarTemplatesSalvos();
+
+    this.selectedTemplateId.valueChanges.pipe(
+      distinctUntilChanged(),
+      filter((id): id is string => !!id),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      void this.onTemplateDropdownChanged();
+    });
+
+    queueMicrotask(() => {
+      this.templateAutoApplyReady = true;
+    });
 
 
     this.assessmentSearchControl.valueChanges
@@ -1615,7 +1622,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         numeroItems: [secao['numeroItems'] || 5],
         avaliadoSelecionado: [secao['avaliadoSelecionado'] || ''],
         mostrarCaracteristica: [secao['mostrarCaracteristica'] !== false],
-        mostrarPontuacaoSemAuto: [secao['mostrarPontuacaoSemAuto'] !== false]
+        mostrarPontuacaoSemAuto: [secao['mostrarPontuacaoSemAuto'] !== false],
+        htmlBruto: [secao['htmlBruto'] === true],
+        ocultarInfoDinamicaCapa: [secao['ocultarInfoDinamicaCapa'] === true],
       }));
     });
   }
@@ -3859,6 +3868,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const html = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>${safeTitle}</title>\n  <base href="${window.location.origin}/">\n  <style>
     ${documentStyles}
+    ${CAPA_HTML_PDF_STYLES}
     @page { size: A4 portrait; margin: 18mm 7mm 16mm 7mm; }
     * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
     html, body {
@@ -4590,7 +4600,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         id: 'capa',
         tipo: 'capa',
         titulo: 'Relatório Feedback 360°',
-        texto: '',
+        texto: DEFAULT_CAPA_HTML,
         visivel: true,
         ordem: 1
       },
@@ -4812,81 +4822,102 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       await this.carregarTemplatesSalvos();
     }
     if (result?.selectedTemplateId) {
-      this.selectedTemplateId.setValue(result.selectedTemplateId, { emitEvent: false });
+      this.selectedTemplateId.setValue(result.selectedTemplateId);
     }
     this.cdr.markForCheck();
   }
 
+  private async onTemplateDropdownChanged(): Promise<void> {
+    if (!this.templateAutoApplyReady) return;
+
+    const id = this.selectedTemplateId.value;
+    if (!id || id === this.appliedTemplateId) return;
+
+    const applied = await this.aplicarTemplateSelecionado();
+    if (!applied) {
+      this.selectedTemplateId.setValue(this.appliedTemplateId || '', { emitEvent: false });
+      this.cdr.markForCheck();
+    }
+  }
+
   // Aplicar template selecionado ao relatório atual
-  async aplicarTemplateSelecionado() {
-    if (!this.selectedTemplateId.value) return;
+  async aplicarTemplateSelecionado(): Promise<boolean> {
+    if (!this.selectedTemplateId.value || this.applyingTemplate) return false;
 
-    if (this.builderHasUnsavedChanges) {
-      const confirmado = await this.confirmDialog.confirm({
-        type: 'warning',
-        title: 'Aplicar template',
-        message: 'Isso substituirá as alterações não salvas na estrutura atual.',
-        itemName: this.nomeTemplateSelecionado,
-        confirmText: 'Sim, aplicar',
-        cancelText: 'Cancelar',
-      });
-      if (!confirmado) return;
-    }
-
-    const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
-    const templateSnap = await getDoc(templateRef);
-    if (!templateSnap.exists()) {
-      this.snackBar.open(this.t('Template não encontrado.'), this.t('Fechar'), { duration: 3000 });
-      return;
-    }
-    const templateData = templateSnap.data();
-    const secoesRaw = templateData['configuracao'] || [];
-    if (!Array.isArray(secoesRaw) || secoesRaw.length === 0) {
-      this.snackBar.open(
-        this.t('Este template não possui seções salvas. Atualize o template ou crie um novo.'),
-        this.t('Fechar'),
-        { duration: 4000 }
-      );
-      return;
-    }
-        // Carregar seções do template zerando competenciasIds �?" serão preenchidas
-        // pelas competências da avaliação atual, não do momento em que o template foi salvo
-        const secoes: RelatorioSecao[] = (templateData['configuracao'] || []).map((sec: any) => ({
-          ...sec,
-          competenciasIds: []
-        }));
-        this.relatorioConfiguracao = secoes;
-
-        // Preencher automaticamente o nome do template no campo de nome
-        if (templateData['nome']) {
-          this.nomeTemplateControl.setValue(templateData['nome']);
+    this.applyingTemplate = true;
+    try {
+      if (this.builderHasUnsavedChanges) {
+        const confirmado = await this.confirmDialog.confirm({
+          type: 'warning',
+          title: 'Aplicar template',
+          message: 'Isso substituirá as alterações não salvas na estrutura atual.',
+          itemName: this.nomeTemplateSelecionado,
+          confirmText: 'Sim, aplicar',
+          cancelText: 'Cancelar',
+        });
+        if (!confirmado) {
+          return false;
         }
+      }
 
-        // Injetar as competências da avaliação atual em todas as seções que dependem delas
-        if (this.competencias.length > 0) {
-          const compIds = this.competencias.map(c => c.id);
-          this.relatorioConfiguracao.forEach(sec => {
-            if (['resumo', 'graficos', 'tabela', 'tabela_detalhada', 'grafico_defasagem', 'competencia_detalhada', 'janela_johari', 'perguntas_abertas'].includes(sec.tipo)) {
-              sec.competenciasIds = [...compIds];
-            }
-          });
-        }
+      const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
+      const templateSnap = await getDoc(templateRef);
+      if (!templateSnap.exists()) {
+        this.snackBar.open(this.t('Template não encontrado.'), this.t('Fechar'), { duration: 3000 });
+        return false;
+      }
+      const templateData = templateSnap.data();
+      const secoesRaw = templateData['configuracao'] || [];
+      if (!Array.isArray(secoesRaw) || secoesRaw.length === 0) {
+        this.snackBar.open(
+          this.t('Este template não possui seções salvas. Atualize o template ou crie um novo.'),
+          this.t('Fechar'),
+          { duration: 4000 }
+        );
+        return false;
+      }
+      // Carregar seções do template zerando competenciasIds — serão preenchidas
+      // pelas competências da avaliação atual, não do momento em que o template foi salvo
+      const secoes: RelatorioSecao[] = (templateData['configuracao'] || []).map((sec: any) => ({
+        ...sec,
+        competenciasIds: []
+      }));
+      this.relatorioConfiguracao = secoes;
 
-        // Restaurar configuração de cabeçalho/rodapé do template, se existir
-        if (templateData['documentoConfig']) {
-          this.documentoConfig = {
-            cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho, ...templateData['documentoConfig'].cabecalho } as DocumentoConfig['cabecalho'],
-            rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape, ...templateData['documentoConfig'].rodape, ativo: true }
-          };
-        }
+      // Preencher automaticamente o nome do template no campo de nome
+      if (templateData['nome']) {
+        this.nomeTemplateControl.setValue(templateData['nome']);
+      }
 
-    this.atualizarFormArrayComConfiguracao();
-    this.atualizarPerguntasBloqueadas();
-    this.invalidateCache();
-    this.appliedTemplateId = this.selectedTemplateId.value;
-    this.builderHasUnsavedChanges = false;
-    this.snackBar.open(this.t('Template aplicado!'), this.t('Fechar'), { duration: 2500 });
-    this.cdr.markForCheck();
+      // Injetar as competências da avaliação atual em todas as seções que dependem delas
+      if (this.competencias.length > 0) {
+        const compIds = this.competencias.map(c => c.id);
+        this.relatorioConfiguracao.forEach(sec => {
+          if (['resumo', 'graficos', 'tabela', 'tabela_detalhada', 'grafico_defasagem', 'competencia_detalhada', 'janela_johari', 'perguntas_abertas'].includes(sec.tipo)) {
+            sec.competenciasIds = [...compIds];
+          }
+        });
+      }
+
+      // Restaurar configuração de cabeçalho/rodapé do template, se existir
+      if (templateData['documentoConfig']) {
+        this.documentoConfig = {
+          cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho, ...templateData['documentoConfig'].cabecalho } as DocumentoConfig['cabecalho'],
+          rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape, ...templateData['documentoConfig'].rodape, ativo: true }
+        };
+      }
+
+      this.atualizarFormArrayComConfiguracao();
+      this.atualizarPerguntasBloqueadas();
+      this.invalidateCache();
+      this.appliedTemplateId = this.selectedTemplateId.value;
+      this.builderHasUnsavedChanges = false;
+      this.snackBar.open(this.t('Template aplicado!'), this.t('Fechar'), { duration: 2500 });
+      this.cdr.markForCheck();
+      return true;
+    } finally {
+      this.applyingTemplate = false;
+    }
   }
   // Exportar relatório individual fiel à pré-visualização da tela.
   async exportarRelatorioPDF(): Promise<boolean> {
@@ -7676,14 +7707,28 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   isSecaoHtmlBruto(index: number): boolean {
     const secao = this.relatorioConfiguracao[index];
-    return secao?.tipo === 'capa' && secao['htmlBruto'] === true;
+    return !!secao && secaoSuportaHtmlBruto(secao.tipo) && secao['htmlBruto'] === true;
+  }
+
+  secaoSuportaModoHtml(tipo: string | undefined): boolean {
+    return secaoSuportaHtmlBruto(tipo);
   }
 
   setSecaoHtmlBruto(index: number, htmlBruto: boolean): void {
     const secao = this.relatorioConfiguracao[index];
-    if (!secao || secao.tipo !== 'capa') return;
+    if (!secao || !secaoSuportaHtmlBruto(secao.tipo)) return;
     secao['htmlBruto'] = htmlBruto;
+    if (htmlBruto && secao.tipo === 'capa') {
+      secao['ocultarInfoDinamicaCapa'] = true;
+    }
     this.atualizarSecaoConfiguracao(index);
+  }
+
+  shouldShowCapaInfoBlock(secao: RelatorioSecao): boolean {
+    if (secao['ocultarInfoDinamicaCapa'] === true || secao['htmlBruto'] === true) {
+      return false;
+    }
+    return !!(this.selectedAvaliado || this.getContagemRespondentesCached().length > 0);
   }
 
   // Método para aplicar template rico à seção
@@ -8004,57 +8049,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (tipo === 'capa') {
-      // Obter informações dinâmicas
-      const nomeAvaliado = this.selectedAvaliadoName || 'Não informado';
-      const dataRelatorio = this.today.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-      const contagemPorCategoria = this.getContagemRespondentesPorCategoria();
-
-      // Criar HTML para contagem por categoria (uma abaixo da outra)
-      let contagemHtml = '';
-      if (contagemPorCategoria.length > 0) {
-        contagemHtml = contagemPorCategoria
-          .map(item => `<div style="margin: 8px 0; padding: 10px 20px; background: #e3f2fd; border-radius: 8px; font-size: 14px; text-align: left;"><strong>${item.categoria}:</strong> ${item.quantidade}</div>`)
-          .join('');
-      } else {
-        contagemHtml = '<div style="color: #999; font-size: 14px; padding: 10px;">Nenhum respondente encontrado</div>';
-      }
-
-      secao.texto = `
-        <div style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
-          <h1 style="color: #1976d2; font-size: 36px; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
-            Relatório Feedback 360°
-          </h1>
-          <p style="font-size: 20px; color: #666; margin-bottom: 30px; font-weight: 300;">
-            Avaliação de Competências e Desenvolvimento Profissional
-          </p>
-          <div style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px 50px; border-radius: 15px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); margin: 20px 0;">
-            <h2 style="margin: 0; font-size: 28px; font-weight: 600;">
-              ${nomeAvaliado}
-            </h2>
-            <p style="margin: 15px 0 0 0; opacity: 0.9; font-size: 18px;">
-              Feedback 360° Profissional
-            </p>
-          </div>
-          <div style="margin-top: 30px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
-            <div style="background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-              <strong style="color: #1976d2;">Data do Relatório:</strong> ${dataRelatorio}
-            </div>
-            <div style="background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-              <strong style="color: #1976d2;">Tipo:</strong> Avaliação 360°
-            </div>
-          </div>
-          <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-            <h3 style="color: #1976d2; font-size: 20px; margin-bottom: 15px;">Respondentes por Categoria</h3>
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 0;">
-              ${contagemHtml}
-            </div>
-          </div>
-        </div>
-      `;
+      secao.texto = DEFAULT_CAPA_HTML.replace(
+        '$%NOME_AVALIADO$%',
+        this.selectedAvaliadoName || 'Nome do avaliado'
+      ).replace(
+        '$%DATA_RELATORIO$%',
+        this.today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      );
     } else if (tipo === 'introducao') {
       secao.texto = `
         <div style="max-width: 800px; margin: 0 auto;">

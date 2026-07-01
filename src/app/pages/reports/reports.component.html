@@ -517,7 +517,7 @@
             </div>
             <div>
               <p class="rp-template-active__title">Template ativo</p>
-              <p class="rp-template-active__desc">Estrutura reutilizável — aplique antes de editar</p>
+              <p class="rp-template-active__desc">Selecione um template — a estrutura é aplicada automaticamente</p>
             </div>
           </div>
 
@@ -551,9 +551,10 @@
               mat-stroked-button
               class="btn-pc-outline-template"
               (click)="aplicarTemplateSelecionado()"
-              [disabled]="!selectedTemplateId.value">
-              <mat-icon>download</mat-icon>
-              Aplicar template
+              [disabled]="!selectedTemplateId.value"
+              matTooltip="Recarrega a estrutura do template selecionado">
+              <mat-icon>refresh</mat-icon>
+              Reaplicar template
             </button>
             <button
               mat-flat-button
@@ -813,7 +814,7 @@
                           {{ 'Aplicar Template' | translate }}
                         </button>
                       </div>
-                      <p>{{ 'Use o editor de texto rico para criar uma capa profissional. Você pode adicionar títulos, subtítulos, imagens, cores e formatação para destacar informações importantes. Clique em "Aplicar Template" para usar um modelo pré-formatado.' | translate }}</p>
+                      <p>{{ 'Centralize textos e logos com os botões de alinhamento. Altere cores com o seletor de cor do texto ou do fundo. Para HTML avançado (rotação, layout flex), use Modo HTML ou o botão de código-fonte no editor. Placeholders: $%NOME_AVALIADO$%, $%DATA_RELATORIO$%.' | translate }}</p>
                     </div>
 
                     <div *ngIf="isSecaoTipo(secaoCtrl, 'introducao')" class="rp-tip-card rp-tip-card--purple">
@@ -830,7 +831,7 @@
                       <p>{{ 'Crie uma introdução atrativa usando formatação rica. Adicione títulos, listas, destaques e imagens para explicar o propósito e contexto do relatório. Clique em "Aplicar Template" para usar um modelo pré-formatado.' | translate }}</p>
                     </div>
 
-                    <div *ngIf="isSecaoTipo(secaoCtrl, 'capa')" class="rp-capa-editor-mode">
+                    <div *ngIf="secaoSuportaModoHtml(getSecaoTipoValue(secaoCtrl))" class="rp-capa-editor-mode">
                       <mat-button-toggle-group
                         [value]="isSecaoHtmlBruto(i) ? 'html' : 'rich'"
                         (change)="setSecaoHtmlBruto(i, $event.value === 'html')">
@@ -838,21 +839,28 @@
                         <mat-button-toggle value="html">{{ 'Modo HTML' | translate }}</mat-button-toggle>
                       </mat-button-toggle-group>
                       <p class="rp-capa-editor-mode__hint" *ngIf="isSecaoHtmlBruto(i)">
-                        {{ 'Cole ou edite HTML completo. O preview respeitará tags, estilos inline e classes.' | translate }}
+                        {{ 'Cole ou edite HTML completo. O preview e o PDF respeitarão tags, estilos inline, imagens e transformações CSS.' | translate }}
                       </p>
                     </div>
+
+                    <mat-checkbox *ngIf="isSecaoTipo(secaoCtrl, 'capa') && !isSecaoHtmlBruto(i)"
+                                  formControlName="ocultarInfoDinamicaCapa"
+                                  (change)="atualizarSecaoConfiguracao(i)"
+                                  class="rp-capa-info-toggle">
+                      {{ 'Ocultar bloco automático de avaliado/respondentes no preview' | translate }}
+                    </mat-checkbox>
 
                     <textarea *ngIf="isSecaoHtmlBruto(i)"
                               class="rp-html-editor"
                               formControlName="texto"
                               rows="16"
                               (blur)="atualizarSecaoConfiguracao(i)"
-                              [placeholder]="'Cole o HTML da capa aqui...' | translate"></textarea>
+                              [placeholder]="'Cole o HTML aqui...' | translate"></textarea>
 
                     <angular-editor *ngIf="!isSecaoHtmlBruto(i)"
                                     formControlName="texto"
                                     (blur)="atualizarSecaoConfiguracao(i)"
-                                    [config]="editorConfig"></angular-editor>
+                                    [config]="isSecaoTipo(secaoCtrl, 'capa') ? capaEditorConfig : editorConfig"></angular-editor>
                   </div>
 
                   <div *ngIf="isSecaoTipo(secaoCtrl, 'graficos')">
@@ -1344,9 +1352,9 @@
           <ng-container [ngSwitch]="secao.tipo">
 
             <div *ngSwitchCase="'capa'" class="capa-section">
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
-              <!-- Bloco dinâmico: participante + respondentes (renderizado por Angular, não injetado no HTML) -->
-              <div class="capa-info-block" *ngIf="selectedAvaliado || getContagemRespondentesCached().length > 0">
+              <div class="capa-section__html" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <!-- Bloco dinâmico opcional: participante + respondentes -->
+              <div class="capa-info-block" *ngIf="shouldShowCapaInfoBlock(secao)">
                 <div class="capa-info-block__avaliado" *ngIf="selectedAvaliado">
                   <span class="capa-info-block__label">{{ 'Avaliado(a)' | translate }}</span>
                   <span class="capa-info-block__name">{{ selectedAvaliadoName }}</span>
