@@ -1,47 +1,45 @@
 <div class="johari-wrapper">
-  <!-- Título dos eixos -->
-  <div class="y-title"><span>Pontuação média sem autoavaliações</span></div>
-  <div class="x-title">Próprio(a)</div>
+  <div class="y-title"><span>Média das demais avaliações</span></div>
+  <div class="x-title">Autoavaliação</div>
 
-  <!-- Área do gráfico -->
   <div class="plot-area">
-    <!-- Linhas de grade 1..5 -->
     <div class="grid"></div>
 
-    <!-- Linha de corte vertical -->
     <div class="threshold-v" [style.left.%]="thresholdPercent"></div>
-    <!-- Linha de corte horizontal (mesmo valor do threshold) -->
     <div class="threshold-h" [style.top.%]="toPercentY(data.threshold)"></div>
 
-    <!-- Ticks X (1..5) -->
     <div class="x-ticks">
       <span *ngFor="let v of [1,2,3,4,5]" [style.left.%]="toPercentX(v)">{{ v }}</span>
     </div>
-    <!-- Ticks Y (1..5) -->
     <div class="y-ticks">
       <span *ngFor="let v of [1,2,3,4,5]" [style.top.%]="toPercentY(v)">{{ v }}</span>
     </div>
 
-    <!-- Pontos -->
-    <div *ngFor="let p of data.points" class="point" [style.left.%]="toPercentX(p.self)" [style.top.%]="toPercentY(p.others)" [style.background-color]="p.color" [matTooltip]="p.name + ' — ' + analysisLabel(p)">
-      {{ p.label }}
-    </div>
+    <ng-container *ngFor="let p of data.points">
+      <div
+        *ngIf="canPlot(p)"
+        class="point"
+        [style.left.%]="toPercentX(p.self!)"
+        [style.top.%]="toPercentY(p.others!)"
+        [style.background-color]="p.color"
+        [matTooltip]="p.name + ' — ' + analysisLabel(p)">
+        {{ p.label }}
+      </div>
+    </ng-container>
 
-    <!-- Rótulos de quadrantes (opcional) -->
     <div class="quad-label top-left">Área de desenvolvimento conhecida</div>
     <div class="quad-label top-right">Ponto cego</div>
     <div class="quad-label bottom-left">Ponto forte oculto</div>
     <div class="quad-label bottom-right">Ponto forte conhecido</div>
   </div>
 
-  <!-- Tabela/legenda -->
   <div class="legend-table" *ngIf="data.points.length > 0">
     <table>
       <thead>
         <tr>
           <th style="width:56px">ID</th>
           <th>Comportamentos</th>
-          <th>Próprio(a)</th>
+          <th>Autoavaliação</th>
           <th>Outros</th>
           <th>Análise de defasagem</th>
         </tr>
@@ -52,12 +50,17 @@
             <span class="chip" [style.background-color]="p.color">{{ p.label }}</span>
           </td>
           <td>{{ p.name }}</td>
-          <td>{{ p.self | number:'1.2-2' }}</td>
-          <td>{{ p.others | number:'1.2-2' }}</td>
+          <td>{{ formatScore(p.self) }}</td>
+          <td>{{ formatScore(p.others) }}</td>
           <td>{{ analysisLabel(p) }}</td>
         </tr>
       </tbody>
     </table>
   </div>
-</div>
 
+  <div class="johari-explanation" *ngIf="data.points.length > 0">
+    <p *ngFor="let item of explanationParagraphs" class="johari-explanation__item">
+      <strong>{{ item.title }}:</strong> {{ item.text }}
+    </p>
+  </div>
+</div>

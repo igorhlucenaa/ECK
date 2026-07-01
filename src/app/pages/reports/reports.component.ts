@@ -59,6 +59,7 @@ import { AuthService } from '../../services/apps/authentication/auth.service';
 import { CompetencyQuestionsService } from '../../services/competency-questions.service';
 import { query, where } from '@angular/fire/firestore';
 import { JohariWindowChartComponent, JohariWindowData } from './charts/johari-window-chart/johari-window-chart.component';
+import { JOHARI_THRESHOLD } from './charts/johari-window-chart/johari-window.utils';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -8525,7 +8526,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   getJohariWindowData(secao: any): JohariWindowData {
     const competenciasSelecionadas = this.getCompetenciasSelecionadasParaSecao(secao);
-    const threshold = 3.5; // linha de corte
+    const threshold = JOHARI_THRESHOLD;
     const palette = [
       '#5C6BC0', // A
       '#43A047', // B
@@ -8551,7 +8552,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (dados.othersScore !== null) othersVals.push(dados.othersScore);
       });
 
-      const avg = (arr: number[]) => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+      const avg = (arr: number[]): number | null =>
+        arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
       const self = avg(selfVals);
       const others = avg(othersVals);
 
@@ -8681,7 +8683,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         const valor = this.parseLikertAnswer(row[perguntaId]);
 
         if (valor !== null) {
-          if (row.categoria === 'Avaliado') {
+          if (this.mapCategoriaToGrupo(row.categoria) === 'Avaliado(a)') {
             respostasSelf.push(valor);
           } else {
             respostasOutros.push(valor);
