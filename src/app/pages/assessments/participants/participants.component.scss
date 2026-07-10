@@ -596,6 +596,43 @@
 
 .filter-card__body { padding: 16px 20px; }
 
+.browse-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+  font-size: 13px;
+  line-height: 1.45;
+
+  mat-icon {
+    color: #0284c7;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+}
+
+.context-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1B84FF;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 // ─── Send config card ─────────────────────────────────────────
 .send-config-card {
   background: #fff; border-radius: 16px;

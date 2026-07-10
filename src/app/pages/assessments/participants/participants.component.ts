@@ -143,6 +143,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'type',
     'category',
     'cargo',
+    'clientName',
     'projectName',
     'status',
     'lembrete',
@@ -260,6 +261,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     return 'project-status--blue';
   }
 
+  /** Cliente + projeto selecionados — necessário para envio e ações no contexto do projeto */
+  get hasOperationContext(): boolean {
+    return !!(this.filterClient && this.filterProject);
+  }
+
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
@@ -300,6 +306,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.isInitializing = false;
 
     this.configureDataSource();
+    this.applyFilter();
 
   }
 
@@ -355,6 +362,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             return this.compare(a.type, b.type, isAsc);
           case 'category':
             return this.compare(a.category, b.category, isAsc);
+          case 'clientName':
+            return this.compare(a.clientName, b.clientName, isAsc);
           case 'projectName':
             return this.compare(a.projectName, b.projectName, isAsc);
           case 'status':
@@ -1146,9 +1155,70 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async onProjectChange(): Promise<void> {
+    if (this.filterProject && !this.filterClient) {
+      const project = this.projects.find((p) => p.id === this.filterProject);
+      if (project?.clientId) {
+        this.filterClient = project.clientId;
+        this.filteredProjects = this.projects.filter(
+          (p) => p.clientId === this.filterClient
+        );
+        if (!this.isEmailSendingMode) await this.loadMailTemplates();
+        await this.loadAssessments();
+        this.loadReportTemplates();
+      }
+    }
+
+    if (!this.filterProject) {
+      this.templateFormControl.setValue('');
+      this.assessmentFormControl.setValue('');
+      this.projectAssessmentLocked = false;
+      this.projectStatus = '';
+    }
+
     this.applyFilter();
     await this.syncProjectAssessment();
     await this.loadProjectStatus();
+  }
+
+  async focusParticipantContext(participant: UnifiedParticipant): Promise<void> {
+    if (!participant.clientId || !participant.projectId) return;
+
+    if (this.filterClient !== participant.clientId) {
+      this.filterClient = participant.clientId;
+      this.filteredProjects = this.projects.filter(
+        (p) => p.clientId === participant.clientId
+      );
+      if (!this.isEmailSendingMode) await this.loadMailTemplates();
+      await this.loadAssessments();
+      this.loadReportTemplates();
+    }
+
+    if (this.filterProject !== participant.projectId) {
+      this.filterProject = participant.projectId;
+      await this.onProjectChange();
+      return;
+    }
+
+    this.applyFilter();
+  }
+
+  canActOnParticipant(participant: UnifiedParticipant): boolean {
+    return (
+      this.hasOperationContext &&
+      participant.projectId === this.filterProject &&
+      !this.isProjectConcluded &&
+      !this.isProjectCancelled
+    );
+  }
+
+  getParticipantActionTooltip(participant: UnifiedParticipant, fallback: string): string {
+    if (!this.hasOperationContext || participant.projectId !== this.filterProject) {
+      return 'Clique no projeto para selecionar o contexto de operação';
+    }
+    if (this.isProjectConcluded || this.isProjectCancelled) {
+      return `Ação bloqueada: projeto ${this.projectStatusLabel}`;
+    }
+    return fallback;
   }
 
   get lockedAssessmentName(): string {
@@ -1291,6 +1361,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   /** Retorna true quando o usuário já selecionou modelo de e-mail E avaliação (se necessária) */
   get isSelectionReady(): boolean {
+    if (!this.hasOperationContext) return false;
     if (!this.templateFormControl.valid) return false;
     const needsAssessment = this.selectedTemplate?.emailType && this.selectedTemplate?.emailType !== 'cadastro';
     if (needsAssessment && !this.assessmentFormControl.valid) return false;
@@ -1298,6 +1369,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   get selectionTooltip(): string {
+    if (!this.hasOperationContext) return 'Selecione cliente e projeto para enviar e-mails';
     if (!this.templateFormControl.valid) return 'Selecione um modelo de e-mail primeiro';
     const needsAssessment = this.selectedTemplate?.emailType && this.selectedTemplate?.emailType !== 'cadastro';
     if (needsAssessment && !this.assessmentFormControl.valid) {
