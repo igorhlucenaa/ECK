@@ -121,13 +121,14 @@ interface Assessment {
         <mat-error>Selecione um modelo.</mat-error>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="si-config__field">
+      <mat-form-field appearance="outline" class="si-config__field"
+        *ngIf="selectedTemplate?.emailType && selectedTemplate?.emailType !== 'cadastro'">
         <mat-label>Formulário de Avaliação</mat-label>
         <mat-icon matPrefix style="color:#94a3b8;font-size:18px;margin-right:4px;">assignment</mat-icon>
-        <mat-select [formControl]="assessmentFormControl">
-          <mat-option *ngFor="let a of assessments" [value]="a.id">{{ a.name }}</mat-option>
-        </mat-select>
-        <mat-error>Selecione uma avaliação.</mat-error>
+        <input matInput *ngIf="projectAssessmentLocked" [value]="lockedAssessmentName" readonly disabled />
+        <input matInput *ngIf="!projectAssessmentLocked" value="Não configurado no projeto" readonly disabled />
+        <mat-hint *ngIf="projectAssessmentLocked">Formulário definido na criação do projeto</mat-hint>
+        <mat-hint *ngIf="!projectAssessmentLocked">Configure o formulário em Projetos → Editar projeto</mat-hint>
       </mat-form-field>
     </div>
 
@@ -288,6 +289,8 @@ export class ParticipantsModalComponent implements OnInit {
   assessments: Assessment[] = [];
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
+  projectAssessmentLocked = false;
+  lockedAssessmentName = '';
   selectAllPending(): void {
     if (!this.isSelectionReady) return;
     this.dataSource.filteredData.forEach(p => {
@@ -325,6 +328,7 @@ export class ParticipantsModalComponent implements OnInit {
       this.loadClients(),
       this.loadProjects(),
     ]);
+    await this.syncProjectAssessment();
     this.dataSource.paginator = this.participantsPaginator;
     this.dataSource.sort = this.sort;
 
@@ -546,13 +550,46 @@ export class ParticipantsModalComponent implements OnInit {
         name: doc.data()['name'] || 'Avaliação Sem Nome',
         clientId: doc.data()['clientId'] || '',
       }));
-
-      if (this.assessments.length === 0) {
-        this.snackBar.open(this.translate.instant('Nenhuma avaliação encontrada para este cliente.'), this.translate.instant('Fechar'), { duration: 3000 });
-      }
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
       this.snackBar.open(this.translate.instant('Erro ao carregar avaliações.'), this.translate.instant('Fechar'), { duration: 3000 });
+    }
+  }
+
+  private async syncProjectAssessment(): Promise<void> {
+    try {
+      const snap = await getDoc(doc(this.firestore, 'projects', this.data.projectId));
+      const assessmentId = snap.exists() ? (snap.data()['assessmentId'] || '') : '';
+
+      if (!assessmentId) {
+        this.projectAssessmentLocked = false;
+        this.lockedAssessmentName = '';
+        this.assessmentFormControl.setValue('');
+        return;
+      }
+
+      if (!this.assessments.some((a) => a.id === assessmentId)) {
+        const assessmentSnap = await getDoc(doc(this.firestore, 'assessments', assessmentId));
+        if (assessmentSnap.exists()) {
+          this.assessments = [
+            ...this.assessments,
+            {
+              id: assessmentId,
+              name: assessmentSnap.data()['name'] || 'Avaliação Sem Nome',
+              clientId: assessmentSnap.data()['clientId'] || '',
+            },
+          ];
+        }
+      }
+
+      this.projectAssessmentLocked = true;
+      this.lockedAssessmentName =
+        this.assessments.find((a) => a.id === assessmentId)?.name || 'Formulário do projeto';
+      this.assessmentFormControl.setValue(assessmentId);
+    } catch (error) {
+      console.error('Erro ao carregar formulário do projeto:', error);
+      this.projectAssessmentLocked = false;
+      this.assessmentFormControl.setValue('');
     }
   }
 

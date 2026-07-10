@@ -112,6 +112,7 @@ interface Project {
   id: string;
   name: string;
   clientId: string;
+  assessmentId?: string;
 }
 
 interface MailTemplate {
@@ -171,6 +172,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   lastRefreshed: Date | null = null;
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
+  /** Formulário travado no assessmentId definido na criação do projeto */
+  projectAssessmentLocked = false;
   selectedTemplate: MailTemplate | any = null;
   userRole: string = '';
   userClientIds: string[] = [];
@@ -382,11 +385,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.isProjectDisabled = true;
 
       this.loadTemplate(this.data!.templateId!).then(() => {
-        this.loadAssessments().then(() => {
+        this.loadAssessments().then(async () => {
           this.filteredProjects = this.projects.filter(
             (project) => project.clientId === this.filterClient
           );
           this.loadReportTemplates();
+          await this.syncProjectAssessment();
 
           if (
             ['conviteAvaliador', 'lembreteAvaliador'].includes(
@@ -416,10 +420,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.loadProjectStatus();
 
       Promise.all([this.loadMailTemplates(), this.loadAssessments(), this.loadReportTemplates()]).then(
-        () => {
+        async () => {
           this.filteredProjects = this.projects.filter(
             (project) => project.clientId === this.filterClient
           );
+          await this.syncProjectAssessment();
           this.applyFilter();
         }
       );
@@ -593,6 +598,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         id: d.id,
         name: d.data()['name'] || 'Projeto Sem Nome',
         clientId: d.data()['clientId'] || '',
+        assessmentId: d.data()['assessmentId'] || undefined,
       }));
       this.filteredProjects = [...this.projects];
     } catch (error) {
@@ -1123,6 +1129,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.filterProject = '';
     this.templateFormControl.setValue('');
     this.assessmentFormControl.setValue('');
+    this.projectAssessmentLocked = false;
     this.mailTemplates = [];
     this.assessments = [];
     if (this.filterClient) {
@@ -1138,9 +1145,66 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.applyFilter();
   }
 
-  onProjectChange(): void {
+  async onProjectChange(): Promise<void> {
     this.applyFilter();
-    this.loadProjectStatus();
+    await this.syncProjectAssessment();
+    await this.loadProjectStatus();
+  }
+
+  get lockedAssessmentName(): string {
+    const id = this.assessmentFormControl.value;
+    if (!id) return '';
+    return this.assessments.find((a) => a.id === id)?.name || 'Formulário do projeto';
+  }
+
+  private async syncProjectAssessment(): Promise<void> {
+    if (!this.filterProject) {
+      this.projectAssessmentLocked = false;
+      this.assessmentFormControl.setValue('');
+      return;
+    }
+
+    let assessmentId = this.projects.find((p) => p.id === this.filterProject)?.assessmentId;
+
+    if (!assessmentId) {
+      try {
+        const snap = await getDoc(doc(this.firestore, 'projects', this.filterProject));
+        if (snap.exists()) {
+          assessmentId = snap.data()['assessmentId'] || '';
+          const project = this.projects.find((p) => p.id === this.filterProject);
+          if (project && assessmentId) {
+            project.assessmentId = assessmentId;
+          }
+        }
+      } catch {
+        /* ignora falha pontual de leitura */
+      }
+    }
+
+    if (!assessmentId) {
+      this.projectAssessmentLocked = false;
+      this.assessmentFormControl.setValue('');
+      return;
+    }
+
+    await this.ensureAssessmentLoaded(assessmentId);
+    this.projectAssessmentLocked = true;
+    this.assessmentFormControl.setValue(assessmentId);
+  }
+
+  private async ensureAssessmentLoaded(assessmentId: string): Promise<void> {
+    if (this.assessments.some((a) => a.id === assessmentId)) return;
+    try {
+      const snap = await getDoc(doc(this.firestore, 'assessments', assessmentId));
+      if (snap.exists()) {
+        this.assessments = [
+          ...this.assessments,
+          { id: assessmentId, name: snap.data()['name'] || 'Avaliação Sem Nome' },
+        ];
+      }
+    } catch {
+      /* ignora falha pontual de leitura */
+    }
   }
 
   private async loadProjectStatus(): Promise<void> {
@@ -1236,7 +1300,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   get selectionTooltip(): string {
     if (!this.templateFormControl.valid) return 'Selecione um modelo de e-mail primeiro';
     const needsAssessment = this.selectedTemplate?.emailType && this.selectedTemplate?.emailType !== 'cadastro';
-    if (needsAssessment && !this.assessmentFormControl.valid) return 'Selecione um formulário de avaliação primeiro';
+    if (needsAssessment && !this.assessmentFormControl.valid) {
+      if (this.filterProject && !this.projectAssessmentLocked) {
+        return 'Defina o formulário no cadastro do projeto';
+      }
+      return 'Formulário de avaliação não configurado';
+    }
     return '';
   }
 
