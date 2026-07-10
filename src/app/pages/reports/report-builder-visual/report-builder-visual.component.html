@@ -584,8 +584,10 @@
     </div>
   </div>
 
-  <!-- Painel de configuração global do documento -->
-  <div class="doc-config-panel" [class.open]="mostrarPainelDocumento">
+</div>
+
+<!-- Fora do .report-builder-container (overflow:hidden cortava o painel fixed) -->
+<div class="doc-config-panel" [class.open]="mostrarPainelDocumento">
     <div class="doc-config-panel__header">
       <div class="doc-config-panel__title">
         <mat-icon>tune</mat-icon>
@@ -743,8 +745,6 @@
 
     </div>
   </div>
-
-</div>
 
 <!-- Aba flutuante para reabrir o painel quando fechado -->
 <button class="doc-config-tab"
