@@ -1,9 +1,9 @@
 <div class="projects-wrapper">
 
   <app-page-header
-    eyebrow="Gestão"
+    [eyebrow]="'Gestão' | translate"
     [title]="'Projetos' | translate"
-    subtitle="Gerencie os projetos cadastrados na plataforma"
+    [subtitle]="'Gerencie os projetos cadastrados na plataforma' | translate"
     data-tour="projects-title">
 
     <button mat-raised-button class="btn-action" (click)="openProjectForm()" data-tour="projects-add"
@@ -61,21 +61,30 @@
       </div>
 
       <div class="search-count" *ngIf="dataSource.filteredData">
-        {{ dataSource.filteredData.length }} resultado{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
+        {{ dataSource.filteredData.length }} {{ (dataSource.filteredData.length === 1 ? 'resultado' : 'resultados') | translate }}
       </div>
     </div>
 
-    <!-- Barra de ações em massa (admin_master apenas) -->
-    <div class="bulk-action-bar" *ngIf="isAdminMaster && isSomeProjectsSelected()">
+    <!-- Barra de ações em massa -->
+    <div class="bulk-action-bar" *ngIf="isSomeProjectsSelected() && canBulkSelectProjects()">
       <mat-icon>check_circle</mat-icon>
       <strong>{{ selectedProjectIds.size }}</strong>
-      <span>projeto{{ selectedProjectIds.size !== 1 ? 's' : '' }} selecionado{{ selectedProjectIds.size !== 1 ? 's' : '' }}</span>
+      <span>{{ selectedProjectIds.size === 1 ? ('projeto selecionado' | translate) : ('projetos selecionados' | translate) }}</span>
       <span class="bulk-spacer"></span>
       <button mat-button (click)="toggleAllProjects(false)">
-        <mat-icon>deselect</mat-icon> Limpar seleção
+        <mat-icon>deselect</mat-icon> {{ 'Limpar seleção' | translate }}
       </button>
-      <button mat-flat-button color="warn" (click)="deleteSelectedProjects()">
-        <mat-icon>delete_sweep</mat-icon> Excluir selecionados
+      <!-- Geração em lote PDF desabilitada nesta versão
+      <button mat-flat-button color="primary"
+              *ngIf="canExportSelectedProjectsPdf()"
+              (click)="exportSelectedProjectsPdfZip()">
+        <mat-icon>archive</mat-icon> {{ 'Exportar relatórios (ZIP)' | translate }}
+      </button>
+      -->
+      <button mat-flat-button color="warn"
+              *ngIf="isAdminMaster"
+              (click)="deleteSelectedProjects()">
+        <mat-icon>delete_sweep</mat-icon> {{ 'Excluir selecionados' | translate }}
       </button>
     </div>
 
@@ -83,10 +92,11 @@
     <div class="table-container" data-tour="projects-table">
       <table mat-table [dataSource]="dataSource" matSort class="projects-table">
 
-        <!-- Seleção (admin_master apenas) -->
+        <!-- Seleção em massa -->
         <ng-container matColumnDef="select">
           <th mat-header-cell *matHeaderCellDef class="select-col">
             <mat-checkbox
+              *ngIf="canBulkSelectProjects()"
               [checked]="isAllProjectsSelected()"
               [indeterminate]="isSomeProjectsSelected() && !isAllProjectsSelected()"
               (change)="toggleAllProjects($event.checked)">
@@ -176,7 +186,7 @@
 
               <!-- Gerar Relatório -->
               <button class="act-btn act-btn--report"
-                      (click)="goToProjectReport(p.clientId, p.id)"
+                      (click)="goToProjectReport(p)"
                       [matTooltip]="'Gerar Relatório' | translate">
                 <mat-icon>bar_chart</mat-icon>
               </button>

@@ -505,7 +505,7 @@
 
 // ─── Permissions Panel ────────────────────────────────────────
 .permissions-panel {
-  margin: 0 24px 16px;
+  margin: 0 0 16px;
   border-radius: 12px !important;
   box-shadow: none !important;
   border: 1px solid #e8edf3 !important;
@@ -554,6 +554,14 @@
     font-size: 11px;
     color: #94a3b8;
     font-weight: 500;
+  }
+
+  &__intro {
+    margin: 0;
+    padding: 8px 14px 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #64748b;
   }
 
   &__note {
@@ -606,6 +614,50 @@
   &__denied {
     color: #94a3b8 !important;
     mat-icon { color: #f87171 !important; }
+  }
+}
+
+.perm-rules {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+
+  &__title {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1B2D56;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.4;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: #1B84FF;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+    }
   }
 }
 

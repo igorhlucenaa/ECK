@@ -1,0 +1,66 @@
+<h2 mat-dialog-title>
+  <mat-icon class="dialog-title-icon">file_copy</mat-icon>
+  Gerenciar templates
+</h2>
+
+<mat-dialog-content class="rtm-dialog">
+  <p class="rtm-dialog__hint">
+    Templates guardam a estrutura de seções reutilizável para qualquer avaliado.
+    Use o bloco principal para aplicar e salvar alterações no editor.
+  </p>
+
+  <section class="rtm-dialog__section">
+    <h3 class="rtm-dialog__section-title">Criar novo template</h3>
+    <p class="rtm-dialog__section-desc">Salva a estrutura atual do editor como um novo template.</p>
+    <mat-form-field appearance="outline" class="rtm-dialog__field">
+      <mat-label>Nome do template</mat-label>
+      <input matInput [formControl]="nomeNovoTemplate" placeholder="Ex: Padrão Liderança">
+    </mat-form-field>
+    <button
+      mat-flat-button
+      class="btn-pc-template"
+      type="button"
+      (click)="criarTemplate()"
+      [disabled]="!nomeNovoTemplate.value?.trim() || busy">
+      <mat-icon>add_circle</mat-icon>
+      Criar template
+    </button>
+  </section>
+
+  <mat-divider></mat-divider>
+
+  <section class="rtm-dialog__section">
+    <h3 class="rtm-dialog__section-title">Templates existentes</h3>
+    <mat-form-field appearance="outline" class="rtm-dialog__field">
+      <mat-label>Selecionar template</mat-label>
+      <mat-select [formControl]="selectedId">
+        <mat-option *ngFor="let template of data.templates" [value]="template.id">
+          {{ template.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div class="rtm-dialog__actions" *ngIf="selectedId.value">
+      <button mat-stroked-button type="button" (click)="usarNoEditor()" [disabled]="busy">
+        <mat-icon>check</mat-icon>
+        Selecionar no editor
+      </button>
+      <button mat-flat-button class="btn-pc-template" type="button" (click)="atualizarTemplate()" [disabled]="busy">
+        <mat-icon>sync</mat-icon>
+        Sobrescrever com editor
+      </button>
+      <button mat-stroked-button class="btn-pc-danger" type="button" (click)="excluirTemplate()" [disabled]="busy">
+        <mat-icon>delete_outline</mat-icon>
+        Excluir
+      </button>
+    </div>
+
+    <p class="rtm-dialog__empty" *ngIf="data.templates.length === 0">
+      Nenhum template salvo para este cliente.
+    </p>
+  </section>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="fechar()">Fechar</button>
+</mat-dialog-actions>

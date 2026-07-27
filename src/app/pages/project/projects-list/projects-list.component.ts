@@ -35,6 +35,16 @@ import { AppPageHeaderComponent } from 'src/app/components/page-header/page-head
 import { fixMojibake } from 'src/app/utils/encoding.utils';
 import { DependencyCheckService } from 'src/app/services/dependency-check.service';
 import { DependencyBlockDialogComponent } from 'src/app/shared/dependency-block-dialog/dependency-block-dialog.component';
+import {
+  ProjectExportDialogComponent,
+  ProjectExportDialogResult,
+} from '../project-export-dialog/project-export-dialog.component';
+import {
+  ClientPdfBatchDialogComponent,
+  ClientPdfBatchDialogResult,
+} from '../client-pdf-batch-dialog/client-pdf-batch-dialog.component';
+import { ReportClientExportService } from 'src/app/services/report-client-export.service';
+import { LoadingService } from 'src/app/services/loading.service';
 
 @Component({
   selector: 'app-projects-list',
@@ -146,7 +156,9 @@ export class ProjectsListComponent implements OnInit {
     private projectService: ProjectService,
     private location: Location,
     private translate: TranslateService,
-    private dependencyCheck: DependencyCheckService
+    private dependencyCheck: DependencyCheckService,
+    private clientExportService: ReportClientExportService,
+    private loadingService: LoadingService
   ) {}
 
   ngOnInit(): void {
@@ -161,7 +173,7 @@ export class ProjectsListComponent implements OnInit {
       }
 
       this.displayedColumns = [
-        ...(this.isAdminMaster ? ['select'] : []),
+        ...(this.canBulkSelectProjects() ? ['select'] : []),
         'client',
         'name',
         'deadline',
@@ -520,6 +532,81 @@ export class ProjectsListComponent implements OnInit {
     }
   }
 
+  canBulkSelectProjects(): boolean {
+    return this.isAdminMaster || this.isClienteAdmin || this.isViewer;
+  }
+
+  getSelectedProjects(): any[] {
+    return this.dataSource.data.filter(p => this.selectedProjectIds.has(p.id));
+  }
+
+  getSelectedProjectsClientId(): string | null {
+    const selected = this.getSelectedProjects();
+    if (selected.length === 0) return null;
+    const clientIds = new Set(selected.map(p => p.clientId).filter(Boolean));
+    return clientIds.size === 1 ? selected[0].clientId : null;
+  }
+
+  canExportSelectedProjectsPdf(): boolean {
+    // Geração em lote PDF desabilitada nesta versão.
+    return false;
+    /*
+    if (!this.isSomeProjectsSelected()) return false;
+    return !!this.getSelectedProjectsClientId();
+    */
+  }
+
+  async exportSelectedProjectsPdfZip(): Promise<void> {
+    // Geração em lote PDF desabilitada nesta versão — reativar ao subir a feature.
+    return;
+    /*
+    const selected = this.getSelectedProjects();
+    const clientId = this.getSelectedProjectsClientId();
+
+    if (!selected.length || !clientId) {
+      this.snackBar.open(
+        this.translate.instant('Selecione projetos do mesmo cliente para exportar em lote.'),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+      return;
+    }
+
+    const clientName = this.clientsMap[clientId] || clientId;
+    const dialogRef = this.dialog.open(ClientPdfBatchDialogComponent, {
+      width: '680px',
+      maxWidth: '95vw',
+      panelClass: 'client-pdf-batch-dialog-panel',
+      autoFocus: false,
+      data: {
+        clientId,
+        clientName,
+        projects: selected.map(p => ({
+          id: p.id,
+          name: p.name || p.id,
+          reportTemplateId: p.reportTemplateId as string | undefined,
+        })),
+      },
+    });
+
+    const result = (await dialogRef.afterClosed().toPromise()) as ClientPdfBatchDialogResult | undefined;
+    if (!result?.projectTemplates?.length) return;
+
+    const projectTemplates = result.projectTemplates
+      .map(item => `${item.projectId}:${item.templateId}`)
+      .join('|');
+
+    this.router.navigate(['/reports'], {
+      queryParams: {
+        clientId,
+        projectIds: result.projectTemplates.map(item => item.projectId).join(','),
+        projectTemplates,
+        exportAction: 'clientBatchPdf',
+      },
+    });
+    */
+  }
+
   async deleteSelectedProjects(): Promise<void> {
     const ids = Array.from(this.selectedProjectIds);
 
@@ -723,8 +810,79 @@ export class ProjectsListComponent implements OnInit {
     });
   }
 
-  goToProjectReport(clientId: string, projectId: string): void {
-    this.router.navigate(['/reports'], { queryParams: { clientId, projectId } });
+  async goToProjectReport(project: {
+    id: string;
+    clientId: string;
+    name: string;
+    assessmentId?: string;
+    reportTemplateId?: string;
+  }): Promise<void> {
+    const user = await this.authService.getCurrentUser();
+    const dialogRef = this.dialog.open(ProjectExportDialogComponent, {
+      width: '580px',
+      maxWidth: '95vw',
+      panelClass: 'project-export-dialog-panel',
+      autoFocus: false,
+      data: {
+        clientId: project.clientId,
+        clientName: this.clientsMap[project.clientId] || project.clientId,
+        projectId: project.id,
+        projectName: project.name,
+        assessmentId: project.assessmentId,
+        reportTemplateId: project.reportTemplateId,
+        userRole: user?.role || '',
+      },
+    });
+
+    const result = (await dialogRef.afterClosed().toPromise()) as ProjectExportDialogResult | undefined;
+    if (!result) return;
+
+    if (result.action === 'excelClient') {
+      await this.exportProjectExcelExtract(project.clientId, project.id);
+      return;
+    }
+
+    const queryParams: Record<string, string> = {
+      clientId: project.clientId,
+      projectId: project.id,
+    };
+
+    if (result.templateId) {
+      queryParams['templateId'] = result.templateId;
+    }
+
+    if (result.action !== 'openReports') {
+      queryParams['exportAction'] = result.action;
+    }
+
+    this.router.navigate(['/reports'], { queryParams });
+  }
+
+  private async exportProjectExcelExtract(clientId: string, projectId: string): Promise<void> {
+    const clientName = this.clientsMap[clientId] || clientId;
+    this.loadingService.show(this.translate.instant('Gerando extrato do cliente...'));
+
+    try {
+      const exportResult = await this.clientExportService.exportClientExtract({
+        clientId,
+        clientName,
+        projectIds: [projectId],
+        releasedOnly: this.isViewer || this.isClienteAdmin,
+      });
+
+      this.snackBar.open(
+        this.translate.instant('Extrato exportado: {{resumo}} linhas (Resumo), {{respostas}} linhas (Respostas).')
+          .replace('{{resumo}}', String(exportResult.resumoCount))
+          .replace('{{respostas}}', String(exportResult.respostasCount)),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : this.translate.instant('Erro ao exportar extrato.');
+      this.snackBar.open(message, this.translate.instant('Fechar'), { duration: 5000 });
+    } finally {
+      this.loadingService.hide();
+    }
   }
 
   openResendModal(projectId: string, clientId: string): void {

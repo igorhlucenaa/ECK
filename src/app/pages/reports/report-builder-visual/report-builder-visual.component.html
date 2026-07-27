@@ -531,14 +531,42 @@
         </div>
       </div>
 
-      <!-- Texto (se aplicável) - Rich Text Editor -->
-      <div *ngIf="['texto', 'capa', 'introducao'].includes(secaoEditando.tipo)" class="full-width">
+      <!-- Texto (se aplicável) - Rich Text Editor ou HTML bruto -->
+      <div *ngIf="['texto', 'capa', 'introducao', 'custom'].includes(secaoEditando.tipo)" class="full-width">
         <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-          Conteúdo
+          {{ 'Conteúdo' | translate }}
         </label>
-        <angular-editor
+
+        <p *ngIf="secaoEditando.tipo === 'capa'" class="capa-editor-mode__hint" style="margin-bottom: 10px;">
+          {{ 'Centralize com alinhamento, altere cores no seletor, ou use Modo HTML / botão de código-fonte para layout avançado.' | translate }}
+        </p>
+
+        <div *ngIf="secaoSuportaModoHtml(secaoEditando.tipo)" class="capa-editor-mode">
+          <mat-button-toggle-group
+            [value]="secaoEditando['htmlBruto'] ? 'html' : 'rich'"
+            (change)="setSecaoHtmlBruto($event.value === 'html')">
+            <mat-button-toggle value="rich">{{ 'Editor visual' | translate }}</mat-button-toggle>
+            <mat-button-toggle value="html">{{ 'Modo HTML' | translate }}</mat-button-toggle>
+          </mat-button-toggle-group>
+          <p class="capa-editor-mode__hint" *ngIf="secaoEditando['htmlBruto']">
+            {{ 'Cole ou edite HTML completo. O preview e o PDF respeitarão tags, estilos inline, imagens e transformações CSS.' | translate }}
+          </p>
+        </div>
+
+        <mat-checkbox *ngIf="secaoEditando.tipo === 'capa' && !secaoEditando['htmlBruto']"
+                      [(ngModel)]="secaoEditando['ocultarInfoDinamicaCapa']">
+          {{ 'Ocultar bloco automático de avaliado/respondentes no preview' | translate }}
+        </mat-checkbox>
+
+        <textarea *ngIf="secaoEditando['htmlBruto']"
+                  class="html-raw-editor"
+                  [(ngModel)]="secaoEditando.texto"
+                  rows="16"
+                  [placeholder]="'Cole o HTML aqui...' | translate"></textarea>
+
+        <angular-editor *ngIf="!secaoEditando['htmlBruto']"
           [(ngModel)]="secaoEditando.texto"
-          [config]="editorConfig"
+          [config]="secaoEditando.tipo === 'capa' ? capaEditorConfig : editorConfig"
           style="margin-bottom: 16px;">
         </angular-editor>
       </div>
@@ -556,8 +584,10 @@
     </div>
   </div>
 
-  <!-- Painel de configuração global do documento -->
-  <div class="doc-config-panel" [class.open]="mostrarPainelDocumento">
+</div>
+
+<!-- Fora do .report-builder-container (overflow:hidden cortava o painel fixed) -->
+<div class="doc-config-panel" [class.open]="mostrarPainelDocumento">
     <div class="doc-config-panel__header">
       <div class="doc-config-panel__title">
         <mat-icon>tune</mat-icon>
@@ -715,8 +745,6 @@
 
     </div>
   </div>
-
-</div>
 
 <!-- Aba flutuante para reabrir o painel quando fechado -->
 <button class="doc-config-tab"

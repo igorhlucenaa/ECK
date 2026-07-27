@@ -53,6 +53,7 @@ export class ProjectDetailComponent implements OnInit {
     deadline: new FormControl('', Validators.required),
     status: new FormControl('Em andamento', Validators.required),
     assessmentId: new FormControl(''),
+    reportTemplateId: new FormControl(''),
     responsible: new FormControl(''),
     clientId: new FormControl('', Validators.required),
     groupIds: new FormControl([], Validators.required),
@@ -74,6 +75,7 @@ export class ProjectDetailComponent implements OnInit {
   clients: { id: string; name: string }[] = [];
   groups: { id: string; name: string }[] = [];
   assessments: { id: string; name: string }[] = [];
+  reportTemplates: { id: string; name: string }[] = [];
   usersInGroups: { id: string; name: string; groupNames: string[] }[] = [];
   isLoading = false;
   isConcluding = false;
@@ -98,7 +100,11 @@ export class ProjectDetailComponent implements OnInit {
     // Recarrega formulários sempre que o cliente mudar
     this.form.get('clientId')?.valueChanges.subscribe(clientId => {
       this.assessments = [];
-      if (clientId) this.loadAssessments(clientId);
+      this.reportTemplates = [];
+      if (clientId) {
+        this.loadAssessments(clientId);
+        this.loadReportTemplates(clientId);
+      }
     });
 
     this.route.queryParamMap.subscribe(async (params) => {
@@ -169,6 +175,22 @@ export class ProjectDetailComponent implements OnInit {
     }
   }
 
+  async loadReportTemplates(clientId: string): Promise<void> {
+    try {
+      const snap = await getDocs(
+        query(collection(this.firestore, 'reportTemplates'), where('clientId', '==', clientId))
+      );
+      this.reportTemplates = snap.docs
+        .map(d => ({
+          id: d.id,
+          name: d.data()['nome'] || d.data()['name'] || 'Sem nome',
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    } catch (error) {
+      console.error('Erro ao carregar templates de relatório:', error);
+    }
+  }
+
   async loadUserGroups(): Promise<void> {
     try {
       const groupsCollection = collection(this.firestore, 'userGroups');
@@ -203,6 +225,13 @@ export class ProjectDetailComponent implements OnInit {
 
         this.projectStatus = projectData['status'] || '';
         this.form.patchValue(projectData);
+        const clientId = projectData['clientId'] as string | undefined;
+        if (clientId) {
+          await Promise.all([
+            this.loadAssessments(clientId),
+            this.loadReportTemplates(clientId),
+          ]);
+        }
         await this.updateUsersInGroups(); // Carregar usuários dos grupos selecionados
       } else {
         this.snackBar.open('Projeto não encontrado!', 'Fechar', {

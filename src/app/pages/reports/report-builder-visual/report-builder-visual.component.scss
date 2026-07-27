@@ -422,6 +422,29 @@
       }
     }
 
+    .html-raw-editor {
+      width: 100%;
+      min-height: 280px;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      resize: vertical;
+      margin-bottom: 16px;
+    }
+
+    .capa-editor-mode {
+      margin-bottom: 12px;
+
+      &__hint {
+        margin: 8px 0 0;
+        font-size: 12px;
+        color: #64748b;
+      }
+    }
+
     .config-actions {
       margin-top: auto;
       padding-top: 16px;
@@ -812,10 +835,12 @@
 // ── Painel de configuração global do documento ────────────────────────────────
 .doc-config-panel {
   position: fixed;
-  top: 80px;
+  top: 72px; // altura do topbar horizontal
+  bottom: 0;
   right: -420px;
-  width: 400px;
-  height: calc(100vh - 80px);
+  width: min(400px, calc(100vw - 12px));
+  height: auto;
+  max-height: none;
   background: white;
   border-left: 1px solid #e0e0e0;
   box-shadow: -4px 0 20px rgba(0,0,0,0.12);
@@ -823,6 +848,8 @@
   z-index: 1000;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 
   &.open { right: 0; }
 
@@ -848,12 +875,31 @@
   }
 
   &__content {
-    flex: 1;
-    overflow-y: auto;
+    flex: 1 1 0;
+    height: 0;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    display: block;
     padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+
+    &::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 5px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 5px;
+      border: 2px solid #f1f5f9;
+    }
   }
 }
 
@@ -863,6 +909,10 @@
   border-radius: 10px;
   overflow: hidden;
   transition: opacity 0.2s;
+
+  & + & {
+    margin-top: 12px;
+  }
 
   &--inactive { opacity: 0.55; }
 
@@ -892,8 +942,31 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex-shrink: 0;
 
     mat-form-field { margin-bottom: 0; }
+  }
+}
+
+@media (max-height: 800px) {
+  .doc-config-panel {
+    &__header {
+      padding: 10px 12px;
+    }
+
+    &__content {
+      padding: 12px;
+      gap: 10px;
+    }
+  }
+
+  .doc-config-section__body {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .doc-config-toggles {
+    gap: 4px 8px;
   }
 }
 

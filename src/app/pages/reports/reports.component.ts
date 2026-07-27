@@ -1,5 +1,16 @@
 ﻿import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, AfterViewInit, OnDestroy } from '@angular/core';
-import { parseNumeric, exportToCSV, filterQuestionsByType, computeConsolidation, getQuestionTypeStats } from './reports-utils';
+import {
+  parseNumeric,
+  exportToCSV,
+  filterQuestionsByType,
+  computeConsolidation,
+  getQuestionTypeStats,
+  isParticipantIncludedInReports,
+  resolveExportAnswer,
+  getExportAnswerTipoResposta,
+  parseLikertAnswerForExport,
+  normalizeQuestionType,
+} from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from '@angular/fire/firestore';
 import * as XLSX from 'xlsx';
@@ -21,17 +32,24 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
 import { EChartsOption } from 'echarts';
+import { getInstanceByDom } from 'echarts/core';
 import { ReportsPdfService } from './reports-pdf.service';
 import { ReportPdfMakeService, DocumentoConfig, DOCUMENTO_CONFIG_PADRAO, PdfHtmlRenderOptions } from '../../services/report-pdfmake.service';
+import { ReportClientExportService } from '../../services/report-client-export.service';
+import {
+  ClientExportDialogComponent,
+  ClientExportDialogResult,
+} from './client-export-dialog/client-export-dialog.component';
 import { NgxEchartsModule } from 'ngx-echarts';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, NavigationEnd } from '@angular/router';
 import { Input } from '@angular/core';
 import { Router } from '@angular/router';
 import { AppPageHeaderComponent } from '../../components/page-header/page-header.component';
@@ -41,13 +59,25 @@ import { AuthService } from '../../services/apps/authentication/auth.service';
 import { CompetencyQuestionsService } from '../../services/competency-questions.service';
 import { query, where } from '@angular/fire/firestore';
 import { JohariWindowChartComponent, JohariWindowData } from './charts/johari-window-chart/johari-window-chart.component';
+import { JOHARI_THRESHOLD } from './charts/johari-window-chart/johari-window.utils';
+import {
+  CAPA_HTML_PDF_STYLES,
+  DEFAULT_CAPA_HTML,
+  REPORT_CAPA_EDITOR_CONFIG,
+  REPORT_RICH_TEXT_EDITOR_CONFIG,
+  secaoSuportaHtmlBruto,
+} from './report-rich-text.config';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { GapChartComponent, GapChartDataItem } from './charts/gap-chart/gap-chart.component';
 import { ReportBuilderVisualComponent } from './report-builder-visual/report-builder-visual.component';
 import { SurveyDashboardComponent } from './survey-dashboard/survey-dashboard.component';
-import { Subject, from, of, takeUntil, tap, debounceTime, switchMap } from 'rxjs';
+import { Subject, from, of, takeUntil, tap, debounceTime, switchMap, filter, distinctUntilChanged, firstValueFrom } from 'rxjs';
+import {
+  ReportTemplateManageDialogComponent,
+  ReportTemplateManageDialogData,
+} from './report-template-manage-dialog/report-template-manage-dialog.component';
 import { ConfirmDialogService } from '../../shared/confirm-dialog/confirm-dialog.service';
 import { environment } from 'src/enviroments/environment';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -171,6 +201,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly LABEL_MEDIA_SEM_AUTO = 'Média sem autoavaliação';
   // Cache de participantes para evitar múltiplas idas ao Firestore
   private participantsCache: Map<string, any> = new Map<string, any>();
+  /** Snapshot autoritativo dos participantes do ciclo (recarregado do Firestore). */
+  private participantDataById = new Map<string, Record<string, unknown>>();
+  /** IDs de participantes bloqueados no projeto atual (consulta fresca ao Firestore). */
+  private blockedParticipantIds = new Set<string>();
 
   // Configuração externa para uso embarcado (geração programática de PDF)
   @Input() externalConfig?: {
@@ -189,42 +223,183 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // Converte respostas tipo "Column N" para número (1..5)
-  private parseLikertAnswer(answer: unknown): number | null {
-    if (typeof answer === 'number') {
-      return answer >= 1 && answer <= 5 ? answer : null;
-    }
-    if (typeof answer === 'string') {
-      const match = answer.match(/Column\s*(\d+)/);
-      if (match) {
-        const n = parseInt(match[1], 10);
-        return n >= 1 && n <= 5 ? n : null;
-      }
-      const parsed = parseFloat(answer);
-      return parsed >= 1 && parsed <= 5 ? parsed : null;
-    }
-    return null;
+  private isFilterContextStale(expectedGeneration: number): boolean {
+    return expectedGeneration !== this.filterContextGeneration;
   }
 
-  private formatOpenAnswerForExport(answer: unknown): string {
-    if (answer === null || answer === undefined) return '';
+  /** Carrega participantes do ciclo e monta o set de bloqueados (sempre do Firestore, sem cache stale). */
+  private async loadParticipantsForReport(
+    projectId: string,
+    resultParticipantIds: string[]
+  ): Promise<void> {
+    this.blockedParticipantIds.clear();
+    this.participantDataById.clear();
+    this.participantsCache.clear();
+    this.projectParticipantIdsForFilter.clear();
 
-    if (typeof answer === 'string') {
-      return answer.trim();
+    if (projectId) {
+      try {
+        const snap = await getDocs(query(
+          collection(this.firestore, 'participants'),
+          where('projectId', '==', projectId)
+        ));
+        snap.docs.forEach(d => {
+          this.projectParticipantIdsForFilter.add(d.id);
+          const data = d.data() as Record<string, unknown>;
+          this.participantDataById.set(d.id, data);
+          this.participantsCache.set(d.id, data);
+          if (data['blocked'] === true) {
+            this.blockedParticipantIds.add(d.id);
+          }
+        });
+      } catch (error) {
+        console.warn('[Relatório] Erro ao carregar participantes do projeto:', error);
+      }
     }
 
-    if (Array.isArray(answer)) {
-      return answer.map(item => String(item ?? '').trim()).filter(Boolean).join(' | ');
+    const missingIds = [...new Set(resultParticipantIds.filter(id => id && !this.participantDataById.has(id)))];
+    await Promise.all(missingIds.map(async (participantId) => {
+      try {
+        const snap = await getDoc(doc(this.firestore, 'participants', participantId));
+        if (!snap.exists()) return;
+        const data = snap.data() as Record<string, unknown>;
+        this.participantDataById.set(participantId, data);
+        this.participantsCache.set(participantId, data);
+        if (data['blocked'] === true) {
+          this.blockedParticipantIds.add(participantId);
+        }
+      } catch (error) {
+        console.warn(`[Relatório] Erro ao carregar participante ${participantId}:`, error);
+      }
+    }));
+    this.soleAvaliadoIdForCurrentProject = projectId
+      ? this.resolveSoleAvaliadoIdFromLoadedProject(projectId) ?? null
+      : null;
+  }
+
+  private normalizeCategory(raw: unknown): string {
+    return String(raw || '').trim();
+  }
+
+  /** Infere tipo a partir de type ou category (Excel/modal às vezes omitem type). */
+  private inferParticipantType(participantData: Record<string, unknown>): 'avaliado' | 'avaliador' {
+    const type = String(participantData['type'] || '').toLowerCase();
+    if (type === 'avaliador') return 'avaliador';
+    if (type === 'avaliado') return 'avaliado';
+    const cat = this.normalizeCategory(participantData['category'] || participantData['categoria']);
+    if (cat === 'Avaliado' || cat === 'Avaliado(a)') return 'avaliado';
+    return 'avaliador';
+  }
+
+  private inferRowTipo(row: Record<string, unknown>): 'avaliado' | 'avaliador' {
+    const tipo = String(row['tipo'] || '').toLowerCase();
+    if (tipo === 'avaliador') return 'avaliador';
+    if (tipo === 'avaliado') return 'avaliado';
+    const cat = this.normalizeCategory(row['categoria']);
+    if (cat === 'Avaliado' || cat === 'Avaliado(a)') return 'avaliado';
+    return 'avaliador';
+  }
+
+  /** Único avaliado do projeto a partir dos participantes já carregados. */
+  private resolveSoleAvaliadoIdFromLoadedProject(projectId: string): string | undefined {
+    if (!projectId) return undefined;
+    const avaliadoIds: string[] = [];
+    this.participantDataById.forEach((data, id) => {
+      if (!this.projectParticipantIdsForFilter.has(id)) return;
+      if (String(data['projectId'] || '') !== projectId && !this.projectParticipantIdsForFilter.has(id)) return;
+      if (this.inferParticipantType(data) === 'avaliado') {
+        avaliadoIds.push(id);
+      }
+    });
+    return avaliadoIds.length === 1 ? avaliadoIds[0] : undefined;
+  }
+
+  private resolveEvaluatorAvaliadoId(
+    participantId: string,
+    participantData: Record<string, unknown>,
+    filterProjectId: string,
+    soleAvaliadoId: string | undefined,
+    evaluatorToAvaliadoIdMap: Map<string, string>
+  ): string | undefined {
+    const inProject = this.projectParticipantIdsForFilter.has(participantId)
+      || participantData['projectId'] === filterProjectId;
+
+    // Regra de negócio 360: 1 avaliado por projeto → todo avaliador do ciclo avalia esse avaliado
+    if (soleAvaliadoId && inProject) {
+      return soleAvaliadoId;
     }
 
-    if (typeof answer === 'object') {
-      const entries = Object.entries(answer as Record<string, unknown>)
-        .map(([key, value]) => `${key}: ${String(value ?? '').trim()}`)
-        .filter(item => !item.endsWith(':'));
-      return entries.join(' | ');
+    const fromParticipant = participantData['avaliadoId'] as string | undefined;
+    if (fromParticipant) return fromParticipant;
+
+    return evaluatorToAvaliadoIdMap.get(participantId);
+  }
+
+  private getBlockedCacheSuffix(): string {
+    return [...this.blockedParticipantIds].sort().join('|') || 'none';
+  }
+
+  /** Atualiza flags de bloqueio sem recarregar todo o dataSource (ex.: retorno à aba). */
+  private async refreshBlockedParticipantsStatus(projectId: string): Promise<void> {
+    this.blockedParticipantIds.clear();
+
+    if (projectId) {
+      try {
+        const snap = await getDocs(query(
+          collection(this.firestore, 'participants'),
+          where('projectId', '==', projectId)
+        ));
+        snap.docs.forEach(d => {
+          const data = d.data() as Record<string, unknown>;
+          this.participantDataById.set(d.id, data);
+          this.participantsCache.set(d.id, data);
+          if (data['blocked'] === true) {
+            this.blockedParticipantIds.add(d.id);
+          }
+        });
+        return;
+      } catch (error) {
+        console.warn('[Relatório] Erro ao atualizar status de bloqueio:', error);
+      }
     }
 
-    return String(answer).trim();
+    this.participantDataById.forEach((data, id) => {
+      if (data['blocked'] === true) {
+        this.blockedParticipantIds.add(id);
+      }
+    });
+  }
+
+  /** Remove linhas de participantes bloqueados do dataSource e recalcula índices/cache. */
+  private async applyBlockedParticipantsFilter(): Promise<void> {
+    const projectId = this.filterProjectControl.value || '';
+
+    await this.refreshBlockedParticipantsStatus(projectId);
+
+    this.dataSource = this.dataSource.filter(
+      row => !row.participanteId || !this.blockedParticipantIds.has(row.participanteId)
+    );
+
+    this.createDataIndexes();
+    this.invalidateCache();
+    this.cdr.markForCheck();
+  }
+
+  private isRowFromBlockedParticipant(row: Record<string, unknown> | null | undefined): boolean {
+    const participantId = row?.['participanteId'] as string | undefined;
+    if (!participantId) return false;
+    if (this.blockedParticipantIds.has(participantId)) return true;
+    const data = this.participantDataById.get(participantId);
+    return data?.['blocked'] === true;
+  }
+
+  private getRowsForReportCalculations(): any[] {
+    return this.dataSource.filter(row => !this.isRowFromBlockedParticipant(row));
+  }
+
+  // Converte respostas tipo "Column N" para número (1..5)
+  private parseLikertAnswer(answer: unknown): number | null {
+    return parseLikertAnswerForExport(answer);
   }
 
   // Exporta base de dados plana (uma linha por resposta por pergunta)
@@ -234,10 +409,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Coletar perguntas visíveis (ou todas)
     const perguntasIds: string[] = this.allQuestions?.map(q => q.id) || Object.keys(this.questionMap || {});
-    const openTypes = new Set(['text', 'comment', 'multipletext']);
-    const tipoPerguntaPorId = new Map((this.allQuestions || []).map(q => [q.id, (q.type || '').toLowerCase()]));
+    const tipoPerguntaPorId = new Map(
+      (this.allQuestions || []).map(q => [q.id, normalizeQuestionType(q.type)])
+    );
     const competenciaPorPergunta = new Map<string, string>();
 
     for (const comp of this.competencias || []) {
@@ -262,23 +437,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return '';
     };
 
-    const linhas: any[] = [];
+    const linhas: Record<string, string | number>[] = [];
     for (const row of this.dataSource) {
       for (const perguntaId of perguntasIds) {
         if (!(perguntaId in row)) continue;
-        const valorOriginal = row[perguntaId];
-        const tipoPergunta = tipoPerguntaPorId.get(perguntaId) || '';
 
-        let respostaExportacao: number | string | null = null;
-        if (openTypes.has(tipoPergunta)) {
-          const texto = this.formatOpenAnswerForExport(valorOriginal);
-          if (!texto) continue;
-          respostaExportacao = texto;
-        } else {
-          const valorLikert = this.parseLikertAnswer(valorOriginal);
-          if (valorLikert === null) continue;
-          respostaExportacao = valorLikert;
-        }
+        const exportAnswer = resolveExportAnswer(row[perguntaId], tipoPerguntaPorId.get(perguntaId));
+        if (exportAnswer.kind === 'skip') continue;
 
         linhas.push({
           AssessmentId: this.selectedAssessmentId || '',
@@ -291,7 +456,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           Competência: resolverCompetenciaPorPergunta(perguntaId),
           PerguntaId: perguntaId,
           Pergunta: this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || perguntaId),
-          Resposta: respostaExportacao,
+          TipoResposta: getExportAnswerTipoResposta(exportAnswer.kind),
+          Resposta: exportAnswer.value,
         });
       }
     }
@@ -301,14 +467,79 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(linhas);
+    const linhasAbertas = linhas.filter(l => l['TipoResposta'] === 'Aberta');
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Base');
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(linhas), 'Base');
+    if (linhasAbertas.length > 0) {
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(linhasAbertas),
+        'Perguntas Abertas'
+      );
+    }
 
     const fileName = this.getExportFileName('xlsx');
 
     XLSX.writeFile(workbook, fileName);
     this.snackBar.open(this.translate.instant('Base exportada com sucesso!'), this.translate.instant('Fechar'), { duration: 2500 });
+  }
+
+  async abrirExtratoClienteExcel(): Promise<void> {
+    if (!this.clients.length) {
+      this.snackBar.open(
+        this.t('Nenhum cliente disponível para exportação.'),
+        this.t('Fechar'),
+        { duration: 3500 }
+      );
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ClientExportDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: {
+        clients: this.clients,
+        preselectedClientId: this.filterClientControl.value || this.selectedClientId || undefined,
+        releasedOnly: this.shouldFilterByReleaseStatus,
+      },
+    });
+
+    const result = await dialogRef.afterClosed().toPromise() as ClientExportDialogResult | undefined;
+    if (!result) return;
+
+    this.isExporting = true;
+    this.exportingLabel = this.t('Gerando extrato do cliente...');
+    this.cdr.markForCheck();
+
+    try {
+      const exportResult = await this.clientExportService.exportClientExtract(
+        {
+          clientId: result.clientId,
+          clientName: result.clientName,
+          projectIds: result.projectIds,
+          releasedOnly: this.shouldFilterByReleaseStatus,
+        },
+        message => {
+          this.exportingLabel = message;
+          this.cdr.markForCheck();
+        }
+      );
+
+      this.snackBar.open(
+        this.t('Extrato exportado: {{resumo}} linhas (Resumo), {{respostas}} linhas (Respostas).')
+          .replace('{{resumo}}', String(exportResult.resumoCount))
+          .replace('{{respostas}}', String(exportResult.respostasCount)),
+        this.t('Fechar'),
+        { duration: 5000 }
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : this.t('Erro ao exportar extrato.');
+      this.snackBar.open(message, this.t('Fechar'), { duration: 5000 });
+    } finally {
+      this.isExporting = false;
+      this.exportingLabel = '';
+      this.cdr.markForCheck();
+    }
   }
 
   // Calcula a "Média sem autoavaliação" a partir das médias por categoria da tabela
@@ -367,7 +598,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Aplicar template, se fornecido
     if (cfg.templateId) {
-      this.selectedTemplateId.setValue(cfg.templateId);
+      this.selectedTemplateId.setValue(cfg.templateId, { emitEvent: false });
       await this.aplicarTemplateSelecionado();
     }
 
@@ -444,16 +675,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.savedTemplates.find(t => t.id === this.selectedTemplateId.value)?.name || this.selectedTemplateId.value || '';
   }
 
+  get nomeTemplateAplicado(): string {
+    if (!this.appliedTemplateId) return '';
+    return this.savedTemplates.find(t => t.id === this.appliedTemplateId)?.name || this.appliedTemplateId;
+  }
+
   async onBuilderSaveRequested(): Promise<void> {
-    if (this.selectedTemplateId.value) {
-      await this.atualizarTemplateNoFirebase();
-      this.builderHasUnsavedChanges = false;
+    if (this.appliedTemplateId) {
+      await this.salvarAlteracoesNoTemplate();
     } else if (this.selectedReportId.value) {
       await this.atualizarRelatorioNoFirebase();
       this.builderHasUnsavedChanges = false;
     } else {
       this.snackBar.open(
-        this.t('Carregue um template ou relatório nos cards acima antes de salvar.'),
+        this.t('Aplique um template ou carregue um rascunho antes de salvar.'),
         this.t('Fechar'),
         { duration: 4000 }
       );
@@ -470,8 +705,30 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Filtros de Cliente e Projeto no topo do relatório
   filterClientControl = new FormControl('');
   filterProjectControl = new FormControl('');
-  filterProjects: { id: string; name: string; assessmentId?: string }[] = [];
+  filterProjects: { id: string; name: string; assessmentId?: string; reportTemplateId?: string }[] = [];
   allAssessmentsByProject = new Map<string, string>(); // projectId → assessmentId
+  /** Avaliações do cliente selecionado (passo 2). */
+  clientAssessments: AssessmentOption[] = [];
+  /** assessmentId → projectIds que usam esse formulário. */
+  private assessmentProjectsMap = new Map<string, string[]>();
+  /** Projetos candidatos quando a avaliação mapeia para mais de um ciclo. */
+  projectsForAssessment: { id: string; name: string }[] = [];
+  /** true quando o usuário precisa escolher o projeto manualmente. */
+  projectSelectionRequired = false;
+  /** true quando o projeto foi deduzido automaticamente (1 candidato). */
+  projectAutoDeduced = false;
+  /** Evita auto-seleção de avaliação enquanto query params de projeto estão sendo aplicados. */
+  private pendingQueryProjectId: string | null = null;
+  /** Sentinel em pendingQueryProjectId durante export ZIP multi-projeto. */
+  private static readonly CLIENT_BATCH_QUERY_SENTINEL = '__clientBatch__';
+  /** Evita reentrada do handler de query params (ex.: ao limpar params do batch). */
+  private suppressQueryParamsHandler = false;
+  /** Incrementado ao limpar filtros — invalida cargas assíncronas em andamento. */
+  private filterContextGeneration = 0;
+  /** IDs de participantes do projeto filtrado (para incluir avaliadores mesmo sem projectId no doc). */
+  private projectParticipantIdsForFilter = new Set<string>();
+  /** Quando o projeto tem exatamente 1 avaliado, usado para vincular gestores/pares. */
+  private soleAvaliadoIdForCurrentProject: string | null = null;
 
   // Controles para cliente e grupos de competências
   clients: any[] = [];
@@ -570,23 +827,45 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.selectedAvaliadoReleaseStatus !== 'released' && this.hasActiveSnapshot;
   }
 
-  /** Verifica no Firestore se há snapshot ativo (não revogado) para o avaliado/projeto atual. */
+  /** ID do cliente ativo nos filtros de relatório. */
+  private getReportClientId(): string {
+    return this.filterClientControl.value || this.selectedClientId || '';
+  }
+
+  private buildReleasedSnapshotId(clientId: string, assessmentId: string, avaliadoName: string): string {
+    const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
+    return clientId
+      ? `${clientId}_${assessmentId}_${safeKey}`
+      : `${assessmentId}_${safeKey}`;
+  }
+
+  /** Verifica se um snapshot pertence ao escopo do cliente (com fallback legado por projeto). */
+  private snapshotMatchesScope(data: Record<string, unknown> | undefined): boolean {
+    if (!data || data['revoked'] === true) return false;
+    const clientId = this.getReportClientId();
+    const projectId = this.filterProjectControl.value;
+    const snapClientId = data['clientId'] as string | undefined;
+    if (snapClientId) {
+      return !!clientId && snapClientId === clientId;
+    }
+    const snapProjectId = data['projectId'] as string | undefined;
+    if (snapProjectId && projectId) {
+      return snapProjectId === projectId;
+    }
+    return !snapProjectId;
+  }
+
+  /** Verifica no Firestore se há snapshot ativo (não revogado) para o avaliado/cliente atual. */
   private async checkActiveSnapshot(avaliadoName: string): Promise<void> {
     this.hasActiveSnapshot = false;
     if (!this.selectedAssessmentId || !avaliadoName) return;
-    const projectId = this.filterProjectControl.value;
     try {
       const qSnap = await getDocs(query(
         collection(this.firestore, 'releasedReports'),
         where('assessmentId', '==', this.selectedAssessmentId),
         where('avaliadoName', '==', avaliadoName)
       ));
-      this.hasActiveSnapshot = qSnap.docs.some(d => {
-        const data = d.data();
-        if (data['revoked'] === true) return false;
-        const pid = data['projectId'];
-        return !projectId || !pid || pid === projectId;
-      });
+      this.hasActiveSnapshot = qSnap.docs.some(d => this.snapshotMatchesScope(d.data()));
     } catch {
       this.hasActiveSnapshot = false;
     }
@@ -656,22 +935,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   dadosTextControl = new FormControl('');
   competenciasTextControl = new FormControl('');
   graficosTextControl = new FormControl('');
-  editorConfig: AngularEditorConfig = {
-    editable: true,
-    spellcheck: true,
-    height: '300px',
-    minHeight: '200px',
-    placeholder: 'Escreva seu texto... Use as ferramentas de formatação para criar títulos, adicionar imagens, listas e muito mais...',
-    toolbarPosition: 'top',
-    showToolbar: true,
-    toolbarHiddenButtons: [
-      ['subscript', 'superscript'],
-      ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'],
-      ['indent', 'outdent'],
-      ['insertUnorderedList', 'insertOrderedList'],
-      ['fontName']
-    ]
-  };
+  editorConfig: AngularEditorConfig = REPORT_RICH_TEXT_EDITOR_CONFIG;
+  capaEditorConfig: AngularEditorConfig = REPORT_CAPA_EDITOR_CONFIG;
 
   polarData: any[] = [];
   radarOptions: EChartsOption = {};
@@ -699,7 +964,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       id: 'capa',
       tipo: 'capa',
       titulo: 'Relatório Feedback 360°',
-      texto: '<h1 style="text-align: center; color: #1976d2; margin-bottom: 20px;">Relatório Feedback 360°</h1><p style="text-align: center; font-size: 18px; color: #666; margin-bottom: 30px;">Avaliação de Competências e Desenvolvimento</p><div style="text-align: center; margin: 40px 0;"><div style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);"><h2 style="margin: 0; font-size: 24px;">Avaliação Completa</h2><p style="margin: 10px 0 0 0; opacity: 0.9;">Feedback 360° Profissional</p></div></div>',
+      texto: DEFAULT_CAPA_HTML,
       visivel: true,
       ordem: 1
     },
@@ -771,6 +1036,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   nomeTemplateControl = new FormControl('');
   savedTemplates: { id: string, name: string }[] = [];
   selectedTemplateId = new FormControl('');
+  /** Template efetivamente aplicado ao editor (distinto da seleção no dropdown). */
+  appliedTemplateId: string | null = null;
+  private templateAutoApplyReady = false;
+  private applyingTemplate = false;
 
   // �Ys? PERFORMANCE: Cache para cálculos pesados
   private calculosCache = new Map<string, any>();
@@ -808,7 +1077,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     private pdfMakeService: ReportPdfMakeService,
     private sanitizer: DomSanitizer,
     private confirmDialog: ConfirmDialogService,
-    private competencyQuestionsService: CompetencyQuestionsService
+    private competencyQuestionsService: CompetencyQuestionsService,
+    private dialog: MatDialog,
+    private clientExportService: ReportClientExportService
   ) {
     this.dummyForm = this.fb.group({
       relatorioFormArray: this.fb.array([])
@@ -830,12 +1101,24 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.carregarRelatoriosSalvos();
     this.carregarTemplatesSalvos();
 
+    this.selectedTemplateId.valueChanges.pipe(
+      distinctUntilChanged(),
+      filter((id): id is string => !!id),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      void this.onTemplateDropdownChanged();
+    });
+
+    queueMicrotask(() => {
+      this.templateAutoApplyReady = true;
+    });
+
 
     this.assessmentSearchControl.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(term => {
         const t = (term || '').toLowerCase();
-        this.filteredAssessments = this.assessments.filter(a =>
+        this.filteredAssessments = this.clientAssessments.filter(a =>
           a.name.toLowerCase().includes(t)
         );
       });
@@ -847,7 +1130,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         const name = this.displayAssessmentName(id);
         if (name && this.assessmentSearchControl.value !== name) {
           this.assessmentSearchControl.setValue(name, { emitEvent: false });
-          this.filteredAssessments = [...this.assessments];
+          this.filteredAssessments = [...this.clientAssessments];
         }
       });
     this.avaliadoControl.valueChanges
@@ -928,6 +1211,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Indexar participantes por categoria (armazenar índices numéricos)
     this.dataSource.forEach((row, index) => {
+      if (this.isRowFromBlockedParticipant(row)) return;
       if (row.categoria) {
         const grupo = this.mapCategoriaToGrupo(row.categoria);
         if (!this.dataIndexes.participantsByCategory.has(grupo)) {
@@ -1022,39 +1306,84 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Processar os queryParams após carregar templates
-    this.route.queryParams.subscribe(async params => {
+    this.route.queryParams.pipe(
+      takeUntil(this.destroy$),
+      distinctUntilChanged((a, b) =>
+        a['mode'] === b['mode'] &&
+        a['clientId'] === b['clientId'] &&
+        a['projectId'] === b['projectId'] &&
+        a['assessmentId'] === b['assessmentId'] &&
+        a['participantId'] === b['participantId'] &&
+        a['templateId'] === b['templateId'] &&
+        a['competencyIds'] === b['competencyIds'] &&
+        a['exportAction'] === b['exportAction'] &&
+        a['projectIds'] === b['projectIds'] &&
+        a['projectTemplates'] === b['projectTemplates']
+      )
+    ).subscribe(async params => {
+      if (this.suppressQueryParamsHandler) return;
+
       // Pré-popular filtros a partir de params de projeto (sem modo individual)
       if (params['mode'] !== 'individual') {
-        const clientId: string | undefined = params['clientId'];
-        const projectId: string | undefined = params['projectId'];
-        if (!clientId && !projectId) return;
+        this.resetIndividualMode();
+        const clientIdParam: string | undefined = params['clientId'];
+        const projectIdParam: string | undefined = params['projectId'];
+        if (!clientIdParam && !projectIdParam) return;
 
-        if (clientId) {
-          this.filterClientControl.setValue(clientId, { emitEvent: false });
+        let resolvedClientId = clientIdParam;
+        if (!resolvedClientId && projectIdParam) {
           try {
-            const projectsSnap = await getDocs(
-              query(collection(this.firestore, 'projects'), where('clientId', '==', clientId))
-            );
-            this.filterProjects = projectsSnap.docs
-              .filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status'] || ''))
-              .map(d => ({
-                id: d.id,
-                name: d.data()['name'] || '—',
-                assessmentId: d.data()['assessmentId'] || undefined,
-              }))
-              .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-            this.allAssessmentsByProject.clear();
-            this.filterProjects.forEach(p => {
-              if (p['assessmentId']) this.allAssessmentsByProject.set(p.id, p['assessmentId']);
-            });
+            const projectDoc = await getDoc(doc(this.firestore, 'projects', projectIdParam));
+            if (projectDoc.exists()) {
+              resolvedClientId = projectDoc.data()['clientId'] || undefined;
+            }
           } catch (e) {
-            console.error('[Relatório] Erro ao carregar projetos:', e);
+            console.error('[Relatório] Erro ao resolver cliente do projeto:', e);
           }
         }
 
-        if (projectId) {
-          this.filterProjectControl.setValue(projectId, { emitEvent: false });
-          await this.onFilterProjectChange();
+        const exportAction = params['exportAction'] as string | undefined;
+        const batchProjectIds = (params['projectIds'] as string | undefined)
+          ?.split(',')
+          .map(id => id.trim())
+          .filter(Boolean) || [];
+        const isClientBatchExport = exportAction === 'clientBatchPdf' && batchProjectIds.length > 0;
+
+        if (resolvedClientId) {
+          this.pendingQueryProjectId = isClientBatchExport
+            ? ReportsComponent.CLIENT_BATCH_QUERY_SENTINEL
+            : (projectIdParam || null);
+          this.filterClientControl.setValue(resolvedClientId, { emitEvent: false });
+          await this.onFilterClientChange();
+          this.pendingQueryProjectId = null;
+        }
+
+        if (isClientBatchExport) {
+          // Geração em lote PDF multi-projeto desabilitada nesta versão.
+          this.snackBar.open(
+            'Exportação em lote de PDF temporariamente indisponível.',
+            this.t('Fechar'),
+            { duration: 4000 }
+          );
+          this.clearClientBatchQueryParams();
+          this.cdr.markForCheck();
+          return;
+          /*
+          if (this.isBatchGenerating) return;
+          const templateByProject = this.parseProjectTemplateMap(params['projectTemplates'] as string | undefined);
+          await this.executeClientBatchPdfExport(batchProjectIds, templateByProject);
+          this.cdr.markForCheck();
+          return;
+          */
+        }
+
+        if (projectIdParam) {
+          await this.initializeReportFromProject(projectIdParam, params['templateId']);
+          if (exportAction && exportAction !== 'openReports') {
+            await this.executeProjectExportAction(exportAction);
+          } else if (params['templateId'] || exportAction === 'openReports') {
+            this.selectedTabIndex = 2;
+          }
         }
 
         this.cdr.markForCheck();
@@ -1079,30 +1408,29 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const projectIdParam: string | null = params['projectId'] || null;
 
       if (clientIdParam) {
+        this.pendingQueryProjectId = projectIdParam || null;
         this.filterClientControl.setValue(clientIdParam, { emitEvent: false });
+        await this.onFilterClientChange();
+        this.pendingQueryProjectId = null;
+      } else if (projectIdParam) {
+        this.pendingQueryProjectId = projectIdParam;
         try {
-          const projectsSnap = await getDocs(
-            query(collection(this.firestore, 'projects'), where('clientId', '==', clientIdParam))
-          );
-          this.filterProjects = projectsSnap.docs
-            .filter(d => !['Cancelado', 'Inativo'].includes(d.data()['status'] || ''))
-            .map(d => ({
-              id: d.id,
-              name: d.data()['name'] || '—',
-              assessmentId: d.data()['assessmentId'] || undefined,
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-          this.allAssessmentsByProject.clear();
-          this.filterProjects.forEach(p => {
-            if (p.assessmentId) this.allAssessmentsByProject.set(p.id, p.assessmentId);
-          });
+          const projectDoc = await getDoc(doc(this.firestore, 'projects', projectIdParam));
+          const resolvedClientId = projectDoc.data()?.['clientId'];
+          if (resolvedClientId) {
+            this.filterClientControl.setValue(resolvedClientId, { emitEvent: false });
+            await this.onFilterClientChange();
+          }
         } catch (e) {
-          console.error('[Relatório Individual] Erro ao carregar projetos:', e);
+          console.error('[Relatório Individual] Erro ao resolver cliente do projeto:', e);
         }
+        this.pendingQueryProjectId = null;
       }
 
       if (projectIdParam) {
         this.filterProjectControl.setValue(projectIdParam, { emitEvent: false });
+        this.projectAutoDeduced = true;
+        this.projectSelectionRequired = false;
       }
 
       // 2. Setar avaliação nos controles (sem disparar subscriptions)
@@ -1116,6 +1444,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // Garantir que filteredAssessments contenha esta avaliação (para o filtro sequencial)
       if (!this.filteredAssessments.find(a => a.id === assessmentId)) {
         this.filteredAssessments = [{ id: assessmentId, name: assessmentName }];
+      }
+      if (!this.clientAssessments.find(a => a.id === assessmentId)) {
+        this.clientAssessments = [...this.filteredAssessments];
+      }
+
+      if (!projectIdParam) {
+        await this.resolveProjectForAssessment(assessmentId);
       }
 
       // 4. Definir competências pendentes ANTES de onAssessmentChange
@@ -1150,6 +1485,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         } catch (e) {
           console.error('[Relatório Individual] Erro ao aplicar template:', e);
         }
+      } else if (projectIdParam) {
+        await this.applyProjectReportTemplate(projectIdParam);
       }
 
       // 8. Preencher competências em todas as seções compatíveis
@@ -1170,33 +1507,48 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.atualizarPerguntasBloqueadas();
 
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      takeUntil(this.destroy$)
+    ).subscribe((event) => {
+      if (!event.urlAfterRedirects.includes('/reports')) return;
+      if (!this.selectedAssessmentId || this.dataSource.length === 0) return;
+      void this.applyBlockedParticipantsFilter().then(() => {
+        if (this.selectedTabIndex === 2) {
+          this.prewarmPreviewCache();
+        }
+      });
+    });
+
     // Subscription única para seleção manual de avaliação pelo usuário
     this.assessmentControl.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(async id => {
+        if (this.pendingQueryProjectId || this.isBatchGenerating) return;
+        const loadGeneration = this.filterContextGeneration;
         this.selectedAssessmentId = id;
         if (id) {
-          await this.onAssessmentChange();
-          await this.calcularMediasPorCompetencia();
+          const ready = await this.resolveProjectForAssessment(id);
+          if (loadGeneration !== this.filterContextGeneration || this.isBatchGenerating) return;
+          if (ready) {
+            await this.onAssessmentChange(loadGeneration);
+            if (loadGeneration !== this.filterContextGeneration || this.isBatchGenerating) return;
+            await this.calcularMediasPorCompetencia();
+          } else if (loadGeneration === this.filterContextGeneration && !this.isBatchGenerating) {
+            this.dataSource = [];
+            this.avaliadosDisponiveis = [];
+          }
         } else {
+          this.filterProjectControl.setValue('', { emitEvent: false });
+          this.projectSelectionRequired = false;
+          this.projectAutoDeduced = false;
+          this.projectsForAssessment = [];
           this.dataSource = [];
           this.competencias = [];
           this.mediasPorCompetencia = [];
         }
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       });
-
-    this.selectedReportId.valueChanges.subscribe(id => {
-      if (id) {
-        this.carregarRelatorioSelecionado();
-      }
-    });
-
-    this.selectedTemplateId.valueChanges.subscribe(id => {
-      if (id) {
-        this.aplicarTemplateSelecionado();
-      }
-    });
 
     // Invalidação de cache quando seções são adicionadas/removidas/reordenadas
     this.relatorioFormArray.valueChanges.subscribe(() => {
@@ -1270,14 +1622,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         numeroItems: [secao['numeroItems'] || 5],
         avaliadoSelecionado: [secao['avaliadoSelecionado'] || ''],
         mostrarCaracteristica: [secao['mostrarCaracteristica'] !== false],
-        mostrarPontuacaoSemAuto: [secao['mostrarPontuacaoSemAuto'] !== false]
+        mostrarPontuacaoSemAuto: [secao['mostrarPontuacaoSemAuto'] !== false],
+        htmlBruto: [secao['htmlBruto'] === true],
+        ocultarInfoDinamicaCapa: [secao['ocultarInfoDinamicaCapa'] === true],
       }));
     });
   }
 
   displayAssessmentName(id: string | null): string {
     if (!id) return '';
-    return this.assessments.find(a => a.id === id)?.name || '';
+    return (
+      this.clientAssessments.find(a => a.id === id)?.name ||
+      this.filteredAssessments.find(a => a.id === id)?.name ||
+      this.assessments.find(a => a.id === id)?.name ||
+      ''
+    );
   }
 
   /** Resolve o nome da avaliação: tenta cache local primeiro, depois Firestore direto */
@@ -1313,13 +1672,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filteredAssessments = [...this.assessments];
   }
 
-  async onAssessmentChange() {
+  async onAssessmentChange(expectedGeneration = this.filterContextGeneration) {
     if (!this.selectedAssessmentId) {
       this.dataSource = [];
       this.displayedColumns = [];
       this.dynamicColumns = [];
       this.questionMap = {};
-      console.log('�O Nenhuma avaliação selecionada');
       return;
     }
 
@@ -1328,14 +1686,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Carregar todas as competências disponíveis
     await this.loadAllCompetencies();
-    console.log('�Y�� QuestionMap limpo');
-    console.log('�o. Avaliação selecionada:', this.selectedAssessmentId);
-    console.log('�o. Modo individual:', this.isIndividualMode);
-    console.log('�o. Participante ID:', this.individualParticipantId);
+    if (this.isFilterContextStale(expectedGeneration)) return;
+    this.debugLog('Avaliação selecionada:', this.selectedAssessmentId, 'modo individual:', this.isIndividualMode);
 
-    // �Ys? PERFORMANCE: Monitorar tempo de carregamento
+    // PERFORMANCE: Monitorar tempo de carregamento
     this.performanceMonitor.startTimer('onAssessmentChange');
-    this.loadingService.show('Carregando dados da avaliação...');
+    if (!this.isBatchGenerating) {
+      this.loadingService.show('Carregando dados da avaliação...');
+    }
+    this.participantsCache.clear();
+    this.participantDataById.clear();
+    this.blockedParticipantIds.clear();
     this.dataSource = [];
     this.displayedColumns = [];
     this.questionMap = {};
@@ -1352,37 +1713,26 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
     const assessmentRef = doc(this.firestore, 'assessments', this.selectedAssessmentId);
     const assessmentSnap = await getDoc(assessmentRef);
+    if (this.isFilterContextStale(expectedGeneration)) return;
     if (!assessmentSnap.exists()) {
       return; // finally handles hide()
     }
     const assessmentData = assessmentSnap.data();
-    console.log('�Y"S AssessmentData:', assessmentData);
 
     const surveyJSON = assessmentData['surveyJSON'];
-    console.log('�Y"S SurveyJSON encontrado:', !!surveyJSON);
-    console.log('�Y"S SurveyJSON:', surveyJSON);
 
     if (!surveyJSON || !surveyJSON.pages) {
-      console.log('�O SurveyJSON não encontrado ou sem páginas');
       return; // finally handles hide()
     }
 
     // Extrair questões (rows) das perguntas do surveyJSON
     const questions: any[] = [];
-    console.log('�Y"� Extraindo questões do surveyJSON:', surveyJSON);
-    console.log('�Y"� Páginas encontradas:', surveyJSON.pages?.length || 0);
 
-    surveyJSON.pages.forEach((page: any, pageIndex: number) => {
-      console.log(`�Y"� Processando página ${pageIndex}:`, page);
+    surveyJSON.pages.forEach((page: any) => {
       if (page.elements) {
-        console.log(`�Y"� Elementos na página ${pageIndex}:`, page.elements.length);
-        page.elements.forEach((element: any, elementIndex: number) => {
-          console.log(`�Y"� Elemento ${elementIndex}:`, element);
-
+        page.elements.forEach((element: any) => {
           // Para elementos do tipo matrix, extrair as rows (questões)
           if ((element.type === 'matrix' || element.type === 'matrixdropdown') && element.rows && Array.isArray(element.rows)) {
-            console.log(`�o. Matriz encontrada: ${element.name} com ${element.rows.length} questões`);
-
             element.rows.forEach((row: any, rowIndex: number) => {
               if (row.value && row.text) {
                 // Extrair o texto da questão
@@ -1407,14 +1757,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
                 });
 
                 this.questionMap[questionId] = questionText;
-                console.log(`�Y"� Questão extraída: ${questionId} = "${questionText}"`);
               }
             });
           }
           // Para outros tipos de perguntas, capturar TODOS os tipos agora
           else if (element.name) {
-            console.log(`�o. Pergunta encontrada: ${element.name} - ${JSON.stringify(element.title)} (tipo: ${element.type})`);
-
             // Garantir que o título seja uma string válida
             let questionTitle = '';
             if (element.title && typeof element.title === 'object' && element.title.pt) {
@@ -1436,15 +1783,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             });
 
             this.questionMap[element.name] = questionTitle;
-            console.log(`�Y"� QuestionMap[${element.name}] = "${questionTitle}" (tipo: ${element.type})`);
-            console.log(`   �""�"? Extraído de: ${JSON.stringify(element.title)}`);
           }
         });
       }
     });
-
-    console.log('�Y"S Questões extraídas:', questions);
-    console.log('�Y"S QuestionMap:', this.questionMap);
 
     // Armazenar todas as perguntas
     this.allQuestions = questions;
@@ -1461,13 +1803,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Carregar resultados
     const resultsSnap = await getDocs(collection(this.firestore, `assessments/${this.selectedAssessmentId}/results`));
+    if (this.isFilterContextStale(expectedGeneration)) return;
     this.debugLog('Resultados encontrados:', resultsSnap.docs.length);
+
+    const filterProjectId = this.filterProjectControl.value || '';
+
+    const resultParticipantIds = resultsSnap.docs
+      .map(d => d.data()['participantId'] as string)
+      .filter(Boolean);
+    await this.loadParticipantsForReport(filterProjectId, resultParticipantIds);
+    const soleAvaliadoId = this.soleAvaliadoIdForCurrentProject || undefined;
 
     // Carregar assessmentLinks para identificar a qual avaliado cada avaliador pertence.
     // Em modo individual: filtrar apenas pelos links do avaliado alvo.
     // Em modo normal: carregar todos os links para setar corretamente o campo 'avaliado' dos avaliadores.
     const evaluatorIdsForTarget = new Set<string>();
     const evaluatorToAvaliadoIdMap = new Map<string, string>(); // participantId → avaliadoId
+    const projectScopedLinkParticipantIds = new Set<string>();
     try {
       if (this.isIndividualMode && this.individualParticipantId) {
         const linksSnap = await getDocs(query(
@@ -1476,40 +1828,45 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           where('avaliadoId', '==', this.individualParticipantId)
         ));
         linksSnap.docs.forEach(d => {
-          const pid: string = d.data()['participantId'];
-          if (pid) evaluatorIdsForTarget.add(pid);
+          const data = d.data();
+          const linkProjectId = data['projectId'] as string | undefined;
+          const pid: string = data['participantId'];
+          if (!pid) return;
+          if (filterProjectId) {
+            if (linkProjectId && linkProjectId !== filterProjectId) return;
+            if (!linkProjectId && !this.projectParticipantIdsForFilter.has(pid)) return;
+          }
+          evaluatorIdsForTarget.add(pid);
         });
         console.log(`[Relatório Individual] Avaliadores encontrados para ${this.individualParticipantId}:`, evaluatorIdsForTarget.size);
       } else {
-        const linksSnap = await getDocs(query(
-          collection(this.firestore, 'assessmentLinks'),
-          where('assessmentId', '==', this.selectedAssessmentId)
-        ));
+        const linksQuery = filterProjectId
+          ? query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('assessmentId', '==', this.selectedAssessmentId),
+            where('projectId', '==', filterProjectId)
+          )
+          : query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('assessmentId', '==', this.selectedAssessmentId)
+          );
+        const linksSnap = await getDocs(linksQuery);
         linksSnap.docs.forEach(d => {
-          const pid: string = d.data()['participantId'];
-          const aid: string = d.data()['avaliadoId'];
-          if (pid && aid) evaluatorToAvaliadoIdMap.set(pid, aid);
+          const data = d.data();
+          const linkProjectId = data['projectId'] as string | undefined;
+          const pid: string = data['participantId'];
+          if (!pid) return;
+          if (filterProjectId) {
+            if (linkProjectId && linkProjectId !== filterProjectId) return;
+            if (!linkProjectId && !this.projectParticipantIdsForFilter.has(pid)) return;
+            projectScopedLinkParticipantIds.add(pid);
+          }
+          const aid: string = data['avaliadoId'];
+          if (aid) evaluatorToAvaliadoIdMap.set(pid, aid);
         });
       }
     } catch (e) {
       console.warn('[Relatório] Erro ao carregar assessmentLinks:', e);
-    }
-
-    const filterProjectId = this.filterProjectControl.value || '';
-    const soleAvaliadoIdByProject = new Map<string, string>();
-    if (filterProjectId) {
-      try {
-        const avaliadosSnap = await getDocs(query(
-          collection(this.firestore, 'participants'),
-          where('projectId', '==', filterProjectId),
-          where('type', '==', 'avaliado')
-        ));
-        if (avaliadosSnap.docs.length === 1) {
-          soleAvaliadoIdByProject.set(filterProjectId, avaliadosSnap.docs[0].id);
-        }
-      } catch (e) {
-        console.warn('[Relatório] Erro ao resolver avaliado único do projeto:', e);
-      }
     }
 
     const results: any[] = [];
@@ -1525,26 +1882,47 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         completedAt: resultData['completedAt']
       });
 
-      // Buscar dados do participante com cache local para reduzir leituras
+      // Buscar dados do participante (mapa autoritativo recarregado do Firestore)
       let participantData: any | null = null;
       const participantId: string = resultData['participantId'];
-      if (this.participantsCache.has(participantId)) {
-        participantData = this.participantsCache.get(participantId);
-      } else {
-        const participantRef = doc(this.firestore, 'participants', participantId);
-        const participantSnap = await getDoc(participantRef);
+      if (!participantId || this.blockedParticipantIds.has(participantId)) {
+        continue;
+      }
+
+      participantData = this.participantDataById.get(participantId) ?? null;
+      if (!participantData) {
+        const participantSnap = await getDoc(doc(this.firestore, 'participants', participantId));
         if (participantSnap.exists()) {
           participantData = participantSnap.data();
-          this.participantsCache.set(participantId, participantData);
+          this.participantDataById.set(participantId, participantData as Record<string, unknown>);
+          this.participantsCache.set(participantId, participantData as Record<string, unknown>);
+          if (participantData['blocked'] === true) {
+            this.blockedParticipantIds.add(participantId);
+            continue;
+          }
         }
       }
 
       if (participantData) {
         this.debugLog('Dados do participante:', participantData);
 
+        if (!isParticipantIncludedInReports(participantData)) {
+          continue;
+        }
+
         if (participantData['type'] === 'avaliador' && participantData['avaliadoId']) {
           evaluatorToAvaliadoIdMap.set(participantId, participantData['avaliadoId']);
+        } else if (this.inferParticipantType(participantData) === 'avaliador' && participantData['avaliadoId']) {
+          evaluatorToAvaliadoIdMap.set(participantId, participantData['avaliadoId']);
         }
+
+        const participantInFilteredProject = (pid: string, pdata: Record<string, unknown>): boolean => {
+          if (!filterProjectId) return true;
+          if (pdata['projectId'] === filterProjectId) return true;
+          if (this.projectParticipantIdsForFilter.has(pid)) return true;
+          if (projectScopedLinkParticipantIds.has(pid)) return true;
+          return false;
+        };
 
         let shouldInclude = true;
         let isTargetParticipant = false;
@@ -1562,8 +1940,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             shouldInclude = false;
           }
         } else {
-          // Modo normal: incluir participantes do projeto filtrado (se houver)
-          shouldInclude = !filterProjectId || participantData['projectId'] === filterProjectId;
+          shouldInclude = participantInFilteredProject(participantId, participantData);
         }
 
         if (shouldInclude) {
@@ -1571,25 +1948,27 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             ? resultData['completedAt'].toDate()
             : null;
 
-          // Determinar o avaliado associado a este resultado.
-          // Avaliadores devem apontar para quem avaliam (assessmentLinks.avaliadoId
-          // ou participants.avaliadoId), não para o próprio nome.
           let avaliadoNome: string;
           let avaliadoIdResolved: string;
-          const tipoParticipante = participantData['type'] || 'avaliado';
+          const tipoParticipante = this.inferParticipantType(participantData);
+          const categoriaParticipante = this.normalizeCategory(
+            participantData['category'] || participantData['categoria'] || 'N/A'
+          );
 
           if (this.isIndividualMode && this.individualParticipantName) {
             avaliadoNome = this.individualParticipantName;
             avaliadoIdResolved = this.individualParticipantId || participantId;
           } else if (tipoParticipante === 'avaliador') {
-            let avaliadoId =
-              evaluatorToAvaliadoIdMap.get(participantId) || participantData['avaliadoId'];
-            if (!avaliadoId && participantData['projectId']) {
-              avaliadoId = soleAvaliadoIdByProject.get(participantData['projectId']);
-            }
+            const avaliadoId = this.resolveEvaluatorAvaliadoId(
+              participantId,
+              participantData,
+              filterProjectId,
+              soleAvaliadoId,
+              evaluatorToAvaliadoIdMap
+            );
             if (avaliadoId) {
               avaliadoIdResolved = avaliadoId;
-              avaliadoNome = await this.resolveParticipantName(avaliadoId);
+              avaliadoNome = this.getParticipantNameSync(avaliadoId);
             } else {
               avaliadoIdResolved = participantId;
               avaliadoNome = participantData['name'] || 'N/A';
@@ -1601,7 +1980,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           const row: any = {
             data: '',
-            categoria: participantData['category'] || 'N/A',
+            categoria: categoriaParticipante,
             avaliado: avaliadoNome,
             avaliadoId: avaliadoIdResolved,
             tipo: tipoParticipante,
@@ -1626,8 +2005,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             questions.forEach(question => {
               let resposta: any = null;
 
-              // Suporte a estrutura aninhada: perguntaX -> Row N -> "Column M"
-              // Ex.: question.id = "pergunta4_Row 1" �?' baseId = "pergunta4", rowKey = "Row 1"
               const matrixMatch = question.id.match(/^(pergunta\d+)_Row\s*(\d+)$/);
               if (matrixMatch) {
                 const baseId = matrixMatch[1];
@@ -1638,14 +2015,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
                 }
               }
 
-              // Fallback: tentar acesso direto (para perguntas não-matriz ou quando já vem "perguntaX_Row N")
               if (resposta === null || resposta === undefined) {
                 resposta = resultData['surveyData'][question.id] ?? null;
               }
 
               row[question.id] = resposta ?? null;
 
-              this.debugLog(`  �Y"� Pergunta ${question.id}:`, {
+              this.debugLog(`  Pergunta ${question.id}:`, {
                 resposta,
                 tipo: typeof resposta,
                 valorFinal: row[question.id]
@@ -1678,7 +2054,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.debugLog('Resultados processados:', results);
-    this.dataSource = results;
+    if (this.isFilterContextStale(expectedGeneration)) return;
+    this.dataSource = results.filter(
+      row => !row.participanteId || !this.blockedParticipantIds.has(row.participanteId)
+    );
 
     // admin_client: filtrar por reportStatus released
     if (this.currentUserRole === 'admin_client') {
@@ -1741,8 +2120,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Criar índices de dados para performance
     this.createDataIndexes();
+    this.invalidateCache();
 
     if (this.selectedTabIndex === 2) {
+      await this.applyBlockedParticipantsFilter();
       this.prewarmPreviewCache();
     }
 
@@ -1781,8 +2162,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log('�Y"" DynamicColumns final:', this.dynamicColumns);
     console.log('�Y"" QuestionMap final:', this.questionMap);
 
-    // Forçar detecção de mudanças do Angular
-    this.cdr.detectChanges();
+    // Forçar detecção de mudanças do Angular (markForCheck no batch evita loop de CD)
+    if (this.isBatchGenerating) {
+      this.cdr.markForCheck();
+    } else {
+      this.cdr.detectChanges();
+    }
 
     // Verificação final
     console.log('�o. Verificação final:');
@@ -1798,10 +2183,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         { duration: 4000 }
       );
     } finally {
-      // �o. Sempre executado �?" garante que o loading nunca fique preso
-      this.loadingService.hide();
-      this.isLoading = false;
-      this.cdr.markForCheck();
+      if (!this.isBatchGenerating && expectedGeneration === this.filterContextGeneration) {
+        this.loadingService.hide();
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      }
     }
   }
 
@@ -1908,17 +2294,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Substitui placeholders dinâmicos (capa, perguntas, textos do relatório). */
   substituirVariaveisRelatorio(texto: string | undefined | null): string {
     if (!texto) return '';
-    const nomeAvaliado = this.selectedAvaliado?.trim() || '';
+    const nomeAvaliado = (this.selectedAvaliado || this.individualParticipantName || '').trim();
     const dataRelatorio = this.today.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
     });
-    return texto
-      .replace(/\{\{\s*nome_avaliado\s*\}\}/gi, nomeAvaliado)
-      .replace(/\$%NOME_AVALIADO\$%/g, nomeAvaliado)
-      .replace(/\$%NOME_DO_AVALIADO\$%/g, nomeAvaliado)
-      .replace(/\$%DATA_RELATORIO\$%/g, dataRelatorio);
+    const applyNome = (value: string) =>
+      value
+        .replace(/\{\{\s*nome_avaliado\s*\}\}/gi, nomeAvaliado)
+        .replace(/&#123;&#123;\s*nome_avaliado\s*&#125;&#125;/gi, nomeAvaliado)
+        .replace(/&lcub;&lcub;\s*nome_avaliado\s*&rcub;&rcub;/gi, nomeAvaliado)
+        .replace(/\$%NOME_AVALIADO\$%/g, nomeAvaliado)
+        .replace(/\$%NOME_DO_AVALIADO\$%/g, nomeAvaliado)
+        .replace(/\$%DATA_RELATORIO\$%/g, dataRelatorio);
+    return applyNome(texto);
   }
 
   // Métodos utilitários para manipular as seções do relatório
@@ -2153,6 +2543,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Mapeamento de categorias do banco para os grupos do relatório
   mapCategoriaToGrupo(categoria: string): string {
     if (!categoria) return 'Outros';
+    const normalized = this.normalizeCategory(categoria);
     const map: { [key: string]: string } = {
       'Avaliado': 'Avaliado(a)',
       'Avaliado(a)': 'Avaliado(a)',
@@ -2165,7 +2556,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       'Outro': 'Outros',
       'Outros': 'Outros',
     };
-    return map[categoria] || categoria;
+    if (map[normalized]) return map[normalized];
+    const lower = normalized.toLowerCase();
+    const lowerMap: { [key: string]: string } = {
+      avaliado: 'Avaliado(a)',
+      'avaliado(a)': 'Avaliado(a)',
+      gestor: 'Gestor(es)',
+      'gestor(es)': 'Gestor(es)',
+      par: 'Pares',
+      pares: 'Pares',
+      subordinado: 'Subordinados',
+      subordinados: 'Subordinados',
+      outro: 'Outros',
+      outros: 'Outros',
+    };
+    return lowerMap[lower] || normalized;
   }
 
   /** ID Firestore do avaliado selecionado (para vincular respostas de avaliadores). */
@@ -2176,73 +2581,113 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.selectedAvaliadoParticipantId = null;
       return;
     }
-    const avaliadoRow = this.dataSource.find(
-      (row) =>
-        (row['tipo'] || 'avaliado') === 'avaliado' &&
-        row['avaliado'] === this.selectedAvaliado
-    );
-    this.selectedAvaliadoParticipantId = avaliadoRow?.['participanteId'] || null;
+    const nomeSel = this.selectedAvaliado.trim();
+    const avaliadoRow = this.dataSource.find((row) => {
+      if (this.inferRowTipo(row) !== 'avaliado') return false;
+      const categoria = this.normalizeCategory(row['categoria']);
+      const isAvaliadoCategoria = categoria === 'Avaliado' || categoria === 'Avaliado(a)';
+      return isAvaliadoCategoria && String(row['avaliado'] || '').trim() === nomeSel;
+    });
+    this.selectedAvaliadoParticipantId =
+      avaliadoRow?.['participanteId'] || this.soleAvaliadoIdForCurrentProject || null;
   }
 
   /** Inclui autoavaliação e avaliadores vinculados ao avaliado selecionado. */
   private matchesSelectedAvaliado(row: Record<string, unknown>, avaliadoSelecionado: string): boolean {
-    if (row['avaliado'] === avaliadoSelecionado) return true;
+    if (!avaliadoSelecionado) return true;
+
+    const tipo = this.inferRowTipo(row);
+    const nomeSel = avaliadoSelecionado.trim();
+    const participanteId = String(row['participanteId'] || '');
+
+    if (tipo === 'avaliado') {
+      return String(row['avaliado'] || '').trim() === nomeSel;
+    }
+
+    const targetId = this.selectedAvaliadoParticipantId || this.soleAvaliadoIdForCurrentProject;
+    if (targetId && row['avaliadoId'] === targetId) return true;
+
+    // Projeto com único avaliado: qualquer avaliador do ciclo conta para esse avaliado
     if (
-      this.selectedAvaliadoParticipantId &&
-      row['avaliadoId'] === this.selectedAvaliadoParticipantId
+      targetId &&
+      this.soleAvaliadoIdForCurrentProject === targetId &&
+      participanteId &&
+      this.projectParticipantIdsForFilter.has(participanteId)
     ) {
       return true;
     }
-    return false;
+
+    return String(row['avaliado'] || '').trim() === nomeSel;
+  }
+
+  private resetIndividualMode(): void {
+    this.isIndividualMode = false;
+    this.individualParticipantId = null;
+    this.individualParticipantName = null;
+    this.individualTemplateId = null;
+    this.individualTemplateName = null;
+  }
+
+  private getParticipantNameSync(participantId: string): string {
+    const fromMap = this.participantDataById.get(participantId);
+    if (fromMap) {
+      return String(fromMap['name'] || 'N/A');
+    }
+    const fromCache = this.participantsCache.get(participantId);
+    if (fromCache) {
+      return String(fromCache['name'] || 'N/A');
+    }
+    return 'N/A';
   }
 
   private async resolveParticipantName(participantId: string): Promise<string> {
-    let participantData: Record<string, unknown> | null = null;
-    if (this.participantsCache.has(participantId)) {
-      participantData = this.participantsCache.get(participantId) as Record<string, unknown>;
-    } else {
+    const cachedName = this.getParticipantNameSync(participantId);
+    if (cachedName !== 'N/A') {
+      return cachedName;
+    }
+
+    try {
       const snap = await getDoc(doc(this.firestore, 'participants', participantId));
       if (snap.exists()) {
-        participantData = snap.data() as Record<string, unknown>;
+        const participantData = snap.data() as Record<string, unknown>;
+        this.participantDataById.set(participantId, participantData);
         this.participantsCache.set(participantId, participantData);
+        return String(participantData['name'] || 'N/A');
       }
+    } catch (error) {
+      console.warn(`[Relatório] Erro ao resolver nome do participante ${participantId}:`, error);
     }
-    return String(participantData?.['name'] || 'N/A');
+    return 'N/A';
   }
 
   // Retorna as médias por competência e grupo de avaliadores para o bloco de Resumo
   getResumoMedias() {
-    return this.getCachedCalculation('resumo-medias', () => {
+    const cacheKey = `resumo-medias-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}-${this.dataSource.length}-${this.getBlockedCacheSuffix()}`;
+    return this.getCachedCalculation(cacheKey, () => {
       const grupos = ['Avaliado(a)', 'Gestor(es)', 'Pares', 'Subordinados', 'Outros'];
       const secaoResumo = this.relatorioConfiguracao.find(s => s.tipo === 'resumo');
       if (!secaoResumo || !secaoResumo.competenciasIds?.length) {
-        console.log('[Resumo] Nenhuma competência selecionada na seção de resumo.');
         return [];
       }
       const competenciasSelecionadas = this.competencias.filter(c => secaoResumo.competenciasIds!.includes(c.id));
-      console.log('[Resumo] Competências selecionadas:', competenciasSelecionadas.map(c => ({ id: c.id, nome: c.nome, perguntasIds: c.perguntasIds })));
-
-      if (this.dataSource.length) {
-        console.log('[Resumo] Exemplo de linha do dataSource:', this.dataSource[0]);
-      }
 
       const resultado: any[] = [];
       for (const comp of competenciasSelecionadas) {
         const perguntas = comp.perguntasIds;
-        console.log(`[Resumo] Processando competência: ${comp.nome} (Perguntas: ${perguntas})`);
 
         for (const grupo of grupos) {
           let soma = 0;
           let count = 0;
 
-          // �Ys? PERFORMANCE: Usar índice para buscar dados por categoria
+          // PERFORMANCE: Usar índice para buscar dados por categoria
           const indicesGrupo = this.dataIndexes.participantsByCategory.get(grupo) || [];
 
           for (const index of indicesGrupo) {
             const row = this.dataSource[index];
+            if (!row || this.isRowFromBlockedParticipant(row)) continue;
+            if (this.selectedAvaliado && !this.matchesSelectedAvaliado(row, this.selectedAvaliado)) continue;
             for (const pid of perguntas) {
               const val = parseNumeric(row[pid]);
-              console.log(`[Resumo] Valor encontrado para pid='${pid}':`, val);
               if (val !== null) {
                 soma += val;
                 count++;
@@ -2250,7 +2695,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           }
 
-          console.log(`[Resumo] Competência: ${comp.nome}, Grupo: ${grupo}, Soma: ${soma}, Count: ${count}, Média: ${count ? soma / count : null}`);
           resultado.push({
             competencia: comp.nome,
             descricao: comp.descricao,
@@ -2834,7 +3278,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Lista de respostas para uma pergunta e grupo
   getRespostasPorPerguntaEGrupo(perguntaId: string, grupo: string) {
-    return this.dataSource
+    return this.getRowsForReportCalculations()
       .filter(row => this.mapCategoriaToGrupo(row['categoria']) === grupo)
       .map(row => row[perguntaId])
       .filter(val => val !== undefined && val !== null && val !== '');
@@ -2845,7 +3289,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     let soma = 0;
     let count = 0;
     for (const pid of carac.perguntasIds || []) {
-      for (const row of this.dataSource) {
+      for (const row of this.getRowsForReportCalculations()) {
         if (this.selectedAvaliado && !this.matchesSelectedAvaliado(row, this.selectedAvaliado)) continue;
         if (this.mapCategoriaToGrupo(row['categoria']) === grupo) {
           let valor = row[pid];
@@ -2931,8 +3375,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Por favor, dê um nome ao relatório.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de salvar o relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
 
-    // Verificar nome duplicado
+    // Verificar nome duplicado (escopo do cliente)
     const nomeExistente = this.savedReports.find(
       r => r.name.toLowerCase() === this.nomeRelatorioControl.value!.toLowerCase()
     );
@@ -2945,12 +3394,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     const reportData = {
       nome: this.nomeRelatorioControl.value,
+      clientId,
       assessmentId: this.selectedAssessmentId,
       assessmentName: assessment ? assessment.name : '',
       competencias: sanitize(this.competencias),
       configuracao: sanitize(this.relatorioConfiguracao),
       documentoConfig: sanitize(this.documentoConfig),
-      templateId: this.selectedTemplateId.value || null,
+      templateId: this.appliedTemplateId || null,
       criadoEm: new Date()
     };
     try {
@@ -2965,11 +3415,28 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async carregarRelatoriosSalvos() {
-    const reportsSnap = await getDocs(collection(this.firestore, 'reports'));
-    this.savedReports = reportsSnap.docs.map(doc => ({
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.savedReports = [];
+      return;
+    }
+    const byClientSnap = await getDocs(
+      query(collection(this.firestore, 'reports'), where('clientId', '==', clientId))
+    );
+    const byClient = byClientSnap.docs.map(doc => ({
       id: doc.id,
       name: doc.data()['nome'] || doc.id
     }));
+
+    // Legado: relatórios criados antes do escopo por cliente (sem clientId)
+    const allSnap = await getDocs(collection(this.firestore, 'reports'));
+    const legacy = allSnap.docs
+      .filter(d => !d.data()['clientId'])
+      .map(doc => ({ id: doc.id, name: doc.data()['nome'] || doc.id }));
+
+    const merged = new Map<string, { id: string; name: string }>();
+    [...legacy, ...byClient].forEach(r => merged.set(r.id, r));
+    this.savedReports = [...merged.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
 
   async atualizarRelatorioNoFirebase() {
@@ -2984,17 +3451,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Por favor, dê um nome ao relatório.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de atualizar o relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
     const assessment = this.assessments.find(a => a.id === this.selectedAssessmentId);
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     const reportRef = doc(this.firestore, 'reports', this.selectedReportId.value);
     const reportData = {
       nome: nomeRelatorio,
+      clientId,
       assessmentId: this.selectedAssessmentId,
       assessmentName: assessment ? assessment.name : '',
       competencias: sanitize(this.competencias),
       configuracao: sanitize(this.relatorioConfiguracao),
       documentoConfig: sanitize(this.documentoConfig),
-      templateId: this.selectedTemplateId.value || null,
+      templateId: this.appliedTemplateId || null,
       atualizadoEm: new Date()
     };
     try {
@@ -3030,8 +3503,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         // Restaurar vínculo com template (sem re-aplicar a estrutura, pois a config já foi carregada)
         if (reportData['templateId']) {
           this.selectedTemplateId.setValue(reportData['templateId'], { emitEvent: false });
+          this.appliedTemplateId = reportData['templateId'];
         } else {
           this.selectedTemplateId.setValue('', { emitEvent: false });
+          this.appliedTemplateId = null;
         }
 
       // Logar conteúdo das seções após carregar
@@ -3139,15 +3614,79 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.relatorioConfiguracao.forEach((s, i) => s.ordem = i + 1);
   }
 
-  private async exportReportPreviewAsPdf(fileName: string): Promise<void> {
+  private async exportReportPreviewAsPdfBlob(fileName: string): Promise<Blob> {
+    const previewEl = await this.prepareReportPreviewForPdfExport();
+    const { html, options } = await this.buildReportPreviewHtml(previewEl, fileName);
+    return this.pdfMakeService.generateReportBlobFromHtml(html, fileName, options);
+  }
+
+  /**
+   * Prepara a preview para exportação PDF (individual ou lote).
+   * Garante dados, change detection (OnPush) e renderização de gráficos antes da captura HTML.
+   */
+  private async prepareReportPreviewForPdfExport(): Promise<HTMLElement> {
+    this.prewarmPreviewCache();
+    await this.calcularMediasPorCompetencia();
+    this.prepareGapChartData();
+    this.cdr.detectChanges();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+    const ready = await this.waitForReportReady(12000);
+    if (!ready) {
+      throw new Error('Preview do relatorio nao ficou pronta a tempo.');
+    }
+
     const previewEl = document.getElementById('report-preview') as HTMLElement | null;
     if (!previewEl) {
       throw new Error('Pre-visualizacao do relatorio nao encontrada.');
     }
 
-    await this.waitForPreviewAssets(previewEl);
-    const { html, options } = await this.buildReportPreviewHtml(previewEl, fileName);
-    await this.pdfMakeService.generateReportFromHtml(html, fileName, options);
+    this.refreshEchartsInPreview(previewEl);
+    await this.waitForPreviewAssets(previewEl, 10000);
+    return previewEl;
+  }
+
+  private refreshEchartsInPreview(previewEl: HTMLElement): void {
+    window.dispatchEvent(new Event('resize'));
+    previewEl.querySelectorAll('.rp-radar-chart, [echarts]').forEach(node => {
+      const host = node as HTMLElement;
+      const instance = getInstanceByDom(host);
+      instance?.resize();
+    });
+  }
+
+  private canvasHasVisibleContent(canvas: HTMLCanvasElement): boolean {
+    if (canvas.width < 2 || canvas.height < 2) return false;
+    try {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return false;
+      const samplePoints: Array<[number, number]> = [
+        [0.5, 0.5],
+        [0.25, 0.25],
+        [0.75, 0.75],
+        [0.5, 0.15],
+        [0.15, 0.5],
+      ];
+      for (const [rx, ry] of samplePoints) {
+        const x = Math.min(canvas.width - 1, Math.max(0, Math.floor(canvas.width * rx)));
+        const y = Math.min(canvas.height - 1, Math.max(0, Math.floor(canvas.height * ry)));
+        const alpha = ctx.getImageData(x, y, 1, 1).data[3];
+        if (alpha > 0) return true;
+      }
+      return false;
+    } catch {
+      return canvas.offsetWidth > 10 && canvas.offsetHeight > 10;
+    }
+  }
+
+  private async exportReportPreviewAsPdf(fileName: string): Promise<void> {
+    const blob = await this.exportReportPreviewAsPdfBlob(fileName);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   private async logoUrlToBase64(url: string): Promise<string> {
@@ -3213,15 +3752,106 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       `</div>`;
   }
 
+  private normalizePdfPageBreaks(root: HTMLElement): void {
+    const sections = Array.from(root.querySelectorAll('.report-section'));
+    sections.forEach((node, index) => {
+      const section = node as HTMLElement;
+      if (!section.classList.contains('report-section--johari')) {
+        return;
+      }
+
+      section.classList.remove('report-section--page-break-before');
+      section.style.setProperty('break-before', 'auto', 'important');
+      section.style.setProperty('page-break-before', 'auto', 'important');
+      section.style.setProperty('break-after', 'auto', 'important');
+      section.style.setProperty('page-break-after', 'auto', 'important');
+      section.style.setProperty('break-inside', 'auto', 'important');
+      section.style.setProperty('page-break-inside', 'auto', 'important');
+      section.style.setProperty('min-height', '0', 'important');
+      section.style.setProperty('max-height', 'none', 'important');
+      section.style.setProperty('margin-bottom', '0', 'important');
+      section.style.setProperty('display', 'block', 'important');
+
+      const prev = sections[index - 1] as HTMLElement | undefined;
+      const prevForcedBreak = !!prev?.classList.contains('report-section--page-break-after');
+
+      if (!prevForcedBreak) {
+        const breaker = document.createElement('div');
+        breaker.className = 'pdf-page-break';
+        breaker.setAttribute('aria-hidden', 'true');
+        breaker.style.cssText =
+          'display:block;height:0;margin:0;padding:0;border:0;line-height:0;overflow:hidden;' +
+          'break-before:page !important;page-break-before:always !important;';
+        section.parentNode?.insertBefore(breaker, section);
+      }
+
+      const inner = section.querySelector('.rp-johari-section') as HTMLElement | null;
+      if (inner) {
+        inner.style.setProperty('display', 'flex', 'important');
+        inner.style.setProperty('flex-direction', 'column', 'important');
+        inner.style.setProperty('height', '252mm', 'important');
+        inner.style.setProperty('min-height', '252mm', 'important');
+        inner.style.setProperty('max-height', '252mm', 'important');
+        inner.style.setProperty('break-inside', 'avoid', 'important');
+        inner.style.setProperty('page-break-inside', 'avoid', 'important');
+        inner.style.setProperty('box-sizing', 'border-box', 'important');
+      }
+
+      const wrap = section.querySelector('.rp-johari-wrap') as HTMLElement | null;
+      if (wrap) {
+        wrap.style.setProperty('flex', '1 1 auto', 'important');
+        wrap.style.setProperty('display', 'flex', 'important');
+        wrap.style.setProperty('flex-direction', 'column', 'important');
+        wrap.style.setProperty('min-height', '0', 'important');
+      }
+
+      const chartHost = section.querySelector('app-johari-window-chart') as HTMLElement | null;
+      if (chartHost) {
+        chartHost.style.setProperty('flex', '1 1 auto', 'important');
+        chartHost.style.setProperty('display', 'flex', 'important');
+        chartHost.style.setProperty('flex-direction', 'column', 'important');
+        chartHost.style.setProperty('min-height', '0', 'important');
+      }
+
+      section.querySelectorAll('.johari-wrapper').forEach((wrapper) => {
+        const el = wrapper as HTMLElement;
+        el.style.setProperty('flex', '1 1 auto', 'important');
+        el.style.setProperty('display', 'flex', 'important');
+        el.style.setProperty('flex-direction', 'column', 'important');
+        el.style.setProperty('min-height', '0', 'important');
+        el.style.setProperty('max-width', '100%', 'important');
+        el.style.setProperty('margin', '0', 'important');
+      });
+
+      section.querySelectorAll('.plot-area').forEach((plot) => {
+        const el = plot as HTMLElement;
+        el.style.setProperty('flex', '1 1 auto', 'important');
+        el.style.setProperty('min-height', '0', 'important');
+        el.style.setProperty('height', 'auto', 'important');
+        el.style.setProperty('max-height', 'none', 'important');
+        el.style.setProperty('aspect-ratio', 'unset', 'important');
+        el.style.setProperty('width', '100%', 'important');
+      });
+
+      section.querySelectorAll('.legend-table').forEach((legend) => {
+        const el = legend as HTMLElement;
+        el.style.setProperty('flex', '0 0 auto', 'important');
+        el.style.setProperty('margin-top', '8px', 'important');
+      });
+    });
+  }
+
   private async buildReportPreviewHtml(
     previewEl: HTMLElement, fileName: string
   ): Promise<{ html: string; options: PdfHtmlRenderOptions }> {
     const clone = previewEl.cloneNode(true) as HTMLElement;
     this.replaceCanvasWithImages(previewEl, clone);
+    this.replaceEchartsHostsWithImages(previewEl, clone);
     this.replaceNgxChartsWithSvgImages(previewEl, clone);
     this.preserveSvgDimensions(previewEl, clone);
     this.replaceReportChipsForPdf(previewEl, clone);
     clone.querySelectorAll('.ui-only').forEach(el => el.remove());
+    this.normalizePdfPageBreaks(clone);
 
     // Remover header/footer fixos — serão substituídos pelos templates do Puppeteer
     clone.querySelector('.rp-doc-cabecalho')?.remove();
@@ -3238,6 +3868,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const html = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>${safeTitle}</title>\n  <base href="${window.location.origin}/">\n  <style>
     ${documentStyles}
+    ${CAPA_HTML_PDF_STYLES}
     @page { size: A4 portrait; margin: 18mm 7mm 16mm 7mm; }
     * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
     html, body {
@@ -3272,14 +3903,108 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       break-after: avoid-page !important;
       page-break-after: avoid !important;
     }
-    .rp-johari-wrap,
-    .johari-wrapper,
-    app-johari-window-chart,
-    .legend-table,
-    .legend-table table,
+    .rp-secao-header {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
+    .pdf-page-break {
+      display: block !important;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      line-height: 0 !important;
+      overflow: hidden !important;
+      break-before: page !important;
+      page-break-before: always !important;
+    }
+    .report-section--johari {
+      break-before: auto !important;
+      page-break-before: auto !important;
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+      break-after: auto !important;
+      page-break-after: auto !important;
+      margin-bottom: 0 !important;
+      display: block !important;
+    }
+    .report-section--johari .rp-johari-section {
+      display: flex !important;
+      flex-direction: column !important;
+      height: 252mm !important;
+      min-height: 252mm !important;
+      max-height: 252mm !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    .report-section--johari .rp-secao-header {
+      flex: 0 0 auto !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    .report-section--johari .rp-johari-wrap {
+      flex: 1 1 auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      margin-top: 4px !important;
+      width: 100% !important;
+    }
+    .report-section--johari app-johari-window-chart,
+    .report-section--johari .johari-wrapper {
+      flex: 1 1 auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+    }
+    .report-section--johari .x-title {
+      flex: 0 0 auto !important;
+    }
+    .report-section--johari .plot-area {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: auto !important;
+      max-height: none !important;
+      aspect-ratio: unset !important;
+      width: 100% !important;
+    }
+    .report-section--johari .legend-table {
+      flex: 0 0 auto !important;
+      margin-top: 8px !important;
+      width: 100% !important;
+      font-size: 11px !important;
+    }
+    .report-section--johari .legend-table th,
+    .report-section--johari .legend-table td {
+      padding: 6px 8px !important;
+    }
+    .rp-defasagem-section,
+    .rp-defasagem-preview,
     .rp-defasagem-item,
-    .gap-chart-container,
-    app-gap-chart,
+    .gap-chart-container {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+    .gap-chart-container .table-header,
+    .gap-chart-container .table-row {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    .gap-chart-container .table-header {
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
+    .rp-defasagem-item__title {
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
     ngx-charts-bar-horizontal,
     .pdf-svg-chart,
     .capa-info-block {
@@ -3287,22 +4012,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       page-break-inside: avoid !important;
       display: block !important;
     }
-    .rp-johari-wrap,
-    .johari-wrapper {
-      width: 100% !important;
-      max-width: 100% !important;
-      margin-left: 0 !important;
-      margin-right: 0 !important;
-    }
-    .johari-wrapper .plot-area {
-      width: 100% !important;
-      max-width: 100% !important;
-      aspect-ratio: 1 / 1 !important;
-      height: auto !important;
-    }
-    .johari-wrapper .legend-table {
-      width: 100% !important;
-      max-width: 100% !important;
+    .report-section--page-break-after + .report-section.report-section--page-break-before:not(.report-section--johari) {
+      break-before: auto !important;
+      page-break-before: auto !important;
     }
     .tabela-frequencia,
     .tabela-distribuicao-notas,
@@ -3317,6 +4029,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       page-break-inside: avoid !important;
     }
     img, canvas { max-width: 100% !important; height: auto; }
+    .pdf-echarts-chart,
+    .rp-radar-chart img {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      display: block !important;
+    }
     svg { max-width: 100% !important; }
     .pdf-svg-chart {
       display: flex !important;
@@ -3463,14 +4182,25 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private replaceCanvasWithImages(source: HTMLElement, clone: HTMLElement): void {
     const sourceCanvases = Array.from(source.querySelectorAll('canvas')) as HTMLCanvasElement[];
-    const clonedCanvases = Array.from(clone.querySelectorAll('canvas')) as HTMLCanvasElement[];
 
-    clonedCanvases.forEach((clonedCanvas, index) => {
-      const sourceCanvas = sourceCanvases[index];
-      if (!sourceCanvas) return;
+    sourceCanvases.forEach(sourceCanvas => {
+      if (!this.canvasHasVisibleContent(sourceCanvas)) return;
+
+      const host = sourceCanvas.closest('.rp-radar-chart, [echarts], ngx-charts-bar-horizontal, ngx-charts-pie-chart') as HTMLElement | null;
+      let clonedCanvas: HTMLCanvasElement | null = null;
+
+      if (host?.id) {
+        clonedCanvas = clone.querySelector(`#${CSS.escape(host.id)} canvas`) as HTMLCanvasElement | null;
+      }
+      if (!clonedCanvas) {
+        const clonedCanvases = Array.from(clone.querySelectorAll('canvas')) as HTMLCanvasElement[];
+        const sourceIndex = sourceCanvases.indexOf(sourceCanvas);
+        clonedCanvas = clonedCanvases[sourceIndex] || null;
+      }
+      if (!clonedCanvas) return;
 
       try {
-        const dataUrl = sourceCanvas.toDataURL('image/jpeg', 0.92);
+        const dataUrl = sourceCanvas.toDataURL('image/png');
         if (!dataUrl) return;
 
         const img = document.createElement('img');
@@ -3482,6 +4212,39 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
       } catch {
         // Se um canvas externo bloquear leitura, mantemos o canvas no HTML clonado.
+      }
+    });
+  }
+
+  private replaceEchartsHostsWithImages(source: HTMLElement, clone: HTMLElement): void {
+    const hosts = Array.from(source.querySelectorAll('.rp-radar-chart, [echarts]')) as HTMLElement[];
+
+    hosts.forEach(sourceHost => {
+      const sourceCanvas = sourceHost.querySelector('canvas') as HTMLCanvasElement | null;
+      if (!sourceCanvas || !this.canvasHasVisibleContent(sourceCanvas)) return;
+
+      const clonedHost = sourceHost.id
+        ? clone.querySelector(`#${CSS.escape(sourceHost.id)}`) as HTMLElement | null
+        : null;
+      if (!clonedHost) return;
+
+      try {
+        const dataUrl = sourceCanvas.toDataURL('image/png');
+        if (!dataUrl) return;
+
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.className = 'pdf-echarts-chart';
+        img.alt = 'Grafico radar do relatorio';
+        img.style.width = sourceHost.style.width || `${sourceHost.offsetWidth || sourceCanvas.offsetWidth}px`;
+        img.style.height = sourceHost.style.height || `${sourceHost.offsetHeight || sourceCanvas.offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+
+        clonedHost.innerHTML = '';
+        clonedHost.appendChild(img);
+      } catch (error) {
+        console.warn('[Relatório] Nao foi possivel converter grafico ECharts para imagem.', error);
       }
     });
   }
@@ -3674,7 +4437,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       .replace(/'/g, '&#039;');
   }
 
-  private async waitForPreviewAssets(previewEl?: HTMLElement): Promise<void> {
+  private async waitForPreviewAssets(previewEl?: HTMLElement, chartsTimeoutMs = 6000): Promise<void> {
     if ((document as any).fonts?.ready) {
       try {
         await (document as any).fonts.ready;
@@ -3684,14 +4447,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     if (previewEl) {
-      await this.waitForReportCharts(previewEl);
+      this.refreshEchartsInPreview(previewEl);
+      await this.waitForReportCharts(previewEl, chartsTimeoutMs);
+      await this.waitForEchartsCharts(previewEl, chartsTimeoutMs);
     }
   }
 
-  private async waitForReportCharts(previewEl: HTMLElement): Promise<void> {
+  private async waitForReportCharts(previewEl: HTMLElement, timeoutMs = 6000): Promise<void> {
     const chartHosts = Array.from(
       previewEl.querySelectorAll('ngx-charts-bar-horizontal, ngx-charts-pie-chart')
     ) as HTMLElement[];
@@ -3699,7 +4464,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (chartHosts.length === 0) return;
 
     const startedAt = Date.now();
-    while (Date.now() - startedAt < 2500) {
+    while (Date.now() - startedAt < timeoutMs) {
       const allChartsReady = chartHosts.every(chart => {
         const svg = chart.querySelector('svg') as SVGSVGElement | null;
         const rect = svg?.getBoundingClientRect();
@@ -3710,6 +4475,32 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       await new Promise(resolve => requestAnimationFrame(resolve));
     }
+  }
+
+  private async waitForEchartsCharts(previewEl: HTMLElement, timeoutMs = 6000): Promise<void> {
+    const chartHosts = Array.from(
+      previewEl.querySelectorAll('.rp-radar-chart, [echarts]')
+    ) as HTMLElement[];
+
+    if (chartHosts.length === 0) return;
+
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      this.refreshEchartsInPreview(previewEl);
+
+      const allChartsReady = chartHosts.every(host => {
+        const canvas = host.querySelector('canvas') as HTMLCanvasElement | null;
+        if (!canvas) return false;
+        const rect = canvas.getBoundingClientRect();
+        return rect.width > 10 && rect.height > 10 && this.canvasHasVisibleContent(canvas);
+      });
+
+      if (allChartsReady) return;
+
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+    console.warn('[Relatório] Timeout aguardando graficos ECharts na preview antes do PDF.');
   }
 
   /**
@@ -3792,13 +4583,24 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Resetar relatório para configuração padrão
-  resetarRelatorio() {
+  async resetarRelatorio() {
+    const confirmado = await this.confirmDialog.confirm({
+      type: 'warning',
+      title: 'Limpar configuração',
+      message: 'Todas as seções serão restauradas para a estrutura padrão. Esta ação não pode ser desfeita.',
+      confirmText: 'Sim, limpar',
+      cancelText: 'Cancelar',
+    });
+    if (!confirmado) return;
+
+    this.appliedTemplateId = null;
+    this.selectedTemplateId.setValue('', { emitEvent: false });
     this.relatorioConfiguracao = [
       {
         id: 'capa',
         tipo: 'capa',
         titulo: 'Relatório Feedback 360°',
-        texto: '',
+        texto: DEFAULT_CAPA_HTML,
         visivel: true,
         ordem: 1
       },
@@ -3861,46 +4663,74 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.avaliadoControl.setValue('');
 
     this.atualizarFormArrayComConfiguracao();
+    this.builderHasUnsavedChanges = false;
     this.snackBar.open(this.t('Relatório resetado para configuração padrão!'), this.t('Fechar'), { duration: 2500 });
+    this.cdr.markForCheck();
   }
 
   // Salvar template no Firestore
-  async salvarTemplateNoFirebase() {
-    if (!this.nomeTemplateControl.value) {
+  async salvarTemplateNoFirebase(nomeOverride?: string): Promise<boolean> {
+    const nome = (nomeOverride ?? this.nomeTemplateControl.value ?? '').trim();
+    if (!nome) {
       this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
+    }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de salvar o template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
     }
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
-    // Salvar configuração de seções com competenciasIds zerados �?" templates são reutilizáveis
+    // Salvar configuração de seções com competenciasIds zerados — templates são reutilizáveis
     // entre avaliações, então não devem fixar competências de uma avaliação específica.
     const configuracaoSemCompetencias = sanitize(this.relatorioConfiguracao).map((sec: any) => ({
       ...sec,
       competenciasIds: []
     }));
     const templateData = {
-      nome: this.nomeTemplateControl.value,
+      nome,
+      clientId,
       configuracao: configuracaoSemCompetencias,
       documentoConfig: sanitize(this.documentoConfig),
       criadoEm: new Date()
     };
     try {
-      const docRef = await addDoc(collection(this.firestore, 'reportTemplates'), templateData);
+      await addDoc(collection(this.firestore, 'reportTemplates'), templateData);
       this.snackBar.open(this.t('Template salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
       this.nomeTemplateControl.reset();
-      this.carregarTemplatesSalvos();
+      await this.carregarTemplatesSalvos();
+      return true;
     } catch (e) {
       console.error('Erro ao salvar template: ', e);
       this.snackBar.open(this.t('Ocorreu um erro ao salvar o template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
     }
   }
 
   // Carregar lista de templates salvos
   async carregarTemplatesSalvos() {
-    const templatesSnap = await getDocs(collection(this.firestore, 'reportTemplates'));
-    this.savedTemplates = templatesSnap.docs.map(doc => ({
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.savedTemplates = [];
+      return;
+    }
+    const byClientSnap = await getDocs(
+      query(collection(this.firestore, 'reportTemplates'), where('clientId', '==', clientId))
+    );
+    const byClient = byClientSnap.docs.map(doc => ({
       id: doc.id,
       name: doc.data()['nome'] || doc.id
     }));
+
+    // Legado: templates criados antes do escopo por cliente (sem clientId)
+    const allSnap = await getDocs(collection(this.firestore, 'reportTemplates'));
+    const legacy = allSnap.docs
+      .filter(d => !d.data()['clientId'])
+      .map(doc => ({ id: doc.id, name: doc.data()['nome'] || doc.id }));
+
+    const merged = new Map<string, { id: string; name: string }>();
+    [...legacy, ...byClient].forEach(t => merged.set(t.id, t));
+    this.savedTemplates = [...merged.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
 
   async excluirRelatorio() {
@@ -3922,68 +4752,171 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  async excluirTemplate() {
+  async excluirTemplate(): Promise<boolean> {
     const id = this.selectedTemplateId.value;
     if (!id) {
       this.snackBar.open(this.t('Selecione um template para excluir.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
     }
     const nome = this.savedTemplates.find(t => t.id === id)?.name || id;
     const confirmado = await this.confirmDialog.confirmDelete(nome);
-    if (!confirmado) return;
+    if (!confirmado) return false;
+    return this.excluirTemplatePorId(id);
+  }
+
+  private async excluirTemplatePorId(id: string): Promise<boolean> {
     try {
       await deleteDoc(doc(this.firestore, 'reportTemplates', id));
       this.snackBar.open(this.t('Template excluído com sucesso!'), this.t('Fechar'), { duration: 3000 });
-      this.selectedTemplateId.setValue('');
+      if (this.appliedTemplateId === id) {
+        this.appliedTemplateId = null;
+      }
+      if (this.selectedTemplateId.value === id) {
+        this.selectedTemplateId.setValue('');
+      }
       await this.carregarTemplatesSalvos();
+      this.cdr.markForCheck();
+      return true;
     } catch {
       this.snackBar.open(this.t('Erro ao excluir template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
+    }
+  }
+
+  async salvarAlteracoesNoTemplate(): Promise<void> {
+    if (!this.appliedTemplateId) {
+      this.snackBar.open(
+        this.t('Aplique um template antes de salvar alterações.'),
+        this.t('Fechar'),
+        { duration: 3500 }
+      );
+      return;
+    }
+    this.selectedTemplateId.setValue(this.appliedTemplateId, { emitEvent: false });
+    const ok = await this.atualizarTemplateNoFirebase();
+    if (ok) {
+      this.builderHasUnsavedChanges = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async abrirGerenciarTemplatesDialog(): Promise<void> {
+    const dialogData: ReportTemplateManageDialogData = {
+      templates: [...this.savedTemplates],
+      onCreate: (nome: string) => this.salvarTemplateNoFirebase(nome),
+      onUpdate: (id: string) => {
+        this.selectedTemplateId.setValue(id, { emitEvent: false });
+        return this.atualizarTemplateNoFirebase();
+      },
+      onDelete: (id: string) => this.excluirTemplatePorId(id),
+    };
+
+    const ref = this.dialog.open(ReportTemplateManageDialogComponent, {
+      width: '520px',
+      panelClass: 'report-template-manage-dialog-panel',
+      data: dialogData,
+    });
+
+    const result = await firstValueFrom(ref.afterClosed());
+    if (result?.refresh) {
+      await this.carregarTemplatesSalvos();
+    }
+    if (result?.selectedTemplateId) {
+      this.selectedTemplateId.setValue(result.selectedTemplateId);
+    }
+    this.cdr.markForCheck();
+  }
+
+  private async onTemplateDropdownChanged(): Promise<void> {
+    if (!this.templateAutoApplyReady) return;
+
+    const id = this.selectedTemplateId.value;
+    if (!id || id === this.appliedTemplateId) return;
+
+    const applied = await this.aplicarTemplateSelecionado();
+    if (!applied) {
+      this.selectedTemplateId.setValue(this.appliedTemplateId || '', { emitEvent: false });
+      this.cdr.markForCheck();
     }
   }
 
   // Aplicar template selecionado ao relatório atual
-  async aplicarTemplateSelecionado() {
-    if (!this.selectedTemplateId.value) return;
+  async aplicarTemplateSelecionado(): Promise<boolean> {
+    if (!this.selectedTemplateId.value || this.applyingTemplate) return false;
+
+    this.applyingTemplate = true;
+    try {
+      if (this.builderHasUnsavedChanges) {
+        const confirmado = await this.confirmDialog.confirm({
+          type: 'warning',
+          title: 'Aplicar template',
+          message: 'Isso substituirá as alterações não salvas na estrutura atual.',
+          itemName: this.nomeTemplateSelecionado,
+          confirmText: 'Sim, aplicar',
+          cancelText: 'Cancelar',
+        });
+        if (!confirmado) {
+          return false;
+        }
+      }
+
       const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
       const templateSnap = await getDoc(templateRef);
-      if (templateSnap.exists()) {
-        const templateData = templateSnap.data();
-        // Carregar seções do template zerando competenciasIds �?" serão preenchidas
-        // pelas competências da avaliação atual, não do momento em que o template foi salvo
-        const secoes: RelatorioSecao[] = (templateData['configuracao'] || []).map((sec: any) => ({
-          ...sec,
-          competenciasIds: []
-        }));
-        this.relatorioConfiguracao = secoes;
+      if (!templateSnap.exists()) {
+        this.snackBar.open(this.t('Template não encontrado.'), this.t('Fechar'), { duration: 3000 });
+        return false;
+      }
+      const templateData = templateSnap.data();
+      const secoesRaw = templateData['configuracao'] || [];
+      if (!Array.isArray(secoesRaw) || secoesRaw.length === 0) {
+        this.snackBar.open(
+          this.t('Este template não possui seções salvas. Atualize o template ou crie um novo.'),
+          this.t('Fechar'),
+          { duration: 4000 }
+        );
+        return false;
+      }
+      // Carregar seções do template zerando competenciasIds — serão preenchidas
+      // pelas competências da avaliação atual, não do momento em que o template foi salvo
+      const secoes: RelatorioSecao[] = (templateData['configuracao'] || []).map((sec: any) => ({
+        ...sec,
+        competenciasIds: []
+      }));
+      this.relatorioConfiguracao = secoes;
 
-        // Preencher automaticamente o nome do template no campo de nome
-        if (templateData['nome']) {
-          this.nomeTemplateControl.setValue(templateData['nome']);
-        }
+      // Preencher automaticamente o nome do template no campo de nome
+      if (templateData['nome']) {
+        this.nomeTemplateControl.setValue(templateData['nome']);
+      }
 
-        // Injetar as competências da avaliação atual em todas as seções que dependem delas
-        if (this.competencias.length > 0) {
-          const compIds = this.competencias.map(c => c.id);
-          this.relatorioConfiguracao.forEach(sec => {
-            if (['resumo', 'graficos', 'tabela', 'tabela_detalhada', 'grafico_defasagem', 'competencia_detalhada', 'janela_johari', 'perguntas_abertas'].includes(sec.tipo)) {
-              sec.competenciasIds = [...compIds];
-            }
-          });
-        }
+      // Injetar as competências da avaliação atual em todas as seções que dependem delas
+      if (this.competencias.length > 0) {
+        const compIds = this.competencias.map(c => c.id);
+        this.relatorioConfiguracao.forEach(sec => {
+          if (['resumo', 'graficos', 'tabela', 'tabela_detalhada', 'grafico_defasagem', 'competencia_detalhada', 'janela_johari', 'perguntas_abertas'].includes(sec.tipo)) {
+            sec.competenciasIds = [...compIds];
+          }
+        });
+      }
 
-        // Restaurar configuração de cabeçalho/rodapé do template, se existir
-        if (templateData['documentoConfig']) {
-          this.documentoConfig = {
-            cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho, ...templateData['documentoConfig'].cabecalho } as DocumentoConfig['cabecalho'],
-            rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape, ...templateData['documentoConfig'].rodape, ativo: true }
-          };
-        }
+      // Restaurar configuração de cabeçalho/rodapé do template, se existir
+      if (templateData['documentoConfig']) {
+        this.documentoConfig = {
+          cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho, ...templateData['documentoConfig'].cabecalho } as DocumentoConfig['cabecalho'],
+          rodape: { ...DOCUMENTO_CONFIG_PADRAO.rodape, ...templateData['documentoConfig'].rodape, ativo: true }
+        };
+      }
 
-        this.atualizarFormArrayComConfiguracao();
-        // Atualizar perguntas bloqueadas após carregar competências
-        this.atualizarPerguntasBloqueadas();
-        this.snackBar.open(this.t('Template aplicado!'), this.t('Fechar'), { duration: 2500 });
-        this.builderHasUnsavedChanges = false;
+      this.atualizarFormArrayComConfiguracao();
+      this.atualizarPerguntasBloqueadas();
+      this.invalidateCache();
+      this.appliedTemplateId = this.selectedTemplateId.value;
+      this.builderHasUnsavedChanges = false;
+      this.snackBar.open(this.t('Template aplicado!'), this.t('Fechar'), { duration: 2500 });
+      this.cdr.markForCheck();
+      return true;
+    } finally {
+      this.applyingTemplate = false;
     }
   }
   // Exportar relatório individual fiel à pré-visualização da tela.
@@ -4000,9 +4933,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
 
     try {
-      this.prewarmPreviewCache();
-      this.cdr.markForCheck();
-      await new Promise(resolve => setTimeout(resolve, 0));
       const fileName = `${this.getExportBaseName()}.pdf`;
       await this.exportReportPreviewAsPdf(fileName);
       return true;
@@ -4356,7 +5286,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Método para gerar tabela detalhada de competência com distribuição de notas
   gerarTabelaCompetencia(competencia: Competencia): TabelaCompetencia {
-    if (!this.selectedAssessmentId || !this.dataSource.length) {
+    if (!this.selectedAssessmentId || !this.getRowsForReportCalculations().length) {
       return {
         competencia,
         linhas: [],
@@ -4425,17 +5355,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Método auxiliar para obter respostas de uma pergunta específica para um grupo
   private getRespostasParaPerguntaEGrupo(perguntaId: string, grupo: string): number[] {
     const respostas: number[] = [];
+    const rows = this.getRowsForReportCalculations();
 
     this.debugLog(`�Y"� getRespostasParaPerguntaEGrupo:`, {
       perguntaId,
       grupo,
-      totalDataSource: this.dataSource.length
+      totalDataSource: rows.length
     });
 
     // Se o grupo for 'Todos', processar todos os dados
     if (grupo === 'Todos') {
       this.debugLog(`  �YO� Processando grupo 'Todos'`);
-      this.dataSource.forEach((participant, index) => {
+      rows.forEach((participant, index) => {
         this.debugLog(`  �Y"< Participante ${index}:`, {
           categoria: participant?.categoria,
           avaliado: participant?.avaliado,
@@ -4475,9 +5406,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
     } else {
-      // Processar grupo específico - usar filtro direto no dataSource
+      // Processar grupo específico
       this.debugLog(`  �YZ� Processando grupo específico: "${grupo}"`);
-      this.dataSource.forEach((participant, index) => {
+      rows.forEach((participant, index) => {
         // Verificar se o participante pertence ao grupo especificado
         const categoriaParticipante = this.mapCategoriaToGrupo(participant.categoria);
         this.debugLog(`  �Y"< Participante ${index}:`, {
@@ -4533,8 +5464,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Método auxiliar para obter respostas de uma pergunta específica para um grupo e avaliado específico
   private getRespostasParaPerguntaEGrupoEAvaliado(perguntaId: string, grupo: string, avaliadoSelecionado: string): number[] {
     const respostas: number[] = [];
+    const rows = this.getRowsForReportCalculations();
 
-    for (const participant of this.dataSource) {
+    for (const participant of rows) {
       if (!participant) continue;
 
       if (grupo !== 'Todos') {
@@ -5038,7 +5970,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     let count = 0;
 
     perguntasIds.forEach(perguntaId => {
-      const respostasGrupo = this.dataSource.filter(row => {
+      const respostasGrupo = this.getRowsForReportCalculations().filter(row => {
         const grupoMapeado = this.mapCategoriaToGrupo(row['categoria']);
         return grupoMapeado === grupo && this.matchesSelectedAvaliado(row, avaliadoSelecionado);
       });
@@ -5113,10 +6045,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Adiciona método para atualizar template existente
-  async atualizarTemplateNoFirebase() {
+  async atualizarTemplateNoFirebase(): Promise<boolean> {
     if (!this.selectedTemplateId.value) {
       this.snackBar.open(this.t('Selecione um template para editar.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
     }
     // Usa o nome do campo ou, se vazio, o nome do template já salvo
     const nomeTemplate = this.nomeTemplateControl.value
@@ -5124,13 +6056,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       || '';
     if (!nomeTemplate) {
       this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
-      return;
+      return false;
+    }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de atualizar o template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
     }
     const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
     // Sanitizar undefined antes de salvar no Firestore (JSON.parse/stringify remove undefined)
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     const templateData = {
       nome: nomeTemplate,
+      clientId,
       configuracao: sanitize(this.relatorioConfiguracao),
       competencias: sanitize(this.competencias),
       documentoConfig: sanitize(this.documentoConfig),
@@ -5139,10 +6077,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       await setDoc(templateRef, templateData, { merge: true });
       this.snackBar.open(this.t('Template atualizado com sucesso!'), this.t('Fechar'), { duration: 3000 });
-      this.carregarTemplatesSalvos();
+      await this.carregarTemplatesSalvos();
+      return true;
     } catch (e) {
       console.error('Erro ao atualizar template: ', e);
       this.snackBar.open(this.t('Ocorreu um erro ao atualizar o template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
     }
   }
 
@@ -5217,7 +6157,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (firstId) {
           this.selectedClientId = firstId;
           this.clientControl.setValue(firstId);
-          await this.loadCompetencyGroups(firstId);
+          if (!this.filterClientControl.value) {
+            this.filterClientControl.setValue(firstId, { emitEvent: false });
+            await this.onFilterClientChange();
+          } else {
+            await this.loadCompetencyGroups(firstId);
+          }
         }
       } else if (userRole === 'admin_master') {
         const clientsSnapshot = await getDocs(clientsCollection);
@@ -5378,11 +6323,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             this.dataSource = originalDataSource;
           }
 
+          this.updateSelectedAvaliadoParticipantId();
+          this.createDataIndexes();
           this.invalidateCache();
-          const reportData = this.pdfMakeService.prepareReportDataFromComponent(this);
-          const filename = `relatorio-${avaliado.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.pdf`;
-          // Usa Cloud Function para gerar PDF (mesma qualidade do individual)
-          const blob = await this.pdfMakeService.generateReportBlobFromCloudFunction(reportData, filename);
+
+          const filename = `${this.getExportBaseName()}.pdf`;
+          const blob = await this.exportReportPreviewAsPdfBlob(filename);
           zip.file(filename, blob);
         } catch (err: any) {
           this.batchErrors.push({ name: avaliado, error: err?.message || 'Erro desconhecido' });
@@ -5502,6 +6448,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           });
 
           clone.querySelectorAll('.ui-only').forEach(el => el.remove());
+          this.normalizePdfPageBreaks(clone);
 
           htmlBlocks.push(clone.innerHTML);
         } catch (err: any) {
@@ -5633,19 +6580,132 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ── Filtros de Cliente/Projeto no topo ─────────────────────────
 
+  private registerAssessmentProjectLink(assessmentId: string, projectId: string): void {
+    if (!assessmentId || !projectId) return;
+    const existing = this.assessmentProjectsMap.get(assessmentId) || [];
+    if (!existing.includes(projectId)) {
+      existing.push(projectId);
+      this.assessmentProjectsMap.set(assessmentId, existing);
+    }
+  }
+
+  private async loadClientAssessmentsAndProjectMap(clientId: string): Promise<void> {
+    this.assessmentProjectsMap.clear();
+    this.filterProjects.forEach(p => {
+      if (p.assessmentId) {
+        this.registerAssessmentProjectLink(p.assessmentId, p.id);
+      }
+    });
+
+    const assessmentsSnap = await getDocs(
+      query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
+    );
+    this.clientAssessments = assessmentsSnap.docs
+      .map(d => ({
+        id: d.id,
+        name: d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+    assessmentsSnap.docs.forEach(d => {
+      const projectId = d.data()['projectId'] as string | undefined;
+      if (projectId && this.filterProjects.some(p => p.id === projectId)) {
+        this.registerAssessmentProjectLink(d.id, projectId);
+      }
+      const entry = { id: d.id, name: d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id };
+      if (!this.assessments.find(a => a.id === entry.id)) {
+        this.assessments.push(entry);
+      }
+    });
+
+    this.filteredAssessments = [...this.clientAssessments];
+  }
+
+  private getProjectsForAssessment(assessmentId: string): { id: string; name: string }[] {
+    const ids = new Set<string>(this.assessmentProjectsMap.get(assessmentId) || []);
+    this.filterProjects.forEach(p => {
+      if (p.assessmentId === assessmentId) {
+        ids.add(p.id);
+      }
+    });
+    return this.filterProjects.filter(p => ids.has(p.id));
+  }
+
+  /** Deduz o projeto a partir da avaliação selecionada. */
+  private async resolveProjectForAssessment(assessmentId: string): Promise<boolean> {
+    const candidates = this.getProjectsForAssessment(assessmentId);
+    this.projectsForAssessment = candidates;
+
+    if (candidates.length === 0) {
+      this.projectSelectionRequired = false;
+      this.projectAutoDeduced = false;
+      this.filterProjectControl.setValue('', { emitEvent: false });
+      this.snackBar.open(
+        this.t('Nenhum projeto ativo utiliza esta avaliação.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return false;
+    }
+
+    if (candidates.length === 1) {
+      this.projectSelectionRequired = false;
+      this.projectAutoDeduced = true;
+      this.filterProjectControl.setValue(candidates[0].id, { emitEvent: false });
+      return true;
+    }
+
+    this.projectAutoDeduced = false;
+    const current = this.filterProjectControl.value;
+    if (current && candidates.some(c => c.id === current)) {
+      this.projectSelectionRequired = false;
+      return true;
+    }
+
+    this.projectSelectionRequired = true;
+    this.filterProjectControl.setValue('', { emitEvent: false });
+    if (!this.isBatchGenerating) {
+      this.snackBar.open(
+        this.t('Esta avaliação existe em mais de um projeto — selecione o ciclo desejado.'),
+        this.t('Fechar'),
+        { duration: 4500 }
+      );
+    }
+    return false;
+  }
+
   async onFilterClientChange(): Promise<void> {
+    const loadGeneration = this.filterContextGeneration;
     const clientId = this.filterClientControl.value;
     this.filterProjectControl.setValue('');
     this.filterProjects = [];
+    this.selectedClientId = clientId || null;
+    this.selectedReportId.setValue('', { emitEvent: false });
+    this.selectedTemplateId.setValue('', { emitEvent: false });
+    this.projectSelectionRequired = false;
+    this.projectAutoDeduced = false;
+    this.projectsForAssessment = [];
+    this.clientAssessments = [];
 
     // Limpa avaliação ao mudar de cliente
     this.assessmentControl.setValue('', { emitEvent: false });
     this.assessmentSearchControl.setValue('', { emitEvent: false });
     this.filteredAssessments = [];
 
-    if (!clientId) return;
+    if (!clientId) {
+      this.savedReports = [];
+      this.savedTemplates = [];
+      this.competencyGroups = [];
+      return;
+    }
 
     try {
+      await Promise.all([
+        this.carregarRelatoriosSalvos(),
+        this.carregarTemplatesSalvos(),
+        this.loadCompetencyGroups(clientId),
+      ]);
+
       const projectsSnap = await getDocs(
         query(collection(this.firestore, 'projects'), where('clientId', '==', clientId))
       );
@@ -5655,6 +6715,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           id: d.id,
           name: d.data()['name'] || '—',
           assessmentId: d.data()['assessmentId'] || undefined,
+          reportTemplateId: d.data()['reportTemplateId'] || undefined,
         }))
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
@@ -5670,7 +6731,22 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (p.assessmentId) this.allAssessmentsByProject.set(p.id, p.assessmentId);
       });
 
-      this.cdr.detectChanges();
+      await this.loadClientAssessmentsAndProjectMap(clientId);
+
+      if (
+        this.clientAssessments.length === 1 &&
+        !this.pendingQueryProjectId &&
+        !this.isBatchGenerating
+      ) {
+        const only = this.clientAssessments[0];
+        this.assessmentSearchControl.setValue(only.name, { emitEvent: false });
+        if (loadGeneration === this.filterContextGeneration) {
+          this.assessmentControl.setValue(only.id);
+        }
+      }
+
+      if (loadGeneration !== this.filterContextGeneration) return;
+      this.cdr.markForCheck();
     } catch (e) {
       console.error('Erro ao carregar projetos para filtro:', e);
     }
@@ -5684,103 +6760,393 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.filterProjects.find(p => p.id === this.filterProjectControl.value)?.name || '';
   }
 
-  clearFilterContext(): void {
-    this.filterClientControl.setValue('');
-    this.filterProjectControl.setValue('');
-    this.filterProjects = [];
-    this.filteredAssessments = [];
-    this.assessmentControl.setValue('', { emitEvent: false });
-    this.assessmentSearchControl.setValue('', { emitEvent: false });
+  /** Fecha painéis mat-select cujo overlay pode ficar preso após *ngIf destruir o componente. */
+  private dismissOpenSelectOverlays(): void {
+    document.querySelectorAll('.cdk-overlay-backdrop').forEach(node => {
+      (node as HTMLElement).click();
+    });
   }
 
-  async onFilterProjectChange(): Promise<void> {
-    const projectId = this.filterProjectControl.value;
+  clearFilterContext(): void {
+    this.filterContextGeneration++;
+    this.dismissOpenSelectOverlays();
+    this.loadingService.reset();
+    this.isLoading = false;
 
-    // Sempre limpa a seleção de avaliação ao trocar de projeto
+    this.filterClientControl.setValue('', { emitEvent: false });
+    this.filterProjectControl.setValue('', { emitEvent: false });
+    this.filterProjects = [];
+    this.filteredAssessments = [];
+    this.clientAssessments = [];
+    this.projectsForAssessment = [];
+    this.projectSelectionRequired = false;
+    this.projectAutoDeduced = false;
+    this.assessmentProjectsMap.clear();
+    this.selectedAssessmentId = '';
+    this.selectedClientId = null;
+    this.dataSource = [];
+    this.displayedColumns = [];
+    this.dynamicColumns = [];
+    this.avaliadosDisponiveis = [];
+    this.selectedAvaliado = null;
+    this.competencias = [];
+    this.mediasPorCompetencia = [];
+    this.savedReports = [];
+    this.savedTemplates = [];
+    this.competencyGroups = [];
     this.assessmentControl.setValue('', { emitEvent: false });
     this.assessmentSearchControl.setValue('', { emitEvent: false });
-    this.filteredAssessments = [];
+    this.avaliadoControl.setValue('', { emitEvent: false });
+    this.invalidateCache();
 
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {},
+      replaceUrl: true,
+    });
+
+    this.cdr.markForCheck();
+  }
+
+  /** Usuário escolheu o projeto quando há ambiguidade (vários ciclos). */
+  async onFilterProjectChange(): Promise<void> {
+    const projectId = this.filterProjectControl.value;
     if (!projectId) {
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
       return;
     }
 
-    try {
-      // Fonte 1: assessments que têm projectId diretamente (forma mais confiável)
-      const byProjectSnap = await getDocs(
-        query(collection(this.firestore, 'assessments'), where('projectId', '==', projectId))
-      );
+    this.projectAutoDeduced = false;
 
-      const found = new Map<string, AssessmentOption>();
-      byProjectSnap.docs.forEach(d => {
-        const name = d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id;
-        found.set(d.id, { id: d.id, name });
-      });
-
-      // Fonte 2: project.assessmentId (vínculo manual via detalhes do projeto)
-      const project = this.filterProjects.find(p => p.id === projectId);
-      let linkedAssessmentId = project?.assessmentId;
-
-      if (!linkedAssessmentId) {
-        const projectDoc = await getDoc(doc(this.firestore, 'projects', projectId));
-        if (projectDoc.exists()) {
-          linkedAssessmentId = projectDoc.data()['assessmentId'] || '';
-          if (project && linkedAssessmentId) project.assessmentId = linkedAssessmentId;
-        }
+    const assessmentId = this.assessmentControl.value;
+    if (assessmentId) {
+      const candidates = this.getProjectsForAssessment(assessmentId);
+      if (candidates.length > 0 && !candidates.some(c => c.id === projectId)) {
+        this.snackBar.open(
+          this.t('Este projeto não utiliza a avaliação selecionada.'),
+          this.t('Fechar'),
+          { duration: 3500 }
+        );
+        this.filterProjectControl.setValue('', { emitEvent: false });
+        this.cdr.markForCheck();
+        return;
       }
-
-      if (linkedAssessmentId && !found.has(linkedAssessmentId)) {
-        // Busca a avaliação vinculada se ainda não está no mapa
-        let linked = this.assessments.find(a => a.id === linkedAssessmentId);
-        if (!linked) {
-          const snap = await getDoc(doc(this.firestore, 'assessments', linkedAssessmentId));
-          if (snap.exists()) {
-            const d = snap.data();
-            linked = { id: linkedAssessmentId, name: d['name'] || d['surveyJSON']?.['title'] || linkedAssessmentId };
-          }
-        }
-        if (linked) found.set(linked.id, linked);
-      }
-
-      // Atualiza cache global e popula dropdown
-      found.forEach(a => {
-        if (!this.assessments.find(x => x.id === a.id)) this.assessments.push(a);
-      });
-
-      if (found.size > 0) {
-        this.filteredAssessments = Array.from(found.values());
-      } else {
-        // Nenhum vínculo direto encontrado: mostra todas as avaliações do cliente
-        const clientId = this.filterClientControl.value;
-        if (clientId) {
-          const clientSnap = await getDocs(
-            query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
-          );
-          this.filteredAssessments = clientSnap.docs.map(d => ({
-            id: d.id,
-            name: d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id,
-          }));
-          this.filteredAssessments.forEach(a => {
-            if (!this.assessments.find(x => x.id === a.id)) this.assessments.push(a);
-          });
-        } else {
-          this.filteredAssessments = [...this.assessments];
-        }
-      }
-
-      // Auto-seleciona se houver exatamente uma avaliação
-      if (this.filteredAssessments.length === 1) {
-        const only = this.filteredAssessments[0];
-        this.assessmentSearchControl.setValue(only.name, { emitEvent: false });
-        this.assessmentControl.setValue(only.id);
-      }
-    } catch (e) {
-      console.error('[onFilterProjectChange] Erro ao carregar avaliações do projeto:', e);
-      this.filteredAssessments = [...this.assessments];
+      this.projectSelectionRequired = false;
+      this.selectedAssessmentId = assessmentId;
+      await this.onAssessmentChange();
+      await this.calcularMediasPorCompetencia();
     }
 
-    this.cdr.detectChanges();
+    await this.applyProjectReportTemplate(projectId);
+
+    this.cdr.markForCheck();
+  }
+
+  /** Pré-seleciona o template de relatório vinculado ao projeto (campo opcional). */
+  private async applyProjectReportTemplate(projectId: string): Promise<void> {
+    if (!projectId) return;
+
+    let reportTemplateId = this.filterProjects.find(p => p.id === projectId)?.reportTemplateId;
+    if (!reportTemplateId) {
+      try {
+        const projectDoc = await getDoc(doc(this.firestore, 'projects', projectId));
+        if (projectDoc.exists()) {
+          reportTemplateId = projectDoc.data()['reportTemplateId'] || undefined;
+        }
+      } catch (e) {
+        console.error('[Relatório] Erro ao carregar template do projeto:', e);
+        return;
+      }
+    }
+
+    if (!reportTemplateId) return;
+
+    this.selectedTemplateId.setValue(reportTemplateId, { emitEvent: false });
+    try {
+      await this.aplicarTemplateSelecionado();
+    } catch (e) {
+      console.error('[Relatório] Erro ao aplicar template do projeto:', e);
+    }
+  }
+
+  /** Inicializa filtros e dados a partir do projeto (ex.: botão Gerar Relatório na lista). */
+  private async initializeReportFromProject(projectId: string, templateIdParam?: string): Promise<void> {
+    const project = this.filterProjects.find(p => p.id === projectId);
+    if (!project?.assessmentId) {
+      this.filterProjectControl.setValue(projectId, { emitEvent: false });
+      return;
+    }
+
+    this.filterProjectControl.setValue(projectId, { emitEvent: false });
+    this.projectAutoDeduced = true;
+    this.projectSelectionRequired = false;
+    this.projectsForAssessment = this.getProjectsForAssessment(project.assessmentId);
+
+    this.selectedAssessmentId = project.assessmentId;
+    this.assessmentControl.setValue(project.assessmentId, { emitEvent: false });
+
+    const assessmentName = await this.resolveAssessmentName(project.assessmentId);
+    this.assessmentSearchControl.setValue(assessmentName, { emitEvent: false });
+
+    if (!this.filteredAssessments.find(a => a.id === project.assessmentId)) {
+      this.filteredAssessments = [
+        ...this.filteredAssessments,
+        { id: project.assessmentId, name: assessmentName },
+      ];
+    }
+
+    try {
+      await this.onAssessmentChange();
+      await this.calcularMediasPorCompetencia();
+    } catch (e) {
+      console.error('[Relatório] Erro ao carregar dados do projeto:', e);
+    }
+
+    if (templateIdParam) {
+      this.selectedTemplateId.setValue(templateIdParam, { emitEvent: false });
+      try {
+        await this.aplicarTemplateSelecionado();
+      } catch (e) {
+        console.error('[Relatório] Erro ao aplicar template informado:', e);
+      }
+    } else {
+      await this.applyProjectReportTemplate(projectId);
+    }
+
+    this.fillCompetenciasInReportSections();
+  }
+
+  /** Preenche competências nas seções do relatório a partir das competências carregadas. */
+  private fillCompetenciasInReportSections(): void {
+    if (!this.competencias.length) return;
+    const compIds = this.competencias.map(c => c.id);
+    this.relatorioConfiguracao.forEach(sec => {
+      if (['resumo', 'graficos', 'tabela', 'tabela_detalhada', 'grafico_defasagem', 'competencia_detalhada'].includes(sec.tipo)) {
+        sec.competenciasIds = [...compIds];
+      }
+    });
+    this.atualizarFormArrayComConfiguracao();
+    this.invalidateCache();
+  }
+
+  /** Executa exportação solicitada pelo modal de projetos (query param exportAction). */
+  private async executeProjectExportAction(action: string): Promise<void> {
+    this.fillCompetenciasInReportSections();
+    this.selectedTabIndex = 2;
+    this.cdr.markForCheck();
+
+    if (action === 'excelBase') {
+      if (!this.dataSource.length) {
+        this.snackBar.open(this.t('Sem dados para exportar.'), this.t('Fechar'), { duration: 3500 });
+        return;
+      }
+      this.exportarBaseExcel();
+      return;
+    }
+
+    if (!this.avaliadosDisponiveis.length) {
+      this.snackBar.open(
+        this.t('Nenhum avaliado com respostas para exportar neste projeto.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return;
+    }
+
+    if (this.competencias.length === 0) {
+      this.snackBar.open(
+        this.t('Configure as competências antes de gerar relatórios.'),
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return;
+    }
+
+    await this.waitForReportReady(8000);
+
+    const avaliado = this.avaliadosDisponiveis[0];
+    this.selectedAvaliado = avaliado;
+    this.avaliadoControl.setValue(avaliado, { emitEvent: false });
+    this.invalidateCache();
+
+    if (action === 'individualPdf') {
+      await this.exportarRelatorioPDF();
+      return;
+    }
+
+    if (action === 'batchPdf') {
+      // Geração em lote PDF desabilitada nesta versão.
+      this.snackBar.open(
+        'Exportação em lote de PDF temporariamente indisponível.',
+        this.t('Fechar'),
+        { duration: 4000 }
+      );
+      return;
+      /*
+      this.batchSelectedParticipants = new Set(this.avaliadosDisponiveis);
+      await this.generateBatchReports();
+      return;
+      */
+    }
+
+    if (action === 'docx') {
+      await this.exportarRelatorioDOCX();
+    }
+  }
+
+  /** Exporta PDFs de vários projetos do mesmo cliente em um único ZIP. */
+  private parseProjectTemplateMap(param: string | undefined): Map<string, string> {
+    const map = new Map<string, string>();
+    if (!param) return map;
+
+    param.split('|').forEach(pair => {
+      const separatorIndex = pair.indexOf(':');
+      if (separatorIndex <= 0) return;
+      const projectId = pair.slice(0, separatorIndex);
+      const templateId = pair.slice(separatorIndex + 1);
+      if (projectId && templateId) {
+        map.set(projectId, templateId);
+      }
+    });
+
+    return map;
+  }
+
+  private clearClientBatchQueryParams(): void {
+    this.suppressQueryParamsHandler = true;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        exportAction: null,
+        projectIds: null,
+        projectTemplates: null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    }).finally(() => {
+      queueMicrotask(() => {
+        this.suppressQueryParamsHandler = false;
+      });
+    });
+  }
+
+  private async executeClientBatchPdfExport(
+    projectIds: string[],
+    templateByProject: Map<string, string>
+  ): Promise<void> {
+    if (this.isBatchGenerating) return;
+
+    this.isBatchGenerating = true;
+    this.batchErrors = [];
+    this.batchTotal = projectIds.length;
+    this.batchProgress = 0;
+    this.batchCurrentName = '';
+    this.selectedTabIndex = 2;
+    this.loadingService.show('Gerando relatórios em ZIP...');
+    this.cdr.markForCheck();
+
+    const originalDataSource = this.dataSource;
+    const originalSelectedAvaliado = this.selectedAvaliado;
+    let generatedCount = 0;
+
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      for (let p = 0; p < projectIds.length; p++) {
+        const projectId = projectIds[p];
+        const project = this.filterProjects.find(item => item.id === projectId);
+        const projectLabel = project?.name || projectId;
+        this.batchProgress = p;
+        this.batchCurrentName = projectLabel;
+        this.cdr.markForCheck();
+        await new Promise(r => setTimeout(r, 0));
+
+        try {
+          const templateId = templateByProject.get(projectId);
+          if (!templateId) {
+            this.batchErrors.push({
+              name: projectLabel,
+              error: this.t('Template não selecionado para o projeto.'),
+            });
+            continue;
+          }
+
+          await this.initializeReportFromProject(projectId, templateId);
+          this.fillCompetenciasInReportSections();
+
+          if (!this.avaliadosDisponiveis.length || this.competencias.length === 0) {
+            this.batchErrors.push({
+              name: projectLabel,
+              error: this.t('Sem avaliados ou competências configuradas.'),
+            });
+            continue;
+          }
+
+          const projectDataSource = [...this.dataSource];
+          const folderName = this.sanitizeFileNamePart(projectLabel, 'Projeto');
+
+          for (const avaliado of this.avaliadosDisponiveis) {
+            this.selectedAvaliado = avaliado;
+            this.avaliadoControl.setValue(avaliado, { emitEvent: false });
+            this.dataSource = projectDataSource;
+            this.updateSelectedAvaliadoParticipantId();
+            this.createDataIndexes();
+            this.invalidateCache();
+
+            const filename = `${this.getExportBaseName()}.pdf`;
+            const blob = await this.exportReportPreviewAsPdfBlob(filename);
+            zip.file(`${folderName}/${filename}`, blob);
+            generatedCount++;
+          }
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : this.t('Erro desconhecido');
+          this.batchErrors.push({ name: projectLabel, error: message });
+        }
+      }
+
+      if (generatedCount === 0) {
+        this.snackBar.open(
+          this.t('Nenhum relatório gerado para os projetos selecionados.'),
+          this.t('Fechar'),
+          { duration: 5000 }
+        );
+        return;
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const clientName = this.sanitizeFileNamePart(this.getClientName(), 'Cliente');
+      const zipFilename = `${clientName}-relatorios-${new Date().toISOString().slice(0, 10)}.zip`;
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = zipFilename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      this.snackBar.open(
+        this.batchErrors.length
+          ? this.t('{{count}} PDF(s) gerados. {{errors}} projeto(s) com falha.')
+              .replace('{{count}}', String(generatedCount))
+              .replace('{{errors}}', String(this.batchErrors.length))
+          : this.t('{{count}} relatório(s) empacotados em {{file}}!')
+              .replace('{{count}}', String(generatedCount))
+              .replace('{{file}}', zipFilename),
+        this.t('Fechar'),
+        { duration: 6000 }
+      );
+    } finally {
+      this.dataSource = originalDataSource;
+      this.selectedAvaliado = originalSelectedAvaliado;
+      this.updateSelectedAvaliadoParticipantId();
+      this.createDataIndexes();
+      this.invalidateCache();
+      this.isBatchGenerating = false;
+      this.batchProgress = this.batchTotal;
+      this.loadingService.hide();
+      this.clearClientBatchQueryParams();
+      this.cdr.markForCheck();
+    }
   }
 
   async loadCompetencyGroups(clientId: string): Promise<void> {
@@ -5866,9 +7232,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Avaliado inválido para liberação do relatório.'), this.t('Fechar'), { duration: 3000 });
       return;
     }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de publicar o relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    if (!this.selectedAssessmentId) {
+      this.snackBar.open(this.t('Selecione uma avaliação antes de publicar o relatório.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
 
     try {
-      // Marcar TODOS os participantes do avaliado (deste projeto) como released
+      // Marcar participantes do avaliado (deste projeto) como released
       const selectedProjectId = this.filterProjectControl.value;
       const rows = this.dataSource.filter(r =>
         r.avaliado === avaliadoName &&
@@ -5878,14 +7253,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         updateDoc(doc(this.firestore, 'participants', r.participanteId), { reportStatus: 'released' })
       ));
 
-      // Salvar snapshot completo do relatório para viewer/admin_client
+      // Snapshot vinculado ao cliente (reutilizável entre projetos do mesmo cliente)
       const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
-      const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
-      const projectPart = selectedProjectId ? `_${selectedProjectId}` : '';
-      const snapshotId = `${this.selectedAssessmentId}${projectPart}_${safeKey}`;
+      const snapshotId = this.buildReleasedSnapshotId(clientId, this.selectedAssessmentId, avaliadoName);
       await setDoc(doc(this.firestore, `releasedReports/${snapshotId}`), {
+        clientId,
         assessmentId: this.selectedAssessmentId,
-        projectId: selectedProjectId || '',
         avaliadoName,
         releasedAt: new Date(),
         revoked: false,
@@ -5911,10 +7284,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  /** Para viewer/admin_client: busca snapshot por assessmentId + projectId, sem precisar do nome */
+  /** Para viewer/admin_client: busca snapshot por cliente + assessmentId. */
   private async loadSnapshotForViewer(): Promise<boolean> {
     if (!this.selectedAssessmentId) return false;
-    const projectId = this.filterProjectControl.value;
+    const clientId = this.getReportClientId();
+    const preferredNames = this.avaliadosDisponiveis.length > 0
+      ? this.avaliadosDisponiveis
+      : (this.selectedAvaliado ? [this.selectedAvaliado] : []);
 
     const applySnapshotData = (data: any) => {
       this.competencias = data['competencias'] || [];
@@ -5931,25 +7307,31 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     try {
-      // Busca TODOS os snapshots do formulário e filtra em memória.
       const qSnap = await getDocs(query(
         collection(this.firestore, 'releasedReports'),
         where('assessmentId', '==', this.selectedAssessmentId)
       ));
 
-      const candidate = qSnap.docs
+      const candidates = qSnap.docs
         .map(d => d.data())
-        .find(data => {
-          // 1) não pode estar revogado
+        .filter(data => {
           if (!data || data['revoked'] === true) return false;
-          // 2) quando há projeto selecionado, só aceita o snapshot DESTE projeto
-          //    (ou snapshots legados sem projectId)
-          if (projectId && data['projectId'] && data['projectId'] !== projectId) return false;
+          if (clientId && data['clientId'] && data['clientId'] !== clientId) return false;
+          if (!data['clientId'] && !this.snapshotMatchesScope(data)) return false;
+          if (preferredNames.length > 0 && data['avaliadoName'] && !preferredNames.includes(data['avaliadoName'])) {
+            return false;
+          }
           return true;
         });
 
-      if (candidate) { applySnapshotData(candidate); return true; }
-      return false;
+      if (candidates.length === 0) return false;
+
+      const candidate = preferredNames.length === 1
+        ? candidates.find(c => c['avaliadoName'] === preferredNames[0]) || candidates[0]
+        : candidates[0];
+
+      applySnapshotData(candidate);
+      return true;
     } catch {
       return false;
     }
@@ -5958,11 +7340,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Marca/desmarca como revogado TODOS os snapshots de um avaliado (corta acesso do viewer). */
   private async markSnapshotRevoked(avaliadoName: string, revoked: boolean): Promise<void> {
     if (!this.selectedAssessmentId || !avaliadoName) return;
+    const clientId = this.getReportClientId();
     const projectId = this.filterProjectControl.value;
     const refsToUpdate = new Map<string, any>();
 
-    // 1) Sempre busca por query — pega QUALQUER doc do avaliado neste formulário,
-    //    independente do esquema de chave (com/sem projectId, chave legada).
     try {
       const qSnap = await getDocs(query(
         collection(this.firestore, 'releasedReports'),
@@ -5970,16 +7351,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         where('avaliadoName', '==', avaliadoName)
       ));
       qSnap.docs.forEach(d => {
-        // Quando há projeto selecionado, só revoga docs deste projeto (ou legados sem projectId)
-        const pid = d.data()['projectId'];
-        if (projectId && pid && pid !== projectId) return;
-        refsToUpdate.set(d.id, d.ref);
+        if (this.snapshotMatchesScope(d.data())) {
+          refsToUpdate.set(d.id, d.ref);
+        }
       });
     } catch { /* ignora */ }
 
-    // 2) Reforço: tenta também as chaves determinísticas (caso a query acima falhe por índice)
     const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
     const candidateIds = [
+      clientId ? `${clientId}_${this.selectedAssessmentId}_${safeKey}` : null,
       projectId ? `${this.selectedAssessmentId}_${projectId}_${safeKey}` : null,
       `${this.selectedAssessmentId}_${safeKey}`,
     ].filter(Boolean) as string[];
@@ -5993,13 +7373,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // 3) Aplica a flag em todos os docs encontrados
     await Promise.all([...refsToUpdate.values()].map(ref => updateDoc(ref, { revoked })));
   }
 
   private async loadReleasedReportSnapshot(avaliadoName: string): Promise<boolean> {
     if (!this.selectedAssessmentId || !avaliadoName) return false;
     const safeKey = avaliadoName.replace(/[^a-zA-Z0-9À-ÿ]/g, '_');
+    const clientId = this.getReportClientId();
     const projectId = this.filterProjectControl.value;
     const projectPart = projectId ? `_${projectId}` : '';
 
@@ -6014,15 +7394,25 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     try {
-      // Tentativa 1: chave com projeto (formato atual)
+      // Formato atual: cliente + formulário + avaliado
+      if (clientId) {
+        const clientSnap = await getDoc(
+          doc(this.firestore, `releasedReports/${clientId}_${this.selectedAssessmentId}_${safeKey}`)
+        );
+        if (clientSnap.exists() && clientSnap.data()?.['revoked'] !== true) {
+          applySnapshotData(clientSnap.data());
+          return true;
+        }
+      }
+
+      // Legado: chave com projeto
       let snap = await getDoc(doc(this.firestore, `releasedReports/${this.selectedAssessmentId}${projectPart}_${safeKey}`));
 
-      // Tentativa 2: chave sem projeto (snapshots legados nome-based)
+      // Legado: chave sem projeto
       if (!snap.exists() && projectId) {
         snap = await getDoc(doc(this.firestore, `releasedReports/${this.selectedAssessmentId}_${safeKey}`));
       }
 
-      // Tentativa 3: query por avaliadoName + assessmentId (captura snapshots com chave participantId legada)
       if (!snap.exists()) {
         const q = query(
           collection(this.firestore, 'releasedReports'),
@@ -6030,8 +7420,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           where('avaliadoName', '==', avaliadoName)
         );
         const qSnap = await getDocs(q);
-        if (!qSnap.empty) {
-          applySnapshotData(qSnap.docs[0].data());
+        const match = qSnap.docs.find(d => this.snapshotMatchesScope(d.data()));
+        if (match) {
+          applySnapshotData(match.data());
           return true;
         }
         return false;
@@ -6166,7 +7557,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.currentUserRole === 'viewer' && index < 2) return;
     this.selectedTabIndex = index;
     if (index === 2) {
-      this.prewarmPreviewCache();
+      void this.applyBlockedParticipantsFilter().then(() => {
+        this.prewarmPreviewCache();
+        this.cdr.markForCheck();
+      });
+      return;
     }
     this.cdr.markForCheck();
   }
@@ -6310,6 +7705,32 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return secaoCtrl.get('tipo')?.value === tipo;
   }
 
+  isSecaoHtmlBruto(index: number): boolean {
+    const secao = this.relatorioConfiguracao[index];
+    return !!secao && secaoSuportaHtmlBruto(secao.tipo) && secao['htmlBruto'] === true;
+  }
+
+  secaoSuportaModoHtml(tipo: string | undefined): boolean {
+    return secaoSuportaHtmlBruto(tipo);
+  }
+
+  setSecaoHtmlBruto(index: number, htmlBruto: boolean): void {
+    const secao = this.relatorioConfiguracao[index];
+    if (!secao || !secaoSuportaHtmlBruto(secao.tipo)) return;
+    secao['htmlBruto'] = htmlBruto;
+    if (htmlBruto && secao.tipo === 'capa') {
+      secao['ocultarInfoDinamicaCapa'] = true;
+    }
+    this.atualizarSecaoConfiguracao(index);
+  }
+
+  shouldShowCapaInfoBlock(secao: RelatorioSecao): boolean {
+    if (secao['ocultarInfoDinamicaCapa'] === true || secao['htmlBruto'] === true) {
+      return false;
+    }
+    return !!(this.selectedAvaliado || this.getContagemRespondentesCached().length > 0);
+  }
+
   // Método para aplicar template rico à seção
   // Método para obter contagem de respondentes por categoria
   getContagemRespondentesPorCategoria(): { categoria: string; quantidade: number }[] {
@@ -6342,7 +7763,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       let quantidade = 0;
       indices.forEach(index => {
         const participant = this.dataSource[index];
-        if (!participant) return;
+        if (!participant || this.isRowFromBlockedParticipant(participant)) return;
 
         let temResposta = false;
         if (this.dynamicColumns && this.dynamicColumns.length > 0) {
@@ -6372,9 +7793,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       .sort((a, b) => (ordem[a.categoria] || 99) - (ordem[b.categoria] || 99));
   }
 
-  // Método para substituir variáveis dinâmicas na capa
   safeHtml(html: string | undefined): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(html || '');
+  }
+
+  /** HTML de seção com placeholders dinâmicos já resolvidos (capa, intro, textos). */
+  getSecaoHtmlComVariaveis(texto: string | undefined): SafeHtml {
+    return this.safeHtml(this.substituirVariaveisRelatorio(texto));
   }
 
   getCapaComDadosDinamicos(textoOriginal: string | undefined): string {
@@ -6624,57 +8049,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (tipo === 'capa') {
-      // Obter informações dinâmicas
-      const nomeAvaliado = this.selectedAvaliadoName || 'Não informado';
-      const dataRelatorio = this.today.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-      const contagemPorCategoria = this.getContagemRespondentesPorCategoria();
-
-      // Criar HTML para contagem por categoria (uma abaixo da outra)
-      let contagemHtml = '';
-      if (contagemPorCategoria.length > 0) {
-        contagemHtml = contagemPorCategoria
-          .map(item => `<div style="margin: 8px 0; padding: 10px 20px; background: #e3f2fd; border-radius: 8px; font-size: 14px; text-align: left;"><strong>${item.categoria}:</strong> ${item.quantidade}</div>`)
-          .join('');
-      } else {
-        contagemHtml = '<div style="color: #999; font-size: 14px; padding: 10px;">Nenhum respondente encontrado</div>';
-      }
-
-      secao.texto = `
-        <div style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
-          <h1 style="color: #1976d2; font-size: 36px; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
-            Relatório Feedback 360°
-          </h1>
-          <p style="font-size: 20px; color: #666; margin-bottom: 30px; font-weight: 300;">
-            Avaliação de Competências e Desenvolvimento Profissional
-          </p>
-          <div style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px 50px; border-radius: 15px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); margin: 20px 0;">
-            <h2 style="margin: 0; font-size: 28px; font-weight: 600;">
-              ${nomeAvaliado}
-            </h2>
-            <p style="margin: 15px 0 0 0; opacity: 0.9; font-size: 18px;">
-              Feedback 360° Profissional
-            </p>
-          </div>
-          <div style="margin-top: 30px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
-            <div style="background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-              <strong style="color: #1976d2;">Data do Relatório:</strong> ${dataRelatorio}
-            </div>
-            <div style="background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-              <strong style="color: #1976d2;">Tipo:</strong> Avaliação 360°
-            </div>
-          </div>
-          <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-            <h3 style="color: #1976d2; font-size: 20px; margin-bottom: 15px;">Respondentes por Categoria</h3>
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 0;">
-              ${contagemHtml}
-            </div>
-          </div>
-        </div>
-      `;
+      secao.texto = DEFAULT_CAPA_HTML.replace(
+        '$%NOME_AVALIADO$%',
+        this.selectedAvaliadoName || 'Nome do avaliado'
+      ).replace(
+        '$%DATA_RELATORIO$%',
+        this.today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      );
     } else if (tipo === 'introducao') {
       secao.texto = `
         <div style="max-width: 800px; margin: 0 auto;">
@@ -6963,6 +8344,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.updateSelectedAvaliadoParticipantId();
     console.log('Avaliado selecionado:', this.selectedAvaliado);
 
+    await this.applyBlockedParticipantsFilter();
+
     // Invalidar cache relacionado a cálculos de competências
     this.invalidateCache('media-competencia');
     this.invalidateCache('tabela-competencia');
@@ -7087,7 +8470,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Getter para tabela de competência com cache otimizado
   getTabelaCompetencia(competencia: Competencia): TabelaCompetencia | null {
-    const cacheKey = `tabela-competencia-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}`;
+    const cacheKey = `tabela-competencia-${competencia.id}-${this.selectedAssessmentId}-${this.selectedAvaliado || 'todos'}-${this.selectedAvaliadoParticipantId || 'na'}-${this.dataSource.length}-${this.getBlockedCacheSuffix()}`;
 
     return this.getCachedCalculation(cacheKey, () => this.gerarTabelaCompetencia(competencia));
   }
@@ -7144,7 +8527,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   getJohariWindowData(secao: any): JohariWindowData {
     const competenciasSelecionadas = this.getCompetenciasSelecionadasParaSecao(secao);
-    const threshold = 3.5; // linha de corte
+    const threshold = JOHARI_THRESHOLD;
     const palette = [
       '#5C6BC0', // A
       '#43A047', // B
@@ -7170,7 +8553,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (dados.othersScore !== null) othersVals.push(dados.othersScore);
       });
 
-      const avg = (arr: number[]) => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+      const avg = (arr: number[]): number | null =>
+        arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
       const self = avg(selfVals);
       const others = avg(othersVals);
 
@@ -7295,11 +8679,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const respostasOutros: number[] = [];
 
     this.dataSource.forEach((row) => {
+      if (this.isRowFromBlockedParticipant(row)) return;
       if (row[perguntaId] !== undefined) {
         const valor = this.parseLikertAnswer(row[perguntaId]);
 
         if (valor !== null) {
-          if (row.categoria === 'Avaliado') {
+          if (this.mapCategoriaToGrupo(row.categoria) === 'Avaliado(a)') {
             respostasSelf.push(valor);
           } else {
             respostasOutros.push(valor);

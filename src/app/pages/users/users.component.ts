@@ -71,7 +71,6 @@ export interface UserGroup {
 export class UsersComponent implements OnInit, AfterViewInit {
   // Tabela de usuários
   displayedUserColumns: string[] = [
-    'select',
     'name',
     'email',
     'client',
@@ -143,22 +142,15 @@ export class UsersComponent implements OnInit, AfterViewInit {
     return true;
   }
 
-  /** Retorna true se o usuário logado pode excluir o usuário alvo */
-  canDelete(user: User): boolean {
-    // admin_client não pode excluir nenhum usuário
-    if (this.currentUserRole === 'admin_client') return false;
-    // Não pode excluir a si mesmo
-    if (user.email === this.currentUserEmail) return false;
-    // admin_master só pode ser excluído por outro admin_master
-    if (user.role === 'admin_master') {
-      return this.currentUserRole === 'admin_master';
-    }
-    return true;
+  /** Retorna true se o usuário logado pode excluir o usuário alvo — desativado: usuários só podem ser bloqueados. */
+  canDelete(_user: User): boolean {
+    return false;
   }
 
-  /** Conta quantos admin_masters existem na tabela */
-  private countMasters(): number {
-    return this.userDataSource.data.filter(u => u.role === 'admin_master').length;
+  /** Conta quantos admin_masters ativos existem */
+  private countActiveMasters(): number {
+    const source = this.allUsers.length ? this.allUsers : this.userDataSource.data;
+    return source.filter(u => u.role === 'admin_master' && !u.blocked).length;
   }
 
   /** Tooltip explicando por que o botão está desativado */
@@ -172,16 +164,26 @@ export class UsersComponent implements OnInit, AfterViewInit {
     return this.translate.instant('Editar');
   }
 
-  getDeleteTooltip(user: User): string {
-    if (this.currentUserRole === 'admin_client')
-      return this.translate.instant('ADM Cliente não possui permissão para excluir usuários');
-    if (user.email === this.currentUserEmail && user.role === 'admin_master')
-      return this.translate.instant('Você não pode remover sua própria conta MASTER. Solicite a outro admin MASTER que realize esta ação');
-    if (user.email === this.currentUserEmail)
-      return this.translate.instant('Você não pode excluir sua própria conta');
-    if (user.role === 'admin_master' && this.currentUserRole !== 'admin_master')
-      return this.translate.instant('Apenas um admin MASTER pode remover outro admin MASTER');
-    return this.translate.instant('Excluir');
+  getBlockTooltip(user: User): string {
+    if (user.email === this.currentUserEmail) {
+      return this.translate.instant('Você não pode bloquear sua própria conta');
+    }
+    if (user.role === 'admin_master' && !user.blocked && this.countActiveMasters() <= 1) {
+      return this.translate.instant('Não é possível bloquear o único admin MASTER ativo da plataforma.');
+    }
+    if (this.currentUserRole === 'admin_client' && user.role !== 'viewer') {
+      return this.translate.instant('ADM Cliente só pode bloquear visualizadores');
+    }
+    return '';
+  }
+
+  canShowBlockAction(user: User): boolean {
+    if (user.email === this.currentUserEmail) return false;
+    if (this.currentUserRole === 'admin_master') return true;
+    if (this.currentUserRole === 'admin_client') {
+      return user.role === 'viewer' || user.role === 'user';
+    }
+    return false;
   }
 
   ngAfterViewInit(): void {
@@ -513,52 +515,11 @@ export class UsersComponent implements OnInit, AfterViewInit {
   }
 
   deleteSelectedUsers(): void {
-    const count = this.selectedUserIds.size;
-
-    // Verificar se seleção inclui masters não permitidos
-    const selectedUsers = this.userDataSource.data.filter(u => this.selectedUserIds.has(u.id));
-    const mastersInSelection = selectedUsers.filter(u => u.role === 'admin_master');
-
-    if (mastersInSelection.length > 0 && this.currentUserRole !== 'admin_master') {
-      this.snackBar.open(
-        this.translate.instant('Apenas um admin MASTER pode remover outro admin MASTER.'),
-        this.translate.instant('Fechar'), { duration: 5000 });
-      return;
-    }
-    if (mastersInSelection.some(u => u.email === this.currentUserEmail)) {
-      this.snackBar.open(
-        this.translate.instant('Você não pode remover sua própria conta MASTER.'),
-        this.translate.instant('Fechar'), { duration: 5000 });
-      return;
-    }
-    const remainingMasters = this.countMasters() - mastersInSelection.length;
-    if (remainingMasters < 1 && mastersInSelection.length > 0) {
-      this.snackBar.open(
-        this.translate.instant('Não é possível remover o único admin MASTER da plataforma.'),
-        this.translate.instant('Fechar'), { duration: 5000 });
-      return;
-    }
-
-    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: { message: this.translate.instant(`Tem certeza de que deseja excluir ${count} usuário(s)?`) },
-    });
-    dialogRef.afterClosed().subscribe(async (confirmed) => {
-      if (!confirmed) return;
-      const ids = Array.from(this.selectedUserIds);
-      try {
-        // Desvincular cada usuário dos grupos antes de apagar
-        await Promise.all(ids.map(id => this.unlinkUserFromGroups(id)));
-        const batch = writeBatch(this.firestore);
-        ids.forEach(id => batch.delete(doc(this.firestore, `users/${id}`)));
-        await batch.commit();
-        this.userDataSource.data = this.userDataSource.data.filter(u => !this.selectedUserIds.has(u.id));
-        this.selectedUserIds.clear();
-        this.snackBar.open(this.translate.instant('Usuários excluídos com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
-      } catch (error) {
-        console.error('Erro ao excluir usuários em massa:', error);
-        this.snackBar.open(this.translate.instant('Erro ao excluir usuários.'), this.translate.instant('Fechar'), { duration: 3000 });
-      }
-    });
+    this.snackBar.open(
+      this.translate.instant('Usuários não podem ser excluídos. Utilize bloquear acesso.'),
+      this.translate.instant('Fechar'),
+      { duration: 5000 }
+    );
   }
 
   // ─── Seleção em massa — Grupos ───────────────────────────────
@@ -677,73 +638,39 @@ export class UsersComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // Ações da tabela de usuários
-  async deleteUser(user: User): Promise<void> {
-    // Auto-remoção de conta MASTER
-    if (user.email === this.currentUserEmail && user.role === 'admin_master') {
-      this.snackBar.open(
-        this.translate.instant('Você não pode remover sua própria conta MASTER. Solicite a outro admin MASTER que realize esta ação.'),
-        this.translate.instant('Fechar'), { duration: 5000 });
-      return;
-    }
-    // Último MASTER
-    if (user.role === 'admin_master' && this.countMasters() <= 1) {
-      this.snackBar.open(
-        this.translate.instant('Não é possível remover o único admin MASTER da plataforma.'),
-        this.translate.instant('Fechar'), { duration: 5000 });
-      return;
-    }
-
-    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: {
-        message: this.translate.instant('Tem certeza de que deseja excluir o usuário "{{name}}"?', { name: user.name }),
-      },
-    });
-
-    dialogRef.afterClosed().subscribe(async (result) => {
-      if (result) {
-        try {
-          // Desvincular: remover o usuário de userGroups.userIds[]
-          await this.unlinkUserFromGroups(user.id!);
-
-          const userDoc = doc(this.firestore, `users/${user.id}`);
-          await deleteDoc(userDoc);
-
-          // Remove o usuário da tabela local
-          this.userDataSource.data = this.userDataSource.data.filter(
-            (u) => u.id !== user.id
-          );
-
-          this.snackBar.open(this.translate.instant('Usuário excluído com sucesso!'), this.translate.instant('Fechar'), {
-            duration: 3000,
-          });
-        } catch (error) {
-          console.error('Erro ao excluir usuário:', error);
-          this.snackBar.open(this.translate.instant('Erro ao excluir usuário.'), this.translate.instant('Fechar'), {
-            duration: 3000,
-          });
-        }
-      }
-    });
-  }
-
-  /** Remove o usuário de todos os grupos (userGroups.userIds[]) ao excluí-lo. */
-  private async unlinkUserFromGroups(userId: string): Promise<void> {
-    const snap = await getDocs(
-      query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', userId))
+  // Ações da tabela de usuários — exclusão desativada (regra: bloquear, não excluir)
+  async deleteUser(_user: User): Promise<void> {
+    this.snackBar.open(
+      this.translate.instant('Usuários não podem ser excluídos. Utilize bloquear acesso.'),
+      this.translate.instant('Fechar'),
+      { duration: 5000 }
     );
-    await Promise.all(snap.docs.map(d => updateDoc(d.ref, { userIds: arrayRemove(userId) })));
   }
 
   /** Retorna true se o usuário logado pode bloquear/desbloquear o alvo */
   canBlock(user: User): boolean {
     if (user.email === this.currentUserEmail) return false;
-    if (user.role === 'admin_master') return this.currentUserRole === 'admin_master';
-    if (this.currentUserRole === 'admin_client') return user.role === 'viewer' || user.role === 'user';
-    return true;
+    if (user.role === 'admin_master') {
+      if (this.currentUserRole !== 'admin_master') return false;
+      if (!user.blocked && this.countActiveMasters() <= 1) return false;
+      return true;
+    }
+    if (this.currentUserRole === 'admin_client') {
+      return user.role === 'viewer' || user.role === 'user';
+    }
+    return this.currentUserRole === 'admin_master';
   }
 
   async toggleBlockUser(user: User): Promise<void> {
+    if (!this.canBlock(user)) {
+      this.snackBar.open(
+        this.getBlockTooltip(user) || this.translate.instant('Operação não permitida.'),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+      return;
+    }
+
     const newBlocked = !user.blocked;
     const action = newBlocked ? 'bloquear' : 'desbloquear';
 

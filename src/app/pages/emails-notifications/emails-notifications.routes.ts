@@ -7,6 +7,6 @@ export const EmailsNotificationsRoutes: Routes = [
     path: '',
     component: EmailsNotificationsComponent,
     canActivate: [AuthGuard],
-    data: { role: ['admin_master', 'admin_client'] }, // Acessível para admin_master e admin_client
+    data: { appRoute: 'emails-notifications' },
   },
 ];

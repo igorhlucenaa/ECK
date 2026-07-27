@@ -28,9 +28,8 @@ export class ProjectService {
     if (!projectSnap.exists()) throw new Error('Projeto não encontrado.');
 
     const projectData = projectSnap.data();
-    // Idempotência: retorna só se status é 'concluido' (lowercase, já processado por este serviço)
-    // Projetos com 'Concluído' (title case, auto-concluídos sem crédito) ainda precisam do processamento
-    if (projectData['status'] === 'concluido') return;
+    const status: string = projectData['status'] || '';
+    const isConcluded = status === 'Concluído' || status === 'concluido';
 
     const clientId: string = projectData['clientId'];
     if (!clientId) throw new Error('Projeto sem clientId.');
@@ -58,6 +57,9 @@ export class ProjectService {
 
     const numToConsume = reservedEvaluateesSnap.docs.length;
 
+    // Idempotência: projeto já concluído e sem reservas pendentes → nada a fazer
+    if (isConcluded && numToConsume === 0) return;
+
     // Pré-gera refs de auditoria fora da transação
     const txRefs = reservedEvaluateesSnap.docs.map(() =>
       doc(collection(this.firestore, 'creditTransactions'))
@@ -65,7 +67,17 @@ export class ProjectService {
 
     await runTransaction(this.firestore, async (t) => {
       const freshProject = await t.get(projectRef);
-      if (freshProject.data()?.['status'] === 'concluido') return;
+      const freshStatus: string = freshProject.data()?.['status'] || '';
+      const freshConcluded = freshStatus === 'Concluído' || freshStatus === 'concluido';
+
+      // Revalida reservas dentro da transação
+      const stillReserved = reservedEvaluateesSnap.docs.filter((evalDoc) => {
+        // docs já lidos antes da transação; consumo idempotente por creditConsumed no participante
+        return evalDoc.data()['creditConsumed'] !== true;
+      });
+      const consumeCount = stillReserved.length;
+
+      if (freshConcluded && consumeCount === 0) return;
 
       t.update(projectRef, {
         status: 'Concluído',
@@ -81,7 +93,7 @@ export class ProjectService {
         });
       }
 
-      reservedEvaluateesSnap.docs.forEach((evalDoc, i) => {
+      stillReserved.forEach((evalDoc, i) => {
         t.update(evalDoc.ref, { creditConsumed: true });
         t.set(txRefs[i], {
           type: 'consume',
@@ -93,10 +105,10 @@ export class ProjectService {
         });
       });
 
-      if (numToConsume > 0) {
+      if (consumeCount > 0) {
         t.update(clientRef, {
-          reservedCredits: increment(-numToConsume),
-          consumedCredits: increment(numToConsume),
+          reservedCredits: increment(-consumeCount),
+          consumedCredits: increment(consumeCount),
         });
       }
     });

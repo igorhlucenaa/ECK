@@ -9,25 +9,25 @@ export const ClientsRoutes: Routes = [
     path: '',
     component: ClientsListComponent,
     canActivate: [AuthGuard],
-    data: { role: ['admin_master', 'admin_client'] },
+    data: { appRoute: 'clients' },
   },
   {
     path: 'new',
     component: ClientDetailComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_master' }, // Apenas admin_master pode adicionar
+    data: { role: ['admin_master'] },
   },
   {
     path: ':id/edit',
     component: ClientDetailComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_master' }, // Apenas admin_master pode editar
+    data: { role: ['admin_master'] },
   },
 
   {
     path: ':id',
-    component: ClientDetailsViewComponent, // Novo componente para detalhes do cliente
+    component: ClientDetailsViewComponent,
     canActivate: [AuthGuard],
-    data: { role: 'admin_master' },
+    data: { role: ['admin_master'] },
   },
 ];

@@ -306,7 +306,7 @@ export class CreateAssessmentComponent implements OnInit {
                 id: q.id || `q_${questionCounter++}`,
                 text: q.text || '',
                 type: q.type || 'rating',
-                required: q.required || false,
+                required: true,
                 options: q.options,
               }));
             }

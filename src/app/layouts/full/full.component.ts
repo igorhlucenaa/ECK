@@ -28,6 +28,8 @@ const MOBILE_VIEW = 'screen and (max-width: 768px)';
 const TABLET_VIEW = 'screen and (min-width: 769px) and (max-width: 1024px)';
 const MONITOR_VIEW = 'screen and (min-width: 1024px)';
 const BELOWMONITOR = 'screen and (max-width: 1023px)';
+/** Alinhado ao breakpoint `d-lg-*` customizado do tema (1200px). */
+const HORIZONTAL_MOBILE_VIEW = 'screen and (max-width: 1199px)';
 
 // for mobile app sidebar
 interface apps {
@@ -71,6 +73,7 @@ export class FullComponent implements OnInit {
   @ViewChild('leftsidenav')
   public sidenav: MatSidenav;
   resView = false;
+  horizontalMobileView = false;
   @ViewChild('content', { static: true }) content!: MatSidenavContent;
   //get options from service
   options = this.settings.getOptions();
@@ -101,16 +104,21 @@ export class FullComponent implements OnInit {
   ) {
     this.htmlElement = document.querySelector('html')!;
     this.layoutChangesSubscription = this.breakpointObserver
-      .observe([MOBILE_VIEW, TABLET_VIEW, MONITOR_VIEW, BELOWMONITOR])
+      .observe([MOBILE_VIEW, TABLET_VIEW, MONITOR_VIEW, BELOWMONITOR, HORIZONTAL_MOBILE_VIEW])
       .subscribe((state) => {
-        // SidenavOpened must be reset true when layout changes
-        this.options.sidenavOpened = true;
         this.isMobileScreen = state.breakpoints[MOBILE_VIEW];
         if (this.options.sidenavCollapsed == false) {
           this.options.sidenavCollapsed = state.breakpoints[TABLET_VIEW];
         }
         this.isContentWidthFixed = state.breakpoints[MONITOR_VIEW];
         this.resView = state.breakpoints[BELOWMONITOR];
+        this.horizontalMobileView = state.breakpoints[HORIZONTAL_MOBILE_VIEW];
+        // Menu overlay horizontal deve iniciar fechado; layout vertical mantém aberto.
+        if (this.options.horizontal && this.horizontalMobileView) {
+          this.options.sidenavOpened = false;
+        } else {
+          this.options.sidenavOpened = true;
+        }
       });
 
     // Initialize project theme with options
@@ -171,6 +179,11 @@ export class FullComponent implements OnInit {
     this.isContentWidthFixed = false;
     this.options.sidenavCollapsed = !this.options.sidenavCollapsed;
     this.resetCollapsedState();
+  }
+
+  toggleMobileNav(): void {
+    this.options.sidenavOpened = !this.options.sidenavOpened;
+    this.settings.setOptions(this.options);
   }
 
   resetCollapsedState(timer = 400) {

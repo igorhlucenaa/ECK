@@ -391,11 +391,13 @@ function applyTemplateVariables(source: string, replacements: Record<string, str
   const projectDeadline = replacements.projectDeadline || '';
   const projectName = replacements.projectName || '';
   const clientName = replacements.clientName || '';
+  const participantCategory = replacements.participantCategory || '-';
   const linkAvaliacao = replacements.LINK_AVALIACAO || '';
   const linkRelatorio = replacements.LINK_RELATORIO || '';
 
   text = text.replace(/\{\{\s*nome_participante\s*\}\}/gi, participantName);
   text = text.replace(/\{\{\s*nome_avaliado\s*\}\}/gi, avaliadoName);
+  text = text.replace(/\{\{\s*categoria\s*\}\}/gi, participantCategory);
   text = text.replace(/\{\{\s*data_expiracao\s*\}\}/gi, projectDeadline);
   text = text.replace(/\{\{\s*nome_projeto\s*\}\}/gi, projectName);
   text = text.replace(/\{\{\s*nome_projeto\s*\}\}+/gi, projectName);
@@ -543,8 +545,14 @@ async function sendAssessmentEmail(
   }
 
   const participantData = (participantDoc.data() || {}) as Record<string, unknown>;
+  if (participantData.blocked === true) {
+    throw new Error('Participante bloqueado. Nao e possivel enviar e-mail.');
+  }
   const participantName = normalizeOptionalString(participantData.name) || 'Participante';
   const participantType = (normalizeOptionalString(participantData.type) || '').toLowerCase();
+  const participantCategory =
+    normalizeOptionalString(participantData.category) ||
+    (participantType === 'avaliado' ? 'Avaliado' : '-');
   const projectId = normalizeOptionalString(participantData.projectId);
   let clientId = normalizeOptionalString(participantData.clientId);
   const participantAvaliadoId = normalizeOptionalString(participantData.avaliadoId);
@@ -620,6 +628,7 @@ async function sendAssessmentEmail(
   const emailHtml = renderTemplateToHtml(parsedContent, {
     LINK_AVALIACAO: assessmentLink,
     participantName,
+    participantCategory,
     avaliadoName: avaliadoName || '-',
     projectDeadline,
     projectName,
@@ -629,6 +638,7 @@ async function sendAssessmentEmail(
   const templateReplacements = {
     LINK_AVALIACAO: assessmentLink,
     participantName,
+    participantCategory,
     avaliadoName: avaliadoName || '-',
     projectDeadline,
     projectName,
@@ -1018,6 +1028,10 @@ async function processPendingAssessmentReminders(
       }
 
       const participantData = await getParticipantData(participantId);
+      if (participantData?.blocked === true) {
+        stats.skipped += 1;
+        continue;
+      }
       const participantType = (normalizeOptionalString(participantData?.type) || '').toLowerCase();
       const templateId = resolveTemplateIdForParticipant(setting, linkData, participantType);
       if (!templateId) {
@@ -1869,6 +1883,9 @@ async function deleteClientSafe(db: admin.firestore.Firestore, id: string) {
     ['competencies',    db.collection('competencies').where('clientId', '==', id),     'Competências'],
     ['competencyGroups',db.collection('competencyGroups').where('clientId', '==', id), 'Grupos de competências'],
     ['mailTemplates',   db.collection('mailTemplates').where('clientId', '==', id),    'Modelos de e-mail'],
+    ['reports',         db.collection('reports').where('clientId', '==', id),           'Relatórios salvos'],
+    ['reportTemplates', db.collection('reportTemplates').where('clientId', '==', id),   'Templates de relatório'],
+    ['releasedReports', db.collection('releasedReports').where('clientId', '==', id),  'Relatórios publicados'],
   ];
   const blockers: BlockerInfo[] = [];
   for (const [coll, q, label] of checks) {
@@ -1893,10 +1910,9 @@ async function deleteProjectSafe(db: admin.firestore.Firestore, id: string) {
     await db.recursiveDelete(a.ref);
   }
 
-  // Apaga participantes, links, snapshots e templates do projeto
+  // Apaga participantes, links e templates de e-mail do projeto
   await deleteQueryInBatches(db.collection('participants').where('projectId', '==', id));
   await deleteQueryInBatches(db.collection('assessmentLinks').where('projectId', '==', id));
-  await deleteQueryInBatches(db.collection('releasedReports').where('projectId', '==', id));
   await deleteQueryInBatches(db.collection('mailTemplates').where('projectId', '==', id));
 
   // Desvincula o projeto dos grupos
@@ -1992,7 +2008,6 @@ export const onProjectDeleted = onDocumentDeleted(
       for (const a of assessmentsSnap.docs) await db.recursiveDelete(a.ref);
       await deleteQueryInBatches(db.collection('participants').where('projectId', '==', projectId));
       await deleteQueryInBatches(db.collection('assessmentLinks').where('projectId', '==', projectId));
-      await deleteQueryInBatches(db.collection('releasedReports').where('projectId', '==', projectId));
       await deleteQueryInBatches(db.collection('mailTemplates').where('projectId', '==', projectId));
       await pullFromArrayField('userGroups', 'projectIds', projectId);
       if (clientId) await sincronizarCreditosCliente(clientId);

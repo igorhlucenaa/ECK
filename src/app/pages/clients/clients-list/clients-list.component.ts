@@ -149,24 +149,28 @@ export class ClientsListComponent implements OnInit {
 
     try {
       const ordersSnapshot = await getDocs(ordersQuery);
-      const currentDate = new Date();
+      const now = new Date();
       let creditsPurchased = 0;
+      let creditsAvailable = 0;
 
       ordersSnapshot.docs.forEach((orderDoc) => {
         const orderData = orderDoc.data();
         const validityDate = orderData['validityDate']?.toDate();
-        const credits = orderData['credits'] || 0;
-        // Comprados = soma de pedidos aprovados ainda válidos
-        if (validityDate && validityDate > currentDate) {
-          creditsPurchased += credits;
+        // Mesma regra de validade usada em /orders e sincronizarCreditosCliente
+        if (validityDate && validityDate < now) {
+          return;
         }
+
+        const total = orderData['credits'] || 0;
+        const remaining = (orderData['remainingCredits'] as number) ?? total;
+        creditsPurchased += total;
+        creditsAvailable += remaining;
       });
 
       client.creditsPurchased = creditsPurchased;
-      // creditsUsed e credits (disponíveis) vêm diretamente do doc do cliente no Firestore
-      // — são mantidos incrementalmente pelo sistema (respostas, aprovações, expirações)
-      client.creditsUsed = client.creditsUsed || 0;
-      client.creditsAvailable = client.credits || 0;
+      client.creditsAvailable = creditsAvailable;
+      // Utilizados = retirados do pedido (reservados + consumidos), igual à coluna Utilizados em /orders
+      client.creditsUsed = Math.max(0, creditsPurchased - creditsAvailable);
     } catch (error) {
       console.error('Erro ao calcular créditos:', error);
     }

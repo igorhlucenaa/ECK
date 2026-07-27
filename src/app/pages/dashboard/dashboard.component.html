@@ -871,7 +871,7 @@
                 ? ['/reports']
                 : ['/projects', row.id, 'edit']"
               [queryParams]="userRole === 'viewer'
-                ? { projectId: row.id }
+                ? { clientId: row.clientId, projectId: row.id }
                 : {}"></tr>
         </table>
 

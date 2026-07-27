@@ -1,3 +1,46 @@
+// ─── Dialog wrapper ───────────────────────────────────────────
+.preview-dialog {
+  position: relative;
+  min-height: 200px;
+}
+
+.preview-export-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+
+  &__box {
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    min-width: 280px;
+    text-align: center;
+  }
+
+  &__label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-top: 4px;
+  }
+
+  &__hint {
+    font-size: 13px;
+    color: #64748b;
+  }
+}
+
 // ─── Header ──────────────────────────────────────────────────
 .preview-header {
   display: flex;
@@ -48,6 +91,13 @@
   padding: 12px 24px;
   background: #f8faff;
   border-bottom: 1px solid #e8edf3;
+
+  &--embedded {
+    padding: 0 0 16px;
+    margin-bottom: 8px;
+    background: transparent;
+    border-bottom: 1px solid #e8edf3;
+  }
 }
 
 .meta-item {
@@ -80,6 +130,12 @@
   background: #f8faff;
 }
 
+.preview-pdf-content {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+}
+
 .no-survey {
   display: flex;
   flex-direction: column;
@@ -95,8 +151,26 @@
 .preview-footer {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
   padding: 12px 24px;
   border-top: 1px solid #f1f5f9;
+}
+
+.btn-download-pdf {
+  height: 38px;
+  border-color: #1B84FF !important;
+  color: #1B84FF !important;
+  font-weight: 600;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .btn-close-dialog {
