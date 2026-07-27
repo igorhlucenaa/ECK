@@ -28,7 +28,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { DependencyCheckService } from 'src/app/services/dependency-check.service';
@@ -111,7 +111,8 @@ export class CreditOrdersComponent implements OnInit {
     private router: Router,
     private authService: AuthService,
     private dialog: MatDialog,
-    private dependencyCheck: DependencyCheckService
+    private dependencyCheck: DependencyCheckService,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -227,7 +228,7 @@ export class CreditOrdersComponent implements OnInit {
       this.dataSource.sort = this.sort;
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
-      this.snackBar.open('Erro ao carregar pedidos.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar pedidos.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -307,11 +308,11 @@ export class CreditOrdersComponent implements OnInit {
       // Recalcula saldo do cliente a partir dos pedidos aprovados válidos
       await this.sincronizarCreditosCliente(clientId);
 
-      this.snackBar.open('Pedido aprovado! Créditos adicionados com validade de 12 meses.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Pedido aprovado! Créditos adicionados com validade de 12 meses.'), this.translate.instant('Fechar'), { duration: 3000 });
       await this.loadOrders();
     } catch (error) {
       console.error('Erro ao aprovar pedido:', error);
-      this.snackBar.open('Erro ao aprovar pedido.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Erro ao aprovar pedido.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -322,14 +323,14 @@ export class CreditOrdersComponent implements OnInit {
       // Atualiza o status do pedido para "Rejeitado"
       await updateDoc(orderDoc, { status: 'Rejeitado' });
 
-      this.snackBar.open('Pedido rejeitado com sucesso!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Pedido rejeitado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
 
       await this.loadOrders();
     } catch (error) {
       console.error('Erro ao rejeitar pedido:', error);
-      this.snackBar.open('Erro ao rejeitar pedido.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Erro ao rejeitar pedido.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -376,7 +377,7 @@ export class CreditOrdersComponent implements OnInit {
       );
     } catch (error) {
       console.error('Erro ao excluir pedido:', error);
-      this.snackBar.open('Erro ao excluir pedido.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Erro ao excluir pedido.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -527,11 +528,11 @@ export class CreditOrdersComponent implements OnInit {
 
       await updateDoc(orderRef, update);
       this.cancelEditExpiration();
-      this.snackBar.open('Data de expiração atualizada!', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Data de expiração atualizada!'), this.translate.instant('Fechar'), { duration: 3000 });
       await this.loadOrders(); // executa expireOrders + sincronizarCreditosClientes
     } catch (error) {
       console.error('Erro ao atualizar data de expiração:', error);
-      this.snackBar.open('Erro ao atualizar data de expiração.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Erro ao atualizar data de expiração.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 

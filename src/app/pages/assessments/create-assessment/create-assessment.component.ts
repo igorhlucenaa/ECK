@@ -27,7 +27,7 @@ import { SurveyModel, ITheme } from 'survey-core';
 import 'survey-core/survey.i18n.js';
 import 'survey-creator-core/survey-creator-core.i18n.js';
 import { editorLocalization } from 'survey-creator-core';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { CompetencyQuestionsService, CompetencyQuestionSource } from 'src/app/services/competency-questions.service';
 
@@ -68,7 +68,8 @@ export class CreateAssessmentComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private location: Location,
-    private competencyQuestionsService: CompetencyQuestionsService
+    private competencyQuestionsService: CompetencyQuestionsService,
+    private translate: TranslateService
   ) {
     // Inicializa o formulário de metadados
     this.form = this.fb.group({
@@ -236,7 +237,7 @@ export class CreateAssessmentComponent implements OnInit {
     } catch (error) {
       console.error('❌ Erro ao carregar competências:', error);
       console.error('  - Stack trace:', error);
-      this.snackBar.open('Erro ao carregar competências', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar competências'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -366,7 +367,7 @@ export class CreateAssessmentComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao gerar formulário a partir das competências:', error);
-      this.snackBar.open('Erro ao gerar formulário a partir das competências', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao gerar formulário a partir das competências'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -411,7 +412,7 @@ export class CreateAssessmentComponent implements OnInit {
       console.log(`✅ Total de grupos carregados: ${this.competencyGroups.length}`);
     } catch (error) {
       console.error('❌ Erro ao carregar grupos de competências:', error);
-      this.snackBar.open('Erro ao carregar grupos de competências', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar grupos de competências'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -471,7 +472,7 @@ export class CreateAssessmentComponent implements OnInit {
     const clientId = this.form.get('clientId')?.value as string;
     const competencyIds = (this.form.get('competencyIds')?.value as string[]) || [];
     if (!clientId || !name || competencyIds.length === 0) {
-      this.snackBar.open('Informe um nome e selecione ao menos uma competência.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Informe um nome e selecione ao menos uma competência.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
     try {
@@ -482,11 +483,11 @@ export class CreateAssessmentComponent implements OnInit {
         competencyIds,
         createdAt: new Date(),
       });
-      this.snackBar.open('Lista salva com sucesso!', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Lista salva com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
       await this.loadCompetencyLists(clientId);
     } catch (error) {
       console.error('Erro ao salvar lista de competências:', error);
-      this.snackBar.open('Erro ao salvar lista.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao salvar lista.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -628,7 +629,7 @@ export class CreateAssessmentComponent implements OnInit {
         const docRef = doc(this.firestore, 'assessments', assessmentId);
         await updateDoc(docRef, formData);
 
-        this.snackBar.open('Formulário atualizado com sucesso!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Formulário atualizado com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
       } else {
@@ -636,7 +637,7 @@ export class CreateAssessmentComponent implements OnInit {
         const assessmentsCollection = collection(this.firestore, 'assessments');
         await addDoc(assessmentsCollection, formData);
 
-        this.snackBar.open('Formulário criado com sucesso!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Formulário criado com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
       }
@@ -644,7 +645,7 @@ export class CreateAssessmentComponent implements OnInit {
       this.router.navigate(['/assessments']); // Redireciona para a lista de assessments
     } catch (error) {
       console.error('Erro ao salvar formulário:', error);
-      this.snackBar.open('Erro ao salvar. Tente novamente.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao salvar. Tente novamente.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

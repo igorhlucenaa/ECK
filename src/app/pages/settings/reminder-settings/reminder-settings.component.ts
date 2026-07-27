@@ -18,6 +18,7 @@ import {
 } from '@angular/fire/firestore';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
@@ -125,7 +126,8 @@ export class ReminderSettingsComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private fb: FormBuilder,
-    private authService: AuthService
+    private authService: AuthService,
+    private translate: TranslateService
   ) {}
 
   get isAdminMaster(): boolean {
@@ -250,7 +252,7 @@ export class ReminderSettingsComponent implements OnInit {
 
   async saveSettings(): Promise<void> {
     if (!this.selectedClientId || !this.selectedProjectId) {
-      this.snackBar.open('Selecione um cliente e um projeto para salvar as configuracoes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Selecione um cliente e um projeto para salvar as configuracoes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -258,20 +260,20 @@ export class ReminderSettingsComponent implements OnInit {
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.snackBar.open('Revise os campos antes de salvar.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Revise os campos antes de salvar.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
     const sendTime = this.normalizeTime(this.form.controls.sendTime.value);
     if (!sendTime) {
-      this.snackBar.open('Informe um horario valido no formato HH:mm.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Informe um horario valido no formato HH:mm.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
     }
 
     if (!this.isValidTimeZone(this.form.controls.timezone.value)) {
-      this.snackBar.open('Informe um timezone valido (ex.: America/Fortaleza).', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Informe um timezone valido (ex.: America/Fortaleza).'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -279,7 +281,7 @@ export class ReminderSettingsComponent implements OnInit {
 
     const startDateValue = this.form.controls.startDate.value;
     if (!startDateValue) {
-      this.snackBar.open('Selecione a data de início dos lembretes.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Selecione a data de início dos lembretes.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
     const startDate = new Date(startDateValue);
@@ -325,12 +327,12 @@ export class ReminderSettingsComponent implements OnInit {
 
       await this.triggerImmediateReminderProcessing(this.selectedClientId, this.selectedProjectId);
 
-      this.snackBar.open('Configuracoes de lembrete salvas com sucesso.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Configuracoes de lembrete salvas com sucesso.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } catch (error) {
       console.error('Erro ao salvar configuracoes de lembrete:', error);
-      this.snackBar.open('Erro ao salvar configuracoes de lembrete.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao salvar configuracoes de lembrete.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } finally {
@@ -564,7 +566,7 @@ export class ReminderSettingsComponent implements OnInit {
       });
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Nao foi possivel carregar os clientes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Nao foi possivel carregar os clientes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       this.clients = [];
@@ -697,7 +699,7 @@ export class ReminderSettingsComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao carregar configuracoes de lembrete:', error);
-      this.snackBar.open('Nao foi possivel carregar as configuracoes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Nao foi possivel carregar as configuracoes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

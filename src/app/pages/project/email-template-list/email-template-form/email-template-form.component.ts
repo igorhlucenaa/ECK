@@ -23,7 +23,7 @@ import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { EmailEditorModule, EmailEditorComponent } from 'angular-email-editor';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
@@ -63,7 +63,8 @@ export class EmailTemplateFormComponent implements OnInit {
     private router: Router,
     private snackBar: MatSnackBar,
     private location: Location,
-    private authService: AuthService
+    private authService: AuthService,
+    private translate: TranslateService
   ) {
     this.form = this.fb.group({
       name: ['', Validators.required],
@@ -79,7 +80,7 @@ export class EmailTemplateFormComponent implements OnInit {
     const user = await this.authService.getCurrentUser();
 
     if (!user) {
-      this.snackBar.open('Erro ao obter informações do usuário.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao obter informações do usuário.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -456,7 +457,7 @@ export class EmailTemplateFormComponent implements OnInit {
       }
 
       if (!design) {
-        this.snackBar.open('Erro ao exportar o design do editor.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Erro ao exportar o design do editor.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -465,7 +466,7 @@ export class EmailTemplateFormComponent implements OnInit {
       this.form.get('content')?.setValue(design);
 
       if (this.form.invalid) {
-        this.snackBar.open('Preencha todos os campos obrigatórios!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Preencha todos os campos obrigatórios!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -500,7 +501,7 @@ export class EmailTemplateFormComponent implements OnInit {
       this.location.back();
     } catch (error) {
       console.error('Erro ao salvar template:', error);
-      this.snackBar.open('Erro ao salvar template.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao salvar template.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

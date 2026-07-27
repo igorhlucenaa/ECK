@@ -16,6 +16,7 @@ import {
   where,
 } from '@angular/fire/firestore';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslateService } from '@ngx-translate/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -61,7 +62,8 @@ export class NewCreditOrderComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private router: Router,
-    private authService: AuthService // Adicionado
+    private authService: AuthService,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -136,7 +138,7 @@ export class NewCreditOrderComponent implements OnInit {
 
           } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -170,13 +172,13 @@ export class NewCreditOrderComponent implements OnInit {
         createdAt: new Date(),
       });
 
-      this.snackBar.open('Pedido criado com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Pedido criado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       this.router.navigate(['/orders']);
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
-      this.snackBar.open('Erro ao criar pedido.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao criar pedido.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 

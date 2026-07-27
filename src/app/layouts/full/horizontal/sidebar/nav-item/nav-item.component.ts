@@ -6,13 +6,14 @@ import {
 import { Router } from '@angular/router';
 import { NavService } from '../../../../../services/nav.service';
 import { TablerIconsModule } from 'angular-tabler-icons';
+import { TranslateModule } from '@ngx-translate/core';
 import { CommonModule, NgForOf } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-horizontal-nav-item',
   standalone: true,
-  imports: [TablerIconsModule, CommonModule, MatIconModule, NgForOf],
+  imports: [TablerIconsModule, CommonModule, MatIconModule, NgForOf, TranslateModule],
   templateUrl: './nav-item.component.html',
 })
 export class AppHorizontalNavItemComponent implements OnInit {

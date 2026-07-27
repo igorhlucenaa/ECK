@@ -11,6 +11,7 @@ import {
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CommonModule, Location } from '@angular/common';
+import { TranslateService } from '@ngx-translate/core';
 import { MaterialModule } from 'src/app/material.module';
 import { ReactiveFormsModule } from '@angular/forms';
 import { EditorModule } from '@tinymce/tinymce-angular';
@@ -87,7 +88,8 @@ export class QuestionnaireFormComponent implements OnInit {
     private router: Router,
     private fb: FormBuilder,
     private snackBar: MatSnackBar,
-    private location: Location
+    private location: Location,
+    private translate: TranslateService
   ) {
     this.questionnaireForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
@@ -120,14 +122,14 @@ export class QuestionnaireFormComponent implements OnInit {
           content: data['content'],
         });
       } else {
-        this.snackBar.open('Questionário não encontrado.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Questionário não encontrado.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         this.router.navigate([`/projects/${this.projectId}/questionnaires`]);
       }
     } catch (error) {
       console.error('Erro ao carregar questionário:', error);
-      this.snackBar.open('Erro ao carregar questionário.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar questionário.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -135,7 +137,7 @@ export class QuestionnaireFormComponent implements OnInit {
 
   async saveQuestionnaire(): Promise<void> {
     if (this.questionnaireForm.invalid) {
-      this.snackBar.open('Preencha todos os campos obrigatórios.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Preencha todos os campos obrigatórios.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -174,7 +176,7 @@ export class QuestionnaireFormComponent implements OnInit {
       this.router.navigate([`/projects/${this.projectId}/questionnaires`]);
     } catch (error) {
       console.error('Erro ao salvar questionário:', error);
-      this.snackBar.open('Erro ao salvar questionário.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao salvar questionário.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

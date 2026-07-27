@@ -14,7 +14,7 @@ import { MatSort } from '@angular/material/sort';
 import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 export interface User {
   id: string;
@@ -43,7 +43,8 @@ export class ProjectUsersComponent implements OnInit {
     private route: ActivatedRoute,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private location: Location
+    private location: Location,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -65,7 +66,7 @@ export class ProjectUsersComponent implements OnInit {
       );
 
       if (projectsSnapshot.empty) {
-        this.snackBar.open('Projeto não encontrado.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Projeto não encontrado.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -123,7 +124,7 @@ export class ProjectUsersComponent implements OnInit {
       this.dataSource.sort = this.sort;
     } catch (error) {
       console.error('Erro ao carregar usuários do projeto:', error);
-      this.snackBar.open('Erro ao carregar os usuários.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar os usuários.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

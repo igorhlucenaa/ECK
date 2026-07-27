@@ -691,7 +691,7 @@ export class UsersComponent implements OnInit, AfterViewInit {
         this.snackBar.open(msg, 'Fechar', { duration: 3000 });
       } catch (error) {
         console.error('Erro ao alterar bloqueio:', error);
-        this.snackBar.open('Erro ao alterar status de acesso.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Erro ao alterar status de acesso.'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     });
   }

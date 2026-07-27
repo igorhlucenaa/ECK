@@ -243,7 +243,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -256,7 +256,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       }));
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
-      this.snackBar.open('Erro ao carregar avaliações', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliações'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -348,7 +348,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
     } catch (error) {
       console.error('Erro ao carregar avaliação:', error);
-      this.snackBar.open('Erro ao carregar avaliação', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliação'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.isLoading = false;
     }
@@ -1997,7 +1997,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       this.snackBar.open(`Grupo "${group.name}" excluído com sucesso.`, 'OK', { duration: 3000 });
     } catch (error) {
       console.error('Erro ao excluir grupo:', error);
-      this.snackBar.open('Erro ao excluir grupo.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao excluir grupo.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 

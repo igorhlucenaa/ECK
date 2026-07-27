@@ -14,6 +14,7 @@ import {
   where,
 } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslateService } from '@ngx-translate/core';
 
 interface Participant {
   id: string;
@@ -106,7 +107,8 @@ export class ParticipantResponsesModalComponent {
     },
     private dialog: MatDialog,
     private firestore: Firestore,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private translate: TranslateService
   ) {}
 
   async viewParticipantResponses(participantId: string): Promise<void> {
@@ -126,7 +128,7 @@ export class ParticipantResponsesModalComponent {
       const linksSnapshot = await getDocs(assessmentLinksQuery);
       const linkData = linksSnapshot.docs[0]?.data() || {};
       if (!linkData || linkData['status'] !== 'completed') {
-        this.snackBar.open('Este participante ainda não respondeu.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Este participante ainda não respondeu.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;

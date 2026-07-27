@@ -542,7 +542,7 @@ export class ReportGenerationModalComponent implements OnInit {
 
   async generateReport(): Promise<void> {
     if (!this.canGenerate()) {
-      this.snackBar.open('Selecione pelo menos uma competência para gerar o relatório.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Selecione pelo menos uma competência para gerar o relatório.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
@@ -570,10 +570,10 @@ export class ReportGenerationModalComponent implements OnInit {
 
       this.router.navigate(['/reports'], { queryParams });
 
-      this.snackBar.open('Redirecionando para geração do relatório...', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Redirecionando para geração do relatório...'), this.translate.instant('Fechar'), { duration: 3000 });
     } catch (error) {
       console.error('Erro ao abrir relatório:', error);
-      this.snackBar.open('Erro ao abrir relatório. Tente novamente.', 'Fechar', { duration: 5000 });
+      this.snackBar.open(this.translate.instant('Erro ao abrir relatório. Tente novamente.'), this.translate.instant('Fechar'), { duration: 5000 });
     } finally {
       this.ngZone.run(() => { this.isGenerating = false; this.cdr.markForCheck(); });
     }

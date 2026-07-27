@@ -22,7 +22,7 @@ import {
 } from '@angular/fire/firestore';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface ModalData {
   evaluatee: any;
@@ -71,7 +71,8 @@ export class EvaluatorsModalComponent implements OnInit {
     private fb: FormBuilder,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private firestore: Firestore // Injetei Firestore para atualizações
+    private firestore: Firestore,
+    private translate: TranslateService
   ) {
     this.addAssessmentForm = this.fb.group({
       newAssessments: [[], Validators.required], // Campo para seleções múltiplas
@@ -160,7 +161,7 @@ export class EvaluatorsModalComponent implements OnInit {
       this.assessments = await Promise.all(this.assessments);
     } catch (error) {
       console.error('Erro ao carregar avaliações do Firestore:', error);
-      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliações.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -186,7 +187,7 @@ export class EvaluatorsModalComponent implements OnInit {
         this.assessments = [...this.assessments, ...newAssessments];
         this.addAssessmentForm.reset();
         this.updateFirestoreAssessments(); // Atualiza no Firestore
-        this.snackBar.open('Avaliações adicionadas com sucesso!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Avaliações adicionadas com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
       }
@@ -236,7 +237,7 @@ export class EvaluatorsModalComponent implements OnInit {
     try {
       const template = this.data.mailTemplates.find((t) => t.id === templateId);
       if (!template) {
-        this.snackBar.open('Modelo de e-mail não encontrado.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Modelo de e-mail não encontrado.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -302,7 +303,7 @@ export class EvaluatorsModalComponent implements OnInit {
         // Atualiza o status no Firestore para refletir o envio
         await this.updateParticipantAssessmentStatus(assessmentId);
 
-        this.snackBar.open('Link de avaliação enviado com sucesso!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Link de avaliação enviado com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
       }
@@ -344,7 +345,7 @@ export class EvaluatorsModalComponent implements OnInit {
   removeAssessment(assessmentId: string): void {
     this.assessments = this.assessments.filter((a) => a.id !== assessmentId);
     this.updateFirestoreAssessments(); // Atualiza no Firestore
-    this.snackBar.open('Avaliação removida com sucesso!', 'Fechar', {
+    this.snackBar.open(this.translate.instant('Avaliação removida com sucesso!'), this.translate.instant('Fechar'), {
       duration: 3000,
     });
   }
@@ -386,7 +387,7 @@ export class EvaluatorsModalComponent implements OnInit {
       await updateDoc(evaluateeDoc, {
         assessments: validAssessments,
       });
-      this.snackBar.open('Avaliações atualizadas com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Avaliações atualizadas com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } catch (error: any) {
@@ -450,7 +451,7 @@ export class EvaluatorsModalComponent implements OnInit {
         'Erro ao carregar avaliações disponíveis do Firestore:',
         error
       );
-      this.snackBar.open('Erro ao carregar avaliações disponíveis.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliações disponíveis.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return [];

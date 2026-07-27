@@ -28,7 +28,7 @@ export class AppSlideToggleComponent implements OnInit {
   constructor(private _formBuilder: FormBuilder) {}
 
   alertFormValues(formGroup: FormGroup) {
-    alert(JSON.stringify(formGroup.value, null, 2));
+    console.log(JSON.stringify(formGroup.value, null, 2));
   }
 
   ngOnInit(): void {}

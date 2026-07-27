@@ -533,7 +533,7 @@ export class ParticipantsModalComponent implements OnInit {
   async loadAssessmentsForClient(clientId: string): Promise<void> {
     try {
       if (!clientId) {
-        this.snackBar.open('Nenhum clientId fornecido.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Nenhum clientId fornecido.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -1041,7 +1041,7 @@ export class ParticipantsModalComponent implements OnInit {
         participant.sentAt = prevSentAt;
         this.dataSource.data = [...this.dataSource.data];
         this.applyFilter();
-        this.snackBar.open('Nenhum envio pendente encontrado.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Nenhum envio pendente encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
       const linkDoc = linkSnap.docs[0];
@@ -1060,14 +1060,14 @@ export class ParticipantsModalComponent implements OnInit {
         );
       }
 
-      this.snackBar.open('Envio cancelado.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Envio cancelado.'), this.translate.instant('Fechar'), { duration: 3000 });
     } catch (e) {
       participant.status = prevStatus;
       participant.sentAt = prevSentAt;
       this.dataSource.data = [...this.dataSource.data];
       this.applyFilter();
       console.error('Erro ao cancelar envio:', e);
-      this.snackBar.open('Erro ao cancelar envio.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao cancelar envio.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -1263,13 +1263,13 @@ export class ParticipantsModalComponent implements OnInit {
               console.error('Erro ao salvar participante:', error);
               const err = error as { code?: string };
               if (err.code === 'insufficient-credits') {
-                this.snackBar.open('Créditos insuficientes para importar o avaliado.', 'Fechar', { duration: 6000 });
+                this.snackBar.open(this.translate.instant('Créditos insuficientes para importar o avaliado.'), this.translate.instant('Fechar'), { duration: 6000 });
                 break;
               }
             }
           }
 
-          this.snackBar.open('Upload e salvamento concluídos!', 'Fechar', {
+          this.snackBar.open(this.translate.instant('Upload e salvamento concluídos!'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
           this.loadParticipants();
@@ -1297,7 +1297,7 @@ export class ParticipantsModalComponent implements OnInit {
         }));
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
-      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar projetos.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return [];
@@ -1308,7 +1308,7 @@ export class ParticipantsModalComponent implements OnInit {
     // Validar seleção de avaliação antes de prosseguir
     const selectedAssessmentId = this.assessmentFormControl.value;
     if (!selectedAssessmentId) {
-      this.snackBar.open('Selecione um Formulário (Avaliação) para gerar o relatório.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Selecione um Formulário (Avaliação) para gerar o relatório.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
