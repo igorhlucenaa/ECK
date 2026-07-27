@@ -1824,6 +1824,10 @@ export class ReportPdfMakeService {
     ctx.moveTo(centerX, margin.top);
     ctx.lineTo(centerX, margin.top + chartHeight);
     ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(centerX, margin.top);
+    ctx.lineTo(centerX, margin.top + chartHeight);
+    ctx.stroke();
 
     // Labels e barras
     gapData.forEach((item, index) => {
