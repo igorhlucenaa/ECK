@@ -896,6 +896,8 @@
   "Progress Spinner": "Progress Spinner",
   "Progresso": "Progress",
   "Progresso dos projetos ativos por etapa": "Progress of active projects by stage",
+  "Panorama dos projetos ativos: total, com convites enviados e concluídos": "Overview of active projects: total, with invitations sent and completed",
+  "Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas.": "Project funnel: Active = projects that are not cancelled or inactive (same total as the Active Projects card); With invitations sent = projects where at least one participant received an invitation; Completed = projects with Completed status. Stages are subsets, not exclusive queues.",
   "Projects": "Projects",
   "Projeto": "Project",
   "Projeto cancelado com sucesso.": "Projeto cancelado com sucesso.",

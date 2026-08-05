@@ -497,16 +497,16 @@
         </div>
         <div>
           <h3 class="dash-card__title">{{ 'Funil de Projetos' | translate }}</h3>
-          <p class="dash-card__sub">{{ 'Progresso dos projetos ativos por etapa' | translate }}</p>
+          <p class="dash-card__sub">{{ 'Panorama dos projetos ativos: total, com convites enviados e concluídos' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados.' | translate"
+                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
       </div>
-      <div class="funnel-client-filter" *ngIf="funnelClientOptions.length > 1">
-        <mat-form-field appearance="outline" class="funnel-filter-field">
+      <div class="projects-filter-bar funnel-client-filter" *ngIf="funnelClientOptions.length > 1">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select funnel-filter-field" floatLabel="always">
           <mat-label>{{ 'Filtrar por cliente' | translate }}</mat-label>
           <mat-select [value]="funnelClientFilter" (selectionChange)="onFunnelClientFilter($event.value)">
             <mat-option *ngFor="let opt of funnelClientOptions" [value]="opt.id">{{ opt.name }}</mat-option>
@@ -516,7 +516,7 @@
       <div class="funnel-body">
         <div class="funnel-step funnel-step--active">
           <div class="funnel-step__value">{{ funnelData.created }}</div>
-          <div class="funnel-step__label">{{ 'Criados' | translate }}</div>
+          <div class="funnel-step__label">{{ 'Ativos' | translate }}</div>
         </div>
         <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
         <div class="funnel-step funnel-step--mid">
@@ -903,10 +903,10 @@
         </div>
         <div>
           <h3 class="dash-card__title">{{ 'Funil de Projetos' | translate }}</h3>
-          <p class="dash-card__sub">{{ 'Progresso dos projetos ativos por etapa' | translate }}</p>
+          <p class="dash-card__sub">{{ 'Panorama dos projetos ativos: total, com convites enviados e concluídos' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados.' | translate"
+                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -914,7 +914,7 @@
       <div class="funnel-body">
         <div class="funnel-step funnel-step--active">
           <div class="funnel-step__value">{{ funnelData.created }}</div>
-          <div class="funnel-step__label">{{ 'Criados' | translate }}</div>
+          <div class="funnel-step__label">{{ 'Ativos' | translate }}</div>
         </div>
         <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
         <div class="funnel-step funnel-step--mid">

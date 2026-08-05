@@ -893,6 +893,8 @@
   "Progress Spinner": "Progress Spinner",
   "Progresso": "Progresso",
   "Progresso dos projetos ativos por etapa": "Progresso dos projetos ativos por etapa",
+  "Panorama dos projetos ativos: total, com convites enviados e concluídos": "Panorama dos projetos ativos: total, com convites enviados e concluídos",
+  "Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas.": "Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas.",
   "Projects": "Projects",
   "Projeto": "Projeto",
   "Projeto cancelado com sucesso.": "Projeto cancelado com sucesso.",
