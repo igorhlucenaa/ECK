@@ -500,7 +500,7 @@
           <p class="dash-card__sub">{{ 'Panorama dos projetos ativos: total, com convites enviados e concluídos' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas.' | translate"
+                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas. Ativos = Em andamento + Concluídos (veja gráfico Projetos por Status).' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -529,6 +529,9 @@
           <div class="funnel-step__label">{{ 'Concluídos' | translate }}</div>
         </div>
       </div>
+      <p class="funnel-breakdown" *ngIf="funnelData.created > 0">
+        {{ 'funnel.active_breakdown' | translate:{ inProgress: funnelData.inProgress, completed: funnelData.completed, total: funnelData.created } }}
+      </p>
     </mat-card>
 
     <!-- ── Gráficos: Projetos e Avaliações por Cliente ────────── -->
@@ -560,10 +563,10 @@
           </div>
           <div>
             <h3 class="dash-card__title">{{ 'Projetos por Status' | translate }}</h3>
-            <p class="dash-card__sub">{{ 'Distribuição de todos os projetos por status atual' | translate }}</p>
+            <p class="dash-card__sub">{{ 'Em andamento + Concluído = total Ativos do funil (exclui cancelados)' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  [matTooltip]="'Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.' | translate"
+                  [matTooltip]="'Em andamento = projetos ainda em execução. Concluído = projetos finalizados. A soma dos dois equivale ao total Ativos do funil e do card Projetos Ativos. Cancelados e inativos aparecem apenas aqui.' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>
@@ -906,7 +909,7 @@
           <p class="dash-card__sub">{{ 'Panorama dos projetos ativos: total, com convites enviados e concluídos' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas.' | translate"
+                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas. Ativos = Em andamento + Concluídos (veja gráfico Projetos por Status).' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -927,6 +930,9 @@
           <div class="funnel-step__label">{{ 'Concluídos' | translate }}</div>
         </div>
       </div>
+      <p class="funnel-breakdown" *ngIf="funnelData.created > 0">
+        {{ 'funnel.active_breakdown' | translate:{ inProgress: funnelData.inProgress, completed: funnelData.completed, total: funnelData.created } }}
+      </p>
     </mat-card>
 
     <!-- ── Atalhos Rápidos ────────────────────────────────────── -->
@@ -1023,10 +1029,10 @@
           </div>
           <div>
             <h3 class="dash-card__title">{{ 'Projetos por Status' | translate }}</h3>
-            <p class="dash-card__sub">{{ 'Distribuição de todos os projetos por status atual' | translate }}</p>
+            <p class="dash-card__sub">{{ 'Em andamento + Concluído = total Ativos do funil (exclui cancelados)' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  [matTooltip]="'Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.' | translate"
+                  [matTooltip]="'Em andamento = projetos ainda em execução. Concluído = projetos finalizados. A soma dos dois equivale ao total Ativos do funil e do card Projetos Ativos. Cancelados e inativos aparecem apenas aqui.' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>

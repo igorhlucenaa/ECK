@@ -245,7 +245,7 @@ export class DashboardComponent implements OnInit {
   onProjectStatusFilter(v: string): void { this.projectStatusFilter = v; this.projectPageIndex = 0; }
 
   // â”€â”€ Funnel (master only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  funnelData = { created: 0, invitesSent: 0, completed: 0 };
+  funnelData = { created: 0, invitesSent: 0, completed: 0, inProgress: 0 };
   funnelAllProjects: any[] = [];
   funnelInvitedProjectIds = new Set<string>();
   funnelClientsMap = new Map<string, string>();
@@ -850,6 +850,7 @@ export class DashboardComponent implements OnInit {
       if (s === 'Em andamento' || s === 'Ativo') counts['Em andamento']++;
       else if (s === 'Concluído' || s === 'concluido') counts['Concluído']++;
       else if (s === 'Cancelado' || s === 'cancelado' || s === 'Inativo') counts['Cancelado']++;
+      else counts['Em andamento']++;
     });
 
     const labels = Object.keys(counts);
@@ -879,8 +880,9 @@ export class DashboardComponent implements OnInit {
     const created = active.length;
     const invitesSent = active.filter(d => invitedProjectIds.has(d.id)).length;
     const completed = active.filter(d => ['Concluído', 'concluido'].includes(d.data()['status'])).length;
+    const inProgress = created - completed;
 
-    this.funnelData = { created, invitesSent, completed };
+    this.funnelData = { created, invitesSent, completed, inProgress };
   }
 
   onFunnelClientFilter(clientId: string): void {
