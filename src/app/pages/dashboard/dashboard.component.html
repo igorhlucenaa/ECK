@@ -283,7 +283,7 @@
         </div>
 
         <!-- Linha 2: busca por texto + filtro por cliente -->
-        <div class="alerts-filter-row alerts-filter-row--search">
+        <div class="projects-filter-bar alerts-filter-row--search">
           <div class="projects-filter-bar__search">
             <mat-icon>search</mat-icon>
             <input [(ngModel)]="alertSearchQuery" (ngModelChange)="onAlertSearch()"
@@ -292,7 +292,8 @@
               <mat-icon>close</mat-icon>
             </button>
           </div>
-          <mat-form-field class="alerts-client-filter" appearance="outline" subscriptSizing="dynamic">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                          class="projects-filter-bar__select alerts-client-filter" floatLabel="always">
             <mat-label>{{ 'Filtrar por cliente' | translate }}</mat-label>
             <mat-select [value]="alertClientFilter" (selectionChange)="onAlertClientFilter($event.value)">
               <mat-option value="all">{{ 'Todos os clientes' | translate }}</mat-option>
