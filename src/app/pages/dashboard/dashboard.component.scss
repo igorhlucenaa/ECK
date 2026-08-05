@@ -824,11 +824,12 @@
 // ─── Filtro de projetos ───────────────────────────────────────
 .projects-filter-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 12px;
   padding: 12px 20px;
   border-bottom: 1px solid #f1f5f9;
   flex-wrap: wrap;
+  row-gap: 16px;
 
   &__search {
     display: flex;
@@ -836,7 +837,7 @@
     gap: 6px;
     flex: 1;
     min-width: 180px;
-    height: 36px;
+    height: 40px;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
@@ -872,15 +873,50 @@
 
   &__select {
     width: 150px;
+    margin: 0;
+
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+
+    ::ng-deep .mat-mdc-text-field-wrapper {
+      height: 40px !important;
+      padding: 0 12px !important;
+    }
+
+    ::ng-deep .mat-mdc-form-field-flex {
+      height: 40px !important;
+      align-items: center;
+    }
 
     ::ng-deep .mat-mdc-form-field-infix {
-      padding-top: 6px !important;
-      padding-bottom: 6px !important;
-      min-height: unset !important;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      min-height: 40px !important;
+      display: flex;
+      align-items: center;
+      width: 100%;
     }
 
     ::ng-deep .mdc-text-field--outlined {
-      height: 36px !important;
+      height: 40px !important;
+    }
+
+    ::ng-deep .mat-mdc-select,
+    ::ng-deep .mat-mdc-select-trigger {
+      width: 100%;
+    }
+
+    ::ng-deep .mat-mdc-select-value,
+    ::ng-deep .mat-mdc-select-value-text {
+      font-size: 13px;
+      padding-left: 2px;
+    }
+
+    ::ng-deep .mdc-floating-label--float-above {
+      transform: translateY(-110%) scale(0.75) !important;
     }
   }
 
@@ -889,6 +925,8 @@
     color: #64748b;
     white-space: nowrap;
     margin-left: auto;
+    align-self: flex-end;
+    line-height: 40px;
   }
 }
 

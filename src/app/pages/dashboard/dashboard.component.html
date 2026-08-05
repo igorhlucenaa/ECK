@@ -93,7 +93,7 @@
       </div>
 
       <!-- ── Filtros da tabela de créditos ── -->
-      <div class="credits-filter-bar">
+      <div class="projects-filter-bar">
         <div class="projects-filter-bar__search">
           <mat-icon>search</mat-icon>
           <input [(ngModel)]="creditSearchQuery" (ngModelChange)="onCreditSearch()"
@@ -102,7 +102,7 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select" floatLabel="always">
           <mat-label>{{ 'Status' | translate }}</mat-label>
           <mat-select [value]="creditStatusFilter" (selectionChange)="onCreditStatusFilter($event.value)">
             <mat-option value="">{{ 'Todos' | translate }}</mat-option>
@@ -389,14 +389,14 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select" floatLabel="always">
           <mat-label>{{ 'Cliente' | translate }}</mat-label>
           <mat-select [value]="projectClientFilter" (selectionChange)="onProjectClientFilter($event.value)">
             <mat-option value="">{{ 'Todos' | translate }}</mat-option>
             <mat-option *ngFor="let c of uniqueProjectClients" [value]="c">{{ c }}</mat-option>
           </mat-select>
         </mat-form-field>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select" floatLabel="always">
           <mat-label>{{ 'Status' | translate }}</mat-label>
           <mat-select [value]="projectStatusFilter" (selectionChange)="onProjectStatusFilter($event.value)">
             <mat-option value="">{{ 'Todos' | translate }}</mat-option>
@@ -798,7 +798,7 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select" floatLabel="always">
           <mat-label>{{ 'Status' | translate }}</mat-label>
           <mat-select [value]="projectStatusFilter" (selectionChange)="onProjectStatusFilter($event.value)">
             <mat-option value="">{{ 'Todos' | translate }}</mat-option>
