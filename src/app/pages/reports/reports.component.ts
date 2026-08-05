@@ -203,12 +203,35 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly LABEL_MEDIA_SEM_AUTO = 'Média sem autoavaliação';
   /** Formata rótulos numéricos dos gráficos ngx-charts (2 casas decimais). */
   readonly formatChartDataLabel = (value: number): string => formatReportDecimal(value);
+  /** Opções do eixo Y para evitar truncamento dos rótulos longos de média. */
+  readonly barChartWrapTicks = true;
+  readonly barChartTrimYAxisTicks = false;
+  readonly barChartMaxYAxisTickLength = 22;
+  readonly barChartPlotWidth = 700;
 
   private toChartValue(value: number | null | undefined): number {
     if (value === null || value === undefined || isNaN(value)) {
       return 0;
     }
     return roundReportValue(value);
+  }
+
+  /** Altura dinâmica do gráfico de barras conforme quantidade de categorias. */
+  getBarChartHeight(itemCount: number): number {
+    const perBar = 62;
+    return Math.max(360, itemCount * perBar + 140);
+  }
+
+  /** Itens da legenda HTML à direita do gráfico (cores alinhadas ao ngx-charts). */
+  getBarChartLegendItems(
+    dados: Array<{ name: string; value: number }>,
+    secao: RelatorioSecao
+  ): Array<{ name: string; color: string }> {
+    const domain: string[] = this.getColorSchemeParaSecao(secao)?.domain || [];
+    return dados.map((item, index) => ({
+      name: item.name,
+      color: domain[index % domain.length] || '#1E88E5',
+    }));
   }
   // Cache de participantes para evitar múltiplas idas ao Firestore
   private participantsCache: Map<string, any> = new Map<string, any>();

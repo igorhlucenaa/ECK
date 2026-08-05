@@ -1439,27 +1439,41 @@
                   </div>
                   <div *ngSwitchCase="'barra'">
                     <div style="display: flex; flex-direction: column; gap: 30px;">
-                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)" class="rp-bar-chart-block">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                         <ng-container *ngIf="getCompetenciaBarraComparativaData(comp) as dadosGrafico">
-                          <ngx-charts-bar-horizontal
-                            [results]="dadosGrafico"
-                            [xAxis]="true"
-                            [yAxis]="true"
-                            [view]="[800, (dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)]"
-                            [style.height.px]="(dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)"
-                            [legend]="true"
-                            [legendTitle]="'Legenda'"
-                            [showGridLines]="true"
-                            [showDataLabel]="true"
-                            [dataLabelFormatting]="formatChartDataLabel"
-                            [barPadding]="8"
-                            [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
-                            [xAxisLabel]="'Pontuação (0-5)'"
-                            [yAxisLabel]="'Categorias'"
-                            [scheme]="getColorSchemeParaSecao(secao)">
-                          </ngx-charts-bar-horizontal>
+                          <div class="rp-bar-chart-layout">
+                            <div class="rp-bar-chart-wrap">
+                              <ngx-charts-bar-horizontal
+                                [results]="dadosGrafico"
+                                [xAxis]="true"
+                                [yAxis]="true"
+                                [view]="[barChartPlotWidth, getBarChartHeight(dadosGrafico.length)]"
+                                [legend]="false"
+                                [showGridLines]="true"
+                                [showDataLabel]="true"
+                                [dataLabelFormatting]="formatChartDataLabel"
+                                [wrapTicks]="barChartWrapTicks"
+                                [trimYAxisTicks]="barChartTrimYAxisTicks"
+                                [maxYAxisTickLength]="barChartMaxYAxisTickLength"
+                                [barPadding]="10"
+                                [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
+                                [xAxisLabel]="'Pontuação (0-5)'"
+                                [yAxisLabel]="'Categorias'"
+                                [scheme]="getColorSchemeParaSecao(secao)">
+                              </ngx-charts-bar-horizontal>
+                            </div>
+                            <aside class="rp-bar-chart-legend">
+                              <p class="rp-bar-chart-legend__title">Legenda</p>
+                              <ul class="rp-bar-chart-legend__list">
+                                <li *ngFor="let item of getBarChartLegendItems(dadosGrafico, secao)" class="rp-bar-chart-legend__item">
+                                  <span class="rp-bar-chart-legend__swatch" [style.background-color]="item.color"></span>
+                                  <span class="rp-bar-chart-legend__label">{{ item.name }}</span>
+                                </li>
+                              </ul>
+                            </aside>
+                          </div>
                         </ng-container>
                       </div>
                     </div>
@@ -1508,17 +1522,20 @@
                       <div *ngFor="let comp of getCompetenciasGraficosCached(secao)">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
-                        <div style="height: 300px; width: 100%;">
+                        <div class="rp-bar-chart-wrap">
                           <ngx-charts-bar-horizontal
                             [results]="getCompetenciaStackedData(comp)"
                             [xAxis]="true"
                             [yAxis]="true"
-                            [view]="[800, 280]"
+                            [view]="[barChartPlotWidth, getBarChartHeight(getCompetenciaStackedData(comp).length)]"
                             [legend]="false"
                             [showGridLines]="true"
                             [showDataLabel]="true"
                             [dataLabelFormatting]="formatChartDataLabel"
-                            [barPadding]="8"
+                            [wrapTicks]="barChartWrapTicks"
+                            [trimYAxisTicks]="barChartTrimYAxisTicks"
+                            [maxYAxisTickLength]="barChartMaxYAxisTickLength"
+                            [barPadding]="10"
                             [scheme]="getColorSchemeParaSecao(secao)"
                             [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
                           </ngx-charts-bar-horizontal>
@@ -1742,18 +1759,24 @@
                     <p style="color: #666; font-style: italic; margin-top: 0;">{{ comp.descricao }}</p>
                     <angular-editor [(ngModel)]="secao.textosPorCompetencia![comp.id]" [config]="editorConfig"></angular-editor>
                   </div>
-                  <div style="height: 250px;">
+                  <ng-container *ngIf="getDadosGraficoCompetenciaCached(comp) as dadosGraficoComp">
+                  <div class="rp-bar-chart-wrap rp-bar-chart-wrap--compact">
                     <ngx-charts-bar-horizontal
                       [scheme]="getColorSchemeParaSecao(secao)"
-                      [results]="getDadosGraficoCompetenciaCached(comp)"
+                      [results]="dadosGraficoComp"
                       [xAxis]="true"
                       [yAxis]="true"
+                      [view]="[barChartPlotWidth, getBarChartHeight(dadosGraficoComp.length)]"
                       [showDataLabel]="true"
                       [dataLabelFormatting]="formatChartDataLabel"
-                      [barPadding]="8"
+                      [wrapTicks]="barChartWrapTicks"
+                      [trimYAxisTicks]="barChartTrimYAxisTicks"
+                      [maxYAxisTickLength]="barChartMaxYAxisTickLength"
+                      [barPadding]="10"
                       [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
                     </ngx-charts-bar-horizontal>
                   </div>
+                  </ng-container>
                 </div>
                 <mat-divider *ngIf="!lastComp"></mat-divider>
               </div>

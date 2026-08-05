@@ -168,6 +168,86 @@ ngx-charts-bar-horizontal,
   display: block !important;
 }
 
+/* Gráficos de barras comparativos — legenda HTML à direita (fora do ngx-charts) */
+.rp-bar-chart-block {
+  display: block;
+  margin-bottom: 36px;
+  clear: both;
+}
+
+.rp-bar-chart-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  max-width: 960px;
+}
+
+:host ::ng-deep .rp-bar-chart-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+
+  ngx-charts-bar-horizontal {
+    display: block;
+  }
+
+  .ngx-charts-outer {
+    display: block;
+    overflow: hidden;
+  }
+}
+
+.rp-bar-chart-legend {
+  flex: 0 0 220px;
+  width: 220px;
+  box-sizing: border-box;
+  padding: 12px 10px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+  align-self: flex-start;
+
+  &__title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #555;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__swatch {
+    flex: 0 0 14px;
+    width: 14px;
+    height: 14px;
+    margin-top: 1px;
+    border-radius: 3px;
+  }
+
+  &__label {
+    flex: 1 1 auto;
+    word-break: break-word;
+  }
+}
+
 .rp-secao-header {
   page-break-inside: avoid !important;
   break-inside: avoid !important;
