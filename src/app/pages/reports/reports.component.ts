@@ -10,6 +10,8 @@ import {
   getExportAnswerTipoResposta,
   parseLikertAnswerForExport,
   normalizeQuestionType,
+  roundReportValue,
+  formatReportDecimal,
 } from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from '@angular/fire/firestore';
@@ -199,6 +201,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly GRUPO_AVALIADO = 'Avaliado(a)';
   private readonly LABEL_MEDIA_GERAL = 'Média geral (com autoavaliação)';
   private readonly LABEL_MEDIA_SEM_AUTO = 'Média sem autoavaliação';
+  /** Formata rótulos numéricos dos gráficos ngx-charts (2 casas decimais). */
+  readonly formatChartDataLabel = (value: number): string => formatReportDecimal(value);
+
+  private toChartValue(value: number | null | undefined): number {
+    if (value === null || value === undefined || isNaN(value)) {
+      return 0;
+    }
+    return roundReportValue(value);
+  }
   // Cache de participantes para evitar múltiplas idas ao Firestore
   private participantsCache: Map<string, any> = new Map<string, any>();
   /** Snapshot autoritativo dos participantes do ciclo (recarregado do Firestore). */
@@ -557,7 +568,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Média ponderada pelo total de respostas por categoria
     const somaPonderada = categoriasSemAuto.reduce((acc, c) => acc + (c.media * c.totalRespostas), 0);
     const totalRespostas = categoriasSemAuto.reduce((acc, c) => acc + c.totalRespostas, 0);
-    return totalRespostas > 0 ? somaPonderada / totalRespostas : null;
+    return totalRespostas > 0 ? roundReportValue(somaPonderada / totalRespostas) : null;
   }
 
   // Inicializa via configuração externa e exporta PDF sem precisar navegar para a rota de relatórios
@@ -2748,7 +2759,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    return contadorTotal > 0 ? somaTotal / contadorTotal : null;
+    return contadorTotal > 0 ? roundReportValue(somaTotal / contadorTotal) : null;
   }
 
   getSecaoStackedData(secao: any) {
@@ -2762,7 +2773,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const result = competenciasSelecionadas.map(comp => {
       const series = grupos.map(grupo => {
         const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-        const valor = (media !== null && !isNaN(media)) ? media : 0;
+        const valor = this.toChartValue(media);
         return {
           name: grupo,
           value: valor
@@ -2794,7 +2805,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // Adicionar dados para cada grupo/categoria
       grupos.forEach(grupo => {
         const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-        const valor = (media !== null && !isNaN(media)) ? media : 0;
+        const valor = this.toChartValue(media);
 
         result.push({
           name: `${comp.nome} - ${grupo}`,
@@ -2839,7 +2850,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (media !== null && !isNaN(media)) {
         data.push({
           name: grupo,
-          value: media
+          value: this.toChartValue(media)
         });
       }
     });
@@ -2961,7 +2972,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
 
-      const mediaGeral = contadorTotal > 0 ? somaTotal / contadorTotal : 0;
+      const mediaGeral = contadorTotal > 0 ? roundReportValue(somaTotal / contadorTotal) : 0;
 
       return {
         name: comp.nome,
@@ -2986,11 +2997,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const grupos = this.getGrupos();
     return grupos.map(grupo => {
       const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-      // Garantir que apenas valores válidos sejam retornados
-      const valor = (media !== null && !isNaN(media)) ? media : 0;
       return {
         name: grupo,
-        value: valor
+        value: this.toChartValue(media)
       };
     });
   }
@@ -3021,7 +3030,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const seriesData = competenciasSelecionadas.map(comp => {
       const values = grupos.map(grupo => {
         const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-        return (media !== null && !isNaN(media)) ? media : 0;
+        return this.toChartValue(media);
       });
 
       return {
@@ -3078,11 +3087,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const grupos = this.getGrupos();
     return grupos.map(grupo => {
       const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-      // Garantir que apenas valores válidos sejam retornados
-      const valor = (media !== null && !isNaN(media)) ? media : 0;
       return {
         name: grupo,
-        value: valor
+        value: this.toChartValue(media)
       };
     });
   }
@@ -5194,11 +5201,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     grupos.forEach(grupo => {
       const media = this.getMediaPorPerguntaEGrupo(competencia, grupo);
-      // Garantir que apenas valores validos sejam adicionados
-      const valor = (media !== null && !isNaN(media)) ? media : 0;
       dadosGrafico.push({
         name: grupo,
-        value: valor
+        value: this.toChartValue(media)
       });
     });
 
@@ -5516,7 +5521,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const totalRespostas = distribuicao.reduce((sum, d) => sum + d.quantidade, 0);
     if (totalRespostas === 0) return 0;
     const somaPonderada = distribuicao.reduce((sum, d) => sum + d.nota * d.quantidade, 0);
-    return somaPonderada / totalRespostas;
+    return roundReportValue(somaPonderada / totalRespostas);
   }
 
   private getMediaRespostasCompetencia(competencia: Competencia, grupos: string[]): number {
@@ -5966,7 +5971,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (isNaN(mediaGeral) || mediaGeral <= 0) return null;
 
-    return { mediaGeral, mediaPorCategoria };
+    return {
+      mediaGeral: roundReportValue(mediaGeral),
+      mediaPorCategoria: roundReportValue(mediaPorCategoria),
+    };
   }
 
   // Método para obter média por pergunta e avaliado específico

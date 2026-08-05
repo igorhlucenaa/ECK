@@ -1453,6 +1453,7 @@
                             [legendTitle]="'Legenda'"
                             [showGridLines]="true"
                             [showDataLabel]="true"
+                            [dataLabelFormatting]="formatChartDataLabel"
                             [barPadding]="8"
                             [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
                             [xAxisLabel]="'Pontuação (0-5)'"
@@ -1478,6 +1479,7 @@
                         [legend]="true"
                         [legendTitle]="'Legenda'"
                         [labels]="true"
+                        [labelFormatting]="formatChartDataLabel"
                         [doughnut]="false"
                         [scheme]="getColorSchemeParaSecao(secao)">
                       </ngx-charts-pie-chart>
@@ -1494,6 +1496,7 @@
                           [legend]="true"
                           [legendTitle]="'Legenda'"
                           [labels]="true"
+                          [labelFormatting]="formatChartDataLabel"
                           [doughnut]="false"
                           [scheme]="getColorSchemeParaSecao(secao)">
                         </ngx-charts-pie-chart>
@@ -1514,6 +1517,7 @@
                             [legend]="false"
                             [showGridLines]="true"
                             [showDataLabel]="true"
+                            [dataLabelFormatting]="formatChartDataLabel"
                             [barPadding]="8"
                             [scheme]="getColorSchemeParaSecao(secao)"
                             [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
@@ -1574,7 +1578,7 @@
                           <tr [style.background-color]="getTableHeaderColors(secao).footer" style="color: white; font-weight: bold;">
                             <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px;">Média</td>
                             <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                              <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">{{ categoria.media | number:'1.1-1' }}</td>
+                              <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">{{ categoria.media | number:'1.2-2' }}</td>
                             </ng-container>
                           </tr>
                           <tr>
@@ -1582,7 +1586,7 @@
                             <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
                               <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">
                                 <ng-container *ngIf="getAbreviacaoCategoria(categoria.categoria) !== 'A'">
-                                  {{ categoria.totalRespostas > 0 ? (categoria.media | number:'1.1-1') : '' }}
+                                  {{ categoria.totalRespostas > 0 ? (categoria.media | number:'1.2-2') : '' }}
                                 </ng-container>
                               </td>
                             </ng-container>
@@ -1640,7 +1644,7 @@
                             <tr [style.background-color]="getTableHeaderColors(secao).footer" style="color: white; font-weight: bold;">
                               <td style="border: 1px solid #ddd; padding: 8px;">Média</td>
                               <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                                <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ categoria.media | number:'1.1-2' }}</td>
+                                <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ categoria.media | number:'1.2-2' }}</td>
                               </ng-container>
                             </tr>
                           </tbody>
@@ -1745,6 +1749,7 @@
                       [xAxis]="true"
                       [yAxis]="true"
                       [showDataLabel]="true"
+                      [dataLabelFormatting]="formatChartDataLabel"
                       [barPadding]="8"
                       [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
                     </ngx-charts-bar-horizontal>

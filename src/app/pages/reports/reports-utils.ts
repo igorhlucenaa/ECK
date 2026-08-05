@@ -12,6 +12,22 @@ export function parseNumeric(value: unknown): number | null {
   return Number.isNaN(num) ? null : num;
 }
 
+/** Formato Angular `number` pipe para médias do relatório (sempre 2 casas). */
+export const REPORT_DECIMAL_FORMAT = '1.2-2';
+
+/** Arredonda médias/notas do relatório para 2 casas decimais. */
+export function roundReportValue(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/** Formata número do relatório com locale pt-BR e 2 casas decimais. */
+export function formatReportDecimal(value: number, locale = 'pt-BR'): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(roundReportValue(value));
+}
+
 export function exportToCSV(fileName: string, headers: string[], rows: any[], mapColumn: (row: any, col: string) => any) {
   if (!rows || rows.length === 0) return;
   const csvRows: string[] = [];
