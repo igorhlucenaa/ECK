@@ -723,6 +723,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private static readonly CLIENT_BATCH_QUERY_SENTINEL = '__clientBatch__';
   /** Evita reentrada do handler de query params (ex.: ao limpar params do batch). */
   private suppressQueryParamsHandler = false;
+  /** Quando exportação veio de Projetos → Gerar Relatório, volta para /projects após concluir. */
+  private projectExportReturnTo: string | null = null;
   /** Incrementado ao limpar filtros — invalida cargas assíncronas em andamento. */
   private filterContextGeneration = 0;
   /** IDs de participantes do projeto filtrado (para incluir avaliadores mesmo sem projectId no doc). */
@@ -1317,6 +1319,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         a['templateId'] === b['templateId'] &&
         a['competencyIds'] === b['competencyIds'] &&
         a['exportAction'] === b['exportAction'] &&
+        a['returnTo'] === b['returnTo'] &&
         a['projectIds'] === b['projectIds'] &&
         a['projectTemplates'] === b['projectTemplates']
       )
@@ -1343,6 +1346,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         const exportAction = params['exportAction'] as string | undefined;
+        this.projectExportReturnTo = (params['returnTo'] as string) || null;
         const batchProjectIds = (params['projectIds'] as string | undefined)
           ?.split(',')
           .map(id => id.trim())
@@ -4956,8 +4960,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Exportar relat�rio como DOCX (gera��o nativa a partir dos dados - sem html2canvas)
-  async exportarRelatorioDOCX(): Promise<void> {
-    if (this.isExporting) return;
+  async exportarRelatorioDOCX(): Promise<boolean> {
+    if (this.isExporting) return false;
     this.isExporting = true;
     this.exportingLabel = 'Gerando DOCX...';
     this.cdr.markForCheck();
@@ -5161,9 +5165,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       this.snackBar.open(this.t('DOCX exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
+      return true;
     } catch (err) {
       console.error('Erro ao exportar DOCX:', err);
       this.snackBar.open(this.t('Erro ao gerar o DOCX.'), this.t('Fechar'), { duration: 3000 });
+      return false;
     } finally {
       this.isExporting = false;
       this.exportingLabel = '';
@@ -6941,6 +6947,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
       this.exportarBaseExcel();
+      this.returnToProjectsIfRequested();
       return;
     }
 
@@ -6970,7 +6977,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.invalidateCache();
 
     if (action === 'individualPdf') {
-      await this.exportarRelatorioPDF();
+      const ok = await this.exportarRelatorioPDF();
+      if (ok) this.returnToProjectsIfRequested();
       return;
     }
 
@@ -6990,8 +6998,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (action === 'docx') {
-      await this.exportarRelatorioDOCX();
+      const ok = await this.exportarRelatorioDOCX();
+      if (ok) this.returnToProjectsIfRequested();
     }
+  }
+
+  /** Volta à lista de projetos após exportação iniciada em Projetos → Gerar Relatório. */
+  private returnToProjectsIfRequested(): void {
+    if (this.projectExportReturnTo !== 'projects') return;
+    this.projectExportReturnTo = null;
+    setTimeout(() => {
+      void this.router.navigate(['/projects']);
+    }, 1500);
   }
 
   /** Exporta PDFs de vários projetos do mesmo cliente em um único ZIP. */
