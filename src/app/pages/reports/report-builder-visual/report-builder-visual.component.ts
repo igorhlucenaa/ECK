@@ -15,6 +15,14 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Subject, takeUntil } from 'rxjs';
 import { AngularEditorModule, AngularEditorConfig } from '@kolkov/angular-editor';
+import {
+  DEFAULT_CAPA_HTML,
+  REPORT_CAPA_EDITOR_CONFIG,
+  REPORT_RICH_TEXT_EDITOR_CONFIG,
+  secaoSuportaHtmlBruto,
+} from '../report-rich-text.config';
+import { TranslateModule } from '@ngx-translate/core';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { DocumentoConfig, DOCUMENTO_CONFIG_PADRAO } from '../../../services/report-pdfmake.service';
 
@@ -76,7 +84,9 @@ type TipoGraficoRelatorio =
     MatCheckboxModule,
     MatSlideToggleModule,
     DragDropModule,
-    AngularEditorModule
+    AngularEditorModule,
+    TranslateModule,
+    MatButtonToggleModule
   ],
   templateUrl: './report-builder-visual.component.html',
   styleUrls: ['./report-builder-visual.component.scss']
@@ -355,22 +365,12 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   }
 
   // Configuração do editor rich text
-  editorConfig: AngularEditorConfig = {
-    editable: true,
-    spellcheck: true,
-    height: '300px',
-    minHeight: '200px',
-    placeholder: 'Escreva seu texto... Use as ferramentas de formatação para criar títulos, adicionar imagens, listas e muito mais...',
-    toolbarPosition: 'top',
-    showToolbar: true,
-    toolbarHiddenButtons: [
-      ['subscript', 'superscript'],
-      ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'],
-      ['indent', 'outdent'],
-      ['insertUnorderedList', 'insertOrderedList'],
-      ['fontName']
-    ]
-  };
+  editorConfig: AngularEditorConfig = REPORT_RICH_TEXT_EDITOR_CONFIG;
+  capaEditorConfig: AngularEditorConfig = REPORT_CAPA_EDITOR_CONFIG;
+
+  secaoSuportaModoHtml(tipo: string | undefined): boolean {
+    return secaoSuportaHtmlBruto(tipo);
+  }
 
   constructor(
     private fb: FormBuilder,
@@ -479,7 +479,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
       id: `${template.tipo}_${Date.now()}`,
       tipo: template.tipo,
       titulo: template.nome,
-      texto: '',
+      texto: template.tipo === 'capa' ? DEFAULT_CAPA_HTML : '',
       visivel: true,
       ordem: this.canvasSections.length + 1,
       competenciasIds: tiposComCompetencias.includes(template.tipo)
@@ -561,6 +561,14 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   toggleVisibilidade(secao: RelatorioSecaoSimplificada): void {
     secao.visivel = !secao.visivel;
     this.emitirMudancas();
+  }
+
+  setSecaoHtmlBruto(htmlBruto: boolean): void {
+    if (!this.secaoEditando || !secaoSuportaHtmlBruto(this.secaoEditando.tipo)) return;
+    this.secaoEditando['htmlBruto'] = htmlBruto;
+    if (htmlBruto && this.secaoEditando.tipo === 'capa') {
+      this.secaoEditando['ocultarInfoDinamicaCapa'] = true;
+    }
   }
 
   /**
@@ -707,8 +715,13 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   /**
    * Limpa todas as seções
    */
-  limparTudo(): void {
-    if (confirm('Tem certeza que deseja remover todas as seções?')) {
+  async limparTudo(): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      type: 'danger',
+      title: 'Remover todas as seções',
+      message: 'Tem certeza que deseja remover todas as seções?',
+    });
+    if (confirmed) {
       this.canvasSections = [];
       this.emitirMudancas();
     }

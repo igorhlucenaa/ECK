@@ -75,7 +75,7 @@
           {{ 'Limpar filtros' | translate }}
         </button>
         <div class="search-count">
-          {{ dataSource.filteredData.length }} resultado{{ dataSource.filteredData.length !== 1 ? 's' : '' }}
+          {{ dataSource.filteredData.length }} {{ (dataSource.filteredData.length === 1 ? 'resultado' : 'resultados') | translate }}
         </div>
       </div>
 
@@ -163,18 +163,18 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
             <span class="col-header">
               <mat-icon class="col-icon">toll</mat-icon>
-              {{ 'Créditos Disponíveis' | translate }}
+              {{ 'Créditos' | translate }}
             </span>
           </th>
           <td mat-cell *matCellDef="let client">
             <div class="credits-cell">
               <div class="credits-stat credits-stat--purchased"
-                   [matTooltip]="'Total de créditos comprados em pedidos aprovados' | translate" matTooltipPosition="above">
-                <span class="credits-stat__label">{{ 'Comprados' | translate }}</span>
+                   [matTooltip]="'Total de créditos adquiridos em pedidos aprovados' | translate" matTooltipPosition="above">
+                <span class="credits-stat__label">{{ 'Adquiridos' | translate }}</span>
                 <span class="credits-stat__value">{{ client.creditsPurchased || 0 }}</span>
               </div>
               <div class="credits-stat credits-stat--used"
-                   [matTooltip]="'Créditos consumidos na geração de relatórios' | translate" matTooltipPosition="above">
+                   [matTooltip]="'Créditos retirados do pedido (reservados e consumidos)' | translate" matTooltipPosition="above">
                 <span class="credits-stat__label">{{ 'Usados' | translate }}</span>
                 <span class="credits-stat__value">{{ client.creditsUsed || 0 }}</span>
               </div>

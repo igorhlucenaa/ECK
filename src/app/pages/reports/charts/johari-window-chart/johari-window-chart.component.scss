@@ -1,8 +1,43 @@
+:host-context(.report-section--johari) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+:host-context(.report-section--johari) .johari-wrapper {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-width: 100%;
+  margin: 0;
+  height: 100%;
+}
+
+:host-context(.report-section--johari) .plot-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  aspect-ratio: unset;
+  height: auto;
+  max-height: none;
+}
+
+:host-context(.report-section--johari) .legend-table {
+  flex: 0 0 auto;
+  margin-top: 8px;
+  width: 100%;
+}
+
 .johari-wrapper {
   position: relative;
   width: 100%;
   max-width: 860px;
   margin: 12px auto 24px auto;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .y-title {
@@ -26,9 +61,11 @@
 .plot-area {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1; /* quadrado */
+  aspect-ratio: 1 / 1.25;
   background: #fafafa;
   border: 1px solid #ddd;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .grid {
@@ -82,12 +119,21 @@
 
 .legend-table {
   margin-top: 24px;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .legend-table table {
+  page-break-inside: avoid;
+  break-inside: avoid;
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+}
+
+.legend-table tr {
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .legend-table th, .legend-table td {
@@ -121,4 +167,18 @@
 .top-right { right: 6px; top: 6px; }
 .bottom-left { left: 6px; bottom: 6px; }
 .bottom-right { right: 6px; bottom: 6px; }
+
+.johari-explanation {
+  margin-top: 20px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.johari-explanation__item {
+  margin: 0 0 12px;
+  color: #424242;
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: justify;
+}
 

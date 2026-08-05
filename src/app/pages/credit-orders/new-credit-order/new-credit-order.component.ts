@@ -16,6 +16,7 @@ import {
   where,
 } from '@angular/fire/firestore';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslateService } from '@ngx-translate/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -61,7 +62,8 @@ export class NewCreditOrderComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private router: Router,
-    private authService: AuthService // Adicionado
+    private authService: AuthService,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -81,26 +83,85 @@ export class NewCreditOrderComponent implements OnInit {
     // Auto-preenche validade com início + 12 meses e atualiza validador de data mínima
     this.orderForm.get('startDate')?.valueChanges.subscribe((startDate) => {
       const validityControl = this.orderForm.get('validityDate');
-      if (startDate) {
-        const autoValidity = new Date(startDate);
-        autoValidity.setFullYear(autoValidity.getFullYear() + 1);
-        validityControl?.setValue(autoValidity, { emitEvent: false });
+      const normalizedStartDate = this.coerceDateValue(startDate);
 
-        validityControl?.setValidators([
+      if (normalizedStartDate && validityControl) {
+        const autoValidity = new Date(normalizedStartDate);
+        autoValidity.setFullYear(autoValidity.getFullYear() + 1);
+        validityControl.setValue(autoValidity, { emitEvent: false });
+        validityControl.setValidators([
           Validators.required,
-          this.minDateValidator(new Date(startDate)),
+          this.minDateValidator(normalizedStartDate),
         ]);
-        validityControl?.updateValueAndValidity();
+      } else {
+        validityControl?.setValidators([Validators.required]);
       }
+
+      validityControl?.updateValueAndValidity({ emitEvent: false });
     });
+  }
+
+  normalizeDateControl(controlName: 'startDate' | 'validityDate'): void {
+    const control = this.orderForm.get(controlName);
+    if (!control) return;
+
+    const normalizedDate = this.coerceDateValue(control.value);
+    if (!normalizedDate) return;
+
+    control.setValue(normalizedDate);
+  }
+
+  getMinimumValidityDate(): Date | null {
+    return this.coerceDateValue(this.orderForm.get('startDate')?.value);
+  }
+
+  private coerceDateValue(value: unknown): Date | null {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      const normalized = new Date(value);
+      normalized.setHours(0, 0, 0, 0);
+      return normalized;
+    }
+
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmedValue = value.trim();
+    if (!trimmedValue) {
+      return null;
+    }
+
+    const brMatch = trimmedValue.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (brMatch) {
+      const [, day, month, year] = brMatch;
+      const parsedDate = new Date(Number(year), Number(month) - 1, Number(day));
+
+      if (
+        parsedDate.getFullYear() === Number(year) &&
+        parsedDate.getMonth() === Number(month) - 1 &&
+        parsedDate.getDate() === Number(day)
+      ) {
+        parsedDate.setHours(0, 0, 0, 0);
+        return parsedDate;
+      }
+
+      return null;
+    }
+
+    const parsedDate = new Date(trimmedValue);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return null;
+    }
+
+    parsedDate.setHours(0, 0, 0, 0);
+    return parsedDate;
   }
 
   private minDateValidator(minDate: Date): ValidatorFn {
     return (control: AbstractControl): { [key: string]: any } | null => {
-      const value = control.value;
-      if (!value) return null;
+      const date = this.coerceDateValue(control.value);
+      if (!date) return null;
 
-      const date = new Date(value);
       return date >= minDate ? null : { minDate: true };
     };
   }
@@ -136,13 +197,16 @@ export class NewCreditOrderComponent implements OnInit {
 
           } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
   }
 
   async createOrder(): Promise<void> {
+    this.normalizeDateControl('startDate');
+    this.normalizeDateControl('validityDate');
+
     if (this.orderForm.invalid) {
       this.snackBar.open(
         'Preencha os campos obrigatórios corretamente.',
@@ -155,7 +219,21 @@ export class NewCreditOrderComponent implements OnInit {
     }
 
     const { clientId, credits, startDate, validityDate, notes } =
-      this.orderForm.value;
+      this.orderForm.getRawValue();
+
+    const normalizedStartDate = this.coerceDateValue(startDate);
+    const normalizedValidityDate = this.coerceDateValue(validityDate);
+
+    if (!normalizedStartDate || !normalizedValidityDate) {
+      this.snackBar.open(
+        'Informe datas válidas no formato dd/mm/aaaa.',
+        'Fechar',
+        {
+          duration: 3000,
+        }
+      );
+      return;
+    }
 
     try {
       const ordersCollection = collection(this.firestore, 'creditOrders');
@@ -163,20 +241,20 @@ export class NewCreditOrderComponent implements OnInit {
         clientId,
         credits,
         remainingCredits: credits, // Define os créditos remanescentes inicialmente
-        startDate,
-        validityDate,
+        startDate: normalizedStartDate,
+        validityDate: normalizedValidityDate,
         notes: notes || '',
         status: 'Pendente',
         createdAt: new Date(),
       });
 
-      this.snackBar.open('Pedido criado com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Pedido criado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       this.router.navigate(['/orders']);
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
-      this.snackBar.open('Erro ao criar pedido.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao criar pedido.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 

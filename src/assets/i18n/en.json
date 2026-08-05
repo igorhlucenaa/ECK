@@ -1,930 +1,1212 @@
 {
-  "Bem Vindo!": "Welcome!",
-  "Dashboard": "Dashboard",
-  "Clientes": "Clients",
-  "Projetos": "Projects",
-  "Participantes": "Participants",
-  "Definições": "Settings",
-  "Pedidos": "Orders",
-  "Usuários e Grupos": "Users & Groups",
-  "Modelos de E-mail": "Email Templates",
-  "Formulários": "Assessments",
-  "Relatórios": "Reports",
-
-  "Projetos Ativos por Cliente": "Active Projects by Client",
-  "Distribuição de projetos ativos entre os clientes": "Distribution of active projects among clients",
-  "Avaliações Cadastradas por Cliente": "Assessments Registered by Client",
-  "Quantidade de avaliações cadastradas por cliente": "Number of assessments registered per client",
-  "Exportar para Excel": "Export to Excel",
-  "Exportar para PDF": "Export to PDF",
-  "Exportar para CSV": "Export to CSV",
-  "Excel": "Excel",
-  "PDF": "PDF",
-  "CSV": "CSV",
-  "Buscar": "Search",
-  "Digite para filtrar...": "Type to filter...",
-  "Selecione uma avaliação": "Select an assessment",
-  "Carregando resultados...": "Loading results...",
-  "Selecione uma avaliação para visualizar os resultados": "Select an assessment to view results",
-  "Total de Respostas": "Total Responses",
-  "Última Resposta": "Last Response",
-  "Taxa de Conclusão": "Completion Rate",
-  "Dados Detalhados": "Detailed Data",
-  "Selecione o avaliado": "Select participant",
-  "Todos os avaliados": "All participants",
-  "Cadastro de Competências": "Competency Registration",
-  "Selecione um cliente e gerencie grupos de competências": "Select a client and manage competency groups",
-  "Cliente": "Client",
-  "Carregar Grupo Existente": "Load Existing Group",
-  "Nome do Novo Grupo": "New Group Name",
-  "Digite um nome para salvar o grupo atual de competências": "Enter a name to save the current competency group",
-  "Salvar Grupo": "Save Group",
-  "Carregar": "Load",
-  "Competências Cadastradas": "Registered Competencies",
-  "Nenhuma competência cadastrada": "No competencies registered",
-  "Comece criando competências para organizar suas perguntas em grupos temáticos.": "Start by creating competencies to organize your questions into thematic groups.",
-  "Configuração de Relatório": "Report Configuration",
-  "Monte seu relatório organizando as seções, personalizando textos e selecionando competências para análise.": "Build your report by organizing sections, customizing texts and selecting competencies for analysis.",
-  "Nome do novo relatório": "New report name",
-  "Templates": "Templates",
-  "Nome do template": "Template name",
-  "Aplicar template": "Apply template",
-  "Exportar base (Excel)": "Export base (Excel)",
-  "Exportar DOCX": "Export DOCX",
-  "Sem dados para exportar.": "No data to export.",
-  "Sem respostas válidas para exportar.": "No valid responses to export.",
-  "Base exportada com sucesso!": "Base exported successfully!",
-  "Fechar": "Close",
-  "Selecione a avaliação": "Select the assessment",
-  "Nenhuma avaliação encontrada": "No assessments found",
-  "Selecione um avaliado específico para visualizar dados individuais": "Select a specific participant to view individual data",
-  "Limpar seleção de avaliado": "Clear participant selection",
-  "Debug Tabela Detalhada": "Debug Detailed Table",
-  "Debug Gráficos": "Debug Charts",
-  "As competências são agrupamentos de perguntas que representam habilidades específicas a serem avaliadas.": "Competencies are groups of questions that represent specific skills to be evaluated.",
-  "Gerenciamento de Grupos de Competências": "Competency Group Management",
-  "Selecione o cliente para associar as competências": "Select the client to associate competencies",
-
-  "Salvar grupo atual": "Save current group",
-  "Carregar grupo selecionado": "Load selected group",
-  "Nome da competência": "Competency name",
-
-  "Descrição detalhada": "Detailed description",
-  "Ex: Capacidade de liderar equipes, tomar decisões estratégicas e influenciar positivamente os colaboradores": "E.g.: Ability to lead teams, make strategic decisions and positively influence collaborators",
-
-  "Questões vinculadas": "Linked questions",
-  "Questões já utilizadas em outras competências são desabilitadas.": "Questions already used in other competencies are disabled.",
-  "Salvar Alterações": "Save Changes",
-  "Adicionar Competência": "Add Competency",
-  "Editar competência": "Edit competency",
-  "Remover competência": "Remove competency",
-  "Salvar configuração atual": "Save current configuration",
-  "Carregar relatório salvo": "Load saved report",
-  "Carregar configuração": "Load configuration",
-  "Salvar como template": "Save as template",
-  "Salvar alterações no template": "Save template changes",
-  "Tabela Detalhada": "Detailed Table",
-  "Gráfico de Defasagem": "Gap Chart",
-  "Janela de Johari": "Johari Window",
-  "Arraste para reordenar": "Drag to reorder",
-
-  "Resumo de Competências": "Competency Summary",
-  "Tabela de Frequência": "Frequency Table",
-  "Tabela de Distribuição": "Distribution Table",
-  "Destaques": "Highlights",
-  "Título da seção": "Section title",
-  "Este título aparecerá no relatório final": "This title will appear in the final report",
-  "Dica para Capa:": "Tip for Cover:",
-  "Aplicar Template": "Apply Template",
-  "Use o editor de texto rico para criar uma capa profissional. Você pode adicionar títulos, subtítulos, imagens, cores e formatação para destacar informações importantes. Clique em \"Aplicar Template\" para usar um modelo pré-formatado.": "Use the rich text editor to create a professional cover. You can add titles, subtitles, images, colors and formatting to highlight important information. Click \"Apply Template\" to use a preformatted template.",
-  "Dica para Introdução:": "Tip for Introduction:",
-  "Crie uma introdução atrativa usando formatação rica. Adicione títulos, listas, destaques e imagens para explicar o propósito e contexto do relatório. Clique em \"Aplicar Template\" para usar um modelo pré-formatado.": "Create an engaging introduction using rich formatting. Add titles, lists, highlights and images to explain the purpose and context of the report. Click \"Apply Template\" to use a preformatted template.",
-  "Competências para os gráficos": "Competencies for the charts",
-  "Selecione as competências que devem aparecer nesta seção de gráficos.": "Select the competencies to appear in this charts section.",
-  "Tipo de gráfico": "Chart type",
-  "Gráfico de Barras Comparativo:": "Comparative Bar Chart:",
-  "Cada categoria terá uma cor distinta para melhor visualização.": "Each category will have a distinct color for better visualization.",
+  "— Nenhum —": "— None —",
+  "1 crédito": "1 credit",
+  "1 crédito consumido ao responder": "1 credit consumed on response",
+  "1 crédito reservado para este participante": "1 credit reserved for this participant",
+  "1 reservado": "1 reserved",
+  "A descrição é obrigatória": "Description is required",
+  "A opção é obrigatória": "Option is required",
   "A paleta \"Categorias Distintas\" é recomendada para este tipo de gráfico.": "The \"Distinct Categories\" palette is recommended for this chart type.",
-  "Paleta de cores": "Color palette",
-  "Escolha uma paleta pré-definida ou personalize": "Choose a predefined palette or customize",
-  "Debug das cores": "Color debug",
-  "Cores personalizadas:": "Custom colors:",
+  "A pergunta é obrigatória": "Question is required",
+  "A senha deve ter pelo menos 6 caracteres.": "A senha deve ter pelo menos 6 caracteres.",
+  "A senha é obrigatória.": "Password is required.",
+  "Account": "Account",
+  "Account Setting": "Account Setting",
+  "Acessar relatórios da própria empresa": "Access company's own reports",
+  "Acessar relatórios publicados pelo administrador": "Access reports published by the administrator",
+  "Acesso": "Access",
+  "Acesso de leitura": "Read access",
+  "Acesso negado (403): ADM Cliente não pode criar ou editar usuários.": "Access denied (403): Client Admin cannot create or edit users.",
+  "Acesso restrito à experiência de avaliação": "Restricted access to the assessment experience",
+  "Acesso restrito aos dados da própria empresa": "Restricted access to company's own data",
+  "Acesso total ao sistema": "Full system access",
+  "Ações": "Actions",
+  "Add Client": "Add Client",
+  "Add User": "Add User",
+  "Add User Group": "Add User Group",
+  "Additional Notes": "Additional Notes",
+  "Address": "Address",
+  "Adicionar Cliente": "Adicionar Cliente",
+  "Adicionar Competência": "Add Competency",
   "Adicionar cor": "Add color",
-  "Remover cor": "Remove color",
+  "Adicionar Grupo": "Add Group",
+  "Adicionar Grupo de Usuários": "Add User Group",
+  "Adicionar Novo Participante": "Add New Participant",
+  "Adicionar Opção": "Add Option",
+  "Adicionar Participante": "Add Participant",
+  "Adicionar pergunta": "Add question",
+  "Adicionar Projeto": "Add Project",
+  "Adicionar Usuário": "Add User",
+  "Adicione participantes manualmente ou importe uma planilha Excel.": "Add participants manually or import an Excel spreadsheet.",
+  "Adicione pelo menos uma competência antes de salvar o grupo.": "Add at least one competency before saving the group.",
+  "Adicione pelo menos uma pergunta custom à competência ou selecione uma avaliação.": "Add at least one custom question to the competency or select an assessment.",
+  "ADM Cliente não possui permissão para criar ou editar usuários.": "Client Admin does not have permission to create or edit users.",
+  "ADM Cliente não possui permissão para editar usuários": "Client Admin does not have permission to edit users",
+  "ADM Cliente não possui permissão para excluir usuários": "Client Admin does not have permission to delete users",
+  "Admin Cliente": "Client Admin",
+  "Administrador": "Administrador",
+  "Administrator": "Administrator",
+  "Adquiridos": "Acquired",
+  "Agree with terms?": "Agree with terms?",
+  "Aguarda envio": "Awaiting send",
+  "Aguardando resposta": "Awaiting response",
+  "alert.creditos_esgotados": "Credits exhausted — place an order to continue",
+  "alert.prazo_proximo": "Deadline Approaching",
+  "alert.prazo_vencido": "Deadline Expired",
+  "alert.proximo_descricao": "{{days}} day(s) remaining — {{pending}} pending response(s) ({{rate}}% complete)",
+  "alert.sem_creditos": "No Credits",
+  "alert.vencido_descricao": "Expired {{days}} day(s) ago — {{rate}}% responded",
+  "Alertas": "Alerts",
+  "Alertas Operacionais": "Operational Alerts",
+  "Ao remover o cliente, todos os projetos, grupos e usuários associados também serão excluídos. Deseja continuar?": "Removing the client will also delete all associated projects, groups and users. Continue?",
+  "Apenas administradores podem liberar relatórios.": "Only administrators can release reports.",
+  "Apenas administradores podem revogar liberação.": "Only administrators can revoke release.",
+  "Apenas um admin MASTER pode editar outro admin MASTER": "Apenas um admin MASTER pode editar outro admin MASTER",
+  "Apenas um admin MASTER pode remover outro admin MASTER": "Apenas um admin MASTER pode remover outro admin MASTER",
+  "Apenas um admin MASTER pode remover outro admin MASTER.": "Apenas um admin MASTER pode remover outro admin MASTER.",
+  "Aplicar template": "Apply template",
+  "Aplicar Template": "Apply Template",
+  "Aplique um template antes de salvar alterações.": "Apply a template before saving changes.",
+  "Aplique um template ou carregue um rascunho antes de salvar.": "Apply a template or load a draft before saving.",
+  "Aprovado": "Approved",
+  "Aprovar Pedido": "Approve Order",
+  "Are you sure you want to delete the group \"{{name}}\"?": "Are you sure you want to delete the group \"{{name}}\"?",
+  "Are you sure you want to delete the user \"{{name}}\"?": "Are you sure you want to delete the user \"{{name}}\"?",
+  "Area": "Area",
+  "Arraste para reordenar": "Drag to reorder",
+  "As competências são agrupamentos de perguntas que representam habilidades específicas a serem avaliadas.": "Competencies are groups of questions that represent specific skills to be evaluated.",
+  "Assunto": "Subject",
+  "Atenção": "Attention",
+  "Ativo": "Active",
+  "Ativo (≥ 5)": "Active (≥ 5)",
+  "Ativos": "Active",
+  "Atrasado": "Overdue",
+  "atualizado às": "updated at",
+  "Atualizando...": "Updating...",
+  "Atualizar": "Update",
+  "Atualizar dados em tempo real": "Refresh data in real time",
+  "Autocomplete": "Autocomplete",
+  "Avaliação": "Assessment",
+  "Avaliação (opcional)": "Assessment (optional)",
+  "Avaliação criada automaticamente com sucesso!": "Assessment created automatically with success!",
+  "Avaliação criada com sucesso! Agora você pode adicionar perguntas.": "Assessment created successfully! Now you can add questions.",
+  "Avaliação respondida — nenhum lembrete pendente": "Assessment responded — no pending reminders",
+  "Avaliação selecionada não encontrada.": "Selected assessment not found.",
+  "Avaliações Cadastradas por Cliente": "Assessments Registered by Client",
+  "Avaliações por Cliente": "Assessments by Client",
+  "Avaliado": "Evaluatee",
+  "Avaliado inválido para liberação do relatório.": "Invalid participant for report release.",
+  "Avaliador": "Evaluator",
+  "avaliadores": "evaluators",
+  "avaliados": "evaluatees",
+  "Aviso": "Warning",
+  "Back": "Back",
+  "Badge": "Badge",
+  "Baixar Modelo": "Download Template",
+  "Baixar Modelo Excel": "Download Excel Template",
+  "Baixar Planilha de Modelo": "Download Template Spreadsheet",
+  "Baixo": "Low",
+  "Baixo (< 5)": "Low (< 5)",
+  "Banners": "Banners",
+  "Base exportada com sucesso!": "Base exported successfully!",
+  "Basic DataTable": "Basic DataTable",
+  "Basic Table": "Basic Table",
+  "Bem Vindo!": "Welcome!",
+  "Blog": "Blog",
+  "Bloqueado": "Blocked",
+  "Bloquear participante": "Block participant",
+  "Desbloquear participante": "Unblock participant",
+  "Participante bloqueado — não pode responder à avaliação": "Participant blocked — cannot respond to the assessment",
+  "Participante bloqueado com sucesso.": "Participant blocked successfully.",
+  "Participante desbloqueado com sucesso.": "Participant unblocked successfully.",
+  "Erro ao alterar o bloqueio do participante.": "Error changing participant block status.",
+  "Você não tem permissão para bloquear este participante.": "You do not have permission to block this participant.",
+  "Bloqueados": "Blocked",
+  "Boxed Forgot Password": "Boxed Forgot Password",
+  "Boxed Login": "Boxed Login",
+  "Boxed Register": "Boxed Register",
+  "Boxed Two Steps": "Boxed Two Steps",
+  "Buscar": "Search",
+  "Buscar cliente...": "Search client...",
+  "Buscar grupo": "Search group",
+  "Buscar Grupo": "Buscar Grupo",
+  "Buscar Participante": "Search Participant",
+  "Buscar por cliente…": "Search by client…",
+  "Buscar por nome": "Search by name",
+  "Buscar por Nome": "Search by Name",
+  "Buscar por Nome ou E-mail": "Search by Name or Email",
+  "Buscar por nome, cliente...": "Search by name, client...",
+  "Buscar por nome, e-mail...": "Search by name, email...",
+  "Buscar por projeto ou cliente…": "Search by project or client…",
+  "Buscar por projeto ou descrição…": "Search by project or description…",
+  "Buscar por projeto…": "Search by project…",
+  "Buscar usuário": "Search user",
+  "Buscar Usuário": "Search User",
+  "Busque por nome ou e-mail": "Search by name or email",
+  "Busque por nome, cliente ou projeto": "Search by name, client or project",
+  "Busque por nome, email ou tipo de usuário": "Search by name, email or user type",
+  "Button": "Button",
+  "By removing the client, all associated projects, groups, and users will also be deleted. Do you want to continue?": "By removing the client, all associated projects, groups, and users will also be deleted. Do you want to continue?",
+  "Cada categoria terá uma cor distinta para melhor visualização.": "Each category will have a distinct color for better visualization.",
+  "Cadastrar Cliente": "Cadastrar Cliente",
+  "Cadastro de Competências": "Competency Registration",
+  "Cadastro do Usuário": "User Registration",
+  "Calendar": "Calendar",
+  "Cancelado": "Cancelled",
+  "Cancelar": "Cancel",
+  "Cancelar envio e liberar crédito": "Cancel send and release credit",
+  "Candlestick": "Candlestick",
+  "Cards": "Cards",
+  "Cargo / Setor": "Role / Sector",
+  "Carregando dados do projeto...": "Loading project data...",
+  "Carregando dashboard...": "Loading dashboard...",
+  "Carregando detalhes do cliente...": "Carregando detalhes do cliente...",
+  "Carregando detalhes do grupo...": "Loading group details...",
+  "Carregando detalhes do usuário...": "Loading user details...",
+  "Carregando participantes...": "Loading participants...",
+  "Carregando resultados...": "Loading results...",
+  "Carregar": "Load",
+  "Carregar Arquivo Excel": "Upload Excel File",
+  "Carregar configuração": "Load configuration",
+  "Carregar Grupo Existente": "Load Existing Group",
+  "Carregar grupo selecionado": "Load selected group",
+  "Carregar relatório salvo": "Load saved report",
+  "Carregue um grupo de competências salvo": "Load a saved competency group",
+  "Carregue um template ou relatório nos cards acima antes de salvar.": "Load a template or report from the cards above before saving.",
+  "Categoria": "Category",
+  "Charts": "Charts",
+  "Chat": "Chat",
+  "Checkbox": "Checkbox",
+  "Chips": "Chips",
+  "Client and related data deleted successfully.": "Client and related data deleted successfully.",
+  "Client Details": "Client Details",
+  "Client is required.": "Client is required.",
+  "Client List": "Client List",
+  "Client list updated!": "Client list updated!",
+  "Client Name": "Client Name",
+  "Client name is required.": "Client name is required.",
+  "Client not found.": "Client not found.",
+  "Client registered with ID {{id}}!": "Client registered with ID {{id}}!",
+  "Client updated successfully!": "Client updated successfully!",
+  "Client Users": "Client Users",
+  "Cliente": "Client",
+  "Cliente atualizado com sucesso!": "Cliente atualizado com sucesso!",
+  "Cliente cadastrado com ID {{id}}!": "Cliente cadastrado com ID {{id}}!",
+  "Cliente e dados relacionados excluídos com sucesso.": "Client and related data deleted successfully.",
+  "Cliente excluído com sucesso.": "Client deleted successfully.",
+  "Cliente não encontrado.": "Client not found.",
+  "Cliente não identificado. Contate o suporte.": "Client not identified. Contact support.",
+  "cliente(s) selecionado(s)": "client(s) selected",
+  "Clientes": "Clients",
+  "Clientes do Usuário": "User Clients",
+  "Clientes excluídos com sucesso.": "Clients deleted successfully.",
   "Clique nas cores para editá-las. Adicione pelo menos 3 cores para melhores resultados.": "Click the colors to edit them. Add at least 3 colors for best results.",
+  "CNPJ": "CNPJ",
+  "Column": "Column",
+  "Com convites enviados": "With invitations sent",
+  "Comece criando competências para organizar suas perguntas em grupos temáticos.": "Start by creating competencies to organize your questions into thematic groups.",
+  "Comentários...": "Comments...",
+  "Competência": "Competency",
+  "Competência adicionada com sucesso!": "Competency added successfully!",
+  "Competência atualizada com sucesso!": "Competency updated successfully!",
+  "Competência removida!": "Competency removed!",
+  "Competência removida.": "Competency removed.",
+  "competências": "competencies",
+  "Competências": "Competencies",
+  "Competências Cadastradas": "Registered Competencies",
+  "competências disponíveis.": "competencies available.",
+  "Competências do Grupo": "Group Competencies",
+  "Competências para Análise Detalhada": "Competencies for Detailed Analysis",
+  "Competências para os gráficos": "Competencies for the charts",
+  "Complete as etapas acima para visualizar os participantes e gerenciar os envios de e-mail.": "Complete the steps above to view participants and manage email sends.",
+  "Comprados": "Purchased",
+  "Concluído": "Completed",
+  "Concluídos": "Completed",
+  "Concordo Totalmente": "Strongly Agree",
+  "Configuração": "Configuration",
+  "Configuração de Envio": "Send Configuration",
+  "Configuração de Relatório": "Report Configuration",
+  "Configurações": "Settings",
+  "Configurações do Template": "Template Settings",
+  "Configurar competências e templates": "Configure competencies and templates",
+  "Configurar templates de convites": "Configurar templates de convites",
+  "Configure as competências antes de gerar relatórios em lote.": "Configure competencies before generating batch reports.",
+  "Confirm": "Confirm",
+  "Confirmação": "Confirmation",
+  "Confirmar": "Confirmar",
+  "Confirmation": "Confirmation",
+  "Consumidos": "Consumidos",
+  "Contacts": "Contacts",
+  "Convite - Avaliado": "Invite - Evaluatee",
+  "Convite - Avaliador": "Invite - Evaluator",
+  "Convite ainda não enviado — lembretes iniciam após o primeiro envio": "Invitation not yet sent — reminders start after the first send",
+  "Cores personalizadas:": "Custom colors:",
+  "Courses": "Courses",
+  "Create New User": "Create New User",
+  "Create New User Group": "Create New User Group",
+  "Create User": "Create User",
+  "Created by": "Created by",
+  "Crédito": "Credit",
+  "Créditos": "Credits",
+  "Créditos — este projeto": "Credits — this project",
+  "Créditos consumidos = respostas de avaliação recebidas. Disponíveis = saldo restante para novos envios.": "Credits consumed = assessment responses received. Available = remaining balance for new sends.",
+  "Créditos consumidos = projetos concluídos. Reservados = alocados a avaliados em projetos em andamento. Disponíveis = saldo restante para novos avaliados.": "Consumed\nCompleted projects.\n\nReserved\nAllocated to evaluatees in active projects.\n\nAvailable\nRemaining balance for new evaluatees.",
+  "Créditos consumidos na geração de relatórios": "Credits consumed in report generation",
+  "Créditos retirados do pedido (reservados e consumidos)": "Credits drawn from the order (reserved and consumed)",
+  "Créditos Disponíveis": "Available Credits",
+  "Créditos disponíveis para uso": "Credits available for use",
+  "Créditos por Cliente": "Credits by Client",
+  "Créditos por projeto": "Credits by project",
+  "Créditos Próximos ao Vencimento": "Credits Near Expiration",
+  "Créditos Remanescentes": "Remaining Credits",
+  "Criado até": "Created until",
+  "Criado de": "Created from",
+  "Criado em": "Created on",
+  "Criado por": "Criado por",
+  "Criado Por": "Created By",
+  "Criador": "Creator",
+  "Criados": "Created",
+  "Criar": "Create",
+  "Criar como Grupo": "Create as Group",
+  "Criar e excluir avaliações": "Create and delete assessments",
+  "Criar e gerenciar grupos de usuários": "Create and manage user groups",
+  "Criar e gerenciar participantes dos projetos": "Create and manage project participants",
+  "Criar Formulário": "Create Form",
+  "Criar Grupo": "Create Group",
+  "Criar Nova Pergunta": "Create New Question",
+  "Criar Novo Formulário de Avaliação": "Create New Assessment Form",
+  "Criar Novo Grupo de Usuários": "Create New User Group",
+  "Criar Novo Pedido": "Create New Order",
+  "Criar Novo Usuário": "Create New User",
+  "Criar Perguntas para cada Competência": "Create Questions for each Competency",
+  "Criar Template": "Create Template",
+  "Criar Usuário": "Create User",
+  "Crie uma introdução atrativa usando formatação rica. Adicione títulos, listas, destaques e imagens para explicar o propósito e contexto do relatório. Clique em \"Aplicar Template\" para usar um modelo pré-formatado.": "Create an engaging introduction using rich formatting. Add titles, lists, highlights and images to explain the purpose and context of the report. Click \"Apply Template\" to use a preformatted template.",
+  "Crítico": "Critical",
+  "CSV": "CSV",
+  "Dados de Destaques enviados para o console.": "Highlights data sent to console.",
+  "Dados Detalhados": "Detailed Data",
+  "Dados do Projeto": "Project Data",
+  "Dados do Representante": "Dados do Representante",
+  "Dashboard": "Dashboard",
   "Dashboard 1": "Dashboard 1",
   "Dashboard 2": "Dashboard 2",
-  "Chat": "Chat",
-  "Calendar": "Calendar",
-  "Email": "Email",
-  "Contacts": "Contacts",
-  "Courses": "Courses",
-  "Employee": "Employee",
-  "Notes": "Notes",
-  "Tickets": "Tickets",
-  "Invoice": "Invoice",
-  "Blog": "Blog",
-  "Posts": "Posts",
-  "Detail": "Detail",
-  "ToDo": "ToDo",
-  "Taskboard": "Taskboard",
-  "Roll Base Access": "Roll Base Access",
-  "Treeview": "Treeview",
-  "Pricing": "Pricing",
-  "Account Setting": "Account Setting",
-  "FAQ": "FAQ",
-  "Landingpage": "Landingpage",
-  "Widgets": "Widgets",
-  "Cards": "Cards",
-  "Banners": "Banners",
-  "Charts": "Charts",
-  "Form elements": "Form elements",
-  "Autocomplete": "Autocomplete",
-  "Button": "Button",
-  "Checkbox": "Checkbox",
-  "Radio": "Radio",
+  "Dashboard exportado com sucesso!": "Dashboard exportado com sucesso!",
+  "Data de Criação": "Creation Date",
+  "Data de Envio": "Sent At",
+  "Data de Resposta": "Answered At",
+  "Data de Validade": "Validity Date",
+  "Datatables": "Datatables",
   "Datepicker": "Datepicker",
-  "Form Layouts": "Form Layouts",
+  "Debug das cores": "Color debug",
+  "Debug executado! Veja o console.": "Debug executed! See the console.",
+  "Debug Gráficos": "Debug Charts",
+  "Debug Perguntas": "Debug Questions",
+  "Debug Tabela Detalhada": "Debug Detailed Table",
+  "Debug Tipos": "Debug Types",
+  "Defina o tipo, assunto e cliente do modelo": "Set the type, subject and client of the template",
+  "Definições": "Settings",
+  "Delete Group": "Delete Group",
+  "Delete User": "Delete User",
+  "Desconhecido": "Unknown",
+  "Descreva o grupo": "Describe the group",
+  "Descreva o que esta competência avalia...": "Describe what this competency evaluates...",
+  "Describe the group": "Describe the group",
+  "Descrição": "Description",
+  "Descrição detalhada": "Detailed description",
+  "Descrição que aparecerá como subtítulo nos relatórios": "Description that will appear as a subtitle in reports",
+  "Destaques": "Highlights",
+  "Detail": "Detail",
+  "Detalhes do Cliente": "Detalhes do Cliente",
+  "Detalhes do Grupo": "Group Details",
+  "Detalhes do Usuário": "User Details",
+  "Dialog": "Dialog",
+  "Dica para Capa:": "Tip for Cover:",
+  "Dica para Introdução:": "Tip for Introduction:",
+  "Digite a descrição": "Enter the description",
+  "Digite a opção...": "Type the option...",
+  "Digite a pergunta...": "Enter the question...",
+  "Digite a quantidade de créditos": "Enter the number of credits",
+  "Digite a senha": "Digite a senha",
+  "Digite aqui...": "Type here...",
+  "Digite exatamente como mostrado, incluindo os símbolos $% e colchetes [].": "Type exactly as shown, including the $% symbols and square brackets [].",
+  "Digite o CNPJ": "Digite o CNPJ",
+  "Digite o e-mail": "Digite o e-mail",
+  "Digite o nome": "Digite o nome",
+  "Digite o nome da avaliação": "Type the assessment name",
+  "Digite o nome da organização": "Enter the organization name",
+  "Digite o nome do cliente": "Digite o nome do cliente",
+  "Digite o nome do grupo": "Digite o nome do grupo",
+  "Digite o setor": "Digite o setor",
+  "Digite o sobrenome": "Digite o sobrenome",
+  "Digite o título": "Enter the title",
+  "Digite o título...": "Enter the title...",
+  "Digite o valor total": "Enter the total value",
+  "Digite para buscar": "Type to search",
+  "Digite para filtrar...": "Type to filter...",
+  "Digite quaisquer observações adicionais": "Enter any additional notes",
+  "Digite um e-mail válido.": "Enter a valid email.",
+  "Digite um nome para o grupo de competências.": "Enter a name for the competency group.",
+  "Digite um nome para salvar o grupo atual de competências": "Enter a name to save the current competency group",
+  "Digite um número...": "Type a number...",
+  "Digite um texto explicativo para esta competência...": "Enter an explanatory text for this competency...",
+  "Disabled": "Disabled",
+  "Discordo Totalmente": "Strongly Disagree",
+  "Disponíveis": "Available",
+  "Disponível": "Available",
+  "Disponíveis (cliente)": "Available (client)",
+  "Distribuição de projetos ativos entre os clientes": "Distribution of active projects among clients",
+  "Distribuição de todos os projetos por status atual": "Distribution of all projects by current status",
+  "Distribuição dos participantes da empresa": "Distribution of company participants",
+  "Distribuição dos participantes por tipo de avaliador": "Distribution of participants by evaluator type",
+  "Divider": "Divider",
+  "DOCX exportado com sucesso!": "DOCX exportado com sucesso!",
+  "Doughnut & Pie": "Doughnut & Pie",
+  "Duplicar modelo": "Duplicate template",
+  "Dynamic Table": "Dynamic Table",
+  "E-mail": "Email",
+  "E-mail enviado para {{email}}": "E-mail enviado para {{email}}",
+  "E-mail enviado para {{name}}": "Email sent to {{name}}",
+  "Edit Client": "Edit Client",
+  "Edit User": "Edit User",
+  "Edit User Group": "Edit User Group",
+  "Editar": "Edit",
+  "Editar cliente": "Edit client",
+  "Editar Cliente": "Editar Cliente",
+  "Editar competência": "Edit competency",
+  "Editar Competência": "Edit Competency",
+  "Editar grupo": "Edit group",
+  "Editar Grupo": "Edit Group",
+  "Editar Grupo de Usuários": "Edit User Group",
+  "Editar participante": "Edit participant",
+  "Editar Projeto": "Edit Project",
+  "Editar Template": "Edit Template",
+  "Editar usuário": "Edit user",
+  "Editar Usuário": "Edit User",
+  "Elemento do dashboard não encontrado.": "Dashboard element not found.",
+  "Em andamento": "In progress",
+  "Em breve": "Coming soon",
+  "Em risco": "At risk",
+  "Email": "Email",
+  "Email (field)": "Email",
+  "Email do Representante": "Email do Representante",
+  "Email is required.": "Email is required.",
+  "Email sent to {{email}}": "Email sent to {{email}}",
+  "Employee": "Employee",
+  "Enviado": "Sent",
+  "Enviado (Pendente)": "Sent (Pending)",
+  "Enviado em": "Sent on",
+  "Enviando...": "Sending...",
+  "Enviar E-mail": "Enviar E-mail",
+  "Enviar E-mails": "Send Emails",
+  "Enviar link de criação / redefinição de senha": "Send password creation / reset link",
+  "Enviar Links": "Send Links",
+  "Envio": "Sent",
+  "Envio / Resposta": "Send / Response",
+  "Erro ao adicionar usuário. Tente novamente mais tarde.": "Error adding user. Please try again later.",
+  "Erro ao atualizar documentos dos usuários.": "Error updating user documents.",
+  "Erro ao atualizar grupo.": "Error updating group.",
+  "Erro ao atualizar usuário.": "Error updating user.",
+  "Erro ao cancelar projeto.": "Erro ao cancelar projeto.",
+  "Erro ao carregar a lista de clientes. Tente novamente mais tarde.": "Error loading the client list. Please try again later.",
+  "Erro ao carregar avaliações.": "Error loading assessments.",
+  "Erro ao carregar clientes.": "Error loading clients.",
+  "Erro ao carregar dados da avaliação. Tente novamente.": "Error loading assessment data. Please try again.",
+  "Erro ao carregar dados.": "Erro ao carregar dados.",
+  "Erro ao carregar dados. Tente novamente.": "Error loading data. Please try again.",
+  "Erro ao carregar grupo de competências.": "Error loading competency group.",
+  "Erro ao carregar grupo.": "Erro ao carregar grupo.",
+  "Erro ao carregar grupos de competências.": "Error loading competency groups.",
+  "Erro ao carregar grupos de usuários.": "Error loading user groups.",
+  "Erro ao carregar Modelos de e-mail.": "Error loading email templates.",
+  "Erro ao carregar os dados do cliente.": "Erro ao carregar os dados do cliente.",
+  "Erro ao carregar os detalhes do cliente.": "Erro ao carregar os detalhes do cliente.",
+  "Erro ao carregar participantes.": "Error loading participants.",
+  "Erro ao carregar projetos ou grupos.": "Erro ao carregar projetos ou grupos.",
+  "Erro ao carregar projetos.": "Error loading projects.",
+  "Erro ao carregar questionários.": "Error loading questionnaires.",
+  "Erro ao carregar usuário.": "Error loading user.",
+  "Erro ao carregar usuários.": "Error loading users.",
+  "Erro ao criar avaliação.": "Error creating assessment.",
+  "Erro ao criar grupo.": "Error creating group.",
+  "Erro ao criar usuário.": "Error creating user.",
+  "Erro ao enviar e-mails ou atualizar documentos.": "Error sending emails or updating documents.",
+  "Erro ao enviar links.": "Error sending links.",
+  "Erro ao excluir cliente. Tente novamente.": "Erro ao excluir cliente. Tente novamente.",
+  "Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.": "Erro ao excluir cliente. Verifique os dados relacionados e tente novamente.",
+  "Erro ao excluir clientes. Tente novamente.": "Erro ao excluir clientes. Tente novamente.",
+  "Erro ao excluir grupo.": "Erro ao excluir grupo.",
+  "Erro ao excluir grupos.": "Erro ao excluir grupos.",
+  "Erro ao excluir participante.": "Error deleting participant.",
+  "Erro ao excluir projeto. Tente novamente mais tarde.": "Error deleting project. Please try again later.",
+  "Erro ao excluir projetos. Tente novamente.": "Erro ao excluir projetos. Tente novamente.",
+  "Erro ao excluir questionário.": "Error deleting questionnaire.",
+  "Erro ao excluir relatório.": "Error deleting report.",
+  "Erro ao excluir template.": "Erro ao excluir template.",
+  "Erro ao excluir usuário.": "Error deleting user.",
+  "Erro ao excluir usuários.": "Error deleting users.",
+  "Erro ao exportar extrato.": "Erro ao exportar extrato.",
+  "Erro ao exportar o dashboard.": "Erro ao exportar o dashboard.",
+  "Erro ao gerar o DOCX.": "Erro ao gerar o DOCX.",
+  "Erro ao gerar PDF automaticamente. Tente gerar manualmente.": "Error generating PDF automatically. Try generating manually.",
+  "Erro ao gerar PDF: {{error}}": "Erro ao gerar PDF: {{error}}",
+  "Erro ao gerar relatório. Tente novamente.": "Error generating report. Please try again.",
+  "Erro ao obter dados do usuário autenticado.": "Error getting authenticated user data.",
+  "Erro ao obter usuário autenticado.": "Error getting authenticated user.",
+  "Erro ao publicar relatório.": "Error publishing report.",
+  "Erro ao remover pergunta.": "Erro ao remover pergunta.",
+  "Erro ao revogar liberação.": "Error revoking release.",
+  "Erro ao salvar alterações.": "Error saving changes.",
+  "Erro ao salvar cliente. Tente novamente.": "Erro ao salvar cliente. Tente novamente.",
+  "Erro ao salvar competência": "Error saving competency",
+  "Erro ao salvar grupo de competências.": "Error saving competency group.",
+  "Erro ao salvar grupo.": "Erro ao salvar grupo.",
+  "Erro ao salvar usuário.": "Error saving user.",
+  "Error": "Error",
+  "Error adding user. Please try again later.": "Error adding user. Please try again later.",
+  "Error creating user.": "Error creating user.",
+  "Error deleting client. Check related data and try again.": "Error deleting client. Check related data and try again.",
+  "Error deleting group.": "Error deleting group.",
+  "Error deleting user.": "Error deleting user.",
+  "Error loading client data.": "Error loading client data.",
+  "Error loading data.": "Error loading data.",
+  "Error loading projects or groups.": "Error loading projects or groups.",
+  "Error loading user groups.": "Error loading user groups.",
+  "Error loading users.": "Error loading users.",
+  "Error saving changes.": "Error saving changes.",
+  "Error saving client. Please try again.": "Error saving client. Please try again.",
+  "Error updating user.": "Error updating user.",
+  "Escolha o projeto para carregar os participantes": "Choose the project to load the participants",
+  "Escolha os participantes para receber o e-mail": "Choose the participants to receive the email",
+  "Escolha um Modelo de e-mail": "Choose an Email Template",
+  "Escolha uma paleta pré-definida ou personalize": "Choose a predefined palette or customize",
+  "Esta avaliação existe em mais de um projeto — selecione o ciclo desejado.": "This assessment exists in more than one project — select the desired cycle.",
+  "Este projeto não utiliza a avaliação selecionada.": "This project does not use the selected assessment.",
+  "Este template não possui seções salvas. Atualize o template ou crie um novo.": "This template has no saved sections. Update the template or create a new one.",
+  "Este título aparecerá no relatório final": "This title will appear in the final report",
+  "Ex: Avaliação 360° — Q1 2025": "E.g.: 360° Assessment — Q1 2025",
+  "Ex: Capacidade de liderar equipes, tomar decisões estratégicas e influenciar positivamente os colaboradores": "E.g.: Ability to lead teams, make strategic decisions and positively influence collaborators",
+  "Excel": "Excel",
+  "Excluir": "Delete",
+  "Excluir cliente": "Delete client",
+  "Excluir grupo": "Delete group",
+  "Excluir Grupo": "Excluir Grupo",
+  "Excluir Participante": "Delete Participant",
+  "Excluir Projeto": "Delete Project",
+  "Excluir selecionados": "Delete selected",
+  "Excluir usuário": "Delete user",
+  "Excluir Usuário": "Delete User",
+  "Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.": "Displays the total number of projects in each status: In progress, Completed and Cancelled.",
+  "Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado, Gestor, Par, Subordinado, Outros).": "Displays responses from all participants (evaluatee and evaluators) to the questions: what to continue, stop and start doing. Responses are grouped by category (Evaluatee, Manager, Peer, Subordinate, Others).",
+  "Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado(a), Gestor(es), Pares, Subordinados, Outros).": "Shows responses from all participants to continue/stop/start questions, grouped by category.",
+  "Expand Table": "Expand Table",
+  "Expansion Panel": "Expansion Panel",
+  "expira em": "expires on",
+  "Expirado": "Expired",
+  "Exportado com sucesso!": "Exportado com sucesso!",
+  "Exportando": "Exportando",
+  "Exportar base (Excel)": "Export base (Excel)",
+  "Exportar Dashboard": "Export Dashboard",
+  "Exportar DOCX": "Export DOCX",
+  "Exportar para CSV": "Export to CSV",
+  "Exportar para Excel": "Export to Excel",
+  "Exportar relatórios (ZIP)": "Export reports (ZIP)",
+  "Gerar ZIP": "Generate ZIP",
+  "Template de relatório": "Report template",
+  "Serão gerados PDFs de todos os avaliados nos {{count}} projetos selecionados de {{client}}.": "PDFs will be generated for all evaluated participants in the {{count}} selected projects for {{client}}.",
+  "Selecione o template de relatório para cada projeto.": "Select the report template for each project.",
+  "Template vinculado ao projeto": "Template linked to project",
+  "Template não selecionado para o projeto.": "No template selected for the project.",
+  "projeto selecionado": "project selected",
+  "projetos selecionados": "projects selected",
+  "resultado": "result",
+  "resultados": "results",
+  "Editor visual": "Visual editor",
+  "Modo HTML": "HTML mode",
+  "Cole ou edite HTML completo. O preview respeitará tags, estilos inline e classes.": "Paste or edit full HTML. Preview will respect tags, inline styles and classes.",
+  "Cole o HTML da capa aqui...": "Paste cover HTML here...",
+  "Conteúdo": "Content",
+  "Avaliado(a)": "Evaluated person",
+  "Avaliadores por Perfil": "Evaluators by Profile",
+  "Gerencie os projetos cadastrados na plataforma": "Manage projects registered on the platform",
+  "Sem avaliados ou competências configuradas.": "No evaluated participants or competencies configured.",
+  "Nenhum relatório gerado para os projetos selecionados.": "No reports generated for the selected projects.",
+  "{{count}} PDF(s) gerados. {{errors}} projeto(s) com falha.": "{{count}} PDF(s) generated. {{errors}} project(s) failed.",
+  "Exportar para PDF": "Export to PDF",
+  "Exportar PDF": "Export PDF",
+  "Exportar Tabelas": "Export Tables",
+  "Extrato do cliente (Excel)": "Client statement (Excel)",
+  "Extrato exportado: {{resumo}} linhas (Resumo), {{respostas}} linhas (Respostas).": "Extrato exportado: {{resumo}} linhas (Resumo), {{respostas}} linhas (Respostas).",
+  "Falha ao carregar as avaliações.": "Failed to load assessments.",
+  "Faltam": "Pending",
+  "FAQ": "FAQ",
+  "Fechar": "Close",
+  "Filter Table": "Filter Table",
+  "Filterable Table": "Filterable Table",
+  "Filtrar Participantes": "Filter Participants",
+  "Filtrar por Categoria": "Filter by Category",
+  "Filtrar por cliente": "Filter by client",
+  "Filtrar por Status": "Filter by Status",
+  "Filtrar por Status de Entrega": "Filter by Delivery Status",
+  "Filtrar por Tipo": "Filter by Type",
+  "Filtro de Tipos de Perguntas": "Question Type Filter",
+  "Financeiro": "Financial",
+  "Finish": "Finish",
+  "First Name": "First Name",
+  "Footer Row Table": "Footer Row Table",
+  "Forgot Password": "Forgot Password",
+  "Form elements": "Form elements",
   "Form Horizontal": "Form Horizontal",
+  "Form Layouts": "Form Layouts",
   "Form Vertical": "Form Vertical",
   "Form Wizard": "Form Wizard",
-  "Tables": "Tables",
-  "Basic Table": "Basic Table",
-  "Dynamic Table": "Dynamic Table",
-  "Expand Table": "Expand Table",
-  "Filterable Table": "Filterable Table",
-  "Footer Row Table": "Footer Row Table",
-  "HTTP Table": "HTTP Table",
-  "Mix Table": "Mix Table",
-  "Multi Header Footer": "Multi Header Footer",
-  "Pagination Table": "Pagination Table",
-  "Row Context Table": "Row Context Table",
-  "Selection Table": "Selection Table",
-  "Sortable Table": "Sortable Table",
-  "Sticky Column": "Sticky Column",
-  "Sticky Header Footer": "Sticky Header Footer",
-  "Datatables": "Datatables",
-  "Basic DataTable": "Basic DataTable",
-  "Material Table": "Material Table",
-  "Table Editing": "Table Editing",
-  "Filter Table": "Filter Table",
-  "Line": "Line",
+  "Formulário": "Form",
+  "Formulário a utilizar": "Form to use",
+  "Template de relatório a utilizar": "Report template to use",
+  "Formulário de Avaliação": "Assessment Form",
+  "Formulários": "Assessments",
+  "Formulários de Avaliação": "Assessment Forms",
+  "Função do Representante": "Representative Role",
+  "Funil de Projetos": "Project Funnel",
+  "Generate random password": "Generate random password",
+  "Gerando extrato do cliente...": "Gerando extrato do cliente...",
+  "Gerando Relatório...": "Generating Report...",
+  "Gerar Relatório": "Generate Report",
+  "Gerar Relatório PDF": "Generate PDF Report",
+  "Gerar senha aleatória": "Generate random password",
+  "Gerenciamento de Grupos de Competências": "Competency Group Management",
+  "Gerenciar avaliados e avaliadores": "Manage evaluatees and evaluators",
+  "Gerenciar grupos de usuários": "Manage user groups",
+  "Gerenciar todos os clientes e projetos": "Manage all clients and projects",
+  "Gerenciar usuários Admin Cliente e Visualizadores": "Manage Client Admin and Viewer users",
+  "Gerenciar Usuários e Grupos": "Manage Users and Groups",
+  "Gerencie os clientes cadastrados na plataforma": "Manage clients registered on the platform",
+  "Gerencie os formulários de avaliação dos projetos": "Manage project assessment forms",
+  "Gerencie os pedidos de crédito dos clientes": "Manage client credit orders",
+  "Gerencie os usuários e grupos de usuários da plataforma": "Manage platform users and user groups",
+  "Gestão": "Management",
+  "Gerenciar Competências": "Manage Competencies",
+  "Gestão da própria empresa": "Own company management",
+  "Gestor": "Manager",
+  "Gráfico de Barras Comparativo:": "Comparative Bar Chart:",
+  "Gráfico de barras mostrando quantos projetos com status Ativo cada cliente possui. Permite identificar quais clientes estão mais ativos na plataforma.": "Bar chart showing how many active projects each client has. Helps identify which clients are most active on the platform.",
+  "Gráfico de Defasagem": "Gap Chart",
+  "Gráfico em rosca mostrando a distribuição de todos os participantes cadastrados por categoria (ex: Avaliado, Gestor, Par, Subordinado). Ajuda a entender o perfil dos avaliadores na plataforma.": "Donut chart showing the distribution of all registered participants by category (e.g.: Evaluatee, Manager, Peer, Subordinate). Helps understand the profile of evaluators on the platform.",
+  "Gráfico em rosca mostrando a distribuição dos participantes da sua empresa por categoria (ex: Avaliado, Gestor, Par, Subordinado).": "Donut chart showing the distribution of your company's participants by category (e.g.: Evaluatee, Manager, Peer, Subordinate).",
+  "Gráficos": "Charts",
   "Gredient": "Gredient",
-  "Area": "Area",
-  "Candlestick": "Candlestick",
-  "Column": "Column",
-  "Doughnut & Pie": "Doughnut & Pie",
-  "Radialbar & Radar": "Radialbar & Radar",
-  "Ui Components": "Ui Components",
-  "Badge": "Badge",
-  "Expansion Panel": "Expansion Panel",
-  "Chips": "Chips",
-  "Dialog": "Dialog",
+  "Group deleted successfully!": "Group deleted successfully!",
+  "Group Name": "Group Name",
+  "Group name is required.": "Group name is required.",
+  "Groups": "Groups",
+  "Grupo": "Group",
+  "Grupo atualizado com sucesso!": "Group updated successfully!",
+  "Grupo carregado com sucesso!": "Group loaded successfully!",
+  "Grupo carregado com sucesso! Você pode editá-lo e salvar as alterações.": "Group loaded successfully! You can edit it and save the changes.",
+  "Grupo criado com sucesso!": "Group created successfully!",
+  "Grupo excluído com sucesso!": "Group deleted successfully!",
+  "Grupo não encontrado.": "Group not found.",
+  "Grupo salvo com sucesso!": "Group saved successfully!",
+  "Grupos de Competências": "Competency Groups",
+  "Grupo de competências": "Competency group",
+  "Criar novo grupo de competências": "Create new competency group",
+  "Selecione um cliente para ver os grupos de competências": "Select a client to view competency groups",
+  "Grupos": "Grupos",
+  "Grupos de Usuários": "User Groups",
+  "Grupos de usuários da empresa": "Company user groups",
+  "Grupos de usuários que participarão deste projeto": "User groups that will participate in this project",
+  "Grupos do Usuário": "User Groups",
+  "Grupos excluídos com sucesso!": "Groups deleted successfully!",
+  "grupos salvos": "saved groups",
+  "Hide password": "Hide password",
+  "Histórico de envios": "Send history",
+  "HTTP Table": "HTTP Table",
+  "Importar Excel": "Import Excel",
+  "Incluir perguntas abertas (texto livre)": "Include open-ended questions (free text)",
+  "Indicadores e métricas da plataforma em tempo real": "Real-time platform indicators and metrics",
+  "Indicadores rápidos da plataforma: número de clientes ativos, projetos em andamento e avaliações pendentes de resposta.": "Quick platform indicators: number of active clients, projects in progress and assessments pending response.",
+  "Indicadores rápidos da sua empresa: projetos ativos, avaliações em andamento (convites enviados mas não respondidos), total de participantes avaliados e créditos disponíveis para criar novas avaliações.": "Quick company indicators: active projects, assessments in progress (invitations sent but not responded), total participants evaluated and credits available to create new assessments.",
+  "Informações do Participante": "Participant Information",
+  "Informações gerais de identificação": "General identification information",
+  "Invoice": "Invoice",
+  "Isso pode levar alguns segundos, aguarde...": "This may take a few seconds, please wait...",
+  "Itens que requerem atenção imediata ou acompanhamento": "Items requiring immediate attention or follow-up",
+  "Já existe um relatório com este nome. Escolha outro nome ou carregue e atualize o existente.": "A report with this name already exists. Choose another name or load and update the existing one.",
+  "Janela de Johari": "Johari Window",
+  "kpi.avaliacoes_andamento": "Assessments in Progress",
+  "kpi.clientes_ativos": "Active Clients",
+  "kpi.creditos_disponiveis": "Available Credits",
+  "kpi.participantes_ativos": "Active Participants",
+  "kpi.projetos_ativos": "Active Projects",
+  "Landingpage": "Landingpage",
+  "Last Name": "Last Name",
+  "Lembrete": "Reminder",
+  "Lembrete - Avaliado": "Reminder - Evaluatee",
+  "Lembrete - Avaliador": "Reminder - Evaluator",
+  "Lembretes automáticos não configurados para este cliente": "Automatic reminders not configured for this client",
+  "Lembretes Automáticos": "Automatic Reminders",
+  "Liberação de relatório revogada.": "Report release revoked.",
+  "Limpar": "Clear",
+  "Limpar filtros": "Clear filters",
+  "Limpar seleção": "Clear selection",
+  "Limpar seleção de avaliado": "Clear participant selection",
+  "Line": "Line",
+  "Link da avaliação gerado automaticamente ao enviar.": "Assessment link generated automatically when sending.",
+  "Link do relatório (apenas para tipo: Relatório Finalizado).": "Report link (only for type: Completed Report).",
+  "Link Expirado": "Link Expired",
+  "Links enviados para {{count}} participantes!": "Links sent to {{count}} participants!",
+  "Links enviados para {{count}} respondentes!": "Links sent to {{count}} respondents!",
+  "Links no texto": "Links in text",
+  "Lista de Clientes": "Lista de Clientes",
+  "Lista de clientes atualizada!": "Lista de clientes atualizada!",
+  "Lista de Participantes": "Participants List",
+  "Lista de pedidos de crédito que vencem nos próximos 30 dias. Créditos vencidos não podem mais ser utilizados — acompanhe para renovar antes do prazo.": "List of credit orders expiring in the next 30 days. Expired credits can no longer be used — monitor to renew before the deadline.",
+  "Lista de Projetos": "Project List",
+  "Lista de projetos ativos e recentes de todos os clientes. Ordenados por criticidade: atrasados aparecem primeiro, depois os em risco, em andamento e concluídos. A barra mostra o percentual de avaliados que já responderam.": "List of active and recent projects from all clients. Ordered by criticality: overdue appear first, then at risk, in progress and completed. The bar shows the percentage of evaluatees who have already responded.",
+  "Lista de projetos da sua empresa, ordenados por criticidade. Atrasados e em risco aparecem primeiro. A barra mostra o percentual de avaliados que já responderam a avaliação.": "List of your company's projects, ordered by criticality. Overdue and at-risk appear first. The bar shows the percentage of evaluatees who have already responded.",
   "Lists": "Lists",
-  "Divider": "Divider",
+  "Loading client details...": "Loading client details...",
+  "Login": "Login",
+  "Maintenance": "Maintenance",
+  "Master": "Master",
+  "Material Table": "Material Table",
+  "Membros do Grupo": "Group Members",
   "Menu": "Menu",
+  "Menu 1": "Menu 1",
+  "Menu 2": "Menu 2",
+  "Menu Level": "Menu Level",
+  "Meus Grupos": "My Groups",
+  "Mix Table": "Mix Table",
+  "Modelo de E-mail": "Email Template",
+  "Modelos de e-mail": "Email templates",
+  "Modelos de E-mail": "Email Templates",
+  "Monte seu relatório organizando as seções, personalizando textos e selecionando competências para análise.": "Build your report by organizing sections, customizing texts and selecting competencies for analysis.",
+  "Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados.": "Shows how many stages active projects are in: Created = total active projects; With invitations sent = projects where at least one participant received an invitation; Completed = finished projects.",
+  "Multi Header Footer": "Multi Header Footer",
+  "N/A": "N/A",
+  "Name": "Name",
+  "Não acessa dados de outros clientes": "Does not access other clients' data",
+  "Não cadastra, edita ou exclui clientes": "Cannot register, edit or delete clients",
+  "Não cria, edita ou exclui usuários": "Does not create, edit or delete users",
+  "Não definida": "Not set",
+  "Não é possível remover o único admin MASTER da plataforma.": "Cannot remove the only MASTER admin on the platform.",
+  "Não é possível remover uma pergunta que está sendo usada em uma competência.": "Cannot remove a question that is being used in a competency.",
+  "Não é possível remover uma pergunta que está vinculada a uma competência.": "Cannot remove a question linked to a competency.",
+  "Não Entregue": "Not Delivered",
+  "Não enviado": "Not sent",
+  "Não Enviado": "Not Sent",
+  "não enviados": "not sent",
+  "Não foi possível encontrar o preview do relatório.": "Could not find the report preview.",
+  "Não identificado": "Unidentified",
+  "Não pode ser editado ou excluído por outros usuários": "Cannot be edited or deleted by other users",
+  "necessário para enviar e-mails": "required to send emails",
+  "Nenhum": "None",
+  "Nenhum alerta para o filtro selecionado": "No alerts for the selected filter",
+  "Nenhum cliente disponível para exportação.": "No client available for export.",
+  "Nenhum cliente encontrado": "No clients found",
+  "Nenhum cliente para o filtro selecionado": "No clients for the selected filter",
+  "Nenhum clientId fornecido.": "No clientId provided.",
+  "Nenhum formulário disponível para este cliente": "No forms available for this client",
+  "Nenhum template de relatório disponível para este cliente": "No report templates available for this client",
+  "Opcional — pré-seleciona o layout na tela de relatórios": "Optional — pre-selects the layout on the reports screen",
+  "Nenhum formulário encontrado.": "No forms found.",
+  "Nenhum grupo disponível. Crie grupos de usuários primeiro.": "No groups available. Create user groups first.",
+  "Nenhum grupo encontrado": "No groups found",
+  "Nenhum membro no grupo.": "No members in the group.",
+  "Nenhum modelo disponível para este cliente": "No templates available for this client",
+  "Nenhum participante encontrado": "No participants found",
+  "Nenhum participante encontrado.": "No participants found.",
+  "Nenhum participante válido encontrado.": "No valid participants found.",
+  "Nenhum pedido encontrado": "No orders found",
+  "Nenhum projeto ativo utiliza esta avaliação.": "No active project uses this assessment.",
+  "Nenhum projeto em andamento": "No projects in progress",
+  "Nenhum projeto para o filtro selecionado": "No projects for the selected filter",
+  "Nenhum reservado neste projeto": "None reserved in this project",
+  "Nenhum template encontrado para este cliente.": "No template found for this client.",
+  "Nenhum usuário encontrado": "No users found",
+  "Nenhuma": "None",
+  "Nenhuma avaliação associada a este projeto.": "No assessment associated with this project.",
+  "Nenhuma avaliação encontrada": "No assessments found",
+  "Nenhuma avaliação encontrada para este cliente.": "No assessments found for this client.",
+  "Nenhuma competência cadastrada": "No competencies registered",
+  "Nenhuma pergunta aberta com respostas encontrada. Certifique-se de que o formulário possui perguntas de texto livre (continuar, parar, começar a fazer) e que os participantes responderam.": "No open questions with responses found. Make sure the form has free text questions (continue, stop, start doing) and that participants have responded.",
+  "Nenhuma pergunta adicionada.": "No questions added.",
+  "Nenhuma pergunta encontrada nas competências.": "No questions found in the competencies.",
+  "Next": "Next",
+  "Nível": "Level",
+  "No Clients": "No Clients",
+  "No groups": "No groups",
+  "No projects": "No projects",
+  "Nome": "Name",
+  "Nome da competência": "Competency name",
+  "Nome da Competência": "Competency Name",
+  "Nome da empresa...": "Company name...",
+  "Nome do Cliente": "Client Name",
+  "Nome do cliente...": "Client name...",
+  "Nome do Formulário": "Form Name",
+  "Nome do formulário...": "Form name...",
+  "Nome do Grupo": "Nome do Grupo",
+  "Nome do Novo Grupo": "New Group Name",
+  "Nome do novo relatório": "New report name",
+  "Nome do Projeto": "Project Name",
+  "Nome do Representante": "Nome do Representante",
+  "Nome do responsável pelo projeto": "Name of the project manager",
+  "Nome do template": "Template name",
+  "Nome do Template": "Template Name",
+  "Nome Fantasia": "Nome Fantasia",
+  "Nome que aparecerá nos relatórios e gráficos": "Name that will appear in reports and charts",
+  "Nome, cliente...": "Name, client...",
+  "Nome, e-mail...": "Name, email...",
+  "Notas Adicionais": "Notas Adicionais",
+  "Notes": "Notes",
+  "Notificações automáticas da sua empresa. Crítico: prazo vencido com respostas pendentes. Atenção: prazo em até 7 dias com respostas incompletas. Aviso: sem créditos disponíveis.": "Automatic notifications from your company. Critical: overdue deadline with pending responses. Attention: deadline within 7 days with incomplete responses. Warning: no credits available.",
+  "Notificações geradas automaticamente pelo sistema. Crítico (vermelho): prazo vencido com respostas pendentes. Atenção (laranja): prazo em até 7 dias com respostas incompletas. Aviso (azul): cliente sem créditos.": "Notifications generated automatically by the system. Critical (red): overdue deadline with pending responses. Attention (orange): deadline within 7 days with incomplete responses. Warning (blue): client without credits.",
+  "Notification Status": "Notification Status",
+  "Nova Competência": "New Competency",
+  "Novo Grupo de Competências": "New Competency Group",
+  "Novo Projeto": "New Project",
+  "O cliente é obrigatório": "Client is required",
+  "O cliente é obrigatório.": "Client is required.",
+  "O e-mail é obrigatório.": "Email is required.",
+  "O nome deve ter pelo menos 3 caracteres": "Name must be at least 3 characters",
+  "O nome do cliente é obrigatório.": "Client name is required.",
+  "O nome do grupo é obrigatório": "Group name is required",
+  "O nome do grupo é obrigatório.": "Group name is required.",
+  "O nome é obrigatório": "Name is required",
+  "O nome é obrigatório.": "First name is required.",
+  "O papel é obrigatório.": "Role is required.",
+  "O que cada perfil pode fazer na plataforma": "What each profile can do on the platform",
+  "O sobrenome é obrigatório.": "Last name is required.",
+  "O usuário já existe no sistema!": "User already exists in the system!",
+  "Obrigatória": "Required",
+  "obrigatório": "required",
+  "Ocorreu um erro ao atualizar o relatório.": "An error occurred while updating the report.",
+  "Ocorreu um erro ao atualizar o template.": "An error occurred while updating the template.",
+  "Ocorreu um erro ao salvar o relatório.": "An error occurred while saving the report.",
+  "Ocorreu um erro ao salvar o template.": "An error occurred while saving the template.",
+  "Ocultar senha": "Ocultar senha",
+  "Opção": "Option",
+  "Opção...": "Option...",
+  "Opções de Resposta": "Answer Options",
+  "Ordenados por criticidade — atrasados e em risco no topo": "Ordered by criticality — overdue and at risk at the top",
+  "Outros": "Others",
+  "Pacote docx não encontrado. Instale com: npm i docx": "Package docx not found. Install with: npm i docx",
+  "Pagination Table": "Pagination Table",
   "Paginator": "Paginator",
+  "paginator.firstPage": "First page",
+  "paginator.itemsPerPage": "Items per page:",
+  "paginator.lastPage": "Last page",
+  "paginator.nextPage": "Next page",
+  "paginator.previousPage": "Previous page",
+  "paginator.range": "{{start}} – {{end}} of {{length}}",
+  "Paleta de cores": "Color palette",
+  "Papel": "Papel",
+  "Par": "Peer",
+  "Participante excluído com sucesso.": "Participant deleted successfully.",
+  "Participantes": "Participants",
+  "Participantes por Categoria": "Participants by Category",
+  "Password": "Password",
+  "Password is required.": "Password is required.",
+  "Password must be at least 6 characters long.": "Password must be at least 6 characters long.",
+  "PDF": "PDF",
+  "PDF exportado com sucesso!": "PDF exported successfully!",
+  "PDF gerado com sucesso usando PDFMake!": "PDF gerado com sucesso usando PDFMake!",
+  "Pedido em": "Ordered on",
+  "Pedidos": "Orders",
+  "Pedidos com validade nos próximos 30 dias": "Orders expiring in the next 30 days",
+  "Pedidos de Crédito": "Credit Orders",
+  "Pedidos de crédito com validade nos próximos 30 dias": "Credit requests expiring in the next 30 days",
+  "Pedidos de crédito que vencem nos próximos 30 dias. Créditos vencidos não podem ser utilizados — entre em contato com a ECK para renovar antes do prazo.": "Credit orders expiring in the next 30 days. Expired credits cannot be used — contact ECK to renew before the deadline.",
+  "Pelo menos um grupo é obrigatório.": "At least one group is required.",
+  "Pendente": "Pending",
+  "pendentes": "pending",
+  "Perfil": "Profile",
+  "Perfis e Permissões": "Profiles and Permissions",
+  "perm.master.audience": "ECK partners / admins",
+  "perm.master.intro": "Full access. Only profile with full access to the Settings menu.",
+  "perm.master.dashboard": "Global dashboard for all clients",
+  "perm.master.participants": "Participants: list, create, import and edit (pre-send)",
+  "perm.master.projects": "Projects: create, edit, delete, send invites and track responses",
+  "perm.master.settings": "Settings: clients, credits, competencies, forms, emails and reminders",
+  "perm.master.reports": "Reports: export PDF, Word and Excel",
+  "perm.master.release_reports": "Release reports for Client Admin and Viewer",
+  "perm.master.note": "Manages Client Admin and Viewer users",
+  "perm.admin.audience": "Client HR Master",
+  "perm.admin.intro": "Operates the company's projects: participants, responses and invites.",
+  "perm.admin.dashboard": "Company dashboard and credit balance (read-only)",
+  "perm.admin.participants": "Participants: list, create, import and edit (pre-send)",
+  "perm.admin.projects": "Projects: create, edit, send/resend invites and track responses",
+  "perm.admin.groups": "Company user groups",
+  "perm.admin.emails": "Company email templates and automatic reminders",
+  "perm.admin.credits_view": "Credit orders: view company balance",
+  "perm.admin.reports": "Released reports: export PDF and Excel",
+  "perm.admin.denied.clients": "Cannot create, edit or delete clients",
+  "perm.admin.denied.users": "No access to user management",
+  "perm.admin.denied.forms": "No access to competencies and forms",
+  "perm.admin.denied.delete_projects": "Cannot delete projects",
+  "perm.admin.denied.other_clients": "Cannot access other clients' data",
+  "perm.admin.note": "Access restricted to own company data",
+  "perm.viewer.audience": "Client HR viewer",
+  "perm.viewer.intro": "Tracks progress on projects they are assigned to.",
+  "perm.viewer.dashboard": "Dashboard on group-linked projects",
+  "perm.viewer.participants_view": "Participants: view on linked projects",
+  "perm.viewer.projects_view": "Projects: view progress and responses on linked projects",
+  "perm.viewer.reminders": "Send reminders and configure reminders on linked projects",
+  "perm.viewer.reports_pdf": "Released reports: PDF export only",
+  "perm.viewer.denied.create_participants": "Cannot create, import or edit participants",
+  "perm.viewer.denied.edit_projects": "Cannot create, edit deadlines or delete projects",
+  "perm.viewer.denied.users_groups": "No access to users or groups",
+  "perm.viewer.denied.other_projects": "Cannot see projects they are not linked to",
+  "perm.viewer.note": "Monitoring access and PDF export",
+  "perm.rules.title": "Critical rules",
+  "perm.rules.block_only": "Users cannot be deleted — only blocked. At least one active Master must always exist.",
+  "perm.rules.confirm_delete": "Critical data requires explicit confirmation before deletion.",
+  "perm.rules.anonymization": "Individual evaluator responses are never nominally attributed to the evaluated person.",
+  "Usuários não podem ser excluídos. Utilize bloquear acesso.": "Users cannot be deleted. Use block access instead.",
+  "Você não pode bloquear sua própria conta": "You cannot block your own account",
+  "Não é possível bloquear o único admin MASTER ativo da plataforma.": "Cannot block the only active MASTER admin on the platform.",
+  "ADM Cliente só pode bloquear visualizadores": "Client Admin can only block viewers",
+  "Pergunta": "Question",
+  "Pergunta criada e adicionada à avaliação!": "Question created and added to the assessment!",
+  "Pergunta não encontrada.": "Question not found.",
+  "Pergunta obrigatória": "Required question",
+  "Pergunta removida!": "Question removed!",
+  "Pergunta...": "Question...",
+  "Perguntas Abertas": "Open Questions",
+  "Perguntas abertas:": "Open questions:",
+  "Perguntas da Competência": "Competency Questions",
+  "Perguntas desta competência": "Questions for this competency",
+  "Phone": "Phone",
+  "Por favor, dê um nome ao relatório.": "Please give the report a name.",
+  "Por favor, dê um nome ao template.": "Please give the template a name.",
+  "Por favor, insira um e-mail válido.": "Please enter a valid email.",
+  "Por favor, preencha todos os campos obrigatórios": "Please fill in all required fields",
+  "Por favor, selecione um template antes de enviar.": "Please select a template before sending.",
+  "Por favor, selecione um template.": "Please select a template.",
+  "Por favor, selecione uma avaliação antes de enviar.": "Please select an assessment before sending.",
+  "Por favor, selecione uma avaliação.": "Please select an assessment.",
+  "Posts": "Posts",
+  "Prazo": "Deadline",
+  "Prazo de Preenchimento": "Completion Deadline",
+  "Prazo e status": "Deadline and status",
+  "Pré-visualizar": "Preview",
+  "Precisa cadastrar usuários ou criar grupos?": "Need to register users or create groups?",
+  "Preencha nome e descrição da competência.": "Fill in the competency name and description.",
+  "Preparando impressão...": "Preparing print...",
+  "Preview": "Preview",
+  "Pricing": "Pricing",
+  "Profile": "Profile",
   "Progress Bar": "Progress Bar",
   "Progress Spinner": "Progress Spinner",
+  "Progresso": "Progress",
+  "Progresso dos projetos ativos por etapa": "Progress of active projects by stage",
+  "Panorama dos projetos ativos: total, com convites enviados e concluídos": "Overview of active projects: total, with invitations sent and completed",
+  "Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas. Ativos = Em andamento + Concluídos (veja gráfico Projetos por Status).": "Project funnel: Active = projects that are not cancelled or inactive (same total as the Active Projects card); With invitations sent = projects where at least one participant received an invitation; Completed = projects with Completed status. Stages are subsets, not exclusive queues. Active = In progress + Completed (see Projects by Status chart).",
+  "funnel.active_breakdown": "{{inProgress}} in progress + {{completed}} completed = {{total}} active",
+  "Em andamento + Concluído = total Ativos do funil (exclui cancelados)": "In progress + Completed = total Active in funnel (excludes cancelled)",
+  "Em andamento = projetos ainda em execução. Concluído = projetos finalizados. A soma dos dois equivale ao total Ativos do funil e do card Projetos Ativos. Cancelados e inativos aparecem apenas aqui.": "In progress = projects still running. Completed = finished projects. The sum equals total Active in the funnel and Active Projects card. Cancelled and inactive appear only here.",
+  "Projects": "Projects",
+  "Projeto": "Project",
+  "Projeto cancelado com sucesso.": "Projeto cancelado com sucesso.",
+  "Projeto excluído com sucesso.": "Project deleted successfully.",
+  "Projeto não encontrado.": "Project not found.",
+  "Projeto não identificado.": "Project not identified.",
+  "Projetos": "Projects",
+  "Projetos Ativos por Cliente": "Active Projects by Client",
+  "Projetos da sua empresa ordenados por criticidade": "Your company's projects ordered by criticality",
+  "Projetos do Usuário": "User Projects",
+  "Projetos em Andamento": "Projects in Progress",
+  "Projetos excluídos com sucesso.": "Projects deleted successfully.",
+  "Projetos por Status": "Projects by Status",
+  "Prorrogar validade": "Extend validity",
+  "Quantidade de avaliações cadastradas por cliente": "Number of assessments registered per client",
+  "Questionário excluído com sucesso!": "Questionnaire deleted successfully!",
+  "questões": "questions",
+  "Questões já utilizadas em outras competências são desabilitadas.": "Questions already used in other competencies are disabled.",
+  "questões total": "total questions",
+  "Questões vinculadas": "Linked questions",
+  "Radialbar & Radar": "Radialbar & Radar",
+  "Radio": "Radio",
+  "Redirecionando para geração do relatório...": "Redirecting to report generation...",
+  "Reenviar Link para Respondentes": "Resend Link to Respondents",
+  "Reenviar Links": "Resend Links",
+  "Register": "Register",
+  "Register Client": "Register Client",
+  "Rejeitado": "Rejected",
+  "Rejeitar Pedido": "Reject Order",
+  "Relacionar Perguntas às Competências": "Relate Questions to Competencies",
+  "Relatório": "Report",
+  "Relatório atualizado com sucesso!": "Report updated successfully!",
+  "Relatório carregado!": "Report loaded!",
+  "Relatório excluído com sucesso!": "Report deleted successfully!",
+  "Relatório Finalizado": "Completed Report",
+  "Relatório individual para {{name}} carregado. ({{self}} auto-avaliação, {{total}} total de participantes na avaliação)": "Individual report for {{name}} loaded. ({{self}} self-assessment, {{total}} total participants in the assessment)",
+  "Relatório publicado com sucesso.": "Report published successfully.",
+  "Relatório resetado para configuração padrão!": "Report reset to default configuration!",
+  "Relatório salvo com sucesso!": "Report saved successfully!",
+  "Relatórios": "Reports",
+  "Remaining Credits": "Remaining Credits",
+  "Remover competência": "Remove competency",
+  "Remover cor": "Remove color",
+  "Remover pergunta": "Remove question",
+  "Representative Data": "Representative Data",
+  "Representative Email": "Representative Email",
+  "Representative Name": "Representative Name",
+  "Representative Role": "Representative Role",
+  "Reservados": "Reserved",
+  "Reservados — aguardando resposta": "Reserved — awaiting response",
+  "Reservados (este projeto)": "Reserved (this project)",
+  "Responder avaliações 360°": "Respond to 360° assessments",
+  "responderam": "responded",
+  "Respondido": "Responded",
+  "Respondido em": "Responded on",
+  "respondidos": "responded",
+  "Respondidos": "Responded",
+  "Responsável": "Responsible",
+  "Resposta": "Response",
+  "Resposta em texto...": "Text answer...",
+  "Respostas": "Responses",
+  "Resultados e análises de avaliações": "Assessment results and analyses",
+  "Resumo da Configuração": "Configuration Summary",
+  "Resumo de Competências": "Competency Summary",
+  "Reveal password": "Reveal password",
+  "Revelar senha": "Revelar senha",
   "Ripples": "Ripples",
+  "Role": "Role",
+  "Roll Base Access": "Roll Base Access",
+  "Row Context Table": "Row Context Table",
+  "Saldo": "Balance",
+  "Salvando...": "Salvando...",
+  "Salvar": "Salvar",
+  "Salvar Alterações": "Save Changes",
+  "Salvar alterações no template": "Save template changes",
+  "Salvar como template": "Save as template",
+  "Salvar configuração atual": "Save current configuration",
+  "Salvar Grupo": "Save Group",
+  "Salvar grupo atual": "Save current group",
+  "Salvar Projeto": "Save Project",
+  "Save": "Save",
+  "Save Changes": "Save Changes",
+  "Saving...": "Saving...",
+  "Search Group": "Search Group",
+  "Search User": "Search User",
+  "Seção adicionada!": "Section added!",
+  "Seção removida!": "Section removed!",
+  "seções configuradas": "configured sections",
+  "Sector": "Sector",
+  "Seleção de avaliado limpa.": "Participant selection cleared.",
+  "Seleção de avaliado limpa. Visualizando dados de todos os avaliados.": "Participant selection cleared. Viewing data for all participants.",
+  "selecionadas.": "selected.",
+  "Selecionar Destinatários": "Select Recipients",
+  "Selecione a avaliação": "Select the assessment",
+  "Selecione a data de início": "Select the start date",
+  "Selecione a data de validade": "Select the expiration date",
+  "Selecione ao menos um destinatário.": "Select at least one recipient.",
+  "Selecione as Competências": "Select Competencies",
+  "Selecione as competências que devem aparecer nesta seção de gráficos.": "Select the competencies to appear in this charts section.",
+  "Selecione as perguntas de avaliação que pertencem a cada competência.": "Select the assessment questions that belong to each competency.",
+  "Selecione as questões": "Select questions",
+  "Selecione o avaliado": "Select participant",
+  "Selecione o cliente": "Select the client",
+  "Selecione o Cliente": "Select Client",
+  "Selecione o cliente e o projeto": "Select the client and project",
+  "Selecione o cliente para associar as competências": "Select the client to associate competencies",
+  "Selecione o cliente primeiro": "Select the client first",
+  "Selecione o projeto": "Select the project",
+  "Selecione o Projeto": "Select Project",
+  "Selecione o projeto primeiro": "Select the project first",
+  "Selecione o Template de Relatório": "Select the Report Template",
+  "Selecione para avançar para a próxima etapa": "Select to proceed to the next step",
+  "Selecione pelo menos uma pergunta da avaliação ou adicione uma pergunta custom.": "Select at least one assessment question or add a custom question.",
+  "Selecione um avaliado específico para visualizar dados individuais": "Select a specific participant to view individual data",
+  "Selecione um cliente antes de atualizar o relatório.": "Select a client before updating the report.",
+  "Selecione um cliente antes de atualizar o template.": "Selecione um cliente antes de atualizar o template.",
+  "Selecione um cliente antes de criar competências.": "Select a client before creating competencies.",
+  "Selecione um cliente antes de publicar o relatório.": "Select a client before publishing the report.",
+  "Selecione um cliente antes de salvar o relatório.": "Select a client before saving the report.",
+  "Selecione um cliente antes de salvar o template.": "Selecione um cliente antes de salvar o template.",
+  "Selecione um cliente e gerencie grupos de competências": "Select a client and manage competency groups",
+  "Selecione um cliente para ver os formulários disponíveis": "Select a client to see available forms",
+  "Selecione um cliente para ver os templates de relatório disponíveis": "Select a client to see available report templates",
+  "Selecione um cliente primeiro.": "Select a client first.",
+  "Selecione um Formulário de Avaliação": "Select an Assessment Form",
+  "Selecione um Modelo de e-mail": "Select an Email Template",
+  "Selecione um projeto": "Select a project",
+  "Selecione um projeto.": "Select a project.",
+  "Selecione um relatório para atualizar.": "Select a report to update.",
+  "Selecione um relatório para excluir.": "Select a report to delete.",
+  "Selecione um template para editar.": "Select a template to edit.",
+  "Selecione um template para excluir.": "Selecione um template para excluir.",
+  "Selecione uma avaliação": "Select an assessment",
+  "Selecione uma avaliação antes de publicar o relatório.": "Select an assessment before publishing the report.",
+  "Selecione uma avaliação para visualizar os resultados": "Select an assessment to view results",
+  "Selecione uma avaliação primeiro.": "Select an assessment first.",
+  "Selecione uma avaliação.": "Select an assessment.",
+  "Selection Table": "Selection Table",
+  "Sem acesso a configurações": "No access to settings",
+  "Sem acesso a formulários de avaliação": "No access to assessment forms",
+  "Sem acesso à lista de usuários": "No access to user list",
+  "Sem acesso a usuários ou grupos": "No access to users or groups",
+  "Sem acesso ao painel de gestão": "No access to the management panel",
+  "Sem avaliação vinculada, você pode criar perguntas agora para cada competência do grupo.": "Without a linked assessment, you can create questions now for each group competency.",
+  "Sem Cliente": "No Client",
+  "Sem Clientes": "Sem Clientes",
+  "Sem config.": "No config.",
+  "Sem créditos": "No credits",
+  "Sem créditos — envio bloqueado": "No credits — sending blocked",
+  "Sem dados para exportar.": "No data to export.",
+  "Sem grupos": "Sem grupos",
+  "Sem projetos": "Sem projetos",
+  "Sem respostas válidas para exportar.": "No valid responses to export.",
+  "Send Email": "Send Email",
+  "Senha": "Senha",
+  "Setor": "Sector",
+  "Side Forgot Password": "Side Forgot Password",
+  "Side Login": "Side Login",
+  "Side Register": "Side Register",
+  "Side Two Steps": "Side Two Steps",
+  "Siga as etapas para visualizar participantes e enviar e-mails": "Follow the steps to view participants and send emails",
   "Slide Toggle": "Slide Toggle",
   "Slider": "Slider",
   "Snackbar": "Snackbar",
+  "Sobrenome": "Sobrenome",
+  "Sortable Table": "Sortable Table",
+  "Status": "Status",
+  "Status de Notificação": "Notification Status",
+  "Sticky Column": "Sticky Column",
+  "Sticky Header Footer": "Sticky Header Footer",
+  "Subordinado": "Subordinate",
+  "Substituído pela data limite do projeto (DD/MM/YYYY).": "Replaced by the project deadline (DD/MM/YYYY).",
+  "Substituído pelo nome de quem está sendo avaliado (e-mail ao avaliador).": "Replaced by the name of the person being evaluated (email to evaluator).",
+  "Substituído pelo nome do participante ao enviar.": "Replaced by the participant's name when sending.",
+  "Tabela de Distribuição": "Distribution Table",
+  "Tabela de Frequência": "Frequency Table",
+  "Tabela Detalhada": "Detailed Table",
+  "Table Editing": "Table Editing",
+  "Tables": "Tables",
   "Tabs": "Tabs",
+  "Taskboard": "Taskboard",
+  "Taxa de Conclusão": "Completion Rate",
+  "Telefone": "Telefone",
+  "Tem certeza de que deseja cancelar este projeto? Ele não aparecerá mais no Dashboard.": "Are you sure you want to cancel this project? It will no longer appear on the Dashboard.",
+  "Tem certeza de que deseja excluir esta avaliação?": "Are you sure you want to delete this assessment?",
+  "Tem certeza de que deseja excluir este projeto?": "Are you sure you want to delete this project?",
+  "Tem certeza de que deseja excluir este projeto? Participantes, links e créditos reservados também serão removidos.": "Are you sure you want to delete this project? Participants, links and reserved credits will also be removed.",
+  "Tem certeza de que deseja excluir o grupo ": "Tem certeza de que deseja excluir o grupo ",
+  "Tem certeza de que deseja excluir o grupo \"{{name}}\"?": "Tem certeza de que deseja excluir o grupo \"{{name}}\"?",
+  "Tem certeza de que deseja excluir o usuário ": "Are you sure you want to delete the user ",
+  "Tem certeza de que deseja excluir o usuário \"{{name}}\"?": "Are you sure you want to delete the user \"{{name}}\"?",
+  "Tem certeza que deseja excluir este participante?": "Are you sure you want to delete this participant?",
+  "Template": "Template",
+  "Template aplicado!": "Template applied!",
+  "Template atualizado com sucesso!": "Template updated successfully!",
+  "Template de Relatório": "Report Template",
+  "Template excluído com sucesso!": "Template deleted successfully!",
+  "Template não encontrado.": "Template not found.",
+  "TEMPLATE PADRÃO": "DEFAULT TEMPLATE",
+  "Template salvo com sucesso!": "Template saved successfully!",
+  "Template selecionado não encontrado.": "Selected template not found.",
+  "Templates": "Templates",
+  "templates disponíveis": "templates available",
+  "Terms and condition": "Terms and condition",
+  "Tickets": "Tickets",
+  "Tipo": "Type",
+  "Tipo de E-mail": "Email Type",
+  "Tipo de gráfico": "Chart type",
+  "Tipo de Notificação": "Notification Type",
+  "Título da seção": "Section title",
+  "Todas": "All",
+  "Todas as competências devem ter pelo menos uma pergunta.": "All competencies must have at least one question.",
+  "ToDo": "ToDo",
+  "Todos": "All",
+  "Todos os avaliados": "All participants",
+  "Todos os clientes": "All clients",
+  "Todos os criadores": "All creators",
+  "Todos os projetos": "Todos os projetos",
+  "Todos os setores": "All sectors",
+  "Todos os status": "All statuses",
   "Toolbar": "Toolbar",
   "Tooltips": "Tooltips",
-  "Login": "Login",
-  "Side Login": "Side Login",
-  "Boxed Login": "Boxed Login",
-  "Register": "Register",
-  "Side Register": "Side Register",
-  "Boxed Register": "Boxed Register",
-  "Forgot Password": "Forgot Password",
-  "Side Forgot Password": "Side Forgot Password",
-  "Boxed Forgot Password": "Boxed Forgot Password",
+  "total": "total",
+  "Total de créditos comprados em pedidos aprovados": "Total credits purchased in approved orders",
+  "Total de créditos adquiridos em pedidos aprovados": "Total credits acquired in approved orders",
+  "Total de Respostas": "Total Responses",
+  "Trade Name": "Trade Name",
+  "Treeview": "Treeview",
   "Two Steps": "Two Steps",
-  "Side Two Steps": "Side Two Steps",
-  "Boxed Two Steps": "Boxed Two Steps",
-  "Error": "Error",
-  "Maintenance": "Maintenance",
-  "Menu Level": "Menu Level",
-  "Menu 1": "Menu 1",
-  "Menu 2": "Menu 2",
-  "Disabled": "Disabled",
-  "Lista de Projetos": "Project List",
-  "Adicionar Projeto": "Add Project",
-  "Salvar Projeto": "Save Project",
-  "Digite para buscar": "Type to search",
-  "Nome": "Name",
-  "Prazo de Preenchimento": "Completion Deadline",
-  "Respostas": "Responses",
-  "Faltam": "Pending",
-  "Ações": "Actions",
+  "Type the client name": "Type the client name",
+  "Type the CNPJ": "Type the CNPJ",
+  "Type the email": "Type the email",
+  "Type the group name": "Type the group name",
+  "Type the name": "Type the name",
+  "Type the password": "Type the password",
+  "Type the sector": "Type the sector",
+  "Type the surname": "Type the surname",
+  "Ui Components": "Ui Components",
+  "Última Resposta": "Last Response",
+  "Update": "Update",
+  "URLs com http:// ou https:// viram links clicáveis automaticamente.": "URLs starting with http:// or https:// become clickable links automatically.",
+  "Usados": "Used",
+  "Use o editor de texto rico para criar uma capa profissional. Você pode adicionar títulos, subtítulos, imagens, cores e formatação para destacar informações importantes. Clique em \"Aplicar Template\" para usar um modelo pré-formatado.": "Use the rich text editor to create a professional cover. You can add titles, subtitles, images, colors and formatting to highlight important information. Click \"Apply Template\" to use a preformatted template.",
+  "User": "User",
+  "User added successfully!": "User added successfully!",
+  "User already exists in the system!": "User already exists in the system!",
+  "User created successfully!": "User created successfully!",
+  "User deleted successfully!": "User deleted successfully!",
+  "User Groups": "User Groups",
+  "User not found.": "User not found.",
+  "User updated successfully!": "User updated successfully!",
+  "Users": "Users",
+  "Usuário": "User",
+  "Usuário adicionado com sucesso!": "User added successfully!",
+  "Usuário atualizado com sucesso!": "User updated successfully!",
+  "Usuário criado com sucesso!": "User created successfully!",
+  "Usuário excluído com sucesso!": "User deleted successfully!",
+  "Usuário não encontrado.": "User not found.",
+  "Usuários": "Users",
+  "Usuários (campo)": "Users",
+  "Usuários (lista)": "Users",
+  "Usuários atualizados com sucesso!": "Users updated successfully!",
+  "Usuários do Cliente": "Client Users",
   "Usuários do projeto": "Project users",
-  "Modelos de e-mail": "Email templates",
-  "Formulário de Avaliação": "Assessment Form",
-  "Editar Projeto": "Edit Project",
-  "Excluir Projeto": "Delete Project",
+  "Usuários e Grupos": "Users & Groups",
+  "Usuários excluídos com sucesso!": "Users deleted successfully!",
+  "Usuários incluídos": "Included users",
+  "Utilizados": "Used",
+  "Utilizados — já responderam": "Used — already responded",
+  "Utilizados (este projeto)": "Used (this project)",
+  "Utilizados e disponíveis — clientes críticos no topo": "Used and available — critical clients at the top",
+  "Validade": "Validity",
+  "Variáveis Dinâmicas Disponíveis": "Available Dynamic Variables",
+  "Ver": "View",
+  "Ver Clientes": "Ver Clientes",
+  "Ver detalhes": "View details",
+  "Ver Grupos": "Ver Grupos",
+  "Ver modelos de e-mail": "View email templates",
+  "Ver Participantes": "View Participants",
+  "Ver Projetos": "Ver Projetos",
+  "Ver Relatórios": "View Reports",
+  "Ver relatórios publicados pelo administrador": "View reports published by the administrator",
+  "Ver seu próprio relatório": "View your own report",
+  "Vertical": "Vertical",
+  "View Clients": "View Clients",
+  "View Groups": "View Groups",
+  "View Projects": "View Projects",
+  "Visão Geral": "Overview",
+  "Visualizador": "Viewer",
+  "Visualizar avaliações atribuídas": "View assigned assessments",
+  "Visualizar avaliações vinculadas à empresa": "View assessments linked to the company",
+  "Visualizar clientes vinculados e saldo de créditos": "View linked clients and credit balance",
+  "Visualizar grupos de usuários da empresa": "View company user groups",
+  "Visualizar projetos da própria empresa": "View company's own projects",
+  "Visualizar todos os relatórios": "View all reports",
+  "Você não pode editar sua própria conta MASTER": "You cannot edit your own MASTER account",
+  "Você não pode excluir sua própria conta": "You cannot delete your own account",
+  "Você não pode remover sua própria conta MASTER.": "You cannot remove your own MASTER account.",
+  "Você não pode remover sua própria conta MASTER. Solicite a outro admin MASTER que realize esta ação": "You cannot remove your own MASTER account. Ask another MASTER admin to perform this action",
+  "Você não pode remover sua própria conta MASTER. Solicite a outro admin MASTER que realize esta ação.": "You cannot remove your own MASTER account. Ask another MASTER admin to perform this action.",
+  "Você não tem permissão para atribuir este papel.": "You do not have permission to assign this role.",
   "Voltar": "Back",
-  "Formulários de Avaliação": "Assessment Forms",
-  "Criar Novo Formulário de Avaliação": "Create New Assessment Form",
-  "Buscar por Nome": "Search by Name",
-  "Digite o nome da avaliação": "Type the assessment name",
-  "Nome do Formulário": "Form Name",
-  "Criado Por": "Created By",
-  "Data de Criação": "Creation Date",
-  "Respondidos": "Responded",
-  "Pré-visualizar": "Preview",
-  "Editar": "Edit",
-  "Excluir": "Delete",
-  "Selecionar Destinatários": "Select Recipients",
-  "Buscar Participante": "Search Participant",
-  "Filtrar por Categoria": "Filter by Category",
-  "Todos": "All",
-  "Gestor": "Manager",
-  "Par": "Peer",
-  "Subordinado": "Subordinate",
-  "Avaliado": "Evaluatee",
-  "Outros": "Others",
-  "Filtrar por Status": "Filter by Status",
-  "Não Enviado": "Not Sent",
-  "Enviado (Pendente)": "Sent (Pending)",
-  "Respondido": "Responded",
-  "Filtrar por Status de Entrega": "Filter by Delivery Status",
-  "Enviado": "Sent",
-  "Não Entregue": "Not Delivered",
-  "Selecione o Projeto": "Select Project",
-  "expira em": "expires on",
-  "Tipo de E-mail": "Email Type",
-  "Cadastro do Usuário": "User Registration",
-  "Convite - Avaliador": "Invite - Evaluator",
-  "Convite - Avaliado": "Invite - Evaluatee",
-  "Lembrete - Avaliador": "Reminder - Evaluator",
-  "Lembrete - Avaliado": "Reminder - Evaluatee",
-
-  "E-mail": "Email",
-  "Categoria": "Category",
-  "Status": "Status",
-  "Link Expirado": "Link Expired",
-  "Data de Validade": "Validity Date",
-
-  "Enviar E-mails": "Send Emails",
-  "Carregando participantes...": "Loading participants...",
-  "Data de Envio": "Sent At",
-  "Data de Resposta": "Answered At",
-  "Relatório": "Report",
-
-  "Enviando...": "Sending...",
-
-  "Baixar Planilha de Modelo": "Download Template Spreadsheet",
-  "Carregar Arquivo Excel": "Upload Excel File",
-  "Adicionar Novo Participante": "Add New Participant",
-  "Buscar por Nome ou E-mail": "Search by Name or Email",
-  "Selecione o Cliente": "Select Client",
-  "Selecione um Modelo de e-mail": "Select an Email Template",
-  "Por favor, selecione um template.": "Please select a template.",
-  "Selecione um Formulário de Avaliação": "Select an Assessment Form",
-  "Por favor, selecione uma avaliação.": "Please select an assessment.",
-  "Nenhum participante encontrado.": "No participants found.",
-  "Enviar Links": "Send Links",
-  "grupos salvos": "saved groups",
-  "Carregue um grupo de competências salvo": "Load a saved competency group",
-  "Selecione as questões": "Select questions",
-  "Criar Nova Pergunta": "Create New Question",
-  "Filtro de Tipos de Perguntas": "Question Type Filter",
-  "Incluir perguntas abertas (texto livre)": "Include open-ended questions (free text)",
-  "Nome que aparecerá nos relatórios e gráficos": "Name that will appear in reports and charts",
-  "Descrição que aparecerá como subtítulo nos relatórios": "Description that will appear as a subtitle in reports",
-
-  "Debug Perguntas": "Debug Questions",
-  "Debug Tipos": "Debug Types",
-  "Digite um nome para o grupo de competências.": "Enter a name for the competency group.",
-  "Selecione um cliente primeiro.": "Select a client first.",
-  "Erro ao carregar grupo de competências.": "Error loading competency group.",
-  "Editar Competência": "Edit Competency",
-  "Nova Competência": "New Competency",
-  "Novo Grupo de Competências": "New Competency Group",
-  "Criar como Grupo": "Create as Group",
-  "Nome da Competência": "Competency Name",
-  "O nome é obrigatório": "Name is required",
-  "O nome deve ter pelo menos 3 caracteres": "Name must be at least 3 characters",
-  "Descrição": "Description",
-  "Descreva o que esta competência avalia...": "Describe what this competency evaluates...",
-  "A descrição é obrigatória": "Description is required",
-  "Avaliação (opcional)": "Assessment (optional)",
-  "Nenhuma": "None",
-  "Competências do Grupo": "Group Competencies",
-  "Relacionar Perguntas às Competências": "Relate Questions to Competencies",
-  "Selecione as perguntas de avaliação que pertencem a cada competência.": "Select the assessment questions that belong to each competency.",
-  "Perguntas desta competência": "Questions for this competency",
-  "Criar Perguntas para cada Competência": "Create Questions for each Competency",
-  "Sem avaliação vinculada, você pode criar perguntas agora para cada competência do grupo.": "Without a linked assessment, you can create questions now for each group competency.",
-  "Pergunta": "Question",
-  "Nenhuma pergunta adicionada.": "No questions added.",
-  "Perguntas da Competência": "Competency Questions",
-  "Adicionar pergunta": "Add question",
-  "Tipo": "Type",
-  "Pergunta obrigatória": "Required question",
-  "Remover pergunta": "Remove question",
-  "Opções de Resposta": "Answer Options",
-  "Opção": "Option",
-  "Digite a opção...": "Type the option...",
-  "A opção é obrigatória": "Option is required",
-  "Adicionar Opção": "Add Option",
-  "Preview": "Preview",
-  "Obrigatória": "Required",
-  "Discordo Totalmente": "Strongly Disagree",
-  "Concordo Totalmente": "Strongly Agree",
-  "Opção...": "Option...",
-  "Resposta em texto...": "Text answer...",
-  "Digite um número...": "Type a number...",
-  "Atualizar": "Update",
-  "Criar": "Create",
-  "Criar Grupo": "Create Group",
-  "Erro ao salvar competência": "Error saving competency",
-  "Por favor, preencha todos os campos obrigatórios": "Please fill in all required fields",
-  "Relatório individual para {{name}} carregado. ({{self}} auto-avaliação, {{total}} total de participantes na avaliação)": "Individual report for {{name}} loaded. ({{self}} self-assessment, {{total}} total participants in the assessment)",
-  "Selecione ao menos um destinatário.": "Select at least one recipient.",
-  "Selecione um projeto.": "Select a project.",
-  "E-mail enviado para {{name}}": "Email sent to {{name}}",
-  "Erro ao enviar e-mails ou atualizar documentos.": "Error sending emails or updating documents.",
-  "Não definida": "Not set",
-  "Tem certeza de que deseja excluir este projeto?": "Are you sure you want to delete this project?",
-  "Projeto excluído com sucesso.": "Project deleted successfully.",
-  "Erro ao excluir projeto. Tente novamente mais tarde.": "Error deleting project. Please try again later.",
-  "Cliente não identificado. Contate o suporte.": "Client not identified. Contact support.",
-  "Reenviar Link para Respondentes": "Resend Link to Respondents",
-  "Escolha um Modelo de e-mail": "Choose an Email Template",
-  "Reenviar Links": "Resend Links",
-  "Nenhuma avaliação associada a este projeto.": "No assessment associated with this project.",
-  "Erro ao carregar participantes.": "Error loading participants.",
-  "Nenhum clientId fornecido.": "No clientId provided.",
-  "Nenhum template encontrado para este cliente.": "No template found for this client.",
-  "Erro ao carregar Modelos de e-mail.": "Error loading email templates.",
-  "Template selecionado não encontrado.": "Selected template not found.",
-  "Links enviados para {{count}} respondentes!": "Links sent to {{count}} respondents!",
-  "Erro ao enviar links.": "Error sending links.",
-  "Lista de Participantes": "Participants List",
-  "Filtrar por Tipo": "Filter by Type",
-  "Avaliador": "Evaluator",
-
-  "Excluir Participante": "Delete Participant",
-  "Tem certeza que deseja excluir este participante?": "Are you sure you want to delete this participant?",
-  "Participante excluído com sucesso.": "Participant deleted successfully.",
-  "Erro ao excluir participante.": "Error deleting participant.",
-  "Nenhum participante válido encontrado.": "No valid participants found.",
-  "Gerar Relatório PDF": "Generate PDF Report",
-  "Gerando Relatório...": "Generating Report...",
-  "Informações do Participante": "Participant Information",
-  "Selecione o Template de Relatório": "Select the Report Template",
-  "Template de Relatório": "Report Template",
-  "templates disponíveis": "templates available",
-  "seções configuradas": "configured sections",
-  "Selecione as Competências": "Select Competencies",
-  "Competências": "Competencies",
-  "competências disponíveis.": "competencies available.",
-  "selecionadas.": "selected.",
-  "Resumo da Configuração": "Configuration Summary",
-  "Template": "Template",
-  "competências": "competencies",
-  "questões": "questions",
-  "questões total": "total questions",
-  "Projeto não encontrado.": "Project not found.",
-  "Erro ao carregar questionários.": "Error loading questionnaires.",
-  "Questionário excluído com sucesso!": "Questionnaire deleted successfully!",
-  "Erro ao excluir questionário.": "Error deleting questionnaire.",
-  "Projeto não identificado.": "Project not identified.",
-
-  "Tem certeza de que deseja excluir esta avaliação?": "Are you sure you want to delete this assessment?"
-  ,"Users": "Users"
-  ,"Add User": "Add User"
-  ,"Search User": "Search User"
-  ,"Type the name": "Type the name"
-  ,"Type the surname": "Type the surname"
-  ,"Type the email": "Type the email"
-  ,"Last Name": "Last Name"
-  ,"View Clients": "View Clients"
-  ,"No Clients": "No Clients"
-  ,"Projects": "Projects"
-  ,"View Projects": "View Projects"
-  ,"No projects": "No projects"
-  ,"Groups": "Groups"
-  ,"View Groups": "View Groups"
-  ,"No groups": "No groups"
-  ,"Role": "Role"
-  ,"Notification Status": "Notification Status"
-  ,"Delete User": "Delete User"
-  ,"Send Email": "Send Email"
-  ,"User Groups": "User Groups"
-  ,"Add User Group": "Add User Group"
-  ,"Search Group": "Search Group"
-  ,"Created by": "Created by"
-  ,"Delete Group": "Delete Group"
-  ,"Are you sure you want to delete the group \"{{name}}\"?": "Are you sure you want to delete the group \"{{name}}\"?"
-  ,"Group deleted successfully!": "Group deleted successfully!"
-  ,"Error deleting group.": "Error deleting group."
-  ,"Are you sure you want to delete the user \"{{name}}\"?": "Are you sure you want to delete the user \"{{name}}\"?"
-  ,"User deleted successfully!": "User deleted successfully!"
-  ,"Error deleting user.": "Error deleting user."
-  ,"Email sent to {{email}}": "Email sent to {{email}}"
-  ,"Error loading data.": "Error loading data."
-  ,"Error loading users.": "Error loading users."
-  ,"Error loading user groups.": "Error loading user groups."
-
-  ,"Edit User": "Edit User"
-  ,"Create New User": "Create New User"
-  ,"Email is required.": "Email is required."
-  ,"Save Changes": "Save Changes"
-  ,"Create User": "Create User"
-  ,"You do not have permission to assign this role.": "You do not have permission to assign this role."
-  ,"User updated successfully!": "User updated successfully!"
-  ,"User not found.": "User not found."
-  ,"User already exists in the system!": "User already exists in the system!"
-  ,"User created successfully!": "User created successfully!"
-  ,"Error updating user.": "Error updating user."
-  ,"Error creating user.": "Error creating user."
-  ,"Error loading projects or groups.": "Error loading projects or groups."
-
-  ,"Edit User Group": "Edit User Group"
-  ,"Create New User Group": "Create New User Group"
-  ,"Client is required.": "Client is required."
-  ,"Group Name": "Group Name"
-  ,"Type the group name": "Type the group name"
-  ,"Group name is required.": "Group name is required."
-  ,"Describe the group": "Describe the group"
-
-  ,"Client List": "Client List"
-  ,"Add Client": "Add Client"
-  ,"Client Name": "Client Name"
-  ,"Type the client name": "Type the client name"
-  ,"Client name is required.": "Client name is required."
-  ,"Sector": "Sector"
-  ,"Type the sector": "Type the sector"
-  ,"CNPJ": "CNPJ"
-  ,"Type the CNPJ": "Type the CNPJ"
-  ,"Remaining Credits": "Remaining Credits"
-  ,"Client updated successfully!": "Client updated successfully!"
-  ,"Client registered with ID {{id}}!": "Client registered with ID {{id}}!"
-  ,"Error saving client. Please try again.": "Error saving client. Please try again."
-  ,"Register Client": "Register Client"
-  ,"Edit Client": "Edit Client"
-  ,"Save": "Save"
-  ,"Update": "Update"
-  ,"Saving...": "Saving..."
-  ,"Client Details": "Client Details"
-  ,"Trade Name": "Trade Name"
-  ,"Email (field)": "Email"
-  ,"Phone": "Phone"
-  ,"Additional Notes": "Additional Notes"
-  ,"Representative Data": "Representative Data"
-  ,"Representative Name": "Representative Name"
-  ,"Representative Email": "Representative Email"
-  ,"Representative Role": "Representative Role"
-  ,"Client Users": "Client Users"
-  ,"Loading client details...": "Loading client details..."
-  ,"Confirmation": "Confirmation"
-  ,"Confirm": "Confirm"
-  ,"Client list updated!": "Client list updated!"
-  ,"By removing the client, all associated projects, groups, and users will also be deleted. Do you want to continue?": "By removing the client, all associated projects, groups, and users will also be deleted. Do you want to continue?"
-  ,"Client and related data deleted successfully.": "Client and related data deleted successfully."
-  ,"Error deleting client. Check related data and try again.": "Error deleting client. Check related data and try again."
-  ,"Client not found.": "Client not found."
-  ,"Error loading client data.": "Error loading client data."
-  ,"Error saving changes.": "Error saving changes."
-  ,"User added successfully!": "User added successfully!"
-  ,"Error adding user. Please try again later.": "Error adding user. Please try again later."
-  ,"Back": "Back"
-  ,"Password": "Password"
-  ,"Type the password": "Type the password"
-  ,"Hide password": "Hide password"
-  ,"Reveal password": "Reveal password"
-  ,"Generate random password": "Generate random password"
-  ,"Password is required.": "Password is required."
-  ,"Password must be at least 6 characters long.": "Password must be at least 6 characters long."
-  ,"Administrator": "Administrator"
-  ,"User": "User"
-
-  ,"Criar Template": "Create Template"
-  ,"Editar Template": "Edit Template"
-  ,"Nome do Template": "Template Name"
-  ,"Tipo de Notificação": "Notification Type"
-  ,"Assunto": "Subject"
-  ,"TEMPLATE PADRÃO": "DEFAULT TEMPLATE"
-  ,"Configurações do Template": "Template Settings"
-  ,"Defina o tipo, assunto e cliente do modelo": "Set the type, subject and client of the template"
-  ,"Variáveis Dinâmicas Disponíveis": "Available Dynamic Variables"
-  ,"Substituído pelo nome do participante ao enviar.": "Replaced by the participant's name when sending."
-  ,"Substituído pelo nome de quem está sendo avaliado (e-mail ao avaliador).": "Replaced by the name of the person being evaluated (email to evaluator)."
-  ,"Substituído pela data limite do projeto (DD/MM/YYYY).": "Replaced by the project deadline (DD/MM/YYYY)."
-  ,"Link da avaliação gerado automaticamente ao enviar.": "Assessment link generated automatically when sending."
-  ,"Link do relatório (apenas para tipo: Relatório Finalizado).": "Report link (only for type: Completed Report)."
-  ,"Links no texto": "Links in text"
-  ,"URLs com http:// ou https:// viram links clicáveis automaticamente.": "URLs starting with http:// or https:// become clickable links automatically."
-  ,"Digite exatamente como mostrado, incluindo os símbolos $% e colchetes [].": "Type exactly as shown, including the $% symbols and square brackets []."
-  ,"Relatório Finalizado": "Completed Report"
-  ,"Escolha os participantes para receber o e-mail": "Choose the participants to receive the email"
-  ,"Selecione um projeto": "Select a project"
-  ,"Fechar": "Close"
-  ,"Projeto": "Project"
-  ,"Selecionar Destinatários": "Select Recipients"
-  ,"Criar Formulário": "Create Form"
-  ,"Nenhum formulário encontrado.": "No forms found."
-  ,"Gerencie os formulários de avaliação dos projetos": "Manage project assessment forms"
-
-  ,"Visão Geral": "Overview"
-  ,"Indicadores e métricas da plataforma em tempo real": "Real-time platform indicators and metrics"
-  ,"Exportar Dashboard": "Export Dashboard"
-  ,"Exportar Tabelas": "Export Tables"
-  ,"Exportar PDF": "Export PDF"
-  ,"Isso pode levar alguns segundos, aguarde...": "This may take a few seconds, please wait..."
-  ,"Avaliações por Cliente": "Assessments by Client"
-  ,"Participantes por Categoria": "Participants by Category"
-  ,"Distribuição dos participantes por tipo de avaliador": "Distribution of participants by evaluator type"
-  ,"Nenhum participante encontrado": "No participants found"
-  ,"Créditos Próximos ao Vencimento": "Credits Near Expiration"
-  ,"Pedidos de crédito com validade nos próximos 30 dias": "Credit requests expiring in the next 30 days"
-  ,"Limpar seleção": "Clear selection"
-  ,"Importar Excel": "Import Excel"
-  ,"Filtrar Participantes": "Filter Participants"
-  ,"Baixar Modelo": "Download Template"
-  ,"Baixar Modelo Excel": "Download Excel Template"
-  ,"Adicionar Participante": "Add Participant"
-  ,"Adicionar Grupo": "Add Group"
-  ,"Competência": "Competency"
-  ,"Competências para Análise Detalhada": "Competencies for Detailed Analysis"
-  ,"Nome do formulário...": "Form name..."
-  ,"Nome, cliente...": "Name, client..."
-  ,"Nome, e-mail...": "Name, email..."
-  ,"Pergunta...": "Question..."
-  ,"Duplicar modelo": "Duplicate template"
-  ,"Envio": "Sent"
-  ,"Modelo de E-mail": "Email Template"
-  ,"Resposta": "Response"
-  ,"Todas": "All"
-  ,"Criado de": "Created from"
-  ,"Criado até": "Created until"
-  ,"Criador": "Creator"
-  ,"Buscar grupo": "Search group"
-  ,"Buscar usuário": "Search user"
-  ,"A pergunta é obrigatória": "Question is required"
-  ,"O cliente é obrigatório": "Client is required"
-  ,"O nome do grupo é obrigatório": "Group name is required"
-  ,"Adicione participantes manualmente ou importe uma planilha Excel.": "Add participants manually or import an Excel spreadsheet."
-  ,"Por favor, insira um e-mail válido.": "Please enter a valid email."
-  ,"Vertical": "Vertical"
-  ,"Gráficos": "Charts"
-  ,"Salvar Projeto": "Save Project"
-
-  ,"Competências": "Competencies"
-  ,"Cancelar": "Cancel"
-  ,"Novo Projeto": "New Project"
-  ,"Gerar Relatório": "Generate Report"
-  ,"O cliente é obrigatório.": "Client is required."
-
-  ,"Erro ao gerar PDF automaticamente. Tente gerar manualmente.": "Error generating PDF automatically. Try generating manually."
-  ,"Falha ao carregar as avaliações.": "Failed to load assessments."
-  ,"Competência atualizada com sucesso!": "Competency updated successfully!"
-  ,"Competência adicionada com sucesso!": "Competency added successfully!"
-  ,"Seção adicionada!": "Section added!"
-  ,"Por favor, dê um nome ao relatório.": "Please give the report a name."
-  ,"Relatório salvo com sucesso!": "Report saved successfully!"
-  ,"Ocorreu um erro ao salvar o relatório.": "An error occurred while saving the report."
-  ,"Relatório carregado!": "Report loaded!"
-  ,"Seção removida!": "Section removed!"
-  ,"Relatório resetado para configuração padrão!": "Report reset to default configuration!"
-  ,"Por favor, dê um nome ao template.": "Please give the template a name."
-  ,"Template salvo com sucesso!": "Template saved successfully!"
-  ,"Ocorreu um erro ao salvar o template.": "An error occurred while saving the template."
-  ,"Template aplicado!": "Template applied!"
-  ,"Não foi possível encontrar o preview do relatório.": "Could not find the report preview."
-  ,"PDF exportado com sucesso!": "PDF exported successfully!"
-  ,"Pacote docx não encontrado. Instale com: npm i docx": "Package docx not found. Install with: npm i docx"
-  ,"Competência removida.": "Competency removed."
-  ,"Dados de Destaques enviados para o console.": "Highlights data sent to console."
-  ,"Selecione um template para editar.": "Select a template to edit."
-  ,"Template atualizado com sucesso!": "Template updated successfully!"
-  ,"Ocorreu um erro ao atualizar o template.": "An error occurred while updating the template."
-  ,"Selecione um relatório para atualizar.": "Select a report to update."
-  ,"Relatório atualizado com sucesso!": "Report updated successfully!"
-  ,"Ocorreu um erro ao atualizar o relatório.": "An error occurred while updating the report."
-  ,"Já existe um relatório com este nome. Escolha outro nome ou carregue e atualize o existente.": "A report with this name already exists. Choose another name or load and update the existing one."
-  ,"Carregue um template ou relatório nos cards acima antes de salvar.": "Load a template or report from the cards above before saving."
-  ,"Erro ao carregar clientes.": "Error loading clients."
-  ,"Erro ao carregar grupos de competências.": "Error loading competency groups."
-  ,"Adicione pelo menos uma competência antes de salvar o grupo.": "Add at least one competency before saving the group."
-  ,"Grupo salvo com sucesso!": "Group saved successfully!"
-  ,"Grupo carregado com sucesso!": "Group loaded successfully!"
-  ,"Grupo não encontrado.": "Group not found."
-  ,"Debug executado! Veja o console.": "Debug executed! See the console."
-  ,"Seleção de avaliado limpa. Visualizando dados de todos os avaliados.": "Participant selection cleared. Viewing data for all participants."
-
-  ,"Perguntas Abertas": "Open Questions"
-  ,"Perguntas abertas:": "Open questions:"
-  ,"Exibe as respostas de todos os participantes (avaliado e avaliadores) às perguntas: o que continuar, parar e começar a fazer. As respostas são agrupadas por categoria (Avaliado, Gestor, Par, Subordinado, Outros).": "Displays responses from all participants (evaluatee and evaluators) to the questions: what to continue, stop and start doing. Responses are grouped by category (Evaluatee, Manager, Peer, Subordinate, Others)."
-  ,"Nenhuma pergunta aberta com respostas encontrada. Certifique-se de que o formulário possui perguntas de texto livre (continuar, parar, começar a fazer) e que os participantes responderam.": "No open questions with responses found. Make sure the form has free text questions (continue, stop, start doing) and that participants have responded."
-
-  ,"Usuários (lista)": "Users"
-  ,"Usuários (campo)": "Users"
-  ,"Descreva o grupo": "Describe the group"
-  ,"Carregando detalhes do usuário...": "Loading user details..."
-  ,"Detalhes do Usuário": "User Details"
-  ,"N/A": "N/A"
-  ,"Nenhum": "None"
-  ,"Pendente": "Pending"
-  ,"Carregando detalhes do grupo...": "Loading group details..."
-  ,"Detalhes do Grupo": "Group Details"
-  ,"Editar Grupo": "Edit Group"
-  ,"Membros do Grupo": "Group Members"
-  ,"Nenhum membro no grupo.": "No members in the group."
-  ,"Ver detalhes": "View details"
-  ,"Clientes do Usuário": "User Clients"
-  ,"Projetos do Usuário": "User Projects"
-  ,"Grupos do Usuário": "User Groups"
-  ,"O papel é obrigatório.": "Role is required."
-
-  ,"Erro ao carregar dados. Tente novamente.": "Error loading data. Please try again."
-  ,"Redirecionando para geração do relatório...": "Redirecting to report generation..."
-  ,"Erro ao gerar relatório. Tente novamente.": "Error generating report. Please try again."
-  ,"Links enviados para {{count}} participantes!": "Links sent to {{count}} participants!"
-  ,"Nenhuma avaliação encontrada para este cliente.": "No assessments found for this client."
-  ,"Erro ao carregar avaliações.": "Error loading assessments."
-  ,"Erro ao carregar projetos.": "Error loading projects."
-  ,"Por favor, selecione um template antes de enviar.": "Please select a template before sending."
-  ,"Por favor, selecione uma avaliação antes de enviar.": "Please select an assessment before sending."
-  ,"Avaliação selecionada não encontrada.": "Selected assessment not found."
-  ,"Erro ao obter dados do usuário autenticado.": "Error getting authenticated user data."
-  ,"Erro ao obter usuário autenticado.": "Error getting authenticated user."
-  ,"Grupo criado com sucesso!": "Group created successfully!"
-  ,"Erro ao criar grupo.": "Error creating group."
-  ,"Grupo atualizado com sucesso!": "Group updated successfully!"
-  ,"Erro ao atualizar grupo.": "Error updating group."
-  ,"Usuários atualizados com sucesso!": "Users updated successfully!"
-  ,"Selecione um cliente antes de criar competências.": "Select a client before creating competencies."
-  ,"Preencha nome e descrição da competência.": "Fill in the competency name and description."
-  ,"Adicione pelo menos uma pergunta custom à competência ou selecione uma avaliação.": "Add at least one custom question to the competency or select an assessment."
-  ,"Selecione pelo menos uma pergunta da avaliação ou adicione uma pergunta custom.": "Select at least one assessment question or add a custom question."
-  ,"Competência removida!": "Competency removed!"
-  ,"Selecione uma avaliação primeiro.": "Select an assessment first."
-  ,"Pergunta criada e adicionada à avaliação!": "Question created and added to the assessment!"
-  ,"Não é possível remover uma pergunta que está sendo usada em uma competência.": "Cannot remove a question that is being used in a competency."
-  ,"Pergunta removida!": "Question removed!"
-  ,"Avaliação criada com sucesso! Agora você pode adicionar perguntas.": "Assessment created successfully! Now you can add questions."
-  ,"Nenhuma pergunta encontrada nas competências.": "No questions found in the competencies."
-  ,"Avaliação criada automaticamente com sucesso!": "Assessment created automatically with success!"
-  ,"Todas as competências devem ter pelo menos uma pergunta.": "All competencies must have at least one question."
-  ,"Grupo carregado com sucesso! Você pode editá-lo e salvar as alterações.": "Group loaded successfully! You can edit it and save the changes."
-  ,"Erro ao criar avaliação.": "Error creating assessment."
-  ,"Erro ao carregar a lista de clientes. Tente novamente mais tarde.": "Error loading the client list. Please try again later."
-
-  ,"Digite a quantidade de créditos": "Enter the number of credits"
-  ,"Digite o valor total": "Enter the total value"
-  ,"Selecione a data de início": "Select the start date"
-  ,"Selecione a data de validade": "Select the expiration date"
-  ,"Digite quaisquer observações adicionais": "Enter any additional notes"
-  ,"Digite o título": "Enter the title"
-  ,"Digite o título...": "Enter the title..."
-  ,"Digite a pergunta...": "Enter the question..."
-  ,"Digite um texto explicativo para esta competência...": "Enter an explanatory text for this competency..."
-  ,"Busque por nome ou e-mail": "Search by name or email"
-  ,"Busque por nome, email ou tipo de usuário": "Search by name, email or user type"
-  ,"Busque por nome, cliente ou projeto": "Search by name, client or project"
-  ,"Digite o nome da organização": "Enter the organization name"
-  ,"Digite aqui...": "Type here..."
-  ,"Digite a descrição": "Enter the description"
-  ,"Comentários...": "Comments..."
-
-  ,"Configuração": "Configuration"
-  ,"Siga as etapas para visualizar participantes e enviar e-mails": "Follow the steps to view participants and send emails"
-  ,"obrigatório": "required"
-  ,"Selecione o cliente": "Select the client"
-  ,"— Nenhum —": "— None —"
-  ,"Selecione para avançar para a próxima etapa": "Select to proceed to the next step"
-  ,"Selecione o cliente primeiro": "Select the client first"
-  ,"Selecione o projeto": "Select the project"
-  ,"Escolha o projeto para carregar os participantes": "Choose the project to load the participants"
-  ,"Configuração de Envio": "Send Configuration"
-  ,"necessário para enviar e-mails": "required to send emails"
-  ,"Selecione o projeto primeiro": "Select the project first"
-  ,"Nenhum modelo disponível para este cliente": "No templates available for this client"
-  ,"Selecione uma avaliação.": "Select an assessment."
-  ,"total": "total"
-  ,"avaliados": "evaluatees"
-  ,"avaliadores": "evaluators"
-  ,"respondidos": "responded"
-  ,"pendentes": "pending"
-  ,"não enviados": "not sent"
-  ,"Selecione o cliente e o projeto": "Select the client and project"
-  ,"Complete as etapas acima para visualizar os participantes e gerenciar os envios de e-mail.": "Complete the steps above to view participants and manage email sends."
-  ,"Créditos — este projeto": "Credits — this project"
-  ,"Disponíveis (cliente)": "Available (client)"
-  ,"Reservados (este projeto)": "Reserved (this project)"
-  ,"Utilizados (este projeto)": "Used (this project)"
-  ,"Reservados — aguardando resposta": "Reserved — awaiting response"
-  ,"Nenhum reservado neste projeto": "None reserved in this project"
-  ,"Utilizados — já responderam": "Used — already responded"
-  ,"Sem créditos — envio bloqueado": "No credits — sending blocked"
-  ,"Atualizando...": "Updating..."
-  ,"atualizado às": "updated at"
-  ,"Atualizar dados em tempo real": "Refresh data in real time"
-  ,"Não enviado": "Not sent"
-  ,"Lembrete": "Reminder"
-  ,"Avaliação respondida — nenhum lembrete pendente": "Assessment responded — no pending reminders"
-  ,"Concluído": "Completed"
-  ,"Convite ainda não enviado — lembretes iniciam após o primeiro envio": "Invitation not yet sent — reminders start after the first send"
-  ,"Aguarda envio": "Awaiting send"
-  ,"Lembretes automáticos não configurados para este cliente": "Automatic reminders not configured for this client"
-  ,"Sem config.": "No config."
-  ,"Em breve": "Coming soon"
-  ,"Editar participante": "Edit participant"
-  ,"Histórico de envios": "Send history"
-  ,"Cancelar envio e liberar crédito": "Cancel send and release credit"
-  ,"Enviado em": "Sent on"
-  ,"Aguardando resposta": "Awaiting response"
-  ,"Respondido em": "Responded on"
-  ,"1 crédito consumido ao responder": "1 credit consumed on response"
-  ,"1 crédito": "1 credit"
-  ,"1 crédito reservado para este participante": "1 credit reserved for this participant"
-  ,"1 reservado": "1 reserved"
-  ,"Cargo / Setor": "Role / Sector"
-  ,"Envio / Resposta": "Send / Response"
-  ,"Excluir selecionados": "Delete selected"
-
-  ,"Lista de projetos da sua empresa, ordenados por criticidade. Atrasados e em risco aparecem primeiro. A barra mostra o percentual de avaliados que já responderam a avaliação.": "List of your company's projects, ordered by criticality. Overdue and at-risk appear first. The bar shows the percentage of evaluatees who have already responded."
-  ,"Atrasado": "Overdue"
-  ,"Em risco": "At risk"
-  ,"Em andamento": "In progress"
-  ,"Cancelado": "Cancelled"
-  ,"Gráfico em rosca mostrando a distribuição dos participantes da sua empresa por categoria (ex: Avaliado, Gestor, Par, Subordinado).": "Donut chart showing the distribution of your company's participants by category (e.g.: Evaluatee, Manager, Peer, Subordinate)."
-  ,"Pedidos de crédito que vencem nos próximos 30 dias. Créditos vencidos não podem ser utilizados — entre em contato com a ECK para renovar antes do prazo.": "Credit orders expiring in the next 30 days. Expired credits cannot be used — contact ECK to renew before the deadline."
-
-  ,"Comprados": "Purchased"
-  ,"Créditos Disponíveis": "Available Credits"
-  ,"Créditos consumidos na geração de relatórios": "Credits consumed in report generation"
-  ,"Créditos disponíveis para uso": "Credits available for use"
-  ,"Disponíveis": "Available"
-  ,"Editar cliente": "Edit client"
-  ,"Excluir cliente": "Delete client"
-  ,"Gerencie os clientes cadastrados na plataforma": "Manage clients registered on the platform"
-  ,"Gestão": "Management"
-  ,"Limpar filtros": "Clear filters"
-  ,"Limpar": "Clear"
-  ,"Nenhum cliente encontrado": "No clients found"
-  ,"Nome da empresa...": "Company name..."
-  ,"Todos os setores": "All sectors"
-  ,"Total de créditos comprados em pedidos aprovados": "Total credits purchased in approved orders"
-  ,"Usados": "Used"
-  ,"Ver modelos de e-mail": "View email templates"
-  ,"cliente(s) selecionado(s)": "client(s) selected"
-  ,"Ativos": "Active"
-  ,"Bloqueado": "Blocked"
-  ,"Bloqueados": "Blocked"
-
-  ,"Adquiridos": "Acquired"
-  ,"Aprovado": "Approved"
-  ,"Aprovar Pedido": "Approve Order"
-  ,"Buscar cliente...": "Search client..."
-  ,"Criar Novo Pedido": "Create New Order"
-  ,"Expirado": "Expired"
-  ,"Financeiro": "Financial"
-  ,"Gerencie os pedidos de crédito dos clientes": "Manage client credit orders"
-  ,"Nenhum pedido encontrado": "No orders found"
-  ,"Nome do cliente...": "Client name..."
-  ,"Não identificado": "Unidentified"
-  ,"Pedido em": "Ordered on"
-  ,"Pedidos de Crédito": "Credit Orders"
-  ,"Prazo": "Deadline"
-  ,"Prorrogar validade": "Extend validity"
-  ,"Rejeitado": "Rejected"
-  ,"Rejeitar Pedido": "Reject Order"
-  ,"Saldo": "Balance"
-  ,"Todos os clientes": "All clients"
-  ,"Todos os status": "All statuses"
-  ,"Utilizados": "Used"
-  ,"Validade": "Validity"
-  ,"Criado em": "Created on"
-
-  ,"Carregando dados do projeto...": "Loading project data..."
-  ,"Configurações": "Settings"
-  ,"Dados do Projeto": "Project Data"
-  ,"Ex: Avaliação 360° — Q1 2025": "E.g.: 360° Assessment — Q1 2025"
-  ,"Formulário a utilizar": "Form to use"
-  ,"Gerenciar Usuários e Grupos": "Manage Users and Groups"
-  ,"Grupos de Usuários": "User Groups"
-  ,"Grupos de usuários que participarão deste projeto": "User groups that will participate in this project"
-  ,"Informações gerais de identificação": "General identification information"
-  ,"Nenhum formulário disponível para este cliente": "No forms available for this client"
-  ,"Nenhum grupo disponível. Crie grupos de usuários primeiro.": "No groups available. Create user groups first."
-  ,"Nome do Projeto": "Project Name"
-  ,"Nome do responsável pelo projeto": "Name of the project manager"
-  ,"Pelo menos um grupo é obrigatório.": "At least one group is required."
-  ,"Prazo e status": "Deadline and status"
-  ,"Precisa cadastrar usuários ou criar grupos?": "Need to register users or create groups?"
-  ,"Responsável": "Responsible"
-  ,"Selecione um cliente para ver os formulários disponíveis": "Select a client to see available forms"
-  ,"Usuários incluídos": "Included users"
-  ,"Desconhecido": "Unknown"
-  ,"Sem Cliente": "No Client"
-  ,"Todos os criadores": "All creators"
-
-  ,"Acessar relatórios da própria empresa": "Access company's own reports"
-  ,"Acesso de leitura": "Read access"
-  ,"Acesso restrito aos dados da própria empresa": "Restricted access to company's own data"
-  ,"Acesso restrito à experiência de avaliação": "Restricted access to the assessment experience"
-  ,"Acesso total ao sistema": "Full system access"
-  ,"Acesso": "Access"
-  ,"Admin Cliente": "Client Admin"
-  ,"Buscar por nome, cliente...": "Search by name, client..."
-  ,"Buscar por nome, e-mail...": "Search by name, email..."
-  ,"Configurar competências e templates": "Configure competencies and templates"
-  ,"Criar e excluir avaliações": "Create and delete assessments"
-  ,"Criar e gerenciar grupos de usuários": "Create and manage user groups"
-  ,"Criar e gerenciar participantes dos projetos": "Create and manage project participants"
-  ,"Editar grupo": "Edit group"
-  ,"Editar usuário": "Edit user"
-  ,"Enviar link de criação / redefinição de senha": "Send password creation / reset link"
-  ,"Excluir grupo": "Delete group"
-  ,"Excluir usuário": "Delete user"
-  ,"Gerenciar grupos de usuários": "Manage user groups"
-  ,"Gerenciar todos os clientes e projetos": "Manage all clients and projects"
-  ,"Gerenciar usuários Admin Cliente e Visualizadores": "Manage Client Admin and Viewer users"
-  ,"Gerencie os usuários e grupos de usuários da plataforma": "Manage platform users and user groups"
-  ,"Gestão da própria empresa": "Own company management"
-  ,"Grupo": "Group"
-  ,"Master": "Master"
-  ,"Nenhum grupo encontrado": "No groups found"
-  ,"Nenhum usuário encontrado": "No users found"
-  ,"Não acessa dados de outros clientes": "Does not access other clients' data"
-  ,"Não cria, edita ou exclui usuários": "Does not create, edit or delete users"
-  ,"Não pode ser editado ou excluído por outros usuários": "Cannot be edited or deleted by other users"
-  ,"O que cada perfil pode fazer na plataforma": "What each profile can do on the platform"
-  ,"Perfil": "Profile"
-  ,"Perfis e Permissões": "Profiles and Permissions"
-  ,"Responder avaliações 360°": "Respond to 360° assessments"
-  ,"Sem acesso a configurações": "No access to settings"
-  ,"Sem acesso a usuários ou grupos": "No access to users or groups"
-  ,"Sem acesso ao painel de gestão": "No access to the management panel"
-  ,"Ver seu próprio relatório": "View your own report"
-  ,"Visualizador": "Viewer"
-  ,"Visualizar avaliações atribuídas": "View assigned assessments"
-  ,"Visualizar avaliações vinculadas à empresa": "View assessments linked to the company"
-  ,"Visualizar projetos da própria empresa": "View company's own projects"
-  ,"Visualizar todos os relatórios": "View all reports"
-
-  ,"Alertas Operacionais": "Operational Alerts"
-  ,"Alertas": "Alerts"
-  ,"Atenção": "Attention"
-  ,"Ativo (≥ 5)": "Active (≥ 5)"
-  ,"Ativo": "Active"
-  ,"Aviso": "Warning"
-  ,"Baixo (< 5)": "Low (< 5)"
-  ,"Baixo": "Low"
-  ,"Buscar por cliente…": "Search by client…"
-  ,"Buscar por projeto ou cliente…": "Search by project or client…"
-  ,"Buscar por projeto ou descrição…": "Search by project or description…"
-  ,"Buscar por projeto…": "Search by project…"
-  ,"Carregando dashboard...": "Loading dashboard..."
-  ,"Com convites enviados": "With invitations sent"
-  ,"Concluídos": "Completed"
-  ,"Criados": "Created"
-  ,"Créditos consumidos = respostas de avaliação recebidas. Disponíveis = saldo restante para novos envios.": "Credits consumed = assessment responses received. Available = remaining balance for new sends."
-  ,"Créditos por Cliente": "Credits by Client"
-  ,"Créditos por projeto": "Credits by project"
-  ,"Crítico": "Critical"
-  ,"Filtrar por cliente": "Filter by client"
-  ,"Funil de Projetos": "Project Funnel"
-  ,"Gerenciar avaliados e avaliadores": "Manage evaluatees and evaluators"
-  ,"Grupos de usuários da empresa": "Company user groups"
-  ,"Gráfico de barras mostrando quantos projetos com status Ativo cada cliente possui. Permite identificar quais clientes estão mais ativos na plataforma.": "Bar chart showing how many active projects each client has. Helps identify which clients are most active on the platform."
-  ,"Gráfico em rosca mostrando a distribuição de todos os participantes cadastrados por categoria (ex: Avaliado, Gestor, Par, Subordinado). Ajuda a entender o perfil dos avaliadores na plataforma.": "Donut chart showing the distribution of all registered participants by category (e.g.: Evaluatee, Manager, Peer, Subordinate). Helps understand the profile of evaluators on the platform."
-  ,"Indicadores rápidos da plataforma: número de clientes ativos, projetos em andamento e avaliações pendentes de resposta.": "Quick platform indicators: number of active clients, projects in progress and assessments pending response."
-  ,"Indicadores rápidos da sua empresa: projetos ativos, avaliações em andamento (convites enviados mas não respondidos), total de participantes avaliados e créditos disponíveis para criar novas avaliações.": "Quick company indicators: active projects, assessments in progress (invitations sent but not responded), total participants evaluated and credits available to create new assessments."
-  ,"Itens que requerem atenção imediata ou acompanhamento": "Items requiring immediate attention or follow-up"
-  ,"Lista de pedidos de crédito que vencem nos próximos 30 dias. Créditos vencidos não podem mais ser utilizados — acompanhe para renovar antes do prazo.": "List of credit orders expiring in the next 30 days. Expired credits can no longer be used — monitor to renew before the deadline."
-  ,"Lista de projetos ativos e recentes de todos os clientes. Ordenados por criticidade: atrasados aparecem primeiro, depois os em risco, em andamento e concluídos. A barra mostra o percentual de avaliados que já responderam.": "List of active and recent projects from all clients. Ordered by criticality: overdue appear first, then at risk, in progress and completed. The bar shows the percentage of evaluatees who have already responded."
-  ,"Meus Grupos": "My Groups"
-  ,"Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados.": "Shows how many stages active projects are in: Created = total active projects; With invitations sent = projects where at least one participant received an invitation; Completed = finished projects."
-  ,"Nenhum alerta para o filtro selecionado": "No alerts for the selected filter"
-  ,"Nenhum cliente para o filtro selecionado": "No clients for the selected filter"
-  ,"Nenhum projeto em andamento": "No projects in progress"
-  ,"Nenhum projeto para o filtro selecionado": "No projects for the selected filter"
-  ,"Notificações automáticas da sua empresa. Crítico: prazo vencido com respostas pendentes. Atenção: prazo em até 7 dias com respostas incompletas. Aviso: sem créditos disponíveis.": "Automatic notifications from your company. Critical: overdue deadline with pending responses. Attention: deadline within 7 days with incomplete responses. Warning: no credits available."
-  ,"Notificações geradas automaticamente pelo sistema. Crítico (vermelho): prazo vencido com respostas pendentes. Atenção (laranja): prazo em até 7 dias com respostas incompletas. Aviso (azul): cliente sem créditos.": "Notifications generated automatically by the system. Critical (red): overdue deadline with pending responses. Attention (orange): deadline within 7 days with incomplete responses. Warning (blue): client without credits."
-  ,"Nível": "Level"
-  ,"Ordenados por criticidade — atrasados e em risco no topo": "Ordered by criticality — overdue and at risk at the top"
-  ,"Pedidos com validade nos próximos 30 dias": "Orders expiring in the next 30 days"
-  ,"Progresso dos projetos ativos por etapa": "Progress of active projects by stage"
-  ,"Progresso": "Progress"
-  ,"Projetos da sua empresa ordenados por criticidade": "Your company's projects ordered by criticality"
-  ,"Projetos em Andamento": "Projects in Progress"
-  ,"Projetos por Status": "Projects by Status"
-  ,"Reservados": "Reserved"
-  ,"Resultados e análises de avaliações": "Assessment results and analyses"
-  ,"Sem créditos": "No credits"
-  ,"Utilizados e disponíveis — clientes críticos no topo": "Used and available — critical clients at the top"
-  ,"Ver Participantes": "View Participants"
-  ,"Ver Relatórios": "View Reports"
-  ,"Ver": "View"
-  ,"responderam": "responded"
-  ,"Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.": "Displays the total number of projects in each status: In progress, Completed and Cancelled."
-  ,"Indicadores e métricas da plataforma em tempo real": "Real-time platform indicators and metrics"
+  "Widgets": "Widgets",
+  "You do not have permission to assign this role.": "You do not have permission to assign this role."
 }

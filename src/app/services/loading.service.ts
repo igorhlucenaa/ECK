@@ -50,6 +50,19 @@ export class LoadingService {
     }
   }
 
+  /** Atualiza a mensagem do loading global sem incrementar o contador. */
+  updateMessage(message: string): void {
+    if (this.globalLoadingCount <= 0 && this.loadingStates.size === 0) {
+      return;
+    }
+    const current = this.loadingSubject.value;
+    this.loadingSubject.next({
+      ...current,
+      isLoading: true,
+      message: message || current.message,
+    });
+  }
+
   // Métodos para loading específico por chave
   showFor(key: string, message?: string, type: 'spinner' | 'skeleton' | 'progress' = 'spinner'): void {
     this.loadingStates.set(key, {

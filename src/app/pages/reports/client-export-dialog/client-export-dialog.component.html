@@ -1,0 +1,73 @@
+<h2 mat-dialog-title>
+  <mat-icon class="dialog-title-icon">table_view</mat-icon>
+  Extrato do cliente (Excel)
+</h2>
+
+<mat-dialog-content class="client-export-dialog">
+  <p class="client-export-dialog__hint">
+    Gera um arquivo Excel com abas <strong>Resumo</strong> (médias por competência) e
+    <strong>Respostas</strong> (detalhamento pergunta a pergunta) para os projetos selecionados.
+  </p>
+
+  <mat-form-field appearance="outline" class="client-export-dialog__field">
+    <mat-label>Cliente</mat-label>
+    <mat-select
+      [(ngModel)]="selectedClientId"
+      (selectionChange)="onClientChange()"
+      [disabled]="data.clients.length <= 1">
+      <mat-option *ngFor="let c of data.clients" [value]="c.id">{{ c.name }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-checkbox
+    [(ngModel)]="includeInactive"
+    (change)="onIncludeInactiveChange()"
+    class="client-export-dialog__checkbox">
+    Incluir projetos cancelados/inativos
+  </mat-checkbox>
+
+  <div class="client-export-dialog__projects" *ngIf="loadingProjects">
+    <mat-spinner [diameter]="28"></mat-spinner>
+    <span>Carregando projetos...</span>
+  </div>
+
+  <p class="client-export-dialog__error" *ngIf="loadError">{{ loadError }}</p>
+
+  <ng-container *ngIf="!loadingProjects && selectedClientId">
+    <div class="client-export-dialog__projects-header" *ngIf="projects.length > 0">
+      <span>Projetos ({{ selectedCount }}/{{ projects.length }})</span>
+      <button mat-button type="button" (click)="toggleAllProjects(!allProjectsSelected)">
+        {{ allProjectsSelected ? 'Desmarcar todos' : 'Selecionar todos' }}
+      </button>
+    </div>
+
+    <div class="client-export-dialog__empty" *ngIf="projects.length === 0">
+      Nenhum projeto ativo com avaliação vinculada para este cliente.
+    </div>
+
+    <div class="client-export-dialog__list" *ngIf="projects.length > 0">
+      <label *ngFor="let p of projects" class="client-export-dialog__item">
+        <mat-checkbox
+          [checked]="selectedProjectIds.has(p.id)"
+          (change)="toggleProject(p.id, $event.checked)">
+        </mat-checkbox>
+        <div class="client-export-dialog__item-info">
+          <span class="client-export-dialog__item-name">{{ p.name }}</span>
+          <span class="client-export-dialog__item-meta">{{ p.assessmentName }}</span>
+        </div>
+      </label>
+    </div>
+  </ng-container>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancelar</button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    (click)="confirm()"
+    [disabled]="!selectedClientId || selectedProjectIds.size === 0 || loadingProjects">
+    Exportar Excel
+  </button>
+</mat-dialog-actions>

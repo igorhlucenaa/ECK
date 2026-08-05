@@ -22,12 +22,12 @@
   <app-header
     [showToggle]="!isOver"
     (toggleCollapsed)="toggleCollapsed()"
-    (toggleMobileNav)="sidenav.toggle()"
+    (toggleMobileNav)="toggleMobileNav()"
   ></app-header>
   } @else {
   <!-- horizontal header -->
   <app-horizontal-header
-    (toggleMobileNav)="sidenav.toggle()"
+    (toggleMobileNav)="toggleMobileNav()"
   ></app-horizontal-header>
   }
 
@@ -59,7 +59,7 @@
           @for(item of navItems; track item) {
           <app-nav-item
             [item]="item"
-            (notify)="sidenav.toggle()"
+            (notify)="toggleMobileNav()"
           ></app-nav-item>
 
           }
@@ -71,11 +71,11 @@
     <!-- ============================================================== -->
     <!-- horizontal Sidebar -->
     <!-- ============================================================== -->
-    @if(resView && options.horizontal) {
+    @if(horizontalMobileView && options.horizontal) {
     <mat-sidenav
       #leftsidenav
       [mode]="'over'"
-      [opened]="options.sidenavOpened && !isTablet"
+      [opened]="options.sidenavOpened"
       (openedChange)="onSidenavOpenedChange($event)"
       (closedStart)="onSidenavClosedStart()"
       class="sidebarNav"
@@ -89,7 +89,7 @@
           @for(item of navItems; track item) {
           <app-nav-item
             [item]="item"
-            (notify)="sidenav.toggle()"
+            (notify)="toggleMobileNav()"
           ></app-nav-item>
 
           }

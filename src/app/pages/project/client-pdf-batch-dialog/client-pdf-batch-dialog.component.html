@@ -1,0 +1,47 @@
+<h2 mat-dialog-title>{{ 'Exportar relatórios (ZIP)' | translate }}</h2>
+
+<mat-dialog-content class="client-pdf-batch-dialog">
+  <p class="client-pdf-batch-dialog__intro">
+    {{ 'Serão gerados PDFs de todos os avaliados nos {{count}} projetos selecionados de {{client}}.' | translate:{ count: projectCount, client: data.clientName } }}
+  </p>
+  <p class="client-pdf-batch-dialog__hint">
+    {{ 'Selecione o template de relatório para cada projeto.' | translate }}
+  </p>
+
+  <mat-progress-bar *ngIf="isLoading" mode="indeterminate"></mat-progress-bar>
+
+  <p class="client-pdf-batch-dialog__error" *ngIf="loadError">{{ loadError | translate }}</p>
+
+  <p class="client-pdf-batch-dialog__empty" *ngIf="!isLoading && reportTemplates.length === 0">
+    {{ 'Nenhum template encontrado para este cliente.' | translate }}
+  </p>
+
+  <div class="client-pdf-batch-dialog__list" *ngIf="!isLoading && reportTemplates.length > 0">
+    <div class="client-pdf-batch-dialog__row" *ngFor="let project of data.projects">
+      <div class="client-pdf-batch-dialog__project">
+        <span class="client-pdf-batch-dialog__project-name">{{ project.name }}</span>
+        <span class="client-pdf-batch-dialog__linked" *ngIf="isLinkedTemplatePreselected(project)">
+          <mat-icon>link</mat-icon>
+          {{ 'Template vinculado ao projeto' | translate }}
+        </span>
+      </div>
+
+      <mat-form-field appearance="outline" class="client-pdf-batch-dialog__template-field">
+        <mat-label>{{ 'Template de relatório' | translate }}</mat-label>
+        <mat-select [formControl]="projectTemplateControls[project.id]">
+          <mat-option *ngFor="let t of reportTemplates" [value]="t.id">{{ t.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">{{ 'Cancelar' | translate }}</button>
+  <button mat-flat-button color="primary"
+          [disabled]="!canConfirm"
+          (click)="confirm()">
+    <mat-icon>archive</mat-icon>
+    {{ 'Gerar ZIP' | translate }}
+  </button>
+</mat-dialog-actions>

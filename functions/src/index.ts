@@ -92,6 +92,33 @@ interface ZonedDateParts {
   weekday: number;
 }
 
+interface PdfDocumentoConfig {
+  cabecalho?: {
+    ativo?: boolean;
+    ocultarNaCapa?: boolean;
+    textoEsquerda?: string;
+    mostrarNomeProjeto?: boolean;
+    mostrarNumeroPagina?: boolean;
+    cor?: string;
+    linhaInferior?: boolean;
+    logoUrl?: string;
+  };
+  rodape?: {
+    ativo?: boolean;
+    ocultarNaCapa?: boolean;
+    texto?: string;
+    mostrarNumeroPagina?: boolean;
+    mostrarAno?: boolean;
+    cor?: string;
+    linhaSuperior?: boolean;
+  };
+}
+
+interface PdfDocumentRuntimeMeta {
+  documentoConfig?: PdfDocumentoConfig;
+  projectName?: string;
+}
+
 function getTransporter(emailUser: string, emailPass: string): nodemailer.Transporter {
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
@@ -364,14 +391,21 @@ function applyTemplateVariables(source: string, replacements: Record<string, str
   const projectDeadline = replacements.projectDeadline || '';
   const projectName = replacements.projectName || '';
   const clientName = replacements.clientName || '';
+  const participantCategory = replacements.participantCategory || '-';
   const linkAvaliacao = replacements.LINK_AVALIACAO || '';
   const linkRelatorio = replacements.LINK_RELATORIO || '';
 
   text = text.replace(/\{\{\s*nome_participante\s*\}\}/gi, participantName);
   text = text.replace(/\{\{\s*nome_avaliado\s*\}\}/gi, avaliadoName);
+  text = text.replace(/\{\{\s*categoria\s*\}\}/gi, participantCategory);
   text = text.replace(/\{\{\s*data_expiracao\s*\}\}/gi, projectDeadline);
   text = text.replace(/\{\{\s*nome_projeto\s*\}\}/gi, projectName);
+  text = text.replace(/\{\{\s*nome_projeto\s*\}\}+/gi, projectName);
   text = text.replace(/\{\{\s*nome_cliente\s*\}\}/gi, clientName);
+
+  text = text.replace(/\$%NOME DO PROJETO\$%/gi, projectName);
+  text = text.replace(/\$%NOME_DO_PROJETO\$%/gi, projectName);
+  text = text.replace(/\$%NOME DO CLIENTE\$%/gi, clientName);
 
   if (projectDeadline) {
     text = text.replace(/\*\$%DATA DE EXPIRACAO DO PROJETO\$%\*/gi, projectDeadline);
@@ -458,6 +492,12 @@ function renderTemplateToHtml(
           continue;
         }
 
+        if (contentType === 'html') {
+          const htmlContent = applyTemplateVariables(rawText, replacements);
+          html += `<div style="padding:${containerPadding};">${htmlContent}</div>`;
+          continue;
+        }
+
         if (contentType === 'social') {
           const align = normalizeOptionalString(values.align) || 'left';
           html += `<div style="padding:${containerPadding};text-align:${align};">Icones sociais</div>`;
@@ -505,8 +545,14 @@ async function sendAssessmentEmail(
   }
 
   const participantData = (participantDoc.data() || {}) as Record<string, unknown>;
+  if (participantData.blocked === true) {
+    throw new Error('Participante bloqueado. Nao e possivel enviar e-mail.');
+  }
   const participantName = normalizeOptionalString(participantData.name) || 'Participante';
   const participantType = (normalizeOptionalString(participantData.type) || '').toLowerCase();
+  const participantCategory =
+    normalizeOptionalString(participantData.category) ||
+    (participantType === 'avaliado' ? 'Avaliado' : '-');
   const projectId = normalizeOptionalString(participantData.projectId);
   let clientId = normalizeOptionalString(participantData.clientId);
   const participantAvaliadoId = normalizeOptionalString(participantData.avaliadoId);
@@ -582,11 +628,22 @@ async function sendAssessmentEmail(
   const emailHtml = renderTemplateToHtml(parsedContent, {
     LINK_AVALIACAO: assessmentLink,
     participantName,
+    participantCategory,
     avaliadoName: avaliadoName || '-',
     projectDeadline,
     projectName,
     clientName,
   });
+
+  const templateReplacements = {
+    LINK_AVALIACAO: assessmentLink,
+    participantName,
+    participantCategory,
+    avaliadoName: avaliadoName || '-',
+    projectDeadline,
+    projectName,
+    clientName,
+  };
 
   if (persistParticipantLink) {
     const assessmentLinkObj = {
@@ -601,7 +658,8 @@ async function sendAssessmentEmail(
     });
   }
 
-  const subject = normalizeOptionalString(template.subject) || 'Avaliacao 360';
+  const subjectRaw = normalizeOptionalString(template.subject) || 'Avaliacao 360';
+  const subject = applyTemplateVariables(subjectRaw, templateReplacements);
   await transporter.sendMail({
     from: `ECK Avaliacao 360 <${emailUser}>`,
     to: email,
@@ -970,6 +1028,10 @@ async function processPendingAssessmentReminders(
       }
 
       const participantData = await getParticipantData(participantId);
+      if (participantData?.blocked === true) {
+        stats.skipped += 1;
+        continue;
+      }
       const participantType = (normalizeOptionalString(participantData?.type) || '').toLowerCase();
       const templateId = resolveTemplateIdForParticipant(setting, linkData, participantType);
       if (!templateId) {
@@ -1143,8 +1205,101 @@ function buildPdfFontsMap(): Record<string, unknown> {
   };
 }
 
+function buildRuntimeHeader(meta?: PdfDocumentRuntimeMeta) {
+  const cfg = meta?.documentoConfig?.cabecalho;
+  if (!cfg?.ativo) return undefined;
+
+  return (currentPage: number, pageCount: number) => {
+    if (cfg.ocultarNaCapa && currentPage === 1) return {};
+
+    const color = normalizeOptionalString(cfg.cor) || '#666666';
+    const leftParts: string[] = [];
+    const leftText = normalizeOptionalString(cfg.textoEsquerda);
+    const projectName = normalizeOptionalString(meta?.projectName);
+
+    if (leftText) leftParts.push(leftText);
+    if (cfg.mostrarNomeProjeto && projectName) leftParts.push(projectName);
+
+    const columns: Record<string, unknown>[] = [];
+
+    if (normalizeOptionalString(cfg.logoUrl)) {
+      columns.push({
+        image: cfg.logoUrl,
+        fit: [60, 20],
+        alignment: 'left',
+        width: 'auto',
+        margin: [0, 0, 8, 0],
+      });
+    }
+
+    columns.push({
+      text: leftParts.join(' — '),
+      alignment: 'left',
+      fontSize: 8,
+      color,
+      width: '*',
+    });
+
+    if (cfg.mostrarNumeroPagina) {
+      columns.push({
+        text: `Página ${currentPage} de ${pageCount}`,
+        alignment: 'right',
+        fontSize: 8,
+        color,
+        width: 'auto',
+      });
+    }
+
+    const row = { columns, columnGap: 8 };
+
+    if (cfg.linhaInferior) {
+      return {
+        stack: [
+          { ...row, margin: [0, 0, 0, 3] },
+          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: color }] },
+        ],
+        margin: [40, 15, 40, 0],
+      };
+    }
+
+    return { ...row, margin: [40, 20, 40, 0] };
+  };
+}
+
+function buildRuntimeFooter(meta?: PdfDocumentRuntimeMeta) {
+  const cfg = meta?.documentoConfig?.rodape;
+  if (!cfg?.ativo) return undefined;
+
+  return (currentPage: number, pageCount: number) => {
+    if (cfg.ocultarNaCapa && currentPage === 1) return {};
+
+    const color = normalizeOptionalString(cfg.cor) || '#999999';
+    const parts: string[] = [];
+    const centerText = normalizeOptionalString(cfg.texto);
+
+    if (centerText) parts.push(centerText);
+    if (cfg.mostrarAno) parts.push(`© ${new Date().getFullYear()}`);
+    if (cfg.mostrarNumeroPagina) parts.push(`Página ${currentPage} de ${pageCount}`);
+
+    const textContent = parts.join(' | ');
+
+    if (cfg.linhaSuperior) {
+      return {
+        stack: [
+          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: color }], margin: [0, 0, 0, 3] },
+          { text: textContent, alignment: 'center', fontSize: 8, color },
+        ],
+        margin: [40, 5, 40, 15],
+      };
+    }
+
+    return { text: textContent, alignment: 'center', fontSize: 8, color, margin: [40, 10, 40, 20] };
+  };
+}
+
 function normalizeDocDefinitionForServer(
-  docDefinition: Record<string, unknown>
+  docDefinition: Record<string, unknown>,
+  runtimeMeta?: PdfDocumentRuntimeMeta
 ): Record<string, unknown> {
   const normalized: Record<string, unknown> = { ...docDefinition };
 
@@ -1166,6 +1321,11 @@ function normalizeDocDefinitionForServer(
     normalized.pageMargins = [40, 60, 40, 60];
   }
 
+  const runtimeHeader = buildRuntimeHeader(runtimeMeta);
+  if (runtimeHeader) {
+    normalized.header = runtimeHeader;
+  }
+
   if (!normalized.header) {
     normalized.header = {
       text: 'ECK - Avaliacao 360',
@@ -1174,6 +1334,11 @@ function normalizeDocDefinitionForServer(
       color: '#666666',
       margin: [40, 20, 40, 0],
     };
+  }
+
+  const runtimeFooter = buildRuntimeFooter(runtimeMeta);
+  if (runtimeFooter) {
+    normalized.footer = runtimeFooter;
   }
 
   if (!normalized.footer) {
@@ -1190,10 +1355,11 @@ function normalizeDocDefinitionForServer(
 }
 
 async function createPdfBuffer(
-  docDefinition: Record<string, unknown>
+  docDefinition: Record<string, unknown>,
+  runtimeMeta?: PdfDocumentRuntimeMeta
 ): Promise<Buffer> {
   const printer = new PdfPrinter(buildPdfFontsMap());
-  const pdfDoc = await printer.createPdfKitDocument(normalizeDocDefinitionForServer(docDefinition));
+  const pdfDoc = await printer.createPdfKitDocument(normalizeDocDefinitionForServer(docDefinition, runtimeMeta));
   const chunks: Buffer[] = [];
 
   return await new Promise<Buffer>((resolve, reject) => {
@@ -1357,6 +1523,7 @@ export const generateReportPdf = onRequest(
     const body = (req.body || {}) as Record<string, unknown>;
     const rawDocDefinition = body.docDefinition;
     const rawHtml = body.html;
+    const runtimeMeta = (body.documentMeta || {}) as PdfDocumentRuntimeMeta;
     const htmlOptions = normalizeHtmlPdfOptions(body.options);
 
     const fileName = sanitizePdfFileName(body.fileName);
@@ -1367,7 +1534,7 @@ export const generateReportPdf = onRequest(
       if (typeof rawHtml === 'string' && rawHtml.trim()) {
         pdfBuffer = await createPdfBufferFromHtml(rawHtml, htmlOptions);
       } else if (rawDocDefinition && typeof rawDocDefinition === 'object' && !Array.isArray(rawDocDefinition)) {
-        pdfBuffer = await createPdfBuffer(rawDocDefinition as Record<string, unknown>);
+        pdfBuffer = await createPdfBuffer(rawDocDefinition as Record<string, unknown>, runtimeMeta);
       } else {
         res.status(400).send({
           error: 'Campo obrigatorio ausente: html (string) ou docDefinition (objeto JSON).',
@@ -1716,6 +1883,9 @@ async function deleteClientSafe(db: admin.firestore.Firestore, id: string) {
     ['competencies',    db.collection('competencies').where('clientId', '==', id),     'Competências'],
     ['competencyGroups',db.collection('competencyGroups').where('clientId', '==', id), 'Grupos de competências'],
     ['mailTemplates',   db.collection('mailTemplates').where('clientId', '==', id),    'Modelos de e-mail'],
+    ['reports',         db.collection('reports').where('clientId', '==', id),           'Relatórios salvos'],
+    ['reportTemplates', db.collection('reportTemplates').where('clientId', '==', id),   'Templates de relatório'],
+    ['releasedReports', db.collection('releasedReports').where('clientId', '==', id),  'Relatórios publicados'],
   ];
   const blockers: BlockerInfo[] = [];
   for (const [coll, q, label] of checks) {
@@ -1740,10 +1910,9 @@ async function deleteProjectSafe(db: admin.firestore.Firestore, id: string) {
     await db.recursiveDelete(a.ref);
   }
 
-  // Apaga participantes, links, snapshots e templates do projeto
+  // Apaga participantes, links e templates de e-mail do projeto
   await deleteQueryInBatches(db.collection('participants').where('projectId', '==', id));
   await deleteQueryInBatches(db.collection('assessmentLinks').where('projectId', '==', id));
-  await deleteQueryInBatches(db.collection('releasedReports').where('projectId', '==', id));
   await deleteQueryInBatches(db.collection('mailTemplates').where('projectId', '==', id));
 
   // Desvincula o projeto dos grupos
@@ -1839,7 +2008,6 @@ export const onProjectDeleted = onDocumentDeleted(
       for (const a of assessmentsSnap.docs) await db.recursiveDelete(a.ref);
       await deleteQueryInBatches(db.collection('participants').where('projectId', '==', projectId));
       await deleteQueryInBatches(db.collection('assessmentLinks').where('projectId', '==', projectId));
-      await deleteQueryInBatches(db.collection('releasedReports').where('projectId', '==', projectId));
       await deleteQueryInBatches(db.collection('mailTemplates').where('projectId', '==', projectId));
       await pullFromArrayField('userGroups', 'projectIds', projectId);
       if (clientId) await sincronizarCreditosCliente(clientId);

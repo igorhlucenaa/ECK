@@ -65,34 +65,27 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
     if (this.selectedProjectId) {
       await this.loadEval(this.selectedProjectId);
 
-      // Validar se há mais de um avaliado no arquivo Excel
+      const projectName = this.data.projects.find(p => p.id === this.selectedProjectId)?.name || 'projeto';
+
+      // Valida o lote: >1 avaliado no arquivo OU arquivo só com avaliadores em projeto sem avaliado.
       const participantsWithProject = this.data.participants.map(p => ({
         ...p,
         projectId: this.selectedProjectId
       }));
-      const excelValidation = this.participantValidationService.validateExcelParticipants(
-        participantsWithProject
+      const excelValidation = await this.participantValidationService.validateExcelParticipants(
+        participantsWithProject,
+        this.selectedProjectId,
+        projectName
       );
 
       if (!excelValidation.valid) {
-        const projectName = this.data.projects.find(p => p.id === this.selectedProjectId)?.name || 'projeto';
-        const error = excelValidation.errors[0];
-        this.validationError = `O arquivo contém ${error.evaluateesCount} avaliados para o projeto "${projectName}". É permitido apenas um avaliado por projeto.`;
-        return;
-      }
-
-      // Validar se já existe um avaliado cadastrado no projeto
-      const hasEvaluateeInFile = this.data.participants.some(p => p.category === 'Avaliado');
-      if (hasEvaluateeInFile) {
-        const existingValidation = await this.participantValidationService.validateSingleEvaluateePerProject(
-          this.selectedProjectId,
-          'Avaliado'
-        );
-
-        if (!existingValidation.valid) {
-          const projectName = this.data.projects.find(p => p.id === this.selectedProjectId)?.name || 'projeto';
-          this.validationError = `O projeto "${projectName}" já possui um avaliado cadastrado (${existingValidation.existingEvaluateeName}). Não é possível adicionar outro avaliado.`;
+        if (excelValidation.error) {
+          this.validationError = excelValidation.error;
+        } else if (excelValidation.errors.length > 0) {
+          const error = excelValidation.errors[0];
+          this.validationError = `O arquivo contém ${error.evaluateesCount} avaliados para o projeto "${projectName}". É permitido apenas um avaliado por projeto.`;
         }
+        return;
       }
     }
   }

@@ -74,7 +74,7 @@ export class AuthService {
         localStorage.removeItem('returnUrl');
 
         if (userRole === 'admin_master') {
-          const target = (returnUrl && returnUrl !== '/authentication/login') ? returnUrl : '/projects';
+          const target = (returnUrl && returnUrl !== '/authentication/login') ? returnUrl : '/dashboard';
           this.router.navigate([target]);
         } else if (userRole === 'admin_client') {
           this.router.navigate(['/projects']);
@@ -103,7 +103,7 @@ export class AuthService {
 
         const userRole = await this.getCurrentUserRole();
         if (userRole === 'admin_master') {
-          location.assign('/projects');
+          location.assign('/dashboard');
         } else if (userRole === 'admin_client') {
           location.assign('/projects');
         } else {

@@ -12,6 +12,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
+import { CompetencyQuestionsService } from '../../services/competency-questions.service';
 
 // Interface igual ao reports
 interface Competencia {
@@ -103,7 +104,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog,
     private route: ActivatedRoute,
-    private confirmDialog: ConfirmDialogService
+    private confirmDialog: ConfirmDialogService,
+    private competencyQuestionsService: CompetencyQuestionsService
   ) {
     // Formulário igual ao reports (perguntasIds não é obrigatório quando não há avaliação)
     this.competenciaForm = this.fb.group({
@@ -241,7 +243,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -254,7 +256,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       }));
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
-      this.snackBar.open('Erro ao carregar avaliações', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliações'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -346,7 +348,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
     } catch (error) {
       console.error('Erro ao carregar avaliação:', error);
-      this.snackBar.open('Erro ao carregar avaliação', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliação'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.isLoading = false;
     }
@@ -451,24 +453,17 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         // Usar o método auxiliar que já tem lógica para encontrar perguntas
         perguntasCustom = this.getPerguntasCustomCompetencia(idCompetenciaEditando);
       } else {
-        // Se não há ID, tentar encontrar por qualquer ID temporário que possa existir
+        // Apenas chaves temporárias da sessão atual — evita pegar perguntas de outras competências
         const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
-          k.startsWith('comp_temp_') || k.startsWith('comp_')
+          k.startsWith('comp_temp_')
         );
         if (tempKeys.length > 0) {
-          // Pegar a primeira chave temporária encontrada
           perguntasCustom = this.customQuestionsByCompetency[tempKeys[0]] || [];
         }
       }
 
-      // Filtrar apenas perguntas que têm título preenchido (ou permitir sem título para edição posterior)
-      // Mas garantir que pelo menos uma pergunta existe
+      // Modo sem avaliação: usar perguntas custom da competência (se houver)
       perguntasIdsFinais = perguntasCustom.map(q => q.id);
-
-      if (perguntasIdsFinais.length === 0) {
-        this.snackBar.open(this.t('Adicione pelo menos uma pergunta custom à competência ou selecione uma avaliação.'), this.t('Fechar'), { duration: 3000 });
-        return;
-      }
     } else {
       // Modo com avaliação: validar se há perguntas selecionadas OU perguntas custom
       const idCompetenciaEditando = this.competenciaEditando.id;
@@ -565,12 +560,6 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       console.log(`  - Total: ${perguntasIdsFinais.length}`);
       console.log(`  - IDs:`, perguntasIdsFinais);
       console.log(`  - Perguntas custom no dropdown: ${perguntasIdsFinais.filter(id => id.startsWith('custom_')).length}`);
-
-      // Validar se há pelo menos uma pergunta (da avaliação ou custom)
-      if (perguntasIdsFinais.length === 0) {
-        this.snackBar.open(this.t('Selecione pelo menos uma pergunta da avaliação ou adicione uma pergunta custom.'), this.t('Fechar'), { duration: 3000 });
-        return;
-      }
 
       // Verificar se todas as perguntas custom vinculadas estão na lista
       perguntasIdsVinculadas.forEach((perguntaId: string) => {
@@ -879,6 +868,18 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     this.atualizarPerguntasBloqueadas();
   }
 
+  startNewCompetencia(): void {
+    this.competenciaEditando = { id: '', nome: '', descricao: '', perguntasIds: [] };
+    this.competenciaForm.reset({ nome: '', descricao: '', perguntasIds: [] });
+    this.perguntasCustomCache = [];
+    this.atualizarPerguntasBloqueadas();
+    this.showCompForm = true;
+  }
+
+  isCompetenciaSalva(id: string | null | undefined): boolean {
+    return !!id && this.competencias.some(c => c.id === id);
+  }
+
   private atualizarPerguntasBloqueadas(): void {
     this.perguntasBloqueadas.clear();
     const idCompetenciaEditando = this.competenciaEditando?.id;
@@ -1176,8 +1177,8 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         });
 
         // Limpar perguntas custom existentes antes de carregar
-        this.customQuestionsByCompetency = {};
-        this.customQuestions = [];
+        this.customQuestionsByCompetency = this.competencyQuestionsService.normalizeCustomQuestionsByCompetency(groupData);
+        this.customQuestions = Array.isArray(groupData['customQuestions']) ? [...groupData['customQuestions']] : [];
 
         // IDs das competências que estão sendo carregadas
         const idsCompetenciasCarregadas = new Set(this.competencias.map(c => c.id));
@@ -1879,35 +1880,12 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   }
 
   getTituloPerguntaCustom(competenciaId: string, perguntaId: string): string {
-    // Se é uma pergunta custom (começa com custom_), buscar em customQuestionsByCompetency
-    if (perguntaId.startsWith('custom_')) {
-      const perguntas = this.getPerguntasCustomCompetencia(competenciaId);
-      const pergunta = perguntas.find(q => q.id === perguntaId);
-      if (pergunta?.title) {
-        console.log(`✅ getTituloPerguntaCustom: Encontrado título "${pergunta.title}" para ${perguntaId} na competência ${competenciaId}`);
-        return pergunta.title;
-      }
-      // Tentar encontrar em todas as competências (caso tenha sido migrada)
-      const todasPerguntasCustom = Object.values(this.customQuestionsByCompetency).flat();
-      const perguntaEncontrada = todasPerguntasCustom.find(q => q.id === perguntaId);
-      if (perguntaEncontrada?.title) {
-        console.log(`✅ getTituloPerguntaCustom: Encontrado título "${perguntaEncontrada.title}" para ${perguntaId} em outra competência`);
-        return perguntaEncontrada.title;
-      }
-      // Fallback: retornar ID se não encontrou título
-      console.warn(`⚠️ getTituloPerguntaCustom: NÃO encontrado título para pergunta custom ${perguntaId} na competência ${competenciaId}`);
-      console.warn(`  - Perguntas custom na competência:`, perguntas.map(p => ({ id: p.id, title: p.title })));
-      console.warn(`  - Total de perguntas custom em todas as competências: ${todasPerguntasCustom.length}`);
-      return perguntaId;
-    }
-
-    // Se não é custom, buscar no questionMap (perguntas da avaliação)
-    if (this.questionMap && this.questionMap[perguntaId]) {
-      return this.questionMap[perguntaId];
-    }
-
-    // Último fallback: retornar o próprio ID
-    return perguntaId;
+    return this.competencyQuestionsService.resolveQuestionTitle(
+      perguntaId,
+      competenciaId,
+      this.questionMap,
+      this.customQuestionsByCompetency
+    );
   }
 
   temPerguntaCustom(competenciaId: string, perguntaId: string): boolean {
@@ -1965,16 +1943,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     this.groupNameControl.setValue(group.name);
     this.competencyGroupControl.setValue(group.id);
 
-    // Restaurar avaliação vinculada
-    if (group.assessmentId) {
-      this.selectedAssessmentId = group.assessmentId;
-      this.assessmentControl.setValue(group.assessmentId);
-    } else {
-      this.selectedAssessmentId = null;
-      this.assessmentControl.reset();
-    }
-
-    // Restaurar competências
+    // Restaurar competências antes de mexer na avaliação (evita race com valueChanges)
     this.competencias = (group.competencias || []).map((c: any) => ({
       id: c.id,
       nome: c.nome,
@@ -1985,8 +1954,23 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     // Restaurar perguntas custom por competência
     if (group.customQuestionsByCompetency) {
       this.customQuestionsByCompetency = { ...group.customQuestionsByCompetency };
-    } else if (group.customQuestions && group.customQuestions.length > 0) {
-      this.customQuestions = group.customQuestions;
+    } else {
+      this.customQuestionsByCompetency = {};
+    }
+    this.customQuestions = group.customQuestions?.length ? [...group.customQuestions] : [];
+
+    // Restaurar avaliação vinculada
+    if (group.assessmentId) {
+      this.selectedAssessmentId = group.assessmentId;
+      this.assessmentControl.setValue(group.assessmentId, { emitEvent: false });
+      void this.onAssessmentChange();
+    } else {
+      this.selectedAssessmentId = null;
+      this.assessmentControl.reset('', { emitEvent: false });
+      this.allQuestions = [];
+      this.filteredQuestions = [];
+      this.questionMap = {};
+      this.dynamicColumns = [];
     }
 
     this.cancelarEdicaoCompetencia();
@@ -2013,7 +1997,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
       this.snackBar.open(`Grupo "${group.name}" excluído com sucesso.`, 'OK', { duration: 3000 });
     } catch (error) {
       console.error('Erro ao excluir grupo:', error);
-      this.snackBar.open('Erro ao excluir grupo.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao excluir grupo.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -2043,6 +2027,17 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     if (!this.selectedAssessmentId) return 'Sem avaliação vinculada';
     const assessment = this.assessments.find(a => a.id === this.selectedAssessmentId);
     return assessment ? assessment.name : 'Avaliação vinculada';
+  }
+
+  async linkAssessmentToGroup(): Promise<void> {
+    const assessmentId = this.assessmentControl.value;
+    if (!assessmentId) {
+      this.snackBar.open(this.t('Selecione uma avaliação.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    this.selectedAssessmentId = assessmentId;
+    await this.onAssessmentChange();
+    await this.saveCompetencyGroup();
   }
 
   // ─────────────────────────────────────────────────────────────────────────

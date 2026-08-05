@@ -23,6 +23,7 @@ import {
   deleteDoc,
   addDoc,
   updateDoc,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -38,6 +39,7 @@ import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
+import { ParticipantCreditService } from 'src/app/services/participant-credit.service';
 
 interface ModalData {
   projectId: string;
@@ -55,6 +57,7 @@ interface UnifiedParticipant {
   selected?: boolean;
   category: string;
   type: 'avaliado' | 'avaliador';
+  avaliadoId?: string;
   clientId: string;
   creditReserved?: boolean;
   creditConsumed?: boolean;
@@ -118,13 +121,14 @@ interface Assessment {
         <mat-error>Selecione um modelo.</mat-error>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="si-config__field">
+      <mat-form-field appearance="outline" class="si-config__field"
+        *ngIf="selectedTemplate?.emailType && selectedTemplate?.emailType !== 'cadastro'">
         <mat-label>Formulário de Avaliação</mat-label>
         <mat-icon matPrefix style="color:#94a3b8;font-size:18px;margin-right:4px;">assignment</mat-icon>
-        <mat-select [formControl]="assessmentFormControl">
-          <mat-option *ngFor="let a of assessments" [value]="a.id">{{ a.name }}</mat-option>
-        </mat-select>
-        <mat-error>Selecione uma avaliação.</mat-error>
+        <input matInput *ngIf="projectAssessmentLocked" [value]="lockedAssessmentName" readonly disabled />
+        <input matInput *ngIf="!projectAssessmentLocked" value="Não configurado no projeto" readonly disabled />
+        <mat-hint *ngIf="projectAssessmentLocked">Formulário definido na criação do projeto</mat-hint>
+        <mat-hint *ngIf="!projectAssessmentLocked">Configure o formulário em Projetos → Editar projeto</mat-hint>
       </mat-form-field>
     </div>
 
@@ -285,6 +289,8 @@ export class ParticipantsModalComponent implements OnInit {
   assessments: Assessment[] = [];
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
+  projectAssessmentLocked = false;
+  lockedAssessmentName = '';
   selectAllPending(): void {
     if (!this.isSelectionReady) return;
     this.dataSource.filteredData.forEach(p => {
@@ -310,7 +316,8 @@ export class ParticipantsModalComponent implements OnInit {
     private router: Router,
     private translate: TranslateService,
     private confirmDialog: ConfirmDialogService,
-    private participantValidationService: ParticipantValidationService
+    private participantValidationService: ParticipantValidationService,
+    private participantCreditService: ParticipantCreditService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -321,6 +328,7 @@ export class ParticipantsModalComponent implements OnInit {
       this.loadClients(),
       this.loadProjects(),
     ]);
+    await this.syncProjectAssessment();
     this.dataSource.paginator = this.participantsPaginator;
     this.dataSource.sort = this.sort;
 
@@ -473,6 +481,7 @@ export class ParticipantsModalComponent implements OnInit {
           selected: false,
           category: category,
           type: type,
+          avaliadoId: participantData['avaliadoId'] || undefined,
           clientId: this.data.clientId,
           creditReserved,
           creditConsumed,
@@ -524,7 +533,7 @@ export class ParticipantsModalComponent implements OnInit {
   async loadAssessmentsForClient(clientId: string): Promise<void> {
     try {
       if (!clientId) {
-        this.snackBar.open('Nenhum clientId fornecido.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Nenhum clientId fornecido.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -541,13 +550,46 @@ export class ParticipantsModalComponent implements OnInit {
         name: doc.data()['name'] || 'Avaliação Sem Nome',
         clientId: doc.data()['clientId'] || '',
       }));
-
-      if (this.assessments.length === 0) {
-        this.snackBar.open(this.translate.instant('Nenhuma avaliação encontrada para este cliente.'), this.translate.instant('Fechar'), { duration: 3000 });
-      }
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
       this.snackBar.open(this.translate.instant('Erro ao carregar avaliações.'), this.translate.instant('Fechar'), { duration: 3000 });
+    }
+  }
+
+  private async syncProjectAssessment(): Promise<void> {
+    try {
+      const snap = await getDoc(doc(this.firestore, 'projects', this.data.projectId));
+      const assessmentId = snap.exists() ? (snap.data()['assessmentId'] || '') : '';
+
+      if (!assessmentId) {
+        this.projectAssessmentLocked = false;
+        this.lockedAssessmentName = '';
+        this.assessmentFormControl.setValue('');
+        return;
+      }
+
+      if (!this.assessments.some((a) => a.id === assessmentId)) {
+        const assessmentSnap = await getDoc(doc(this.firestore, 'assessments', assessmentId));
+        if (assessmentSnap.exists()) {
+          this.assessments = [
+            ...this.assessments,
+            {
+              id: assessmentId,
+              name: assessmentSnap.data()['name'] || 'Avaliação Sem Nome',
+              clientId: assessmentSnap.data()['clientId'] || '',
+            },
+          ];
+        }
+      }
+
+      this.projectAssessmentLocked = true;
+      this.lockedAssessmentName =
+        this.assessments.find((a) => a.id === assessmentId)?.name || 'Formulário do projeto';
+      this.assessmentFormControl.setValue(assessmentId);
+    } catch (error) {
+      console.error('Erro ao carregar formulário do projeto:', error);
+      this.projectAssessmentLocked = false;
+      this.assessmentFormControl.setValue('');
     }
   }
 
@@ -734,6 +776,10 @@ export class ParticipantsModalComponent implements OnInit {
             creditReserved: false,
           };
 
+          if (participant.type === 'avaliador' && participant.avaliadoId) {
+            newLinkData['avaliadoId'] = participant.avaliadoId;
+          }
+
           if (reminderSettings) {
             const nextAt = this.computeNextReminderAt(
               reminderSettings.startDate,
@@ -761,6 +807,10 @@ export class ParticipantsModalComponent implements OnInit {
             creditReserved: false,
           };
 
+          if (participant.type === 'avaliador' && participant.avaliadoId) {
+            updateData['avaliadoId'] = participant.avaliadoId;
+          }
+
           if (isPending && !existingData['nextReminderAt'] && reminderSettings) {
             const nextAt = this.computeNextReminderAt(
               reminderSettings.startDate,
@@ -779,8 +829,8 @@ export class ParticipantsModalComponent implements OnInit {
         }
       }
 
-      // Marca crédito como consumido para avaliados disparados neste envio
-      await this.markCreditsConsumedForDispatch();
+      // Registra o primeiro disparo do projeto sem consumir créditos.
+      await this.registerFirstDispatchForReservedParticipants();
 
       const msg = this.translate.instant('Links enviados para {{count}} participantes!', { count: emailCount });
       this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 3000 });
@@ -794,32 +844,23 @@ export class ParticipantsModalComponent implements OnInit {
   }
 
   /**
-   * Ao concluir um disparo, marca creditConsumed=true em cada avaliado
-   * presente nos selectedParticipants e define firstFinalDispatchAt no projeto
-   * se ainda não estiver definido (gatilho R4: estorno só antes do 1º disparo).
+   * Registra o 1º disparo do projeto para avaliados com crédito reservado.
+   * O consumo permanece na conclusão do projeto.
    */
-  private async markCreditsConsumedForDispatch(): Promise<void> {
-    const avaliadosToConsume = this.selectedParticipants.filter(
+  private async registerFirstDispatchForReservedParticipants(): Promise<void> {
+    const dispatchedEvaluatees = this.selectedParticipants.filter(
       (p) => p.type === 'avaliado' && p.creditReserved && !p.creditConsumed
     );
 
-    if (avaliadosToConsume.length === 0) return;
+    if (dispatchedEvaluatees.length === 0) return;
 
     const projectRef = doc(this.firestore, `projects/${this.data.projectId}`);
     const projectSnap = await getDoc(projectRef);
     const hasFirstDispatch = !!projectSnap.data()?.['firstFinalDispatchAt'];
 
-    const updates: Promise<void>[] = avaliadosToConsume.map((p) =>
-      updateDoc(doc(this.firestore, 'participants', p.id), { creditConsumed: true })
-    );
-
     if (!hasFirstDispatch) {
-      updates.push(
-        updateDoc(projectRef, { firstFinalDispatchAt: Timestamp.now() })
-      );
+      await updateDoc(projectRef, { firstFinalDispatchAt: Timestamp.now() });
     }
-
-    await Promise.all(updates);
   }
 
   /** Carrega as configurações de lembrete ativas para o projeto atual. */
@@ -975,15 +1016,12 @@ export class ParticipantsModalComponent implements OnInit {
     // ── Atualização otimista: UI atualiza imediatamente ──────
     const prevStatus = participant.status;
     const prevSentAt = participant.sentAt;
-    const prevCreditReserved = participant.creditReserved;
 
     participant.status = 'Não Enviado';
     participant.sentAt = undefined;
-    participant.creditReserved = false;
     this.dataSource.data = [...this.dataSource.data];
     this.applyFilter();
     this.updateSelection();
-    // ─────────────────────────────────────────────────────────
 
     try {
       const linkQuery = query(
@@ -993,10 +1031,15 @@ export class ParticipantsModalComponent implements OnInit {
       );
       const linkSnap = await getDocs(linkQuery);
       if (linkSnap.empty) {
-        this.snackBar.open('Nenhum envio pendente encontrado.', 'Fechar', { duration: 3000 });
+        participant.status = prevStatus;
+        participant.sentAt = prevSentAt;
+        this.dataSource.data = [...this.dataSource.data];
+        this.applyFilter();
+        this.snackBar.open(this.translate.instant('Nenhum envio pendente encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
       const linkDoc = linkSnap.docs[0];
+      const linkData = linkDoc.data();
 
       await updateDoc(doc(this.firestore, 'assessmentLinks', linkDoc.id), {
         status: 'cancelled',
@@ -1004,34 +1047,50 @@ export class ParticipantsModalComponent implements OnInit {
         creditReserved: false,
       });
 
-      this.snackBar.open('Envio cancelado.', 'Fechar', { duration: 3000 });
+      if (linkData['creditReserved'] === true) {
+        await this.participantCreditService.refundLegacyLinkCredits(
+          [linkDoc],
+          participant.clientId || this.data.clientId
+        );
+      }
+
+      this.snackBar.open(this.translate.instant('Envio cancelado.'), this.translate.instant('Fechar'), { duration: 3000 });
     } catch (e) {
-      // Rollback em caso de erro
       participant.status = prevStatus;
       participant.sentAt = prevSentAt;
-      participant.creditReserved = prevCreditReserved;
       this.dataSource.data = [...this.dataSource.data];
       this.applyFilter();
       console.error('Erro ao cancelar envio:', e);
-      this.snackBar.open('Erro ao cancelar envio.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao cancelar envio.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
   async deleteParticipant(participantId: string): Promise<void> {
-    const nome = this.dataSource.data.find((p: any) => p.id === participantId)?.name || participantId;
+    const participant = this.dataSource.data.find((p) => p.id === participantId);
+    const nome = participant?.name || participantId;
     const confirmado = await this.confirmDialog.confirmDelete(nome);
     if (!confirmado) return;
 
     try {
-      const participantDoc = doc(
-        this.firestore,
-        `participants/${participantId}`
-      );
-      await deleteDoc(participantDoc);
+      const linksSnap = await getDocs(query(
+        collection(this.firestore, 'assessmentLinks'),
+        where('participantId', '==', participantId)
+      ));
 
-      this.dataSource.data = this.dataSource.data.filter(
-        (p) => p.id !== participantId
-      );
+      if (participant?.clientId) {
+        await this.participantCreditService.refundLegacyLinkCredits(
+          linksSnap.docs,
+          participant.clientId
+        );
+      }
+      await this.participantCreditService.refundParticipantReservedCredit(participantId);
+
+      const batch = writeBatch(this.firestore);
+      linksSnap.docs.forEach((linkDoc) => batch.delete(linkDoc.ref));
+      batch.delete(doc(this.firestore, `participants/${participantId}`));
+      await batch.commit();
+
+      this.dataSource.data = this.dataSource.data.filter((p) => p.id !== participantId);
       this.snackBar.open(this.translate.instant('Participante excluído com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
     } catch (error) {
       console.error('Erro ao excluir participante:', error);
@@ -1132,31 +1191,79 @@ export class ParticipantsModalComponent implements OnInit {
       );
 
       dialogRef.afterClosed().subscribe(async (result) => {
-        if (result) {
-          const savedParticipants = [];
+        if (!result) return;
 
-          for (const participant of participants) {
+        const projectName =
+          this.projects.find((p) => p.id === result.project)?.name ||
+          this.data.projectName ||
+          'projeto';
+
+        const validation = await this.participantValidationService.validateImportParticipantsForProject(
+          result.project,
+          participants,
+          projectName
+        );
+        if (!validation.valid) {
+          this.snackBar.open(validation.error || 'Falha de validação no import.', 'Fechar', { duration: 6000 });
+          return;
+        }
+
+        if (result) {
+          const ordered = [...participants].sort((a, b) => {
+            const aFirst = a.category === 'Avaliado' ? 0 : 1;
+            const bFirst = b.category === 'Avaliado' ? 0 : 1;
+            return aFirst - bFirst;
+          });
+
+          let avaliadoIdParaVincular: string | undefined;
+          if (!ordered.some((p) => p.category === 'Avaliado')) {
+            avaliadoIdParaVincular =
+              (await this.participantValidationService.getProjectEvaluateeId(result.project)) || undefined;
+          }
+
+          for (const participant of ordered) {
             try {
-              const docRef = await addDoc(
-                collection(this.firestore, 'participants'),
+              const baseFields = this.participantValidationService.buildParticipantWriteFields(
+                participant.name,
+                participant.email,
                 {
-                  ...participant,
+                  category: participant.category,
+                  type: participant.type,
                   clientId: result.client,
                   projectId: result.project,
-                  createdAt: new Date(),
                 }
               );
 
-              savedParticipants.push({
-                ...participant,
-                id: docRef.id,
-              });
-            } catch (error) {
+              if (participant.category === 'Avaliado') {
+                const evaluateeId = await this.participantCreditService.createEvaluateeWithCredit(
+                  baseFields,
+                  result.client,
+                  result.project
+                );
+                if (!avaliadoIdParaVincular) {
+                  avaliadoIdParaVincular = evaluateeId;
+                }
+              } else {
+                const docData: Record<string, unknown> = {
+                  ...baseFields,
+                  createdAt: new Date(),
+                };
+                if (avaliadoIdParaVincular) {
+                  docData['avaliadoId'] = avaliadoIdParaVincular;
+                }
+                await addDoc(collection(this.firestore, 'participants'), docData);
+              }
+            } catch (error: unknown) {
               console.error('Erro ao salvar participante:', error);
+              const err = error as { code?: string };
+              if (err.code === 'insufficient-credits') {
+                this.snackBar.open(this.translate.instant('Créditos insuficientes para importar o avaliado.'), this.translate.instant('Fechar'), { duration: 6000 });
+                break;
+              }
             }
           }
 
-          this.snackBar.open('Upload e salvamento concluídos!', 'Fechar', {
+          this.snackBar.open(this.translate.instant('Upload e salvamento concluídos!'), this.translate.instant('Fechar'), {
             duration: 3000,
           });
           this.loadParticipants();
@@ -1184,7 +1291,7 @@ export class ParticipantsModalComponent implements OnInit {
         }));
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
-      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar projetos.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return [];
@@ -1195,7 +1302,7 @@ export class ParticipantsModalComponent implements OnInit {
     // Validar seleção de avaliação antes de prosseguir
     const selectedAssessmentId = this.assessmentFormControl.value;
     if (!selectedAssessmentId) {
-      this.snackBar.open('Selecione um Formulário (Avaliação) para gerar o relatório.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Selecione um Formulário (Avaliação) para gerar o relatório.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 

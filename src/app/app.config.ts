@@ -60,6 +60,8 @@ import localeEs from '@angular/common/locales/es';
 import localeEn from '@angular/common/locales/en';
 import { EmailEditorModule } from 'angular-email-editor';
 import { AppMissingTranslationHandler } from './i18n/missing-translation.handler';
+import { MatPaginatorIntl } from '@angular/material/paginator';
+import { PaginatorIntlService } from './i18n/paginator-intl.service';
 
 registerLocaleData(localePt);
 registerLocaleData(localeEs);
@@ -129,6 +131,9 @@ export const appConfig: ApplicationConfig = {
         missingTranslationHandler: { provide: MissingTranslationHandler, useClass: AppMissingTranslationHandler },
       })
     ),
+    // Deve vir DEPOIS do MaterialModule: o MatPaginatorModule registra um provider
+    // padrão em inglês que sobrescreve qualquer MatPaginatorIntl anterior.
+    { provide: MatPaginatorIntl, useClass: PaginatorIntlService },
     provideNgxMask(),
   ],
 };

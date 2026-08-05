@@ -32,13 +32,134 @@
   break-after: page !important;
 }
 
+.report-section--page-break-after + .report-section.report-section--page-break-before:not(.report-section--johari) {
+  page-break-before: auto !important;
+  break-before: auto !important;
+}
+
+.report-section--johari {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin-bottom: 0 !important;
+}
+
+.report-section--johari .rp-johari-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 920px;
+  width: 100%;
+}
+
+.report-section--johari .rp-secao-header {
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+}
+
+.report-section--johari .rp-johari-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.report-section--johari app-johari-window-chart {
+  flex: 1 1 auto;
+  display: flex !important;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.report-section--johari .johari-wrapper {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.report-section--johari .x-title {
+  flex: 0 0 auto;
+}
+
+.report-section--johari .plot-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto !important;
+  max-height: none !important;
+  aspect-ratio: unset !important;
+  width: 100%;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.report-section--johari .legend-table {
+  flex: 0 0 auto;
+  margin-top: 10px;
+  font-size: 11px !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.report-section--johari .legend-table th,
+.report-section--johari .legend-table td {
+  padding: 6px 8px !important;
+}
+
 h1, h2, h3, h4, h5, h6 {
   page-break-after: avoid !important;
   break-after: avoid-page !important;
 }
 
-app-johari-window-chart,
-app-gap-chart,
+.rp-defasagem-section,
+.rp-defasagem-preview {
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+}
+
+.rp-defasagem-item {
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+  margin-bottom: 20px;
+}
+
+.rp-defasagem-item__title {
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  page-break-after: avoid !important;
+  break-after: avoid-page !important;
+}
+
+.gap-chart-container {
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+}
+
+.gap-chart-container .table-header {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+  page-break-after: avoid !important;
+  break-after: avoid-page !important;
+}
+
+.gap-chart-container .table-row {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
 ngx-charts-bar-horizontal,
 .pdf-svg-chart,
 .capa-info-block {
@@ -47,12 +168,103 @@ ngx-charts-bar-horizontal,
   display: block !important;
 }
 
-table {
+/* Gráficos de barras comparativos — legenda HTML à direita (fora do ngx-charts) */
+.rp-bar-chart-block {
+  display: block;
+  margin-bottom: 36px;
+  clear: both;
+}
+
+.rp-bar-chart-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  max-width: 960px;
+}
+
+:host ::ng-deep .rp-bar-chart-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+
+  ngx-charts-bar-horizontal {
+    display: block;
+  }
+
+  .ngx-charts-outer {
+    display: block;
+    overflow: hidden;
+  }
+}
+
+.rp-bar-chart-legend {
+  flex: 0 0 220px;
+  width: 220px;
+  box-sizing: border-box;
+  padding: 12px 10px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+  align-self: flex-start;
+
+  &__title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #555;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__swatch {
+    flex: 0 0 14px;
+    width: 14px;
+    height: 14px;
+    margin-top: 1px;
+    border-radius: 3px;
+  }
+
+  &__label {
+    flex: 1 1 auto;
+    word-break: break-word;
+  }
+}
+
+.rp-secao-header {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+  page-break-after: avoid !important;
+  break-after: avoid-page !important;
+}
+
+.tabela-frequencia,
+.tabela-distribuicao-notas,
+.tabela-destaques {
   page-break-inside: auto !important;
   break-inside: auto !important;
 }
 
-tr {
+.tabela-frequencia tr,
+.tabela-distribuicao-notas tr,
+.tabela-destaques tr {
   page-break-inside: avoid !important;
   break-inside: avoid !important;
 }
@@ -1446,10 +1658,8 @@ tr {
     display: none !important;
   }
 
-  /* Nenhum elemento pode ser cortado no meio entre páginas */
-  .report-section,
+  /* Evita cortar blocos pequenos; seções longas podem quebrar entre sub-blocos */
   .rp-section,
-  table,
   mat-table,
   .rp-chart-wrap,
   .rp-table-wrap,
@@ -1459,11 +1669,83 @@ tr {
   .mat-mdc-table,
   ngx-charts-chart,
   .rp-summary-card,
-  .rp-johari-wrap,
   tr,
-  .rp-perguntas-abertas-item {
+  .rp-perguntas-abertas-item,
+  .rp-secao-header,
+  .gap-chart-container .table-header,
+  .gap-chart-container .table-row,
+  ngx-charts-bar-horizontal,
+  .pdf-svg-chart,
+  .capa-info-block {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  .report-section,
+  .rp-defasagem-section,
+  .rp-defasagem-preview,
+  .rp-defasagem-item,
+  .gap-chart-container {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .report-section--johari {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0 !important;
+  }
+
+  .report-section--johari .rp-johari-section {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 920px;
+  }
+
+  .report-section--johari .rp-johari-wrap {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .report-section--johari app-johari-window-chart {
+    flex: 1 1 auto;
+    display: flex !important;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .report-section--johari .johari-wrapper {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .report-section--johari .plot-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+    max-height: none !important;
+    aspect-ratio: unset !important;
+    width: 100% !important;
+  }
+
+  .report-section--johari .legend-table {
+    flex: 0 0 auto;
+    width: 100% !important;
+    font-size: 11px !important;
+  }
+
+  .tabela-frequencia,
+  .tabela-distribuicao-notas,
+  .tabela-destaques {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
   /* Títulos de seção sempre ficam com o conteúdo seguinte */
@@ -1659,8 +1941,53 @@ tr {
   }
 }
 
-/* Quando o passo 4 usa badge (sem form-field), o número não precisa de offset */
-.rp-seq-step:has(> .rp-avaliado-badge) .rp-seq-step__num {
+.rp-project-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #eff6ff;
+  border: 1.5px solid #93c5fd;
+  border-radius: 10px;
+  min-width: 160px;
+  max-width: 280px;
+
+  &__icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #2563eb;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+  }
+
+  &__label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #2563eb;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1b2d56;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Quando o passo usa badge (sem form-field), o número não precisa de offset */
+.rp-seq-step:has(> .rp-avaliado-badge) .rp-seq-step__num,
+.rp-seq-step:has(> .rp-project-badge) .rp-seq-step__num {
   margin-top: 0;
 }
 
@@ -2186,6 +2513,145 @@ tr {
 }
 
 /* ===================== TAB 2: MONTAR RELATÓRIO ===================== */
+.rp-montar-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.rp-montar-guide {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  border: 1px solid #e2e8f0;
+
+  &__step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #1B84FF;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  &__arrow {
+    color: #94a3b8;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.rp-template-active {
+  background: #fff;
+  border: 1px solid #ddd6fe;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 1px 3px rgba(91, 33, 182, 0.06);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  &__desc {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: #94a3b8;
+  }
+
+  &__chips {
+    mat-chip {
+      font-size: 12px;
+    }
+  }
+
+  &__field {
+    width: 100%;
+    max-width: 480px;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__manage {
+    margin-left: auto;
+    color: #7c3aed !important;
+    font-weight: 600;
+  }
+}
+
+.rp-chip--warn {
+  --mdc-chip-elevated-container-color: #fff7ed;
+  --mdc-chip-label-text-color: #c2410c;
+}
+
+.rp-chip--template {
+  --mdc-chip-elevated-container-color: #ede9fe;
+  --mdc-chip-label-text-color: #5b21b6;
+}
+
+.rp-chip--muted {
+  --mdc-chip-elevated-container-color: #f1f5f9;
+  --mdc-chip-label-text-color: #64748b;
+}
+
+.rp-rascunhos-panel {
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+
+  &__icon {
+    margin-right: 8px;
+    color: #1B84FF;
+    vertical-align: middle;
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 4px;
+  }
+}
+
 .rp-persist-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2507,6 +2973,34 @@ tr {
   color: #333;
 }
 
+.rp-capa-editor-mode {
+  margin-bottom: 12px;
+
+  &__hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #64748b;
+  }
+}
+
+.rp-capa-info-toggle {
+  display: block;
+  margin: 0 0 12px;
+}
+
+.rp-html-editor {
+  width: 100%;
+  min-height: 280px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+  margin-bottom: 12px;
+}
+
 /* Tip cards */
 .rp-tip-card {
   padding: 12px 14px;
@@ -2782,15 +3276,17 @@ tr {
   margin-top: 20px;
 }
 
+.rp-johari-wrap {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.rp-johari-section {
+  width: 100%;
+}
+
 .rp-defasagem-item {
   margin-bottom: 24px;
-
-  h4 {
-    margin-bottom: 12px;
-    color: #333;
-    border-bottom: 2px solid #e0e0e0;
-    padding-bottom: 8px;
-  }
 }
 
 /* Empty placeholder */
@@ -3038,6 +3534,21 @@ tr {
 }
 
 .capa-section {
+  .capa-section__html {
+    display: block;
+    width: 100%;
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      max-width: 100%;
+    }
+  }
+
   .capa-info-block {
     margin-top: 24px;
     padding: 20px 24px;
@@ -3182,6 +3693,12 @@ mat-table {
 
   .rp-persist-cols {
     grid-template-columns: 1fr;
+  }
+
+  .rp-template-active__manage {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .rp-config-selectors {
@@ -3536,3 +4053,8 @@ mat-table {
   line-height: 1;
 }
 
+.rp-radar-chart {
+  background: #ffffff;
+  border-radius: 4px;
+  width: 100%;
+}

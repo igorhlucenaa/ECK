@@ -15,6 +15,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteField,
   where,
   addDoc,
   deleteDoc,
@@ -45,11 +46,12 @@ import { RelatorioPreviewDialogComponent } from '../../project/participants-moda
 import { SendHistoryDialogComponent } from './send-history-dialog/send-history-dialog.component';
 import { ReportGenerationModalComponent } from '../../project/report-generation-modal/report-generation-modal.component';
 import { Router, RouterLink } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ProjectService } from 'src/app/services/project.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
+import { ParticipantCreditService } from 'src/app/services/participant-credit.service';
 import { HasPermissionDirective } from 'src/app/directives/has-permission.directive';
 import { hasPermission, AppRole } from 'src/app/config/permissions.config';
 import { Auth, sendPasswordResetEmail, ActionCodeSettings } from '@angular/fire/auth';
@@ -92,6 +94,9 @@ interface UnifiedParticipant {
   intervalDays?: number;
   reminderSendTime?: string;
   reminderTimezone?: string;
+  blocked?: boolean;
+  blockedAt?: Date;
+  blockedBy?: string;
 }
 
 interface Client {
@@ -107,6 +112,7 @@ interface Project {
   id: string;
   name: string;
   clientId: string;
+  assessmentId?: string;
 }
 
 interface MailTemplate {
@@ -137,6 +143,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     'type',
     'category',
     'cargo',
+    'clientName',
     'projectName',
     'status',
     'lembrete',
@@ -166,6 +173,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   lastRefreshed: Date | null = null;
   templateFormControl = this.fb.control('', Validators.required);
   assessmentFormControl = this.fb.control('', Validators.required);
+  /** Formulário travado no assessmentId definido na criação do projeto */
+  projectAssessmentLocked = false;
   selectedTemplate: MailTemplate | any = null;
   userRole: string = '';
   userClientIds: string[] = [];
@@ -186,8 +195,49 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     return hasPermission(this.userRole as AppRole, 'criar');
   }
 
+  get canEditParticipants(): boolean {
+    return hasPermission(this.userRole as AppRole, 'editar');
+  }
+
+  get canDeleteParticipants(): boolean {
+    return hasPermission(this.userRole as AppRole, 'excluir');
+  }
+
+  get canMutateProjectParticipants(): boolean {
+    return (
+      !this.isProjectConcluded &&
+      !this.isProjectCancelled &&
+      (this.canManageParticipantData || this.canEditParticipants || this.canDeleteParticipants)
+    );
+  }
+
+  private ensureCanMutateParticipants(action: 'criar' | 'editar' | 'excluir' = 'editar'): boolean {
+    if (!hasPermission(this.userRole as AppRole, action)) {
+      this.snackBar.open(this.translate.instant('Você não tem permissão para esta ação.'), this.translate.instant('Fechar'), { duration: 4000 });
+      return false;
+    }
+    if (this.isProjectConcluded || this.isProjectCancelled) {
+      this.snackBar.open(
+        `Ação bloqueada: projeto ${this.projectStatusLabel || 'indisponível'}.`,
+        'Fechar',
+        { duration: 4000 }
+      );
+      return false;
+    }
+    return true;
+  }
+
   get canManageViewers(): boolean {
     return hasPermission(this.userRole as AppRole, 'gerenciar_viewers');
+  }
+
+  canBlockParticipant(participant: UnifiedParticipant): boolean {
+    if (!hasPermission(this.userRole as AppRole, 'bloquear')) return false;
+    if (this.userRole === 'admin_master') return true;
+    if (this.userRole === 'admin_client') {
+      return this.userClientIds.includes(participant.clientId);
+    }
+    return false;
   }
 
   get isProjectConcluded(): boolean {
@@ -211,6 +261,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     return 'project-status--blue';
   }
 
+  /** Cliente + projeto selecionados — necessário para envio e ações no contexto do projeto */
+  get hasOperationContext(): boolean {
+    return !!(this.filterClient && this.filterProject);
+  }
+
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
@@ -220,8 +275,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     private authService: AuthService,
     private projectService: ProjectService,
     private participantValidationService: ParticipantValidationService,
+    private participantCreditService: ParticipantCreditService,
     private auth: Auth,
     private firebaseApp: FirebaseApp,
+    private translate: TranslateService,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: ModalData | null,
     @Optional() public dialogRef: MatDialogRef<ParticipantsComponent>
   ) {}
@@ -235,8 +292,6 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     if (this.userRole === 'viewer') {
       await this.loadViewerProjectIds();
     }
-
-    await this.loadReportTemplates();
 
     this.isEmailSendingMode =
       !!this.data && !!this.data.templateId && !!this.data.emailType;
@@ -252,6 +307,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.isInitializing = false;
 
     this.configureDataSource();
+    this.applyFilter();
 
   }
 
@@ -270,8 +326,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const typeMatch = !this.filterType || data.type === this.filterType;
       const categoryMatch =
         !this.filterCategory || data.category === this.filterCategory;
-      const statusMatch =
-        !this.filterStatus || data.status === this.filterStatus;
+      const statusMatch = !this.filterStatus || (
+        this.filterStatus === '__blocked__'
+          ? data.blocked === true
+          : data.status === this.filterStatus && !data.blocked
+      );
       const clientMatch =
         !this.filterClient || data.clientId === this.filterClient;
       const projectMatch =
@@ -304,6 +363,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             return this.compare(a.type, b.type, isAsc);
           case 'category':
             return this.compare(a.category, b.category, isAsc);
+          case 'clientName':
+            return this.compare(a.clientName, b.clientName, isAsc);
           case 'projectName':
             return this.compare(a.projectName, b.projectName, isAsc);
           case 'status':
@@ -334,10 +395,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.isProjectDisabled = true;
 
       this.loadTemplate(this.data!.templateId!).then(() => {
-        this.loadAssessments().then(() => {
+        this.loadAssessments().then(async () => {
           this.filteredProjects = this.projects.filter(
             (project) => project.clientId === this.filterClient
           );
+          this.loadReportTemplates();
+          await this.syncProjectAssessment();
 
           if (
             ['conviteAvaliador', 'lembreteAvaliador'].includes(
@@ -366,11 +429,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.isProjectDisabled = true;
       this.loadProjectStatus();
 
-      Promise.all([this.loadMailTemplates(), this.loadAssessments()]).then(
-        () => {
+      Promise.all([this.loadMailTemplates(), this.loadAssessments(), this.loadReportTemplates()]).then(
+        async () => {
           this.filteredProjects = this.projects.filter(
             (project) => project.clientId === this.filterClient
           );
+          await this.syncProjectAssessment();
           this.applyFilter();
         }
       );
@@ -401,7 +465,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.templateFormControl.setValue(this.selectedTemplate.id);
       this.templateFormControl.disable();
     } else {
-      this.snackBar.open('Template não encontrado.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Template não encontrado.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       this.dialogRef.close();
@@ -512,14 +576,15 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           let purchased = 0;
           ordersSnap.docs.forEach(d => {
             const validity = d.data()['validityDate']?.toDate();
-            if (validity && validity > now) purchased += (d.data()['credits'] || 0);
+            // Alinhado ao restante do sistema: pedido sem validade ou ainda vigente
+            if (!validity || validity >= now) purchased += (d.data()['credits'] || 0);
           });
           client.creditsPurchased = purchased;
         } catch { client.creditsPurchased = 0; }
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -543,11 +608,12 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         id: d.id,
         name: d.data()['name'] || 'Projeto Sem Nome',
         clientId: d.data()['clientId'] || '',
+        assessmentId: d.data()['assessmentId'] || undefined,
       }));
       this.filteredProjects = [...this.projects];
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
-      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar projetos.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -676,19 +742,22 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         let lastReminderAt: Date | undefined;
 
         const selectedAssessmentId = this.assessmentFormControl.value;
+        const projectAssessmentId = projectsMap[projectId]?.assessmentId;
         let assessmentIdsToQuery: string[] = [];
 
         if (selectedAssessmentId) {
           assessmentIdsToQuery = [selectedAssessmentId];
         } else if (assessments.length > 0) {
           assessmentIdsToQuery = assessments;
+        } else if (projectAssessmentId) {
+          assessmentIdsToQuery = [projectAssessmentId];
         }
 
         let resolvedAssessmentId: string | undefined =
           assessments.length > 0
             ? assessments[0]
-            : (selectedAssessmentId || projectsMap[projectId]?.assessmentId || undefined);
-        let creditReserved = false;
+            : (selectedAssessmentId || projectAssessmentId || undefined);
+        let creditReserved = participantData['creditReserved'] === true;
 
         const processLinks = (linksSnapshot: any) => {
           linksSnapshot.docs.forEach((linkDoc: any) => {
@@ -721,13 +790,31 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
               const lrs = (linkData['lastReminderSentAt'] as Timestamp).toDate();
               if (!lastReminderAt || lrs > lastReminderAt) lastReminderAt = lrs;
             }
-            if (linkData['creditReserved'] === true) {
+            if (linkData['creditReserved'] === true && !creditReserved) {
               creditReserved = true;
             }
           });
         };
 
-        if (assessmentIdsToQuery.length > 0) {
+        let linksLoaded = false;
+
+        // 1) Links do projeto (fonte mais confiável ao abrir a partir de /projects)
+        if (projectId) {
+          const projectLinksQuery = query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('participantId', '==', participantId),
+            where('projectId', '==', projectId)
+          );
+          const projectLinksSnap = await getDocs(projectLinksQuery);
+          if (!projectLinksSnap.empty) {
+            processLinks(projectLinksSnap);
+            status = this.determineStatus(sentAt, completedAt);
+            linksLoaded = true;
+          }
+        }
+
+        // 2) Links da(s) avaliação(ões) vinculada(s)
+        if (!linksLoaded && assessmentIdsToQuery.length > 0) {
           const batchSize = 10;
           for (let i = 0; i < assessmentIdsToQuery.length; i += batchSize) {
             const batch = assessmentIdsToQuery.slice(i, i + batchSize);
@@ -737,11 +824,16 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
               where('assessmentId', 'in', batch)
             );
             const linksSnapshot = await getDocs(assessmentLinksQuery);
-            processLinks(linksSnapshot);
+            if (!linksSnapshot.empty) {
+              processLinks(linksSnapshot);
+              status = this.determineStatus(sentAt, completedAt);
+              linksLoaded = true;
+            }
           }
-          status = this.determineStatus(sentAt, completedAt);
-        } else if (!resolvedAssessmentId) {
-          // Discovery: find any assessmentLinks for this participant
+        }
+
+        // 3) Discovery: qualquer link do participante (links legados sem projectId)
+        if (!linksLoaded) {
           const discoveryQuery = query(
             collection(this.firestore, 'assessmentLinks'),
             where('participantId', '==', participantId)
@@ -781,6 +873,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             intervalDays: reminderSettingsMap[`${clientId}_${projectId}`]?.intervalDays ?? 3,
             reminderSendTime: reminderSettingsMap[`${clientId}_${projectId}`]?.sendTime ?? '09:00',
             reminderTimezone: reminderSettingsMap[`${clientId}_${projectId}`]?.timezone ?? 'America/Fortaleza',
+            blocked: participantData['blocked'] === true,
+            blockedAt: participantData['blockedAt']?.toDate?.() ?? undefined,
+            blockedBy: participantData['blockedBy'] || undefined,
           });
         }
       }
@@ -789,7 +884,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       this.applyFilter();
     } catch (error) {
       console.error('Erro ao carregar participantes:', error);
-      this.snackBar.open('Erro ao carregar participantes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar participantes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } finally {
@@ -836,7 +931,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       }
     } catch (error) {
       console.error('Erro ao carregar Modelos de e-mail:', error);
-      this.snackBar.open('Erro ao carregar Modelos de e-mail.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar Modelos de e-mail.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -873,15 +968,21 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       }
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
-      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliações.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
   }
 
   async loadReportTemplates(): Promise<void> {
+    if (!this.filterClient) {
+      this.reportTemplates = [];
+      return;
+    }
     const templatesCollection = collection(this.firestore, 'reportTemplates');
-    const snapshot = await getDocs(templatesCollection);
+    const snapshot = await getDocs(
+      query(templatesCollection, where('clientId', '==', this.filterClient))
+    );
     this.reportTemplates = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -892,6 +993,63 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     if (completedAt) return 'Respondido';
     if (sentAt) return 'Enviado (Pendente)';
     return 'Não Enviado';
+  }
+
+  async toggleBlockParticipant(participant: UnifiedParticipant): Promise<void> {
+    if (!this.canBlockParticipant(participant)) {
+      this.snackBar.open(this.translate.instant('Você não tem permissão para bloquear este participante.'), this.translate.instant('Fechar'), {
+        duration: 4000,
+      });
+      return;
+    }
+
+    const newBlocked = !participant.blocked;
+    const actionKey = newBlocked ? 'bloquear' : 'desbloquear';
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        message: newBlocked
+          ? `Bloquear "${participant.name}"? Ele não poderá responder à avaliação, mesmo que o e-mail já tenha sido enviado.`
+          : `Desbloquear "${participant.name}"? Ele voltará a poder acessar e responder a avaliação pelo link recebido.`,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+
+      try {
+        const blockedBy = this.auth.currentUser?.email || this.auth.currentUser?.uid || '';
+        await updateDoc(doc(this.firestore, `participants/${participant.id}`), {
+          blocked: newBlocked,
+          blockedAt: newBlocked ? Timestamp.now() : null,
+          blockedBy: newBlocked ? blockedBy : null,
+        });
+
+        const patch = (p: UnifiedParticipant) =>
+          p.id === participant.id
+            ? {
+                ...p,
+                blocked: newBlocked,
+                blockedAt: newBlocked ? new Date() : undefined,
+                blockedBy: newBlocked ? blockedBy : undefined,
+                selected: false,
+              }
+            : p;
+
+        this.dataSource.data = this.dataSource.data.map(patch);
+        this.applyFilter();
+
+        const msg = newBlocked
+          ? 'Participante bloqueado com sucesso.'
+          : 'Participante desbloqueado com sucesso.';
+        this.snackBar.open(msg, 'Fechar', { duration: 3000 });
+      } catch (error) {
+        console.error(`Erro ao ${actionKey} participante:`, error);
+        this.snackBar.open(this.translate.instant('Erro ao alterar o bloqueio do participante.'), this.translate.instant('Fechar'), {
+          duration: 4000,
+        });
+      }
+    });
   }
 
   getReminderTooltip(p: UnifiedParticipant): string {
@@ -981,6 +1139,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.filterProject = '';
     this.templateFormControl.setValue('');
     this.assessmentFormControl.setValue('');
+    this.projectAssessmentLocked = false;
     this.mailTemplates = [];
     this.assessments = [];
     if (this.filterClient) {
@@ -989,15 +1148,134 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       );
       if (!this.isEmailSendingMode) this.loadMailTemplates();
       this.loadAssessments();
+      this.loadReportTemplates();
     } else {
       this.filteredProjects = [...this.projects];
     }
     this.applyFilter();
   }
 
-  onProjectChange(): void {
+  async onProjectChange(): Promise<void> {
+    if (this.filterProject && !this.filterClient) {
+      const project = this.projects.find((p) => p.id === this.filterProject);
+      if (project?.clientId) {
+        this.filterClient = project.clientId;
+        this.filteredProjects = this.projects.filter(
+          (p) => p.clientId === this.filterClient
+        );
+        if (!this.isEmailSendingMode) await this.loadMailTemplates();
+        await this.loadAssessments();
+        this.loadReportTemplates();
+      }
+    }
+
+    if (!this.filterProject) {
+      this.templateFormControl.setValue('');
+      this.assessmentFormControl.setValue('');
+      this.projectAssessmentLocked = false;
+      this.projectStatus = '';
+    }
+
     this.applyFilter();
-    this.loadProjectStatus();
+    await this.syncProjectAssessment();
+    await this.loadProjectStatus();
+  }
+
+  async focusParticipantContext(participant: UnifiedParticipant): Promise<void> {
+    if (!participant.clientId || !participant.projectId) return;
+
+    if (this.filterClient !== participant.clientId) {
+      this.filterClient = participant.clientId;
+      this.filteredProjects = this.projects.filter(
+        (p) => p.clientId === participant.clientId
+      );
+      if (!this.isEmailSendingMode) await this.loadMailTemplates();
+      await this.loadAssessments();
+      this.loadReportTemplates();
+    }
+
+    if (this.filterProject !== participant.projectId) {
+      this.filterProject = participant.projectId;
+      await this.onProjectChange();
+      return;
+    }
+
+    this.applyFilter();
+  }
+
+  canActOnParticipant(participant: UnifiedParticipant): boolean {
+    return (
+      this.hasOperationContext &&
+      participant.projectId === this.filterProject &&
+      !this.isProjectConcluded &&
+      !this.isProjectCancelled
+    );
+  }
+
+  getParticipantActionTooltip(participant: UnifiedParticipant, fallback: string): string {
+    if (!this.hasOperationContext || participant.projectId !== this.filterProject) {
+      return 'Clique no projeto para selecionar o contexto de operação';
+    }
+    if (this.isProjectConcluded || this.isProjectCancelled) {
+      return `Ação bloqueada: projeto ${this.projectStatusLabel}`;
+    }
+    return fallback;
+  }
+
+  get lockedAssessmentName(): string {
+    const id = this.assessmentFormControl.value;
+    if (!id) return '';
+    return this.assessments.find((a) => a.id === id)?.name || 'Formulário do projeto';
+  }
+
+  private async syncProjectAssessment(): Promise<void> {
+    if (!this.filterProject) {
+      this.projectAssessmentLocked = false;
+      this.assessmentFormControl.setValue('');
+      return;
+    }
+
+    let assessmentId = this.projects.find((p) => p.id === this.filterProject)?.assessmentId;
+
+    if (!assessmentId) {
+      try {
+        const snap = await getDoc(doc(this.firestore, 'projects', this.filterProject));
+        if (snap.exists()) {
+          assessmentId = snap.data()['assessmentId'] || '';
+          const project = this.projects.find((p) => p.id === this.filterProject);
+          if (project && assessmentId) {
+            project.assessmentId = assessmentId;
+          }
+        }
+      } catch {
+        /* ignora falha pontual de leitura */
+      }
+    }
+
+    if (!assessmentId) {
+      this.projectAssessmentLocked = false;
+      this.assessmentFormControl.setValue('');
+      return;
+    }
+
+    await this.ensureAssessmentLoaded(assessmentId);
+    this.projectAssessmentLocked = true;
+    this.assessmentFormControl.setValue(assessmentId);
+  }
+
+  private async ensureAssessmentLoaded(assessmentId: string): Promise<void> {
+    if (this.assessments.some((a) => a.id === assessmentId)) return;
+    try {
+      const snap = await getDoc(doc(this.firestore, 'assessments', assessmentId));
+      if (snap.exists()) {
+        this.assessments = [
+          ...this.assessments,
+          { id: assessmentId, name: snap.data()['name'] || 'Avaliação Sem Nome' },
+        ];
+      }
+    } catch {
+      /* ignora falha pontual de leitura */
+    }
   }
 
   private async loadProjectStatus(): Promise<void> {
@@ -1037,11 +1315,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     const totalComprado = c.creditsPurchased ?? 0;
     const reservado = c.reservedCredits ?? 0;
     const consumido = c.consumedCredits ?? 0;
+    // Saldo real fica em clients.credits (debitado na reserva, não recalculado na conclusão)
+    const disponivel = Math.max(0, c.credits ?? 0);
     return {
       totalComprado,
       reservado,
       consumido,
-      disponivel: totalComprado - reservado - consumido,
+      disponivel,
     };
   }
 
@@ -1073,7 +1353,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   toggleAll(checked: boolean): void {
     this.dataSource.filteredData.forEach((participant) => {
-      if (!participant.completedAt && this.applyEmailTypeFilter(participant)) {
+      if (!participant.completedAt && !participant.blocked && this.applyEmailTypeFilter(participant)) {
         participant.selected = checked;
       }
     });
@@ -1082,6 +1362,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   /** Retorna true quando o usuário já selecionou modelo de e-mail E avaliação (se necessária) */
   get isSelectionReady(): boolean {
+    if (!this.hasOperationContext) return false;
     if (!this.templateFormControl.valid) return false;
     const needsAssessment = this.selectedTemplate?.emailType && this.selectedTemplate?.emailType !== 'cadastro';
     if (needsAssessment && !this.assessmentFormControl.valid) return false;
@@ -1089,21 +1370,27 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   get selectionTooltip(): string {
+    if (!this.hasOperationContext) return 'Selecione cliente e projeto para enviar e-mails';
     if (!this.templateFormControl.valid) return 'Selecione um modelo de e-mail primeiro';
     const needsAssessment = this.selectedTemplate?.emailType && this.selectedTemplate?.emailType !== 'cadastro';
-    if (needsAssessment && !this.assessmentFormControl.valid) return 'Selecione um formulário de avaliação primeiro';
+    if (needsAssessment && !this.assessmentFormControl.valid) {
+      if (this.filterProject && !this.projectAssessmentLocked) {
+        return 'Defina o formulário no cadastro do projeto';
+      }
+      return 'Formulário de avaliação não configurado';
+    }
     return '';
   }
 
   updateSelection(): void {
     this.selectedParticipants = this.dataSource.filteredData.filter(
-      (p) => p.selected && this.applyEmailTypeFilter(p) && !p.completedAt
+      (p) => p.selected && this.applyEmailTypeFilter(p) && !p.completedAt && !p.blocked
     );
   }
 
   allSelected(): boolean {
     const eligibleParticipants = this.dataSource.filteredData.filter(
-      (p) => this.applyEmailTypeFilter(p) && !p.completedAt
+      (p) => this.applyEmailTypeFilter(p) && !p.completedAt && !p.blocked
     );
     return (
       eligibleParticipants.length > 0 &&
@@ -1113,49 +1400,86 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   someSelected(): boolean {
     const eligibleParticipants = this.dataSource.filteredData.filter(
-      (p) => this.applyEmailTypeFilter(p) && !p.completedAt
+      (p) => this.applyEmailTypeFilter(p) && !p.completedAt && !p.blocked
     );
     return eligibleParticipants.some((p) => p.selected) && !this.allSelected();
   }
 
   async deleteSelectedParticipants(): Promise<void> {
+    if (!this.ensureCanMutateParticipants('excluir')) return;
     const count = this.selectedParticipants.length;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
-      data: { message: `Tem certeza de que deseja excluir ${count} participante(s)? Esta ação não pode ser desfeita.` },
+      data: { message: `Tem certeza de que deseja excluir ${count} participante(s)? Os links de avaliação e créditos reservados também serão removidos. Esta ação não pode ser desfeita.` },
     });
 
     dialogRef.afterClosed().subscribe(async (confirmed) => {
       if (!confirmed) return;
+      const BATCH_SIZE = 400;
       try {
-        const batch = writeBatch(this.firestore);
-        this.selectedParticipants.forEach(p => batch.delete(doc(this.firestore, `participants/${p.id}`)));
-        await batch.commit();
+        const linkRefs: any[] = [];
+        const clientsToReload = new Set<string>();
+
+        for (const p of this.selectedParticipants) {
+          const linksSnap = await getDocs(query(
+            collection(this.firestore, 'assessmentLinks'),
+            where('participantId', '==', p.id)
+          ));
+          for (const linkDoc of linksSnap.docs) {
+            linkRefs.push(linkDoc.ref);
+          }
+
+          const legacyCount = await this.participantCreditService.refundLegacyLinkCredits(
+            linksSnap.docs,
+            p.clientId
+          );
+          if (legacyCount > 0 && p.clientId) {
+            clientsToReload.add(p.clientId);
+          }
+
+          const refunded = await this.participantCreditService.refundParticipantReservedCredit(p.id);
+          if (refunded && p.clientId) {
+            clientsToReload.add(p.clientId);
+          }
+        }
+
+        for (let i = 0; i < linkRefs.length; i += BATCH_SIZE) {
+          const batch = writeBatch(this.firestore);
+          linkRefs.slice(i, i + BATCH_SIZE).forEach(ref => batch.delete(ref));
+          await batch.commit();
+        }
+
+        for (let i = 0; i < this.selectedParticipants.length; i += BATCH_SIZE) {
+          const batch = writeBatch(this.firestore);
+          this.selectedParticipants.slice(i, i + BATCH_SIZE).forEach(p => batch.delete(doc(this.firestore, `participants/${p.id}`)));
+          await batch.commit();
+        }
+
+        if (clientsToReload.size > 0) {
+          await this.loadClients();
+        }
+
         const removedIds = new Set(this.selectedParticipants.map(p => p.id));
         this.dataSource.data = this.dataSource.data.filter(p => !removedIds.has(p.id));
         this.selectedParticipants = [];
         this.applyFilter();
-        this.snackBar.open('Participantes excluídos com sucesso!', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Participantes excluídos com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
       } catch (error) {
         console.error('Erro ao excluir participantes em massa:', error);
-        this.snackBar.open('Erro ao excluir participantes. Tente novamente.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Erro ao excluir participantes. Tente novamente.'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     });
   }
 
   async resendLinks(): Promise<void> {
+    if (!this.ensureCanMutateParticipants('criar')) return;
     // Auto-link: gestores/avaliadores são automaticamente vinculados ao único avaliado do projeto
     const assessmentId = this.assessmentFormControl.value;
     const nonAvaliados = this.selectedParticipants.filter(p => p.type !== 'avaliado');
     if (nonAvaliados.length > 0 && assessmentId) {
       const projectId = this.filterProject || this.selectedParticipants[0]?.projectId;
       if (projectId) {
-        const snap = await getDocs(query(
-          collection(this.firestore, 'participants'),
-          where('projectId', '==', projectId),
-          where('type', '==', 'avaliado')
-        ));
-        const singleAvaliadoId = snap.docs.length > 0 ? snap.docs[0].id : null;
+        const singleAvaliadoId = await this.participantValidationService.getProjectEvaluateeId(projectId);
         if (singleAvaliadoId) {
           for (const p of nonAvaliados) {
             p.avaliadoId = singleAvaliadoId;
@@ -1352,7 +1676,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       }
     } catch (error) {
       console.error('Erro ao enviar e-mails:', error);
-      this.snackBar.open('Erro ao enviar e-mails.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao enviar e-mails.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } finally {
@@ -1367,6 +1691,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       // Nova sintaxe {{...}}
       text = text.replace(/\{\{nome_participante\}\}/g, vars['nome_participante'] || '');
       text = text.replace(/\{\{nome_avaliado\}\}/g, vars['nome_avaliado'] || '');
+      text = text.replace(/\{\{categoria\}\}/g, vars['categoria'] || '');
       text = text.replace(/\{\{data_expiracao\}\}/g, vars['data_expiracao'] || '');
       text = text.replace(/\{\{nome_projeto\}\}/g, vars['nome_projeto'] || '');
       text = text.replace(/\{\{nome_cliente\}\}/g, vars['nome_cliente'] || '');
@@ -1408,6 +1733,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async uploadExcel(event: any): Promise<void> {
+    if (!this.ensureCanMutateParticipants('criar')) return;
     const file = event.target.files[0];
     if (!file) return;
     // Reset input so the same file can be selected again
@@ -1442,7 +1768,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       }
 
       if (participants.length === 0) {
-        this.snackBar.open('Nenhum participante válido encontrado na planilha.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Nenhum participante válido encontrado na planilha.'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
 
@@ -1463,19 +1789,80 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       dialogRef.afterClosed().subscribe(async (result) => {
         if (!result) return;
 
+        const projectName = this.projects.find(p => p.id === result.project)?.name || 'projeto';
+
+        // Revalidar antes de gravar (defesa contra mudanças entre confirmação e gravação).
+        const importValidation = await this.participantValidationService.validateImportParticipantsForProject(
+          result.project,
+          participants,
+          projectName
+        );
+        if (!importValidation.valid) {
+          this.snackBar.open(importValidation.error || 'Falha de validação no import.', 'Fechar', { duration: 6000 });
+          return;
+        }
+
+        // Ordena para processar o avaliado primeiro e em seguida os avaliadores.
+        const ordered = [...participants].sort((a, b) => {
+          const aFirst = a.category === 'Avaliado' ? 0 : 1;
+          const bFirst = b.category === 'Avaliado' ? 0 : 1;
+          return aFirst - bFirst;
+        });
+
+        // Descobre avaliadoId: do arquivo (após criação) ou do BD se ele já existe.
+        let avaliadoIdParaVincular: string | undefined;
+        if (!ordered.some(p => p.category === 'Avaliado')) {
+          const existsCheck = await this.participantValidationService.validateAvaliadoExistsForProject(
+            result.project,
+            projectName
+          );
+          avaliadoIdParaVincular = existsCheck.avaliadoId;
+        }
+
         let saved = 0;
-        for (const participant of participants) {
+        for (const participant of ordered) {
           try {
-            await addDoc(collection(this.firestore, 'participants'), {
-              ...participant,
-              clientId: result.client,
-              projectId: result.project,
-              assessments: result.evaluation ? [result.evaluation] : [],
-              createdAt: new Date(),
-            });
+            const baseFields = this.participantValidationService.buildParticipantWriteFields(
+              participant.name,
+              participant.email,
+              {
+                category: participant.category,
+                type: participant.type,
+                clientId: result.client,
+                projectId: result.project,
+                assessments: result.evaluation ? [result.evaluation] : [],
+              }
+            );
+            if (participant.cargo) baseFields['cargo'] = participant.cargo;
+            if (participant.setor) baseFields['setor'] = participant.setor;
+
+            if (participant.category === 'Avaliado') {
+              const evaluateeId = await this.participantCreditService.createEvaluateeWithCredit(
+                baseFields,
+                result.client,
+                result.project
+              );
+              if (!avaliadoIdParaVincular) {
+                avaliadoIdParaVincular = evaluateeId;
+              }
+            } else {
+              const docData: Record<string, unknown> = {
+                ...baseFields,
+                createdAt: new Date(),
+              };
+              if (avaliadoIdParaVincular) {
+                docData['avaliadoId'] = avaliadoIdParaVincular;
+              }
+              await addDoc(collection(this.firestore, 'participants'), docData);
+            }
             saved++;
-          } catch (error) {
+          } catch (error: unknown) {
             console.error('Erro ao salvar participante:', error);
+            const err = error as { code?: string; message?: string };
+            if (err.code === 'insufficient-credits') {
+              this.snackBar.open(this.translate.instant('Créditos insuficientes para importar o avaliado.'), this.translate.instant('Fechar'), { duration: 6000 });
+              break;
+            }
           }
         }
         const total = participants.length;
@@ -1530,7 +1917,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       };
     } catch (error) {
       console.error('Erro ao carregar avaliação:', error);
-      this.snackBar.open('Erro ao carregar avaliação.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliação.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return null;
@@ -1538,32 +1925,228 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   openEditParticipantDialog(participant: UnifiedParticipant): void {
+    void this.openEditParticipantDialogAsync(participant);
+  }
+
+  private async openEditParticipantDialogAsync(participant: UnifiedParticipant): Promise<void> {
+    if (!this.ensureCanMutateParticipants('editar')) return;
+
+    const evaluateeCheck = await this.participantValidationService.validateSingleEvaluateePerProject(
+      participant.projectId,
+      'Avaliado',
+      participant.id
+    );
+
     const dialogRef = this.dialog.open(EditParticipantDialogComponent, {
       width: '440px',
       maxWidth: '95vw',
-      data: { name: participant.name, email: participant.email },
+      data: {
+        name: participant.name,
+        email: participant.email,
+        category: participant.category,
+        type: participant.type,
+        canSelectAvaliado: evaluateeCheck.valid,
+        existingEvaluateeName: evaluateeCheck.existingEvaluateeName,
+      },
     });
 
     dialogRef.afterClosed().subscribe(async (result) => {
       if (!result) return;
-      const updates: any = {};
-      if (result.name !== participant.name) updates['name'] = result.name;
-      if (result.email !== participant.email) updates['email'] = result.email;
-      if (!Object.keys(updates).length) return;
+
+      if (!this.participantValidationService.isValidEmailFormat(result.email)) {
+        this.snackBar.open(this.translate.instant('E-mail inválido.'), this.translate.instant('Fechar'), { duration: 4000 });
+        return;
+      }
+
+      const emailCheck = await this.participantValidationService.validateEmailUniqueInProject(
+        participant.projectId,
+        result.email,
+        participant.id
+      );
+      if (!emailCheck.valid) {
+        this.snackBar.open(emailCheck.error || 'E-mail inválido.', 'Fechar', { duration: 5000 });
+        return;
+      }
+
+      if (result.category === 'Avaliado' && result.category !== participant.category) {
+        const validation = await this.participantValidationService.validateSingleEvaluateePerProject(
+          participant.projectId,
+          'Avaliado',
+          participant.id
+        );
+        if (!validation.valid) {
+          this.snackBar.open(
+            `Este projeto já possui um avaliado cadastrado (${validation.existingEvaluateeName}). É permitido apenas um avaliado por projeto.`,
+            'Fechar',
+            { duration: 5000 }
+          );
+          return;
+        }
+      }
+
       try {
-        await updateDoc(doc(this.firestore, `participants/${participant.id}`), updates);
-        if (updates['name']) participant.name = updates['name'];
-        if (updates['email']) participant.email = updates['email'];
-        // Força re-render da tabela: MatTableDataSource detecta mudança só por referência de array
+        await this.saveParticipantEdit(participant, result);
         this.dataSource.data = [...this.dataSource.data];
-        this.snackBar.open('Participante atualizado com sucesso!', 'Fechar', { duration: 2500 });
-      } catch (e) {
-        this.snackBar.open('Erro ao atualizar participante.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Participante atualizado com sucesso!'), this.translate.instant('Fechar'), { duration: 2500 });
+      } catch (error: unknown) {
+        console.error('Erro ao atualizar participante:', error);
+        const message =
+          (error as { message?: string })?.message || 'Erro ao atualizar participante.';
+        this.snackBar.open(message, 'Fechar', { duration: 5000 });
       }
     });
   }
 
+  private async saveParticipantEdit(
+    participant: UnifiedParticipant,
+    result: { name: string; email: string; category: string; type: 'avaliado' | 'avaliador' }
+  ): Promise<void> {
+    const participantRef = doc(this.firestore, `participants/${participant.id}`);
+    const oldType = participant.type;
+    const newType = result.type;
+    const categoryChanged = result.category !== participant.category;
+    const typeChanged = newType !== oldType;
+
+    if (newType === 'avaliado' && oldType !== 'avaliado') {
+      await this.promoteParticipantToAvaliado(participant, result.name, result.email, result.category);
+    } else if (oldType === 'avaliado' && newType !== 'avaliado') {
+      await this.demoteParticipantFromAvaliado(participant, result.name, result.email, result.category, newType);
+    } else {
+      const updates: Record<string, any> = {};
+      if (result.name !== participant.name) updates['name'] = result.name;
+      if (result.email !== participant.email) {
+        updates['email'] = result.email;
+        updates['emailLower'] = this.participantValidationService.normalizeEmail(result.email);
+      }
+      if (categoryChanged) {
+        updates['category'] = result.category;
+        updates['type'] = result.type;
+      }
+      if (!Object.keys(updates).length) return;
+
+      await updateDoc(participantRef, updates);
+      if (updates['name']) participant.name = result.name;
+      if (updates['email']) participant.email = result.email;
+      if (categoryChanged) participant.category = result.category;
+    }
+
+    if (typeChanged) {
+      participant.type = newType;
+    } else if (categoryChanged) {
+      participant.category = result.category;
+    }
+    if (result.name !== participant.name) participant.name = result.name;
+    if (result.email !== participant.email) participant.email = result.email;
+
+    if (newType === 'avaliado') {
+      participant.avaliadoId = undefined;
+      await this.linkAvaliadoresToEvaluatee(participant.projectId, participant.id);
+      for (const row of this.dataSource.data) {
+        if (row.projectId === participant.projectId && row.type === 'avaliador') {
+          row.avaliadoId = participant.id;
+        }
+      }
+    } else if (oldType === 'avaliado' && newType === 'avaliador') {
+      participant.avaliadoId = undefined;
+      await this.clearAvaliadoLinks(participant.projectId, participant.id);
+      for (const row of this.dataSource.data) {
+        if (row.projectId === participant.projectId && row.avaliadoId === participant.id) {
+          row.avaliadoId = undefined;
+        }
+      }
+    } else if (newType === 'avaliador') {
+      const avaliadoId = await this.participantValidationService.getProjectEvaluateeId(participant.projectId);
+      if (avaliadoId) {
+        await updateDoc(participantRef, { avaliadoId });
+        participant.avaliadoId = avaliadoId;
+      }
+    }
+  }
+
+  private async linkAvaliadoresToEvaluatee(projectId: string, avaliadoId: string): Promise<void> {
+    const snap = await getDocs(query(
+      collection(this.firestore, 'participants'),
+      where('projectId', '==', projectId),
+      where('type', '==', 'avaliador')
+    ));
+    if (snap.empty) return;
+
+    const batch = writeBatch(this.firestore);
+    for (const docSnap of snap.docs) {
+      batch.update(docSnap.ref, { avaliadoId });
+    }
+    await batch.commit();
+  }
+
+  private async clearAvaliadoLinks(projectId: string, avaliadoId: string): Promise<void> {
+    const snap = await getDocs(query(
+      collection(this.firestore, 'participants'),
+      where('projectId', '==', projectId),
+      where('avaliadoId', '==', avaliadoId)
+    ));
+    if (snap.empty) return;
+
+    const batch = writeBatch(this.firestore);
+    for (const docSnap of snap.docs) {
+      batch.update(docSnap.ref, { avaliadoId: deleteField() });
+    }
+    await batch.commit();
+  }
+
+  private async promoteParticipantToAvaliado(
+    participant: UnifiedParticipant,
+    name: string,
+    email: string,
+    category: string
+  ): Promise<void> {
+    const patch = this.participantValidationService.buildParticipantWriteFields(name, email, {
+      type: 'avaliado',
+      category,
+    });
+
+    await this.participantCreditService.reserveCreditForExistingParticipant(
+      participant.id,
+      participant.clientId,
+      participant.projectId,
+      patch
+    );
+
+    participant.creditReserved = true;
+    participant.category = category;
+    participant.type = 'avaliado';
+    participant.name = name.trim();
+    participant.email = email.trim();
+    await this.loadClients();
+  }
+
+  private async demoteParticipantFromAvaliado(
+    participant: UnifiedParticipant,
+    name: string,
+    email: string,
+    category: string,
+    newType: 'avaliado' | 'avaliador'
+  ): Promise<void> {
+    await this.participantCreditService.refundParticipantReservedCredit(participant.id);
+
+    const updateData: Record<string, any> = this.participantValidationService.buildParticipantWriteFields(name, email, {
+      type: newType,
+      category,
+      avaliadoId: deleteField(),
+      creditReserved: false,
+      creditConsumed: false,
+    });
+
+    await updateDoc(doc(this.firestore, `participants/${participant.id}`), updateData);
+    participant.creditReserved = false;
+    participant.category = category;
+    participant.type = newType;
+    participant.name = name.trim();
+    participant.email = email.trim();
+    await this.loadClients();
+  }
+
   openAddParticipantModal(): void {
+    if (!this.ensureCanMutateParticipants('criar')) return;
     const dialogRef = this.dialog.open(AddParticipantModalComponent, {
       width: '480px',
       maxWidth: '95vw',
@@ -1590,7 +2173,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const projectSnap = await getDoc(projectRef);
       if (!projectSnap.exists()) return;
       const status = projectSnap.data()['status'];
-      if (status === 'Concluído') {
+      if (status === 'Concluído' || status === 'concluido') {
         await updateDoc(projectRef, { status: 'Em andamento' });
       }
     } catch (e) {
@@ -1666,30 +2249,27 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result && result.success) {
-        this.snackBar.open('Relatório gerado com sucesso!', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Relatório gerado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     });
   }
 
   async cancelSend(participant: UnifiedParticipant): Promise<void> {
+    if (!this.ensureCanMutateParticipants('editar')) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '420px',
-      data: { message: `Deseja cancelar o envio para ${participant.name}? O crédito reservado será liberado.` },
+      data: { message: `Deseja cancelar o envio pendente para ${participant.name}?` },
     });
     const confirmed = await dialogRef.afterClosed().toPromise();
     if (!confirmed) return;
 
-    // ── Atualização otimista: UI responde imediatamente ──────
     const prevStatus = participant.status;
     const prevSentAt = participant.sentAt;
-    const prevCreditReserved = participant.creditReserved;
 
     participant.status = 'Não Enviado';
     participant.sentAt = undefined;
-    participant.creditReserved = false;
     this.dataSource.data = [...this.dataSource.data];
     this.applyFilter();
-    // ─────────────────────────────────────────────────────────
 
     try {
       const cancelConstraints: any[] = [
@@ -1702,30 +2282,33 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       const linkQuery = query(collection(this.firestore, 'assessmentLinks'), ...cancelConstraints);
       const linkSnap = await getDocs(linkQuery);
       if (linkSnap.empty) {
-        // Rollback: nenhum link pendente encontrado — desfaz atualização otimista
         participant.status = prevStatus;
         participant.sentAt = prevSentAt;
-        participant.creditReserved = prevCreditReserved;
         this.dataSource.data = [...this.dataSource.data];
-        this.snackBar.open('Nenhum envio pendente encontrado.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Nenhum envio pendente encontrado.'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
 
-      await updateDoc(doc(this.firestore, 'assessmentLinks', linkSnap.docs[0].id), {
+      const linkDoc = linkSnap.docs[0];
+      const linkData = linkDoc.data();
+      await updateDoc(doc(this.firestore, 'assessmentLinks', linkDoc.id), {
         status: 'cancelled',
         cancelledAt: new Date(),
         creditReserved: false,
       });
 
-      this.snackBar.open('Envio cancelado.', 'Fechar', { duration: 3000 });
+      if (linkData['creditReserved'] === true && participant.clientId) {
+        await this.participantCreditService.refundLegacyLinkCredits([linkDoc], participant.clientId);
+        await this.loadClients();
+      }
+
+      this.snackBar.open(this.translate.instant('Envio cancelado.'), this.translate.instant('Fechar'), { duration: 3000 });
     } catch (e) {
-      // Rollback em caso de erro
       participant.status = prevStatus;
       participant.sentAt = prevSentAt;
-      participant.creditReserved = prevCreditReserved;
       this.dataSource.data = [...this.dataSource.data];
       console.error('Erro ao cancelar envio:', e);
-      this.snackBar.open('Erro ao cancelar envio.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao cancelar envio.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -1863,7 +2446,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   async linkParticipantAsViewer(participant: UnifiedParticipant): Promise<void> {
     if (!participant.email) {
-      this.snackBar.open('Participante não tem e-mail cadastrado.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Participante não tem e-mail cadastrado.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
@@ -1883,9 +2466,9 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         const currentProjects: string[] = existingData['projects'] || [];
         if (!currentProjects.includes(participant.projectId)) {
           await updateDoc(existing.docs[0].ref, { projects: arrayUnion(participant.projectId) });
-          this.snackBar.open('Projeto adicionado ao acesso do visualizador existente.', 'Fechar', { duration: 3000 });
+          this.snackBar.open(this.translate.instant('Projeto adicionado ao acesso do visualizador existente.'), this.translate.instant('Fechar'), { duration: 3000 });
         } else {
-          this.snackBar.open('Este participante já possui acesso como visualizador.', 'Fechar', { duration: 3000 });
+          this.snackBar.open(this.translate.instant('Este participante já possui acesso como visualizador.'), this.translate.instant('Fechar'), { duration: 3000 });
         }
       } else {
         this.snackBar.open(

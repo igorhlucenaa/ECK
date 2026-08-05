@@ -139,7 +139,6 @@ export class AppContactDialogContentComponent {
 
     // Check if the input contains non-digit characters
     if (/[^0-9]/.test(value)) {
-      alert('Please enter only digits.');
       input.value = value.replace(/[^0-9]/g, '');
       this.local_data[input.name] = input.value;
     } else {

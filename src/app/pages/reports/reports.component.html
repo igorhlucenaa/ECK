@@ -41,7 +41,7 @@
 <!-- ===================== CONFIG STRIP ===================== -->
 <div class="rp-config-strip">
 
-  <!-- ── Fluxo sequencial: Cliente → Projeto → Avaliação → Avaliado ── -->
+  <!-- ── Fluxo sequencial: Cliente → Avaliação → Projeto (auto ou manual) → Avaliado ── -->
   <div class="rp-sequential-filter" *ngIf="!isIndividualMode">
 
     <!-- Passo 1: Cliente -->
@@ -66,28 +66,10 @@
 
     <mat-icon class="rp-seq-arrow" *ngIf="filterClientControl.value">chevron_right</mat-icon>
 
-    <!-- Passo 2: Projeto (aparece após selecionar cliente) -->
-    <div class="rp-seq-step" [class.rp-seq-step--done]="!!filterProjectControl.value"
+    <!-- Passo 2: Avaliação (catálogo do cliente) -->
+    <div class="rp-seq-step" [class.rp-seq-step--done]="!!assessmentControl.value"
          *ngIf="filterClientControl.value">
       <div class="rp-seq-step__num">2</div>
-      <mat-form-field appearance="outline" class="rp-seq-field">
-        <mat-label>Projeto</mat-label>
-        <mat-icon matPrefix>folder_open</mat-icon>
-        <mat-select [formControl]="filterProjectControl" (selectionChange)="onFilterProjectChange()"
-                    [disabled]="filterProjects.length === 0">
-          <mat-option value="">— Selecione um projeto —</mat-option>
-          <mat-option *ngFor="let p of filterProjects" [value]="p.id">{{ p.name }}</mat-option>
-        </mat-select>
-        <mat-hint *ngIf="filterProjects.length === 0 && filterClientControl.value">Nenhum projeto ativo</mat-hint>
-      </mat-form-field>
-    </div>
-
-    <mat-icon class="rp-seq-arrow" *ngIf="filterProjectControl.value">chevron_right</mat-icon>
-
-    <!-- Passo 3: Avaliação (aparece após selecionar projeto) -->
-    <div class="rp-seq-step" [class.rp-seq-step--done]="!!assessmentControl.value"
-         *ngIf="filterProjectControl.value">
-      <div class="rp-seq-step__num">3</div>
       <mat-form-field appearance="outline" class="rp-seq-field">
         <mat-label>Avaliação</mat-label>
         <mat-icon matPrefix>assignment</mat-icon>
@@ -96,12 +78,60 @@
           <mat-option value="">— Selecione a avaliação —</mat-option>
           <mat-option *ngFor="let a of filteredAssessments" [value]="a.id">{{ a.name }}</mat-option>
         </mat-select>
-        <mat-hint *ngIf="filteredAssessments.length === 0">Nenhuma avaliação vinculada</mat-hint>
+        <mat-hint *ngIf="filteredAssessments.length === 0">Nenhuma avaliação cadastrada para este cliente</mat-hint>
       </mat-form-field>
     </div>
 
-    <!-- Passo 4: Avaliado — exibição automática (1 avaliado por projeto) -->
-    <ng-container *ngIf="assessmentControl.value && avaliadosDisponiveis.length > 0">
+    <!-- Passo 3a: Projeto deduzido automaticamente -->
+    <ng-container *ngIf="assessmentControl.value && filterProjectControl.value && projectAutoDeduced && !projectSelectionRequired">
+      <mat-icon class="rp-seq-arrow">chevron_right</mat-icon>
+      <div class="rp-seq-step rp-seq-step--done">
+        <div class="rp-seq-step__num">3</div>
+        <div class="rp-project-badge">
+          <mat-icon class="rp-project-badge__icon">folder_open</mat-icon>
+          <div class="rp-project-badge__info">
+            <span class="rp-project-badge__label">Projeto (automático)</span>
+            <span class="rp-project-badge__name">{{ getFilterProjectLabel() }}</span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Passo 3b: Projeto manual — só quando a avaliação existe em mais de um ciclo -->
+    <ng-container *ngIf="assessmentControl.value && projectSelectionRequired">
+      <mat-icon class="rp-seq-arrow">chevron_right</mat-icon>
+      <div class="rp-seq-step" [class.rp-seq-step--done]="!!filterProjectControl.value">
+        <div class="rp-seq-step__num">3</div>
+        <mat-form-field appearance="outline" class="rp-seq-field">
+          <mat-label>Projeto (ciclo)</mat-label>
+          <mat-icon matPrefix>folder_open</mat-icon>
+          <mat-select [formControl]="filterProjectControl" (selectionChange)="onFilterProjectChange()"
+                      [disabled]="projectsForAssessment.length === 0">
+            <mat-option value="">— Selecione o projeto —</mat-option>
+            <mat-option *ngFor="let p of projectsForAssessment" [value]="p.id">{{ p.name }}</mat-option>
+          </mat-select>
+          <mat-hint>Esta avaliação está em mais de um projeto ativo</mat-hint>
+        </mat-form-field>
+      </div>
+    </ng-container>
+
+    <!-- Passo 3c: Projeto escolhido manualmente (após resolver ambiguidade) -->
+    <ng-container *ngIf="assessmentControl.value && filterProjectControl.value && !projectAutoDeduced && !projectSelectionRequired">
+      <mat-icon class="rp-seq-arrow">chevron_right</mat-icon>
+      <div class="rp-seq-step rp-seq-step--done">
+        <div class="rp-seq-step__num">3</div>
+        <div class="rp-project-badge">
+          <mat-icon class="rp-project-badge__icon">folder_open</mat-icon>
+          <div class="rp-project-badge__info">
+            <span class="rp-project-badge__label">Projeto</span>
+            <span class="rp-project-badge__name">{{ getFilterProjectLabel() }}</span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Passo 4: Avaliado -->
+    <ng-container *ngIf="assessmentControl.value && filterProjectControl.value && !projectSelectionRequired && avaliadosDisponiveis.length > 0">
       <mat-icon class="rp-seq-arrow">chevron_right</mat-icon>
 
       <!-- Caso padrão: exatamente 1 avaliado → badge estático, sem dropdown -->
@@ -412,7 +442,7 @@
                 <div *ngIf="(c.perguntasIds?.length || 0) > 0; else semPerguntas" class="rp-comp-panel__question-list">
                   <div *ngFor="let pId of c.perguntasIds; let qi = index" class="rp-comp-panel__question-item">
                     <span class="rp-comp-panel__question-num">{{ qi + 1 }}</span>
-                    <span class="rp-comp-panel__question-text">{{ questionMap[pId] || pId }}</span>
+                    <span class="rp-comp-panel__question-text">{{ getQuestionLabel(pId) }}</span>
                   </div>
                 </div>
                 <ng-template #semPerguntas>
@@ -460,180 +490,178 @@
     </div>
     <div class="rp-tab-content">
 
-      <!-- Save/Load + Templates -->
-      <div class="rp-persist-cols">
+      <!-- Opção A: template como foco principal -->
+      <div class="rp-montar-flow">
 
-        <!-- ── Coluna: Meu Relatório ── -->
-        <div class="rp-persist-col">
-          <div class="rp-persist-col__header">
-            <div class="rp-persist-col__icon-wrap rp-persist-col__icon-wrap--report">
-              <mat-icon>bookmark</mat-icon>
-            </div>
-            <div>
-              <p class="rp-persist-col__title">Meu Relatório</p>
-              <p class="rp-persist-col__desc">Salve e recupere configurações específicas por avaliado</p>
-            </div>
+        <div class="rp-montar-guide">
+          <div class="rp-montar-guide__step">
+            <span class="rp-montar-guide__num">1</span>
+            <span class="rp-montar-guide__text">Escolha um template</span>
           </div>
-
-          <!-- Salvar -->
-          <div class="rp-persist-card">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon">save</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Salvar relatório</p>
-                <p class="rp-persist-card__hint">Registra a configuração atual com um nome</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon"
-                matTooltip="Salva a configuração atual das seções, textos e gráficos com um nome personalizado. Use para guardar um trabalho em andamento ou criar versões específicas para um avaliado."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <mat-form-field appearance="outline" class="rp-persist-card__field">
-              <mat-label>Nome do relatório</mat-label>
-              <input matInput [formControl]="nomeRelatorioControl" placeholder="Ex: Relatório João Silva">
-            </mat-form-field>
-            <!-- Badge de vínculo com template -->
-            <div class="rp-template-link-badge" *ngIf="selectedTemplateId.value">
-              <mat-icon>link</mat-icon>
-              <span>Vinculado ao template: <strong>{{ nomeTemplateSelecionado }}</strong></span>
-            </div>
-            <div class="rp-template-link-badge rp-template-link-badge--none" *ngIf="!selectedTemplateId.value">
-              <mat-icon>link_off</mat-icon>
-              <span>Sem vínculo — aplique um template ao lado para vincular ao salvar</span>
-            </div>
-            <div class="rp-persist-card__actions">
-              <button mat-flat-button class="btn-pc-primary" (click)="salvarRelatorioNoFirebase()">
-                <mat-icon>save</mat-icon> Salvar
-              </button>
-            </div>
+          <mat-icon class="rp-montar-guide__arrow">chevron_right</mat-icon>
+          <div class="rp-montar-guide__step">
+            <span class="rp-montar-guide__num">2</span>
+            <span class="rp-montar-guide__text">Edite seções abaixo</span>
           </div>
-
-          <!-- Carregar / Excluir -->
-          <div class="rp-persist-card">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon">history</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Carregar ou excluir relatório</p>
-                <p class="rp-persist-card__hint">Selecione um relatório salvo para carregar ou remover</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon"
-                matTooltip="Escolha um relatório salvo anteriormente para continuar editando, atualizar com as mudanças atuais ou removê-lo permanentemente."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <mat-form-field appearance="outline" class="rp-persist-card__field">
-              <mat-label>Selecionar relatório</mat-label>
-              <mat-select [formControl]="selectedReportId">
-                <mat-option *ngFor="let report of savedReports" [value]="report.id">{{ report.name }}</mat-option>
-              </mat-select>
-            </mat-form-field>
-            <div class="rp-persist-card__actions">
-              <button mat-stroked-button class="btn-pc-outline" (click)="carregarRelatorioSelecionado()" [disabled]="!selectedReportId.value">
-                <mat-icon>download</mat-icon> Carregar
-              </button>
-              <button mat-flat-button class="btn-pc-primary" *ngIf="selectedReportId.value" (click)="atualizarRelatorioNoFirebase()">
-                <mat-icon>sync</mat-icon> Atualizar
-              </button>
-              <button mat-stroked-button class="btn-pc-danger" *ngIf="selectedReportId.value" (click)="excluirRelatorio()"
-                matTooltip="Excluir este relatório permanentemente">
-                <mat-icon>delete_outline</mat-icon>
-              </button>
-              <button mat-icon-button class="btn-pc-clear" *ngIf="selectedReportId.value" (click)="selectedReportId.setValue(null)"
-                matTooltip="Remover seleção">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-          </div>
-
-          <!-- Resetar configuração -->
-          <div class="rp-persist-card rp-persist-card--reset">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon rp-persist-card__icon--reset">restart_alt</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Limpar configuração</p>
-                <p class="rp-persist-card__hint">Restaura o relatório para a estrutura padrão</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon rp-persist-card__info-icon--danger"
-                matTooltip="Descarta todas as seções e configurações atuais, restaurando o relatório para a estrutura padrão. Ação irreversível — salve antes se necessário."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <div class="rp-persist-card__actions">
-              <button mat-stroked-button class="btn-pc-danger" (click)="resetarRelatorio()">
-                <mat-icon>restart_alt</mat-icon> Limpar e resetar
-              </button>
-            </div>
+          <mat-icon class="rp-montar-guide__arrow">chevron_right</mat-icon>
+          <div class="rp-montar-guide__step">
+            <span class="rp-montar-guide__num">3</span>
+            <span class="rp-montar-guide__text">Visualize na aba Pré-visualizar</span>
           </div>
         </div>
 
-        <!-- ── Coluna: Templates ── -->
-        <div class="rp-persist-col">
-          <div class="rp-persist-col__header">
+        <div class="rp-template-active">
+          <div class="rp-template-active__header">
             <div class="rp-persist-col__icon-wrap rp-persist-col__icon-wrap--template">
-              <mat-icon>file_copy</mat-icon>
+              <mat-icon>layers</mat-icon>
             </div>
             <div>
-              <p class="rp-persist-col__title">Templates</p>
-              <p class="rp-persist-col__desc">Estruturas reutilizáveis para qualquer avaliado</p>
+              <p class="rp-template-active__title">Template ativo</p>
+              <p class="rp-template-active__desc">Selecione um template — a estrutura é aplicada automaticamente</p>
             </div>
           </div>
 
-          <!-- Criar template -->
-          <div class="rp-persist-card">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon rp-persist-card__icon--template">add_circle</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Criar novo template</p>
-                <p class="rp-persist-card__hint">Salva a estrutura atual como template reutilizável</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon rp-persist-card__info-icon--template"
-                matTooltip="Cria um template com a estrutura atual de seções e textos. Templates são reutilizáveis para qualquer avaliado, sem guardar dados específicos de pessoa."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <mat-form-field appearance="outline" class="rp-persist-card__field">
-              <mat-label>Nome do template</mat-label>
-              <input matInput [formControl]="nomeTemplateControl" placeholder="Ex: Padrão Liderança">
-            </mat-form-field>
-            <div class="rp-persist-card__actions">
-              <button mat-flat-button class="btn-pc-template" (click)="salvarTemplateNoFirebase()">
-                <mat-icon>file_copy</mat-icon> Criar template
-              </button>
-            </div>
+          <div class="rp-template-active__chips">
+            <mat-chip-set>
+              <mat-chip *ngIf="builderHasUnsavedChanges" class="rp-chip--warn">
+                <mat-icon matChipAvatar>edit_note</mat-icon>
+                Alterações não salvas
+              </mat-chip>
+              <mat-chip *ngIf="nomeTemplateAplicado" class="rp-chip--template">
+                <mat-icon matChipAvatar>check_circle</mat-icon>
+                {{ nomeTemplateAplicado }}
+              </mat-chip>
+              <mat-chip *ngIf="!nomeTemplateAplicado && !builderHasUnsavedChanges" class="rp-chip--muted">
+                Nenhum template aplicado
+              </mat-chip>
+            </mat-chip-set>
           </div>
 
-          <!-- Aplicar / Atualizar / Excluir template -->
-          <div class="rp-persist-card">
-            <div class="rp-persist-card__top">
-              <mat-icon class="rp-persist-card__icon rp-persist-card__icon--template">layers</mat-icon>
-              <div>
-                <p class="rp-persist-card__name">Aplicar ou gerenciar template</p>
-                <p class="rp-persist-card__hint">Carregue, atualize ou exclua um template existente</p>
-              </div>
-              <mat-icon class="rp-persist-card__info-icon rp-persist-card__info-icon--template"
-                matTooltip="Selecione um template para aplicá-lo ao relatório atual, sobrescrevendo a estrutura existente. Também é possível atualizar o template com as mudanças feitas ou excluí-lo permanentemente."
-                matTooltipPosition="above">info_outline</mat-icon>
-            </div>
-            <mat-form-field appearance="outline" class="rp-persist-card__field">
-              <mat-label>Selecionar template</mat-label>
-              <mat-select [formControl]="selectedTemplateId">
-                <mat-option *ngFor="let template of savedTemplates" [value]="template.id">{{ template.name }}</mat-option>
-              </mat-select>
-            </mat-form-field>
-            <div class="rp-persist-card__actions">
-              <button mat-stroked-button class="btn-pc-outline-template" (click)="aplicarTemplateSelecionado()" [disabled]="!selectedTemplateId.value">
-                <mat-icon>download</mat-icon> Aplicar
-              </button>
-              <button mat-flat-button class="btn-pc-template" *ngIf="selectedTemplateId.value" (click)="atualizarTemplateNoFirebase()">
-                <mat-icon>sync</mat-icon> Atualizar
-              </button>
-              <button mat-stroked-button class="btn-pc-danger" *ngIf="selectedTemplateId.value" (click)="excluirTemplate()"
-                matTooltip="Excluir este template permanentemente">
-                <mat-icon>delete_outline</mat-icon>
-              </button>
-              <button mat-icon-button class="btn-pc-clear" *ngIf="selectedTemplateId.value" (click)="selectedTemplateId.setValue(null)"
-                matTooltip="Remover seleção">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
+          <mat-form-field appearance="outline" class="rp-template-active__field">
+            <mat-label>Template</mat-label>
+            <mat-select [formControl]="selectedTemplateId">
+              <mat-option *ngFor="let template of savedTemplates" [value]="template.id">
+                {{ template.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="rp-template-active__actions">
+            <button
+              mat-stroked-button
+              class="btn-pc-outline-template"
+              (click)="aplicarTemplateSelecionado()"
+              [disabled]="!selectedTemplateId.value"
+              matTooltip="Recarrega a estrutura do template selecionado">
+              <mat-icon>refresh</mat-icon>
+              Reaplicar template
+            </button>
+            <button
+              mat-flat-button
+              class="btn-pc-template"
+              (click)="salvarAlteracoesNoTemplate()"
+              [disabled]="!appliedTemplateId"
+              matTooltip="Grava no Firebase a estrutura atual do editor no template aplicado">
+              <mat-icon>save</mat-icon>
+              Salvar alterações
+            </button>
+            <button mat-button type="button" class="rp-template-active__manage" (click)="abrirGerenciarTemplatesDialog()">
+              Gerenciar templates…
+            </button>
           </div>
         </div>
+
+        <mat-expansion-panel class="rp-rascunhos-panel">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon class="rp-rascunhos-panel__icon">bookmark</mat-icon>
+              Rascunho por avaliado (opcional)
+            </mat-panel-title>
+            <mat-panel-description>
+              Snapshots com competências e dados específicos
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <div class="rp-rascunhos-panel__content">
+            <div class="rp-persist-card">
+              <div class="rp-persist-card__top">
+                <mat-icon class="rp-persist-card__icon">save</mat-icon>
+                <div>
+                  <p class="rp-persist-card__name">Salvar rascunho</p>
+                  <p class="rp-persist-card__hint">Guarda a configuração atual vinculada a um avaliado</p>
+                </div>
+              </div>
+              <mat-form-field appearance="outline" class="rp-persist-card__field">
+                <mat-label>Nome do rascunho</mat-label>
+                <input matInput [formControl]="nomeRelatorioControl" placeholder="Ex: Relatório João Silva">
+              </mat-form-field>
+              <div class="rp-template-link-badge" *ngIf="appliedTemplateId">
+                <mat-icon>link</mat-icon>
+                <span>Vinculado ao template: <strong>{{ nomeTemplateAplicado }}</strong></span>
+              </div>
+              <div class="rp-template-link-badge rp-template-link-badge--none" *ngIf="!appliedTemplateId">
+                <mat-icon>link_off</mat-icon>
+                <span>Sem template aplicado — aplique um template acima antes de salvar</span>
+              </div>
+              <div class="rp-persist-card__actions">
+                <button mat-flat-button class="btn-pc-primary" (click)="salvarRelatorioNoFirebase()">
+                  <mat-icon>save</mat-icon>
+                  Salvar rascunho
+                </button>
+              </div>
+            </div>
+
+            <div class="rp-persist-card">
+              <div class="rp-persist-card__top">
+                <mat-icon class="rp-persist-card__icon">history</mat-icon>
+                <div>
+                  <p class="rp-persist-card__name">Carregar rascunho salvo</p>
+                  <p class="rp-persist-card__hint">Selecione e clique em Carregar — não carrega automaticamente</p>
+                </div>
+              </div>
+              <mat-form-field appearance="outline" class="rp-persist-card__field">
+                <mat-label>Rascunho salvo</mat-label>
+                <mat-select [formControl]="selectedReportId">
+                  <mat-option *ngFor="let report of savedReports" [value]="report.id">{{ report.name }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <div class="rp-persist-card__actions">
+                <button mat-stroked-button class="btn-pc-outline" (click)="carregarRelatorioSelecionado()" [disabled]="!selectedReportId.value">
+                  <mat-icon>download</mat-icon>
+                  Carregar rascunho
+                </button>
+                <button mat-flat-button class="btn-pc-primary" *ngIf="selectedReportId.value" (click)="atualizarRelatorioNoFirebase()">
+                  <mat-icon>sync</mat-icon>
+                  Atualizar rascunho
+                </button>
+                <button mat-stroked-button class="btn-pc-danger" *ngIf="selectedReportId.value" (click)="excluirRelatorio()">
+                  <mat-icon>delete_outline</mat-icon>
+                  Excluir
+                </button>
+                <button mat-icon-button class="btn-pc-clear" *ngIf="selectedReportId.value" (click)="selectedReportId.setValue(null)"
+                  matTooltip="Remover seleção">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <div class="rp-persist-card rp-persist-card--reset">
+              <div class="rp-persist-card__top">
+                <mat-icon class="rp-persist-card__icon rp-persist-card__icon--reset">restart_alt</mat-icon>
+                <div>
+                  <p class="rp-persist-card__name">Restaurar estrutura padrão</p>
+                  <p class="rp-persist-card__hint">Descarta seções atuais e volta ao layout inicial</p>
+                </div>
+              </div>
+              <div class="rp-persist-card__actions">
+                <button mat-stroked-button class="btn-pc-danger" (click)="resetarRelatorio()">
+                  <mat-icon>restart_alt</mat-icon>
+                  Limpar e resetar
+                </button>
+              </div>
+            </div>
+          </div>
+        </mat-expansion-panel>
 
       </div>
 
@@ -773,7 +801,7 @@
                   </mat-form-field>
 
                   <div *ngIf="isSecaoTipo(secaoCtrl, 'texto') || isSecaoTipo(secaoCtrl, 'custom') || isSecaoTipo(secaoCtrl, 'capa') || isSecaoTipo(secaoCtrl, 'introducao')">
-                    <label class="rp-content-label">Conteúdo:</label>
+                    <label class="rp-content-label">{{ 'Conteúdo' | translate }}:</label>
 
                     <div *ngIf="isSecaoTipo(secaoCtrl, 'capa')" class="rp-tip-card rp-tip-card--blue">
                       <div class="rp-tip-card__header">
@@ -786,7 +814,7 @@
                           {{ 'Aplicar Template' | translate }}
                         </button>
                       </div>
-                      <p>{{ 'Use o editor de texto rico para criar uma capa profissional. Você pode adicionar títulos, subtítulos, imagens, cores e formatação para destacar informações importantes. Clique em "Aplicar Template" para usar um modelo pré-formatado.' | translate }}</p>
+                      <p>{{ 'Centralize textos e logos com os botões de alinhamento. Altere cores com o seletor de cor do texto ou do fundo. Para HTML avançado (rotação, layout flex), use Modo HTML ou o botão de código-fonte no editor. Placeholders: $%NOME_AVALIADO$%, $%DATA_RELATORIO$%.' | translate }}</p>
                     </div>
 
                     <div *ngIf="isSecaoTipo(secaoCtrl, 'introducao')" class="rp-tip-card rp-tip-card--purple">
@@ -803,7 +831,36 @@
                       <p>{{ 'Crie uma introdução atrativa usando formatação rica. Adicione títulos, listas, destaques e imagens para explicar o propósito e contexto do relatório. Clique em "Aplicar Template" para usar um modelo pré-formatado.' | translate }}</p>
                     </div>
 
-                    <angular-editor formControlName="texto" (blur)="atualizarSecaoConfiguracao(i)" [config]="editorConfig"></angular-editor>
+                    <div *ngIf="secaoSuportaModoHtml(getSecaoTipoValue(secaoCtrl))" class="rp-capa-editor-mode">
+                      <mat-button-toggle-group
+                        [value]="isSecaoHtmlBruto(i) ? 'html' : 'rich'"
+                        (change)="setSecaoHtmlBruto(i, $event.value === 'html')">
+                        <mat-button-toggle value="rich">{{ 'Editor visual' | translate }}</mat-button-toggle>
+                        <mat-button-toggle value="html">{{ 'Modo HTML' | translate }}</mat-button-toggle>
+                      </mat-button-toggle-group>
+                      <p class="rp-capa-editor-mode__hint" *ngIf="isSecaoHtmlBruto(i)">
+                        {{ 'Cole ou edite HTML completo. O preview e o PDF respeitarão tags, estilos inline, imagens e transformações CSS.' | translate }}
+                      </p>
+                    </div>
+
+                    <mat-checkbox *ngIf="isSecaoTipo(secaoCtrl, 'capa') && !isSecaoHtmlBruto(i)"
+                                  formControlName="ocultarInfoDinamicaCapa"
+                                  (change)="atualizarSecaoConfiguracao(i)"
+                                  class="rp-capa-info-toggle">
+                      {{ 'Ocultar bloco automático de avaliado/respondentes no preview' | translate }}
+                    </mat-checkbox>
+
+                    <textarea *ngIf="isSecaoHtmlBruto(i)"
+                              class="rp-html-editor"
+                              formControlName="texto"
+                              rows="16"
+                              (blur)="atualizarSecaoConfiguracao(i)"
+                              [placeholder]="'Cole o HTML aqui...' | translate"></textarea>
+
+                    <angular-editor *ngIf="!isSecaoHtmlBruto(i)"
+                                    formControlName="texto"
+                                    (blur)="atualizarSecaoConfiguracao(i)"
+                                    [config]="isSecaoTipo(secaoCtrl, 'capa') ? capaEditorConfig : editorConfig"></angular-editor>
                   </div>
 
                   <div *ngIf="isSecaoTipo(secaoCtrl, 'graficos')">
@@ -1135,12 +1192,15 @@
         <button mat-flat-button color="primary" *ngIf="canExportExcel" (click)="exportarBaseExcel()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>grid_on</mat-icon> {{ 'Exportar base (Excel)' | translate }}
         </button>
+        <button mat-stroked-button color="primary" *ngIf="canExportExcel && !isIndividualMode" (click)="abrirExtratoClienteExcel()" [disabled]="isExporting || isBatchGenerating">
+          <mat-icon>table_view</mat-icon> {{ 'Extrato do cliente (Excel)' | translate }}
+        </button>
         <button mat-flat-button color="primary" *ngIf="canExportDocx" (click)="exportarRelatorioDOCX()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>description</mat-icon> {{ 'Exportar DOCX' | translate }}
         </button>
       </div>
 
-      <!-- ── GERAÇÃO EM LOTE (somente na tab Visualizar) ── -->
+      <!-- ── GERAÇÃO EM LOTE (somente na tab Visualizar) — desabilitada nesta versão ──
       <div class="rp-batch-panel ui-only"
            *ngIf="!isIndividualMode && avaliadosDisponiveis.length > 0">
 
@@ -1158,7 +1218,6 @@
 
         <div class="rp-batch-body" *ngIf="batchPanelOpen">
 
-          <!-- Seleção de participantes -->
           <div class="rp-batch-section">
             <div class="rp-batch-section__header">
               <mat-icon>people</mat-icon>
@@ -1177,7 +1236,6 @@
             </div>
           </div>
 
-          <!-- Categorias de avaliadores -->
           <div class="rp-batch-section rp-batch-section--evaluators" *ngIf="availableCategoriesForBatch.length > 0">
             <div class="rp-batch-section__header rp-batch-section__header--clickable"
                  (click)="batchShowEvaluatorConfig = !batchShowEvaluatorConfig">
@@ -1207,7 +1265,6 @@
             </div>
           </div>
 
-          <!-- Erros da última execução -->
           <div class="rp-batch-errors" *ngIf="batchErrors.length > 0">
             <div class="rp-batch-error" *ngFor="let e of batchErrors">
               <mat-icon>error_outline</mat-icon>
@@ -1215,7 +1272,6 @@
             </div>
           </div>
 
-          <!-- Progresso -->
           <div class="rp-batch-progress-inline" *ngIf="isBatchGenerating">
             <mat-spinner diameter="20"></mat-spinner>
             <span>Gerando {{ batchProgress + 1 }}/{{ batchTotal }}: <strong>{{ batchCurrentName }}</strong></span>
@@ -1226,7 +1282,6 @@
             <span>{{ batchTotal > 0 ? ((batchProgress / batchTotal) * 100 | number:'1.0-0') : 0 }}%</span>
           </div>
 
-          <!-- Botão gerar -->
           <div class="rp-batch-actions">
             <button mat-flat-button color="primary"
                     class="rp-batch-generate-btn"
@@ -1238,8 +1293,9 @@
             <span class="rp-batch-hint" *ngIf="competencias.length === 0">Configure as competências primeiro</span>
           </div>
 
-        </div><!-- /rp-batch-body -->
-      </div><!-- /rp-batch-panel -->
+        </div>
+      </div>
+      -->
 
       <!-- Export loading overlay -->
       <div class="rp-export-overlay" *ngIf="isExporting">
@@ -1284,30 +1340,31 @@
                [src]="documentoConfig.cabecalho.logoUrl"
                class="rp-doc-cabecalho__logo" alt="Logo">
           <span class="rp-doc-cabecalho__left">{{ documentoConfig.cabecalho.textoEsquerda }}</span>
-          <span class="rp-doc-cabecalho__project" *ngIf="documentoConfig.cabecalho.mostrarNomeProjeto">{{ selectedAssessmentName }}</span>
+          <span class="rp-doc-cabecalho__project" *ngIf="documentoConfig.cabecalho.mostrarNomeProjeto">{{ selectedProjectName }}</span>
           <span class="rp-doc-cabecalho__pagina" *ngIf="documentoConfig.cabecalho.mostrarNumeroPagina">Pág. </span>
         </div>
 
         <div class="report-section"
-             [class.report-section--page-break-before]="secao['pageBreakAntes']"
+             [class.report-section--page-break-before]="secao['pageBreakAntes'] && secao.tipo !== 'janela_johari'"
              [class.report-section--page-break-after]="secao['pageBreakDepois']"
+             [class.report-section--johari]="secao.tipo === 'janela_johari'"
              *ngFor="let secao of getSecoesVisiveisOrdenadas(); let i = index; trackBy: trackBySection">
           <ng-container [ngSwitch]="secao.tipo">
 
             <div *ngSwitchCase="'capa'" class="capa-section">
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <!-- Bloco dinâmico: participante + respondentes (renderizado por Angular, não injetado no HTML) -->
-              <div class="capa-info-block" *ngIf="selectedAvaliado || getContagemRespondentesPorCategoria().length > 0">
+              <div class="capa-section__html" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <!-- Bloco dinâmico opcional: participante + respondentes -->
+              <div class="capa-info-block" *ngIf="shouldShowCapaInfoBlock(secao)">
                 <div class="capa-info-block__avaliado" *ngIf="selectedAvaliado">
-                  <span class="capa-info-block__label">Avaliado(a)</span>
+                  <span class="capa-info-block__label">{{ 'Avaliado(a)' | translate }}</span>
                   <span class="capa-info-block__name">{{ selectedAvaliadoName }}</span>
                   <span class="capa-info-block__date">{{ today | date:'dd/MM/yyyy' }}</span>
                 </div>
-                <div class="capa-info-block__respondentes" *ngIf="getContagemRespondentesPorCategoria().length > 0">
-                  <span class="capa-info-block__resp-title">Avaliadores por Perfil</span>
+                <div class="capa-info-block__respondentes" *ngIf="getContagemRespondentesCached().length > 0">
+                  <span class="capa-info-block__resp-title">{{ 'Avaliadores por Perfil' | translate }}</span>
                   <div class="capa-info-block__resp-chips">
                     <span class="capa-info-block__chip"
-                          *ngFor="let item of getContagemRespondentesPorCategoria()">
+                          *ngFor="let item of getContagemRespondentesCached()">
                       {{ item.categoria }}: <strong>{{ item.quantidade }}</strong>
                     </span>
                   </div>
@@ -1317,12 +1374,12 @@
 
             <div *ngSwitchCase="'introducao'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
             </div>
 
             <div *ngSwitchCase="'resumo'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getResumoMedias().length">
                 <div *ngFor="let compData of getResumoMediasPorCompetencia()">
                   <h3>{{ compData.nome }}</h3>
@@ -1348,9 +1405,9 @@
 
             <div *ngSwitchCase="'graficos'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
 
-              <div *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length > 0">
+              <div *ngIf="getCompetenciasGraficosCached(secao).length > 0">
                 <mat-form-field appearance="outline" class="ui-only" style="width: 250px; margin-bottom: 16px;">
                   <mat-label>Tipo de gráfico</mat-label>
                   <mat-select [formControl]="getTipoGraficoControl(i)" (selectionChange)="onTipoGraficoChange(secao, i)">
@@ -1366,7 +1423,7 @@
                 <div style="margin-bottom: 16px;">
                   <h4>Competências analisadas:</h4>
                   <mat-chip-set>
-                    <mat-chip *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)" [matTooltip]="comp.descricao">
+                    <mat-chip *ngFor="let comp of getCompetenciasGraficosCached(secao)" [matTooltip]="comp.descricao">
                       <mat-icon matChipAvatar>psychology</mat-icon>
                       {{ comp.nome }}
                       <ng-container *ngIf="isTipoGraficoPizza(getTipoGraficoControl(i).value)">
@@ -1377,37 +1434,56 @@
                 </div>
 
                 <ng-container [ngSwitch]="getTipoGraficoControl(i).value || 'barra'">
-                  <div *ngSwitchCase="'janela_johari'">
-                    <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+                  <div *ngSwitchCase="'janela_johari'" class="rp-johari-wrap">
+                    <app-johari-window-chart [data]="getJohariWindowDataCached(secao)"></app-johari-window-chart>
                   </div>
                   <div *ngSwitchCase="'barra'">
                     <div style="display: flex; flex-direction: column; gap: 30px;">
-                      <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)" class="rp-bar-chart-block">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                         <ng-container *ngIf="getCompetenciaBarraComparativaData(comp) as dadosGrafico">
-                          <ngx-charts-bar-horizontal
-                            [results]="dadosGrafico"
-                            [xAxis]="true"
-                            [yAxis]="true"
-                            [view]="[800, (dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)]"
-                            [style.height.px]="(dadosGrafico.length * 50 + 100) < 300 ? 300 : (dadosGrafico.length * 50 + 100)"
-                            [legend]="true"
-                            [legendTitle]="'Legenda'"
-                            [showGridLines]="true"
-                            [showDataLabel]="true"
-                            [barPadding]="8"
-                            [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
-                            [xAxisLabel]="'Pontuação (0-5)'"
-                            [yAxisLabel]="'Categorias'"
-                            [scheme]="getColorSchemeParaSecao(secao)">
-                          </ngx-charts-bar-horizontal>
+                          <div class="rp-bar-chart-layout">
+                            <div class="rp-bar-chart-wrap">
+                              <ngx-charts-bar-horizontal
+                                [results]="dadosGrafico"
+                                [xAxis]="true"
+                                [yAxis]="true"
+                                [view]="[barChartPlotWidth, getBarChartHeight(dadosGrafico.length)]"
+                                [legend]="false"
+                                [showGridLines]="true"
+                                [showDataLabel]="true"
+                                [dataLabelFormatting]="formatChartDataLabel"
+                                [wrapTicks]="barChartWrapTicks"
+                                [trimYAxisTicks]="barChartTrimYAxisTicks"
+                                [maxYAxisTickLength]="barChartMaxYAxisTickLength"
+                                [barPadding]="10"
+                                [xAxisTicks]="[0, 1, 2, 3, 4, 5]"
+                                [xAxisLabel]="'Pontuação (0-5)'"
+                                [yAxisLabel]="'Categorias'"
+                                [scheme]="getColorSchemeParaSecao(secao)">
+                              </ngx-charts-bar-horizontal>
+                            </div>
+                            <aside class="rp-bar-chart-legend">
+                              <p class="rp-bar-chart-legend__title">Legenda</p>
+                              <ul class="rp-bar-chart-legend__list">
+                                <li *ngFor="let item of getBarChartLegendItems(dadosGrafico, secao)" class="rp-bar-chart-legend__item">
+                                  <span class="rp-bar-chart-legend__swatch" [style.background-color]="item.color"></span>
+                                  <span class="rp-bar-chart-legend__label">{{ item.name }}</span>
+                                </li>
+                              </ul>
+                            </aside>
+                          </div>
                         </ng-container>
                       </div>
                     </div>
                   </div>
                   <div *ngSwitchCase="'radar'">
-                    <div echarts [options]="getSecaoRadarOptions(secao)" [style.height.px]="400"></div>
+                    <div class="rp-radar-chart"
+                         echarts
+                         [id]="getRadarChartId(secao)"
+                         [options]="getSecaoRadarOptions(secao)"
+                         [style.height.px]="400"></div>
                   </div>
                   <div *ngSwitchCase="'pizza-comparativa'">
                     <ng-container *ngIf="getSecaoPieData(secao) as dadosPizza">
@@ -1417,6 +1493,7 @@
                         [legend]="true"
                         [legendTitle]="'Legenda'"
                         [labels]="true"
+                        [labelFormatting]="formatChartDataLabel"
                         [doughnut]="false"
                         [scheme]="getColorSchemeParaSecao(secao)">
                       </ngx-charts-pie-chart>
@@ -1424,7 +1501,7 @@
                   </div>
                   <div *ngSwitchCase="'pizza-individual'">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                      <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                         <ngx-charts-pie-chart
@@ -1433,6 +1510,7 @@
                           [legend]="true"
                           [legendTitle]="'Legenda'"
                           [labels]="true"
+                          [labelFormatting]="formatChartDataLabel"
                           [doughnut]="false"
                           [scheme]="getColorSchemeParaSecao(secao)">
                         </ngx-charts-pie-chart>
@@ -1441,19 +1519,23 @@
                   </div>
                   <div *ngSwitchCase="'barras-individuais'">
                     <div style="display: flex; flex-direction: column; gap: 30px;">
-                      <div *ngFor="let comp of getCompetenciasSelecionadasParaGraficos(secao)">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
-                        <div style="height: 300px; width: 100%;">
+                        <div class="rp-bar-chart-wrap">
                           <ngx-charts-bar-horizontal
                             [results]="getCompetenciaStackedData(comp)"
                             [xAxis]="true"
                             [yAxis]="true"
-                            [view]="[800, 280]"
+                            [view]="[barChartPlotWidth, getBarChartHeight(getCompetenciaStackedData(comp).length)]"
                             [legend]="false"
                             [showGridLines]="true"
                             [showDataLabel]="true"
-                            [barPadding]="8"
+                            [dataLabelFormatting]="formatChartDataLabel"
+                            [wrapTicks]="barChartWrapTicks"
+                            [trimYAxisTicks]="barChartTrimYAxisTicks"
+                            [maxYAxisTickLength]="barChartMaxYAxisTickLength"
+                            [barPadding]="10"
                             [scheme]="getColorSchemeParaSecao(secao)"
                             [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
                           </ngx-charts-bar-horizontal>
@@ -1464,14 +1546,14 @@
                 </ng-container>
               </div>
 
-              <p *ngIf="getCompetenciasSelecionadasParaGraficos(secao).length === 0">
+              <p *ngIf="getCompetenciasGraficosCached(secao).length === 0">
                 <i>Nenhuma competência selecionada para exibir gráficos.</i>
               </p>
             </div>
 
             <div *ngSwitchCase="'tabela'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
 
               <div *ngIf="getCompetenciasSelecionadasParaTabela().length > 0; else noTabelaData">
                 <div *ngFor="let comp of getCompetenciasSelecionadasParaTabela()">
@@ -1513,7 +1595,7 @@
                           <tr [style.background-color]="getTableHeaderColors(secao).footer" style="color: white; font-weight: bold;">
                             <td style="border: 1px solid #ddd; padding: 8px; font-size: 12px;">Média</td>
                             <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                              <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">{{ categoria.media | number:'1.1-1' }}</td>
+                              <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">{{ categoria.media | number:'1.2-2' }}</td>
                             </ng-container>
                           </tr>
                           <tr>
@@ -1521,7 +1603,7 @@
                             <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
                               <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px;">
                                 <ng-container *ngIf="getAbreviacaoCategoria(categoria.categoria) !== 'A'">
-                                  {{ categoria.totalRespostas > 0 ? (categoria.media | number:'1.1-1') : '' }}
+                                  {{ categoria.totalRespostas > 0 ? (categoria.media | number:'1.2-2') : '' }}
                                 </ng-container>
                               </td>
                             </ng-container>
@@ -1539,9 +1621,9 @@
 
             <div *ngSwitchCase="'tabela_detalhada'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0">
-                <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let compIndex = index">
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0">
+                <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let compIndex = index; let lastComp = last">
                   <div style="margin-bottom: 30px;">
                     <div style="margin-bottom: 20px;">
                       <h3>{{ comp.nome }}</h3>
@@ -1579,7 +1661,7 @@
                             <tr [style.background-color]="getTableHeaderColors(secao).footer" style="color: white; font-weight: bold;">
                               <td style="border: 1px solid #ddd; padding: 8px;">Média</td>
                               <ng-container *ngFor="let categoria of tabelaData.mediasGerais">
-                                <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ categoria.media | number:'1.1-2' }}</td>
+                                <td colspan="5" style="border: 1px solid #ddd; padding: 8px; text-align: center;">{{ categoria.media | number:'1.2-2' }}</td>
                               </ng-container>
                             </tr>
                           </tbody>
@@ -1595,19 +1677,19 @@
                         </div>
                       </ng-container>
                     </div>
-                    <mat-divider *ngIf="compIndex < getCompetenciasSelecionadasParaSecao(secao).length - 1" style="margin: 30px 0;"></mat-divider>
+                    <mat-divider *ngIf="!lastComp" style="margin: 30px 0;"></mat-divider>
                   </div>
                 </div>
               </div>
-              <p *ngIf="getCompetenciasSelecionadasParaSecao(secao).length === 0">
+              <p *ngIf="getCompetenciasParaSecaoCached(secao).length === 0">
                 <i>Selecione uma ou mais competências na aba "Montar Relatório" para visualizar as tabelas detalhadas.</i>
               </p>
             </div>
 
             <div *ngSwitchCase="'destaques'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <ng-container *ngIf="gerarTabelaAvaliacoesAltas(competencias.length) as tabelaAltas">
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <ng-container *ngIf="getDestaquesAltasCached(secao) as tabelaAltas">
                 <div *ngIf="tabelaAltas.items.length > 0; else noDestaquesData">
                   <h3 [style.color]="getDestaquesAltasColors(secao).text" style="margin-top: 20px;">Avaliações mais altas</h3>
                   <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
@@ -1619,8 +1701,8 @@
                       <tr>
                         <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 80px;">Classificação</th>
                         <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Comportamento</th>
-                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média geral</th>
-                        <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média por categoria</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média do(a) avaliado(a)</th>
+                        <th *ngIf="secao['mostrarPontuacaoSemAuto']" style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;">Pontuação média sem autoavaliação</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1634,7 +1716,7 @@
                   </table>
                 </div>
               </ng-container>
-              <ng-container *ngIf="gerarTabelaAvaliacoesBaixas(competencias.length) as tabelaBaixas">
+              <ng-container *ngIf="getDestaquesBaixasCached(secao) as tabelaBaixas">
                 <div *ngIf="tabelaBaixas.items.length > 0">
                   <h3 [style.color]="getDestaquesBaixasColors(secao).text" style="margin-top: 30px;">Avaliações mais baixas</h3>
                   <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
@@ -1670,35 +1752,44 @@
 
             <div *ngSwitchCase="'competencia_detalhada'">
               <h2>{{ secao.titulo }}</h2>
-              <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao); let i = index">
+              <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let i = index; let lastComp = last">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; margin-bottom: 20px;">
                   <div *ngIf="getOrInitTextoCompetencia(secao, comp)">
                     <h3 style="margin-bottom: 4px;">{{ comp.nome }}</h3>
                     <p style="color: #666; font-style: italic; margin-top: 0;">{{ comp.descricao }}</p>
                     <angular-editor [(ngModel)]="secao.textosPorCompetencia![comp.id]" [config]="editorConfig"></angular-editor>
                   </div>
-                  <div style="height: 250px;">
+                  <ng-container *ngIf="getDadosGraficoCompetenciaCached(comp) as dadosGraficoComp">
+                  <div class="rp-bar-chart-wrap rp-bar-chart-wrap--compact">
                     <ngx-charts-bar-horizontal
                       [scheme]="getColorSchemeParaSecao(secao)"
-                      [results]="getDadosGraficoPorCompetencia(comp)"
+                      [results]="dadosGraficoComp"
                       [xAxis]="true"
                       [yAxis]="true"
+                      [view]="[barChartPlotWidth, getBarChartHeight(dadosGraficoComp.length)]"
                       [showDataLabel]="true"
-                      [barPadding]="8"
+                      [dataLabelFormatting]="formatChartDataLabel"
+                      [wrapTicks]="barChartWrapTicks"
+                      [trimYAxisTicks]="barChartTrimYAxisTicks"
+                      [maxYAxisTickLength]="barChartMaxYAxisTickLength"
+                      [barPadding]="10"
                       [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
                     </ngx-charts-bar-horizontal>
                   </div>
+                  </ng-container>
                 </div>
-                <mat-divider *ngIf="i < getCompetenciasSelecionadasParaSecao(secao).length - 1"></mat-divider>
+                <mat-divider *ngIf="!lastComp"></mat-divider>
               </div>
             </div>
 
-            <div *ngSwitchCase="'grafico_defasagem'">
-              <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataDefasagem" style="margin-top: 20px;">
-                <div *ngFor="let comp of getCompetenciasSelecionadasParaSecao(secao)" style="margin-bottom: 30px;">
-                  <h3 style="margin-bottom: 16px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">{{ comp.nome }}</h3>
+            <div *ngSwitchCase="'grafico_defasagem'" class="rp-defasagem-section">
+              <div class="rp-secao-header">
+                <h2>{{ secao.titulo }}</h2>
+                <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              </div>
+              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataDefasagem" class="rp-defasagem-preview">
+                <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao)" class="rp-defasagem-item">
+                  <h3 class="rp-defasagem-item__title">{{ comp.nome }}</h3>
                   <app-gap-chart [data]="getGapChartDataForCompetency(comp.id)"></app-gap-chart>
                 </div>
               </div>
@@ -1710,11 +1801,13 @@
               </ng-template>
             </div>
 
-            <div *ngSwitchCase="'janela_johari'">
-              <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
-              <div *ngIf="getCompetenciasSelecionadasParaSecao(secao).length > 0; else noDataJohari" style="margin-top: 20px;">
-                <app-johari-window-chart [data]="getJohariWindowData(secao)"></app-johari-window-chart>
+            <div *ngSwitchCase="'janela_johari'" class="rp-johari-section">
+              <div class="rp-secao-header">
+                <h2>{{ secao.titulo }}</h2>
+                <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              </div>
+              <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataJohari" class="rp-johari-wrap">
+                <app-johari-window-chart [data]="getJohariWindowDataCached(secao)"></app-johari-window-chart>
               </div>
               <ng-template #noDataJohari>
                 <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
@@ -1726,7 +1819,7 @@
 
             <div *ngSwitchCase="'perguntas_abertas'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getPerguntasAbertasData().length > 0; else noPerguntasAbertas" style="margin-top: 20px;">
                 <h3 style="margin-bottom: 16px; color: #5C6BC0; font-size: 16px;">{{ 'Perguntas abertas:' | translate }}</h3>
                 <div *ngFor="let item of getPerguntasAbertasData()" style="margin-bottom: 28px;">
@@ -1749,7 +1842,7 @@
 
             <div *ngSwitchDefault>
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="safeHtml(secao.texto)"></div>
+              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
             </div>
 
           </ng-container>

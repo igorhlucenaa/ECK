@@ -23,7 +23,7 @@ import { CommonModule, Location } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
 import { EmailEditorModule, EmailEditorComponent } from 'angular-email-editor';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
@@ -63,13 +63,14 @@ export class EmailTemplateFormComponent implements OnInit {
     private router: Router,
     private snackBar: MatSnackBar,
     private location: Location,
-    private authService: AuthService
+    private authService: AuthService,
+    private translate: TranslateService
   ) {
     this.form = this.fb.group({
       name: ['', Validators.required],
       subject: ['', Validators.required],
       content: ['', Validators.required],
-      emailType: ['', Validators.required],
+      emailType: ['cadastro', Validators.required],
       clientId: [''],
       projectId: [''],
     });
@@ -79,7 +80,7 @@ export class EmailTemplateFormComponent implements OnInit {
     const user = await this.authService.getCurrentUser();
 
     if (!user) {
-      this.snackBar.open('Erro ao obter informações do usuário.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao obter informações do usuário.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -103,15 +104,23 @@ export class EmailTemplateFormComponent implements OnInit {
       }
       if (this.userRole === 'admin_client' && this.userClientId) {
         this.form.get('clientId')?.setValue(this.userClientId);
-        this.form.get('clientId')?.disable(); // Desabilitar edição para admin_client
+        this.form.get('clientId')?.disable();
+        await this.loadClientName(this.userClientId);
       }
     }
 
     this.form.get('clientId')?.valueChanges.subscribe((clientId) => {
-      if (clientId && !this.clientIdFromRoute) {
-        this.loadClientName(clientId); // Atualizar nome do cliente
+      if (this.clientIdFromRoute) return;
+      if (clientId) {
+        this.loadClientName(clientId);
+      } else if (this.userRole === 'admin_master') {
+        this.clientNameFromRoute = 'TEMPLATE PADRÃO';
       }
     });
+
+    if (!this.clientIdFromRoute && this.userRole === 'admin_master') {
+      this.clientNameFromRoute = 'TEMPLATE PADRÃO';
+    }
 
     if (this.isEditMode) {
       this.loadTemplate().then(async (content) => {
@@ -142,36 +151,38 @@ export class EmailTemplateFormComponent implements OnInit {
         }
       });
     } else {
-      const emailType = this.form.get('emailType')?.value;
-      if (
-        emailType === 'conviteAvaliador' ||
-        emailType === 'conviteRespondente' ||
-        emailType === 'lembreteAvaliador' ||
-        emailType === 'lembreteRespondente' ||
-        emailType === 'relatorioFinalizado' // Adicionado relatório finalizado
-      ) {
-        this.getDefaultTemplateWithLink(emailType).then((design) => {
-          if (this.editorReady) {
-            this.emailEditor.editor.loadDesign(design);
-          }
-        });
-      }
+      await this.loadDefaultDesignIfNeeded(this.form.get('emailType')?.value);
     }
 
     this.form.get('emailType')?.valueChanges.subscribe(async (newValue) => {
-      if (
-        newValue === 'conviteAvaliador' ||
-        newValue === 'conviteRespondente' ||
-        newValue === 'lembreteAvaliador' ||
-        newValue === 'lembreteRespondente' ||
-        newValue === 'relatorioFinalizado' // Adicionado relatório finalizado
-      ) {
-        const design = await this.getDefaultTemplateWithLink(newValue);
-        if (this.editorReady) {
-          this.emailEditor.editor.loadDesign(design);
-        }
-      }
+      await this.loadDefaultDesignIfNeeded(newValue);
     });
+  }
+
+  private readonly defaultTemplateEmailTypes = new Set([
+    'cadastro',
+    'conviteAvaliador',
+    'conviteRespondente',
+    'lembreteAvaliador',
+    'lembreteRespondente',
+    'relatorioFinalizado',
+  ]);
+
+  private usesDefaultTemplate(emailType: string | null | undefined): boolean {
+    return !!emailType && this.defaultTemplateEmailTypes.has(emailType);
+  }
+
+  private getLinkPlaceholder(emailType: string): string {
+    return emailType === 'relatorioFinalizado' ? '[LINK_RELATORIO]' : '[LINK_AVALIACAO]';
+  }
+
+  private async loadDefaultDesignIfNeeded(emailType: string | null | undefined): Promise<void> {
+    if (this.isEditMode || !this.usesDefaultTemplate(emailType) || !emailType) return;
+
+    const design = await this.getDefaultTemplateWithLink(emailType);
+    if (this.editorReady && this.emailEditor?.editor) {
+      this.emailEditor.editor.loadDesign(design);
+    }
   }
 
   private async loadClients(): Promise<void> {
@@ -205,7 +216,10 @@ export class EmailTemplateFormComponent implements OnInit {
   private async getDefaultTemplateWithLink(emailType: string): Promise<object> {
     let message = '';
 
-    if (emailType === 'conviteAvaliador') {
+    if (emailType === 'cadastro') {
+      message = `<p>Você foi cadastrado(a) na plataforma ECK de avaliação 360°.</p>
+<p>Utilize o link abaixo para acessar sua conta e concluir seu cadastro.</p>`;
+    } else if (emailType === 'conviteAvaliador') {
       message = `<p>Você foi convidado(a) a avaliar <strong>{{nome_avaliado}}</strong> no projeto <strong>{{nome_projeto}}</strong>.</p>
 <p>Aqui está o link da sua avaliação. Por favor, preencha até <strong>{{data_expiracao}}</strong>.</p>`;
     } else if (emailType === 'conviteRespondente') {
@@ -248,11 +262,7 @@ export class EmailTemplateFormComponent implements OnInit {
                       lineHeight: '140%',
                       hideDesktop: false,
                       text: `Olá, <strong>{{nome_participante}}</strong>\n\n\n
-                      ${message}<p><a href="${
-                        emailType === 'relatorioFinalizado'
-                          ? '[LINK_RELATORIO]'
-                          : '[LINK_AVALIACAO]'
-                      }">Clique aqui!</a></p>`,
+                      ${message}<p><a href="${this.getLinkPlaceholder(emailType)}">Clique aqui!</a></p>`,
                     },
                   },
                 ],
@@ -271,7 +281,9 @@ export class EmailTemplateFormComponent implements OnInit {
     const linkPlaceholder =
       emailType === 'relatorioFinalizado'
         ? '<p><a href="[LINK_RELATORIO]">Clique aqui para acessar o relatório!</a></p>'
-        : '<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>';
+        : emailType === 'cadastro'
+          ? '<p><a href="[LINK_AVALIACAO]">Clique aqui para concluir seu cadastro!</a></p>'
+          : '<p><a href="[LINK_AVALIACAO]">Clique aqui!</a></p>';
 
     this.emailEditor.editor.exportHtml((data: any) => {
       if (
@@ -289,10 +301,7 @@ export class EmailTemplateFormComponent implements OnInit {
 
       let design = data.design;
 
-      const linkIdentifier =
-        emailType === 'relatorioFinalizado'
-          ? '[LINK_RELATORIO]'
-          : '[LINK_AVALIACAO]';
+      const linkIdentifier = this.getLinkPlaceholder(emailType);
       const linkExists = JSON.stringify(design).includes(linkIdentifier);
 
       if (!linkExists) {
@@ -306,7 +315,9 @@ export class EmailTemplateFormComponent implements OnInit {
                     text:
                       emailType === 'relatorioFinalizado'
                         ? 'Acesse seu relatório aqui: ' + linkPlaceholder
-                        : 'Acesse sua avaliação aqui: ' + linkPlaceholder,
+                        : emailType === 'cadastro'
+                          ? 'Acesse sua conta aqui: ' + linkPlaceholder
+                          : 'Acesse sua avaliação aqui: ' + linkPlaceholder,
                   },
                 },
               ],
@@ -321,37 +332,19 @@ export class EmailTemplateFormComponent implements OnInit {
 
   onEditorReady(): void {
     this.editorReady = true;
+    void this.loadDefaultDesignIfNeeded(this.form.get('emailType')?.value);
   }
 
   editorLoaded(): void {
     this.editorReady = true;
-
-    if (!this.isEditMode) {
-      const emailType = this.form.value.emailType;
-      if (
-        emailType === 'conviteAvaliador' ||
-        emailType === 'conviteRespondente' ||
-        emailType === 'lembreteAvaliador' ||
-        emailType === 'lembreteRespondente' ||
-        emailType === 'relatorioFinalizado' // Adicionado relatório finalizado
-      ) {
-        this.getDefaultTemplateWithLink(emailType).then((design) => {
-          if (this.editorReady) {
-            this.emailEditor.editor.loadDesign(design);
-          }
-        });
-      }
-    }
+    void this.loadDefaultDesignIfNeeded(this.form.get('emailType')?.value);
   }
 
   removeLinkFromEmailEditor(): void {
     if (!this.emailEditor || !this.editorReady) return;
 
     const emailType = this.form.get('emailType')?.value;
-    const linkIdentifier =
-      emailType === 'relatorioFinalizado'
-        ? '[LINK_RELATORIO]'
-        : '[LINK_AVALIACAO]';
+    const linkIdentifier = this.getLinkPlaceholder(emailType);
 
     this.emailEditor.editor.exportHtml((data: any) => {
       if (
@@ -448,31 +441,23 @@ export class EmailTemplateFormComponent implements OnInit {
       let design = JSON.stringify(data.design);
 
       const emailType = this.form.value.emailType;
-      const linkIdentifier =
-        emailType === 'relatorioFinalizado'
-          ? '[LINK_RELATORIO]'
-          : '[LINK_AVALIACAO]';
+      const linkIdentifier = this.getLinkPlaceholder(emailType);
 
-      if (
-        (emailType === 'conviteAvaliador' ||
-          emailType === 'conviteRespondente' ||
-          emailType === 'lembreteAvaliador' ||
-          emailType === 'lembreteRespondente' ||
-          emailType === 'relatorioFinalizado') &&
-        !design.includes(linkIdentifier)
-      ) {
+      if (this.usesDefaultTemplate(emailType) && !design.includes(linkIdentifier)) {
         design = design.replace(
           '</body>',
           `<p>Acesse ${
             emailType === 'relatorioFinalizado'
               ? 'seu relatório'
-              : 'sua avaliação'
+              : emailType === 'cadastro'
+                ? 'sua conta'
+                : 'sua avaliação'
           } clicando aqui: <a href="${linkIdentifier}">${linkIdentifier}</a></p></body>`
         );
       }
 
       if (!design) {
-        this.snackBar.open('Erro ao exportar o design do editor.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Erro ao exportar o design do editor.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -481,7 +466,7 @@ export class EmailTemplateFormComponent implements OnInit {
       this.form.get('content')?.setValue(design);
 
       if (this.form.invalid) {
-        this.snackBar.open('Preencha todos os campos obrigatórios!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Preencha todos os campos obrigatórios!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -516,7 +501,7 @@ export class EmailTemplateFormComponent implements OnInit {
       this.location.back();
     } catch (error) {
       console.error('Erro ao salvar template:', error);
-      this.snackBar.open('Erro ao salvar template.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao salvar template.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Firestore, collection, getDocs, doc, getDoc } from '@angular/fire/firestore';
+import { isParticipantIncludedInReports } from '../reports-utils';
 import { Subject, takeUntil } from 'rxjs';
 
 // Importar SurveyJS Dashboard
@@ -129,6 +130,9 @@ export class SurveyDashboardComponent implements OnInit, OnDestroy {
 
           if (participantSnap.exists()) {
             const participantData = participantSnap.data();
+            if (!isParticipantIncludedInReports(participantData)) {
+              continue;
+            }
             participantName = participantData['name'] || participantName;
             participantCategory = participantData['category'] || participantCategory;
           }

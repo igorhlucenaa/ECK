@@ -27,7 +27,7 @@ export const navItems: NavItem[] = [
         displayName: 'Pedidos de Crédito',
         iconName: 'solar:wallet-money-bold-duotone',
         route: '/orders',
-        role: ['admin_master'],
+        role: ['admin_master', 'admin_client'],
       },
       {
         displayName: 'Usuários e Grupos',

@@ -48,27 +48,27 @@ export const routes: Routes = [
             (m) => m.DashboardRoutes
           ),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client', 'viewer'] },
+        data: { appRoute: 'dashboard' },
       },
       {
         path: 'clients',
         loadChildren: () =>
           import('./pages/clients/clients.routes').then((m) => m.ClientsRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { appRoute: 'clients' },
       },
       {
         path: 'mail-templates',
         component: EmailTemplateListComponent,
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { appRoute: 'mail-templates' },
       },
       {
         path: 'settings',
         loadChildren: () =>
           import('./pages/settings/settings.routes').then((m) => m.SettingsRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client', 'viewer'] },
+        data: { appRoute: 'settings' },
       },
       {
         path: 'clients/:id/customization',
@@ -83,7 +83,7 @@ export const routes: Routes = [
             (m) => m.ProjectsRoutes
           ),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client', 'viewer'] },
+        data: { appRoute: 'projects' },
       },
       {
         path: 'assessments',
@@ -99,7 +99,7 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./pages/reports/reports.routes').then((m) => m.ReportsRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client', 'viewer'] },
+        data: { appRoute: 'reports' },
       },
       {
         path: 'competencies',
@@ -108,13 +108,13 @@ export const routes: Routes = [
             (m) => m.CompetenciesRoutes
           ),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { appRoute: 'competencies' },
       },
       {
         path: 'orders',
         component: CreditOrdersComponent,
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { appRoute: 'orders' },
       },
       {
         path: 'emails-notifications',
@@ -123,20 +123,20 @@ export const routes: Routes = [
             './pages/emails-notifications/emails-notifications.routes'
           ).then((m) => m.EmailsNotificationsRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { appRoute: 'emails-notifications' },
       },
       {
         path: 'orders/new',
         component: NewCreditOrderComponent,
         canActivate: [AuthGuard],
-        data: { role: ['admin_master'] },
+        data: { appRoute: 'orders' },
       },
       {
         path: 'users',
         loadChildren: () =>
           import('./pages/users/users.routes').then((m) => m.UsersRoutes),
         canActivate: [AuthGuard],
-        data: { role: ['admin_master', 'admin_client'] },
+        data: { appRoute: 'users' },
       },
     ],
   },

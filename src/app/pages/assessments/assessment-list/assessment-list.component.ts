@@ -256,7 +256,7 @@ export class AssessmentListComponent implements OnInit {
       this.dataSource.sort = this.sort;
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
-      this.snackBar.open('Erro ao carregar avaliações.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar avaliações.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -285,7 +285,7 @@ export class AssessmentListComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 
@@ -300,7 +300,7 @@ export class AssessmentListComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
-      this.snackBar.open('Erro ao carregar projetos.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar projetos.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -319,7 +319,7 @@ export class AssessmentListComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar Modelos de e-mail:', error);
-      this.snackBar.open('Erro ao carregar Modelos de e-mail.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar Modelos de e-mail.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -340,8 +340,8 @@ export class AssessmentListComponent implements OnInit {
     } catch (error) {
       console.error('Erro ao contar participantes respondentes:', error);
       this.snackBar.open(
-        'Erro ao contar participantes respondentes.',
-        'Fechar',
+        this.translate.instant('Erro ao contar participantes respondentes.'),
+        this.translate.instant('Fechar'),
         {
           duration: 3000,
         }
@@ -384,7 +384,7 @@ export class AssessmentListComponent implements OnInit {
         );
     } catch (error) {
       console.error('Erro ao abrir modal de envio:', error);
-      this.snackBar.open('Erro ao abrir modal de envio.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao abrir modal de envio.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -398,7 +398,7 @@ export class AssessmentListComponent implements OnInit {
     try {
       const template = this.mailTemplates.find((t) => t.id === templateId);
       if (!template) {
-        this.snackBar.open('Modelo de e-mail não encontrado.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Modelo de e-mail não encontrado.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -432,26 +432,33 @@ export class AssessmentListComponent implements OnInit {
         const assessmentLinkDoc = doc(
           collection(this.firestore, 'assessmentLinks')
         );
+        const participantSnap = await getDoc(doc(this.firestore, 'participants', participant.id));
+        const participantData = participantSnap.data() || {};
+
         await setDoc(assessmentLinkDoc, {
           assessmentId: assessmentId,
           participantId: participant.id,
+          clientId: participantData['clientId'] ?? null,
+          projectId: participantData['projectId'] ?? null,
+          avaliadoId: participantData['avaliadoId'] ?? null,
           sentAt: new Date(),
           status: 'pending',
           emailTemplate: templateId,
           participantEmail: participant.email,
+          creditReserved: false,
         });
       }
 
       this.snackBar.open(
-        `Avaliação enviada para ${participants.length} participantes!`,
-        'Fechar',
+        this.translate.instant(`Avaliação enviada para ${participants.length} participantes!`),
+        this.translate.instant('Fechar'),
         { duration: 3000 }
       );
     } catch (error: any) {
       console.error('Erro ao enviar links de avaliação:', error);
       this.snackBar.open(
-        `Erro ao enviar links de avaliação: ${error.message}`,
-        'Fechar',
+        this.translate.instant(`Erro ao enviar links de avaliação: ${error.message}`),
+        this.translate.instant('Fechar'),
         { duration: 3000 }
       );
     }
@@ -498,8 +505,8 @@ export class AssessmentListComponent implements OnInit {
 
       if (participants.length === 0) {
         this.snackBar.open(
-          'Nenhum participante encontrado para este cliente.',
-          'Fechar',
+          this.translate.instant('Nenhum participante encontrado para este cliente.'),
+          this.translate.instant('Fechar'),
           { duration: 3000 }
         );
         return;
@@ -518,8 +525,8 @@ export class AssessmentListComponent implements OnInit {
     } catch (error) {
       console.error('Erro ao carregar participantes respondentes:', error);
       this.snackBar.open(
-        'Erro ao carregar participantes respondentes.',
-        'Fechar',
+        this.translate.instant('Erro ao carregar participantes respondentes.'),
+        this.translate.instant('Fechar'),
         { duration: 3000 }
       );
     }
@@ -558,24 +565,36 @@ export class AssessmentListComponent implements OnInit {
 
   async deleteAssessment(id: string): Promise<void> {
     const nome = this.dataSource.data.find((a: any) => a.id === id)?.name || id;
+
+    // Bloquear exclusão se houver respostas completadas
+    const completedLinksSnap = await getDocs(query(
+      collection(this.firestore, 'assessmentLinks'),
+      where('assessmentId', '==', id),
+      where('status', '==', 'completed')
+    ));
+    if (!completedLinksSnap.empty) {
+      this.snackBar.open(
+        `Não é possível excluir: há ${completedLinksSnap.size} resposta(s) registrada(s) para este formulário.`,
+        'Fechar',
+        { duration: 5000 }
+      );
+      return;
+    }
+
     const confirmado = await this.confirmDialog.confirmDelete(nome);
     if (!confirmado) return;
     try {
-
       const assessmentDocRef = doc(this.firestore, `assessments/${id}`);
       await deleteDoc(assessmentDocRef);
-
-      // Removido o updateDoc do projectId, pois não é mais relevante
-
       this.dataSource.data = this.dataSource.data.filter(
         (item) => item.id !== id
       );
-      this.snackBar.open('Avaliação excluída com sucesso.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Avaliação excluída com sucesso.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } catch (error) {
       console.error('Erro ao excluir avaliação:', error);
-      this.snackBar.open('Erro ao excluir avaliação.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao excluir avaliação.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -594,7 +613,7 @@ export class AssessmentListComponent implements OnInit {
       });
     } catch (error) {
       console.error('Erro ao carregar preview:', error);
-      this.snackBar.open('Erro ao carregar pré-visualização.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar pré-visualização.'), this.translate.instant('Fechar'), { duration: 3000 });
     }
   }
 

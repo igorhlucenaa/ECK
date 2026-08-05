@@ -42,8 +42,12 @@ import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 
+import { MatPaginatorIntl } from '@angular/material/paginator';
+import { PaginatorIntlService } from './i18n/paginator-intl.service';
+
 @NgModule({
   declarations: [],
+  providers: [{ provide: MatPaginatorIntl, useClass: PaginatorIntlService }],
   exports: [
     MatAutocompleteModule,
     MatCheckboxModule,

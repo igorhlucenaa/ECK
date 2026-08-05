@@ -2,6 +2,14 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/enviroments/environment';
+import {
+  classifyJohariPoint,
+  formatJohariScore,
+  hasJohariPlotCoordinates,
+  JOHARI_EXPLANATION_PARAGRAPHS,
+  JOHARI_PLOT_HEIGHT_RATIO,
+  JOHARI_THRESHOLD,
+} from '../pages/reports/charts/johari-window-chart/johari-window.utils';
 
 // Tipos para PDFMake (serão carregados dinamicamente)
 interface PdfMakeModule {
@@ -113,6 +121,11 @@ interface ReportData {
   getPerguntasAbertasData?: () => { perguntaId: string; perguntaTitulo: string; respostasPorCategoria: { [categoria: string]: string[] } }[];
   getCategoriasOrdenadas?: (respostasPorCategoria: { [categoria: string]: string[] }) => string[];
   documentoConfig?: DocumentoConfig;
+}
+
+interface PdfDocumentRuntimeMeta {
+  documentoConfig?: DocumentoConfig;
+  projectName?: string;
 }
 
 export interface PdfHtmlRenderOptions {
@@ -489,10 +502,15 @@ export class ReportPdfMakeService {
     const docDefinition = await this.buildDocDefinition(data);
     const safeDocDefinition = this.makeDocDefinitionTransportSafe(docDefinition);
     this.validateTableStructures(safeDocDefinition);
+    const documentMeta: PdfDocumentRuntimeMeta = {
+      documentoConfig: data.documentoConfig,
+      projectName: data.projectName,
+    };
 
     const payload = {
       fileName,
-      docDefinition: safeDocDefinition
+      docDefinition: safeDocDefinition,
+      documentMeta,
     };
 
     const blob = await firstValueFrom(
@@ -508,7 +526,11 @@ export class ReportPdfMakeService {
     return blob;
   }
 
-  async generateReportFromHtml(html: string, fileName: string, options?: PdfHtmlRenderOptions): Promise<void> {
+  async generateReportBlobFromHtml(
+    html: string,
+    fileName: string,
+    options?: PdfHtmlRenderOptions
+  ): Promise<Blob> {
     try {
       const functionUrl = this.getGeneratePdfFunctionUrl();
       const blob = await firstValueFrom(
@@ -521,11 +543,16 @@ export class ReportPdfMakeService {
         throw new Error('Cloud Function retornou PDF vazio.');
       }
 
-      this.triggerBrowserDownload(blob, fileName);
+      return blob;
     } catch (error) {
       const message = await this.buildCloudFunctionErrorMessage(error);
       throw new Error(message);
     }
+  }
+
+  async generateReportFromHtml(html: string, fileName: string, options?: PdfHtmlRenderOptions): Promise<void> {
+    const blob = await this.generateReportBlobFromHtml(html, fileName, options);
+    this.triggerBrowserDownload(blob, fileName);
   }
 
   /**
@@ -1291,11 +1318,77 @@ export class ReportPdfMakeService {
     }
 
     const johariImage = await this.createJohariWindowImage(johariData);
+    const pdfImageWidth = 500;
 
     return [
-      { text: secao.titulo || 'Janela de Johari', style: 'sectionTitle', pageBreak: 'before' },
-      { image: johariImage, width: 500, alignment: 'center', margin: [0, 10, 0, 20] }
+      {
+        stack: [
+          { text: secao.titulo || 'Janela de Johari', style: 'sectionTitle' },
+          {
+            image: johariImage.dataUrl,
+            width: pdfImageWidth,
+            alignment: 'center',
+            margin: [0, 10, 0, 16],
+          },
+          ...this.buildJohariWindowTableAndExplanation(johariData),
+        ],
+        pageBreak: 'before',
+        unbreakable: false,
+      }
     ];
+  }
+
+  private buildJohariWindowTableAndExplanation(
+    johariData: {
+      points: Array<{ label: string; name: string; self: number | null; others: number | null; color: string }>;
+      threshold: number;
+    }
+  ): any[] {
+    const threshold = johariData.threshold ?? JOHARI_THRESHOLD;
+    const tableBody: any[][] = [
+      [
+        { text: 'ID', bold: true, fillColor: '#f5f5f5' },
+        { text: 'Comportamentos', bold: true, fillColor: '#f5f5f5' },
+        { text: 'Autoavaliação', bold: true, fillColor: '#f5f5f5' },
+        { text: 'Outros', bold: true, fillColor: '#f5f5f5' },
+        { text: 'Análise de defasagem', bold: true, fillColor: '#f5f5f5' },
+      ],
+      ...johariData.points.map((point) => [
+        { text: point.label, alignment: 'center' },
+        { text: point.name },
+        { text: formatJohariScore(point.self), alignment: 'center' },
+        { text: formatJohariScore(point.others), alignment: 'center' },
+        { text: classifyJohariPoint(point.self, point.others, threshold) },
+      ]),
+    ];
+
+    const content: any[] = [
+      {
+        table: {
+          headerRows: 1,
+          widths: [28, '*', 52, 52, '*'],
+          body: tableBody,
+        },
+        layout: 'lightHorizontalLines',
+        margin: [0, 0, 0, 14],
+        fontSize: 9,
+      },
+    ];
+
+    JOHARI_EXPLANATION_PARAGRAPHS.forEach((paragraph) => {
+      content.push({
+        text: [
+          { text: `${paragraph.title}: `, bold: true },
+          paragraph.text,
+        ],
+        fontSize: 9,
+        alignment: 'justify',
+        margin: [0, 0, 0, 8],
+        lineHeight: 1.35,
+      });
+    });
+
+    return content;
   }
 
   /**
@@ -1731,6 +1824,10 @@ export class ReportPdfMakeService {
     ctx.moveTo(centerX, margin.top);
     ctx.lineTo(centerX, margin.top + chartHeight);
     ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(centerX, margin.top);
+    ctx.lineTo(centerX, margin.top + chartHeight);
+    ctx.stroke();
 
     // Labels e barras
     gapData.forEach((item, index) => {
@@ -1787,60 +1884,81 @@ export class ReportPdfMakeService {
    * Cria imagem da Janela de Johari
    */
   private async createJohariWindowImage(
-    johariData: { points: Array<{ label: string; name: string; self: number; others: number; color: string }>; threshold: number }
-  ): Promise<string> {
+    johariData: {
+      points: Array<{ label: string; name: string; self: number | null; others: number | null; color: string }>;
+      threshold: number;
+    }
+  ): Promise<{ dataUrl: string; width: number; height: number }> {
+    const margin = 72;
+    const bottomPadding = 48;
+    const chartWidth = 600 - margin * 2;
+    const chartHeight = Math.round(chartWidth * JOHARI_PLOT_HEIGHT_RATIO);
+    const chartX = margin;
+    const chartY = margin;
     const canvas = document.createElement('canvas');
     canvas.width = 600;
-    canvas.height = 600;
+    canvas.height = chartY + chartHeight + bottomPadding;
     const ctx = canvas.getContext('2d');
 
-    if (!ctx) return '';
+    if (!ctx) return { dataUrl: '', width: canvas.width, height: canvas.height };
 
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Título
-    ctx.fillStyle = '#2C3E50';
-    ctx.font = 'bold 16px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('Janela de Johari', canvas.width / 2, 30);
-
-    const margin = 80;
-    const chartSize = canvas.width - margin * 2;
-    const chartX = margin;
-    const chartY = margin + 40;
-
     // Desenhar eixos
     ctx.strokeStyle = '#CCCCCC';
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i <= 4; i++) {
+      const offsetX = chartX + (chartWidth / 4) * i;
+      const offsetY = chartY + (chartHeight / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(offsetX, chartY);
+      ctx.lineTo(offsetX, chartY + chartHeight);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(chartX, offsetY);
+      ctx.lineTo(chartX + chartWidth, offsetY);
+      ctx.stroke();
+    }
+
     ctx.lineWidth = 2;
-
-    // Eixo X (Self)
     ctx.beginPath();
-    ctx.moveTo(chartX, chartY + chartSize);
-    ctx.lineTo(chartX + chartSize, chartY + chartSize);
+    ctx.moveTo(chartX, chartY + chartHeight);
+    ctx.lineTo(chartX + chartWidth, chartY + chartHeight);
     ctx.stroke();
-
-    // Eixo Y (Others)
     ctx.beginPath();
     ctx.moveTo(chartX, chartY);
-    ctx.lineTo(chartX, chartY + chartSize);
+    ctx.lineTo(chartX, chartY + chartHeight);
     ctx.stroke();
 
-    // Labels dos eixos
+    // Ticks 1..5
     ctx.fillStyle = '#666666';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
+    for (let value = 1; value <= 5; value++) {
+      const tickX = chartX + ((value - 1) / 4) * chartWidth;
+      const tickY = chartY + chartHeight - ((value - 1) / 4) * chartHeight;
+      ctx.fillText(String(value), tickX, chartY + chartHeight + 18);
+      ctx.textAlign = 'right';
+      ctx.fillText(String(value), chartX - 8, tickY + 4);
+      ctx.textAlign = 'center';
+    }
+
+    // Labels dos eixos
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Autoavaliação (Self)', chartX + chartSize / 2, chartY + chartSize + 30);
+    ctx.fillText('Autoavaliação', chartX + chartWidth / 2, chartY + chartHeight + 36);
 
     ctx.save();
-    ctx.translate(chartX - 30, chartY + chartSize / 2);
+    ctx.translate(chartX - 36, chartY + chartHeight / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Avaliação dos Outros', 0, 0);
+    ctx.fillText('Média das demais avaliações', 0, 0);
     ctx.restore();
 
     // Linha de threshold
-    const thresholdX = chartX + (johariData.threshold - 1) / 4 * chartSize;
-    const thresholdY = chartY + chartSize - (johariData.threshold - 1) / 4 * chartSize;
+    const thresholdX = chartX + ((johariData.threshold - 1) / 4) * chartWidth;
+    const thresholdY = chartY + chartHeight - ((johariData.threshold - 1) / 4) * chartHeight;
 
     ctx.strokeStyle = '#FF6B35';
     ctx.lineWidth = 2;
@@ -1849,13 +1967,13 @@ export class ReportPdfMakeService {
     // Linha vertical
     ctx.beginPath();
     ctx.moveTo(thresholdX, chartY);
-    ctx.lineTo(thresholdX, chartY + chartSize);
+    ctx.lineTo(thresholdX, chartY + chartHeight);
     ctx.stroke();
 
     // Linha horizontal
     ctx.beginPath();
     ctx.moveTo(chartX, thresholdY);
-    ctx.lineTo(chartX + chartSize, thresholdY);
+    ctx.lineTo(chartX + chartWidth, thresholdY);
     ctx.stroke();
 
     ctx.setLineDash([]);
@@ -1864,25 +1982,27 @@ export class ReportPdfMakeService {
     ctx.fillStyle = '#F5F5F5';
     ctx.fillRect(chartX, chartY, thresholdX - chartX, thresholdY - chartY);
     ctx.fillStyle = '#E8F5E9';
-    ctx.fillRect(thresholdX, chartY, chartSize - (thresholdX - chartX), thresholdY - chartY);
+    ctx.fillRect(thresholdX, chartY, chartWidth - (thresholdX - chartX), thresholdY - chartY);
     ctx.fillStyle = '#FFF3E0';
-    ctx.fillRect(chartX, thresholdY, thresholdX - chartX, chartSize - (thresholdY - chartY));
+    ctx.fillRect(chartX, thresholdY, thresholdX - chartX, chartHeight - (thresholdY - chartY));
     ctx.fillStyle = '#E3F2FD';
-    ctx.fillRect(thresholdX, thresholdY, chartSize - (thresholdX - chartX), chartSize - (thresholdY - chartY));
+    ctx.fillRect(thresholdX, thresholdY, chartWidth - (thresholdX - chartX), chartHeight - (thresholdY - chartY));
 
     // Labels dos quadrantes
     ctx.fillStyle = '#666666';
-    ctx.font = '10px Arial';
+    ctx.font = '9px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Área Cega', chartX + (thresholdX - chartX) / 2, chartY + (thresholdY - chartY) / 2);
-    ctx.fillText('Área Aberta', thresholdX + (chartSize - (thresholdX - chartX)) / 2, chartY + (thresholdY - chartY) / 2);
-    ctx.fillText('Área Oculta', chartX + (thresholdX - chartX) / 2, thresholdY + (chartSize - (thresholdY - chartY)) / 2);
-    ctx.fillText('Área Desconhecida', thresholdX + (chartSize - (thresholdX - chartX)) / 2, thresholdY + (chartSize - (thresholdY - chartY)) / 2);
+    ctx.fillText('Área de desenvolvimento conhecida', chartX + (thresholdX - chartX) / 2, chartY + (thresholdY - chartY) / 2);
+    ctx.fillText('Ponto cego', thresholdX + (chartWidth - (thresholdX - chartX)) / 2, chartY + (thresholdY - chartY) / 2);
+    ctx.fillText('Ponto forte oculto', chartX + (thresholdX - chartX) / 2, thresholdY + (chartHeight - (thresholdY - chartY)) / 2);
+    ctx.fillText('Ponto forte conhecido', thresholdX + (chartWidth - (thresholdX - chartX)) / 2, thresholdY + (chartHeight - (thresholdY - chartY)) / 2);
 
     // Desenhar pontos
     johariData.points.forEach(point => {
-      const x = chartX + ((point.self - 1) / 4) * chartSize;
-      const y = chartY + chartSize - ((point.others - 1) / 4) * chartSize;
+      if (!hasJohariPlotCoordinates(point)) return;
+
+      const x = chartX + ((point.self - 1) / 4) * chartWidth;
+      const y = chartY + chartHeight - ((point.others - 1) / 4) * chartHeight;
 
       // Círculo
       ctx.fillStyle = point.color;
@@ -1904,7 +2024,11 @@ export class ReportPdfMakeService {
       ctx.fillText(point.name, x, y + 25);
     });
 
-    return canvas.toDataURL('image/jpeg', this.CHART_IMAGE_JPEG_QUALITY);
+    return {
+      dataUrl: canvas.toDataURL('image/jpeg', this.CHART_IMAGE_JPEG_QUALITY),
+      width: canvas.width,
+      height: canvas.height,
+    };
   }
 
   /**
@@ -1940,7 +2064,7 @@ export class ReportPdfMakeService {
       participantName: component.individualParticipantName || component.selectedAvaliado || 'Participante',
       clientName: component.getClientName ? component.getClientName() : '',
       participantEmail: component.individualParticipantEmail || '',
-      projectName: component.selectedProjectName || 'Projeto',
+      projectName: component.selectedProjectName || (component.getFilterProjectLabel ? component.getFilterProjectLabel() : '') || 'Projeto',
       startDate: component.startDate || '',
       endDate: component.endDate || '',
       totalRespondents: component.totalParticipants || component.dataSource?.length || 0,
@@ -1962,7 +2086,7 @@ export class ReportPdfMakeService {
       getSecaoRadarOptions: (secao: RelatorioSecao) =>
         component.getSecaoRadarOptions ? component.getSecaoRadarOptions(secao) : {},
       getJohariWindowData: (secao: RelatorioSecao) =>
-        component.getJohariWindowData ? component.getJohariWindowData(secao) : { points: [], threshold: 3.5 },
+        component.getJohariWindowData ? component.getJohariWindowData(secao) : { points: [], threshold: JOHARI_THRESHOLD },
       getColorSchemeParaSecao: (secao: RelatorioSecao) =>
         component.getColorSchemeParaSecao ? component.getColorSchemeParaSecao(secao) : { domain: ['#3498DB', '#E74C3C', '#2ECC71', '#F39C12', '#9B59B6'] },
       getDadosPerguntaDefasagem: component.getDadosPerguntaDefasagem ?
@@ -1988,14 +2112,37 @@ export class ReportPdfMakeService {
       if (cfg.textoEsquerda) leftParts.push(cfg.textoEsquerda);
       if (cfg.mostrarNomeProjeto && data.projectName) leftParts.push(data.projectName);
 
-      const columns: any[] = [
-        { text: leftParts.join(' — '), alignment: 'left', fontSize: 8, color: cfg.cor }
-      ];
-      if (cfg.mostrarNumeroPagina) {
-        columns.push({ text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 8, color: cfg.cor });
+      const columns: any[] = [];
+
+      if (cfg.logoUrl) {
+        columns.push({
+          image: cfg.logoUrl,
+          fit: [60, 20],
+          alignment: 'left',
+          width: 'auto',
+          margin: [0, 0, 8, 0]
+        });
       }
 
-      const row: any = columns.length > 1 ? { columns } : { ...columns[0] };
+      columns.push({
+        text: leftParts.join(' — '),
+        alignment: 'left',
+        fontSize: 8,
+        color: cfg.cor,
+        width: '*'
+      });
+
+      if (cfg.mostrarNumeroPagina) {
+        columns.push({
+          text: `Página ${currentPage} de ${pageCount}`,
+          alignment: 'right',
+          fontSize: 8,
+          color: cfg.cor,
+          width: 'auto'
+        });
+      }
+
+      const row = { columns, columnGap: 8 };
 
       if (cfg.linhaInferior) {
         return {

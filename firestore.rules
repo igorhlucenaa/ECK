@@ -42,6 +42,10 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Participantes ────────────────────────────────────────────
+    // Campo `blocked` em participants/{id} impede resposta à avaliação.
+    // Endurecer regras de escrita em results quando migrar submit para Functions.
+
     // ── Demais coleções ──────────────────────────────────────────
     // Mantém o comportamento atual do app: acesso para autenticados.
     // (Endureça por coleção/role conforme migrar os fluxos para Functions.)

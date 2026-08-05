@@ -4,6 +4,7 @@ import {
   collection,
   query,
   getDocs,
+  getDoc,
   where,
   Timestamp,
   deleteDoc,
@@ -148,24 +149,28 @@ export class ClientsListComponent implements OnInit {
 
     try {
       const ordersSnapshot = await getDocs(ordersQuery);
-      const currentDate = new Date();
+      const now = new Date();
       let creditsPurchased = 0;
+      let creditsAvailable = 0;
 
       ordersSnapshot.docs.forEach((orderDoc) => {
         const orderData = orderDoc.data();
         const validityDate = orderData['validityDate']?.toDate();
-        const credits = orderData['credits'] || 0;
-        // Comprados = soma de pedidos aprovados ainda válidos
-        if (validityDate && validityDate > currentDate) {
-          creditsPurchased += credits;
+        // Mesma regra de validade usada em /orders e sincronizarCreditosCliente
+        if (validityDate && validityDate < now) {
+          return;
         }
+
+        const total = orderData['credits'] || 0;
+        const remaining = (orderData['remainingCredits'] as number) ?? total;
+        creditsPurchased += total;
+        creditsAvailable += remaining;
       });
 
       client.creditsPurchased = creditsPurchased;
-      // creditsUsed e credits (disponíveis) vêm diretamente do doc do cliente no Firestore
-      // — são mantidos incrementalmente pelo sistema (respostas, aprovações, expirações)
-      client.creditsUsed = client.creditsUsed || 0;
-      client.creditsAvailable = client.credits || 0;
+      client.creditsAvailable = creditsAvailable;
+      // Utilizados = retirados do pedido (reservados + consumidos), igual à coluna Utilizados em /orders
+      client.creditsUsed = Math.max(0, creditsPurchased - creditsAvailable);
     } catch (error) {
       console.error('Erro ao calcular créditos:', error);
     }
@@ -311,6 +316,64 @@ export class ClientsListComponent implements OnInit {
         this.toast.error(this.translate.instant('Erro ao excluir clientes. Tente novamente.'));
       }
     });
+  }
+
+  private async cascadeDeleteClient(clientId: string): Promise<void> {
+    const BATCH_SIZE = 400;
+    const db = this.firestore;
+
+    // 1. Projetos do cliente
+    const projectsSnap = await getDocs(query(collection(db, 'projects'), where('clientId', '==', clientId)));
+    const projectIds = projectsSnap.docs.map(d => d.id);
+
+    // 2. Participantes dos projetos (batches de 10 para query 'in')
+    const participantRefs: any[] = [];
+    const participantIds: string[] = [];
+    for (let i = 0; i < projectIds.length; i += 10) {
+      const chunk = projectIds.slice(i, i + 10);
+      const snap = await getDocs(query(collection(db, 'participants'), where('projectId', 'in', chunk)));
+      snap.docs.forEach(d => { participantRefs.push(d.ref); participantIds.push(d.id); });
+    }
+
+    // 3. AssessmentLinks dos participantes
+    const linkRefs: any[] = [];
+    for (let i = 0; i < participantIds.length; i += 10) {
+      const chunk = participantIds.slice(i, i + 10);
+      const snap = await getDocs(query(collection(db, 'assessmentLinks'), where('participantId', 'in', chunk)));
+      snap.docs.forEach(d => linkRefs.push(d.ref));
+    }
+
+    // 4. ReminderSettings dos projetos (doc key = clientId_projectId)
+    const reminderRefs = projectIds.map(pid => doc(db, `reminderSettings/${clientId}_${pid}`));
+
+    // 5. Apagar links, participantes, projetos e reminderSettings em batches
+    const toDelete = [...linkRefs, ...participantRefs, ...projectsSnap.docs.map(d => d.ref), ...reminderRefs];
+    for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      toDelete.slice(i, i + BATCH_SIZE).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
+
+    // 6. Assessments, mailTemplates, creditOrders, userGroups (por clientId)
+    for (const col of ['assessments', 'mailTemplates', 'creditOrders', 'userGroups']) {
+      const snap = await getDocs(query(collection(db, col), where('clientId', '==', clientId)));
+      for (let i = 0; i < snap.docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        snap.docs.slice(i, i + BATCH_SIZE).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+
+    // 7. Usuários do cliente
+    const usersSnap = await getDocs(query(collection(db, 'users'), where('client', '==', clientId)));
+    for (let i = 0; i < usersSnap.docs.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      usersSnap.docs.slice(i, i + BATCH_SIZE).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+
+    // 8. Deletar o cliente
+    await deleteDoc(doc(db, `clients/${clientId}`));
   }
 
   openAddClientDialog(client?: any) {

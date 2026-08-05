@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { isParticipantIncludedInReports } from '../../reports/reports-utils';
 import { MaterialModule } from 'src/app/material.module';
 import { Model, PageModel, QuestionMatrixModel } from 'survey-core';
 import { Firestore, collection, getDocs, doc, getDoc, query, where, documentId } from '@angular/fire/firestore';
@@ -66,6 +67,7 @@ interface QuestionChart {
 interface ParticipantInfo {
   id: string;
   category: string; // 'Autoavaliação', 'Gestor', 'Pares', 'Liderados', 'Outros'
+  blocked?: boolean;
 }
 
 // Mapeamento de categorias do Firestore para categorias do relatório
@@ -206,7 +208,8 @@ export class DashboardComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router,
     private route: ActivatedRoute,
-    private loadingService: LoadingService
+    private loadingService: LoadingService,
+    private translate: TranslateService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -236,7 +239,7 @@ export class DashboardComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error);
-      this.snackBar.open('Erro ao carregar lista de avaliações', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao carregar lista de avaliações'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.loadingService.hide();
     }
@@ -282,7 +285,7 @@ export class DashboardComponent implements OnInit {
       console.log(`Resultados carregados: ${this.surveyResults.length}`);
 
       if (this.surveyResults.length === 0) {
-        this.snackBar.open('Não há resultados para esta avaliação.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Não há resultados para esta avaliação.'), this.translate.instant('Fechar'), { duration: 3000 });
         this.loadingService.hide();
         return;
       }
@@ -294,6 +297,20 @@ export class DashboardComponent implements OnInit {
          console.log('Informações dos participantes carregadas:', this.participantMap);
       } else {
          console.warn("Nenhum participantId encontrado nos resultados.");
+      }
+
+      this.surveyResults = this.surveyResults.filter((result) => {
+        if (!result.participantId) return false;
+        const participant = this.participantMap.get(result.participantId);
+        return isParticipantIncludedInReports(
+          participant ? { blocked: participant.blocked } : null
+        );
+      });
+
+      if (this.surveyResults.length === 0) {
+        this.snackBar.open(this.translate.instant('Não há resultados elegíveis para esta avaliação.'), this.translate.instant('Fechar'), { duration: 3000 });
+        this.loadingService.hide();
+        return;
       }
 
       // Extrair perguntas do modelo
@@ -314,7 +331,7 @@ export class DashboardComponent implements OnInit {
 
     } catch (error) {
       console.error('Erro ao carregar e processar dados da avaliação:', error);
-      this.snackBar.open('Erro ao processar dados. Tente novamente.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao processar dados. Tente novamente.'), this.translate.instant('Fechar'), { duration: 3000 });
       this.clearReportData();
     } finally {
       this.loadingService.hide();
@@ -340,7 +357,8 @@ export class DashboardComponent implements OnInit {
                     console.log(`Participant ${doc.id}: Raw Category='${rawCategory}', Mapped Category='${mappedCategory}'`);
                     this.participantMap.set(doc.id, {
                         id: doc.id,
-                        category: mappedCategory
+                        category: mappedCategory,
+                        blocked: data['blocked'] === true,
                     });
                 });
               } catch (error) {

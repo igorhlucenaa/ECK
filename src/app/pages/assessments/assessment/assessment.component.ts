@@ -38,11 +38,14 @@ export class AssessmentComponent implements OnInit, OnDestroy {
   surveyCompleted = false;
   alreadyCompleted = false;
   linkCancelled = false;
+  participantBlocked = false;
   showExpiredScreen = false;
   showMidFillExpiredModal = false;
+  showMidFillBlockedModal = false;
   formSubmitted = false;
 
   private linkUnsubscribe: (() => void) | null = null;
+  private participantUnsubscribe: (() => void) | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -65,6 +68,7 @@ export class AssessmentComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.linkUnsubscribe?.();
+    this.participantUnsubscribe?.();
   }
 
   async checkAndLoadSurvey(
@@ -103,6 +107,20 @@ export class AssessmentComponent implements OnInit, OnDestroy {
         return;
       }
     }
+
+    const participantRef = doc(this.firestore, `participants/${participantId}`);
+    const participantSnap = await getDoc(participantRef);
+    if (participantSnap.exists() && participantSnap.data()?.['blocked'] === true) {
+      this.participantBlocked = true;
+      return;
+    }
+
+    this.participantUnsubscribe = onSnapshot(participantRef, (snap) => {
+      if (!snap.exists() || snap.data()?.['blocked'] !== true) return;
+      if (this.formSubmitted || this.alreadyCompleted || this.surveyCompleted) return;
+      if (this.participantBlocked) return;
+      this.showMidFillBlockedModal = true;
+    });
 
     this.alreadyCompleted = await this.surveyService.checkIfAssessmentCompleted(
       assessmentId,
@@ -226,7 +244,11 @@ export class AssessmentComponent implements OnInit, OnDestroy {
           this.token,
           surveyData
         );
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.message === 'PARTICIPANT_BLOCKED') {
+          this.showMidFillBlockedModal = true;
+          return;
+        }
         console.error('Erro ao salvar progresso:', error);
       }
     }
@@ -250,7 +272,11 @@ export class AssessmentComponent implements OnInit, OnDestroy {
         await this.markLinkCompletedAndCheckProject(this.assessmentId, this.participantId);
 
         this.surveyCompleted = true;
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.message === 'PARTICIPANT_BLOCKED') {
+          this.showMidFillBlockedModal = true;
+          return;
+        }
         console.error('Erro ao salvar conclusão:', error);
       }
     } else {

@@ -420,13 +420,27 @@ export class CreateUserComponent implements OnInit {
           selectedGroups.map(gId => updateDoc(doc(this.firestore, 'userGroups', gId), { userIds: arrayUnion(newDocRef.id) }))
         );
 
-        await this.createAuthAndSendWelcomeEmail(email, name);
+        const welcomeResult = await this.createAuthAndSendWelcomeEmail(email);
 
-        this.snackBar.open(
-          `Usuário criado! E-mail de acesso enviado para ${email}.`,
-          'Fechar',
-          { duration: 5000 }
-        );
+        if (welcomeResult.emailSent) {
+          this.snackBar.open(
+            `Usuário criado! E-mail de acesso enviado para ${email}.`,
+            'Fechar',
+            { duration: 5000 }
+          );
+        } else if (welcomeResult.authCreated) {
+          this.snackBar.open(
+            `Usuário criado, mas o e-mail de acesso não foi enviado. Use "Enviar link" na listagem.`,
+            'Fechar',
+            { duration: 8000 }
+          );
+        } else {
+          this.snackBar.open(
+            `Usuário salvo no sistema, mas a conta de acesso não foi criada. Tente reenviar o link na listagem.`,
+            'Fechar',
+            { duration: 8000 }
+          );
+        }
       }
 
       this.dialogRef.close(true);
@@ -441,10 +455,13 @@ export class CreateUserComponent implements OnInit {
    * e dispara o e-mail de redefinição de senha que serve como link de criação de acesso.
    * O link expira conforme configurado no Firebase Console (recomendado: 48h).
    */
-  private async createAuthAndSendWelcomeEmail(email: string, name: string): Promise<void> {
+  private async createAuthAndSendWelcomeEmail(
+    email: string
+  ): Promise<{ authCreated: boolean; emailSent: boolean }> {
     const appName = `welcome_${Date.now()}`;
     const secondaryApp = initializeApp((this.firebaseApp as any).options, appName);
     const secondaryAuth = getAuth(secondaryApp);
+    let authCreated = false;
 
     try {
       // Senha temporária aleatória — usuário nunca a usa, pois receberá o link de criação
@@ -455,27 +472,34 @@ export class CreateUserComponent implements OnInit {
 
       await createUserWithEmailAndPassword(secondaryAuth, email, tempPassword);
       await firebaseSignOut(secondaryAuth);
+      authCreated = true;
     } catch (err: any) {
-      if (err?.code !== 'auth/email-already-in-use') {
+      if (err?.code === 'auth/email-already-in-use') {
+        authCreated = true;
+      } else {
         console.error('Erro ao criar conta Auth:', err?.message);
         this.snackBar.open(
-          `Erro ao criar conta: ${err?.message}`,
+          `Erro ao criar conta de acesso: ${err?.message}`,
           this.translate.instant('Fechar'),
           { duration: 6000 }
         );
-        return;
       }
     } finally {
       try { await deleteApp(secondaryApp); } catch {}
     }
 
-    // Envia e-mail com link de criação/redefinição de senha (fora do try da conta secundária)
+    if (!authCreated) {
+      return { authCreated: false, emailSent: false };
+    }
+
+    // Envia e-mail com link de criação/redefinição de senha
     try {
       const actionCodeSettings: ActionCodeSettings = {
         url: `${window.location.origin}/authentication/login`,
         handleCodeInApp: false,
       };
       await sendPasswordResetEmail(this.auth, email, actionCodeSettings);
+      return { authCreated: true, emailSent: true };
     } catch (err: any) {
       console.error('Erro ao enviar e-mail de boas-vindas:', err?.code, err?.message);
       this.snackBar.open(
@@ -483,6 +507,7 @@ export class CreateUserComponent implements OnInit {
         this.translate.instant('Fechar'),
         { duration: 8000 }
       );
+      return { authCreated: true, emailSent: false };
     }
   }
 }

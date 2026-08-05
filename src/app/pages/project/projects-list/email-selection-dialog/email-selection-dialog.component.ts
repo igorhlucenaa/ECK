@@ -232,7 +232,9 @@ export class EmailSelectionDialogComponent implements OnInit {
           name: participantData['name'] || 'Desconhecido',
           email: participantData['email'] || 'Sem e-mail',
           category: participantData['category'] || 'outros',
-          projectId: projectId, // Adicionando projectId ao objeto
+          type: (participantData['type'] || 'avaliado') as 'avaliado' | 'avaliador',
+          avaliadoId: participantData['avaliadoId'] || undefined,
+          projectId: projectId,
           status: status,
           deliveryStatus: deliveryStatus,
           isLinkExpired: isLinkExpired,
@@ -243,7 +245,7 @@ export class EmailSelectionDialogComponent implements OnInit {
     );
 
     this.originalData = participants;
-    this.dataSource.data = participants;
+    this.dataSource.data = participants.filter((p) => this.matchesTemplateAudience(p));
     this.dataSource.filterPredicate = this.customFilterPredicate.bind(this);
     this.isLoading.set(false);
     console.log(
@@ -415,7 +417,21 @@ export class EmailSelectionDialogComponent implements OnInit {
     }
   }
 
+  /** Filtra participantes conforme o tipo de template (avaliado vs avaliador) */
+  matchesTemplateAudience(participant: any): boolean {
+    const emailType = this.data.emailType || this.emailType;
+    if (!emailType || emailType === 'cadastro') return true;
+    if (['conviteAvaliador', 'lembreteAvaliador'].includes(emailType)) {
+      return participant.type === 'avaliador';
+    }
+    if (['conviteRespondente', 'lembreteRespondente', 'convite', 'lembrete'].includes(emailType)) {
+      return participant.type === 'avaliado';
+    }
+    return true;
+  }
+
   toggleSelection(participant: any) {
+    if (!this.matchesTemplateAudience(participant)) return;
     const key = this.getParticipantKey(participant);
     if (this.selectedParticipants.has(key)) {
       this.selectedParticipants.delete(key);
@@ -427,7 +443,9 @@ export class EmailSelectionDialogComponent implements OnInit {
   selectAll(event: any) {
     if (event.checked) {
       this.selectedParticipants = new Set(
-        this.dataSource.data.map((p) => this.getParticipantKey(p))
+        this.dataSource.data
+          .filter((p) => this.matchesTemplateAudience(p))
+          .map((p) => this.getParticipantKey(p))
       );
     } else {
       this.selectedParticipants.clear();
@@ -482,8 +500,11 @@ export class EmailSelectionDialogComponent implements OnInit {
         const participant = this.dataSource.data.find(
           (p) => this.getParticipantKey(p) === key
         );
+        if (participant && !this.matchesTemplateAudience(participant)) {
+          continue;
+        }
         if (participant) {
-          const avaliadoId = (participant as any)['avaliadoId'];
+          const avaliadoId = participant['avaliadoId'];
 
           await this.emailService
             .sendEmail(
@@ -526,6 +547,7 @@ export class EmailSelectionDialogComponent implements OnInit {
       // Nova sintaxe {{...}}
       text = text.replace(/\{\{nome_participante\}\}/g, vars['nome_participante'] || '');
       text = text.replace(/\{\{nome_avaliado\}\}/g, vars['nome_avaliado'] || '');
+      text = text.replace(/\{\{categoria\}\}/g, vars['categoria'] || '');
       text = text.replace(/\{\{data_expiracao\}\}/g, vars['data_expiracao'] || '');
       text = text.replace(/\{\{nome_projeto\}\}/g, vars['nome_projeto'] || '');
       text = text.replace(/\{\{nome_cliente\}\}/g, vars['nome_cliente'] || '');

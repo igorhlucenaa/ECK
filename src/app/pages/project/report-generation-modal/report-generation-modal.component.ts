@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, doc, getDoc, getDocs, query, where } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -41,6 +41,7 @@ interface ReportGenerationData {
   projectId: string;
   assessmentId: string;
   clientId: string;
+  reportTemplateId?: string;
 }
 
 @Component({
@@ -432,6 +433,7 @@ export class ReportGenerationModalComponent implements OnInit {
         this.loadReportTemplates(),
         this.loadCompetencies()
       ]);
+      await this.applyDefaultReportTemplate();
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -447,7 +449,15 @@ export class ReportGenerationModalComponent implements OnInit {
 
   async loadReportTemplates(): Promise<void> {
     try {
-      const snap = await getDocs(collection(this.firestore, 'reportTemplates'));
+      if (!this.data.clientId) {
+        this.reportTemplates = [];
+        return;
+      }
+      const templatesRef = query(
+        collection(this.firestore, 'reportTemplates'),
+        where('clientId', '==', this.data.clientId)
+      );
+      const snap = await getDocs(templatesRef);
       this.reportTemplates = snap.docs.map(doc => {
         const d: any = doc.data();
         return {
@@ -462,6 +472,29 @@ export class ReportGenerationModalComponent implements OnInit {
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
       this.reportTemplates = [];
+    }
+  }
+
+  private async applyDefaultReportTemplate(): Promise<void> {
+    let templateId = this.data.reportTemplateId;
+
+    if (!templateId && this.data.projectId) {
+      try {
+        const projectDoc = await getDoc(doc(this.firestore, 'projects', this.data.projectId));
+        if (projectDoc.exists()) {
+          templateId = projectDoc.data()['reportTemplateId'] || undefined;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar template padrão do projeto:', error);
+        return;
+      }
+    }
+
+    if (!templateId) return;
+
+    const match = this.reportTemplates.find(t => t.id === templateId);
+    if (match) {
+      this.templateControl.setValue(match);
     }
   }
 
@@ -509,7 +542,7 @@ export class ReportGenerationModalComponent implements OnInit {
 
   async generateReport(): Promise<void> {
     if (!this.canGenerate()) {
-      this.snackBar.open('Selecione pelo menos uma competência para gerar o relatório.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Selecione pelo menos uma competência para gerar o relatório.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
@@ -537,10 +570,10 @@ export class ReportGenerationModalComponent implements OnInit {
 
       this.router.navigate(['/reports'], { queryParams });
 
-      this.snackBar.open('Redirecionando para geração do relatório...', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Redirecionando para geração do relatório...'), this.translate.instant('Fechar'), { duration: 3000 });
     } catch (error) {
       console.error('Erro ao abrir relatório:', error);
-      this.snackBar.open('Erro ao abrir relatório. Tente novamente.', 'Fechar', { duration: 5000 });
+      this.snackBar.open(this.translate.instant('Erro ao abrir relatório. Tente novamente.'), this.translate.instant('Fechar'), { duration: 5000 });
     } finally {
       this.ngZone.run(() => { this.isGenerating = false; this.cdr.markForCheck(); });
     }

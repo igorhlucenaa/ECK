@@ -25,7 +25,7 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MatSelectSearchModule } from 'mat-select-search';
 import { MatSelectModule } from '@angular/material/select';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { UsersComponent } from '../../users/users.component';
 import { ProjectService } from 'src/app/services/project.service';
@@ -53,6 +53,7 @@ export class ProjectDetailComponent implements OnInit {
     deadline: new FormControl('', Validators.required),
     status: new FormControl('Em andamento', Validators.required),
     assessmentId: new FormControl(''),
+    reportTemplateId: new FormControl(''),
     responsible: new FormControl(''),
     clientId: new FormControl('', Validators.required),
     groupIds: new FormControl([], Validators.required),
@@ -74,6 +75,7 @@ export class ProjectDetailComponent implements OnInit {
   clients: { id: string; name: string }[] = [];
   groups: { id: string; name: string }[] = [];
   assessments: { id: string; name: string }[] = [];
+  reportTemplates: { id: string; name: string }[] = [];
   usersInGroups: { id: string; name: string; groupNames: string[] }[] = [];
   isLoading = false;
   isConcluding = false;
@@ -90,6 +92,7 @@ export class ProjectDetailComponent implements OnInit {
     private authService: AuthService,
     private dialog: MatDialog,
     private projectService: ProjectService,
+    private translate: TranslateService,
   ) {}
 
   ngOnInit(): void {
@@ -98,7 +101,11 @@ export class ProjectDetailComponent implements OnInit {
     // Recarrega formulários sempre que o cliente mudar
     this.form.get('clientId')?.valueChanges.subscribe(clientId => {
       this.assessments = [];
-      if (clientId) this.loadAssessments(clientId);
+      this.reportTemplates = [];
+      if (clientId) {
+        this.loadAssessments(clientId);
+        this.loadReportTemplates(clientId);
+      }
     });
 
     this.route.queryParamMap.subscribe(async (params) => {
@@ -107,7 +114,7 @@ export class ProjectDetailComponent implements OnInit {
       const currentUser = await this.authService.getCurrentUser();
 
       if (!currentUser) {
-        this.snackBar.open('Erro ao obter dados do usuário.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Erro ao obter dados do usuário.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -124,8 +131,8 @@ export class ProjectDetailComponent implements OnInit {
         this.loadUserGroups(); // Também carrega grupos para admin_client
       } else {
         this.snackBar.open(
-          'Cliente não identificado. Redirecionando...',
-          'Fechar',
+          this.translate.instant('Cliente não identificado. Redirecionando...'),
+          this.translate.instant('Fechar'),
           { duration: 3000 }
         );
         this.router.navigate(['/projects']);
@@ -149,7 +156,7 @@ export class ProjectDetailComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open('Erro ao carregar clientes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar clientes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -169,6 +176,22 @@ export class ProjectDetailComponent implements OnInit {
     }
   }
 
+  async loadReportTemplates(clientId: string): Promise<void> {
+    try {
+      const snap = await getDocs(
+        query(collection(this.firestore, 'reportTemplates'), where('clientId', '==', clientId))
+      );
+      this.reportTemplates = snap.docs
+        .map(d => ({
+          id: d.id,
+          name: d.data()['nome'] || d.data()['name'] || 'Sem nome',
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    } catch (error) {
+      console.error('Erro ao carregar templates de relatório:', error);
+    }
+  }
+
   async loadUserGroups(): Promise<void> {
     try {
       const groupsCollection = collection(this.firestore, 'userGroups');
@@ -179,7 +202,7 @@ export class ProjectDetailComponent implements OnInit {
       }));
     } catch (error) {
       console.error('Erro ao carregar grupos de usuários:', error);
-      this.snackBar.open('Erro ao carregar grupos de usuários.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar grupos de usuários.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -203,16 +226,23 @@ export class ProjectDetailComponent implements OnInit {
 
         this.projectStatus = projectData['status'] || '';
         this.form.patchValue(projectData);
+        const clientId = projectData['clientId'] as string | undefined;
+        if (clientId) {
+          await Promise.all([
+            this.loadAssessments(clientId),
+            this.loadReportTemplates(clientId),
+          ]);
+        }
         await this.updateUsersInGroups(); // Carregar usuários dos grupos selecionados
       } else {
-        this.snackBar.open('Projeto não encontrado!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Projeto não encontrado!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         this.router.navigate(['/projects']);
       }
     } catch (error) {
       console.error('Erro ao carregar projeto:', error);
-      this.snackBar.open('Erro ao carregar projeto.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar projeto.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } finally {
@@ -254,7 +284,7 @@ export class ProjectDetailComponent implements OnInit {
 
   async saveProject(): Promise<void> {
     if (this.form.invalid) {
-      this.snackBar.open('Preencha todos os campos obrigatórios!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Preencha todos os campos obrigatórios!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -264,7 +294,7 @@ export class ProjectDetailComponent implements OnInit {
     const deadlineDate = deadlineValue ? new Date(deadlineValue) : null;
     if (deadlineDate) deadlineDate.setHours(0, 0, 0, 0);
     if (!deadlineDate || deadlineDate < this.today) {
-      this.snackBar.open('O prazo de preenchimento não pode ser uma data anterior a hoje.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('O prazo de preenchimento não pode ser uma data anterior a hoje.'), this.translate.instant('Fechar'), {
         duration: 4000,
       });
       return;
@@ -295,15 +325,15 @@ export class ProjectDetailComponent implements OnInit {
 
       this.snackBar.open(
         this.isEditMode
-          ? 'Projeto atualizado com sucesso!'
-          : 'Projeto adicionado com sucesso!',
-        'Fechar',
+          ? this.translate.instant('Projeto atualizado com sucesso!')
+          : this.translate.instant('Projeto adicionado com sucesso!'),
+        this.translate.instant('Fechar'),
         { duration: 3000 }
       );
       this.router.navigate(['/projects']);
     } catch (error) {
       console.error('Erro ao salvar projeto:', error);
-      this.snackBar.open('Erro ao salvar projeto.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao salvar projeto.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } finally {
@@ -361,13 +391,13 @@ export class ProjectDetailComponent implements OnInit {
       await this.projectService.concludeProject(this.projectId, this.currentUserId || 'admin');
       this.projectStatus = 'concluido';
       this.form.get('status')?.setValue('concluido');
-      this.snackBar.open('Projeto concluído com sucesso! 1 crédito debitado.', 'Fechar', { duration: 4000 });
+      this.snackBar.open(this.translate.instant('Projeto concluído com sucesso! 1 crédito debitado.'), this.translate.instant('Fechar'), { duration: 4000 });
     } catch (error: any) {
       const msg: string = error?.message || '';
       if (msg.includes('Saldo insuficiente')) {
         this.snackBar.open(msg, 'Fechar', { duration: 6000 });
       } else {
-        this.snackBar.open('Erro ao concluir projeto. Tente novamente.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Erro ao concluir projeto. Tente novamente.'), this.translate.instant('Fechar'), { duration: 3000 });
       }
       console.error('Erro ao concluir projeto:', error);
     } finally {

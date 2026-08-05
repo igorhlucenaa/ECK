@@ -16,6 +16,7 @@ import {
   getDoc,
   doc,
 } from '@angular/fire/firestore';
+import { TranslateService } from '@ngx-translate/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
@@ -151,7 +152,8 @@ export class SendAssessmentModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: ModalData,
     private fb: FormBuilder,
     private firestore: Firestore,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private translate: TranslateService
   ) {
     this.sendForm = this.fb.group({
       template: ['', Validators.required],
@@ -166,7 +168,7 @@ export class SendAssessmentModalComponent implements OnInit {
   async loadParticipants(): Promise<void> {
     try {
       if (!this.data.projectId) {
-        this.snackBar.open('Nenhum projectId fornecido.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Nenhum projectId fornecido.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -225,7 +227,7 @@ export class SendAssessmentModalComponent implements OnInit {
       this.updateSelection();
     } catch (error) {
       console.error('Erro ao carregar participantes:', error);
-      this.snackBar.open('Erro ao carregar participantes.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar participantes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -234,7 +236,7 @@ export class SendAssessmentModalComponent implements OnInit {
   async loadMailTemplates(): Promise<void> {
     try {
       if (!this.data.clientId) {
-        this.snackBar.open('Nenhum clientId fornecido.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Nenhum clientId fornecido.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -265,7 +267,7 @@ export class SendAssessmentModalComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao carregar Modelos de e-mail:', error);
-      this.snackBar.open('Erro ao carregar Modelos de e-mail.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar Modelos de e-mail.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

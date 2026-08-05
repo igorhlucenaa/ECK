@@ -2,12 +2,14 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import {
   Firestore,
   Timestamp,
+  arrayRemove,
   collection,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
   query,
+  runTransaction,
   updateDoc,
   where,
   writeBatch,
@@ -33,6 +35,16 @@ import { AppPageHeaderComponent } from 'src/app/components/page-header/page-head
 import { fixMojibake } from 'src/app/utils/encoding.utils';
 import { DependencyCheckService } from 'src/app/services/dependency-check.service';
 import { DependencyBlockDialogComponent } from 'src/app/shared/dependency-block-dialog/dependency-block-dialog.component';
+import {
+  ProjectExportDialogComponent,
+  ProjectExportDialogResult,
+} from '../project-export-dialog/project-export-dialog.component';
+import {
+  ClientPdfBatchDialogComponent,
+  ClientPdfBatchDialogResult,
+} from '../client-pdf-batch-dialog/client-pdf-batch-dialog.component';
+import { ReportClientExportService } from 'src/app/services/report-client-export.service';
+import { LoadingService } from 'src/app/services/loading.service';
 
 @Component({
   selector: 'app-projects-list',
@@ -144,7 +156,9 @@ export class ProjectsListComponent implements OnInit {
     private projectService: ProjectService,
     private location: Location,
     private translate: TranslateService,
-    private dependencyCheck: DependencyCheckService
+    private dependencyCheck: DependencyCheckService,
+    private clientExportService: ReportClientExportService,
+    private loadingService: LoadingService
   ) {}
 
   ngOnInit(): void {
@@ -159,7 +173,7 @@ export class ProjectsListComponent implements OnInit {
       }
 
       this.displayedColumns = [
-        ...(this.isAdminMaster ? ['select'] : []),
+        ...(this.canBulkSelectProjects() ? ['select'] : []),
         'client',
         'name',
         'deadline',
@@ -344,21 +358,9 @@ export class ProjectsListComponent implements OnInit {
         return [0, 0];
       }
 
-      // Passo 2: Obter todos os assessments associados ao clientId
-      const assessmentsQuery = query(
-        collection(this.firestore, 'assessments'),
-        where('clientId', '==', clientId)
-      );
-      const assessmentsSnapshot = await getDocs(assessmentsQuery);
-      const assessmentIds = assessmentsSnapshot.docs.map((doc) => doc.id);
-      if (assessmentIds.length === 0) {
-        console.warn(
-          `Nenhum assessment encontrado para o clientId ${clientId}.`
-        );
-        return [0, 0];
-      }
+      const projectAssessmentId = projectData['assessmentId'] as string | undefined;
 
-      // Passo 3: Contar todos os participantes do projeto
+      // Passo 2: Contar todos os participantes do projeto
       const participantsQuery = query(
         collection(this.firestore, 'participants'),
         where('projectId', '==', projectId)
@@ -369,30 +371,44 @@ export class ProjectsListComponent implements OnInit {
         `Projeto ${projectId} - Total de participantes: ${totalParticipants}`
       );
 
-      // Passo 4: Contar respostas completadas em assessmentLinks
+      // Passo 3: Contar respostas completadas — apenas deste projeto
       let respondedCount = 0;
       const participantIds = participantsSnapshot.docs.map((doc) => doc.id);
+      const participantIdSet = new Set(participantIds);
 
-      if (participantIds.length > 0 && assessmentIds.length > 0) {
-        // Dividir os assessmentIds em lotes de 10 (limite do Firestore para cláusula 'in')
+      if (participantIds.length > 0) {
         const batchSize = 10;
-        const completedParticipants = new Set<string>(); // Para evitar contar o mesmo participante mais de uma vez
+        const completedParticipants = new Set<string>();
 
-        for (let i = 0; i < assessmentIds.length; i += batchSize) {
-          const assessmentBatch = assessmentIds.slice(i, i + batchSize);
-          const assessmentLinksQuery = query(
-            collection(this.firestore, 'assessmentLinks'),
-            where('participantId', 'in', participantIds),
-            where('assessmentId', 'in', assessmentBatch)
-          );
-          const linksSnapshot = await getDocs(assessmentLinksQuery);
+        // Fonte principal: links com projectId (formato atual)
+        const projectLinksQuery = query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('projectId', '==', projectId),
+          where('status', '==', 'completed')
+        );
+        const projectLinksSnapshot = await getDocs(projectLinksQuery);
+        projectLinksSnapshot.docs.forEach((linkDoc) => {
+          const participantId = linkDoc.data()['participantId'];
+          if (participantIdSet.has(participantId)) {
+            completedParticipants.add(participantId);
+          }
+        });
 
-          linksSnapshot.docs.forEach((doc) => {
-            const linkData = doc.data();
-            if (linkData['status'] === 'completed') {
-              completedParticipants.add(linkData['participantId']);
-            }
-          });
+        // Fallback legado: links sem projectId, mas da avaliação vinculada ao projeto
+        if (projectAssessmentId) {
+          for (let i = 0; i < participantIds.length; i += batchSize) {
+            const participantBatch = participantIds.slice(i, i + batchSize);
+            const legacyLinksQuery = query(
+              collection(this.firestore, 'assessmentLinks'),
+              where('participantId', 'in', participantBatch),
+              where('assessmentId', '==', projectAssessmentId),
+              where('status', '==', 'completed')
+            );
+            const legacyLinksSnapshot = await getDocs(legacyLinksQuery);
+            legacyLinksSnapshot.docs.forEach((linkDoc) => {
+              completedParticipants.add(linkDoc.data()['participantId']);
+            });
+          }
         }
 
         respondedCount = completedParticipants.size;
@@ -516,6 +532,81 @@ export class ProjectsListComponent implements OnInit {
     }
   }
 
+  canBulkSelectProjects(): boolean {
+    return this.isAdminMaster || this.isClienteAdmin || this.isViewer;
+  }
+
+  getSelectedProjects(): any[] {
+    return this.dataSource.data.filter(p => this.selectedProjectIds.has(p.id));
+  }
+
+  getSelectedProjectsClientId(): string | null {
+    const selected = this.getSelectedProjects();
+    if (selected.length === 0) return null;
+    const clientIds = new Set(selected.map(p => p.clientId).filter(Boolean));
+    return clientIds.size === 1 ? selected[0].clientId : null;
+  }
+
+  canExportSelectedProjectsPdf(): boolean {
+    // Geração em lote PDF desabilitada nesta versão.
+    return false;
+    /*
+    if (!this.isSomeProjectsSelected()) return false;
+    return !!this.getSelectedProjectsClientId();
+    */
+  }
+
+  async exportSelectedProjectsPdfZip(): Promise<void> {
+    // Geração em lote PDF desabilitada nesta versão — reativar ao subir a feature.
+    return;
+    /*
+    const selected = this.getSelectedProjects();
+    const clientId = this.getSelectedProjectsClientId();
+
+    if (!selected.length || !clientId) {
+      this.snackBar.open(
+        this.translate.instant('Selecione projetos do mesmo cliente para exportar em lote.'),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+      return;
+    }
+
+    const clientName = this.clientsMap[clientId] || clientId;
+    const dialogRef = this.dialog.open(ClientPdfBatchDialogComponent, {
+      width: '680px',
+      maxWidth: '95vw',
+      panelClass: 'client-pdf-batch-dialog-panel',
+      autoFocus: false,
+      data: {
+        clientId,
+        clientName,
+        projects: selected.map(p => ({
+          id: p.id,
+          name: p.name || p.id,
+          reportTemplateId: p.reportTemplateId as string | undefined,
+        })),
+      },
+    });
+
+    const result = (await dialogRef.afterClosed().toPromise()) as ClientPdfBatchDialogResult | undefined;
+    if (!result?.projectTemplates?.length) return;
+
+    const projectTemplates = result.projectTemplates
+      .map(item => `${item.projectId}:${item.templateId}`)
+      .join('|');
+
+    this.router.navigate(['/reports'], {
+      queryParams: {
+        clientId,
+        projectIds: result.projectTemplates.map(item => item.projectId).join(','),
+        projectTemplates,
+        exportAction: 'clientBatchPdf',
+      },
+    });
+    */
+  }
+
   async deleteSelectedProjects(): Promise<void> {
     const ids = Array.from(this.selectedProjectIds);
 
@@ -582,27 +673,97 @@ export class ProjectsListComponent implements OnInit {
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
-      data: { message: this.translate.instant('Tem certeza de que deseja excluir este projeto?') },
+      data: { message: this.translate.instant('Tem certeza de que deseja excluir este projeto? Participantes, links e créditos reservados também serão removidos.') },
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        const projectDocRef = doc(this.firestore, `projects/${projectId}`);
-        deleteDoc(projectDocRef)
-          .then(() => {
-            this.dataSource.data = this.dataSource.data.filter(
-              (project) => project.id !== projectId
-            );
-            this.snackBar.open(this.translate.instant('Projeto excluído com sucesso.'), this.translate.instant('Fechar'), {
-              duration: 3000,
-            });
-          })
-          .catch((error) => {
-            console.error('Erro ao excluir projeto:', error);
-            this.snackBar.open(this.translate.instant('Erro ao excluir projeto. Tente novamente mais tarde.'), this.translate.instant('Fechar'), { duration: 3000 });
-          });
+    dialogRef.afterClosed().subscribe(async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        await this.cascadeDeleteProject(projectId);
+        this.dataSource.data = this.dataSource.data.filter(p => p.id !== projectId);
+        this.snackBar.open(this.translate.instant('Projeto excluído com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
+      } catch (error) {
+        console.error('Erro ao excluir projeto:', error);
+        this.snackBar.open(this.translate.instant('Erro ao excluir projeto. Tente novamente mais tarde.'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     });
+  }
+
+  private async cascadeDeleteProject(projectId: string): Promise<void> {
+    const BATCH_SIZE = 400;
+
+    // 1. Dados do projeto (clientId, groupIds)
+    const projectSnap = await getDoc(doc(this.firestore, `projects/${projectId}`));
+    if (!projectSnap.exists()) return;
+    const projectData = projectSnap.data() as Record<string, any>;
+    const clientId: string = projectData['clientId'] || '';
+    const groupIds: string[] = Array.isArray(projectData['groupIds']) ? projectData['groupIds'] : [];
+
+    // 2. Participantes do projeto
+    const participantsSnap = await getDocs(
+      query(collection(this.firestore, 'participants'), where('projectId', '==', projectId))
+    );
+    const participantIds = participantsSnap.docs.map(d => d.id);
+
+    // 3. AssessmentLinks + créditos a estornar
+    let refundCredits = 0;
+    const linkRefs: any[] = [];
+    for (let i = 0; i < participantIds.length; i += 10) {
+      const chunk = participantIds.slice(i, i + 10);
+      const linksSnap = await getDocs(
+        query(collection(this.firestore, 'assessmentLinks'), where('participantId', 'in', chunk))
+      );
+      for (const linkDoc of linksSnap.docs) {
+        linkRefs.push(linkDoc.ref);
+        const d = linkDoc.data();
+        if (d['creditReserved'] === true && d['status'] !== 'completed' && d['status'] !== 'cancelled') {
+          refundCredits++;
+        }
+      }
+    }
+
+    // 4. Deletar links em batches
+    for (let i = 0; i < linkRefs.length; i += BATCH_SIZE) {
+      const batch = writeBatch(this.firestore);
+      linkRefs.slice(i, i + BATCH_SIZE).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
+
+    // 5. Deletar participantes em batches
+    for (let i = 0; i < participantsSnap.docs.length; i += BATCH_SIZE) {
+      const batch = writeBatch(this.firestore);
+      participantsSnap.docs.slice(i, i + BATCH_SIZE).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+
+    // 6. Deletar reminderSettings do projeto
+    if (clientId) {
+      try { await deleteDoc(doc(this.firestore, `reminderSettings/${clientId}_${projectId}`)); } catch { /* não existe */ }
+    }
+
+    // 7. Remover projectId de cada grupo
+    if (groupIds.length > 0) {
+      await Promise.all(groupIds.map(gId =>
+        updateDoc(doc(this.firestore, `userGroups/${gId}`), { projectIds: arrayRemove(projectId) }).catch(() => {})
+      ));
+    }
+
+    // 8. Estornar créditos reservados ao cliente (transação atômica)
+    if (clientId && refundCredits > 0) {
+      await runTransaction(this.firestore, async (t) => {
+        const clientRef = doc(this.firestore, `clients/${clientId}`);
+        const snap = await t.get(clientRef);
+        if (!snap.exists()) return;
+        const data = snap.data() as Record<string, any>;
+        t.update(clientRef, {
+          credits: (data['credits'] || 0) + refundCredits,
+          reservedCredits: Math.max(0, (data['reservedCredits'] || 0) - refundCredits),
+        });
+      });
+    }
+
+    // 9. Deletar o projeto
+    await deleteDoc(doc(this.firestore, `projects/${projectId}`));
   }
 
   openProjectForm(projectId?: string): void {
@@ -649,8 +810,80 @@ export class ProjectsListComponent implements OnInit {
     });
   }
 
-  goToProjectReport(clientId: string, projectId: string): void {
-    this.router.navigate(['/reports'], { queryParams: { clientId, projectId } });
+  async goToProjectReport(project: {
+    id: string;
+    clientId: string;
+    name: string;
+    assessmentId?: string;
+    reportTemplateId?: string;
+  }): Promise<void> {
+    const user = await this.authService.getCurrentUser();
+    const dialogRef = this.dialog.open(ProjectExportDialogComponent, {
+      width: '580px',
+      maxWidth: '95vw',
+      panelClass: 'project-export-dialog-panel',
+      autoFocus: false,
+      data: {
+        clientId: project.clientId,
+        clientName: this.clientsMap[project.clientId] || project.clientId,
+        projectId: project.id,
+        projectName: project.name,
+        assessmentId: project.assessmentId,
+        reportTemplateId: project.reportTemplateId,
+        userRole: user?.role || '',
+      },
+    });
+
+    const result = (await dialogRef.afterClosed().toPromise()) as ProjectExportDialogResult | undefined;
+    if (!result) return;
+
+    if (result.action === 'excelClient') {
+      await this.exportProjectExcelExtract(project.clientId, project.id);
+      return;
+    }
+
+    const queryParams: Record<string, string> = {
+      clientId: project.clientId,
+      projectId: project.id,
+    };
+
+    if (result.templateId) {
+      queryParams['templateId'] = result.templateId;
+    }
+
+    if (result.action !== 'openReports') {
+      queryParams['exportAction'] = result.action;
+      queryParams['returnTo'] = 'projects';
+    }
+
+    this.router.navigate(['/reports'], { queryParams });
+  }
+
+  private async exportProjectExcelExtract(clientId: string, projectId: string): Promise<void> {
+    const clientName = this.clientsMap[clientId] || clientId;
+    this.loadingService.show(this.translate.instant('Gerando extrato do cliente...'));
+
+    try {
+      const exportResult = await this.clientExportService.exportClientExtract({
+        clientId,
+        clientName,
+        projectIds: [projectId],
+        releasedOnly: this.isViewer || this.isClienteAdmin,
+      });
+
+      this.snackBar.open(
+        this.translate.instant('Extrato exportado: {{resumo}} linhas (Resumo), {{respostas}} linhas (Respostas).')
+          .replace('{{resumo}}', String(exportResult.resumoCount))
+          .replace('{{respostas}}', String(exportResult.respostasCount)),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : this.translate.instant('Erro ao exportar extrato.');
+      this.snackBar.open(message, this.translate.instant('Fechar'), { duration: 5000 });
+    } finally {
+      this.loadingService.hide();
+    }
   }
 
   openResendModal(projectId: string, clientId: string): void {
