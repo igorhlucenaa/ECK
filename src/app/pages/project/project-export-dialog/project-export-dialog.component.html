@@ -24,28 +24,26 @@
         <span class="ped-project-strip__name">{{ data.projectName }}</span>
         <span class="ped-project-strip__meta">{{ data.clientName }}</span>
       </div>
-      <span class="ped-badge ped-badge--template" *ngIf="data.reportTemplateId">
+      <span class="ped-badge ped-badge--template" *ngIf="linkedTemplate">
         <mat-icon>bookmark</mat-icon>
-        Template padrão
+        {{ linkedTemplate.name }}
       </span>
     </div>
 
     <p class="ped-error" *ngIf="loadError">{{ loadError }}</p>
 
-    <!-- Template -->
+    <div class="ped-linked-template" *ngIf="linkedTemplate && !showTemplateField && templateRequiredForAction">
+      <mat-icon>description</mat-icon>
+      <span>Template do projeto: <strong>{{ linkedTemplate.name }}</strong> — definido na criação do projeto.</span>
+    </div>
+
+    <!-- Template (somente se o projeto não tiver template vinculado) -->
     <div class="ped-step" *ngIf="showTemplateField">
       <div class="ped-step__header">
         <div class="ped-step__number">1</div>
         <div>
           <p class="ped-step__title">Template de relatório</p>
-          <p class="ped-step__desc">
-            <ng-container *ngIf="data.reportTemplateId">
-              Projeto com template padrão — altere aqui se necessário.
-            </ng-container>
-            <ng-container *ngIf="!data.reportTemplateId">
-              Selecione o template para PDF e DOCX formatados.
-            </ng-container>
-          </p>
+          <p class="ped-step__desc">Selecione o template para PDF e DOCX formatados.</p>
         </div>
       </div>
 
@@ -81,8 +79,8 @@
           class="ped-option"
           *ngFor="let opt of visibleExportOptions"
           [class.ped-option--selected]="selectedAction === opt.id"
-          [class.ped-option--disabled]="opt.requiresTemplate && reportTemplates.length === 0"
-          [disabled]="opt.requiresTemplate && reportTemplates.length === 0"
+          [class.ped-option--disabled]="isExportOptionDisabled(opt)"
+          [disabled]="isExportOptionDisabled(opt)"
           (click)="selectAction(opt.id)">
           <mat-icon class="ped-option__icon">{{ opt.icon }}</mat-icon>
           <div class="ped-option__body">

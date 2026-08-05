@@ -27,7 +27,7 @@ import {
   DuplicateTemplateDialogData,
 } from './duplicate-template-dialog/duplicate-template-dialog.component';
 import { FormsModule } from '@angular/forms';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 
 @Component({
@@ -72,7 +72,8 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     private router: Router,
     private location: Location,
     private dialog: MatDialog,
-    private authService: AuthService
+    private authService: AuthService,
+    private translate: TranslateService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -83,7 +84,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     const user = await this.authService.getCurrentUser();
 
     if (!user) {
-      this.snackBar.open('Erro ao obter informações do usuário.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao obter informações do usuário.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -215,7 +216,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
       this.applyFilter();
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
-      this.snackBar.open('Erro ao carregar templates.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar templates.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -399,7 +400,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
       const templateRef = doc(this.firestore, 'mailTemplates', template.id);
       const templateSnap = await getDoc(templateRef);
       if (!templateSnap.exists()) {
-        this.snackBar.open('Template não encontrado.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Template não encontrado.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
         return;
@@ -416,13 +417,13 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         projectId: data?.['projectId'] ?? template.projectId ?? '',
       });
 
-      this.snackBar.open('Template duplicado com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Template duplicado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       await this.loadTemplates();
     } catch (error) {
       console.error('Erro ao duplicar template:', error);
-      this.snackBar.open('Erro ao duplicar template.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao duplicar template.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -461,12 +462,12 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         this.dataSource.data = this.dataSource.data.filter(
           (template) => template.id !== templateId
         );
-        this.snackBar.open('Template excluído com sucesso!', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Template excluído com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
       } catch (error) {
         console.error('Erro ao excluir template:', error);
-        this.snackBar.open('Erro ao excluir template.', 'Fechar', {
+        this.snackBar.open(this.translate.instant('Erro ao excluir template.'), this.translate.instant('Fechar'), {
           duration: 3000,
         });
       }

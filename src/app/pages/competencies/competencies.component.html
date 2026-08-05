@@ -32,7 +32,7 @@
         <span *ngIf="!currentGroupId">2</span>
       </div>
       <div class="step-node__label">
-        <span class="step-node__title">Grupo</span>
+        <span class="step-node__title">{{ 'Grupo de competências' | translate }}</span>
         <span class="step-node__sub" *ngIf="!currentGroupId">Crie ou selecione</span>
         <span class="step-node__sub step-node__sub--done" *ngIf="currentGroupId">{{ getGroupName() }}</span>
       </div>
@@ -120,10 +120,10 @@
           <div class="sidebar-block__label-icon sidebar-block__label-icon--teal">
             <mat-icon>folder_special</mat-icon>
           </div>
-          <span>Grupos</span>
+          <span>{{ 'Grupos de Competências' | translate }}</span>
           <span class="sidebar-count" *ngIf="competencyGroups.length > 0">{{ competencyGroups.length }}</span>
         </div>
-        <button mat-icon-button class="sidebar-add-btn" matTooltip="Criar novo grupo"
+        <button mat-icon-button class="sidebar-add-btn" [matTooltip]="'Criar novo grupo de competências' | translate"
                 [disabled]="!selectedClientId" (click)="startNewGroup()">
           <mat-icon>add</mat-icon>
         </button>
@@ -156,7 +156,7 @@
         <!-- Empty: sem cliente -->
         <div *ngIf="!selectedClientId" class="sgi-empty">
           <mat-icon>business</mat-icon>
-          <span>Selecione um cliente para ver os grupos</span>
+          <span>{{ 'Selecione um cliente para ver os grupos de competências' | translate }}</span>
         </div>
 
         <!-- Empty: sem grupos -->

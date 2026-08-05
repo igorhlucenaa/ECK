@@ -853,6 +853,7 @@ export class ProjectsListComponent implements OnInit {
 
     if (result.action !== 'openReports') {
       queryParams['exportAction'] = result.action;
+      queryParams['returnTo'] = 'projects';
     }
 
     this.router.navigate(['/reports'], { queryParams });

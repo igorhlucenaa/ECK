@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, ElementRef, Inject, OnInit, ViewChild } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { TranslateService } from '@ngx-translate/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { SurveyModel } from 'survey-core';
@@ -36,7 +37,8 @@ export class AssessmentPreviewComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: AssessmentPreviewDialogData,
     private snackBar: MatSnackBar,
     private previewPdfService: AssessmentPreviewPdfService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private translate: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -105,12 +107,12 @@ export class AssessmentPreviewComponent implements OnInit {
         fileName
       );
 
-      this.snackBar.open('PDF do formulário baixado com sucesso.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('PDF do formulário baixado com sucesso.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } catch (error) {
       console.error('Erro ao exportar formulário em PDF:', error);
-      this.snackBar.open('Erro ao gerar PDF do formulário.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao gerar PDF do formulário.'), this.translate.instant('Fechar'), {
         duration: 4000,
       });
     } finally {

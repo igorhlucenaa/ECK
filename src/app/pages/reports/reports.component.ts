@@ -10,6 +10,8 @@ import {
   getExportAnswerTipoResposta,
   parseLikertAnswerForExport,
   normalizeQuestionType,
+  roundReportValue,
+  formatReportDecimal,
 } from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from '@angular/fire/firestore';
@@ -199,6 +201,38 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly GRUPO_AVALIADO = 'Avaliado(a)';
   private readonly LABEL_MEDIA_GERAL = 'Média geral (com autoavaliação)';
   private readonly LABEL_MEDIA_SEM_AUTO = 'Média sem autoavaliação';
+  /** Formata rótulos numéricos dos gráficos ngx-charts (2 casas decimais). */
+  readonly formatChartDataLabel = (value: number): string => formatReportDecimal(value);
+  /** Opções do eixo Y para evitar truncamento dos rótulos longos de média. */
+  readonly barChartWrapTicks = true;
+  readonly barChartTrimYAxisTicks = false;
+  readonly barChartMaxYAxisTickLength = 22;
+  readonly barChartPlotWidth = 700;
+
+  private toChartValue(value: number | null | undefined): number {
+    if (value === null || value === undefined || isNaN(value)) {
+      return 0;
+    }
+    return roundReportValue(value);
+  }
+
+  /** Altura dinâmica do gráfico de barras conforme quantidade de categorias. */
+  getBarChartHeight(itemCount: number): number {
+    const perBar = 62;
+    return Math.max(360, itemCount * perBar + 140);
+  }
+
+  /** Itens da legenda HTML à direita do gráfico (cores alinhadas ao ngx-charts). */
+  getBarChartLegendItems(
+    dados: Array<{ name: string; value: number }>,
+    secao: RelatorioSecao
+  ): Array<{ name: string; color: string }> {
+    const domain: string[] = this.getColorSchemeParaSecao(secao)?.domain || [];
+    return dados.map((item, index) => ({
+      name: item.name,
+      color: domain[index % domain.length] || '#1E88E5',
+    }));
+  }
   // Cache de participantes para evitar múltiplas idas ao Firestore
   private participantsCache: Map<string, any> = new Map<string, any>();
   /** Snapshot autoritativo dos participantes do ciclo (recarregado do Firestore). */
@@ -557,7 +591,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Média ponderada pelo total de respostas por categoria
     const somaPonderada = categoriasSemAuto.reduce((acc, c) => acc + (c.media * c.totalRespostas), 0);
     const totalRespostas = categoriasSemAuto.reduce((acc, c) => acc + c.totalRespostas, 0);
-    return totalRespostas > 0 ? somaPonderada / totalRespostas : null;
+    return totalRespostas > 0 ? roundReportValue(somaPonderada / totalRespostas) : null;
   }
 
   // Inicializa via configuração externa e exporta PDF sem precisar navegar para a rota de relatórios
@@ -723,6 +757,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private static readonly CLIENT_BATCH_QUERY_SENTINEL = '__clientBatch__';
   /** Evita reentrada do handler de query params (ex.: ao limpar params do batch). */
   private suppressQueryParamsHandler = false;
+  /** Quando exportação veio de Projetos → Gerar Relatório, volta para /projects após concluir. */
+  private projectExportReturnTo: string | null = null;
   /** Incrementado ao limpar filtros — invalida cargas assíncronas em andamento. */
   private filterContextGeneration = 0;
   /** IDs de participantes do projeto filtrado (para incluir avaliadores mesmo sem projectId no doc). */
@@ -1317,6 +1353,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         a['templateId'] === b['templateId'] &&
         a['competencyIds'] === b['competencyIds'] &&
         a['exportAction'] === b['exportAction'] &&
+        a['returnTo'] === b['returnTo'] &&
         a['projectIds'] === b['projectIds'] &&
         a['projectTemplates'] === b['projectTemplates']
       )
@@ -1343,6 +1380,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         const exportAction = params['exportAction'] as string | undefined;
+        this.projectExportReturnTo = (params['returnTo'] as string) || null;
         const batchProjectIds = (params['projectIds'] as string | undefined)
           ?.split(',')
           .map(id => id.trim())
@@ -2744,7 +2782,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    return contadorTotal > 0 ? somaTotal / contadorTotal : null;
+    return contadorTotal > 0 ? roundReportValue(somaTotal / contadorTotal) : null;
   }
 
   getSecaoStackedData(secao: any) {
@@ -2758,7 +2796,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const result = competenciasSelecionadas.map(comp => {
       const series = grupos.map(grupo => {
         const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-        const valor = (media !== null && !isNaN(media)) ? media : 0;
+        const valor = this.toChartValue(media);
         return {
           name: grupo,
           value: valor
@@ -2790,7 +2828,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       // Adicionar dados para cada grupo/categoria
       grupos.forEach(grupo => {
         const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-        const valor = (media !== null && !isNaN(media)) ? media : 0;
+        const valor = this.toChartValue(media);
 
         result.push({
           name: `${comp.nome} - ${grupo}`,
@@ -2835,7 +2873,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (media !== null && !isNaN(media)) {
         data.push({
           name: grupo,
-          value: media
+          value: this.toChartValue(media)
         });
       }
     });
@@ -2957,7 +2995,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
 
-      const mediaGeral = contadorTotal > 0 ? somaTotal / contadorTotal : 0;
+      const mediaGeral = contadorTotal > 0 ? roundReportValue(somaTotal / contadorTotal) : 0;
 
       return {
         name: comp.nome,
@@ -2982,11 +3020,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const grupos = this.getGrupos();
     return grupos.map(grupo => {
       const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-      // Garantir que apenas valores válidos sejam retornados
-      const valor = (media !== null && !isNaN(media)) ? media : 0;
       return {
         name: grupo,
-        value: valor
+        value: this.toChartValue(media)
       };
     });
   }
@@ -3017,7 +3053,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const seriesData = competenciasSelecionadas.map(comp => {
       const values = grupos.map(grupo => {
         const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-        return (media !== null && !isNaN(media)) ? media : 0;
+        return this.toChartValue(media);
       });
 
       return {
@@ -3074,11 +3110,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const grupos = this.getGrupos();
     return grupos.map(grupo => {
       const media = this.getMediaPorPerguntaEGrupo(comp, grupo);
-      // Garantir que apenas valores válidos sejam retornados
-      const valor = (media !== null && !isNaN(media)) ? media : 0;
       return {
         name: grupo,
-        value: valor
+        value: this.toChartValue(media)
       };
     });
   }
@@ -4956,8 +4990,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Exportar relat�rio como DOCX (gera��o nativa a partir dos dados - sem html2canvas)
-  async exportarRelatorioDOCX(): Promise<void> {
-    if (this.isExporting) return;
+  async exportarRelatorioDOCX(): Promise<boolean> {
+    if (this.isExporting) return false;
     this.isExporting = true;
     this.exportingLabel = 'Gerando DOCX...';
     this.cdr.markForCheck();
@@ -5161,9 +5195,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       this.snackBar.open(this.t('DOCX exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
+      return true;
     } catch (err) {
       console.error('Erro ao exportar DOCX:', err);
       this.snackBar.open(this.t('Erro ao gerar o DOCX.'), this.t('Fechar'), { duration: 3000 });
+      return false;
     } finally {
       this.isExporting = false;
       this.exportingLabel = '';
@@ -5188,11 +5224,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     grupos.forEach(grupo => {
       const media = this.getMediaPorPerguntaEGrupo(competencia, grupo);
-      // Garantir que apenas valores validos sejam adicionados
-      const valor = (media !== null && !isNaN(media)) ? media : 0;
       dadosGrafico.push({
         name: grupo,
-        value: valor
+        value: this.toChartValue(media)
       });
     });
 
@@ -5510,7 +5544,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const totalRespostas = distribuicao.reduce((sum, d) => sum + d.quantidade, 0);
     if (totalRespostas === 0) return 0;
     const somaPonderada = distribuicao.reduce((sum, d) => sum + d.nota * d.quantidade, 0);
-    return somaPonderada / totalRespostas;
+    return roundReportValue(somaPonderada / totalRespostas);
   }
 
   private getMediaRespostasCompetencia(competencia: Competencia, grupos: string[]): number {
@@ -5960,7 +5994,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (isNaN(mediaGeral) || mediaGeral <= 0) return null;
 
-    return { mediaGeral, mediaPorCategoria };
+    return {
+      mediaGeral: roundReportValue(mediaGeral),
+      mediaPorCategoria: roundReportValue(mediaPorCategoria),
+    };
   }
 
   // Método para obter média por pergunta e avaliado específico
@@ -6941,6 +6978,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
       this.exportarBaseExcel();
+      this.returnToProjectsIfRequested();
       return;
     }
 
@@ -6970,7 +7008,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.invalidateCache();
 
     if (action === 'individualPdf') {
-      await this.exportarRelatorioPDF();
+      const ok = await this.exportarRelatorioPDF();
+      if (ok) this.returnToProjectsIfRequested();
       return;
     }
 
@@ -6990,8 +7029,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (action === 'docx') {
-      await this.exportarRelatorioDOCX();
+      const ok = await this.exportarRelatorioDOCX();
+      if (ok) this.returnToProjectsIfRequested();
     }
+  }
+
+  /** Volta à lista de projetos após exportação iniciada em Projetos → Gerar Relatório. */
+  private returnToProjectsIfRequested(): void {
+    if (this.projectExportReturnTo !== 'projects') return;
+    this.projectExportReturnTo = null;
+    setTimeout(() => {
+      void this.router.navigate(['/projects']);
+    }, 1500);
   }
 
   /** Exporta PDFs de vários projetos do mesmo cliente em um único ZIP. */
@@ -8666,7 +8715,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     });
 
-    this.gapChartData = dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
+    // Mesma ordem da tabela de frequência: perguntasIds de cada competência, sem sort alfabético.
+    this.gapChartData = dadosPorPergunta;
   }
   private getDadosPerguntaDefasagem(perguntaId: string): { selfScore: number | null; othersScore: number | null; gap: number | null } | null {
     if (!this.dataSource || this.dataSource.length === 0) {
@@ -8728,7 +8778,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    return dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
+    // Mesma ordem da tabela de frequência (perguntasIds cadastrados na competência).
+    return dadosPorPergunta;
   }
 
   ngAfterViewInit(): void { }

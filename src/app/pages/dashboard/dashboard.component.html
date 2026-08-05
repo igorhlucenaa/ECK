@@ -69,7 +69,7 @@
           <p class="dash-card__sub">{{ 'Utilizados e disponíveis — clientes críticos no topo' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Créditos consumidos = projetos concluídos. Disponíveis = saldo restante para novos projetos.' | translate"
+                [matTooltip]="'Créditos consumidos = projetos concluídos. Reservados = alocados a avaliados em projetos em andamento. Disponíveis = saldo restante para novos avaliados.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -93,7 +93,7 @@
       </div>
 
       <!-- ── Filtros da tabela de créditos ── -->
-      <div class="credits-filter-bar">
+      <div class="projects-filter-bar">
         <div class="projects-filter-bar__search">
           <mat-icon>search</mat-icon>
           <input [(ngModel)]="creditSearchQuery" (ngModelChange)="onCreditSearch()"
@@ -102,7 +102,7 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select" floatLabel="always">
           <mat-label>{{ 'Status' | translate }}</mat-label>
           <mat-select [value]="creditStatusFilter" (selectionChange)="onCreditStatusFilter($event.value)">
             <mat-option value="">{{ 'Todos' | translate }}</mat-option>
@@ -192,16 +192,20 @@
                   <mat-icon *ngIf="p.orphan" class="credits-project-item__warn">warning_amber</mat-icon>
                   {{ p.projectName }}
                 </span>
-                <span class="credits-project-item__status-badge credits-project-item__status-badge--reserved"
-                      *ngIf="p.reserved"
-                      matTooltip="1 crédito reservado — projeto em andamento">
-                  <mat-icon>lock_outline</mat-icon>Reservado
-                </span>
-                <span class="credits-project-item__status-badge credits-project-item__status-badge--consumed"
-                      *ngIf="!p.reserved"
-                      matTooltip="1 crédito consumido — projeto concluído">
-                  <mat-icon>check_circle</mat-icon>Consumido
-                </span>
+                <div class="credits-project-item__badges">
+                  <span class="credits-project-item__status-badge credits-project-item__status-badge--reserved"
+                        *ngIf="p.reserved > 0"
+                        [matTooltip]="getReservedCreditTooltip(p.reserved)">
+                    <mat-icon>lock_outline</mat-icon>
+                    {{ p.reserved }} reservado{{ p.reserved !== 1 ? 's' : '' }}
+                  </span>
+                  <span class="credits-project-item__status-badge credits-project-item__status-badge--consumed"
+                        *ngIf="p.consumed > 0"
+                        [matTooltip]="getConsumedCreditTooltip(p.consumed)">
+                    <mat-icon>check_circle</mat-icon>
+                    {{ p.consumed }} consumido{{ p.consumed !== 1 ? 's' : '' }}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -279,7 +283,7 @@
         </div>
 
         <!-- Linha 2: busca por texto + filtro por cliente -->
-        <div class="alerts-filter-row alerts-filter-row--search">
+        <div class="projects-filter-bar alerts-filter-row--search">
           <div class="projects-filter-bar__search">
             <mat-icon>search</mat-icon>
             <input [(ngModel)]="alertSearchQuery" (ngModelChange)="onAlertSearch()"
@@ -288,7 +292,8 @@
               <mat-icon>close</mat-icon>
             </button>
           </div>
-          <mat-form-field class="alerts-client-filter" appearance="outline" subscriptSizing="dynamic">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                          class="projects-filter-bar__select alerts-client-filter" floatLabel="always">
             <mat-label>{{ 'Filtrar por cliente' | translate }}</mat-label>
             <mat-select [value]="alertClientFilter" (selectionChange)="onAlertClientFilter($event.value)">
               <mat-option value="all">{{ 'Todos os clientes' | translate }}</mat-option>
@@ -389,14 +394,14 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select" floatLabel="always">
           <mat-label>{{ 'Cliente' | translate }}</mat-label>
           <mat-select [value]="projectClientFilter" (selectionChange)="onProjectClientFilter($event.value)">
             <mat-option value="">{{ 'Todos' | translate }}</mat-option>
             <mat-option *ngFor="let c of uniqueProjectClients" [value]="c">{{ c }}</mat-option>
           </mat-select>
         </mat-form-field>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select" floatLabel="always">
           <mat-label>{{ 'Status' | translate }}</mat-label>
           <mat-select [value]="projectStatusFilter" (selectionChange)="onProjectStatusFilter($event.value)">
             <mat-option value="">{{ 'Todos' | translate }}</mat-option>
@@ -492,16 +497,16 @@
         </div>
         <div>
           <h3 class="dash-card__title">{{ 'Funil de Projetos' | translate }}</h3>
-          <p class="dash-card__sub">{{ 'Progresso dos projetos ativos por etapa' | translate }}</p>
+          <p class="dash-card__sub">{{ 'Panorama dos projetos ativos: total, com convites enviados e concluídos' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados.' | translate"
+                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas. Ativos = Em andamento + Concluídos (veja gráfico Projetos por Status).' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
       </div>
-      <div class="funnel-client-filter" *ngIf="funnelClientOptions.length > 1">
-        <mat-form-field appearance="outline" class="funnel-filter-field">
+      <div class="projects-filter-bar funnel-client-filter" *ngIf="funnelClientOptions.length > 1">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select funnel-filter-field" floatLabel="always">
           <mat-label>{{ 'Filtrar por cliente' | translate }}</mat-label>
           <mat-select [value]="funnelClientFilter" (selectionChange)="onFunnelClientFilter($event.value)">
             <mat-option *ngFor="let opt of funnelClientOptions" [value]="opt.id">{{ opt.name }}</mat-option>
@@ -511,7 +516,7 @@
       <div class="funnel-body">
         <div class="funnel-step funnel-step--active">
           <div class="funnel-step__value">{{ funnelData.created }}</div>
-          <div class="funnel-step__label">{{ 'Criados' | translate }}</div>
+          <div class="funnel-step__label">{{ 'Ativos' | translate }}</div>
         </div>
         <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
         <div class="funnel-step funnel-step--mid">
@@ -524,6 +529,9 @@
           <div class="funnel-step__label">{{ 'Concluídos' | translate }}</div>
         </div>
       </div>
+      <p class="funnel-breakdown" *ngIf="funnelData.created > 0">
+        {{ 'funnel.active_breakdown' | translate:{ inProgress: funnelData.inProgress, completed: funnelData.completed, total: funnelData.created } }}
+      </p>
     </mat-card>
 
     <!-- ── Gráficos: Projetos e Avaliações por Cliente ────────── -->
@@ -555,10 +563,10 @@
           </div>
           <div>
             <h3 class="dash-card__title">{{ 'Projetos por Status' | translate }}</h3>
-            <p class="dash-card__sub">{{ 'Distribuição de todos os projetos por status atual' | translate }}</p>
+            <p class="dash-card__sub">{{ 'Em andamento + Concluído = total Ativos do funil (exclui cancelados)' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  [matTooltip]="'Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.' | translate"
+                  [matTooltip]="'Em andamento = projetos ainda em execução. Concluído = projetos finalizados. A soma dos dois equivale ao total Ativos do funil e do card Projetos Ativos. Cancelados e inativos aparecem apenas aqui.' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>
@@ -798,7 +806,7 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="projects-filter-bar__select" floatLabel="always">
           <mat-label>{{ 'Status' | translate }}</mat-label>
           <mat-select [value]="projectStatusFilter" (selectionChange)="onProjectStatusFilter($event.value)">
             <mat-option value="">{{ 'Todos' | translate }}</mat-option>
@@ -898,10 +906,10 @@
         </div>
         <div>
           <h3 class="dash-card__title">{{ 'Funil de Projetos' | translate }}</h3>
-          <p class="dash-card__sub">{{ 'Progresso dos projetos ativos por etapa' | translate }}</p>
+          <p class="dash-card__sub">{{ 'Panorama dos projetos ativos: total, com convites enviados e concluídos' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Mostra em quantas etapas os projetos ativos estão: Criados = total de projetos ativos; Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos finalizados.' | translate"
+                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas. Ativos = Em andamento + Concluídos (veja gráfico Projetos por Status).' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -909,7 +917,7 @@
       <div class="funnel-body">
         <div class="funnel-step funnel-step--active">
           <div class="funnel-step__value">{{ funnelData.created }}</div>
-          <div class="funnel-step__label">{{ 'Criados' | translate }}</div>
+          <div class="funnel-step__label">{{ 'Ativos' | translate }}</div>
         </div>
         <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
         <div class="funnel-step funnel-step--mid">
@@ -922,6 +930,9 @@
           <div class="funnel-step__label">{{ 'Concluídos' | translate }}</div>
         </div>
       </div>
+      <p class="funnel-breakdown" *ngIf="funnelData.created > 0">
+        {{ 'funnel.active_breakdown' | translate:{ inProgress: funnelData.inProgress, completed: funnelData.completed, total: funnelData.created } }}
+      </p>
     </mat-card>
 
     <!-- ── Atalhos Rápidos ────────────────────────────────────── -->
@@ -1018,10 +1029,10 @@
           </div>
           <div>
             <h3 class="dash-card__title">{{ 'Projetos por Status' | translate }}</h3>
-            <p class="dash-card__sub">{{ 'Distribuição de todos os projetos por status atual' | translate }}</p>
+            <p class="dash-card__sub">{{ 'Em andamento + Concluído = total Ativos do funil (exclui cancelados)' | translate }}</p>
           </div>
           <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                  [matTooltip]="'Exibe a quantidade total de projetos em cada status: Em andamento, Concluído e Cancelado.' | translate"
+                  [matTooltip]="'Em andamento = projetos ainda em execução. Concluído = projetos finalizados. A soma dos dois equivale ao total Ativos do funil e do card Projetos Ativos. Cancelados e inativos aparecem apenas aqui.' | translate"
                   matTooltipPosition="left" matTooltipClass="dash-tooltip">
             <mat-icon>info_outline</mat-icon>
           </button>

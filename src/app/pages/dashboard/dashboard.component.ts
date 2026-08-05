@@ -155,7 +155,7 @@ export class DashboardComponent implements OnInit {
     credits: number;
     reservedCredits: number;
     creditsUsed: number;
-    projects: { projectId: string; projectName: string; reserved: boolean; used: number; orphan: boolean }[];
+    projects: { projectId: string; projectName: string; reserved: number; consumed: number; orphan: boolean }[];
     expanded: boolean;
   }[] = [];
   creditPageIndex   = 0;
@@ -193,6 +193,18 @@ export class DashboardComponent implements OnInit {
 
   onCreditSearch(): void { this.creditPageIndex = 0; }
   onCreditStatusFilter(v: string): void { this.creditStatusFilter = v; this.creditPageIndex = 0; }
+
+  getReservedCreditTooltip(count: number): string {
+    return count === 1
+      ? '1 crédito reservado — avaliado cadastrado no projeto'
+      : `${count} créditos reservados — avaliados cadastrados no projeto`;
+  }
+
+  getConsumedCreditTooltip(count: number): string {
+    return count === 1
+      ? '1 crédito consumido — avaliado com ciclo concluído'
+      : `${count} créditos consumidos — avaliados com ciclo concluído`;
+  }
 
   // â”€â”€ Projects table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   projectRows: ProjectRow[] = [];
@@ -233,7 +245,7 @@ export class DashboardComponent implements OnInit {
   onProjectStatusFilter(v: string): void { this.projectStatusFilter = v; this.projectPageIndex = 0; }
 
   // â”€â”€ Funnel (master only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  funnelData = { created: 0, invitesSent: 0, completed: 0 };
+  funnelData = { created: 0, invitesSent: 0, completed: 0, inProgress: 0 };
   funnelAllProjects: any[] = [];
   funnelInvitedProjectIds = new Set<string>();
   funnelClientsMap = new Map<string, string>();
@@ -367,42 +379,31 @@ export class DashboardComponent implements OnInit {
       { value: pendingCount,           label: this.translate.instant('kpi.avaliacoes_andamento'),   color: '#7c3aed', icon: 'assignment_turned_in' },
     ];
 
-    // Credits per client — NOVO modelo: 1 crédito reservado por projeto ativo, 1 consumido por projeto concluído
+    // Credits per client — 1 crédito por avaliado (fonte: participants.creditReserved / creditConsumed)
     const projectsNameMap = new Map(projectsSnap.docs.map(d => [d.id, fixMojibake((d.data()['name'] as string) || '—')]));
-    const concludedByClient = new Map<string, { projectId: string; projectName: string }[]>();
-    const activeByClient    = new Map<string, { projectId: string; projectName: string }[]>();
-
-    projectsSnap.docs.forEach(pDoc => {
-      const data = pDoc.data();
-      const clientId = data['clientId'] as string;
-      if (!clientId) return;
-      const projectName = projectsNameMap.get(pDoc.id) ?? (data['name'] as string) ?? '—';
-      if (data['status'] === 'Concluído' || data['status'] === 'concluido') {
-        if (!concludedByClient.has(clientId)) concludedByClient.set(clientId, []);
-        concludedByClient.get(clientId)!.push({ projectId: pDoc.id, projectName });
-      } else if (!['Cancelado', 'cancelado', 'Inativo'].includes(data['status'])) {
-        if (!activeByClient.has(clientId)) activeByClient.set(clientId, []);
-        activeByClient.get(clientId)!.push({ projectId: pDoc.id, projectName });
-      }
-    });
+    const creditBreakdown = this.buildClientCreditBreakdown(participantsSnap.docs, projectsNameMap);
 
     this.clientCreditRows = clientsSnap.docs
       .map(d => {
-        const active    = activeByClient.get(d.id)    || [];
-        const concluded = concludedByClient.get(d.id) || [];
-
-        const projects = [
-          ...active.map(p => ({ projectId: p.projectId, projectName: p.projectName, reserved: true,  used: 0, orphan: false })),
-          ...concluded.map(p => ({ projectId: p.projectId, projectName: p.projectName, reserved: false, used: 1, orphan: false })),
-        ];
+        const breakdown = creditBreakdown.get(d.id) || {
+          reservedTotal: 0,
+          consumedTotal: 0,
+          projects: [] as {
+            projectId: string;
+            projectName: string;
+            reserved: number;
+            consumed: number;
+            orphan: boolean;
+          }[],
+        };
 
         return {
           clientId: d.id,
           clientName: fixMojibake((d.data()['companyName'] as string) || '—'),
           credits: (d.data()['credits'] as number) || 0,
-          reservedCredits: (d.data()['reservedCredits'] as number) || 0,
-          creditsUsed: (d.data()['consumedCredits'] as number) || 0,
-          projects,
+          reservedCredits: breakdown.reservedTotal,
+          creditsUsed: breakdown.consumedTotal,
+          projects: breakdown.projects,
           expanded: false,
         };
       })
@@ -562,7 +563,87 @@ export class DashboardComponent implements OnInit {
     this.totalActiveProjects = activeProjects.length;
   }
 
-  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Helpers ────────────────────────────────────────────────────────────────────
+
+  private buildClientCreditBreakdown(
+    participantDocs: { data: () => Record<string, unknown> }[],
+    projectsNameMap: Map<string, string>
+  ): Map<string, {
+    reservedTotal: number;
+    consumedTotal: number;
+    projects: {
+      projectId: string;
+      projectName: string;
+      reserved: number;
+      consumed: number;
+      orphan: boolean;
+    }[];
+  }> {
+    const byClient = new Map<string, Map<string, { reserved: number; consumed: number }>>();
+
+    participantDocs.forEach((pDoc) => {
+      const data = pDoc.data();
+      if (data['type'] !== 'avaliado') return;
+
+      const clientId = data['clientId'] as string;
+      const projectId = data['projectId'] as string;
+      if (!clientId || !projectId) return;
+
+      const isConsumed = data['creditConsumed'] === true;
+      const isReserved = data['creditReserved'] === true && !isConsumed;
+      if (!isReserved && !isConsumed) return;
+
+      if (!byClient.has(clientId)) {
+        byClient.set(clientId, new Map());
+      }
+      const byProject = byClient.get(clientId)!;
+      if (!byProject.has(projectId)) {
+        byProject.set(projectId, { reserved: 0, consumed: 0 });
+      }
+      const entry = byProject.get(projectId)!;
+      if (isConsumed) {
+        entry.consumed++;
+      } else {
+        entry.reserved++;
+      }
+    });
+
+    const result = new Map<string, {
+      reservedTotal: number;
+      consumedTotal: number;
+      projects: {
+        projectId: string;
+        projectName: string;
+        reserved: number;
+        consumed: number;
+        orphan: boolean;
+      }[];
+    }>();
+
+    byClient.forEach((byProject, clientId) => {
+      let reservedTotal = 0;
+      let consumedTotal = 0;
+
+      const projects = Array.from(byProject.entries())
+        .map(([projectId, counts]) => {
+          reservedTotal += counts.reserved;
+          consumedTotal += counts.consumed;
+          return {
+            projectId,
+            projectName: projectsNameMap.get(projectId) ?? 'Projeto não encontrado',
+            reserved: counts.reserved,
+            consumed: counts.consumed,
+            orphan: !projectsNameMap.has(projectId),
+          };
+        })
+        .filter((p) => p.reserved > 0 || p.consumed > 0)
+        .sort((a, b) => a.projectName.localeCompare(b.projectName, 'pt-BR'));
+
+      result.set(clientId, { reservedTotal, consumedTotal, projects });
+    });
+
+    return result;
+  }
 
   private buildParticipantStats(
     docs: any[],
@@ -769,6 +850,7 @@ export class DashboardComponent implements OnInit {
       if (s === 'Em andamento' || s === 'Ativo') counts['Em andamento']++;
       else if (s === 'Concluído' || s === 'concluido') counts['Concluído']++;
       else if (s === 'Cancelado' || s === 'cancelado' || s === 'Inativo') counts['Cancelado']++;
+      else counts['Em andamento']++;
     });
 
     const labels = Object.keys(counts);
@@ -798,8 +880,9 @@ export class DashboardComponent implements OnInit {
     const created = active.length;
     const invitesSent = active.filter(d => invitedProjectIds.has(d.id)).length;
     const completed = active.filter(d => ['Concluído', 'concluido'].includes(d.data()['status'])).length;
+    const inProgress = created - completed;
 
-    this.funnelData = { created, invitesSent, completed };
+    this.funnelData = { created, invitesSent, completed, inProgress };
   }
 
   onFunnelClientFilter(clientId: string): void {

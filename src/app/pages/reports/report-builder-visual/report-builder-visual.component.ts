@@ -715,8 +715,13 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   /**
    * Limpa todas as seções
    */
-  limparTudo(): void {
-    if (confirm('Tem certeza que deseja remover todas as seções?')) {
+  async limparTudo(): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      type: 'danger',
+      title: 'Remover todas as seções',
+      message: 'Tem certeza que deseja remover todas as seções?',
+    });
+    if (confirmed) {
       this.canvasSections = [];
       this.emitirMudancas();
     }

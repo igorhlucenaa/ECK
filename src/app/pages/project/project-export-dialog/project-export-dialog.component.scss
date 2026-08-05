@@ -141,6 +141,28 @@
   font-size: 13px;
 }
 
+.ped-linked-template {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 13px;
+  line-height: 1.45;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+  }
+}
+
 .ped-step {
   background: #fff;
   border: 1px solid #e2e8f0;

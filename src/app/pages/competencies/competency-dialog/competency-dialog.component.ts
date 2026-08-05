@@ -408,13 +408,13 @@ export class CompetencyDialogComponent implements OnInit, OnDestroy {
 
   async saveCompetencyGroup(): Promise<void> {
     if (this.groupForm.invalid) {
-      this.snackBar.open('Preencha os campos do grupo corretamente', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Preencha os campos do grupo corretamente'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
     const clientId = this.groupForm.get('clientId')?.value as string;
     if (!clientId) {
-      this.snackBar.open('Selecione um cliente para o grupo', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Selecione um cliente para o grupo'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
@@ -447,11 +447,11 @@ export class CompetencyDialogComponent implements OnInit, OnDestroy {
 
       await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
 
-      this.snackBar.open('Grupo salvo com sucesso!', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Grupo salvo com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
       this.dialogRef.close(true);
     } catch (error) {
       console.error('Erro ao salvar grupo de competências:', error);
-      this.snackBar.open('Erro ao salvar grupo de competências.', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao salvar grupo de competências.'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.isLoading = false;
     }

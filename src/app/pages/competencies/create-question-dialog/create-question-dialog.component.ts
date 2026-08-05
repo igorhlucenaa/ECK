@@ -5,6 +5,7 @@ import { MaterialModule } from '../../../material.module';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Firestore, addDoc, collection, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslateService } from '@ngx-translate/core';
 
 interface Question {
   id: string;
@@ -40,7 +41,8 @@ export class CreateQuestionDialogComponent implements OnInit {
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     public dialogRef: MatDialogRef<CreateQuestionDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: any
+    @Inject(MAT_DIALOG_DATA) public data: any,
+    private translate: TranslateService
   ) {
     this.questionForm = this.fb.group({
       title: ['', [Validators.required, Validators.minLength(3)]],
@@ -111,12 +113,12 @@ export class CreateQuestionDialogComponent implements OnInit {
 
   async saveQuestion(): Promise<void> {
     if (this.questionForm.invalid) {
-      this.snackBar.open('Preencha todos os campos obrigatórios', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Preencha todos os campos obrigatórios'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
     if (!this.data?.assessmentId) {
-      this.snackBar.open('Erro: ID da avaliação não fornecido', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro: ID da avaliação não fornecido'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
@@ -128,7 +130,7 @@ export class CreateQuestionDialogComponent implements OnInit {
       const assessmentSnap = await getDoc(assessmentRef);
 
       if (!assessmentSnap.exists()) {
-        this.snackBar.open('Avaliação não encontrada', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Avaliação não encontrada'), this.translate.instant('Fechar'), { duration: 3000 });
         return;
       }
 
@@ -180,13 +182,13 @@ export class CreateQuestionDialogComponent implements OnInit {
         }
 
         if (!found) {
-          this.snackBar.open('Pergunta não encontrada na avaliação', 'Fechar', { duration: 3000 });
+          this.snackBar.open(this.translate.instant('Pergunta não encontrada na avaliação'), this.translate.instant('Fechar'), { duration: 3000 });
           return;
         }
 
         await updateDoc(assessmentRef, { surveyJSON });
 
-        this.snackBar.open('Pergunta atualizada com sucesso!', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Pergunta atualizada com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
         this.dialogRef.close({
           id: this.data.existingQuestion.id,
           title: formValue.title,
@@ -224,7 +226,7 @@ export class CreateQuestionDialogComponent implements OnInit {
 
         await updateDoc(assessmentRef, { surveyJSON });
 
-        this.snackBar.open('Pergunta criada e adicionada à avaliação com sucesso!', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Pergunta criada e adicionada à avaliação com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
         this.dialogRef.close({
           id: questionName,
           title: formValue.title,
@@ -235,7 +237,7 @@ export class CreateQuestionDialogComponent implements OnInit {
 
     } catch (error) {
       console.error('Erro ao salvar pergunta:', error);
-      this.snackBar.open('Erro ao salvar pergunta', 'Fechar', { duration: 3000 });
+      this.snackBar.open(this.translate.instant('Erro ao salvar pergunta'), this.translate.instant('Fechar'), { duration: 3000 });
     } finally {
       this.isLoading = false;
     }

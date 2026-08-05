@@ -129,8 +129,16 @@ export class ProjectExportDialogComponent implements OnInit {
     return this.visibleExportOptions.find(o => o.id === this.selectedAction);
   }
 
+  /** Template vinculado ao projeto e encontrado na lista do cliente. */
+  get linkedTemplate(): ReportTemplateOption | undefined {
+    if (!this.data.reportTemplateId) return undefined;
+    return this.reportTemplates.find(t => t.id === this.data.reportTemplateId);
+  }
+
+  /** Exibe seletor só quando PDF/DOCX precisam de template e o projeto não tem um válido. */
   get showTemplateField(): boolean {
-    return this.selectedOption?.requiresTemplate === true || !this.data.reportTemplateId;
+    if (!this.templateRequiredForAction) return false;
+    return !this.linkedTemplate;
   }
 
   get templateRequiredForAction(): boolean {
@@ -139,8 +147,17 @@ export class ProjectExportDialogComponent implements OnInit {
 
   get canConfirm(): boolean {
     if (this.isLoading) return false;
-    if (this.templateRequiredForAction && !this.templateControl.value) return false;
+    if (this.templateRequiredForAction && !this.resolvedTemplateId) return false;
     return !!this.selectedAction;
+  }
+
+  get resolvedTemplateId(): string {
+    if (this.linkedTemplate) return this.linkedTemplate.id;
+    return this.templateControl.value || '';
+  }
+
+  isExportOptionDisabled(opt: ExportOption): boolean {
+    return opt.requiresTemplate && !this.resolvedTemplateId && this.reportTemplates.length === 0;
   }
 
   selectAction(action: ProjectExportAction): void {
@@ -173,9 +190,12 @@ export class ProjectExportDialogComponent implements OnInit {
         this.templateControl.setValue(this.reportTemplates[0].id);
       }
 
-      if (this.templateRequiredForAction) {
+      if (this.templateRequiredForAction && this.showTemplateField) {
         this.templateControl.setValidators([Validators.required]);
+      } else {
+        this.templateControl.clearValidators();
       }
+      this.templateControl.updateValueAndValidity({ emitEvent: false });
     } catch {
       this.loadError = 'Erro ao carregar templates de relatório.';
     } finally {
@@ -197,7 +217,7 @@ export class ProjectExportDialogComponent implements OnInit {
       action: this.selectedAction,
     };
 
-    const templateId = this.templateControl.value || this.data.reportTemplateId;
+    const templateId = this.resolvedTemplateId;
     if (templateId && (this.templateRequiredForAction || this.selectedAction === 'openReports')) {
       result.templateId = templateId;
     }

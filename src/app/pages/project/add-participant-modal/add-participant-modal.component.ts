@@ -24,6 +24,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { debounceTime, Subject } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 interface Client {
@@ -201,7 +202,8 @@ export class AddParticipantModalComponent implements OnInit {
     private fb: FormBuilder,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
-    private participantValidationService: ParticipantValidationService
+    private participantValidationService: ParticipantValidationService,
+    private translate: TranslateService
   ) {
     this.participantForm = this.fb.group({
       clientId: ['', Validators.required],
@@ -253,7 +255,7 @@ export class AddParticipantModalComponent implements OnInit {
       this.hasClients = this.clients.length > 0;
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      this.snackBar.open('Erro ao carregar dados.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar dados.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } finally {
@@ -329,7 +331,7 @@ export class AddParticipantModalComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao carregar nomes do cliente e projeto:', error);
-      this.snackBar.open('Erro ao carregar cliente ou projeto.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar cliente ou projeto.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       throw error;
@@ -473,7 +475,7 @@ export class AddParticipantModalComponent implements OnInit {
         });
       }
 
-      this.snackBar.open('Participante adicionado com sucesso!', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Participante adicionado com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
       this.dialogRef.close(true);
     } catch (error: any) {
       if (error?.code === 'duplicate-email') {
@@ -490,7 +492,7 @@ export class AddParticipantModalComponent implements OnInit {
         );
       } else {
         console.error('Erro ao adicionar participante:', error);
-        this.snackBar.open('Erro ao adicionar participante.', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Erro ao adicionar participante.'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     } finally {
       this.isSaving = false;

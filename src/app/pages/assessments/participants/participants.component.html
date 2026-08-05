@@ -246,11 +246,6 @@
         {{ 'Adicionar Participante' | translate }}
       </button>
 
-      <button mat-button class="btn-action-secondary" *ngIf="!dialogRef" routerLink="/projects">
-        <mat-icon>arrow_back</mat-icon>
-        {{ 'Voltar' | translate }}
-      </button>
-
       <button mat-icon-button class="btn-dialog-close" *ngIf="dialogRef" (click)="dialogRef.close()" [matTooltip]="'Fechar'">
         <mat-icon>close</mat-icon>
       </button>

@@ -14,6 +14,7 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslateService } from '@ngx-translate/core';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { CoreService } from 'src/app/services/core.service';
@@ -38,7 +39,8 @@ export class ClientCustomizationComponent implements OnInit {
     private firestore: Firestore,
     private route: ActivatedRoute,
     private router: Router,
-    private coreService: CoreService // Importa CoreService
+    private coreService: CoreService,
+    private translate: TranslateService
   ) {
     this.customizationForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
@@ -80,7 +82,7 @@ export class ClientCustomizationComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      this.snackBar.open('Erro ao carregar dados do cliente.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao carregar dados do cliente.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }
@@ -159,7 +161,7 @@ export class ClientCustomizationComponent implements OnInit {
 
   async saveCustomization(): Promise<void> {
     if (this.customizationForm.invalid) {
-      this.snackBar.open('Preencha todos os campos obrigatórios.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Preencha todos os campos obrigatórios.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -177,12 +179,12 @@ export class ClientCustomizationComponent implements OnInit {
         { merge: true }
       );
 
-      this.snackBar.open('Dados salvos com sucesso!', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Dados salvos com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } catch (error) {
       console.error('Erro ao salvar dados:', error);
-      this.snackBar.open('Erro ao salvar dados.', 'Fechar', {
+      this.snackBar.open(this.translate.instant('Erro ao salvar dados.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

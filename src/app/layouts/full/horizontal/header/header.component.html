@@ -1,7 +1,7 @@
 <mat-toolbar class="topbar horizontal-topbar">
   <div class="container">
     <!-- Logo ECK (visível em todas as telas) -->
-    <a (click)="goToDashboard()" class="topbar-logo d-flex align-items-center" style="cursor:pointer;">
+    <a routerLink="/dashboard" class="topbar-logo d-flex align-items-center">
       <img
         src="/assets/images/logos/eck-branco.svg"
         alt="ECK Consulting"
@@ -37,18 +37,6 @@
     <!-- <button mat-icon-button (click)="openDialog()" class="d-flex">
       <i-tabler name="search" class="icon-20 d-flex"></i-tabler>
     </button> -->
-
-    <!-- --------------------------------------------------------------- -->
-    <!-- Dashboard -->
-    <!-- --------------------------------------------------------------- -->
-    <button
-      mat-icon-button
-      (click)="goToDashboard()"
-      matTooltip="Ir para o Dashboard"
-      class="m-r-5"
-    >
-      <i-tabler name="layout-dashboard" class="icon-20 d-flex"></i-tabler>
-    </button>
 
     <!-- --------------------------------------------------------------- -->
     <!-- Tour / Ajuda -->
