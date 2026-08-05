@@ -6,7 +6,6 @@ import {
   OnInit,
   ViewEncapsulation,
 } from '@angular/core';
-import { Router } from '@angular/router';
 import { CoreService } from 'src/app/services/core.service';
 import { MatDialog } from '@angular/material/dialog';
 import { navItems } from '../../vertical/sidebar/sidebar-data';
@@ -178,7 +177,6 @@ export class AppHorizontalHeaderComponent implements OnInit {
     public tourService: TourService,
     private snackBar: MatSnackBar,
     private firebaseAuth: Auth,
-    private router: Router,
   ) {
     translate.setDefaultLang('pt-BR');
     const storedLang = localStorage.getItem('lang');
@@ -246,10 +244,6 @@ export class AppHorizontalHeaderComponent implements OnInit {
     this.translate.use(lang.code);
     localStorage.setItem('lang', lang.code);
     this.selectedLanguage = lang;
-  }
-
-  goToDashboard(): void {
-    this.router.navigate(['/dashboard']);
   }
 
   startPageTour(): void {
