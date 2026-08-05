@@ -8715,7 +8715,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     });
 
-    this.gapChartData = dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
+    // Mesma ordem da tabela de frequência: perguntasIds de cada competência, sem sort alfabético.
+    this.gapChartData = dadosPorPergunta;
   }
   private getDadosPerguntaDefasagem(perguntaId: string): { selfScore: number | null; othersScore: number | null; gap: number | null } | null {
     if (!this.dataSource || this.dataSource.length === 0) {
@@ -8777,7 +8778,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    return dadosPorPergunta.sort((a, b) => a.competencyName.localeCompare(b.competencyName));
+    // Mesma ordem da tabela de frequência (perguntasIds cadastrados na competência).
+    return dadosPorPergunta;
   }
 
   ngAfterViewInit(): void { }
