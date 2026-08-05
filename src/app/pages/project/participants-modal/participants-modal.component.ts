@@ -829,8 +829,8 @@ export class ParticipantsModalComponent implements OnInit {
         }
       }
 
-      // Marca crédito como consumido para avaliados disparados neste envio
-      await this.markCreditsConsumedForDispatch();
+      // Registra o primeiro disparo do projeto sem consumir créditos.
+      await this.registerFirstDispatchForReservedParticipants();
 
       const msg = this.translate.instant('Links enviados para {{count}} participantes!', { count: emailCount });
       this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 3000 });
@@ -844,25 +844,19 @@ export class ParticipantsModalComponent implements OnInit {
   }
 
   /**
-   * Ao concluir um disparo, marca creditConsumed=true em cada avaliado
-   * presente nos selectedParticipants e define firstFinalDispatchAt no projeto
-   * se ainda não estiver definido (gatilho R4: estorno só antes do 1º disparo).
+   * Registra o 1º disparo do projeto para avaliados com crédito reservado.
+   * O consumo permanece na conclusão do projeto.
    */
-  private async markCreditsConsumedForDispatch(): Promise<void> {
-    const avaliadosToConsume = this.selectedParticipants.filter(
+  private async registerFirstDispatchForReservedParticipants(): Promise<void> {
+    const dispatchedEvaluatees = this.selectedParticipants.filter(
       (p) => p.type === 'avaliado' && p.creditReserved && !p.creditConsumed
     );
 
-    if (avaliadosToConsume.length === 0) return;
+    if (dispatchedEvaluatees.length === 0) return;
 
     const projectRef = doc(this.firestore, `projects/${this.data.projectId}`);
     const projectSnap = await getDoc(projectRef);
     const hasFirstDispatch = !!projectSnap.data()?.['firstFinalDispatchAt'];
-
-    for (const p of avaliadosToConsume) {
-      await this.participantCreditService.consumeParticipantCreditOnDispatch(p.id);
-      p.creditConsumed = true;
-    }
 
     if (!hasFirstDispatch) {
       await updateDoc(projectRef, { firstFinalDispatchAt: Timestamp.now() });

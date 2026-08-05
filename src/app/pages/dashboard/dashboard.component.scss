@@ -92,10 +92,12 @@
   }
 }
 
-::ng-deep .dash-tooltip {
+::ng-deep .mat-mdc-tooltip.dash-tooltip .mdc-tooltip__surface {
   font-size: 12px !important;
-  max-width: 280px !important;
-  line-height: 1.5 !important;
+  max-width: 240px !important;
+  line-height: 1.45 !important;
+  white-space: pre-line !important;
+  text-align: left !important;
 }
 
 // ─── Projects paginator ───────────────────────────────────────

@@ -594,6 +594,37 @@ export class CreateAssessmentComponent implements OnInit {
     }
   }
 
+  private async syncSelectedCompetencyGroup(
+    assessmentId: string,
+    clientId: string
+  ): Promise<void> {
+    if (!assessmentId || !clientId || !this.selectedGroupId) {
+      return;
+    }
+
+    const groupsSnapshot = await getDocs(
+      query(collection(this.firestore, 'competencyGroups'), where('clientId', '==', clientId))
+    );
+
+    const staleLinks = groupsSnapshot.docs.filter((groupDoc) => {
+      const data = groupDoc.data();
+      return groupDoc.id !== this.selectedGroupId && data['assessmentId'] === assessmentId;
+    });
+
+    await Promise.all([
+      ...staleLinks.map((groupDoc) =>
+        updateDoc(groupDoc.ref, {
+          assessmentId: null,
+          updatedAt: new Date(),
+        })
+      ),
+      updateDoc(doc(this.firestore, 'competencyGroups', this.selectedGroupId), {
+        assessmentId,
+        updatedAt: new Date(),
+      }),
+    ]);
+  }
+
   async saveForm(): Promise<void> {
     if (this.form.invalid) {
       console.error('O formulário é inválido. Status:', this.form.status);
@@ -610,9 +641,11 @@ export class CreateAssessmentComponent implements OnInit {
 
       const surveyJSON = this.creatorModel.JSON;
       const currentTheme = this.creatorModel.theme as ITheme;
+      const rawFormValue = this.form.getRawValue();
 
       const formData = {
-        ...this.form.value,
+        ...rawFormValue,
+        competencyGroupId: this.selectedGroupId || null,
         surveyJSON,
         theme: currentTheme,
         createdBy: {
@@ -628,6 +661,7 @@ export class CreateAssessmentComponent implements OnInit {
         // Atualiza documento existente
         const docRef = doc(this.firestore, 'assessments', assessmentId);
         await updateDoc(docRef, formData);
+        await this.syncSelectedCompetencyGroup(assessmentId, rawFormValue.clientId);
 
         this.snackBar.open(this.translate.instant('Formulário atualizado com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
@@ -635,7 +669,8 @@ export class CreateAssessmentComponent implements OnInit {
       } else {
         // Cria um novo formulário associado ao cliente
         const assessmentsCollection = collection(this.firestore, 'assessments');
-        await addDoc(assessmentsCollection, formData);
+        const assessmentRef = await addDoc(assessmentsCollection, formData);
+        await this.syncSelectedCompetencyGroup(assessmentRef.id, rawFormValue.clientId);
 
         this.snackBar.open(this.translate.instant('Formulário criado com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,

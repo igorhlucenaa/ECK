@@ -74,6 +74,7 @@
             <mat-icon matPrefix class="field-icon">calendar_today</mat-icon>
             <input matInput formControlName="startDate"
               [matDatepicker]="startDatePicker"
+              (blur)="normalizeDateControl('startDate')"
               placeholder="dd/mm/aaaa" />
             <mat-datepicker-toggle matSuffix [for]="startDatePicker"></mat-datepicker-toggle>
             <mat-datepicker #startDatePicker></mat-datepicker>
@@ -87,7 +88,8 @@
             <mat-icon matPrefix class="field-icon">event_busy</mat-icon>
             <input matInput formControlName="validityDate"
               [matDatepicker]="validityDatePicker"
-              [min]="orderForm.get('startDate')?.value"
+              [min]="getMinimumValidityDate()"
+              (blur)="normalizeDateControl('validityDate')"
               placeholder="dd/mm/aaaa" />
             <mat-datepicker-toggle matSuffix [for]="validityDatePicker"></mat-datepicker-toggle>
             <mat-datepicker #validityDatePicker></mat-datepicker>
