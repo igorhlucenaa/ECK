@@ -497,10 +497,10 @@
         </div>
         <div>
           <h3 class="dash-card__title">{{ 'Funil de Projetos' | translate }}</h3>
-          <p class="dash-card__sub">{{ 'Panorama dos projetos ativos: total, com convites enviados e concluídos' | translate }}</p>
+          <p class="dash-card__sub">{{ 'Panorama de projetos: total, em andamento e concluídos' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas. Ativos = Em andamento + Concluídos (veja gráfico Projetos por Status).' | translate"
+                [matTooltip]="'Total = projetos não cancelados/inativos. Ativos = em andamento (concluído não conta como ativo). Concluídos = status Concluído.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
@@ -515,13 +515,13 @@
       </div>
       <div class="funnel-body">
         <div class="funnel-step funnel-step--active">
-          <div class="funnel-step__value">{{ funnelData.created }}</div>
-          <div class="funnel-step__label">{{ 'Ativos' | translate }}</div>
+          <div class="funnel-step__value">{{ funnelData.total }}</div>
+          <div class="funnel-step__label">{{ 'Total de projetos' | translate }}</div>
         </div>
         <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
         <div class="funnel-step funnel-step--mid">
-          <div class="funnel-step__value">{{ funnelData.invitesSent }}</div>
-          <div class="funnel-step__label">{{ 'Com convites enviados' | translate }}</div>
+          <div class="funnel-step__value">{{ funnelData.active }}</div>
+          <div class="funnel-step__label">{{ 'Ativos' | translate }}</div>
         </div>
         <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
         <div class="funnel-step funnel-step--done">
@@ -529,9 +529,6 @@
           <div class="funnel-step__label">{{ 'Concluídos' | translate }}</div>
         </div>
       </div>
-      <p class="funnel-breakdown" *ngIf="funnelData.created > 0">
-        {{ 'funnel.active_breakdown' | translate:{ inProgress: funnelData.inProgress, completed: funnelData.completed, total: funnelData.created } }}
-      </p>
     </mat-card>
 
     <!-- ── Gráficos: Projetos e Avaliações por Cliente ────────── -->
@@ -906,23 +903,23 @@
         </div>
         <div>
           <h3 class="dash-card__title">{{ 'Funil de Projetos' | translate }}</h3>
-          <p class="dash-card__sub">{{ 'Panorama dos projetos ativos: total, com convites enviados e concluídos' | translate }}</p>
+          <p class="dash-card__sub">{{ 'Panorama de projetos: total, em andamento e concluídos' | translate }}</p>
         </div>
         <button mat-icon-button class="dash-info-btn dash-info-btn--inline"
-                [matTooltip]="'Funil de projetos: Ativos = projetos não cancelados nem inativos (mesmo total do card Projetos Ativos); Com convites enviados = projetos onde pelo menos um participante recebeu convite; Concluídos = projetos com status Concluído. As etapas são subconjuntos, não filas exclusivas. Ativos = Em andamento + Concluídos (veja gráfico Projetos por Status).' | translate"
+                [matTooltip]="'Total = projetos não cancelados/inativos. Ativos = em andamento (concluído não conta como ativo). Concluídos = status Concluído.' | translate"
                 matTooltipPosition="left" matTooltipClass="dash-tooltip">
           <mat-icon>info_outline</mat-icon>
         </button>
       </div>
       <div class="funnel-body">
         <div class="funnel-step funnel-step--active">
-          <div class="funnel-step__value">{{ funnelData.created }}</div>
-          <div class="funnel-step__label">{{ 'Ativos' | translate }}</div>
+          <div class="funnel-step__value">{{ funnelData.total }}</div>
+          <div class="funnel-step__label">{{ 'Total de projetos' | translate }}</div>
         </div>
         <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
         <div class="funnel-step funnel-step--mid">
-          <div class="funnel-step__value">{{ funnelData.invitesSent }}</div>
-          <div class="funnel-step__label">{{ 'Com convites enviados' | translate }}</div>
+          <div class="funnel-step__value">{{ funnelData.active }}</div>
+          <div class="funnel-step__label">{{ 'Ativos' | translate }}</div>
         </div>
         <mat-icon class="funnel-arrow">arrow_forward</mat-icon>
         <div class="funnel-step funnel-step--done">
@@ -930,9 +927,6 @@
           <div class="funnel-step__label">{{ 'Concluídos' | translate }}</div>
         </div>
       </div>
-      <p class="funnel-breakdown" *ngIf="funnelData.created > 0">
-        {{ 'funnel.active_breakdown' | translate:{ inProgress: funnelData.inProgress, completed: funnelData.completed, total: funnelData.created } }}
-      </p>
     </mat-card>
 
     <!-- ── Atalhos Rápidos ────────────────────────────────────── -->

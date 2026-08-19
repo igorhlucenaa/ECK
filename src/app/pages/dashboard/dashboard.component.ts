@@ -245,7 +245,7 @@ export class DashboardComponent implements OnInit {
   onProjectStatusFilter(v: string): void { this.projectStatusFilter = v; this.projectPageIndex = 0; }
 
   // â”€â”€ Funnel (master only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  funnelData = { created: 0, invitesSent: 0, completed: 0, inProgress: 0 };
+  funnelData = { total: 0, active: 0, completed: 0 };
   funnelAllProjects: any[] = [];
   funnelInvitedProjectIds = new Set<string>();
   funnelClientsMap = new Map<string, string>();
@@ -880,18 +880,24 @@ export class DashboardComponent implements OnInit {
     };
   }
 
-  buildFunnelData(projectDocs: any[], invitedProjectIds: Set<string>, clientFilter = 'all'): void {
+  buildFunnelData(projectDocs: any[], _invitedProjectIds: Set<string>, clientFilter = 'all'): void {
     const filtered = clientFilter === 'all'
       ? projectDocs
       : projectDocs.filter(d => d.data()['clientId'] === clientFilter);
 
-    const active = filtered.filter(d => !['Cancelado', 'cancelado', 'Inativo'].includes(d.data()['status']));
-    const created = active.length;
-    const invitesSent = active.filter(d => invitedProjectIds.has(d.id)).length;
-    const completed = active.filter(d => ['Concluído', 'concluido'].includes(d.data()['status'])).length;
-    const inProgress = created - completed;
+    const eligible = filtered.filter(
+      d => !['Cancelado', 'cancelado', 'Inativo'].includes(d.data()['status'] as string)
+    );
+    const completed = eligible.filter(
+      d => ['Concluído', 'concluido'].includes(d.data()['status'] as string)
+    ).length;
+    const active = this.countProjectsInProgress(eligible);
 
-    this.funnelData = { created, invitesSent, completed, inProgress };
+    this.funnelData = {
+      total: eligible.length,
+      active,
+      completed,
+    };
   }
 
   onFunnelClientFilter(clientId: string): void {
