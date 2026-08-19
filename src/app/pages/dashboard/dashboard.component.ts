@@ -853,13 +853,13 @@ export class DashboardComponent implements OnInit {
   }
 
   private buildProjectsByStatusChart(projectDocs: any[]): void {
-    const counts: Record<string, number> = { 'Em andamento': 0, 'Concluído': 0, 'Cancelado': 0 };
+    const counts: Record<string, number> = { 'Ativos': 0, 'Concluído': 0, 'Cancelado': 0 };
     projectDocs.forEach(d => {
       const s = d.data()['status'];
-      if (s === 'Em andamento' || s === 'Ativo') counts['Em andamento']++;
+      if (s === 'Em andamento' || s === 'Ativo') counts['Ativos']++;
       else if (s === 'Concluído' || s === 'concluido') counts['Concluído']++;
       else if (s === 'Cancelado' || s === 'cancelado' || s === 'Inativo') counts['Cancelado']++;
-      else counts['Em andamento']++;
+      else counts['Ativos']++;
     });
 
     const labels = Object.keys(counts);
