@@ -8,6 +8,17 @@ import { MaterialModule } from 'src/app/material.module';
   imports: [MaterialModule, CommonModule],
   templateUrl: './pie-cards.component.html',
   styles: [`
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--kpi-count, 1), minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 767px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+    }
     .kpi-card { border-radius: 14px !important; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
     .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important; }
     .kpi-accent-bar { height: 4px; width: 100%; }

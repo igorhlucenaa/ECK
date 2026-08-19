@@ -47,11 +47,11 @@
 
     <!-- ══ BLOCO 1 — VISÃO GERAL ════════════════════════════════ -->
 
-    <!-- KPIs (4 cards) -->
+    <!-- KPIs (2 cards) -->
     <div class="dash-block-header">
       <span class="dash-block-label">{{ 'Visão Geral' | translate }}</span>
       <button mat-icon-button class="dash-info-btn"
-              [matTooltip]="'Indicadores rápidos da plataforma: número de clientes ativos, projetos em andamento e avaliações pendentes de resposta.' | translate"
+              [matTooltip]="'Indicadores rápidos da plataforma: clientes ativos e projetos em andamento (exclui concluídos, cancelados e inativos).' | translate"
               matTooltipPosition="right" matTooltipClass="dash-tooltip">
         <mat-icon>info_outline</mat-icon>
       </button>
@@ -654,11 +654,11 @@
   <!-- ══════════════════════════════════════════════════════════ -->
   <div id="dashboard-content" *ngIf="!isLoading && (userRole === 'admin_client' || userRole === 'viewer')">
 
-    <!-- ── KPIs (4 cards) ─────────────────────────────────────── -->
+    <!-- ── KPIs ───────────────────────────────────────────────── -->
     <div class="dash-block-header">
       <span class="dash-block-label">{{ 'Visão Geral' | translate }}</span>
       <button mat-icon-button class="dash-info-btn"
-              [matTooltip]="'Indicadores rápidos da sua empresa: projetos ativos, avaliações em andamento (convites enviados mas não respondidos), total de participantes avaliados e créditos disponíveis para criar novas avaliações.' | translate"
+              [matTooltip]="'Indicadores rápidos da sua empresa: projetos em andamento (exclui concluídos), participantes avaliados e créditos disponíveis.' | translate"
               matTooltipPosition="right" matTooltipClass="dash-tooltip">
         <mat-icon>info_outline</mat-icon>
       </button>

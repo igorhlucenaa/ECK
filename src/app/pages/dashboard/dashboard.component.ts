@@ -372,11 +372,10 @@ export class DashboardComponent implements OnInit {
     );
 
     // KPIs â€” pendentes = participantes com link pending
-    const pendingCount = participantsSnap.docs.filter(d => pendingParticipantIds.has(d.id)).length;
+    const activeProjectsCount = this.countProjectsInProgress(projectsSnap.docs);
     this.masterKpis = [
-      { value: clientsSnap.size,       label: this.translate.instant('kpi.clientes_ativos'),        color: '#1B84FF', icon: 'business' },
-      { value: activeProjects.length,  label: this.translate.instant('kpi.projetos_ativos'),        color: '#26c6da', icon: 'folder_open' },
-      { value: pendingCount,           label: this.translate.instant('kpi.avaliacoes_andamento'),   color: '#7c3aed', icon: 'assignment_turned_in' },
+      { value: clientsSnap.size,      label: this.translate.instant('kpi.clientes_ativos'), color: '#1B84FF', icon: 'business' },
+      { value: activeProjectsCount,   label: this.translate.instant('kpi.projetos_ativos'), color: '#26c6da', icon: 'folder_open' },
     ];
 
     // Credits per client — 1 crédito por avaliado (fonte: participants.creditReserved / creditConsumed)
@@ -528,13 +527,12 @@ export class DashboardComponent implements OnInit {
       this.buildFunnelData(projectsSnap.docs, invitedProjectIds);
     }
 
-    const pendingCount = participantsSnap.docs.filter(d => pendingParticipantIds.has(d.id)).length;
+    const activeProjectsCount = this.countProjectsInProgress(projectsSnap.docs);
     const totalParticipants = participantsSnap.docs.filter(d => d.data()['type'] === 'avaliado').length;
 
     this.clientKpis = [
-      { value: activeProjects.length, label: 'Projetos Ativos',          color: '#1B84FF', icon: 'folder_open' },
-      { value: pendingCount,          label: this.translate.instant('kpi.avaliacoes_andamento'),  color: '#26c6da', icon: 'assignment_turned_in' },
-      { value: totalParticipants,     label: 'Participantes Ativos',     color: '#7c3aed', icon: 'groups' },
+      { value: activeProjectsCount, label: this.translate.instant('kpi.projetos_ativos'), color: '#1B84FF', icon: 'folder_open' },
+      { value: totalParticipants,   label: 'Participantes Ativos', color: '#7c3aed', icon: 'groups' },
       ...(!isViewer ? [{ value: totalCredits, label: this.translate.instant('kpi.creditos_disponiveis'), color: '#4caf50', icon: 'toll' }] : []),
     ];
 
@@ -564,6 +562,17 @@ export class DashboardComponent implements OnInit {
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────────
+
+  /** Projetos ativos = em execução (Em andamento / Ativo), sem concluídos nem cancelados. */
+  private countProjectsInProgress(projectDocs: { data: () => Record<string, unknown> }[]): number {
+    return projectDocs.filter((d) => {
+      const status = d.data()['status'] as string | undefined;
+      if (status === 'Em andamento' || status === 'Ativo') return true;
+      if (status === 'Concluído' || status === 'concluido') return false;
+      if (status === 'Cancelado' || status === 'cancelado' || status === 'Inativo') return false;
+      return true;
+    }).length;
+  }
 
   private buildClientCreditBreakdown(
     participantDocs: { data: () => Record<string, unknown> }[],

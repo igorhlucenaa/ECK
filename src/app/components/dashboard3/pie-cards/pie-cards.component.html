@@ -1,19 +1,17 @@
-<div class="row g-3" style="margin-bottom: 24px;">
-  <div
-    *ngFor="let item of pieChartsData; let i = index"
-    [ngClass]="{ 'col-lg-4 col-sm-6': i < 3, 'col-lg-6 col-sm-6': i >= 3 }"
-  >
-    <mat-card class="cardWithShadow kpi-card">
-      <div class="kpi-accent-bar" [style.background-color]="item.color"></div>
-      <div class="kpi-content">
-        <div>
-          <div class="kpi-value" [style.color]="item.color">{{ item.value }}</div>
-          <div class="kpi-label">{{ item.label }}</div>
-        </div>
-        <div class="kpi-icon-bg" [style.background-color]="getIconBg(item.color)">
-          <mat-icon [style.color]="item.color" style="font-size: 22px; width: 22px; height: 22px;">{{ item.icon || 'bar_chart' }}</mat-icon>
-        </div>
+<div
+  class="kpi-grid"
+  [style.--kpi-count]="pieChartsData.length || 1"
+>
+  <mat-card *ngFor="let item of pieChartsData" class="cardWithShadow kpi-card">
+    <div class="kpi-accent-bar" [style.background-color]="item.color"></div>
+    <div class="kpi-content">
+      <div>
+        <div class="kpi-value" [style.color]="item.color">{{ item.value }}</div>
+        <div class="kpi-label">{{ item.label }}</div>
       </div>
-    </mat-card>
-  </div>
+      <div class="kpi-icon-bg" [style.background-color]="getIconBg(item.color)">
+        <mat-icon [style.color]="item.color" style="font-size: 22px; width: 22px; height: 22px;">{{ item.icon || 'bar_chart' }}</mat-icon>
+      </div>
+    </div>
+  </mat-card>
 </div>
