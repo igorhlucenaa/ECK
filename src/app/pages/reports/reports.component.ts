@@ -6968,69 +6968,74 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Executa exportação solicitada pelo modal de projetos (query param exportAction). */
   private async executeProjectExportAction(action: string): Promise<void> {
-    this.fillCompetenciasInReportSections();
-    this.selectedTabIndex = 2;
-    this.cdr.markForCheck();
+    const shouldReturnToProjects = this.projectExportReturnTo === 'projects';
 
-    if (action === 'excelBase') {
-      if (!this.dataSource.length) {
-        this.snackBar.open(this.t('Sem dados para exportar.'), this.t('Fechar'), { duration: 3500 });
+    try {
+      this.fillCompetenciasInReportSections();
+      this.selectedTabIndex = 2;
+      this.cdr.markForCheck();
+
+      if (action === 'excelBase') {
+        if (!this.dataSource.length) {
+          this.snackBar.open(this.t('Sem dados para exportar.'), this.t('Fechar'), { duration: 3500 });
+          return;
+        }
+        this.exportarBaseExcel();
         return;
       }
-      this.exportarBaseExcel();
-      this.returnToProjectsIfRequested();
-      return;
-    }
 
-    if (!this.avaliadosDisponiveis.length) {
-      this.snackBar.open(
-        this.t('Nenhum avaliado com respostas para exportar neste projeto.'),
-        this.t('Fechar'),
-        { duration: 4000 }
-      );
-      return;
-    }
+      if (!this.avaliadosDisponiveis.length) {
+        this.snackBar.open(
+          this.t('Nenhum avaliado com respostas para exportar neste projeto.'),
+          this.t('Fechar'),
+          { duration: 4000 }
+        );
+        return;
+      }
 
-    if (this.competencias.length === 0) {
-      this.snackBar.open(
-        this.t('Configure as competências antes de gerar relatórios.'),
-        this.t('Fechar'),
-        { duration: 4000 }
-      );
-      return;
-    }
+      if (this.competencias.length === 0) {
+        this.snackBar.open(
+          this.t('Configure as competências antes de gerar relatórios.'),
+          this.t('Fechar'),
+          { duration: 4000 }
+        );
+        return;
+      }
 
-    await this.waitForReportReady(8000);
+      await this.waitForReportReady(8000);
 
-    const avaliado = this.avaliadosDisponiveis[0];
-    this.selectedAvaliado = avaliado;
-    this.avaliadoControl.setValue(avaliado, { emitEvent: false });
-    this.invalidateCache();
+      const avaliado = this.avaliadosDisponiveis[0];
+      this.selectedAvaliado = avaliado;
+      this.avaliadoControl.setValue(avaliado, { emitEvent: false });
+      this.invalidateCache();
 
-    if (action === 'individualPdf') {
-      const ok = await this.exportarRelatorioPDF();
-      if (ok) this.returnToProjectsIfRequested();
-      return;
-    }
+      if (action === 'individualPdf') {
+        await this.exportarRelatorioPDF();
+        return;
+      }
 
-    if (action === 'batchPdf') {
-      // Geração em lote PDF desabilitada nesta versão.
-      this.snackBar.open(
-        'Exportação em lote de PDF temporariamente indisponível.',
-        this.t('Fechar'),
-        { duration: 4000 }
-      );
-      return;
-      /*
-      this.batchSelectedParticipants = new Set(this.avaliadosDisponiveis);
-      await this.generateBatchReports();
-      return;
-      */
-    }
+      if (action === 'batchPdf') {
+        // Geração em lote PDF desabilitada nesta versão.
+        this.snackBar.open(
+          'Exportação em lote de PDF temporariamente indisponível.',
+          this.t('Fechar'),
+          { duration: 4000 }
+        );
+        return;
+        /*
+        this.batchSelectedParticipants = new Set(this.avaliadosDisponiveis);
+        await this.generateBatchReports();
+        return;
+        */
+      }
 
-    if (action === 'docx') {
-      const ok = await this.exportarRelatorioDOCX();
-      if (ok) this.returnToProjectsIfRequested();
+      if (action === 'docx') {
+        await this.exportarRelatorioDOCX();
+      }
+    } finally {
+      if (shouldReturnToProjects) {
+        this.returnToProjectsIfRequested();
+      }
     }
   }
 
