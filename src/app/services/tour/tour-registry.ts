@@ -326,7 +326,7 @@ export const TOUR_REGISTRY: TourConfig[] = [
         element: '[data-tour="mail-templates-header"]',
         popover: {
           title: '1. Modelos de E-mail',
-          description: 'Crie e edite templates enviados aos participantes. Use [LINK_AVALIACAO], $%NOME_DO_AVALIADO$%, $%DATA DE EXPIRAÇÃO DO PROJETO$%.',
+          description: 'Crie e edite templates enviados aos participantes.',
           side: 'bottom',
         },
       },
