@@ -19,36 +19,36 @@
   <div class="tour-card" (click)="$event.stopPropagation()">
     <mat-card>
       <mat-card-header>
-        <mat-card-title>{{ step?.title }}</mat-card-title>
+        <mat-card-title>{{ step.title | translate }}</mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        <p class="tour-description">{{ step?.description }}</p>
+        <p class="tour-description">{{ step.description | translate }}</p>
       </mat-card-content>
       <mat-card-actions class="tour-actions">
         <div class="tour-progress">
-          <span class="tour-progress-text">Passo {{ currentStep + 1 }} de {{ totalSteps }}</span>
+          <span class="tour-progress-text">{{ 'tour.progress' | translate:{ current: currentStep + 1, total: totalSteps } }}</span>
           <mat-progress-bar mode="determinate" [value]="progressPercent" class="tour-progress-bar"></mat-progress-bar>
         </div>
         <div class="tour-buttons">
           <button mat-button (click)="closeTour(); $event.stopPropagation()">
             <mat-icon>close</mat-icon>
-            Sair
+            {{ 'tour.exit' | translate }}
           </button>
           <div class="tour-nav">
             @if (!isFirst) {
             <button mat-stroked-button (click)="prevStep(); $event.stopPropagation()">
               <mat-icon>arrow_back</mat-icon>
-              Anterior
+              {{ 'tour.previous' | translate }}
             </button>
             }
             @if (isLast) {
             <button mat-flat-button color="primary" (click)="nextStep(); $event.stopPropagation()">
               <mat-icon>check</mat-icon>
-              Concluir
+              {{ 'tour.finish' | translate }}
             </button>
             } @else {
             <button mat-flat-button color="primary" (click)="nextStep(); $event.stopPropagation()">
-              Próximo
+              {{ 'tour.next' | translate }}
               <mat-icon>arrow_forward</mat-icon>
             </button>
             }

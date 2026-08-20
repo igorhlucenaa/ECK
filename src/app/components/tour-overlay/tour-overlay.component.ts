@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { TranslateModule } from '@ngx-translate/core';
 import { TourService, TourState } from '../../services/tour/tour.service';
 import { Subject, takeUntil } from 'rxjs';
 
@@ -17,7 +18,7 @@ export interface TourStepData {
 @Component({
   selector: 'app-tour-overlay',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatCardModule, MatProgressBarModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatCardModule, MatProgressBarModule, TranslateModule],
   templateUrl: './tour-overlay.component.html',
   styleUrls: ['./tour-overlay.component.scss'],
 })

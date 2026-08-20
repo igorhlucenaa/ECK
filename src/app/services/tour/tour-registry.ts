@@ -233,24 +233,24 @@ export const TOUR_REGISTRY: TourConfig[] = [
       {
         element: '[data-tour="users-tabs"]',
         popover: {
-          title: '1. Usuários e Grupos',
-          description: 'Aba Usuários: gerencie quem acessa a plataforma. Aba Grupos: organize usuários em grupos para atribuir a projetos.',
+          title: 'tour.users.step1.title',
+          description: 'tour.users.step1.description',
           side: 'bottom',
         },
       },
       {
         element: '[data-tour="users-add"]',
         popover: {
-          title: '2. Adicionar',
-          description: 'Adicione usuários (e-mail, nome, papel) ou grupos. Usuários podem ser admin_client ou viewer.',
+          title: 'tour.users.step2.title',
+          description: 'tour.users.step2.description',
           side: 'bottom',
         },
       },
       {
         element: '[data-tour="users-table"]',
         popover: {
-          title: '3. Lista',
-          description: 'Veja usuários, clientes vinculados, projetos e grupos. Use os ícones para editar, excluir ou enviar notificação por e-mail.',
+          title: 'tour.users.step3.title',
+          description: 'tour.users.step3.description',
           side: 'top',
         },
       },
