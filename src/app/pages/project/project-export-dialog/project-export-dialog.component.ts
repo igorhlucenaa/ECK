@@ -9,7 +9,6 @@ import { TranslateModule } from '@ngx-translate/core';
 export type ProjectExportAction =
   | 'individualPdf'
   | 'batchPdf'
-  | 'excelBase'
   | 'excelClient'
   | 'docx'
   | 'openReports';
@@ -77,14 +76,6 @@ export class ProjectExportDialogComponent implements OnInit {
       roles: ['admin_master', 'admin_client', 'viewer'],
     },
     */
-    {
-      id: 'excelBase',
-      icon: 'grid_on',
-      title: 'Base de respostas (Excel)',
-      description: 'Planilha plana com todas as respostas do projeto.',
-      requiresTemplate: false,
-      roles: ['admin_master', 'admin_client'],
-    },
     {
       id: 'excelClient',
       icon: 'table_view',
