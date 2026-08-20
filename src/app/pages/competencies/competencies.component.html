@@ -1,10 +1,12 @@
 <div class="comp-wrapper">
 
+  <div data-tour="competencies-header">
   <app-page-header
     eyebrow="Definições"
     title="Gerenciar Competências"
     subtitle="Configure grupos de competências e vincule perguntas para análise em relatórios">
   </app-page-header>
+  </div>
 
   <!-- ══ Barra de Etapas ══════════════════════════════════════ -->
   <div class="steps-bar">
@@ -41,6 +43,7 @@
     <div class="step-line" [class.step-line--done]="!!currentGroupId"></div>
 
     <div class="step-node"
+         data-tour="competencies-assessment"
          [class.step-node--done]="!!selectedAssessmentId"
          [class.step-node--optional]="!!currentGroupId && !selectedAssessmentId"
          [class.step-node--locked]="!currentGroupId">
@@ -129,7 +132,7 @@
         </button>
       </div>
 
-      <div class="sidebar-groups-list">
+      <div class="sidebar-groups-list" data-tour="competencies-groups">
 
         <!-- Group items -->
         <div *ngFor="let group of competencyGroups"

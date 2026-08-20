@@ -223,6 +223,7 @@
     </div>
 
     <!-- Header -->
+    <div data-tour="participants-header">
     <app-page-header
       eyebrow="Participantes"
       [title]="'Lista de Participantes' | translate"
@@ -241,7 +242,7 @@
         <input id="uploadExcel" type="file" accept=".xlsx,.xls" style="display:none" (change)="uploadExcel($event)" />
       </button>
 
-      <button mat-raised-button class="btn-add" *hasPermission="'criar'" (click)="openAddParticipantModal()">
+      <button mat-raised-button class="btn-add" *hasPermission="'criar'" (click)="openAddParticipantModal()" data-tour="participants-add">
         <mat-icon>person_add</mat-icon>
         {{ 'Adicionar Participante' | translate }}
       </button>
@@ -251,6 +252,7 @@
       </button>
 
     </app-page-header>
+    </div>
 
     <!-- ─── Filtros e busca (sempre visíveis) ───────────────── -->
     <div class="filter-card">
