@@ -15,5 +15,11 @@ export const environment = {
       'https://us-central1-pwa-workana.cloudfunctions.net/triggerPendingAssessmentReminders',
     generateReportPdfUrl:
       'https://us-central1-pwa-workana.cloudfunctions.net/generateReportPdf',
+    createReportDocxExportUrl:
+      'https://us-central1-pwa-workana.cloudfunctions.net/createReportDocxExport',
+    getReportDocxExportStatusUrl:
+      'https://us-central1-pwa-workana.cloudfunctions.net/getReportDocxExportStatus',
+    downloadReportDocxExportUrl:
+      'https://us-central1-pwa-workana.cloudfunctions.net/downloadReportDocxExport',
   },
 };

@@ -44,11 +44,13 @@ export class LoadingInterceptor implements HttpInterceptor {
   }
 
   private shouldSkipLoading(request: HttpRequest<any>): boolean {
-    // URLs que não devem mostrar loading
     const skipUrls = [
-      '/assets/', // Arquivos estáticos
-      '/api/health', // Health checks
-      '/api/ping', // Ping requests
+      '/assets/',
+      '/api/health',
+      '/api/ping',
+      'createReportDocxExport',
+      'getReportDocxExportStatus',
+      'downloadReportDocxExport',
     ];
 
     return skipUrls.some(url => request.url.includes(url));

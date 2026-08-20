@@ -1300,9 +1300,25 @@
       <!-- Export loading overlay -->
       <div class="rp-export-overlay" *ngIf="isExporting">
         <div class="rp-export-overlay__box">
-          <mat-spinner diameter="48"></mat-spinner>
+          <mat-spinner diameter="48" *ngIf="!exportingShowProgress"></mat-spinner>
           <span class="rp-export-overlay__label">{{ exportingLabel }}</span>
-          <span class="rp-export-overlay__hint">Isso pode levar alguns segundos, aguarde...</span>
+
+          <div class="rp-export-overlay__progress" *ngIf="exportingShowProgress">
+            <mat-progress-bar
+              [mode]="exportingProgressIndeterminate ? 'indeterminate' : 'determinate'"
+              [value]="exportingProgress"
+              color="primary">
+            </mat-progress-bar>
+            <span class="rp-export-overlay__percent" *ngIf="!exportingProgressIndeterminate">
+              {{ exportingProgress }}%
+            </span>
+          </div>
+
+          <span class="rp-export-overlay__hint">
+            {{ exportingShowProgress
+              ? 'Relatorios grandes podem levar alguns minutos. Nao feche esta pagina.'
+              : 'Isso pode levar alguns segundos, aguarde...' }}
+          </span>
         </div>
       </div>
 
@@ -1345,6 +1361,7 @@
         </div>
 
         <div class="report-section"
+             [attr.data-secao-tipo]="secao.tipo"
              [class.report-section--page-break-before]="secao['pageBreakAntes'] && secao.tipo !== 'janela_johari'"
              [class.report-section--page-break-after]="secao['pageBreakDepois']"
              [class.report-section--johari]="secao.tipo === 'janela_johari'"
@@ -1374,17 +1391,17 @@
 
             <div *ngSwitchCase="'introducao'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
             </div>
 
             <div *ngSwitchCase="'resumo'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getResumoMedias().length">
                 <div *ngFor="let compData of getResumoMediasPorCompetencia()">
                   <h3>{{ compData.nome }}</h3>
                   <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ compData.descricao }}</p>
-                  <table class="mat-elevation-z8" style="margin: 16px 0 32px 0; min-width: 400px;">
+                  <table class="tabela-resumo-medias" style="width: 100%; border-collapse: collapse; margin: 16px 0 32px 0; min-width: 400px;">
                     <thead>
                       <tr>
                         <th>Grupo</th>
@@ -1405,7 +1422,7 @@
 
             <div *ngSwitchCase="'graficos'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
 
               <div *ngIf="getCompetenciasGraficosCached(secao).length > 0">
                 <mat-form-field appearance="outline" class="ui-only" style="width: 250px; margin-bottom: 16px;">
@@ -1553,7 +1570,7 @@
 
             <div *ngSwitchCase="'tabela'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
 
               <div *ngIf="getCompetenciasSelecionadasParaTabela().length > 0; else noTabelaData">
                 <div *ngFor="let comp of getCompetenciasSelecionadasParaTabela()">
@@ -1621,7 +1638,7 @@
 
             <div *ngSwitchCase="'tabela_detalhada'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0">
                 <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let compIndex = index; let lastComp = last">
                   <div style="margin-bottom: 30px;">
@@ -1688,7 +1705,7 @@
 
             <div *ngSwitchCase="'destaques'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <ng-container *ngIf="getDestaquesAltasCached(secao) as tabelaAltas">
                 <div *ngIf="tabelaAltas.items.length > 0; else noDestaquesData">
                   <h3 [style.color]="getDestaquesAltasColors(secao).text" style="margin-top: 20px;">Avaliações mais altas</h3>
@@ -1696,7 +1713,7 @@
                     Esta seção apresenta os comportamentos em que você obteve as maiores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
                     Pela perspectiva das outras pessoas, seus pontos fortes são estes padrões de comportamento específicos:
                   </p>
-                  <table class="mat-elevation-z8 tabela-destaques" style="width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed;">
+                  <table class="tabela-destaques" style="width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed;">
                     <thead [style.background-color]="getDestaquesAltasColors(secao).header" style="color: white;">
                       <tr>
                         <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 80px;">Classificação</th>
@@ -1723,7 +1740,7 @@
                     Esta seção apresenta os comportamentos em que você obteve as menores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
                     Pela perspectiva das outras pessoas, estes são os padrões de comportamento que podem ser desenvolvidos:
                   </p>
-                  <table class="mat-elevation-z8 tabela-destaques" style="width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed;">
+                  <table class="tabela-destaques" style="width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed;">
                     <thead [style.background-color]="getDestaquesBaixasColors(secao).header" style="color: white;">
                       <tr>
                         <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 80px;">Classificação</th>
@@ -1785,7 +1802,7 @@
             <div *ngSwitchCase="'grafico_defasagem'" class="rp-defasagem-section">
               <div class="rp-secao-header">
                 <h2>{{ secao.titulo }}</h2>
-                <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+                <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               </div>
               <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataDefasagem" class="rp-defasagem-preview">
                 <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao)" class="rp-defasagem-item">
@@ -1804,7 +1821,7 @@
             <div *ngSwitchCase="'janela_johari'" class="rp-johari-section">
               <div class="rp-secao-header">
                 <h2>{{ secao.titulo }}</h2>
-                <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+                <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               </div>
               <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0; else noDataJohari" class="rp-johari-wrap">
                 <app-johari-window-chart [data]="getJohariWindowDataCached(secao)"></app-johari-window-chart>
@@ -1819,10 +1836,10 @@
 
             <div *ngSwitchCase="'perguntas_abertas'">
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
-              <div *ngIf="getPerguntasAbertasData().length > 0; else noPerguntasAbertas" style="margin-top: 20px;">
+              <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div *ngIf="getPerguntasAbertasData().length > 0; else noPerguntasAbertas" class="rp-perguntas-abertas-content" style="margin-top: 20px;">
                 <h3 style="margin-bottom: 16px; color: #5C6BC0; font-size: 16px;">{{ 'Perguntas abertas:' | translate }}</h3>
-                <div *ngFor="let item of getPerguntasAbertasData()" style="margin-bottom: 28px;">
+                <div *ngFor="let item of getPerguntasAbertasData()" class="rp-perguntas-abertas-item" style="margin-bottom: 28px;">
                   <h4 style="margin-bottom: 12px; font-weight: 600; color: #333;">{{ item.perguntaTitulo }}</h4>
                   <div *ngFor="let categoria of getCategoriasOrdenadas(item.respostasPorCategoria)" style="margin-bottom: 12px;">
                     <div style="font-weight: 500; color: #5C6BC0; margin-bottom: 6px; font-size: 14px;">{{ categoria }}</div>
@@ -1833,7 +1850,7 @@
                 </div>
               </div>
               <ng-template #noPerguntasAbertas>
-                <div style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
+                <div class="rp-perguntas-abertas-empty" style="text-align: center; padding: 40px; color: #888; border: 1px dashed #ccc; margin-top: 20px; border-radius: 4px;">
                   <mat-icon style="font-size: 48px; width: 48px; height: 48px;">forum</mat-icon>
                   <p>{{ 'Nenhuma pergunta aberta com respostas encontrada. Certifique-se de que o formulário possui perguntas de texto livre (continuar, parar, começar a fazer) e que os participantes responderam.' | translate }}</p>
                 </div>
@@ -1842,7 +1859,7 @@
 
             <div *ngSwitchDefault>
               <h2>{{ secao.titulo }}</h2>
-              <div [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
             </div>
 
           </ng-container>

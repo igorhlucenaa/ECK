@@ -1,0 +1,428 @@
+[debug] [2026-08-20T03:14:22.874Z] ----------------------------------------------------------------------
+[debug] [2026-08-20T03:14:22.878Z] Command:       C:\nvm4w\nodejs\node.exe C:\nvm4w\nodejs\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions
+[debug] [2026-08-20T03:14:22.879Z] CLI Version:   14.1.0
+[debug] [2026-08-20T03:14:22.879Z] Platform:      win32
+[debug] [2026-08-20T03:14:22.879Z] Node Version:  v20.19.0
+[debug] [2026-08-20T03:14:22.879Z] Time:          Thu Aug 20 2026 00:14:22 GMT-0300 (Horário Padrão de Brasília)
+[debug] [2026-08-20T03:14:22.880Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-20T03:14:23.167Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-20T03:14:23.167Z] > authorizing via signed-in user (igorhlucenaa@gmail.com)
+[info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
+[debug] [2026-08-20T03:14:23.181Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-20T03:14:23.182Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-08-20T03:14:23.188Z] [hub] writing locator at C:\Users\adm\AppData\Local\Temp\hub-pwa-workana.json
+[debug] [2026-08-20T03:14:23.217Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-20T03:14:23.218Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-20T03:14:23.218Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-20T03:14:23.218Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect\u001b[22m"}}
+[debug] [2026-08-20T03:14:23.239Z] defaultcredentials: writing to file C:\Users\adm\AppData\Roaming\firebase\igorhlucenaa_gmail_com_application_default_credentials.json
+[debug] [2026-08-20T03:14:23.240Z] Setting GAC to C:\Users\adm\AppData\Roaming\firebase\igorhlucenaa_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\adm\\AppData\\Roaming\\firebase\\igorhlucenaa_gmail_com_application_default_credentials.json"}}
+[debug] [2026-08-20T03:14:23.242Z] Checked if tokens are valid: false, expires at: 1787196557777
+[debug] [2026-08-20T03:14:23.242Z] Checked if tokens are valid: false, expires at: 1787196557777
+[debug] [2026-08-20T03:14:23.242Z] > refreshing access token with scopes: []
+[debug] [2026-08-20T03:14:23.244Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-20T03:14:23.244Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-20T03:14:23.595Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-20T03:14:23.596Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-20T03:14:23.659Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/pwa-workana/adminSdkConfig [none]
+[debug] [2026-08-20T03:14:24.346Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/pwa-workana/adminSdkConfig 200
+[debug] [2026-08-20T03:14:24.347Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/pwa-workana/adminSdkConfig {"projectId":"pwa-workana","databaseURL":"https://pwa-workana.firebaseio.com","storageBucket":"pwa-workana.firebasestorage.app"}
+[info] i  functions: Watching "C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\" for Cloud Functions..."}}
+[debug] [2026-08-20T03:14:24.427Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-08-20T03:14:25.880Z] > [functions] package.json contents: {
+  "name": "functions",
+  "scripts": {
+    "build": "tsc && node scripts/generate-functions-yaml.js",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "serve:full": "npm run build && firebase emulators:start --only functions,firestore",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@google-cloud/storage": "^7.15.1",
+    "@napi-rs/canvas": "^0.1.67",
+    "@sparticuz/chromium": "^147.0.0",
+    "cors": "^2.8.5",
+    "docx": "^9.5.1",
+    "firebase-admin": "^13.1.0",
+    "firebase-functions": "^6.3.1",
+    "image-size": "^1.2.0",
+    "node-html-parser": "^9.0.1",
+    "nodemailer": "^6.9.7",
+    "pdfjs-dist": "^4.10.38",
+    "pdfmake": "^0.3.3",
+    "puppeteer-core": "^24.42.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.13.1",
+    "@types/nodemailer": "^6.4.19",
+    "firebase-functions-test": "^3.1.0",
+    "typescript": "^5.7.3"
+  },
+  "private": true
+}
+[debug] [2026-08-20T03:14:25.881Z] Building nodejs source
+[debug] [2026-08-20T03:14:25.881Z] Failed to find version of module node: reached end of search path C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions\node_modules
+[info] +  functions: Using node@20 from host. 
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-08-20T03:14:25.890Z] Found functions.yaml. Got spec: {
+  "endpoints": {
+    "createReportDocxExport": {
+      "availableMemoryMb": 512,
+      "timeoutSeconds": 60,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "createReportDocxExport"
+    },
+    "downloadReportDocxExport": {
+      "availableMemoryMb": 512,
+      "timeoutSeconds": 120,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "downloadReportDocxExport"
+    },
+    "getReportDocxExportStatus": {
+      "availableMemoryMb": 256,
+      "timeoutSeconds": 30,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "getReportDocxExportStatus"
+    },
+    "processReportDocxExportHttp": {
+      "availableMemoryMb": 4096,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "processReportDocxExportHttp"
+    },
+    "processReportDocxExportJob": {
+      "availableMemoryMb": 4096,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.created",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "docxExportJobs/{jobId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "processReportDocxExportJob"
+    },
+    "generateReportPdf": {
+      "availableMemoryMb": 4096,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "generateReportPdf"
+    },
+    "sendEmail": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "sendEmail"
+    },
+    "sendPendingAssessmentReminders": {
+      "availableMemoryMb": 1024,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "scheduleTrigger": {
+        "schedule": "every 15 minutes",
+        "retryConfig": {},
+        "timeZone": "Etc/UTC"
+      },
+      "entryPoint": "sendPendingAssessmentReminders"
+    },
+    "triggerPendingAssessmentReminders": {
+      "availableMemoryMb": 1024,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "triggerPendingAssessmentReminders"
+    },
+    "onAssessmentCompleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.updated",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "assessmentLinks/{linkId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onAssessmentCompleted"
+    },
+    "safeDelete": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "callableTrigger": {},
+      "entryPoint": "safeDelete"
+    },
+    "onProjectDeleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.deleted",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "projects/{projectId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onProjectDeleted"
+    },
+    "onClientDeleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.deleted",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "clients/{clientId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onClientDeleted"
+    },
+    "onParticipantDeleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.deleted",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "participants/{participantId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onParticipantDeleted"
+    }
+  },
+  "specVersion": "v1alpha1",
+  "requiredAPIs": [
+    {
+      "api": "cloudscheduler.googleapis.com",
+      "reason": "Needed for scheduled functions."
+    }
+  ],
+  "extensions": {},
+  "params": [
+    {
+      "name": "EMAIL_USER",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "name": "EMAIL_PASS",
+      "type": "string",
+      "default": ""
+    }
+  ]
+}
+
+[info] +  functions: Loaded functions definitions from source: createReportDocxExport, downloadReportDocxExport, getReportDocxExportStatus, processReportDocxExportHttp, processReportDocxExportJob, generateReportPdf, sendEmail, sendPendingAssessmentReminders, triggerPendingAssessmentReminders, onAssessmentCompleted, safeDelete, onProjectDeleted, onClientDeleted, onParticipantDeleted. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: createReportDocxExport, downloadReportDocxExport, getReportDocxExportStatus, processReportDocxExportHttp, processReportDocxExportJob, generateReportPdf, sendEmail, sendPendingAssessmentReminders, triggerPendingAssessmentReminders, onAssessmentCompleted, safeDelete, onProjectDeleted, onClientDeleted, onParticipantDeleted."}}
+[info] +  functions[us-central1-createReportDocxExport]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/createReportDocxExport). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/createReportDocxExport)."}}
+[info] +  functions[us-central1-downloadReportDocxExport]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/downloadReportDocxExport). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/downloadReportDocxExport)."}}
+[info] +  functions[us-central1-getReportDocxExportStatus]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/getReportDocxExportStatus). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/getReportDocxExportStatus)."}}
+[info] +  functions[us-central1-processReportDocxExportHttp]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp)."}}
+[info] i  functions[us-central1-processReportDocxExportJob]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] +  functions[us-central1-generateReportPdf]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/generateReportPdf). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/generateReportPdf)."}}
+[info] +  functions[us-central1-sendEmail]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/sendEmail). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/sendEmail)."}}
+[info] i  functions[us-central1-sendPendingAssessmentReminders]: function ignored because the pubsub emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the pubsub emulator does not exist or is not running."}}
+[info] +  functions[us-central1-triggerPendingAssessmentReminders]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/triggerPendingAssessmentReminders). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/triggerPendingAssessmentReminders)."}}
+[info] i  functions[us-central1-onAssessmentCompleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] +  functions[us-central1-safeDelete]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/safeDelete). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/safeDelete)."}}
+[info] i  functions[us-central1-onProjectDeleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] i  functions[us-central1-onClientDeleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] i  functions[us-central1-onParticipantDeleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[debug] [2026-08-20T03:14:25.960Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌───────────┬────────────────┬─────────────────────────────────┐
+│ Emulator  │ Host:Port      │ View in Emulator UI             │
+├───────────┼────────────────┼─────────────────────────────────┤
+│ Functions │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions │
+└───────────┴────────────────┴─────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 

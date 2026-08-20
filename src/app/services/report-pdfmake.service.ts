@@ -142,6 +142,23 @@ export interface PdfHtmlRenderOptions {
   displayHeaderFooter?: boolean;
   headerTemplate?: string;
   footerTemplate?: string;
+  docxDocumentChrome?: {
+    header?: {
+      enabled: boolean;
+      leftText: string;
+      showPageNumbers: boolean;
+      color: string;
+      borderBottom: boolean;
+    };
+    footer?: {
+      enabled: boolean;
+      text: string;
+      showYear: boolean;
+      showPageNumbers: boolean;
+      color: string;
+      borderTop: boolean;
+    };
+  };
 }
 
 @Injectable({ providedIn: 'root' })

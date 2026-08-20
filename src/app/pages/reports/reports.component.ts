@@ -37,6 +37,14 @@ import { EChartsOption } from 'echarts';
 import { getInstanceByDom } from 'echarts/core';
 import { ReportsPdfService } from './reports-pdf.service';
 import { ReportPdfMakeService, DocumentoConfig, DOCUMENTO_CONFIG_PADRAO, PdfHtmlRenderOptions } from '../../services/report-pdfmake.service';
+import { DocxExportService } from '../../services/docx-export/docx-export.service';
+import {
+  annotateCloneWithCaptureIds,
+  assignDocxSyncIds,
+  buildDocxHybridManifest,
+  clearDocxSyncIds,
+  type ExportHybridManifest,
+} from '../../services/docx-export/docx-hybrid-manifest';
 import { ReportClientExportService } from '../../services/report-client-export.service';
 import {
   ClientExportDialogComponent,
@@ -681,6 +689,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   builderHasUnsavedChanges = false;
   isExporting = false;
   exportingLabel = '';
+  exportingProgress = 0;
+  exportingShowProgress = false;
+  exportingProgressIndeterminate = false;
 
   // ── Geração em Lote ─────────────────────────────────────────────
   batchPanelOpen = false;
@@ -1115,7 +1126,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     private confirmDialog: ConfirmDialogService,
     private competencyQuestionsService: CompetencyQuestionsService,
     private dialog: MatDialog,
-    private clientExportService: ReportClientExportService
+    private clientExportService: ReportClientExportService,
+    private docxExportService: DocxExportService
   ) {
     this.dummyForm = this.fb.group({
       relatorioFormArray: this.fb.array([])
@@ -3876,8 +3888,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async buildReportPreviewHtml(
-    previewEl: HTMLElement, fileName: string
-  ): Promise<{ html: string; options: PdfHtmlRenderOptions }> {
+    previewEl: HTMLElement,
+    fileName: string,
+    docxExport = false
+  ): Promise<{ html: string; options: PdfHtmlRenderOptions; manifest?: ExportHybridManifest }> {
+    if (docxExport) {
+      assignDocxSyncIds(previewEl);
+    }
+
     const clone = previewEl.cloneNode(true) as HTMLElement;
     this.replaceCanvasWithImages(previewEl, clone);
     this.replaceEchartsHostsWithImages(previewEl, clone);
@@ -3885,11 +3903,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.preserveSvgDimensions(previewEl, clone);
     this.replaceReportChipsForPdf(previewEl, clone);
     clone.querySelectorAll('.ui-only').forEach(el => el.remove());
+    this.replaceAngularEditorsForExport(clone);
+    if (docxExport) {
+      this.stripCapaDecorationsForDocxExport(clone);
+    }
     this.normalizePdfPageBreaks(clone);
 
     // Remover header/footer fixos — serão substituídos pelos templates do Puppeteer
     clone.querySelector('.rp-doc-cabecalho')?.remove();
     clone.querySelector('.rp-doc-rodape')?.remove();
+
+    let manifest: ExportHybridManifest | undefined;
+    if (docxExport) {
+      manifest = buildDocxHybridManifest(clone, previewEl);
+      annotateCloneWithCaptureIds(clone, manifest.content);
+      clearDocxSyncIds(previewEl);
+      clearDocxSyncIds(clone);
+    }
 
     // Construir templates do Puppeteer a partir de documentoConfig
     const logoBase64 = await this.logoUrlToBase64(this.documentoConfig.cabecalho.logoUrl || '');
@@ -3903,6 +3933,30 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const html = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>${safeTitle}</title>\n  <base href="${window.location.origin}/">\n  <style>
     ${documentStyles}
     ${CAPA_HTML_PDF_STYLES}
+    ${docxExport ? `
+    .capa-section,
+    .capa-section * {
+      border: none !important;
+      border-width: 0 !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+    .capa-section table,
+    .capa-section td,
+    .capa-section th {
+      border: none !important;
+      border-collapse: collapse !important;
+    }
+    .capa-info-block {
+      border: 1px solid #e2e8f0 !important;
+      box-shadow: none !important;
+    }
+    .capa-section {
+      padding: 0 !important;
+      margin: 0 !important;
+      background: #fff !important;
+    }
+    ` : ''}
     @page { size: A4 portrait; margin: 18mm 7mm 16mm 7mm; }
     * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
     html, body {
@@ -4091,6 +4145,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       color: #0f172a !important;
     }
     table { border-collapse: collapse; max-width: 100%; }
+    table,
+    .mat-elevation-z8,
+    [class*="mat-elevation-z"],
+    .mat-mdc-table,
+    .tabela-frequencia,
+    .tabela-distribuicao-notas,
+    .tabela-destaques,
+    .tabela-resumo-medias,
+    .gap-chart-container,
+    .report-section {
+      box-shadow: none !important;
+      filter: none !important;
+    }
     .tabela-frequencia,
     .tabela-distribuicao-notas,
     .tabela-destaques {
@@ -4101,6 +4168,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     .tabela-destaques th, .tabela-destaques td {
       word-break: break-word !important;
       white-space: normal !important;
+    }
+    .tabela-resumo-medias th,
+    .tabela-resumo-medias td {
+      border: 1px solid #ddd !important;
+      padding: 8px !important;
+      text-align: left !important;
+    }
+    .tabela-resumo-medias thead th {
+      background: #f5f5f5 !important;
+      font-weight: bold !important;
     }
     #report-preview .pdf-chip-set,
     #report-preview mat-chip-set,
@@ -4184,9 +4261,109 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         displayHeaderFooter: hasHeaderFooter,
         headerTemplate,
         footerTemplate,
+        scale: 1,
         marginMm: { top: 18, right: 7, bottom: 16, left: 7 },
+        docxDocumentChrome: docxExport ? this.buildDocxDocumentChrome() : undefined,
+      },
+      manifest,
+    };
+  }
+
+  private buildDocxDocumentChrome() {
+    const headerCfg = this.documentoConfig.cabecalho;
+    const footerCfg = this.documentoConfig.rodape;
+    const headerParts: string[] = [];
+    if (headerCfg.textoEsquerda) {
+      headerParts.push(headerCfg.textoEsquerda);
+    }
+    if (headerCfg.mostrarNomeProjeto && this.selectedProjectName) {
+      headerParts.push(this.selectedProjectName);
+    }
+
+    return {
+      header: {
+        enabled: headerCfg.ativo,
+        leftText: headerParts.join(' — '),
+        showPageNumbers: headerCfg.mostrarNumeroPagina,
+        color: headerCfg.cor || '#666666',
+        borderBottom: headerCfg.linhaInferior,
+      },
+      footer: {
+        enabled: footerCfg.ativo,
+        text: footerCfg.texto || '',
+        showYear: footerCfg.mostrarAno,
+        showPageNumbers: footerCfg.mostrarNumeroPagina,
+        color: footerCfg.cor || '#666666',
+        borderTop: footerCfg.linhaSuperior,
       },
     };
+  }
+
+  private stripBorderFromInlineStyle(style: string): string {
+    return style
+      .replace(/border[^;]*;?/gi, '')
+      .replace(/outline[^;]*;?/gi, '')
+      .replace(/box-shadow[^;]*;?/gi, '')
+      .trim();
+  }
+
+  private stripCapaDecorationsForDocxExport(clone: HTMLElement): void {
+    clone.querySelectorAll('.capa-section, .capa-section *').forEach((node) => {
+      const element = node as HTMLElement;
+      const insideInfoBlock = element.classList.contains('capa-info-block') || !!element.closest('.capa-info-block');
+
+      element.removeAttribute('frameborder');
+      if (element.tagName === 'TABLE') {
+        element.setAttribute('border', '0');
+        element.setAttribute('cellpadding', '0');
+        element.setAttribute('cellspacing', '0');
+      }
+
+      const inlineStyle = element.getAttribute('style');
+      if (inlineStyle) {
+        const cleaned = insideInfoBlock
+          ? this.stripBorderFromInlineStyle(inlineStyle).replace(/box-shadow[^;]*;?/gi, '')
+          : this.stripBorderFromInlineStyle(inlineStyle);
+        if (cleaned) {
+          element.setAttribute('style', cleaned);
+        } else {
+          element.removeAttribute('style');
+        }
+      }
+
+      element.style.setProperty('outline', 'none', 'important');
+      element.style.setProperty('box-shadow', 'none', 'important');
+
+      if (insideInfoBlock) {
+        return;
+      }
+
+      element.style.setProperty('border', 'none', 'important');
+      element.style.setProperty('border-width', '0', 'important');
+    });
+
+    clone.querySelectorAll('.capa-section').forEach((node) => {
+      const section = node as HTMLElement;
+      section.style.setProperty('padding', '0', 'important');
+      section.style.setProperty('margin', '0', 'important');
+      section.style.setProperty('background', '#ffffff', 'important');
+      section.style.setProperty('border', 'none', 'important');
+      section.setAttribute('data-docx-cover', 'true');
+    });
+  }
+
+  private replaceAngularEditorsForExport(clone: HTMLElement): void {
+    clone.querySelectorAll('angular-editor').forEach((editorNode) => {
+      const editor = editorNode as HTMLElement;
+      const parent = editor.parentElement;
+      if (!parent) return;
+
+      const replacement = document.createElement('div');
+      replacement.className = 'rp-comp-detail-text';
+      const editableArea = editor.querySelector('.angular-editor-textarea') as HTMLElement | null;
+      replacement.innerHTML = editableArea?.innerHTML || editor.textContent || '';
+      parent.replaceChild(replacement, editor);
+    });
   }
 
   private collectDocumentStyles(): string {
@@ -4989,222 +5166,58 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.exportarRelatorioPDF();
   }
 
-  // Exportar relat�rio como DOCX (gera��o nativa a partir dos dados - sem html2canvas)
   async exportarRelatorioDOCX(): Promise<boolean> {
     if (this.isExporting) return false;
     this.isExporting = true;
-    this.exportingLabel = 'Gerando DOCX...';
+    this.exportingShowProgress = true;
+    this.exportingProgressIndeterminate = false;
+    this.setExportOverlay('Montando relatorio...', 8);
     this.cdr.markForCheck();
 
     try {
-      const docxMod = await import('docx');
-      const {
-        Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-        WidthType, HeadingLevel, AlignmentType, BorderStyle, PageBreak
-      } = docxMod;
-
-      const nomePart = this.individualParticipantName || this.selectedAvaliado || 'Participante';
-      const grupos = this.getGrupos();
-      const secoesVisiveis = [...this.relatorioConfiguracao]
-        .filter((s: any) => s.visivel)
-        .sort((a: any, b: any) => a.ordem - b.ordem);
-
-      // �"?�"? helpers �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
-      const hd = (text: string, level: any) => new Paragraph({ text, heading: level, spacing: { before: 300, after: 160 } });
-      const p = (text: string) => new Paragraph({ children: [new TextRun({ text })], spacing: { after: 120 } });
-      const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
-      const hr = () => new Paragraph({
-        border: { bottom: { color: 'CCCCCC', space: 1, style: BorderStyle.SINGLE, size: 6 } },
-        spacing: { after: 200 }
-      });
-
-      const cell = (text: string, bold = false, bg = 'FFFFFF') => new TableCell({
-        shading: { fill: bg, type: 'clear' as any },
-        children: [new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text, bold, size: 18 })]
-        })]
-      });
-
-      const buildTable = (headers: string[], rows: string[][]): any => new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            tableHeader: true,
-            children: headers.map(h => cell(h, true, '1B84FF'
-            ))
-          }),
-          ...rows.map((row, ri) => new TableRow({
-            children: row.map(v => cell(v, false, ri % 2 === 0 ? 'FFFFFF' : 'F5F8FF'))
-          }))
-        ]
-      });
-
-      const stripHtml = (html: string) => html ? html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
-
-      // �"?�"? CAPA �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
-      const children: any[] = [
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 1200, after: 400 },
-          children: [new TextRun({ text: 'RELATÓRIO DE AVALIAÇÃO 360°', bold: true, size: 52, color: '1B84FF' })]
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 200 },
-          children: [new TextRun({ text: nomePart, bold: true, size: 36 })]
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 1200 },
-          children: [new TextRun({ text: `Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, size: 22, color: '666666' })]
-        }),
-        pageBreak()
-      ];
-
-      // �"?�"? SE�?�.ES �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
-      for (const secao of secoesVisiveis as any[]) {
-        if (secao.titulo) {
-          children.push(hd(secao.titulo, HeadingLevel.HEADING_2));
-          children.push(hr());
-        }
-
-        switch (secao.tipo) {
-          case 'capa':
-            // já foi tratado na capa acima
-            break;
-
-          case 'texto':
-          case 'introducao': {
-            const texto = stripHtml(secao.texto || '');
-            if (texto) children.push(p(texto));
-            break;
-          }
-
-          case 'resumo':
-          case 'tabela':
-          case 'tabela_detalhada': {
-            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
-            if (comps.length === 0) { children.push(p('Sem competências configuradas.')); break; }
-            const headers = ['Competência', ...grupos];
-            const rows = comps.map((comp: any) => [
-              comp.nome,
-              ...grupos.map((g: string) => {
-                const v = this.getMediaPorPerguntaEGrupo(comp, g);
-                return v !== null ? v.toFixed(2) : '-';
-              })
-            ]);
-            children.push(buildTable(headers, rows));
-            children.push(new Paragraph({ spacing: { after: 240 } }));
-            break;
-          }
-
-          case 'graficos': {
-            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
-            children.push(p(`Tipo de gráfico: ${secao.tipoGrafico || 'barra'}`));
-            if (comps.length === 0) { children.push(p('Sem competências configuradas.')); break; }
-            const headers = ['Competência', ...grupos];
-            const rows = comps.map((comp: any) => [
-              comp.nome,
-              ...grupos.map((g: string) => {
-                const v = this.getMediaPorPerguntaEGrupo(comp, g);
-                return v !== null ? v.toFixed(2) : '-';
-              })
-            ]);
-            children.push(buildTable(headers, rows));
-            children.push(new Paragraph({ spacing: { after: 240 } }));
-            break;
-          }
-
-          case 'competencia_detalhada': {
-            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
-            for (const comp of comps as any[]) {
-              children.push(hd(comp.nome, HeadingLevel.HEADING_3));
-              if (comp.descricao) children.push(p(comp.descricao));
-              const rows = grupos.map((g: string) => {
-                const v = this.getMediaPorPerguntaEGrupo(comp, g);
-                return [g, v !== null ? v.toFixed(2) : '-'];
-              });
-              children.push(buildTable(['Grupo Avaliador', 'Média'], rows));
-              children.push(new Paragraph({ spacing: { after: 200 } }));
-            }
-            break;
-          }
-
-          case 'destaques': {
-            const comps = this.getCompetenciasSelecionadasParaSecao(secao);
-            const medias = comps.map((c: any) => {
-              const vals = grupos.map((g: string) => this.getMediaPorPerguntaEGrupo(c, g)).filter(v => v !== null) as number[];
-              const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-              return { nome: c.nome, avg };
-            }).filter(x => x.avg !== null).sort((a: any, b: any) => b.avg - a.avg);
-            if (medias.length) {
-              children.push(hd('Pontos Fortes', HeadingLevel.HEADING_3));
-              medias.slice(0, 3).forEach((m: any) => children.push(p(`• ${m.nome} — Média: ${m.avg.toFixed(2)}`)));
-              children.push(hd('Oportunidades de Melhoria', HeadingLevel.HEADING_3));
-              [...medias].reverse().slice(0, 3).forEach((m: any) => children.push(p(`• ${m.nome} — Média: ${m.avg.toFixed(2)}`)));
-            }
-            break;
-          }
-
-          case 'grafico_defasagem': {
-            const perguntas = secao.perguntasIds || [];
-            if (!perguntas.length) { children.push(p('Sem perguntas configuradas.')); break; }
-            const rows = perguntas.map((pId: string) => {
-              const titulo = this.substituirVariaveisRelatorio(this.questionMap[pId] || pId);
-              const dados = this.getDadosPerguntaDefasagem(pId);
-              return [
-                titulo,
-                dados?.selfScore !== null && dados?.selfScore !== undefined ? dados.selfScore.toFixed(2) : '-',
-                dados?.othersScore !== null && dados?.othersScore !== undefined ? dados.othersScore.toFixed(2) : '-',
-                dados?.gap !== null && dados?.gap !== undefined ? dados.gap.toFixed(2) : '-'
-              ];
-            });
-            children.push(buildTable(['Pergunta', 'Auto-avaliação', 'Outros', 'Gap'], rows));
-            break;
-          }
-
-          case 'perguntas_abertas': {
-            const dadosAbertas = this.getPerguntasAbertasData();
-            for (const item of dadosAbertas) {
-              children.push(hd(item.perguntaTitulo, HeadingLevel.HEADING_3));
-              const cats = this.getCategoriasOrdenadas(item.respostasPorCategoria);
-              for (const cat of cats) {
-                children.push(p(`${cat}:`));
-                (item.respostasPorCategoria[cat] || []).forEach((r: string) => children.push(p(`  • ${r}`)));
-              }
-              children.push(new Paragraph({ spacing: { after: 200 } }));
-            }
-            break;
-          }
-
-          default:
-            children.push(p(`[Seção "${secao.tipo}" não suportada no formato DOCX]`));
-        }
+      const fileName = this.getExportFileName('docx');
+      this.setExportOverlay('Preparando preview do relatorio...', 12);
+      const previewEl = await this.prepareReportPreviewForPdfExport();
+      this.setExportOverlay('Gerando HTML do relatorio...', 16);
+      const { html, options, manifest } = await this.buildReportPreviewHtml(previewEl, fileName, true);
+      if (!manifest?.content?.length) {
+        throw new Error('Nao foi possivel montar o manifesto hibrido do DOCX.');
       }
+      this.setExportOverlay('Enviando para processamento...', 20);
 
-      // �"?�"? Gerar arquivo �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
-      const doc = new Document({ sections: [{ properties: {}, children }] });
-      const blob = await Packer.toBlob(doc);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = this.getExportFileName('docx');
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await this.docxExportService.exportAndDownload(
+        { html, fileName, options, manifest },
+        (change) => {
+          this.setExportOverlay(change.label, change.progress);
+        }
+      );
+
+      this.setExportOverlay('Download concluido!', 100);
       this.snackBar.open(this.t('DOCX exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
       return true;
     } catch (err) {
       console.error('Erro ao exportar DOCX:', err);
-      this.snackBar.open(this.t('Erro ao gerar o DOCX.'), this.t('Fechar'), { duration: 3000 });
+      const message = err instanceof Error && err.message
+        ? err.message
+        : this.t('Erro ao gerar o DOCX.');
+      this.snackBar.open(message, this.t('Fechar'), { duration: 7000 });
       return false;
     } finally {
       this.isExporting = false;
       this.exportingLabel = '';
+      this.exportingProgress = 0;
+      this.exportingShowProgress = false;
+      this.exportingProgressIndeterminate = false;
       this.cdr.markForCheck();
     }
+  }
+
+  private setExportOverlay(label: string, progress?: number): void {
+    this.exportingLabel = label;
+    if (typeof progress === 'number') {
+      this.exportingProgress = Math.min(100, Math.max(0, progress));
+    }
+    this.cdr.markForCheck();
   }
 
   removerCompetencia(c: Competencia) {
