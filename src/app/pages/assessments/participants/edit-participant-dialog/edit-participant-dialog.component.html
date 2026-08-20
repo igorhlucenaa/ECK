@@ -44,13 +44,6 @@
         Este projeto já possui o avaliado {{ existingEvaluateeName }}.
       </mat-hint>
     </mat-form-field>
-
-    <mat-form-field appearance="outline" class="epd__field">
-      <mat-label>Cargo / Setor</mat-label>
-      <mat-icon matPrefix class="epd__prefix-icon">work_outline</mat-icon>
-      <input matInput [(ngModel)]="cargoSetor" placeholder="Ex: Gerente Comercial · TI"
-             (keydown.enter)="confirm()" (keydown.escape)="dialogRef.close(null)" />
-    </mat-form-field>
   </mat-dialog-content>
 
   <!-- Actions -->

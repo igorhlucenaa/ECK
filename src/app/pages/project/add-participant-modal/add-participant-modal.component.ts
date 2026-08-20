@@ -1,10 +1,8 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import {
-  AbstractControl,
   FormBuilder,
   FormGroup,
-  ValidationErrors,
   Validators,
   FormsModule,
   ReactiveFormsModule,
@@ -28,10 +26,6 @@ import { CommonModule } from '@angular/common';
 import { debounceTime, Subject } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
-import {
-  appendCargoSetorFields,
-  parseCargoSetorInput,
-} from 'src/app/utils/participant-cargo.utils';
 
 interface Client {
   id: string;
@@ -171,14 +165,6 @@ interface ModalData {
           <mat-error *ngIf="participantForm.get('category')?.hasError('required')">Categoria é obrigatória</mat-error>
         </mat-form-field>
 
-        <!-- Cargo / Setor -->
-        <mat-form-field appearance="outline" class="ap-field ap-field--full">
-          <mat-label>Cargo / Setor</mat-label>
-          <mat-icon matPrefix class="ap-prefix-icon">work_outline</mat-icon>
-          <input matInput formControlName="cargoSetor" placeholder="Ex: Gerente Comercial · TI" />
-          <mat-error *ngIf="participantForm.get('cargoSetor')?.hasError('required')">Cargo / Setor é obrigatório</mat-error>
-        </mat-form-field>
-
       </form>
     </mat-dialog-content>
 
@@ -225,10 +211,6 @@ export class AddParticipantModalComponent implements OnInit {
       name: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       category: ['', Validators.required],
-      cargoSetor: ['', (control: AbstractControl): ValidationErrors | null => {
-        const value = (control.value ?? '').toString().trim();
-        return value ? null : { required: true };
-      }],
     });
 
     // Configurar debounce para o evento de clique
@@ -409,11 +391,6 @@ export class AddParticipantModalComponent implements OnInit {
     // Não é necessário ajustar validators, apenas determinar o tipo ao salvar
   }
 
-  private buildCargoSetorFields(): Record<string, string> {
-    const parsed = parseCargoSetorInput(this.participantForm.get('cargoSetor')?.value);
-    return parsed.cargo ? { cargo: parsed.cargo } : {};
-  }
-
   // Método chamado pelo botão "Adicionar"
   onAddParticipantClick(): void {
     console.log('Botão Adicionar clicado');
@@ -485,7 +462,6 @@ export class AddParticipantModalComponent implements OnInit {
       if (type === 'avaliado') {
         await this.registerEvaluateeWithCredit(formValue, clientId, projectId, emailNorm);
       } else {
-        const cargoFields = this.buildCargoSetorFields();
         await addDoc(collection(this.firestore, 'participants'), {
           name: formValue.name,
           email: formValue.email,
@@ -495,7 +471,6 @@ export class AddParticipantModalComponent implements OnInit {
           type,
           category,
           avaliadoId: avaliadoIdParaVincular,
-          ...cargoFields,
           createdAt: new Date(),
         });
       }
@@ -595,7 +570,6 @@ export class AddParticipantModalComponent implements OnInit {
         projectId,
         type: 'avaliado',
         category: formValue.category,
-        ...this.buildCargoSetorFields(),
         createdAt: Timestamp.now(),
         creditReserved: true,
         creditConsumed: false,
