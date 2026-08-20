@@ -762,6 +762,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   projectSelectionRequired = false;
   /** true quando o projeto foi deduzido automaticamente (1 candidato). */
   projectAutoDeduced = false;
+  /** Template fixo vinculado ao projeto selecionado (sem troca manual). */
+  projectTemplateLocked = false;
+  lockedProjectTemplateId = '';
+  lockedProjectTemplateName = '';
   /** Evita auto-seleção de avaliação enquanto query params de projeto estão sendo aplicados. */
   private pendingQueryProjectId: string | null = null;
   /** Sentinel em pendingQueryProjectId durante export ZIP multi-projeto. */
@@ -1584,6 +1588,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
             await this.onAssessmentChange(loadGeneration);
             if (loadGeneration !== this.filterContextGeneration || this.isBatchGenerating) return;
             await this.calcularMediasPorCompetencia();
+            const projectId = this.filterProjectControl.value;
+            if (projectId) {
+              await this.applyProjectReportTemplate(projectId);
+            }
           } else if (loadGeneration === this.filterContextGeneration && !this.isBatchGenerating) {
             this.dataSource = [];
             this.avaliadosDisponiveis = [];
@@ -1592,6 +1600,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           this.filterProjectControl.setValue('', { emitEvent: false });
           this.projectSelectionRequired = false;
           this.projectAutoDeduced = false;
+          this.unlockProjectTemplateLock();
           this.projectsForAssessment = [];
           this.dataSource = [];
           this.competencias = [];
@@ -5032,14 +5041,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (result?.refresh) {
       await this.carregarTemplatesSalvos();
     }
-    if (result?.selectedTemplateId) {
+    if (result?.selectedTemplateId && !this.projectTemplateLocked) {
       this.selectedTemplateId.setValue(result.selectedTemplateId);
     }
     this.cdr.markForCheck();
   }
 
   private async onTemplateDropdownChanged(): Promise<void> {
-    if (!this.templateAutoApplyReady) return;
+    if (!this.templateAutoApplyReady || this.projectTemplateLocked) return;
 
     const id = this.selectedTemplateId.value;
     if (!id || id === this.appliedTemplateId) return;
@@ -6732,8 +6741,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedClientId = clientId || null;
     this.selectedReportId.setValue('', { emitEvent: false });
     this.selectedTemplateId.setValue('', { emitEvent: false });
+    this.unlockProjectTemplateLock();
     this.projectSelectionRequired = false;
     this.projectAutoDeduced = false;
+    this.unlockProjectTemplateLock();
     this.projectsForAssessment = [];
     this.clientAssessments = [];
 
@@ -6894,7 +6905,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Pré-seleciona o template de relatório vinculado ao projeto (campo opcional). */
   private async applyProjectReportTemplate(projectId: string): Promise<void> {
-    if (!projectId) return;
+    if (!projectId) {
+      this.unlockProjectTemplateLock();
+      return;
+    }
 
     let reportTemplateId = this.filterProjects.find(p => p.id === projectId)?.reportTemplateId;
     if (!reportTemplateId) {
@@ -6905,17 +6919,59 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       } catch (e) {
         console.error('[Relatório] Erro ao carregar template do projeto:', e);
+        this.unlockProjectTemplateLock();
         return;
       }
     }
 
-    if (!reportTemplateId) return;
+    if (!reportTemplateId) {
+      this.unlockProjectTemplateLock();
+      return;
+    }
 
-    this.selectedTemplateId.setValue(reportTemplateId, { emitEvent: false });
+    const templateName = await this.resolveReportTemplateName(reportTemplateId);
+    this.lockProjectTemplate(reportTemplateId, templateName);
     try {
       await this.aplicarTemplateSelecionado();
     } catch (e) {
       console.error('[Relatório] Erro ao aplicar template do projeto:', e);
+    }
+  }
+
+  private async resolveReportTemplateName(templateId: string): Promise<string> {
+    const cached = this.savedTemplates.find(t => t.id === templateId);
+    if (cached?.name) {
+      return cached.name;
+    }
+
+    try {
+      const templateDoc = await getDoc(doc(this.firestore, 'reportTemplates', templateId));
+      if (templateDoc.exists()) {
+        return templateDoc.data()['name'] || templateDoc.data()['nome'] || 'Template sem nome';
+      }
+    } catch (e) {
+      console.error('[Relatório] Erro ao resolver nome do template:', e);
+    }
+
+    return 'Template do projeto';
+  }
+
+  private lockProjectTemplate(templateId: string, templateName: string): void {
+    this.projectTemplateLocked = true;
+    this.lockedProjectTemplateId = templateId;
+    this.lockedProjectTemplateName = templateName;
+    this.selectedTemplateId.setValue(templateId, { emitEvent: false });
+    if (!this.selectedTemplateId.disabled) {
+      this.selectedTemplateId.disable({ emitEvent: false });
+    }
+  }
+
+  private unlockProjectTemplateLock(): void {
+    this.projectTemplateLocked = false;
+    this.lockedProjectTemplateId = '';
+    this.lockedProjectTemplateName = '';
+    if (this.selectedTemplateId.disabled) {
+      this.selectedTemplateId.enable({ emitEvent: false });
     }
   }
 

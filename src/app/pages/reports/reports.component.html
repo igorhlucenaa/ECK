@@ -496,7 +496,7 @@
         <div class="rp-montar-guide">
           <div class="rp-montar-guide__step">
             <span class="rp-montar-guide__num">1</span>
-            <span class="rp-montar-guide__text">Escolha um template</span>
+            <span class="rp-montar-guide__text">{{ projectTemplateLocked ? 'Template vinculado ao projeto' : 'Escolha um template' }}</span>
           </div>
           <mat-icon class="rp-montar-guide__arrow">chevron_right</mat-icon>
           <div class="rp-montar-guide__step">
@@ -517,27 +517,40 @@
             </div>
             <div>
               <p class="rp-template-active__title">Template ativo</p>
-              <p class="rp-template-active__desc">Selecione um template — a estrutura é aplicada automaticamente</p>
+              <p class="rp-template-active__desc">
+                {{ projectTemplateLocked
+                  ? 'Definido na criação do projeto — não pode ser alterado aqui'
+                  : 'Selecione um template — a estrutura é aplicada automaticamente' }}
+              </p>
             </div>
           </div>
 
           <div class="rp-template-active__chips">
             <mat-chip-set>
+              <mat-chip *ngIf="projectTemplateLocked" class="rp-chip--template">
+                <mat-icon matChipAvatar>bookmark</mat-icon>
+                {{ lockedProjectTemplateName }}
+              </mat-chip>
               <mat-chip *ngIf="builderHasUnsavedChanges" class="rp-chip--warn">
                 <mat-icon matChipAvatar>edit_note</mat-icon>
                 Alterações não salvas
               </mat-chip>
-              <mat-chip *ngIf="nomeTemplateAplicado" class="rp-chip--template">
+              <mat-chip *ngIf="!projectTemplateLocked && nomeTemplateAplicado" class="rp-chip--template">
                 <mat-icon matChipAvatar>check_circle</mat-icon>
                 {{ nomeTemplateAplicado }}
               </mat-chip>
-              <mat-chip *ngIf="!nomeTemplateAplicado && !builderHasUnsavedChanges" class="rp-chip--muted">
+              <mat-chip *ngIf="!projectTemplateLocked && !nomeTemplateAplicado && !builderHasUnsavedChanges" class="rp-chip--muted">
                 Nenhum template aplicado
               </mat-chip>
             </mat-chip-set>
           </div>
 
-          <mat-form-field appearance="outline" class="rp-template-active__field">
+          <div class="rp-template-linked" *ngIf="projectTemplateLocked">
+            <mat-icon>link</mat-icon>
+            <span>Template do projeto <strong>{{ getFilterProjectLabel() }}</strong>: {{ lockedProjectTemplateName }}</span>
+          </div>
+
+          <mat-form-field appearance="outline" class="rp-template-active__field" *ngIf="!projectTemplateLocked">
             <mat-label>Template</mat-label>
             <mat-select [formControl]="selectedTemplateId">
               <mat-option *ngFor="let template of savedTemplates" [value]="template.id">

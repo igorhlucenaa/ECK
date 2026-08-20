@@ -2618,6 +2618,27 @@ ngx-charts-bar-horizontal,
   }
 }
 
+.rp-template-linked {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 13px;
+  line-height: 1.45;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+  }
+}
+
 .rp-chip--warn {
   --mdc-chip-elevated-container-color: #fff7ed;
   --mdc-chip-label-text-color: #c2410c;

@@ -2,7 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, doc, getDoc, getDocs, query, where } from '@angular/fire/firestore';
 import { MaterialModule } from 'src/app/material.module';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -120,16 +120,24 @@ export class ProjectExportDialogComponent implements OnInit {
     return this.visibleExportOptions.find(o => o.id === this.selectedAction);
   }
 
-  /** Template vinculado ao projeto e encontrado na lista do cliente. */
+  /** Template vinculado ao projeto (fixo na criação do projeto). */
   get linkedTemplate(): ReportTemplateOption | undefined {
     if (!this.data.reportTemplateId) return undefined;
     return this.reportTemplates.find(t => t.id === this.data.reportTemplateId);
   }
 
-  /** Exibe seletor só quando PDF/DOCX precisam de template e o projeto não tem um válido. */
+  get hasProjectTemplateId(): boolean {
+    return !!this.data.reportTemplateId;
+  }
+
+  /** Seletor manual só quando o projeto não possui template vinculado. */
   get showTemplateField(): boolean {
     if (!this.templateRequiredForAction) return false;
-    return !this.linkedTemplate;
+    return !this.hasProjectTemplateId;
+  }
+
+  get projectTemplateMissing(): boolean {
+    return this.hasProjectTemplateId && !this.linkedTemplate;
   }
 
   get templateRequiredForAction(): boolean {
@@ -143,12 +151,16 @@ export class ProjectExportDialogComponent implements OnInit {
   }
 
   get resolvedTemplateId(): string {
-    if (this.linkedTemplate) return this.linkedTemplate.id;
+    if (this.data.reportTemplateId) return this.data.reportTemplateId;
     return this.templateControl.value || '';
   }
 
   isExportOptionDisabled(opt: ExportOption): boolean {
-    return opt.requiresTemplate && !this.resolvedTemplateId && this.reportTemplates.length === 0;
+    if (!opt.requiresTemplate) return false;
+    if (this.hasProjectTemplateId) {
+      return this.projectTemplateMissing;
+    }
+    return !this.resolvedTemplateId && this.reportTemplates.length === 0;
   }
 
   selectAction(action: ProjectExportAction): void {
@@ -174,11 +186,22 @@ export class ProjectExportDialogComponent implements OnInit {
         }))
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
-      const defaultId = this.data.reportTemplateId || '';
-      if (defaultId && this.reportTemplates.some(t => t.id === defaultId)) {
-        this.templateControl.setValue(defaultId);
-      } else if (this.reportTemplates.length === 1) {
-        this.templateControl.setValue(this.reportTemplates[0].id);
+      if (this.data.reportTemplateId && !this.reportTemplates.some(t => t.id === this.data.reportTemplateId)) {
+        try {
+          const templateDoc = await getDoc(doc(this.firestore, 'reportTemplates', this.data.reportTemplateId));
+          if (templateDoc.exists()) {
+            this.reportTemplates.push({
+              id: templateDoc.id,
+              name: templateDoc.data()['name'] || templateDoc.data()['nome'] || 'Template sem nome',
+            });
+          }
+        } catch {
+          // Mantém aviso de template ausente no modal.
+        }
+      }
+
+      if (this.data.reportTemplateId) {
+        this.templateControl.setValue(this.data.reportTemplateId, { emitEvent: false });
       }
 
       if (this.templateRequiredForAction && this.showTemplateField) {

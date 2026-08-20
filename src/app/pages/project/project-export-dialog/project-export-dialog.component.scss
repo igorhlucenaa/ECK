@@ -161,6 +161,12 @@
     height: 18px;
     margin-top: 1px;
   }
+
+  &--warn {
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #9a3412;
+  }
 }
 
 .ped-step {

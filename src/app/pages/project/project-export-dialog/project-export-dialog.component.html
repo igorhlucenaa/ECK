@@ -24,7 +24,7 @@
         <span class="ped-project-strip__name">{{ data.projectName }}</span>
         <span class="ped-project-strip__meta">{{ data.clientName }}</span>
       </div>
-      <span class="ped-badge ped-badge--template" *ngIf="linkedTemplate">
+      <span class="ped-badge ped-badge--template" *ngIf="hasProjectTemplateId && linkedTemplate">
         <mat-icon>bookmark</mat-icon>
         {{ linkedTemplate.name }}
       </span>
@@ -32,9 +32,14 @@
 
     <p class="ped-error" *ngIf="loadError">{{ loadError }}</p>
 
-    <div class="ped-linked-template" *ngIf="linkedTemplate && !showTemplateField && templateRequiredForAction">
+    <div class="ped-linked-template" *ngIf="hasProjectTemplateId && linkedTemplate && templateRequiredForAction">
       <mat-icon>description</mat-icon>
       <span>Template do projeto: <strong>{{ linkedTemplate.name }}</strong> — definido na criação do projeto.</span>
+    </div>
+
+    <div class="ped-linked-template ped-linked-template--warn" *ngIf="projectTemplateMissing && templateRequiredForAction">
+      <mat-icon>warning</mat-icon>
+      <span>O template vinculado a este projeto não foi encontrado. Atualize o projeto ou crie o template em Relatórios.</span>
     </div>
 
     <!-- Template (somente se o projeto não tiver template vinculado) -->
