@@ -21,5 +21,7 @@ export const environment = {
       'https://us-central1-pwa-workana.cloudfunctions.net/getReportDocxExportStatus',
     downloadReportDocxExportUrl:
       'https://us-central1-pwa-workana.cloudfunctions.net/downloadReportDocxExport',
+    notifyReportReleasedUrl:
+      'https://us-central1-pwa-workana.cloudfunctions.net/notifyReportReleased',
   },
 };

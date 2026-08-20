@@ -17,6 +17,7 @@ import {
   processReportDocxExportHttp,
   processReportDocxExportJob,
 } from './docx-export/handlers.js';
+import { notifyReportReleased } from './report-release-notify.js';
 
 export {
   createReportDocxExport,
@@ -24,6 +25,7 @@ export {
   getReportDocxExportStatus,
   processReportDocxExportHttp,
   processReportDocxExportJob,
+  notifyReportReleased,
 };
 
 const PdfPrinter = require('pdfmake/js/Printer').default as {

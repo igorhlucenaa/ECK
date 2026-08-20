@@ -166,14 +166,19 @@ export class EmailTemplateFormComponent implements OnInit {
     'lembreteAvaliador',
     'lembreteRespondente',
     'relatorioFinalizado',
+    'relatorioFinalizadoEquipe',
   ]);
 
   private usesDefaultTemplate(emailType: string | null | undefined): boolean {
     return !!emailType && this.defaultTemplateEmailTypes.has(emailType);
   }
 
+  private usesReportLink(emailType: string | null | undefined): boolean {
+    return emailType === 'relatorioFinalizado' || emailType === 'relatorioFinalizadoEquipe';
+  }
+
   private getLinkPlaceholder(emailType: string): string {
-    return emailType === 'relatorioFinalizado' ? '[LINK_RELATORIO]' : '[LINK_AVALIACAO]';
+    return this.usesReportLink(emailType) ? '[LINK_RELATORIO]' : '[LINK_AVALIACAO]';
   }
 
   private async loadDefaultDesignIfNeeded(emailType: string | null | undefined): Promise<void> {
@@ -233,6 +238,9 @@ export class EmailTemplateFormComponent implements OnInit {
 <p>Não se esqueça de preenchê-la até <strong>{{data_expiracao}}</strong>!</p>`;
     } else if (emailType === 'relatorioFinalizado') {
       message = `<p>Seu relatório foi finalizado!\n\n\n Acesse o relatório clicando no link abaixo:</p>`;
+    } else if (emailType === 'relatorioFinalizadoEquipe') {
+      message = `<p>O relatório de <strong>{{nome_avaliado}}</strong> no projeto <strong>{{nome_projeto}}</strong> foi finalizado.</p>
+<p>Acesse o relatório clicando no link abaixo:</p>`;
     }
 
     return {
@@ -279,7 +287,7 @@ export class EmailTemplateFormComponent implements OnInit {
 
     const emailType = this.form.get('emailType')?.value;
     const linkPlaceholder =
-      emailType === 'relatorioFinalizado'
+      this.usesReportLink(emailType)
         ? '<p><a href="[LINK_RELATORIO]">Clique aqui para acessar o relatório!</a></p>'
         : emailType === 'cadastro'
           ? '<p><a href="[LINK_AVALIACAO]">Clique aqui para concluir seu cadastro!</a></p>'
@@ -313,8 +321,8 @@ export class EmailTemplateFormComponent implements OnInit {
                   type: 'text',
                   values: {
                     text:
-                      emailType === 'relatorioFinalizado'
-                        ? 'Acesse seu relatório aqui: ' + linkPlaceholder
+                      this.usesReportLink(emailType)
+                        ? 'Acesse o relatório aqui: ' + linkPlaceholder
                         : emailType === 'cadastro'
                           ? 'Acesse sua conta aqui: ' + linkPlaceholder
                           : 'Acesse sua avaliação aqui: ' + linkPlaceholder,
@@ -447,8 +455,8 @@ export class EmailTemplateFormComponent implements OnInit {
         design = design.replace(
           '</body>',
           `<p>Acesse ${
-            emailType === 'relatorioFinalizado'
-              ? 'seu relatório'
+            this.usesReportLink(emailType)
+              ? 'o relatório'
               : emailType === 'cadastro'
                 ? 'sua conta'
                 : 'sua avaliação'
@@ -535,6 +543,8 @@ export class EmailTemplateFormComponent implements OnInit {
         return 'Lembrete - Avaliado';
       case 'relatorioFinalizado':
         return 'Relatório Finalizado';
+      case 'relatorioFinalizadoEquipe':
+        return 'Relatório Finalizado - Equipe';
       default:
         return emailType;
     }

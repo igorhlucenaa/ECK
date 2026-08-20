@@ -484,6 +484,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
       lembreteAvaliador: 'type-lembrete',
       lembreteRespondente: 'type-lembrete',
       relatorioFinalizado: 'type-relatorio',
+      relatorioFinalizadoEquipe: 'type-relatorio',
     };
     return map[emailType] || 'type-default';
   }
@@ -510,6 +511,8 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         return 'Lembrete - Avaliado';
       case 'relatorioFinalizado':
         return 'Relatório Finalizado';
+      case 'relatorioFinalizadoEquipe':
+        return 'Relatório Finalizado - Equipe';
       default:
         return emailType;
     }

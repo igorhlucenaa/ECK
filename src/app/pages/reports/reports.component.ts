@@ -770,6 +770,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   projectHasLinkedTemplate: boolean | null = null;
   /** Evita auto-seleção de avaliação enquanto query params de projeto estão sendo aplicados. */
   private pendingQueryProjectId: string | null = null;
+  private pendingAvaliadoFromQuery: string | null = null;
   /** Sentinel em pendingQueryProjectId durante export ZIP multi-projeto. */
   private static readonly CLIENT_BATCH_QUERY_SENTINEL = '__clientBatch__';
   /** Evita reentrada do handler de query params (ex.: ao limpar params do batch). */
@@ -1445,6 +1446,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if (projectIdParam) {
           await this.initializeReportFromProject(projectIdParam, params['templateId']);
+          const avaliadoParam = params['avaliado'] as string | undefined;
+          if (avaliadoParam && this.avaliadosDisponiveis.includes(avaliadoParam)) {
+            this.selectedAvaliado = avaliadoParam;
+            this.avaliadoControl.setValue(avaliadoParam, { emitEvent: false });
+          } else if (avaliadoParam) {
+            this.pendingAvaliadoFromQuery = avaliadoParam;
+          }
           if (exportAction && exportAction !== 'openReports') {
             await this.executeProjectExportAction(exportAction);
           } else if (params['templateId'] || exportAction === 'openReports') {
@@ -2147,6 +2155,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Carregar avaliados disponíveis após processar os dados
     this.avaliadosDisponiveis = this.getAvaliadosDisponiveis();
+    if (this.pendingAvaliadoFromQuery && this.avaliadosDisponiveis.includes(this.pendingAvaliadoFromQuery)) {
+      this.selectedAvaliado = this.pendingAvaliadoFromQuery;
+      this.avaliadoControl.setValue(this.pendingAvaliadoFromQuery, { emitEvent: false });
+      this.pendingAvaliadoFromQuery = null;
+    }
     this.updateSelectedAvaliadoParticipantId();
 
     // Viewer/admin_client: carregar snapshot e ir direto para Visualizar
@@ -7439,8 +7452,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
+      const isFirstRelease = this.selectedAvaliadoReleaseStatus !== 'released';
       // Marcar participantes do avaliado (deste projeto) como released
       const selectedProjectId = this.filterProjectControl.value;
+      const participantId = this.getParticipantIdByName(avaliadoName);
       const rows = this.dataSource.filter(r =>
         r.avaliado === avaliadoName &&
         (!selectedProjectId || !r['projectId'] || r['projectId'] === selectedProjectId)
@@ -7456,6 +7471,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         clientId,
         assessmentId: this.selectedAssessmentId,
         avaliadoName,
+        projectId: selectedProjectId || null,
+        participantId: participantId || null,
         releasedAt: new Date(),
         revoked: false,
         competencias: sanitize(this.competencias),
@@ -7472,11 +7489,99 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         row.avaliado === avaliadoName ? { ...row, reportStatus: 'released' } : row
       );
 
-      this.snackBar.open(this.t('Relatório publicado com sucesso.'), this.t('Fechar'), { duration: 3000 });
+      if (isFirstRelease) {
+        await this.sendReportReleasedNotifications({
+          clientId,
+          assessmentId: this.selectedAssessmentId,
+          avaliadoName,
+          projectId: selectedProjectId || undefined,
+          participantId: participantId || undefined,
+          snapshotId,
+        });
+      } else {
+        this.snackBar.open(this.t('Relatório publicado com sucesso.'), this.t('Fechar'), { duration: 3000 });
+      }
       this.cdr.markForCheck();
     } catch (error) {
       console.error('Erro ao publicar relatório:', error);
       this.snackBar.open(this.t('Erro ao publicar relatório.'), this.t('Fechar'), { duration: 3000 });
+    }
+  }
+
+  private async sendReportReleasedNotifications(payload: {
+    clientId: string;
+    assessmentId: string;
+    avaliadoName: string;
+    projectId?: string;
+    participantId?: string;
+    snapshotId: string;
+  }): Promise<void> {
+    try {
+      const { environment } = await import('src/enviroments/environment');
+      const response = await fetch(environment.functions.notifyReportReleasedUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result?.error || 'Falha ao enviar notificações.');
+      }
+
+      if (result.skipped) {
+        this.snackBar.open(this.t('Relatório publicado com sucesso.'), this.t('Fechar'), { duration: 3000 });
+        return;
+      }
+
+      const missing: string[] = Array.isArray(result.missingTemplates) ? result.missingTemplates : [];
+      const errors: string[] = Array.isArray(result.errors) ? result.errors : [];
+      const participantSent = !!result.participantSent;
+      const teamSent = Number(result.teamSent) || 0;
+
+      if (missing.length >= 2) {
+        this.snackBar.open(
+          this.t('Relatório publicado. Cadastre os templates Relatório Finalizado e Relatório Finalizado - Equipe para enviar notificações.'),
+          this.t('Fechar'),
+          { duration: 6000 }
+        );
+      } else if (missing.length === 1) {
+        const label = missing[0] === 'relatorioFinalizadoEquipe'
+          ? 'Relatório Finalizado - Equipe'
+          : 'Relatório Finalizado';
+        this.snackBar.open(
+          this.t('Relatório publicado. Cadastre o template {{template}} para completar as notificações.').replace('{{template}}', this.t(label)),
+          this.t('Fechar'),
+          { duration: 6000 }
+        );
+      } else if (errors.length > 0 && !participantSent && teamSent === 0) {
+        this.snackBar.open(
+          this.t('Relatório publicado, mas as notificações por e-mail falharam.'),
+          this.t('Fechar'),
+          { duration: 5000 }
+        );
+      } else if (errors.length > 0) {
+        this.snackBar.open(
+          this.t('Relatório publicado. Algumas notificações por e-mail não foram enviadas.'),
+          this.t('Fechar'),
+          { duration: 5000 }
+        );
+      } else if (participantSent || teamSent > 0) {
+        this.snackBar.open(
+          this.t('Relatório publicado. Notificações enviadas ao avaliado e à equipe do projeto.'),
+          this.t('Fechar'),
+          { duration: 4000 }
+        );
+      } else {
+        this.snackBar.open(this.t('Relatório publicado com sucesso.'), this.t('Fechar'), { duration: 3000 });
+      }
+    } catch (error) {
+      console.error('Erro ao notificar relatório publicado:', error);
+      this.snackBar.open(
+        this.t('Relatório publicado, mas houve falha ao enviar as notificações por e-mail.'),
+        this.t('Fechar'),
+        { duration: 5000 }
+      );
     }
   }
 

@@ -24,5 +24,6 @@ export const environment = {
     createReportDocxExportUrl: `${functionsBaseUrl}/createReportDocxExport`,
     getReportDocxExportStatusUrl: `${functionsBaseUrl}/getReportDocxExportStatus`,
     downloadReportDocxExportUrl: `${functionsBaseUrl}/downloadReportDocxExport`,
+    notifyReportReleasedUrl: `${functionsBaseUrl}/notifyReportReleased`,
   },
 };
