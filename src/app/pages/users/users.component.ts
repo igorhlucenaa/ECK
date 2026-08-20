@@ -51,6 +51,14 @@ export interface User {
   blocked: boolean;
 }
 
+export function getNotificationStatusLabelKey(
+  status: User['notificationStatus'] | string | undefined | null
+): string {
+  if (status === 'Acessou') return 'users.notificationStatus.registered';
+  if (status === 'Link Enviado') return 'users.notificationStatus.linkSent';
+  return 'users.notificationStatus.pending';
+}
+
 export interface UserGroup {
   id: any;
   name: string;
@@ -69,6 +77,8 @@ export interface UserGroup {
   styleUrls: ['./users.component.scss'],
 })
 export class UsersComponent implements OnInit, AfterViewInit {
+  readonly getNotificationStatusLabelKey = getNotificationStatusLabelKey;
+
   // Tabela de usuários
   displayedUserColumns: string[] = [
     'name',

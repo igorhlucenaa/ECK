@@ -266,7 +266,7 @@
                     user.notificationStatus === 'Link Enviado' ? 'mark_email_read' :
                     'schedule'
                   }}</mat-icon>
-                  {{ user.notificationStatus }}
+                  {{ getNotificationStatusLabelKey(user.notificationStatus) | translate }}
                 </span>
               </td>
             </ng-container>

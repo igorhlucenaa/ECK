@@ -4,13 +4,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { Router } from '@angular/router';
-import { User } from '../users.component';
+import { User, getNotificationStatusLabelKey } from '../users.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-user-details-dialog',
   standalone: true,
   encapsulation: ViewEncapsulation.None,
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, TranslateModule],
   template: `
     <div class="udlg">
 
@@ -81,7 +82,7 @@ import { User } from '../users.component';
                 data.notificationStatus === 'Link Enviado' ? 'mark_email_read' :
                 'schedule'
               }}</mat-icon>
-              {{ data.notificationStatus || 'Pendente' }}
+              {{ getNotificationStatusLabelKey(data.notificationStatus) | translate }}
             </span>
           </div>
         </div>
@@ -274,6 +275,8 @@ import { User } from '../users.component';
   `],
 })
 export class UserDetailsDialogComponent {
+  readonly getNotificationStatusLabelKey = getNotificationStatusLabelKey;
+
   constructor(
     public dialogRef: MatDialogRef<UserDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: User,
