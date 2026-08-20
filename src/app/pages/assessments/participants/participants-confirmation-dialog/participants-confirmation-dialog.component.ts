@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MaterialModule } from 'src/app/material.module';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
+import { getCargoSetorDisplay } from 'src/app/utils/participant-cargo.utils';
 
 @Component({
   selector: 'app-participants-confirmation-dialog',
@@ -110,6 +111,10 @@ export class ParticipantsConfirmationDialogComponent implements OnInit {
       avaliados: this.data.participants.filter(p => p.type === 'avaliado').length,
       avaliadores: this.data.participants.filter(p => p.type === 'avaliador').length,
     };
+  }
+
+  getParticipantCargoSetor(participant: { cargo?: string; setor?: string }): string {
+    return getCargoSetorDisplay(participant.cargo, participant.setor);
   }
 
   confirmSelection(): void {

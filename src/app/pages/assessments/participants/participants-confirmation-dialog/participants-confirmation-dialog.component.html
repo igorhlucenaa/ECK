@@ -116,8 +116,8 @@
           <ng-container matColumnDef="cargo">
             <th mat-header-cell *matHeaderCellDef>Cargo / Setor</th>
             <td mat-cell *matCellDef="let p">
-              <span *ngIf="p.cargo || p.setor">{{ p.cargo }}{{ p.cargo && p.setor ? ' · ' : '' }}{{ p.setor }}</span>
-              <span *ngIf="!p.cargo && !p.setor" class="pcd__muted">—</span>
+              <span *ngIf="getParticipantCargoSetor(p) as cargoSetor">{{ cargoSetor }}</span>
+              <span *ngIf="!getParticipantCargoSetor(p)" class="pcd__muted">—</span>
             </td>
           </ng-container>
 

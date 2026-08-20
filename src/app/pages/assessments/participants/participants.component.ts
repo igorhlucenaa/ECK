@@ -52,6 +52,11 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ProjectService } from 'src/app/services/project.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 import { ParticipantCreditService } from 'src/app/services/participant-credit.service';
+import {
+  appendCargoSetorFields,
+  getCargoSetorDisplay,
+  parseCargoSetorFromExcelRow,
+} from 'src/app/utils/participant-cargo.utils';
 import { HasPermissionDirective } from 'src/app/directives/has-permission.directive';
 import { hasPermission, AppRole } from 'src/app/config/permissions.config';
 import { Auth, sendPasswordResetEmail, ActionCodeSettings } from '@angular/fire/auth';
@@ -1725,6 +1730,10 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     });
   }
 
+  getParticipantCargoSetor(participant: { cargo?: string; setor?: string }): string {
+    return getCargoSetorDisplay(participant.cargo, participant.setor);
+  }
+
   downloadTemplate(): void {
     const link = document.createElement('a');
     link.href = 'assets/templates/Modelo_Avaliacao_360.xlsx';
@@ -1754,16 +1763,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         if (!Array.isArray(row) || row.length < 4 || !row[1] || !row[2] || !row[3]) continue;
         const category = row[3]?.toString().trim() || '';
         const type = category === 'Avaliado' ? 'avaliado' : 'avaliador';
-        const cargo = row[4]?.toString().trim() || '';
-        const setor = row[5]?.toString().trim() || '';
         const participant: any = {
           name: row[1]?.toString().trim() || '',
           email: row[2]?.toString().trim() || '',
           category,
           type,
+          ...parseCargoSetorFromExcelRow(row),
         };
-        if (cargo) participant['cargo'] = cargo;
-        if (setor) participant['setor'] = setor;
         participants.push(participant);
       }
 
@@ -1833,8 +1839,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
                 assessments: result.evaluation ? [result.evaluation] : [],
               }
             );
-            if (participant.cargo) baseFields['cargo'] = participant.cargo;
-            if (participant.setor) baseFields['setor'] = participant.setor;
+            appendCargoSetorFields(baseFields, participant);
 
             if (participant.category === 'Avaliado') {
               const evaluateeId = await this.participantCreditService.createEvaluateeWithCredit(
@@ -1945,6 +1950,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         email: participant.email,
         category: participant.category,
         type: participant.type,
+        cargo: participant.cargo,
+        setor: participant.setor,
         canSelectAvaliado: evaluateeCheck.valid,
         existingEvaluateeName: evaluateeCheck.existingEvaluateeName,
       },
@@ -1999,7 +2006,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   private async saveParticipantEdit(
     participant: UnifiedParticipant,
-    result: { name: string; email: string; category: string; type: 'avaliado' | 'avaliador' }
+    result: {
+      name: string;
+      email: string;
+      category: string;
+      type: 'avaliado' | 'avaliador';
+      cargo?: string;
+    }
   ): Promise<void> {
     const participantRef = doc(this.firestore, `participants/${participant.id}`);
     const oldType = participant.type;
@@ -2022,12 +2035,28 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         updates['category'] = result.category;
         updates['type'] = result.type;
       }
-      if (!Object.keys(updates).length) return;
 
-      await updateDoc(participantRef, updates);
-      if (updates['name']) participant.name = result.name;
-      if (updates['email']) participant.email = result.email;
-      if (categoryChanged) participant.category = result.category;
+      if (Object.keys(updates).length) {
+        await updateDoc(participantRef, updates);
+        if (updates['name']) participant.name = result.name;
+        if (updates['email']) participant.email = result.email;
+        if (categoryChanged) participant.category = result.category;
+      }
+    }
+
+    const cargoUpdates: Record<string, any> = {};
+    const previousCargoSetor = getCargoSetorDisplay(participant.cargo, participant.setor);
+    const nextCargoSetor = result.cargo || '';
+    if (nextCargoSetor !== previousCargoSetor) {
+      cargoUpdates['cargo'] = nextCargoSetor || deleteField();
+      if (participant.setor) {
+        cargoUpdates['setor'] = deleteField();
+      }
+    }
+    if (Object.keys(cargoUpdates).length) {
+      await updateDoc(participantRef, cargoUpdates);
+      participant.cargo = result.cargo;
+      participant.setor = undefined;
     }
 
     if (typeChanged) {

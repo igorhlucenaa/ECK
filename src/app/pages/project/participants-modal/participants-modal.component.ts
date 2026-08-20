@@ -40,6 +40,10 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 import { ParticipantCreditService } from 'src/app/services/participant-credit.service';
+import {
+  appendCargoSetorFields,
+  parseCargoSetorFromExcelRow,
+} from 'src/app/utils/participant-cargo.utils';
 
 interface ModalData {
   projectId: string;
@@ -1164,6 +1168,7 @@ export class ParticipantsModalComponent implements OnInit {
           email: row[2]?.toString().trim() || '',
           category,
           type,
+          ...parseCargoSetorFromExcelRow(row),
         });
       }
 
@@ -1233,6 +1238,7 @@ export class ParticipantsModalComponent implements OnInit {
                   projectId: result.project,
                 }
               );
+              appendCargoSetorFields(baseFields, participant);
 
               if (participant.category === 'Avaliado') {
                 const evaluateeId = await this.participantCreditService.createEvaluateeWithCredit(
