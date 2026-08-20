@@ -167,6 +167,16 @@
     border-color: #fed7aa;
     color: #9a3412;
   }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__action {
+    align-self: flex-start;
+  }
 }
 
 .ped-step {

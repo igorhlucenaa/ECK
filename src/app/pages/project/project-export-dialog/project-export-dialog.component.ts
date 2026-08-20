@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { Firestore, collection, doc, getDoc, getDocs, query, where } from '@angular/fire/firestore';
 import { MaterialModule } from 'src/app/material.module';
 import { TranslateModule } from '@ngx-translate/core';
@@ -45,12 +45,11 @@ interface ExportOption {
 @Component({
   selector: 'app-project-export-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MaterialModule, TranslateModule],
+  imports: [CommonModule, MaterialModule, TranslateModule],
   templateUrl: './project-export-dialog.component.html',
   styleUrls: ['./project-export-dialog.component.scss'],
 })
 export class ProjectExportDialogComponent implements OnInit {
-  templateControl = new FormControl<string>('', { nonNullable: true });
   selectedAction: ProjectExportAction = 'individualPdf';
 
   reportTemplates: ReportTemplateOption[] = [];
@@ -105,7 +104,8 @@ export class ProjectExportDialogComponent implements OnInit {
   constructor(
     public dialogRef: MatDialogRef<ProjectExportDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ProjectExportDialogData,
-    private firestore: Firestore
+    private firestore: Firestore,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -130,14 +130,12 @@ export class ProjectExportDialogComponent implements OnInit {
     return !!this.data.reportTemplateId;
   }
 
-  /** Seletor manual só quando o projeto não possui template vinculado. */
-  get showTemplateField(): boolean {
-    if (!this.templateRequiredForAction) return false;
-    return !this.hasProjectTemplateId;
-  }
-
   get projectTemplateMissing(): boolean {
     return this.hasProjectTemplateId && !this.linkedTemplate;
+  }
+
+  get projectNeedsTemplateSetup(): boolean {
+    return !this.hasProjectTemplateId;
   }
 
   get templateRequiredForAction(): boolean {
@@ -146,25 +144,39 @@ export class ProjectExportDialogComponent implements OnInit {
 
   get canConfirm(): boolean {
     if (this.isLoading) return false;
-    if (this.templateRequiredForAction && !this.resolvedTemplateId) return false;
-    return !!this.selectedAction;
+    const opt = this.selectedOption;
+    if (!opt || this.isExportOptionDisabled(opt)) return false;
+    return true;
   }
 
   get resolvedTemplateId(): string {
-    if (this.data.reportTemplateId) return this.data.reportTemplateId;
-    return this.templateControl.value || '';
+    return this.data.reportTemplateId || '';
   }
 
   isExportOptionDisabled(opt: ExportOption): boolean {
     if (!opt.requiresTemplate) return false;
-    if (this.hasProjectTemplateId) {
-      return this.projectTemplateMissing;
-    }
-    return !this.resolvedTemplateId && this.reportTemplates.length === 0;
+    if (!this.hasProjectTemplateId) return true;
+    return this.projectTemplateMissing;
   }
 
   selectAction(action: ProjectExportAction): void {
+    const opt = this.visibleExportOptions.find(o => o.id === action);
+    if (opt && this.isExportOptionDisabled(opt)) return;
     this.selectedAction = action;
+  }
+
+  editProject(): void {
+    this.dialogRef.close();
+    void this.router.navigate([`/projects/${this.data.projectId}/edit`], {
+      queryParams: { clientId: this.data.clientId },
+    });
+  }
+
+  private selectFirstEnabledAction(): void {
+    const fallback = this.visibleExportOptions.find(o => !this.isExportOptionDisabled(o));
+    if (fallback) {
+      this.selectedAction = fallback.id;
+    }
   }
 
   private async loadTemplates(): Promise<void> {
@@ -200,26 +212,15 @@ export class ProjectExportDialogComponent implements OnInit {
         }
       }
 
-      if (this.data.reportTemplateId) {
-        this.templateControl.setValue(this.data.reportTemplateId, { emitEvent: false });
+      if (this.projectNeedsTemplateSetup || this.projectTemplateMissing) {
+        this.selectFirstEnabledAction();
       }
-
-      if (this.templateRequiredForAction && this.showTemplateField) {
-        this.templateControl.setValidators([Validators.required]);
-      } else {
-        this.templateControl.clearValidators();
-      }
-      this.templateControl.updateValueAndValidity({ emitEvent: false });
     } catch {
       this.loadError = 'Erro ao carregar templates de relatório.';
     } finally {
       this.isLoading = false;
-
-      if (this.reportTemplates.length === 0) {
-        const fallback = this.visibleExportOptions.find(o => !o.requiresTemplate);
-        if (fallback) {
-          this.selectedAction = fallback.id;
-        }
+      if (this.projectNeedsTemplateSetup || this.projectTemplateMissing) {
+        this.selectFirstEnabledAction();
       }
     }
   }
@@ -232,7 +233,7 @@ export class ProjectExportDialogComponent implements OnInit {
     };
 
     const templateId = this.resolvedTemplateId;
-    if (templateId && (this.templateRequiredForAction || this.selectedAction === 'openReports')) {
+    if (templateId && this.templateRequiredForAction) {
       result.templateId = templateId;
     }
 

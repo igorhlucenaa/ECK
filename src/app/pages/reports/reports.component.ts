@@ -766,6 +766,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   projectTemplateLocked = false;
   lockedProjectTemplateId = '';
   lockedProjectTemplateName = '';
+  /** null = sem projeto; true = com template; false = projeto legado sem template. */
+  projectHasLinkedTemplate: boolean | null = null;
   /** Evita auto-seleção de avaliação enquanto query params de projeto estão sendo aplicados. */
   private pendingQueryProjectId: string | null = null;
   /** Sentinel em pendingQueryProjectId durante export ZIP multi-projeto. */
@@ -821,6 +823,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get canExportDocx(): boolean {
     return this.currentUserRole === 'admin_master';
+  }
+
+  get canExportFormattedReport(): boolean {
+    return this.projectHasLinkedTemplate !== false;
+  }
+
+  get showProjectTemplateSetupWarning(): boolean {
+    return !this.isIndividualMode
+      && !!this.filterProjectControl.value
+      && this.projectHasLinkedTemplate === false;
   }
 
   get canReleaseReport(): boolean {
@@ -1600,7 +1612,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           this.filterProjectControl.setValue('', { emitEvent: false });
           this.projectSelectionRequired = false;
           this.projectAutoDeduced = false;
-          this.unlockProjectTemplateLock();
+          this.resetProjectTemplateState();
           this.projectsForAssessment = [];
           this.dataSource = [];
           this.competencias = [];
@@ -6741,10 +6753,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedClientId = clientId || null;
     this.selectedReportId.setValue('', { emitEvent: false });
     this.selectedTemplateId.setValue('', { emitEvent: false });
-    this.unlockProjectTemplateLock();
+    this.resetProjectTemplateState();
     this.projectSelectionRequired = false;
     this.projectAutoDeduced = false;
-    this.unlockProjectTemplateLock();
     this.projectsForAssessment = [];
     this.clientAssessments = [];
 
@@ -6855,6 +6866,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.savedReports = [];
     this.savedTemplates = [];
     this.competencyGroups = [];
+    this.resetProjectTemplateState();
     this.assessmentControl.setValue('', { emitEvent: false });
     this.assessmentSearchControl.setValue('', { emitEvent: false });
     this.avaliadoControl.setValue('', { emitEvent: false });
@@ -6873,6 +6885,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   async onFilterProjectChange(): Promise<void> {
     const projectId = this.filterProjectControl.value;
     if (!projectId) {
+      this.resetProjectTemplateState();
       this.cdr.markForCheck();
       return;
     }
@@ -6906,9 +6919,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Pré-seleciona o template de relatório vinculado ao projeto (campo opcional). */
   private async applyProjectReportTemplate(projectId: string): Promise<void> {
     if (!projectId) {
-      this.unlockProjectTemplateLock();
+      this.resetProjectTemplateState();
       return;
     }
+
+    this.projectHasLinkedTemplate = null;
 
     let reportTemplateId = this.filterProjects.find(p => p.id === projectId)?.reportTemplateId;
     if (!reportTemplateId) {
@@ -6919,17 +6934,34 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       } catch (e) {
         console.error('[Relatório] Erro ao carregar template do projeto:', e);
+        this.projectHasLinkedTemplate = false;
         this.unlockProjectTemplateLock();
         return;
       }
     }
 
     if (!reportTemplateId) {
+      this.projectHasLinkedTemplate = false;
+      this.unlockProjectTemplateLock();
+      return;
+    }
+
+    try {
+      const templateSnap = await getDoc(doc(this.firestore, 'reportTemplates', reportTemplateId));
+      if (!templateSnap.exists()) {
+        this.projectHasLinkedTemplate = false;
+        this.unlockProjectTemplateLock();
+        return;
+      }
+    } catch (e) {
+      console.error('[Relatório] Erro ao validar template do projeto:', e);
+      this.projectHasLinkedTemplate = false;
       this.unlockProjectTemplateLock();
       return;
     }
 
     const templateName = await this.resolveReportTemplateName(reportTemplateId);
+    this.projectHasLinkedTemplate = true;
     this.lockProjectTemplate(reportTemplateId, templateName);
     try {
       await this.aplicarTemplateSelecionado();
@@ -6973,6 +7005,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.selectedTemplateId.disabled) {
       this.selectedTemplateId.enable({ emitEvent: false });
     }
+  }
+
+  private resetProjectTemplateState(): void {
+    this.projectHasLinkedTemplate = null;
+    this.unlockProjectTemplateLock();
+  }
+
+  goToEditSelectedProject(): void {
+    const projectId = this.filterProjectControl.value;
+    const clientId = this.filterClientControl.value;
+    if (!projectId) return;
+
+    void this.router.navigate([`/projects/${projectId}/edit`], {
+      queryParams: clientId ? { clientId } : undefined,
+    });
   }
 
   /** Inicializa filtros e dados a partir do projeto (ex.: botão Gerar Relatório na lista). */
@@ -7050,6 +7097,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
         this.exportarBaseExcel();
+        return;
+      }
+
+      if (['individualPdf', 'docx', 'batchPdf'].includes(action) && this.projectHasLinkedTemplate === false) {
+        this.snackBar.open(
+          this.t('Este projeto não possui template de relatório vinculado. Edite o projeto e selecione um template.'),
+          this.t('Fechar'),
+          { duration: 5000 }
+        );
         return;
       }
 

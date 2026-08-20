@@ -550,7 +550,25 @@
             <span>Template do projeto <strong>{{ getFilterProjectLabel() }}</strong>: {{ lockedProjectTemplateName }}</span>
           </div>
 
-          <mat-form-field appearance="outline" class="rp-template-active__field" *ngIf="!projectTemplateLocked">
+          <div class="rp-template-linked rp-template-linked--warn" *ngIf="projectHasLinkedTemplate === false">
+            <mat-icon>warning</mat-icon>
+            <div class="rp-template-linked__content">
+              <span>Este projeto não possui template de relatório vinculado. Edite o projeto e selecione um template para habilitar PDF e DOCX.</span>
+              <button
+                *ngIf="currentUserRole === 'admin_master'"
+                mat-stroked-button
+                type="button"
+                (click)="goToEditSelectedProject()">
+                <mat-icon>edit</mat-icon>
+                Editar projeto
+              </button>
+              <span *ngIf="currentUserRole !== 'admin_master'">
+                Solicite ao administrador master a vinculação de um template na edição do projeto.
+              </span>
+            </div>
+          </div>
+
+          <mat-form-field appearance="outline" class="rp-template-active__field" *ngIf="!projectTemplateLocked && projectHasLinkedTemplate !== false">
             <mat-label>Template</mat-label>
             <mat-select [formControl]="selectedTemplateId">
               <mat-option *ngFor="let template of savedTemplates" [value]="template.id">
@@ -1198,8 +1216,24 @@
 
       <!-- Export actions bar -->
       <div class="rp-export-bar ui-only">
+        <div class="rp-project-template-gate" *ngIf="showProjectTemplateSetupWarning">
+          <mat-icon>warning</mat-icon>
+          <div class="rp-project-template-gate__content">
+            <strong>Template não configurado no projeto.</strong>
+            <span>PDF e DOCX ficam indisponíveis até vincular um template na edição do projeto.</span>
+            <button
+              *ngIf="currentUserRole === 'admin_master'"
+              mat-stroked-button
+              type="button"
+              (click)="goToEditSelectedProject()">
+              <mat-icon>edit</mat-icon>
+              Editar projeto
+            </button>
+          </div>
+        </div>
+
         <!-- Individual -->
-        <button mat-flat-button color="accent" *ngIf="canExportPdf" (click)="exportarRelatorioPDF()" [disabled]="isExporting || isBatchGenerating">
+        <button mat-flat-button color="accent" *ngIf="canExportPdf" (click)="exportarRelatorioPDF()" [disabled]="isExporting || isBatchGenerating || !canExportFormattedReport">
           <mat-icon>picture_as_pdf</mat-icon> Exportar PDF individual
         </button>
         <button mat-flat-button color="primary" *ngIf="canExportExcel" (click)="exportarBaseExcel()" [disabled]="isExporting || isBatchGenerating">
@@ -1208,7 +1242,7 @@
         <button mat-stroked-button color="primary" *ngIf="canExportExcel && !isIndividualMode" (click)="abrirExtratoClienteExcel()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>table_view</mat-icon> {{ 'Extrato do cliente (Excel)' | translate }}
         </button>
-        <button mat-flat-button color="primary" *ngIf="canExportDocx" (click)="exportarRelatorioDOCX()" [disabled]="isExporting || isBatchGenerating">
+        <button mat-flat-button color="primary" *ngIf="canExportDocx" (click)="exportarRelatorioDOCX()" [disabled]="isExporting || isBatchGenerating || !canExportFormattedReport">
           <mat-icon>description</mat-icon> {{ 'Exportar DOCX' | translate }}
         </button>
       </div>

@@ -32,46 +32,50 @@
 
     <p class="ped-error" *ngIf="loadError">{{ loadError }}</p>
 
-    <div class="ped-linked-template" *ngIf="hasProjectTemplateId && linkedTemplate && templateRequiredForAction">
+    <div class="ped-linked-template" *ngIf="hasProjectTemplateId && linkedTemplate">
       <mat-icon>description</mat-icon>
       <span>Template do projeto: <strong>{{ linkedTemplate.name }}</strong> — definido na criação do projeto.</span>
     </div>
 
-    <div class="ped-linked-template ped-linked-template--warn" *ngIf="projectTemplateMissing && templateRequiredForAction">
+    <div class="ped-linked-template ped-linked-template--warn" *ngIf="projectNeedsTemplateSetup">
       <mat-icon>warning</mat-icon>
-      <span>O template vinculado a este projeto não foi encontrado. Atualize o projeto ou crie o template em Relatórios.</span>
+      <div class="ped-linked-template__content">
+        <span>Este projeto não possui template de relatório vinculado. PDF e DOCX ficam indisponíveis até configurar um template no projeto.</span>
+        <button
+          *ngIf="data.userRole === 'admin_master'"
+          mat-stroked-button
+          type="button"
+          class="ped-linked-template__action"
+          (click)="editProject()">
+          <mat-icon>edit</mat-icon>
+          Editar projeto
+        </button>
+        <span *ngIf="data.userRole !== 'admin_master'">
+          Solicite ao administrador master a vinculação de um template na edição do projeto.
+        </span>
+      </div>
     </div>
 
-    <!-- Template (somente se o projeto não tiver template vinculado) -->
-    <div class="ped-step" *ngIf="showTemplateField">
-      <div class="ped-step__header">
-        <div class="ped-step__number">1</div>
-        <div>
-          <p class="ped-step__title">Template de relatório</p>
-          <p class="ped-step__desc">Selecione o template para PDF e DOCX formatados.</p>
-        </div>
+    <div class="ped-linked-template ped-linked-template--warn" *ngIf="projectTemplateMissing">
+      <mat-icon>warning</mat-icon>
+      <div class="ped-linked-template__content">
+        <span>O template vinculado a este projeto não foi encontrado. Atualize o projeto ou recrie o template em Relatórios.</span>
+        <button
+          *ngIf="data.userRole === 'admin_master'"
+          mat-stroked-button
+          type="button"
+          class="ped-linked-template__action"
+          (click)="editProject()">
+          <mat-icon>edit</mat-icon>
+          Editar projeto
+        </button>
       </div>
-
-      <div *ngIf="reportTemplates.length === 0" class="ped-empty">
-        <mat-icon>dashboard_customize</mat-icon>
-        <p>Nenhum template salvo para este cliente.</p>
-        <span>Crie templates em <b>Relatórios → Montar Relatório → Templates</b> ou abra a tela de relatórios para configurar manualmente.</span>
-      </div>
-
-      <mat-form-field *ngIf="reportTemplates.length > 0" appearance="outline" class="ped-field">
-        <mat-label>Template</mat-label>
-        <mat-select [formControl]="templateControl">
-          <mat-option value="" *ngIf="!templateRequiredForAction">— Sem template —</mat-option>
-          <mat-option *ngFor="let t of reportTemplates" [value]="t.id">{{ t.name }}</mat-option>
-        </mat-select>
-        <mat-hint>{{ reportTemplates.length }} template(s) disponível(is)</mat-hint>
-      </mat-form-field>
     </div>
 
     <!-- Export options -->
     <div class="ped-step">
       <div class="ped-step__header">
-        <div class="ped-step__number">{{ showTemplateField ? 2 : 1 }}</div>
+        <div class="ped-step__number">1</div>
         <div>
           <p class="ped-step__title">Formato de exportação</p>
           <p class="ped-step__desc">Escolha como deseja obter os dados deste projeto.</p>
