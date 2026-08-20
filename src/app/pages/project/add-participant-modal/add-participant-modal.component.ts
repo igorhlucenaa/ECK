@@ -1,8 +1,10 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import {
+  AbstractControl,
   FormBuilder,
   FormGroup,
+  ValidationErrors,
   Validators,
   FormsModule,
   ReactiveFormsModule,
@@ -223,7 +225,7 @@ export class AddParticipantModalComponent implements OnInit {
       name: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       category: ['', Validators.required],
-      cargoSetor: ['', (control) => {
+      cargoSetor: ['', (control: AbstractControl): ValidationErrors | null => {
         const value = (control.value ?? '').toString().trim();
         return value ? null : { required: true };
       }],
