@@ -66,19 +66,19 @@
 
     <mat-icon class="rp-seq-arrow" *ngIf="filterClientControl.value">chevron_right</mat-icon>
 
-    <!-- Passo 2: Avaliação (catálogo do cliente) -->
+    <!-- Passo 2: Formulário (catálogo do cliente) -->
     <div class="rp-seq-step" [class.rp-seq-step--done]="!!assessmentControl.value"
          *ngIf="filterClientControl.value">
       <div class="rp-seq-step__num">2</div>
       <mat-form-field appearance="outline" class="rp-seq-field">
-        <mat-label>Avaliação</mat-label>
+        <mat-label>Formulário</mat-label>
         <mat-icon matPrefix>assignment</mat-icon>
         <mat-select [formControl]="assessmentControl"
                     [disabled]="filteredAssessments.length === 0">
-          <mat-option value="">— Selecione a avaliação —</mat-option>
+          <mat-option value="">— Selecione o formulário —</mat-option>
           <mat-option *ngFor="let a of filteredAssessments" [value]="a.id">{{ a.name }}</mat-option>
         </mat-select>
-        <mat-hint *ngIf="filteredAssessments.length === 0">Nenhuma avaliação cadastrada para este cliente</mat-hint>
+        <mat-hint *ngIf="filteredAssessments.length === 0">Nenhum formulário cadastrado para este cliente</mat-hint>
       </mat-form-field>
     </div>
 
@@ -175,12 +175,12 @@
     </button>
   </div>
 
-  <!-- Modo individual: campo de avaliação (readonly) -->
+  <!-- Modo individual: campo de formulário (readonly) -->
   <div class="rp-config-selectors" *ngIf="isIndividualMode">
     <mat-form-field class="rp-selector" appearance="outline">
-      <mat-label>{{ 'Avaliação' | translate }}</mat-label>
+      <mat-label>{{ 'Formulário' | translate }}</mat-label>
       <mat-icon matPrefix>assignment</mat-icon>
-      <input matInput [formControl]="assessmentSearchControl" [readonly]="true" placeholder="Avaliação carregada automaticamente">
+      <input matInput [formControl]="assessmentSearchControl" [readonly]="true" placeholder="Formulário carregado automaticamente">
     </mat-form-field>
 
     <mat-form-field class="rp-selector" appearance="outline">
