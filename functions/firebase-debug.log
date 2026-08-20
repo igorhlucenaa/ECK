@@ -1,0 +1,507 @@
+[debug] [2026-08-20T04:24:18.134Z] ----------------------------------------------------------------------
+[debug] [2026-08-20T04:24:18.136Z] Command:       C:\nvm4w\nodejs\node.exe C:\nvm4w\nodejs\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions
+[debug] [2026-08-20T04:24:18.137Z] CLI Version:   14.1.0
+[debug] [2026-08-20T04:24:18.137Z] Platform:      win32
+[debug] [2026-08-20T04:24:18.137Z] Node Version:  v20.19.0
+[debug] [2026-08-20T04:24:18.137Z] Time:          Thu Aug 20 2026 01:24:18 GMT-0300 (Horário Padrão de Brasília)
+[debug] [2026-08-20T04:24:18.137Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-20T04:24:18.350Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-20T04:24:18.351Z] > authorizing via signed-in user (igorhlucenaa@gmail.com)
+[info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
+[debug] [2026-08-20T04:24:18.358Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-20T04:24:18.358Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-08-20T04:24:18.363Z] [hub] writing locator at C:\Users\adm\AppData\Local\Temp\hub-pwa-workana.json
+[debug] [2026-08-20T04:24:18.377Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-20T04:24:18.377Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-20T04:24:18.377Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-20T04:24:18.378Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect\u001b[22m"}}
+[debug] [2026-08-20T04:24:18.399Z] defaultcredentials: writing to file C:\Users\adm\AppData\Roaming\firebase\igorhlucenaa_gmail_com_application_default_credentials.json
+[debug] [2026-08-20T04:24:18.404Z] Setting GAC to C:\Users\adm\AppData\Roaming\firebase\igorhlucenaa_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\adm\\AppData\\Roaming\\firebase\\igorhlucenaa_gmail_com_application_default_credentials.json"}}
+[debug] [2026-08-20T04:24:18.405Z] Checked if tokens are valid: false, expires at: 1787199262596
+[debug] [2026-08-20T04:24:18.405Z] Checked if tokens are valid: false, expires at: 1787199262596
+[debug] [2026-08-20T04:24:18.405Z] > refreshing access token with scopes: []
+[debug] [2026-08-20T04:24:18.406Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-20T04:24:18.406Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-20T04:24:18.744Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-20T04:24:18.744Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-20T04:24:18.766Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/pwa-workana/adminSdkConfig [none]
+[debug] [2026-08-20T04:24:19.478Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/pwa-workana/adminSdkConfig 200
+[debug] [2026-08-20T04:24:19.479Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/pwa-workana/adminSdkConfig {"projectId":"pwa-workana","databaseURL":"https://pwa-workana.firebaseio.com","storageBucket":"pwa-workana.firebasestorage.app"}
+[info] i  functions: Watching "C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\" for Cloud Functions..."}}
+[debug] [2026-08-20T04:24:19.505Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-08-20T04:24:20.449Z] > [functions] package.json contents: {
+  "name": "functions",
+  "scripts": {
+    "build": "tsc && node scripts/generate-functions-yaml.js",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "serve:full": "npm run build && firebase emulators:start --only functions,firestore",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@google-cloud/storage": "^7.15.1",
+    "@napi-rs/canvas": "^0.1.67",
+    "@sparticuz/chromium": "^147.0.0",
+    "cors": "^2.8.5",
+    "docx": "^9.5.1",
+    "firebase-admin": "^13.1.0",
+    "firebase-functions": "^6.3.1",
+    "image-size": "^1.2.0",
+    "node-html-parser": "^9.0.1",
+    "nodemailer": "^6.9.7",
+    "pdfjs-dist": "^4.10.38",
+    "pdfmake": "^0.3.3",
+    "puppeteer-core": "^24.42.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.13.1",
+    "@types/nodemailer": "^6.4.19",
+    "firebase-functions-test": "^3.1.0",
+    "typescript": "^5.7.3"
+  },
+  "private": true
+}
+[debug] [2026-08-20T04:24:20.449Z] Building nodejs source
+[debug] [2026-08-20T04:24:20.449Z] Failed to find version of module node: reached end of search path C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions\node_modules
+[info] +  functions: Using node@20 from host. 
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-08-20T04:24:20.454Z] Found functions.yaml. Got spec: {
+  "endpoints": {
+    "createReportDocxExport": {
+      "availableMemoryMb": 512,
+      "timeoutSeconds": 60,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "createReportDocxExport"
+    },
+    "downloadReportDocxExport": {
+      "availableMemoryMb": 512,
+      "timeoutSeconds": 120,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "downloadReportDocxExport"
+    },
+    "getReportDocxExportStatus": {
+      "availableMemoryMb": 256,
+      "timeoutSeconds": 30,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "getReportDocxExportStatus"
+    },
+    "processReportDocxExportHttp": {
+      "availableMemoryMb": 4096,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "processReportDocxExportHttp"
+    },
+    "processReportDocxExportJob": {
+      "availableMemoryMb": 4096,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.created",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "docxExportJobs/{jobId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "processReportDocxExportJob"
+    },
+    "generateReportPdf": {
+      "availableMemoryMb": 4096,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "generateReportPdf"
+    },
+    "sendEmail": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "sendEmail"
+    },
+    "sendPendingAssessmentReminders": {
+      "availableMemoryMb": 1024,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "scheduleTrigger": {
+        "schedule": "every 15 minutes",
+        "retryConfig": {},
+        "timeZone": "Etc/UTC"
+      },
+      "entryPoint": "sendPendingAssessmentReminders"
+    },
+    "triggerPendingAssessmentReminders": {
+      "availableMemoryMb": 1024,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "triggerPendingAssessmentReminders"
+    },
+    "onAssessmentCompleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.updated",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "assessmentLinks/{linkId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onAssessmentCompleted"
+    },
+    "safeDelete": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "callableTrigger": {},
+      "entryPoint": "safeDelete"
+    },
+    "onProjectDeleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.deleted",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "projects/{projectId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onProjectDeleted"
+    },
+    "onClientDeleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.deleted",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "clients/{clientId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onClientDeleted"
+    },
+    "onParticipantDeleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.deleted",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "participants/{participantId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onParticipantDeleted"
+    }
+  },
+  "specVersion": "v1alpha1",
+  "requiredAPIs": [
+    {
+      "api": "cloudscheduler.googleapis.com",
+      "reason": "Needed for scheduled functions."
+    }
+  ],
+  "extensions": {},
+  "params": [
+    {
+      "name": "EMAIL_USER",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "name": "EMAIL_PASS",
+      "type": "string",
+      "default": ""
+    }
+  ]
+}
+
+[info] +  functions: Loaded functions definitions from source: createReportDocxExport, downloadReportDocxExport, getReportDocxExportStatus, processReportDocxExportHttp, processReportDocxExportJob, generateReportPdf, sendEmail, sendPendingAssessmentReminders, triggerPendingAssessmentReminders, onAssessmentCompleted, safeDelete, onProjectDeleted, onClientDeleted, onParticipantDeleted. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: createReportDocxExport, downloadReportDocxExport, getReportDocxExportStatus, processReportDocxExportHttp, processReportDocxExportJob, generateReportPdf, sendEmail, sendPendingAssessmentReminders, triggerPendingAssessmentReminders, onAssessmentCompleted, safeDelete, onProjectDeleted, onClientDeleted, onParticipantDeleted."}}
+[info] +  functions[us-central1-createReportDocxExport]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/createReportDocxExport). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/createReportDocxExport)."}}
+[info] +  functions[us-central1-downloadReportDocxExport]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/downloadReportDocxExport). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/downloadReportDocxExport)."}}
+[info] +  functions[us-central1-getReportDocxExportStatus]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/getReportDocxExportStatus). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/getReportDocxExportStatus)."}}
+[info] +  functions[us-central1-processReportDocxExportHttp]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp)."}}
+[info] i  functions[us-central1-processReportDocxExportJob]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] +  functions[us-central1-generateReportPdf]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/generateReportPdf). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/generateReportPdf)."}}
+[info] +  functions[us-central1-sendEmail]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/sendEmail). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/sendEmail)."}}
+[info] i  functions[us-central1-sendPendingAssessmentReminders]: function ignored because the pubsub emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the pubsub emulator does not exist or is not running."}}
+[info] +  functions[us-central1-triggerPendingAssessmentReminders]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/triggerPendingAssessmentReminders). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/triggerPendingAssessmentReminders)."}}
+[info] i  functions[us-central1-onAssessmentCompleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] +  functions[us-central1-safeDelete]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/safeDelete). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/safeDelete)."}}
+[info] i  functions[us-central1-onProjectDeleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] i  functions[us-central1-onClientDeleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] i  functions[us-central1-onParticipantDeleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[debug] [2026-08-20T04:24:20.484Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌───────────┬────────────────┬─────────────────────────────────┐
+│ Emulator  │ Host:Port      │ View in Emulator UI             │
+├───────────┼────────────────┼─────────────────────────────────┤
+│ Functions │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions │
+└───────────┴────────────────┴─────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-08-20T04:24:31.936Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-20T04:24:31.935Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-20T04:24:31.936Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-20T04:24:31.935Z"],"workRunningCount":1}
+[debug] [2026-08-20T04:24:31.937Z] Accepted request OPTIONS /pwa-workana/us-central1/generateReportPdf --> us-central1-generateReportPdf
+[debug] [2026-08-20T04:24:31.944Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-20T04:24:31.945Z] [functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/"}}
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-08-20T04:24:31.990Z] [worker-pool] addWorker(us-central1-generateReportPdf) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(us-central1-generateReportPdf)"}}
+[debug] [2026-08-20T04:24:31.992Z] [worker-pool] Adding worker with key us-central1-generateReportPdf, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key us-central1-generateReportPdf, total=1"}}
+[debug] [2026-08-20T04:24:34.402Z] [runtime-status] [29452] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-20T04:24:34.403Z] [runtime-status] [29452] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-20T04:24:34.403Z] [runtime-status] [29452] Found local functions config: C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions/.runtimeconfig.json {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Found local functions config: C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions/.runtimeconfig.json"}}
+[debug] [2026-08-20T04:24:34.404Z] [runtime-status] [29452] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-08-20T04:24:34.405Z] [runtime-status] [29452] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-20T04:24:36.405Z] [runtime-status] [29452] Checked functions.config() {"config":{"email":{"pass":"nkik bvji wshf xzpg","user":"igorhlucenaa@gmail.com"}}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Checked functions.config() {\"config\":{\"email\":{\"pass\":\"nkik bvji wshf xzpg\",\"user\":\"igorhlucenaa@gmail.com\"}}}"}}
+[debug] [2026-08-20T04:24:36.406Z] [runtime-status] [29452] firebase-functions has been stubbed. {"functionsResolution":{"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] firebase-functions has been stubbed. {\"functionsResolution\":{\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}}"}}
+[debug] [2026-08-20T04:24:36.406Z] [runtime-status] [29452] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-20T04:24:36.564Z] [runtime-status] [29452] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-20T04:24:36.567Z] [runtime-status] [29452] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-20T04:24:36.567Z] [runtime-status] [29452] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-08-20T04:24:37.006Z] [runtime-status] [29452] Functions runtime initialized. {"cwd":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions","node_version":"20.19.0"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Functions runtime initialized. {\"cwd\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\",\"node_version\":\"20.19.0\"}"}}
+[debug] [2026-08-20T04:24:37.007Z] [runtime-status] [29452] Listening to port: \\?\pipe\fire_emu_6b523c29c6225e3c {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [29452] Listening to port: \\\\?\\pipe\\fire_emu_6b523c29c6225e3c"}}
+[debug] [2026-08-20T04:24:37.063Z] [worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE"}}
+[debug] [2026-08-20T04:24:37.065Z] [worker-pool] submitRequest(triggerId=us-central1-generateReportPdf) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-generateReportPdf)"}}
+[info] i  functions: Beginning execution of "us-central1-generateReportPdf" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Beginning execution of \"us-central1-generateReportPdf\""}}
+[debug] [2026-08-20T04:24:37.068Z] [worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: BUSY"}}
+[debug] [2026-08-20T04:24:37.081Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-generateReportPdf" in 15.0259ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finished \"us-central1-generateReportPdf\" in 15.0259ms"}}
+[debug] [2026-08-20T04:24:37.085Z] [worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE"}}
+[debug] [2026-08-20T04:24:37.086Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-20T04:24:37.087Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-20T04:24:37.087Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-20T04:24:37.111Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-20T04:24:37.111Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-20T04:24:37.111Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-20T04:24:37.111Z"],"workRunningCount":1}
+[debug] [2026-08-20T04:24:37.111Z] Accepted request POST /pwa-workana/us-central1/generateReportPdf --> us-central1-generateReportPdf
+[debug] [2026-08-20T04:24:37.113Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-20T04:24:37.113Z] [functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/"}}
+[debug] [2026-08-20T04:24:37.113Z] [worker-pool] submitRequest(triggerId=us-central1-generateReportPdf) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-generateReportPdf)"}}
+[info] i  functions: Beginning execution of "us-central1-generateReportPdf" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Beginning execution of \"us-central1-generateReportPdf\""}}
+[debug] [2026-08-20T04:24:37.114Z] [worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: BUSY"}}
+[info] >  [puppeteer] Usando Chrome local { {"user":"[puppeteer] Usando Chrome local {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"\u001b[90m> \u001b[39m [puppeteer] Usando Chrome local {"}}
+[info] >    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' {"user":"  executablePath: 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe'","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"\u001b[90m> \u001b[39m   executablePath: 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe'"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[debug] [2026-08-20T04:25:06.674Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-generateReportPdf" in 29559.7896ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finished \"us-central1-generateReportPdf\" in 29559.7896ms"}}
+[debug] [2026-08-20T04:25:06.674Z] [worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE"}}
+[debug] [2026-08-20T04:25:06.675Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-20T04:25:06.675Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-20T04:25:06.675Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-20T04:34:04.185Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-20T04:34:04.185Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-20T04:34:04.185Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-20T04:34:04.185Z"],"workRunningCount":1}
+[debug] [2026-08-20T04:34:04.185Z] Accepted request OPTIONS /pwa-workana/us-central1/generateReportPdf --> us-central1-generateReportPdf
+[debug] [2026-08-20T04:34:04.188Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-20T04:34:04.188Z] [functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/"}}
+[debug] [2026-08-20T04:34:04.188Z] [worker-pool] submitRequest(triggerId=us-central1-generateReportPdf) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-generateReportPdf)"}}
+[info] i  functions: Beginning execution of "us-central1-generateReportPdf" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Beginning execution of \"us-central1-generateReportPdf\""}}
+[debug] [2026-08-20T04:34:04.189Z] [worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: BUSY"}}
+[debug] [2026-08-20T04:34:04.193Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-generateReportPdf" in 4.2519ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finished \"us-central1-generateReportPdf\" in 4.2519ms"}}
+[debug] [2026-08-20T04:34:04.194Z] [worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE"}}
+[debug] [2026-08-20T04:34:04.194Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-20T04:34:04.194Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-20T04:34:04.195Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-20T04:34:04.208Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-20T04:34:04.208Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-20T04:34:04.208Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-20T04:34:04.208Z"],"workRunningCount":1}
+[debug] [2026-08-20T04:34:04.209Z] Accepted request POST /pwa-workana/us-central1/generateReportPdf --> us-central1-generateReportPdf
+[debug] [2026-08-20T04:34:04.213Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-20T04:34:04.213Z] [functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/"}}
+[debug] [2026-08-20T04:34:04.213Z] [worker-pool] submitRequest(triggerId=us-central1-generateReportPdf) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-generateReportPdf)"}}
+[info] i  functions: Beginning execution of "us-central1-generateReportPdf" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Beginning execution of \"us-central1-generateReportPdf\""}}
+[debug] [2026-08-20T04:34:04.216Z] [worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: BUSY"}}
+[info] >  [puppeteer] Usando Chrome local { {"user":"[puppeteer] Usando Chrome local {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"\u001b[90m> \u001b[39m [puppeteer] Usando Chrome local {"}}
+[info] >    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' {"user":"  executablePath: 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe'","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"\u001b[90m> \u001b[39m   executablePath: 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe'"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[debug] [2026-08-20T04:34:26.493Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-generateReportPdf" in 22277.8396ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finished \"us-central1-generateReportPdf\" in 22277.8396ms"}}
+[debug] [2026-08-20T04:34:26.494Z] [worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-5b3021d1-4088-4c6a-ba28-7a6a72184ad6]: IDLE"}}
+[debug] [2026-08-20T04:34:26.495Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-20T04:34:26.495Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-20T04:34:26.495Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}

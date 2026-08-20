@@ -4004,13 +4004,23 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       max-width: none !important;
     }
     .report-section {
-      break-inside: auto !important;
-      page-break-inside: auto !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
       margin-bottom: 4mm;
     }
     h1, h2, h3, h4, h5, h6 {
       break-after: avoid-page !important;
       page-break-after: avoid !important;
+    }
+    .rp-graficos-header,
+    .rp-graficos-competencias {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    .rp-bar-chart-block {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+      margin-bottom: 8mm !important;
     }
     .rp-secao-header {
       break-inside: avoid !important;
@@ -4200,16 +4210,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       background: #f5f5f5 !important;
       font-weight: bold !important;
     }
-    #report-preview .pdf-chip-set,
     #report-preview mat-chip-set,
     #report-preview .mat-mdc-chip-set {
+      display: none !important;
+    }
+    #report-preview .pdf-chip-set {
       display: flex !important;
       flex-wrap: wrap !important;
       gap: 6px !important;
       align-items: center !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
     }
     #report-preview .pdf-chip,
-    #report-preview mat-chip,
     #report-preview .mat-mdc-chip {
       display: inline-flex !important;
       align-items: center !important;
@@ -4229,6 +4242,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       font-weight: 500 !important;
       line-height: 1.2 !important;
       white-space: nowrap !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
     }
     #report-preview .pdf-chip__label,
     #report-preview mat-chip .mat-mdc-chip-action-label,
@@ -4492,6 +4507,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const sourceChips = Array.from(sourceSet.querySelectorAll('mat-chip')) as HTMLElement[];
       const replacementSet = document.createElement('div');
       replacementSet.className = 'pdf-chip-set';
+      replacementSet.style.breakInside = 'avoid';
+      replacementSet.style.pageBreakInside = 'avoid';
 
       sourceChips.forEach(sourceChip => {
         const label = this.extractChipLabel(sourceChip);
@@ -8702,11 +8719,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Calcula os dados para a Janela de Johari (pontos Auto x Outros).
+   * Calcula os dados para a Janela de Johari (pontos Auto x Demais Avaliadores).
+   * Usa a mesma base do gráfico de barras por competência: média do avaliado(a)
+   * e média simples das demais categorias (equivalente a "Média sem autoavaliação").
    */
   getJohariWindowData(secao: any): JohariWindowData {
     const competenciasSelecionadas = this.getCompetenciasSelecionadasParaSecao(secao);
     const threshold = JOHARI_THRESHOLD;
+    const grupos = this.getGrupos();
+    const gruposSemAuto = grupos.filter(grupo => grupo !== this.GRUPO_AVALIADO);
     const palette = [
       '#5C6BC0', // A
       '#43A047', // B
@@ -8719,23 +8740,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const points = [] as JohariWindowData['points'];
 
-    // Basear o cálculo na mesma fonte do gráfico de defasagem (dataSource por pergunta)
     competenciasSelecionadas.forEach((competencia, idx) => {
-      const perguntas = competencia.perguntasIds || [];
-      const selfVals: number[] = [];
-      const othersVals: number[] = [];
+      const mediaSelf = this.getMediaPorPerguntaEGrupo(competencia, this.GRUPO_AVALIADO);
+      const mediaOthers = this.calcularMediaCompetenciaPorGrupos(competencia, gruposSemAuto);
 
-      perguntas.forEach((perguntaId: string) => {
-        const dados = this.getDadosPerguntaDefasagem(perguntaId);
-        if (!dados) return;
-        if (dados.selfScore !== null) selfVals.push(dados.selfScore);
-        if (dados.othersScore !== null) othersVals.push(dados.othersScore);
-      });
-
-      const avg = (arr: number[]): number | null =>
-        arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
-      const self = avg(selfVals);
-      const others = avg(othersVals);
+      const self = mediaSelf !== null && !Number.isNaN(mediaSelf) ? this.toChartValue(mediaSelf) : null;
+      const others = mediaOthers;
 
       const label = String.fromCharCode(65 + (idx % 26));
       const color = palette[idx % palette.length];

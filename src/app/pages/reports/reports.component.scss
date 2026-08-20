@@ -173,6 +173,18 @@ ngx-charts-bar-horizontal,
   display: block;
   margin-bottom: 36px;
   clear: both;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.rp-graficos-header,
+.rp-graficos-competencias {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.rp-graficos-competencias {
+  margin-bottom: 16px;
 }
 
 .rp-bar-chart-layout {

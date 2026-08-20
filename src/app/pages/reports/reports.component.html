@@ -1468,8 +1468,10 @@
             </div>
 
             <div *ngSwitchCase="'graficos'">
-              <h2>{{ secao.titulo }}</h2>
-              <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              <div class="rp-graficos-header">
+                <h2>{{ secao.titulo }}</h2>
+                <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
+              </div>
 
               <div *ngIf="getCompetenciasGraficosCached(secao).length > 0">
                 <mat-form-field appearance="outline" class="ui-only" style="width: 250px; margin-bottom: 16px;">
@@ -1484,7 +1486,7 @@
                   </mat-select>
                 </mat-form-field>
 
-                <div style="margin-bottom: 16px;">
+                <div class="rp-graficos-competencias">
                   <h4>Competências analisadas:</h4>
                   <mat-chip-set>
                     <mat-chip *ngFor="let comp of getCompetenciasGraficosCached(secao)" [matTooltip]="comp.descricao">
