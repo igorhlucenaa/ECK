@@ -4026,7 +4026,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       page-break-after: avoid !important;
     }
     .rp-graficos-header,
-    .rp-graficos-competencias {
+    .rp-graficos-competencias,
+    .rp-competencia-chart-block {
       break-inside: avoid !important;
       page-break-inside: avoid !important;
     }

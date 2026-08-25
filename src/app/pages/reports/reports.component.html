@@ -1445,7 +1445,7 @@
               <h2>{{ secao.titulo }}</h2>
               <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getResumoMedias().length">
-                <div *ngFor="let compData of getResumoMediasPorCompetencia()">
+                <div *ngFor="let compData of getResumoMediasPorCompetencia()" class="rp-competencia-block">
                   <h3>{{ compData.nome }}</h3>
                   <p style="color: #666; font-style: italic; margin-bottom: 16px;">{{ compData.descricao }}</p>
                   <table class="tabela-resumo-medias" style="width: 100%; border-collapse: collapse; margin: 16px 0 32px 0; min-width: 400px;">
@@ -1505,7 +1505,7 @@
                   </div>
                   <div *ngSwitchCase="'barra'">
                     <div style="display: flex; flex-direction: column; gap: 30px;">
-                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)" class="rp-bar-chart-block">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)" class="rp-bar-chart-block rp-competencia-chart-block">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                         <ng-container *ngIf="getCompetenciaBarraComparativaData(comp) as dadosGrafico">
@@ -1567,7 +1567,7 @@
                   </div>
                   <div *ngSwitchCase="'pizza-individual'">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)" class="rp-competencia-chart-block">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                         <ngx-charts-pie-chart
@@ -1585,7 +1585,7 @@
                   </div>
                   <div *ngSwitchCase="'barras-individuais'">
                     <div style="display: flex; flex-direction: column; gap: 30px;">
-                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)">
+                      <div *ngFor="let comp of getCompetenciasGraficosCached(secao)" class="rp-competencia-chart-block">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
                         <div class="rp-bar-chart-wrap">
@@ -1622,7 +1622,7 @@
               <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
 
               <div *ngIf="getCompetenciasSelecionadasParaTabela().length > 0; else noTabelaData">
-                <div *ngFor="let comp of getCompetenciasSelecionadasParaTabela()">
+                <div *ngFor="let comp of getCompetenciasSelecionadasParaTabela()" class="rp-competencia-block">
                   <h3>{{ comp.nome }}</h3>
                   <p>{{ comp.descricao }}</p>
                   <div style="overflow-x: auto;">
@@ -1689,9 +1689,9 @@
               <h2>{{ secao.titulo }}</h2>
               <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <div *ngIf="getCompetenciasParaSecaoCached(secao).length > 0">
-                <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let compIndex = index; let lastComp = last">
+                <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let compIndex = index; let lastComp = last" class="rp-competencia-block">
                   <div style="margin-bottom: 30px;">
-                    <div style="margin-bottom: 20px;">
+                    <div class="rp-competencia-block__intro" style="margin-bottom: 20px;">
                       <h3>{{ comp.nome }}</h3>
                       <p style="color: #666; font-style: italic;">{{ comp.descricao }}</p>
                     </div>
@@ -1732,7 +1732,7 @@
                             </tr>
                           </tbody>
                         </table>
-                        <div style="margin-top: 16px; padding: 12px; background-color: #f5f5f5; border-radius: 4px;">
+                        <div class="rp-tabela-notas" style="margin-top: 16px; padding: 12px; background-color: #f5f5f5; border-radius: 4px;">
                           <p style="margin: 0; font-size: 12px; color: #666;"><strong>Importante:</strong> A opção "Sem dados" não é exibida no resumo.</p>
                           <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
                             <strong>Categorias da tabela:</strong><br>
@@ -1756,7 +1756,7 @@
               <h2>{{ secao.titulo }}</h2>
               <div class="report-rich-text" [innerHTML]="getSecaoHtmlComVariaveis(secao.texto)"></div>
               <ng-container *ngIf="getDestaquesAltasCached(secao) as tabelaAltas">
-                <div *ngIf="tabelaAltas.items.length > 0; else noDestaquesData">
+                <div *ngIf="tabelaAltas.items.length > 0; else noDestaquesData" class="rp-subsecao-block">
                   <h3 [style.color]="getDestaquesAltasColors(secao).text" style="margin-top: 20px;">Avaliações mais altas</h3>
                   <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
                     Esta seção apresenta os comportamentos em que você obteve as maiores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
@@ -1783,7 +1783,7 @@
                 </div>
               </ng-container>
               <ng-container *ngIf="getDestaquesBaixasCached(secao) as tabelaBaixas">
-                <div *ngIf="tabelaBaixas.items.length > 0">
+                <div *ngIf="tabelaBaixas.items.length > 0" class="rp-subsecao-block">
                   <h3 [style.color]="getDestaquesBaixasColors(secao).text" style="margin-top: 30px;">Avaliações mais baixas</h3>
                   <p style="font-size: 12px; color: #666; margin-bottom: 16px;">
                     Esta seção apresenta os comportamentos em que você obteve as menores pontuações <strong>médias</strong> (com base na avaliação de todos os avaliadores).
@@ -1820,7 +1820,7 @@
               <h2>{{ secao.titulo }}</h2>
               <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let i = index; let lastComp = last">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; margin-bottom: 20px;">
-                  <div *ngIf="getOrInitTextoCompetencia(secao, comp)">
+                  <div *ngIf="getOrInitTextoCompetencia(secao, comp)" class="rp-competencia-block">
                     <h3 style="margin-bottom: 4px;">{{ comp.nome }}</h3>
                     <p style="color: #666; font-style: italic; margin-top: 0;">{{ comp.descricao }}</p>
                     <angular-editor [(ngModel)]="secao.textosPorCompetencia![comp.id]" [config]="editorConfig"></angular-editor>

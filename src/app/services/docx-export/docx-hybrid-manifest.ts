@@ -65,6 +65,21 @@ const MANIFEST_SELECTORS: ExportManifestElement[] = [
   { type: 'text', selector: '.capa-section__html', editable: true },
   { type: 'text', selector: '.rp-secao-header h2', editable: true },
   { type: 'text', selector: '.rp-secao-header p', editable: true },
+  { type: 'text', selector: '.rp-graficos-header > h2', editable: true },
+  { type: 'text', selector: '.rp-graficos-competencias > h4', editable: true },
+  { type: 'text', selector: '.pdf-chip__label', editable: true },
+  { type: 'text', selector: '.rp-bar-chart-block > h4', editable: true },
+  { type: 'text', selector: '.rp-bar-chart-block > p', editable: true },
+  { type: 'text', selector: '.rp-competencia-chart-block > h4', editable: true },
+  { type: 'text', selector: '.rp-competencia-chart-block > p', editable: true },
+  { type: 'text', selector: '.rp-competencia-block > h3', editable: true },
+  { type: 'text', selector: '.rp-competencia-block > p', editable: true },
+  { type: 'text', selector: '.rp-competencia-block__intro > h3', editable: true },
+  { type: 'text', selector: '.rp-competencia-block__intro > p', editable: true },
+  { type: 'text', selector: '.rp-subsecao-block > h3', editable: true },
+  { type: 'text', selector: '.rp-subsecao-block > p', editable: true },
+  { type: 'text', selector: '.rp-defasagem-item__title', editable: true },
+  { type: 'text', selector: '.rp-tabela-notas p', editable: true },
   { type: 'text', selector: '.capa-info-block', editable: true },
   { type: 'text', selector: '.capa-info-block span', editable: true },
   { type: 'table', selector: '.tabela-frequencia', editable: false },
@@ -263,6 +278,35 @@ function measureTextStyles(cloneNode: Element, liveRoot: HTMLElement): ExportTex
   };
 }
 
+function isCompetencyHeadingElement(element: Element): boolean {
+  if (element.tagName !== 'H4') {
+    return false;
+  }
+
+  return !!element.closest('.rp-graficos-competencias, .rp-bar-chart-block, .rp-competencia-chart-block');
+}
+
+function isCompetencyTitleElement(element: Element): boolean {
+  if (element.tagName !== 'H3') {
+    return false;
+  }
+
+  return !!element.closest('.rp-competencia-block, .rp-competencia-block__intro, .rp-subsecao-block, .rp-defasagem-item');
+}
+
+function resolveTextHeading(element: Element): ExportTextHeadingKind | undefined {
+  if (isSectionTitleElement(element)) {
+    return 'heading2';
+  }
+  if (isCompetencyTitleElement(element)) {
+    return 'heading3';
+  }
+  if (isCompetencyHeadingElement(element)) {
+    return 'heading4';
+  }
+  return undefined;
+}
+
 function isSectionTitleElement(element: Element): boolean {
   if (element.tagName !== 'H2') {
     return false;
@@ -278,6 +322,10 @@ function isSectionTitleElement(element: Element): boolean {
   }
 
   if (parent.classList.contains('rp-secao-header')) {
+    return true;
+  }
+
+  if (parent.classList.contains('rp-graficos-header')) {
     return true;
   }
 
@@ -359,7 +407,7 @@ function pushTextContentItem(
     kind: 'text',
     text,
     runs: runs?.length ? runs : undefined,
-    heading: isSectionTitleElement(node) ? 'heading2' : undefined,
+    heading: resolveTextHeading(node),
     styles: insideRichText
       ? preserveRichTextStyles(measured)
       : isSectionTitleElement(node)
@@ -448,7 +496,7 @@ function isEditableTextCandidate(element: Element, root: Element, elements: Expo
   }
 
   if (tag === 'SPAN') {
-    return (element.className || '').includes('capa-info-block');
+    return nodeInSelectorList(element, root, editableSelectors);
   }
 
   return true;

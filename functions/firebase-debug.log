@@ -1,0 +1,908 @@
+[debug] [2026-08-25T18:00:39.199Z] ----------------------------------------------------------------------
+[debug] [2026-08-25T18:00:39.204Z] Command:       C:\nvm4w\nodejs\node.exe C:\nvm4w\nodejs\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only functions
+[debug] [2026-08-25T18:00:39.204Z] CLI Version:   14.1.0
+[debug] [2026-08-25T18:00:39.205Z] Platform:      win32
+[debug] [2026-08-25T18:00:39.205Z] Node Version:  v20.19.0
+[debug] [2026-08-25T18:00:39.205Z] Time:          Tue Aug 25 2026 15:00:39 GMT-0300 (Horário Padrão de Brasília)
+[debug] [2026-08-25T18:00:39.205Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-25T18:00:39.213Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-08-25T18:00:39.793Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-25T18:00:39.794Z] > authorizing via signed-in user (igorhlucenaa@gmail.com)
+[info] i  emulators: Starting emulators: functions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions"}}
+[debug] [2026-08-25T18:00:39.814Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-25T18:00:39.815Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-08-25T18:00:39.825Z] [hub] writing locator at C:\Users\adm\AppData\Local\Temp\hub-pwa-workana.json
+[debug] [2026-08-25T18:00:39.875Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-25T18:00:39.875Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-25T18:00:39.875Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-08-25T18:00:39.876Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect\u001b[22m"}}
+[debug] [2026-08-25T18:00:39.919Z] defaultcredentials: writing to file C:\Users\adm\AppData\Roaming\firebase\igorhlucenaa_gmail_com_application_default_credentials.json
+[debug] [2026-08-25T18:00:39.924Z] Setting GAC to C:\Users\adm\AppData\Roaming\firebase\igorhlucenaa_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\adm\\AppData\\Roaming\\firebase\\igorhlucenaa_gmail_com_application_default_credentials.json"}}
+[debug] [2026-08-25T18:00:39.926Z] Checked if tokens are valid: false, expires at: 1787210342418
+[debug] [2026-08-25T18:00:39.926Z] Checked if tokens are valid: false, expires at: 1787210342418
+[debug] [2026-08-25T18:00:39.927Z] > refreshing access token with scopes: []
+[debug] [2026-08-25T18:00:39.930Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-25T18:00:39.930Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-25T18:00:40.298Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-25T18:00:40.298Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-25T18:00:40.361Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/pwa-workana/adminSdkConfig [none]
+[debug] [2026-08-25T18:00:40.366Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-08-25T18:00:40.367Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-08-25T18:00:41.206Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/pwa-workana/adminSdkConfig 200
+[debug] [2026-08-25T18:00:41.206Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/pwa-workana/adminSdkConfig {"projectId":"pwa-workana","databaseURL":"https://pwa-workana.firebaseio.com","storageBucket":"pwa-workana.firebasestorage.app"}
+[info] i  functions: Watching "C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\" for Cloud Functions..."}}
+[debug] [2026-08-25T18:00:41.315Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-08-25T18:00:43.470Z] > [functions] package.json contents: {
+  "name": "functions",
+  "scripts": {
+    "build": "tsc && node scripts/generate-functions-yaml.js",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "serve:full": "npm run build && firebase emulators:start --only functions,firestore",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@google-cloud/storage": "^7.15.1",
+    "@napi-rs/canvas": "^0.1.67",
+    "@sparticuz/chromium": "^147.0.0",
+    "cors": "^2.8.5",
+    "docx": "^9.5.1",
+    "firebase-admin": "^13.1.0",
+    "firebase-functions": "^6.3.1",
+    "image-size": "^1.2.0",
+    "node-html-parser": "^9.0.1",
+    "nodemailer": "^6.9.7",
+    "pdfjs-dist": "^4.10.38",
+    "pdfmake": "^0.3.3",
+    "puppeteer-core": "^24.42.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.13.1",
+    "@types/nodemailer": "^6.4.19",
+    "firebase-functions-test": "^3.1.0",
+    "typescript": "^5.7.3"
+  },
+  "private": true
+}
+[debug] [2026-08-25T18:00:43.471Z] Building nodejs source
+[debug] [2026-08-25T18:00:43.472Z] Failed to find version of module node: reached end of search path C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions\node_modules
+[info] +  functions: Using node@20 from host. 
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-08-25T18:00:43.491Z] Found functions.yaml. Got spec: {
+  "endpoints": {
+    "createReportDocxExport": {
+      "availableMemoryMb": 512,
+      "timeoutSeconds": 60,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "createReportDocxExport"
+    },
+    "downloadReportDocxExport": {
+      "availableMemoryMb": 512,
+      "timeoutSeconds": 120,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "downloadReportDocxExport"
+    },
+    "getReportDocxExportStatus": {
+      "availableMemoryMb": 256,
+      "timeoutSeconds": 30,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "getReportDocxExportStatus"
+    },
+    "processReportDocxExportHttp": {
+      "availableMemoryMb": 4096,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "processReportDocxExportHttp"
+    },
+    "processReportDocxExportJob": {
+      "availableMemoryMb": 4096,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.created",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "docxExportJobs/{jobId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "processReportDocxExportJob"
+    },
+    "notifyReportReleased": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "notifyReportReleased"
+    },
+    "generateReportPdf": {
+      "availableMemoryMb": 4096,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "generateReportPdf"
+    },
+    "sendEmail": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "sendEmail"
+    },
+    "sendPendingAssessmentReminders": {
+      "availableMemoryMb": 1024,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "scheduleTrigger": {
+        "schedule": "every 15 minutes",
+        "retryConfig": {},
+        "timeZone": "Etc/UTC"
+      },
+      "entryPoint": "sendPendingAssessmentReminders"
+    },
+    "triggerPendingAssessmentReminders": {
+      "availableMemoryMb": 1024,
+      "timeoutSeconds": 540,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "triggerPendingAssessmentReminders"
+    },
+    "onAssessmentCompleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.updated",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "assessmentLinks/{linkId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onAssessmentCompleted"
+    },
+    "safeDelete": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "callableTrigger": {},
+      "entryPoint": "safeDelete"
+    },
+    "onProjectDeleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.deleted",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "projects/{projectId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onProjectDeleted"
+    },
+    "onClientDeleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.deleted",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "clients/{clientId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onClientDeleted"
+    },
+    "onParticipantDeleted": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.deleted",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "participants/{participantId}"
+        },
+        "retry": false
+      },
+      "entryPoint": "onParticipantDeleted"
+    }
+  },
+  "specVersion": "v1alpha1",
+  "requiredAPIs": [
+    {
+      "api": "cloudscheduler.googleapis.com",
+      "reason": "Needed for scheduled functions."
+    }
+  ],
+  "extensions": {},
+  "params": [
+    {
+      "name": "EMAIL_USER",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "name": "EMAIL_PASS",
+      "type": "string",
+      "default": ""
+    }
+  ]
+}
+
+[info] +  functions: Loaded functions definitions from source: createReportDocxExport, downloadReportDocxExport, getReportDocxExportStatus, processReportDocxExportHttp, processReportDocxExportJob, notifyReportReleased, generateReportPdf, sendEmail, sendPendingAssessmentReminders, triggerPendingAssessmentReminders, onAssessmentCompleted, safeDelete, onProjectDeleted, onClientDeleted, onParticipantDeleted. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: createReportDocxExport, downloadReportDocxExport, getReportDocxExportStatus, processReportDocxExportHttp, processReportDocxExportJob, notifyReportReleased, generateReportPdf, sendEmail, sendPendingAssessmentReminders, triggerPendingAssessmentReminders, onAssessmentCompleted, safeDelete, onProjectDeleted, onClientDeleted, onParticipantDeleted."}}
+[info] +  functions[us-central1-createReportDocxExport]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/createReportDocxExport). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/createReportDocxExport)."}}
+[info] +  functions[us-central1-downloadReportDocxExport]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/downloadReportDocxExport). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/downloadReportDocxExport)."}}
+[info] +  functions[us-central1-getReportDocxExportStatus]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/getReportDocxExportStatus). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/getReportDocxExportStatus)."}}
+[info] +  functions[us-central1-processReportDocxExportHttp]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp)."}}
+[info] i  functions[us-central1-processReportDocxExportJob]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] +  functions[us-central1-notifyReportReleased]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/notifyReportReleased). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/notifyReportReleased)."}}
+[info] +  functions[us-central1-generateReportPdf]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/generateReportPdf). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/generateReportPdf)."}}
+[info] +  functions[us-central1-sendEmail]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/sendEmail). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/sendEmail)."}}
+[info] i  functions[us-central1-sendPendingAssessmentReminders]: function ignored because the pubsub emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the pubsub emulator does not exist or is not running."}}
+[info] +  functions[us-central1-triggerPendingAssessmentReminders]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/triggerPendingAssessmentReminders). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/triggerPendingAssessmentReminders)."}}
+[info] i  functions[us-central1-onAssessmentCompleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] +  functions[us-central1-safeDelete]: http function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/safeDelete). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/pwa-workana/us-central1/safeDelete)."}}
+[info] i  functions[us-central1-onProjectDeleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] i  functions[us-central1-onClientDeleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[info] i  functions[us-central1-onParticipantDeleted]: function ignored because the firestore emulator does not exist or is not running. {"metadata":{"emulator":{"name":"functions"},"message":"function ignored because the firestore emulator does not exist or is not running."}}
+[debug] [2026-08-25T18:00:43.583Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌───────────┬────────────────┬─────────────────────────────────┐
+│ Emulator  │ Host:Port      │ View in Emulator UI             │
+├───────────┼────────────────┼─────────────────────────────────┤
+│ Functions │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions │
+└───────────┴────────────────┴─────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-08-25T18:26:01.548Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/createReportDocxExport-2026-08-25T18:26:01.548Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:26:01.548Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/createReportDocxExport-2026-08-25T18:26:01.548Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:01.549Z] Accepted request OPTIONS /pwa-workana/us-central1/createReportDocxExport --> us-central1-createReportDocxExport
+[debug] [2026-08-25T18:26:01.553Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:01.554Z] [functions] Got req.url=/pwa-workana/us-central1/createReportDocxExport, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/createReportDocxExport, mapping to path=/"}}
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-08-25T18:26:01.584Z] [worker-pool] addWorker(us-central1-createReportDocxExport) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(us-central1-createReportDocxExport)"}}
+[debug] [2026-08-25T18:26:01.585Z] [worker-pool] Adding worker with key us-central1-createReportDocxExport, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key us-central1-createReportDocxExport, total=1"}}
+[debug] [2026-08-25T18:26:03.871Z] [runtime-status] [33356] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:03.871Z] [runtime-status] [33356] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:03.872Z] [runtime-status] [33356] Found local functions config: C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions/.runtimeconfig.json {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Found local functions config: C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions/.runtimeconfig.json"}}
+[debug] [2026-08-25T18:26:03.872Z] [runtime-status] [33356] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-08-25T18:26:03.873Z] [runtime-status] [33356] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:06.916Z] [runtime-status] [33356] Checked functions.config() {"config":{"email":{"pass":"nkik bvji wshf xzpg","user":"igorhlucenaa@gmail.com"}}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Checked functions.config() {\"config\":{\"email\":{\"pass\":\"nkik bvji wshf xzpg\",\"user\":\"igorhlucenaa@gmail.com\"}}}"}}
+[debug] [2026-08-25T18:26:06.916Z] [runtime-status] [33356] firebase-functions has been stubbed. {"functionsResolution":{"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] firebase-functions has been stubbed. {\"functionsResolution\":{\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:26:06.918Z] [runtime-status] [33356] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:07.101Z] [runtime-status] [33356] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:07.105Z] [runtime-status] [33356] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:07.106Z] [runtime-status] [33356] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:26:07.749Z] [runtime-status] [33356] Functions runtime initialized. {"cwd":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions","node_version":"20.19.0"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Functions runtime initialized. {\"cwd\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\",\"node_version\":\"20.19.0\"}"}}
+[debug] [2026-08-25T18:26:07.750Z] [runtime-status] [33356] Listening to port: \\?\pipe\fire_emu_9f1cf72c45779e3a {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] Listening to port: \\\\?\\pipe\\fire_emu_9f1cf72c45779e3a"}}
+[debug] [2026-08-25T18:26:07.814Z] [worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: IDLE"}}
+[debug] [2026-08-25T18:26:07.814Z] [worker-pool] submitRequest(triggerId=us-central1-createReportDocxExport) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-createReportDocxExport)"}}
+[info] i  functions: Beginning execution of "us-central1-createReportDocxExport" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Beginning execution of \"us-central1-createReportDocxExport\""}}
+[debug] [2026-08-25T18:26:07.816Z] [worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: BUSY"}}
+[debug] [2026-08-25T18:26:07.828Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-createReportDocxExport" in 13.6526ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Finished \"us-central1-createReportDocxExport\" in 13.6526ms"}}
+[debug] [2026-08-25T18:26:07.832Z] [worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: IDLE"}}
+[debug] [2026-08-25T18:26:07.832Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:07.832Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:07.833Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:26:07.858Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/createReportDocxExport-2026-08-25T18:26:07.858Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:26:07.858Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/createReportDocxExport-2026-08-25T18:26:07.858Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:07.859Z] Accepted request POST /pwa-workana/us-central1/createReportDocxExport --> us-central1-createReportDocxExport
+[debug] [2026-08-25T18:26:07.864Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:07.865Z] [functions] Got req.url=/pwa-workana/us-central1/createReportDocxExport, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/createReportDocxExport, mapping to path=/"}}
+[debug] [2026-08-25T18:26:07.865Z] [worker-pool] submitRequest(triggerId=us-central1-createReportDocxExport) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-createReportDocxExport)"}}
+[info] i  functions: Beginning execution of "us-central1-createReportDocxExport" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Beginning execution of \"us-central1-createReportDocxExport\""}}
+[debug] [2026-08-25T18:26:07.866Z] [worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: BUSY"}}
+[debug] [2026-08-25T18:26:07.984Z] [runtime-status] [33356] initializeApp(DEFAULT) {"projectId":"pwa-workana","storageBucket":"pwa-workana.firebasestorage.app"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[runtime-status] [33356] initializeApp(DEFAULT) {\"projectId\":\"pwa-workana\",\"storageBucket\":\"pwa-workana.firebasestorage.app\"}"}}
+[warn] !  functions: The Cloud Firestore emulator is not running, so calls to Firestore will affect production. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"The Cloud Firestore emulator is not running, so calls to Firestore will affect production."}}
+[info] >  [docx-export:create] Iniciando job { {"user":"[docx-export:create] Iniciando job {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m [docx-export:create] Iniciando job {"}}
+[info] >    jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056', {"user":"  jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',"}}
+[info] >    fileName: 'teste avaliado_Relatório Feedback 360_Cliente teste.docx', {"user":"  fileName: 'teste avaliado_Relatório Feedback 360_Cliente teste.docx',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   fileName: 'teste avaliado_Relatório Feedback 360_Cliente teste.docx',"}}
+[info] >    htmlBytes: 3776071, {"user":"  htmlBytes: 3776071,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   htmlBytes: 3776071,"}}
+[info] >    useGcs: true, {"user":"  useGcs: true,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   useGcs: true,"}}
+[info] >    hasManifest: true, {"user":"  hasManifest: true,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   hasManifest: true,"}}
+[info] >    manifestStats: { version: 2, textBlocks: 50, visualBlocks: 32, pageBreaks: 1 } {"user":"  manifestStats: { version: 2, textBlocks: 50, visualBlocks: 32, pageBreaks: 1 }","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   manifestStats: { version: 2, textBlocks: 50, visualBlocks: 32, pageBreaks: 1 }"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[warn] !  functions: The Firebase Storage emulator is not running, so calls to Firebase Storage will affect production. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"The Firebase Storage emulator is not running, so calls to Firebase Storage will affect production."}}
+[warn] !  Google API requested!
+   - URL: "https://oauth2.googleapis.com/token"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Google API requested!\n   - URL: \"https://oauth2.googleapis.com/token\"\n   - Be careful, this may be a production service."}}
+[warn] !  Google API requested!
+   - URL: "https://storage.googleapis.com/upload/storage/v1/b/pwa-workana.firebasestorage.app/o?uploadType=multipart&name=docx-exports%2Ffececefe-2f15-4fc3-a628-ff32fd571056%2Finput.html"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Google API requested!\n   - URL: \"https://storage.googleapis.com/upload/storage/v1/b/pwa-workana.firebasestorage.app/o?uploadType=multipart&name=docx-exports%2Ffececefe-2f15-4fc3-a628-ff32fd571056%2Finput.html\"\n   - Be careful, this may be a production service."}}
+[info] >  [docx-export:create] Job enfileirado { {"user":"[docx-export:create] Job enfileirado {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m [docx-export:create] Job enfileirado {"}}
+[info] >    jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056', {"user":"  jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',"}}
+[info] >    htmlStoragePath: 'docx-exports/fececefe-2f15-4fc3-a628-ff32fd571056/input.html', {"user":"  htmlStoragePath: 'docx-exports/fececefe-2f15-4fc3-a628-ff32fd571056/input.html',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   htmlStoragePath: 'docx-exports/fececefe-2f15-4fc3-a628-ff32fd571056/input.html',"}}
+[info] >    htmlInlineBytes: 0 {"user":"  htmlInlineBytes: 0","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   htmlInlineBytes: 0"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[info] >  [docx-export:create] Disparando processamento { {"user":"[docx-export:create] Disparando processamento {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m [docx-export:create] Disparando processamento {"}}
+[info] >    jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056', {"user":"  jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',"}}
+[info] >    url: 'http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp', {"user":"  url: 'http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   url: 'http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp',"}}
+[info] >    isEmulator: true {"user":"  isEmulator: true","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   isEmulator: true"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[debug] [2026-08-25T18:26:22.584Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-createReportDocxExport" in 14717.7321ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Finished \"us-central1-createReportDocxExport\" in 14717.7321ms"}}
+[debug] [2026-08-25T18:26:22.585Z] [worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"[worker-us-central1-createReportDocxExport-86309d4e-dad3-4e48-a104-44e75837aaa6]: IDLE"}}
+[debug] [2026-08-25T18:26:22.585Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:22.585Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:22.585Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:26:22.589Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:26:22.590Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:22.590Z] Accepted request POST /pwa-workana/us-central1/processReportDocxExportHttp --> us-central1-processReportDocxExportHttp
+[debug] [2026-08-25T18:26:22.592Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:22.592Z] [functions] Got req.url=/pwa-workana/us-central1/processReportDocxExportHttp, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/processReportDocxExportHttp, mapping to path=/"}}
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-08-25T18:26:22.603Z] [worker-pool] addWorker(us-central1-processReportDocxExportHttp) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(us-central1-processReportDocxExportHttp)"}}
+[debug] [2026-08-25T18:26:22.603Z] [worker-pool] Adding worker with key us-central1-processReportDocxExportHttp, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key us-central1-processReportDocxExportHttp, total=1"}}
+[debug] [2026-08-25T18:26:22.610Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:22.610Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:22.611Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:22.610Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:26:22.611Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:26:22.614Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:22.614Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-08-25T18:26:22.622Z] [worker-pool] addWorker(us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(us-central1-getReportDocxExportStatus)"}}
+[debug] [2026-08-25T18:26:22.622Z] [worker-pool] Adding worker with key us-central1-getReportDocxExportStatus, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key us-central1-getReportDocxExportStatus, total=1"}}
+[debug] [2026-08-25T18:26:24.297Z] [runtime-status] [28168] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.300Z] [runtime-status] [28168] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.300Z] [runtime-status] [28168] Found local functions config: C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions/.runtimeconfig.json {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Found local functions config: C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions/.runtimeconfig.json"}}
+[debug] [2026-08-25T18:26:24.301Z] [runtime-status] [28168] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-08-25T18:26:24.302Z] [runtime-status] [28168] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.307Z] [runtime-status] [28056] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.309Z] [runtime-status] [28056] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.309Z] [runtime-status] [28056] Found local functions config: C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions/.runtimeconfig.json {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Found local functions config: C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions/.runtimeconfig.json"}}
+[debug] [2026-08-25T18:26:24.310Z] [runtime-status] [28056] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-08-25T18:26:24.311Z] [runtime-status] [28056] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.917Z] [runtime-status] [28168] Checked functions.config() {"config":{"email":{"pass":"nkik bvji wshf xzpg","user":"igorhlucenaa@gmail.com"}}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Checked functions.config() {\"config\":{\"email\":{\"pass\":\"nkik bvji wshf xzpg\",\"user\":\"igorhlucenaa@gmail.com\"}}}"}}
+[debug] [2026-08-25T18:26:24.918Z] [runtime-status] [28168] firebase-functions has been stubbed. {"functionsResolution":{"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] firebase-functions has been stubbed. {\"functionsResolution\":{\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:26:24.920Z] [runtime-status] [28168] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.920Z] [runtime-status] [28056] Checked functions.config() {"config":{"email":{"pass":"nkik bvji wshf xzpg","user":"igorhlucenaa@gmail.com"}}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Checked functions.config() {\"config\":{\"email\":{\"pass\":\"nkik bvji wshf xzpg\",\"user\":\"igorhlucenaa@gmail.com\"}}}"}}
+[debug] [2026-08-25T18:26:24.921Z] [runtime-status] [28056] firebase-functions has been stubbed. {"functionsResolution":{"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] firebase-functions has been stubbed. {\"functionsResolution\":{\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:26:24.922Z] [runtime-status] [28056] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.929Z] [runtime-status] [28056] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.929Z] [runtime-status] [28168] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.932Z] [runtime-status] [28056] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.932Z] [runtime-status] [28168] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:26:24.933Z] [runtime-status] [28168] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:26:24.933Z] [runtime-status] [28056] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:26:25.368Z] [runtime-status] [28168] Functions runtime initialized. {"cwd":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions","node_version":"20.19.0"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Functions runtime initialized. {\"cwd\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\",\"node_version\":\"20.19.0\"}"}}
+[debug] [2026-08-25T18:26:25.369Z] [runtime-status] [28056] Functions runtime initialized. {"cwd":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions","node_version":"20.19.0"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Functions runtime initialized. {\"cwd\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\",\"node_version\":\"20.19.0\"}"}}
+[debug] [2026-08-25T18:26:25.370Z] [runtime-status] [28168] Listening to port: \\?\pipe\fire_emu_95646eacce0c113a {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] Listening to port: \\\\?\\pipe\\fire_emu_95646eacce0c113a"}}
+[debug] [2026-08-25T18:26:25.370Z] [runtime-status] [28056] Listening to port: \\?\pipe\fire_emu_1dfefc34bf861cdf {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] Listening to port: \\\\?\\pipe\\fire_emu_1dfefc34bf861cdf"}}
+[debug] [2026-08-25T18:26:25.413Z] [worker-us-central1-processReportDocxExportHttp-54f582cc-ce30-4200-b04b-9db156dcaa45]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[worker-us-central1-processReportDocxExportHttp-54f582cc-ce30-4200-b04b-9db156dcaa45]: IDLE"}}
+[debug] [2026-08-25T18:26:25.413Z] [worker-pool] submitRequest(triggerId=us-central1-processReportDocxExportHttp) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-processReportDocxExportHttp)"}}
+[info] i  functions: Beginning execution of "us-central1-processReportDocxExportHttp" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"Beginning execution of \"us-central1-processReportDocxExportHttp\""}}
+[debug] [2026-08-25T18:26:25.414Z] [worker-us-central1-processReportDocxExportHttp-54f582cc-ce30-4200-b04b-9db156dcaa45]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[worker-us-central1-processReportDocxExportHttp-54f582cc-ce30-4200-b04b-9db156dcaa45]: BUSY"}}
+[debug] [2026-08-25T18:26:25.416Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:25.416Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:26:25.417Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:26:25.422Z] [runtime-status] [28056] initializeApp(DEFAULT) {"projectId":"pwa-workana","storageBucket":"pwa-workana.firebasestorage.app"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[runtime-status] [28056] initializeApp(DEFAULT) {\"projectId\":\"pwa-workana\",\"storageBucket\":\"pwa-workana.firebasestorage.app\"}"}}
+[info] >  [docx-export:http] Processamento solicitado { jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056' } {"user":"[docx-export:http] Processamento solicitado { jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056' }","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m [docx-export:http] Processamento solicitado { jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056' }"}}
+[debug] [2026-08-25T18:26:25.437Z] [runtime-status] [28168] initializeApp(DEFAULT) {"projectId":"pwa-workana","storageBucket":"pwa-workana.firebasestorage.app"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[runtime-status] [28168] initializeApp(DEFAULT) {\"projectId\":\"pwa-workana\",\"storageBucket\":\"pwa-workana.firebasestorage.app\"}"}}
+[warn] !  Google API requested!
+   - URL: "https://oauth2.googleapis.com/token"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Google API requested!\n   - URL: \"https://oauth2.googleapis.com/token\"\n   - Be careful, this may be a production service."}}
+[warn] !  Google API requested!
+   - URL: "https://oauth2.googleapis.com/token"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"Google API requested!\n   - URL: \"https://oauth2.googleapis.com/token\"\n   - Be careful, this may be a production service."}}
+[debug] [2026-08-25T18:26:26.697Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 1280.8479ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 1280.8479ms"}}
+[debug] [2026-08-25T18:26:26.698Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:26.698Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:26.698Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:26.698Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[warn] !  Google API requested!
+   - URL: "https://storage.googleapis.com/storage/v1/b/pwa-workana.firebasestorage.app/o/docx-exports%2Ffececefe-2f15-4fc3-a628-ff32fd571056%2Finput.html?alt=media"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"Google API requested!\n   - URL: \"https://storage.googleapis.com/storage/v1/b/pwa-workana.firebasestorage.app/o/docx-exports%2Ffececefe-2f15-4fc3-a628-ff32fd571056%2Finput.html?alt=media\"\n   - Be careful, this may be a production service."}}
+[info] >  [docx-export:process] Iniciando pipeline hibrido { {"user":"[docx-export:process] Iniciando pipeline hibrido {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m [docx-export:process] Iniciando pipeline hibrido {"}}
+[info] >    jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056', {"user":"  jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',"}}
+[info] >    fileName: 'teste avaliado_Relatório Feedback 360_Cliente teste.docx', {"user":"  fileName: 'teste avaliado_Relatório Feedback 360_Cliente teste.docx',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   fileName: 'teste avaliado_Relatório Feedback 360_Cliente teste.docx',"}}
+[info] >    htmlSource: 'gcs', {"user":"  htmlSource: 'gcs',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   htmlSource: 'gcs',"}}
+[info] >    manifestStats: { version: 2, textBlocks: 50, visualBlocks: 32, pageBreaks: 1 } {"user":"  manifestStats: { version: 2, textBlocks: 50, visualBlocks: 32, pageBreaks: 1 }","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   manifestStats: { version: 2, textBlocks: 50, visualBlocks: 32, pageBreaks: 1 }"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[debug] [2026-08-25T18:26:29.780Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:29.780Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:29.780Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:29.780Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:26:29.780Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:26:29.784Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:29.784Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:26:29.785Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:26:29.785Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:26:29.996Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 211.1238ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 211.1238ms"}}
+[debug] [2026-08-25T18:26:29.997Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:29.997Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:29.998Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:29.998Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[info] >  [puppeteer] Usando Chrome local { {"user":"[puppeteer] Usando Chrome local {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m [puppeteer] Usando Chrome local {"}}
+[info] >    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' {"user":"  executablePath: 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe'","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   executablePath: 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe'"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[debug] [2026-08-25T18:26:33.785Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:33.785Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:33.786Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:33.785Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:26:33.786Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:26:33.787Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:33.788Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:26:33.788Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:26:33.791Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:26:33.998Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 207.9947ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 207.9947ms"}}
+[debug] [2026-08-25T18:26:33.999Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:33.999Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:33.999Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:33.999Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:37.773Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:37.773Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:37.773Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:37.773Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:26:37.773Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:26:37.775Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:37.775Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:26:37.776Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:26:37.777Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:26:37.977Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 200.9951ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 200.9951ms"}}
+[debug] [2026-08-25T18:26:37.979Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:37.979Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:37.979Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:37.980Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:41.776Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:41.776Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:41.776Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:41.776Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:26:41.776Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:26:41.777Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:41.777Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:26:41.777Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:26:41.778Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:26:41.991Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 213.8422ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 213.8422ms"}}
+[debug] [2026-08-25T18:26:41.992Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:41.992Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:41.992Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:41.993Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:45.772Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:45.772Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:45.772Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:45.772Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:26:45.772Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:26:45.773Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:45.773Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:26:45.773Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:26:45.774Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:26:45.973Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 199.6237ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 199.6237ms"}}
+[debug] [2026-08-25T18:26:45.974Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:45.974Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:45.974Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:45.974Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:49.795Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:49.795Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:49.796Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:49.795Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:26:49.796Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:26:49.797Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:49.797Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:26:49.797Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:26:49.797Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:26:50.003Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 205.911ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 205.911ms"}}
+[debug] [2026-08-25T18:26:50.004Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:50.004Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:50.004Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:50.004Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:53.786Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:53.786Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:53.786Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:53.786Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:26:53.786Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:26:53.787Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:53.787Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:26:53.787Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:26:53.787Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:26:53.983Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 195.9198ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 195.9198ms"}}
+[debug] [2026-08-25T18:26:53.983Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:53.983Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:53.984Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:53.984Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:57.785Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:57.785Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:26:57.785Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:26:57.785Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:26:57.785Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:26:57.788Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:26:57.789Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:26:57.789Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:26:57.790Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:26:57.990Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 201.2127ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 201.2127ms"}}
+[debug] [2026-08-25T18:26:57.992Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:26:57.992Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:26:57.993Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:26:57.993Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:01.775Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:01.775Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:01.776Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:01.775Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:27:01.776Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:27:01.777Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:27:01.777Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:27:01.777Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:27:01.778Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:27:01.975Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 197.0574ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 197.0574ms"}}
+[debug] [2026-08-25T18:27:01.975Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:27:01.975Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:27:01.975Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:27:01.975Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:05.780Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:05.780Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:05.780Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:05.780Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:27:05.780Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:27:05.781Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:27:05.781Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:27:05.781Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:27:05.782Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:27:05.977Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 195.0905ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 195.0905ms"}}
+[debug] [2026-08-25T18:27:05.977Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:27:05.978Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:27:05.978Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:27:05.978Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:09.695Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:09.695Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:09.695Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:09.695Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:27:09.696Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:27:09.697Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:27:09.697Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:27:09.697Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:27:09.698Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:27:09.890Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 193.3711ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 193.3711ms"}}
+[debug] [2026-08-25T18:27:09.895Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:27:09.895Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:27:09.896Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:27:09.896Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:12.903Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:12.903Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:12.904Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:12.903Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:27:12.904Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:27:12.904Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:27:12.905Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:27:12.905Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:27:12.906Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:27:13.091Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 185.8763ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 185.8763ms"}}
+[debug] [2026-08-25T18:27:13.092Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:27:13.092Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:27:13.092Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:27:13.092Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[info] >  [docx-export:hybrid] Blocos montados { {"user":"[docx-export:hybrid] Blocos montados {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m [docx-export:hybrid] Blocos montados {"}}
+[info] >    total: 83, {"user":"  total: 83,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   total: 83,"}}
+[info] >    textBlocks: 50, {"user":"  textBlocks: 50,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   textBlocks: 50,"}}
+[info] >    imageBlocks: 32, {"user":"  imageBlocks: 32,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   imageBlocks: 32,"}}
+[info] >    missingVisuals: 0, {"user":"  missingVisuals: 0,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   missingVisuals: 0,"}}
+[info] >    pageBreaks: 1, {"user":"  pageBreaks: 1,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   pageBreaks: 1,"}}
+[info] >    captureSelectors: 32, {"user":"  captureSelectors: 32,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   captureSelectors: 32,"}}
+[info] >    capturesResolved: 32 {"user":"  capturesResolved: 32","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   capturesResolved: 32"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[debug] [2026-08-25T18:27:16.112Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:16.112Z"],"queueLength":1,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:16.113Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z","/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:16.112Z"],"workRunningCount":2}
+[debug] [2026-08-25T18:27:16.113Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:27:16.119Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:27:16.124Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:27:16.126Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:27:16.146Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:27:16.385Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 238.6535ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 238.6535ms"}}
+[debug] [2026-08-25T18:27:16.386Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:27:16.386Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:27:16.387Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:27:16.387Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/processReportDocxExportHttp-2026-08-25T18:26:22.589Z"],"workRunningCount":1}
+[warn] !  Google API requested!
+   - URL: "https://storage.googleapis.com/upload/storage/v1/b/pwa-workana.firebasestorage.app/o?uploadType=multipart&name=docx-exports%2Ffececefe-2f15-4fc3-a628-ff32fd571056%2Fteste%20avaliado_Relat_rio%20Feedback%20360_Cliente%20teste.docx"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"Google API requested!\n   - URL: \"https://storage.googleapis.com/upload/storage/v1/b/pwa-workana.firebasestorage.app/o?uploadType=multipart&name=docx-exports%2Ffececefe-2f15-4fc3-a628-ff32fd571056%2Fteste%20avaliado_Relat_rio%20Feedback%20360_Cliente%20teste.docx\"\n   - Be careful, this may be a production service."}}
+[info] >  [docx-export:process] Exportacao concluida { {"user":"[docx-export:process] Exportacao concluida {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m [docx-export:process] Exportacao concluida {"}}
+[info] >    jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056', {"user":"  jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',"}}
+[info] >    fileName: 'teste avaliado_Relatório Feedback 360_Cliente teste.docx', {"user":"  fileName: 'teste avaliado_Relatório Feedback 360_Cliente teste.docx',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   fileName: 'teste avaliado_Relatório Feedback 360_Cliente teste.docx',"}}
+[info] >    pdfPages: 14, {"user":"  pdfPages: 14,","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   pdfPages: 14,"}}
+[info] >    totalTimeMs: 51384 {"user":"  totalTimeMs: 51384","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m   totalTimeMs: 51384"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[debug] [2026-08-25T18:27:18.411Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-processReportDocxExportHttp" in 52998.046ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"Finished \"us-central1-processReportDocxExportHttp\" in 52998.046ms"}}
+[debug] [2026-08-25T18:27:18.415Z] [worker-us-central1-processReportDocxExportHttp-54f582cc-ce30-4200-b04b-9db156dcaa45]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"[worker-us-central1-processReportDocxExportHttp-54f582cc-ce30-4200-b04b-9db156dcaa45]: IDLE"}}
+[debug] [2026-08-25T18:27:18.415Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:27:18.416Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-processReportDocxExportHttp"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:27:18.417Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[info] >  [docx-export:create] Processamento HTTP aceito { {"user":"[docx-export:create] Processamento HTTP aceito {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m [docx-export:create] Processamento HTTP aceito {"}}
+[info] >    jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056', {"user":"  jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   jobId: 'fececefe-2f15-4fc3-a628-ff32fd571056',"}}
+[info] >    url: 'http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp' {"user":"  url: 'http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp'","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m   url: 'http://127.0.0.1:5001/pwa-workana/us-central1/processReportDocxExportHttp'"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-createReportDocxExport"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[debug] [2026-08-25T18:27:19.403Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:19.402Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:27:19.403Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/getReportDocxExportStatus-2026-08-25T18:27:19.402Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:19.403Z] Accepted request GET /pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-getReportDocxExportStatus
+[debug] [2026-08-25T18:27:19.404Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:27:19.404Z] [functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/getReportDocxExportStatus?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[debug] [2026-08-25T18:27:19.404Z] [worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-getReportDocxExportStatus)"}}
+[info] i  functions: Beginning execution of "us-central1-getReportDocxExportStatus" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Beginning execution of \"us-central1-getReportDocxExportStatus\""}}
+[debug] [2026-08-25T18:27:19.405Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: BUSY"}}
+[debug] [2026-08-25T18:27:19.591Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-getReportDocxExportStatus" in 186.1726ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finished \"us-central1-getReportDocxExportStatus\" in 186.1726ms"}}
+[debug] [2026-08-25T18:27:19.592Z] [worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"[worker-us-central1-getReportDocxExportStatus-4aa49aa4-1562-4f51-a38b-8edefd109696]: IDLE"}}
+[debug] [2026-08-25T18:27:19.592Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:27:19.592Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-getReportDocxExportStatus"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:27:19.592Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:27:19.610Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/downloadReportDocxExport-2026-08-25T18:27:19.610Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:27:19.610Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/downloadReportDocxExport-2026-08-25T18:27:19.610Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:27:19.610Z] Accepted request GET /pwa-workana/us-central1/downloadReportDocxExport?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 --> us-central1-downloadReportDocxExport
+[debug] [2026-08-25T18:27:19.612Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:27:19.612Z] [functions] Got req.url=/pwa-workana/us-central1/downloadReportDocxExport?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056 {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/downloadReportDocxExport?jobId=fececefe-2f15-4fc3-a628-ff32fd571056, mapping to path=/?jobId=fececefe-2f15-4fc3-a628-ff32fd571056"}}
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-08-25T18:27:19.638Z] [worker-pool] addWorker(us-central1-downloadReportDocxExport) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(us-central1-downloadReportDocxExport)"}}
+[debug] [2026-08-25T18:27:19.639Z] [worker-pool] Adding worker with key us-central1-downloadReportDocxExport, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key us-central1-downloadReportDocxExport, total=1"}}
+[debug] [2026-08-25T18:27:22.020Z] [runtime-status] [33264] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:27:22.022Z] [runtime-status] [33264] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:27:22.023Z] [runtime-status] [33264] Found local functions config: C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions/.runtimeconfig.json {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Found local functions config: C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions/.runtimeconfig.json"}}
+[debug] [2026-08-25T18:27:22.023Z] [runtime-status] [33264] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-08-25T18:27:22.024Z] [runtime-status] [33264] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:27:22.500Z] [runtime-status] [33264] Checked functions.config() {"config":{"email":{"pass":"nkik bvji wshf xzpg","user":"igorhlucenaa@gmail.com"}}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Checked functions.config() {\"config\":{\"email\":{\"pass\":\"nkik bvji wshf xzpg\",\"user\":\"igorhlucenaa@gmail.com\"}}}"}}
+[debug] [2026-08-25T18:27:22.500Z] [runtime-status] [33264] firebase-functions has been stubbed. {"functionsResolution":{"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] firebase-functions has been stubbed. {\"functionsResolution\":{\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:27:22.501Z] [runtime-status] [33264] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:27:22.506Z] [runtime-status] [33264] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:27:22.509Z] [runtime-status] [33264] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:27:22.510Z] [runtime-status] [33264] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:27:22.976Z] [runtime-status] [33264] Functions runtime initialized. {"cwd":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions","node_version":"20.19.0"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Functions runtime initialized. {\"cwd\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\",\"node_version\":\"20.19.0\"}"}}
+[debug] [2026-08-25T18:27:22.977Z] [runtime-status] [33264] Listening to port: \\?\pipe\fire_emu_63d8a316e550df55 {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] Listening to port: \\\\?\\pipe\\fire_emu_63d8a316e550df55"}}
+[debug] [2026-08-25T18:27:23.084Z] [worker-us-central1-downloadReportDocxExport-882ab091-4f40-48c7-a6ac-1ef8dc15a0f1]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[worker-us-central1-downloadReportDocxExport-882ab091-4f40-48c7-a6ac-1ef8dc15a0f1]: IDLE"}}
+[debug] [2026-08-25T18:27:23.084Z] [worker-pool] submitRequest(triggerId=us-central1-downloadReportDocxExport) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-downloadReportDocxExport)"}}
+[info] i  functions: Beginning execution of "us-central1-downloadReportDocxExport" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"Beginning execution of \"us-central1-downloadReportDocxExport\""}}
+[debug] [2026-08-25T18:27:23.085Z] [worker-us-central1-downloadReportDocxExport-882ab091-4f40-48c7-a6ac-1ef8dc15a0f1]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[worker-us-central1-downloadReportDocxExport-882ab091-4f40-48c7-a6ac-1ef8dc15a0f1]: BUSY"}}
+[debug] [2026-08-25T18:27:23.099Z] [runtime-status] [33264] initializeApp(DEFAULT) {"projectId":"pwa-workana","storageBucket":"pwa-workana.firebasestorage.app"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[runtime-status] [33264] initializeApp(DEFAULT) {\"projectId\":\"pwa-workana\",\"storageBucket\":\"pwa-workana.firebasestorage.app\"}"}}
+[warn] !  Google API requested!
+   - URL: "https://oauth2.googleapis.com/token"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"Google API requested!\n   - URL: \"https://oauth2.googleapis.com/token\"\n   - Be careful, this may be a production service."}}
+[warn] !  Google API requested!
+   - URL: "https://storage.googleapis.com/storage/v1/b/pwa-workana.firebasestorage.app/o/docx-exports%2Ffececefe-2f15-4fc3-a628-ff32fd571056%2Fteste%20avaliado_Relat_rio%20Feedback%20360_Cliente%20teste.docx?alt=media"
+   - Be careful, this may be a production service. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"Google API requested!\n   - URL: \"https://storage.googleapis.com/storage/v1/b/pwa-workana.firebasestorage.app/o/docx-exports%2Ffececefe-2f15-4fc3-a628-ff32fd571056%2Fteste%20avaliado_Relat_rio%20Feedback%20360_Cliente%20teste.docx?alt=media\"\n   - Be careful, this may be a production service."}}
+[debug] [2026-08-25T18:27:26.586Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-downloadReportDocxExport" in 3501.2828ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"Finished \"us-central1-downloadReportDocxExport\" in 3501.2828ms"}}
+[debug] [2026-08-25T18:27:26.587Z] [worker-us-central1-downloadReportDocxExport-882ab091-4f40-48c7-a6ac-1ef8dc15a0f1]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"[worker-us-central1-downloadReportDocxExport-882ab091-4f40-48c7-a6ac-1ef8dc15a0f1]: IDLE"}}
+[debug] [2026-08-25T18:27:26.588Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:27:26.588Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-downloadReportDocxExport"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:27:26.588Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:29:48.146Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-25T18:29:48.146Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:29:48.147Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-25T18:29:48.146Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:29:48.147Z] Accepted request OPTIONS /pwa-workana/us-central1/generateReportPdf --> us-central1-generateReportPdf
+[debug] [2026-08-25T18:29:48.156Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:29:48.157Z] [functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/"}}
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2026-08-25T18:29:48.194Z] [worker-pool] addWorker(us-central1-generateReportPdf) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] addWorker(us-central1-generateReportPdf)"}}
+[debug] [2026-08-25T18:29:48.194Z] [worker-pool] Adding worker with key us-central1-generateReportPdf, total=1 {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Adding worker with key us-central1-generateReportPdf, total=1"}}
+[debug] [2026-08-25T18:29:56.800Z] [runtime-status] [28172] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:29:56.809Z] [runtime-status] [28172] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:29:56.811Z] [runtime-status] [28172] Found local functions config: C:\Users\adm\Documents\workspace_igor\eck_v3\ECK\functions/.runtimeconfig.json {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Found local functions config: C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions/.runtimeconfig.json"}}
+[debug] [2026-08-25T18:29:56.813Z] [runtime-status] [28172] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}] {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Outgoing network have been stubbed. [{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"http\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"https\",\"status\":\"mocked\"},{\"name\":\"net\",\"status\":\"mocked\"}]"}}
+[debug] [2026-08-25T18:29:56.818Z] [runtime-status] [28172] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:29:59.404Z] [runtime-status] [28172] Checked functions.config() {"config":{"email":{"pass":"nkik bvji wshf xzpg","user":"igorhlucenaa@gmail.com"}}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Checked functions.config() {\"config\":{\"email\":{\"pass\":\"nkik bvji wshf xzpg\",\"user\":\"igorhlucenaa@gmail.com\"}}}"}}
+[debug] [2026-08-25T18:29:59.405Z] [runtime-status] [28172] firebase-functions has been stubbed. {"functionsResolution":{"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] firebase-functions has been stubbed. {\"functionsResolution\":{\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:29:59.408Z] [runtime-status] [28172] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:29:59.439Z] [runtime-status] [28172] Resolved module firebase-admin {"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Resolved module firebase-admin {\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}"}}
+[debug] [2026-08-25T18:29:59.452Z] [runtime-status] [28172] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.1","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Resolved module firebase-functions {\"declared\":true,\"installed\":true,\"version\":\"6.3.1\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\v2\\\\index.js\"}"}}
+[debug] [2026-08-25T18:29:59.454Z] [runtime-status] [28172] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"13.1.0","resolution":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions\\node_modules\\firebase-admin\\lib\\index.js"}} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] firebase-admin has been stubbed. {\"adminResolution\":{\"declared\":true,\"installed\":true,\"version\":\"13.1.0\",\"resolution\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\\\\node_modules\\\\firebase-admin\\\\lib\\\\index.js\"}}"}}
+[debug] [2026-08-25T18:30:00.778Z] [runtime-status] [28172] Functions runtime initialized. {"cwd":"C:\\Users\\adm\\Documents\\workspace_igor\\eck_v3\\ECK\\functions","node_version":"20.19.0"} {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Functions runtime initialized. {\"cwd\":\"C:\\\\Users\\\\adm\\\\Documents\\\\workspace_igor\\\\eck_v3\\\\ECK\\\\functions\",\"node_version\":\"20.19.0\"}"}}
+[debug] [2026-08-25T18:30:00.780Z] [runtime-status] [28172] Listening to port: \\?\pipe\fire_emu_da7a8f23e66fb196 {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[runtime-status] [28172] Listening to port: \\\\?\\pipe\\fire_emu_da7a8f23e66fb196"}}
+[debug] [2026-08-25T18:30:00.824Z] [worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: IDLE"}}
+[debug] [2026-08-25T18:30:00.824Z] [worker-pool] submitRequest(triggerId=us-central1-generateReportPdf) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-generateReportPdf)"}}
+[info] i  functions: Beginning execution of "us-central1-generateReportPdf" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Beginning execution of \"us-central1-generateReportPdf\""}}
+[debug] [2026-08-25T18:30:00.825Z] [worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: BUSY"}}
+[debug] [2026-08-25T18:30:00.839Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-generateReportPdf" in 13.7937ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finished \"us-central1-generateReportPdf\" in 13.7937ms"}}
+[debug] [2026-08-25T18:30:00.840Z] [worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: IDLE"}}
+[debug] [2026-08-25T18:30:00.841Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:30:00.841Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:30:00.841Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:30:00.881Z] [work-queue] {"queuedWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-25T18:30:00.880Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2026-08-25T18:30:00.882Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/pwa-workana/us-central1/generateReportPdf-2026-08-25T18:30:00.880Z"],"workRunningCount":1}
+[debug] [2026-08-25T18:30:00.882Z] Accepted request POST /pwa-workana/us-central1/generateReportPdf --> us-central1-generateReportPdf
+[debug] [2026-08-25T18:30:00.893Z] [functions] Runtime ready! Sending request! {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Runtime ready! Sending request!"}}
+[debug] [2026-08-25T18:30:00.893Z] [functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/ {"metadata":{"emulator":{"name":"functions"},"message":"[functions] Got req.url=/pwa-workana/us-central1/generateReportPdf, mapping to path=/"}}
+[debug] [2026-08-25T18:30:00.894Z] [worker-pool] submitRequest(triggerId=us-central1-generateReportPdf) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] submitRequest(triggerId=us-central1-generateReportPdf)"}}
+[info] i  functions: Beginning execution of "us-central1-generateReportPdf" {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Beginning execution of \"us-central1-generateReportPdf\""}}
+[debug] [2026-08-25T18:30:00.895Z] [worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: BUSY {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: BUSY"}}
+[info] >  [puppeteer] Usando Chrome local { {"user":"[puppeteer] Usando Chrome local {","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"\u001b[90m> \u001b[39m [puppeteer] Usando Chrome local {"}}
+[info] >    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' {"user":"  executablePath: 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe'","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"\u001b[90m> \u001b[39m   executablePath: 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe'"}}
+[info] >  } {"user":"}","metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"\u001b[90m> \u001b[39m }"}}
+[debug] [2026-08-25T18:30:26.658Z] Finishing up request with event=pause {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=pause"}}
+[info] i  functions: Finished "us-central1-generateReportPdf" in 25763.3662ms {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finished \"us-central1-generateReportPdf\" in 25763.3662ms"}}
+[debug] [2026-08-25T18:30:26.659Z] [worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: IDLE {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"[worker-us-central1-generateReportPdf-beabdaaa-d8ac-4e4c-80a9-19e97304dc88]: IDLE"}}
+[debug] [2026-08-25T18:30:26.660Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=finish"}}
+[debug] [2026-08-25T18:30:26.660Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-generateReportPdf"},"extension":{},"message":"Finishing up request with event=close"}}
+[debug] [2026-08-25T18:30:26.660Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
