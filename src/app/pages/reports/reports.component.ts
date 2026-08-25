@@ -2403,9 +2403,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Métodos utilitários para manipular as seções do relatório
   getSecoesVisiveisOrdenadas(): RelatorioSecao[] {
     return this.getCachedCalculation('secoes-visiveis', () =>
-      this.relatorioConfiguracao
-        .filter(secao => secao.visivel)
-        .sort((a, b) => a.ordem - b.ordem)
+      normalizeRelatorioConfiguracao(
+        this.relatorioConfiguracao
+          .filter(secao => secao.visivel)
+          .sort((a, b) => a.ordem - b.ordem)
+      )
     );
   }
 

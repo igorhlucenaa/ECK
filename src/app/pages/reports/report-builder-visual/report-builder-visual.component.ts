@@ -26,6 +26,7 @@ import {
   buildTituloSecaoDuplicada,
   getTituloPadraoSecao,
   normalizeRelatorioConfiguracao,
+  normalizeSecaoTitulo,
 } from '../report-section-defaults';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -549,12 +550,12 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
    * Duplica uma seção
    */
   duplicarSecao(secao: RelatorioSecaoSimplificada): void {
-    const novaSecao: RelatorioSecaoSimplificada = {
+    const novaSecao: RelatorioSecaoSimplificada = normalizeSecaoTitulo({
       ...secao,
       id: `${secao.tipo}_${Date.now()}`,
       titulo: buildTituloSecaoDuplicada(secao, this.canvasSections.map((item) => item.titulo)),
       ordem: this.canvasSections.length + 1
-    };
+    });
 
     this.canvasSections.push(novaSecao);
     this.ordenarSecoes();

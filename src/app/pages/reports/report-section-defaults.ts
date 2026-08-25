@@ -45,11 +45,33 @@ export const DEFAULT_TABELA_FREQUENCIA_TEXTO = [
   'A — Avaliado(a), G — Gestor(es), P — Pares, S — Subordinados, O — Outros.</p>',
 ].join(' ');
 
-const COPIA_RESIDUO_PATTERN = /\(\s*cópia\s*\)/i;
-const RESUMO_TITLE_PATTERN = /^resumo(\s*\(\s*cópia\s*\))?$/i;
+const COPIA_RESIDUO_PATTERN = /\(\s*c[oó]pia\s*\)/gi;
+const RESUMO_BASE_PATTERN = /^resumo\b/i;
+
+const TIPOS_QUE_NAO_SAO_RESUMO: RelatorioSecaoTipo[] = [
+  'tabela',
+  'tabela_detalhada',
+  'destaques',
+  'graficos',
+  'grafico_defasagem',
+  'competencia_detalhada',
+  'janela_johari',
+  'perguntas_abertas',
+  'introducao',
+  'capa',
+  'texto',
+  'custom',
+];
 
 export function getTituloPadraoSecao(tipo: RelatorioSecaoTipo | string): string {
   return TITULO_PADRAO_POR_TIPO[tipo as RelatorioSecaoTipo] || 'Seção';
+}
+
+export function stripResiduosCopia(titulo: string): string {
+  return titulo
+    .replace(COPIA_RESIDUO_PATTERN, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function tituloTemResiduoCopia(titulo: string | undefined): boolean {
@@ -66,11 +88,11 @@ export function tituloIncompativelComTipo(tipo: string, titulo: string | undefin
     return true;
   }
 
-  if (tipo === 'tabela' && RESUMO_TITLE_PATTERN.test(normalizado)) {
-    return true;
-  }
-
-  if (tipo === 'tabela_detalhada' && RESUMO_TITLE_PATTERN.test(normalizado)) {
+  const tituloSemCopia = stripResiduosCopia(normalizado);
+  if (
+    TIPOS_QUE_NAO_SAO_RESUMO.includes(tipo as RelatorioSecaoTipo) &&
+    RESUMO_BASE_PATTERN.test(tituloSemCopia)
+  ) {
     return true;
   }
 
@@ -100,12 +122,10 @@ export function buildTituloSecaoDuplicada(
   secao: RelatorioSecaoLike,
   titulosExistentes: Array<string | undefined>
 ): string {
-  const tituloBase = (secao.titulo || getTituloPadraoSecao(secao.tipo))
-    .replace(COPIA_RESIDUO_PATTERN, '')
-    .trim();
+  const tituloBase = stripResiduosCopia(secao.titulo || getTituloPadraoSecao(secao.tipo));
   const existentes = new Set(
     titulosExistentes
-      .map((titulo) => (titulo || '').trim().toLowerCase())
+      .map((titulo) => stripResiduosCopia(titulo || '').toLowerCase())
       .filter(Boolean)
   );
 
