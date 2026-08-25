@@ -1040,7 +1040,7 @@ export class ReportPdfMakeService {
     }
 
     const content: any[] = [
-      { text: secao.titulo || 'Tabelas Detalhadas', style: 'sectionTitle', pageBreak: 'before' }
+      { text: secao.titulo || 'Avaliações de Frequência por Característica', style: 'sectionTitle', pageBreak: 'before' }
     ];
 
     for (const comp of competencias) {

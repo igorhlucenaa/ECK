@@ -98,22 +98,61 @@ export async function runHybridRenderSession(
         await page.evaluate((captureSelector: string) => {
           const target = document.querySelector(captureSelector) as HTMLElement | null;
           if (!target) return;
+
+          const reportTableSelector =
+            '.tabela-frequencia, .tabela-distribuicao-notas, .tabela-destaques, .tabela-resumo-medias, .gap-chart-container, .rp-perguntas-abertas-content';
+
+          const isReportTableStructure = (element: Element): boolean => {
+            const tag = element.tagName;
+            if (tag === 'TABLE') {
+              return (element as HTMLElement).matches(reportTableSelector);
+            }
+            if (tag === 'TH' || tag === 'TD' || tag === 'TR' || tag === 'THEAD' || tag === 'TBODY' || tag === 'TFOOT') {
+              return !!element.closest(reportTableSelector);
+            }
+            return false;
+          };
+
+          const enhanceReportTable = (root: HTMLElement): void => {
+            if (!root.matches(reportTableSelector)) return;
+
+            root.querySelectorAll('th, td').forEach((cell) => {
+              const element = cell as HTMLElement;
+              element.style.setProperty('border', '1px solid #555555', 'important');
+              const computedSize = Number.parseFloat(window.getComputedStyle(element).fontSize);
+              const baseSize = Number.isFinite(computedSize) && computedSize > 0 ? computedSize : 11;
+              element.style.setProperty('font-size', `${Math.max(baseSize + 2, 12)}px`, 'important');
+              element.style.setProperty('line-height', '1.35', 'important');
+            });
+
+            if (root.matches('.tabela-frequencia, .tabela-distribuicao-notas')) {
+              root.style.setProperty('border-collapse', 'collapse', 'important');
+              root.style.setProperty('border', '1px solid #555555', 'important');
+            }
+          };
+
           target.querySelectorAll('*').forEach((node) => {
             const element = node as HTMLElement;
             const inInfo = element.classList.contains('capa-info-block') || !!element.closest('.capa-info-block');
+            const preserveTable = isReportTableStructure(element);
+
             element.style.setProperty('outline', 'none');
             element.style.setProperty('box-shadow', 'none');
-            if (!inInfo) {
+            if (!inInfo && !preserveTable) {
               element.style.setProperty('border', 'none');
               element.style.setProperty('border-width', '0');
             }
-            if (element.tagName === 'TABLE') {
+            if (element.tagName === 'TABLE' && !element.matches(reportTableSelector)) {
               element.setAttribute('border', '0');
             }
           });
-          target.style.setProperty('border', 'none');
+
+          enhanceReportTable(target);
           target.style.setProperty('outline', 'none');
           target.style.setProperty('box-shadow', 'none');
+          if (!target.matches(reportTableSelector)) {
+            target.style.setProperty('border', 'none');
+          }
         }, selector);
       }
 

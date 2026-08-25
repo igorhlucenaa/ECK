@@ -77,6 +77,11 @@ import {
   REPORT_RICH_TEXT_EDITOR_CONFIG,
   secaoSuportaHtmlBruto,
 } from './report-rich-text.config';
+import {
+  DEFAULT_TABELA_FREQUENCIA_TEXTO,
+  getTituloPadraoSecao,
+  normalizeRelatorioConfiguracao,
+} from './report-section-defaults';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -1064,8 +1069,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     {
       id: 'tabela',
       tipo: 'tabela',
-      titulo: 'Tabela de Frequência',
-      texto: '',
+      titulo: getTituloPadraoSecao('tabela'),
+      texto: DEFAULT_TABELA_FREQUENCIA_TEXTO,
       visivel: true,
       ordem: 5,
       competenciasIds: []
@@ -3566,7 +3571,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const reportSnap = await getDoc(reportRef);
       if (reportSnap.exists()) {
         const reportData = reportSnap.data();
-        this.relatorioConfiguracao = reportData['configuracao'] || [];
+        this.relatorioConfiguracao = normalizeRelatorioConfiguracao(reportData['configuracao'] || []);
         this.competencias = reportData['competencias'] || [];
         if (reportData['documentoConfig']) {
           this.documentoConfig = {
@@ -3650,7 +3655,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         (novaSecao as any)['coresPersonalizadas'] = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
         break;
       case 'tabela':
-        novaSecao.titulo = 'Nova Tabela Detalhada';
+        novaSecao.titulo = getTituloPadraoSecao('tabela');
+        novaSecao.texto = DEFAULT_TABELA_FREQUENCIA_TEXTO;
         novaSecao.competenciasIds = [];
         break;
       case 'competencia_detalhada':
@@ -3989,6 +3995,40 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       padding: 0 !important;
       margin: 0 !important;
       background: #fff !important;
+    }
+    .tabela-frequencia,
+    .tabela-distribuicao-notas,
+    .tabela-destaques,
+    .tabela-resumo-medias {
+      border-collapse: collapse !important;
+      border: 1px solid #555 !important;
+    }
+    .tabela-frequencia th,
+    .tabela-frequencia td,
+    .tabela-distribuicao-notas th,
+    .tabela-distribuicao-notas td,
+    .tabela-destaques th,
+    .tabela-destaques td,
+    .tabela-resumo-medias th,
+    .tabela-resumo-medias td {
+      border: 1px solid #555 !important;
+      font-size: 12px !important;
+      line-height: 1.35 !important;
+      padding: 6px 5px !important;
+    }
+    .tabela-frequencia thead th,
+    .tabela-distribuicao-notas thead th {
+      font-size: 12px !important;
+      font-weight: 700 !important;
+    }
+    .tabela-frequencia tbody td:first-child,
+    .tabela-distribuicao-notas tbody td:first-child {
+      font-size: 12px !important;
+    }
+    .tabela-frequencia tfoot td,
+    .tabela-distribuicao-notas tfoot td {
+      font-size: 13px !important;
+      font-weight: 600 !important;
     }
     ` : ''}
     @page { size: A4 portrait; margin: 18mm 7mm 16mm 7mm; }
@@ -4780,7 +4820,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
    * Handler para mudanças do componente visual
    */
   onConfiguracaoVisualChange(novaConfiguracao: any[]): void {
-    this.relatorioConfiguracao = novaConfiguracao;
+    this.relatorioConfiguracao = normalizeRelatorioConfiguracao(novaConfiguracao);
     this.atualizarFormArrayComConfiguracao();
     this.invalidateCache('secao-');
     this.builderHasUnsavedChanges = true;
@@ -4899,8 +4939,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       {
         id: 'tabela',
         tipo: 'tabela',
-        titulo: 'Tabela de Frequência',
-        texto: '',
+        titulo: getTituloPadraoSecao('tabela'),
+        texto: DEFAULT_TABELA_FREQUENCIA_TEXTO,
         visivel: true,
         ordem: 5,
         competenciasIds: []
@@ -5141,10 +5181,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       // Carregar seções do template zerando competenciasIds — serão preenchidas
       // pelas competências da avaliação atual, não do momento em que o template foi salvo
-      const secoes: RelatorioSecao[] = (templateData['configuracao'] || []).map((sec: any) => ({
-        ...sec,
-        competenciasIds: []
-      }));
+      const secoes: RelatorioSecao[] = normalizeRelatorioConfiguracao(
+        (templateData['configuracao'] || []).map((sec: any) => ({
+          ...sec,
+          competenciasIds: []
+        }))
+      );
       this.relatorioConfiguracao = secoes;
 
       // Preencher automaticamente o nome do template no campo de nome
@@ -7596,7 +7638,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const applySnapshotData = (data: any) => {
       this.competencias = data['competencias'] || [];
-      this.relatorioConfiguracao = data['configuracao'] || [];
+      this.relatorioConfiguracao = normalizeRelatorioConfiguracao(data['configuracao'] || []);
       this.documentoConfig = data['documentoConfig']
         ? { ...DOCUMENTO_CONFIG_PADRAO, ...data['documentoConfig'] }
         : { ...DOCUMENTO_CONFIG_PADRAO };
@@ -7687,7 +7729,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const applySnapshotData = (data: any) => {
       this.competencias = data['competencias'] || [];
-      this.relatorioConfiguracao = data['configuracao'] || [];
+      this.relatorioConfiguracao = normalizeRelatorioConfiguracao(data['configuracao'] || []);
       this.documentoConfig = data['documentoConfig']
         ? { ...DOCUMENTO_CONFIG_PADRAO, ...data['documentoConfig'] }
         : { ...DOCUMENTO_CONFIG_PADRAO };

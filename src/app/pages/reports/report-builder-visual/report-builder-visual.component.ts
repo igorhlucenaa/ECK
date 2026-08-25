@@ -21,6 +21,12 @@ import {
   REPORT_RICH_TEXT_EDITOR_CONFIG,
   secaoSuportaHtmlBruto,
 } from '../report-rich-text.config';
+import {
+  aplicarDefaultsSecaoNova,
+  buildTituloSecaoDuplicada,
+  getTituloPadraoSecao,
+  normalizeRelatorioConfiguracao,
+} from '../report-section-defaults';
 import { TranslateModule } from '@ngx-translate/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
@@ -475,10 +481,10 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
       ? this.getTipoGraficoPadraoPorTemplate(template)
       : undefined;
 
-    const novaSecao: RelatorioSecaoSimplificada = {
+    const novaSecao: RelatorioSecaoSimplificada = aplicarDefaultsSecaoNova({
       id: `${template.tipo}_${Date.now()}`,
       tipo: template.tipo,
-      titulo: template.nome,
+      titulo: getTituloPadraoSecao(template.tipo),
       texto: template.tipo === 'capa' ? DEFAULT_CAPA_HTML : '',
       visivel: true,
       ordem: this.canvasSections.length + 1,
@@ -487,7 +493,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
         : [],
       tipoGrafico: tipoGraficoPadrao,
       paletaCor: 'padrao'
-    };
+    });
 
     this.canvasSections.push(novaSecao);
     this.ordenarSecoes();
@@ -546,7 +552,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
     const novaSecao: RelatorioSecaoSimplificada = {
       ...secao,
       id: `${secao.tipo}_${Date.now()}`,
-      titulo: `${secao.titulo} (Cópia)`,
+      titulo: buildTituloSecaoDuplicada(secao, this.canvasSections.map((item) => item.titulo)),
       ordem: this.canvasSections.length + 1
     };
 
@@ -665,7 +671,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   }
 
   private normalizarSecoes(secoes: RelatorioSecaoSimplificada[]): RelatorioSecaoSimplificada[] {
-    return secoes.map(secao => {
+    return normalizeRelatorioConfiguracao(secoes).map(secao => {
       if (secao.tipo !== 'graficos') {
         return secao;
       }
