@@ -1367,7 +1367,7 @@ export class ReportPdfMakeService {
         { text: 'ID', bold: true, fillColor: '#f5f5f5' },
         { text: 'Comportamentos', bold: true, fillColor: '#f5f5f5' },
         { text: 'Autoavaliação', bold: true, fillColor: '#f5f5f5' },
-        { text: 'Outros', bold: true, fillColor: '#f5f5f5' },
+        { text: 'Demais Avaliadores', bold: true, fillColor: '#f5f5f5' },
         { text: 'Análise de defasagem', bold: true, fillColor: '#f5f5f5' },
       ],
       ...johariData.points.map((point) => [
