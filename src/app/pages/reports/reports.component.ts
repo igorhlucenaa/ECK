@@ -216,6 +216,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly LABEL_MEDIA_SEM_AUTO = 'Média sem autoavaliação';
   /** Formata rótulos numéricos dos gráficos ngx-charts (2 casas decimais). */
   readonly formatChartDataLabel = (value: number): string => formatReportDecimal(value);
+
+  /**
+   * ngx-charts pie passa o *nome* da fatia em labelFormatting — não usar formatChartDataLabel.
+   * Exibe a média formatada de cada item nos rótulos da pizza.
+   */
+  getPieSliceLabelFormatter(data: Array<{ name: string; value: number }>): (name: string) => string {
+    const valueByName = new Map(
+      (data || []).map((item) => [item.name, formatReportDecimal(item.value)])
+    );
+    return (name: string) => valueByName.get(name) ?? name;
+  }
   /** Opções do eixo Y para evitar truncamento dos rótulos longos de média. */
   readonly barChartWrapTicks = true;
   readonly barChartTrimYAxisTicks = false;
@@ -4228,8 +4239,65 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     .pdf-svg-chart__legend {
       flex: 0 0 auto !important;
-      max-width: 180px !important;
+      max-width: 280px !important;
+      min-width: 180px !important;
       color: #0f172a !important;
+      overflow: visible !important;
+    }
+    .pdf-svg-chart__legend .legend-label-text,
+    .pdf-svg-chart__legend .legend-labels,
+    .pdf-svg-chart__legend .legend-wrap {
+      overflow: visible !important;
+      white-space: normal !important;
+      text-overflow: unset !important;
+      max-width: none !important;
+    }
+    .pdf-svg-chart__legend .legend-label-text {
+      font-size: 12px !important;
+      line-height: 1.35 !important;
+    }
+    .pdf-svg-chart .rp-bar-chart-legend {
+      max-width: 280px !important;
+      padding: 12px 10px !important;
+      background: rgba(0, 0, 0, 0.04) !important;
+      border-radius: 4px !important;
+    }
+    .pdf-svg-chart .rp-bar-chart-legend__title {
+      margin: 0 0 10px !important;
+      font-size: 14px !important;
+      font-weight: 700 !important;
+      color: #333 !important;
+    }
+    .pdf-svg-chart .rp-bar-chart-legend__list {
+      list-style: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .pdf-svg-chart .rp-bar-chart-legend__item {
+      display: flex !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+      margin-bottom: 8px !important;
+      font-size: 12px !important;
+      line-height: 1.35 !important;
+      color: #555 !important;
+    }
+    .pdf-svg-chart .rp-bar-chart-legend__swatch {
+      display: inline-block !important;
+      width: 14px !important;
+      height: 14px !important;
+      min-width: 14px !important;
+      border-radius: 3px !important;
+      flex-shrink: 0 !important;
+      print-color-adjust: exact !important;
+      -webkit-print-color-adjust: exact !important;
+    }
+    .pdf-svg-chart .rp-bar-chart-legend__label {
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: unset !important;
+      line-height: 1.35 !important;
+      font-size: 12px !important;
     }
     table { border-collapse: collapse; max-width: 100%; }
     table,
@@ -4637,14 +4705,118 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       wrapper.appendChild(img);
 
-      const legend = clonedChart.querySelector('.chart-legend, ngx-charts-legend');
-      if (legend) {
-        const legendClone = legend.cloneNode(true) as HTMLElement;
-        legendClone.classList.add('pdf-svg-chart__legend');
-        wrapper.appendChild(legendClone);
+      const exportLegend = this.buildChartExportLegend(sourceChart);
+      if (exportLegend) {
+        wrapper.appendChild(exportLegend);
       }
 
       clonedChart.parentNode?.replaceChild(wrapper, clonedChart);
+    });
+  }
+
+  private buildChartExportLegend(sourceChart: HTMLElement): HTMLElement | null {
+    const legendRoot = sourceChart.querySelector('.chart-legend, ngx-charts-legend');
+    if (!legendRoot) return null;
+
+    const arcColors = this.extractPieArcFillColors(sourceChart);
+    const legendTitle = legendRoot.querySelector('.legend-title-text')?.textContent?.trim() || 'Legenda';
+    const entries = Array.from(legendRoot.querySelectorAll('.legend-label')).map((item, index) => {
+      const labelHost = item.querySelector('[title]') as HTMLElement | null;
+      const swatch = item.querySelector('.legend-label-color') as HTMLElement | null;
+      const fullLabel = labelHost?.getAttribute('title')?.trim()
+        || labelHost?.querySelector('.legend-label-text')?.textContent?.trim()
+        || '';
+      const color = this.extractLegendSwatchColor(swatch, arcColors[index]);
+      return { fullLabel, color };
+    }).filter((entry) => entry.fullLabel);
+
+    if (entries.length === 0) return null;
+
+    const aside = document.createElement('aside');
+    aside.className = 'pdf-svg-chart__legend rp-bar-chart-legend';
+
+    const title = document.createElement('p');
+    title.className = 'rp-bar-chart-legend__title';
+    title.textContent = legendTitle;
+    aside.appendChild(title);
+
+    const list = document.createElement('ul');
+    list.className = 'rp-bar-chart-legend__list';
+    list.style.listStyle = 'none';
+    list.style.margin = '0';
+    list.style.padding = '0';
+
+    entries.forEach((entry) => {
+      const li = document.createElement('li');
+      li.className = 'rp-bar-chart-legend__item';
+      li.style.display = 'flex';
+      li.style.alignItems = 'flex-start';
+      li.style.gap = '8px';
+      li.style.marginBottom = '8px';
+
+      const swatch = document.createElement('span');
+      swatch.className = 'rp-bar-chart-legend__swatch';
+      swatch.style.display = 'inline-block';
+      swatch.style.width = '14px';
+      swatch.style.height = '14px';
+      swatch.style.minWidth = '14px';
+      swatch.style.borderRadius = '3px';
+      swatch.style.flexShrink = '0';
+      swatch.style.backgroundColor = entry.color || '#808080';
+
+      const label = document.createElement('span');
+      label.className = 'rp-bar-chart-legend__label';
+      label.textContent = entry.fullLabel;
+
+      li.appendChild(swatch);
+      li.appendChild(label);
+      list.appendChild(li);
+    });
+
+    aside.appendChild(list);
+    return aside;
+  }
+
+  private extractLegendSwatchColor(swatch: HTMLElement | null, arcColor?: string): string {
+    if (swatch) {
+      const inline = swatch.style.backgroundColor?.trim();
+      if (inline) return inline;
+
+      const computed = window.getComputedStyle(swatch).backgroundColor;
+      if (computed && computed !== 'rgba(0, 0, 0, 0)' && computed !== 'transparent') {
+        return computed;
+      }
+    }
+
+    if (arcColor && !arcColor.startsWith('url(')) {
+      return arcColor;
+    }
+
+    return '#808080';
+  }
+
+  private extractPieArcFillColors(sourceChart: HTMLElement): string[] {
+    const paths = Array.from(
+      sourceChart.querySelectorAll('g.pie-arc path, ngx-charts-pie-arc path, .arc-group path')
+    ) as SVGPathElement[];
+
+    return paths.map((path) => {
+      const attrFill = path.getAttribute('fill');
+      if (attrFill && attrFill !== 'none') {
+        return attrFill;
+      }
+
+      const inlineFill = path.style.fill?.trim();
+      if (inlineFill && inlineFill !== 'none') {
+        return inlineFill;
+      }
+
+      const computedFill = window.getComputedStyle(path).fill;
+      if (computedFill && computedFill !== 'none' && computedFill !== 'rgba(0, 0, 0, 0)') {
+        return computedFill;
+      }
+
+      return '#808080';
     });
   }
 

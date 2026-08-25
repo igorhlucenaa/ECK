@@ -1559,7 +1559,9 @@
                         [legend]="true"
                         [legendTitle]="'Legenda'"
                         [labels]="true"
-                        [labelFormatting]="formatChartDataLabel"
+                        [trimLabels]="false"
+                        [maxLabelLength]="100"
+                        [labelFormatting]="getPieSliceLabelFormatter(dadosPizza)"
                         [doughnut]="false"
                         [scheme]="getColorSchemeParaSecao(secao)">
                       </ngx-charts-pie-chart>
@@ -1570,16 +1572,20 @@
                       <div *ngFor="let comp of getCompetenciasGraficosCached(secao)" class="rp-competencia-chart-block">
                         <h4>{{ comp.nome }}</h4>
                         <p style="color: #666; font-size: 12px; margin-bottom: 8px;">{{ comp.descricao }}</p>
+                        <ng-container *ngIf="getCompetenciaPieData(comp) as dadosPizzaComp">
                         <ngx-charts-pie-chart
-                          [results]="getCompetenciaPieData(comp)"
+                          [results]="dadosPizzaComp"
                           [view]="[300,250]"
                           [legend]="true"
                           [legendTitle]="'Legenda'"
                           [labels]="true"
-                          [labelFormatting]="formatChartDataLabel"
+                          [trimLabels]="false"
+                          [maxLabelLength]="100"
+                          [labelFormatting]="getPieSliceLabelFormatter(dadosPizzaComp)"
                           [doughnut]="false"
                           [scheme]="getColorSchemeParaSecao(secao)">
                         </ngx-charts-pie-chart>
+                        </ng-container>
                       </div>
                     </div>
                   </div>
