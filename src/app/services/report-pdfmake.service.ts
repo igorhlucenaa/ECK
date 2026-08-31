@@ -1265,56 +1265,70 @@ export class ReportPdfMakeService {
 
     const gapData: Array<{ competencyName: string; selfScore: number | null; othersScore: number | null; gap: number | null }> = [];
 
-    competencias.forEach(comp => {
-      const perguntas = comp.perguntasIds || [];
-      const selfVals: number[] = [];
-      const othersVals: number[] = [];
-
-      perguntas.forEach(perguntaId => {
-        // Autoavaliação
-        const selfRows = data.dataSource.filter(row =>
-          this.mapCategoriaToGrupo(row['categoria'], data) === 'Avaliado(a)'
-        );
-        selfRows.forEach(row => {
-          let valor = row[perguntaId];
-          if (typeof valor === 'string' && valor.includes('Column')) {
-            const match = valor.match(/Column (\d+)/);
-            if (match) valor = parseInt(match[1]);
-          }
-          const numVal = typeof valor === 'number' ? valor : parseFloat(valor);
-          if (!isNaN(numVal) && numVal >= 1 && numVal <= 5) {
-            selfVals.push(numVal);
-          }
-        });
-
-        // Outros
-        const othersRows = data.dataSource.filter(row =>
-          this.mapCategoriaToGrupo(row['categoria']) !== 'Avaliado(a)'
-        );
-        othersRows.forEach(row => {
-          let valor = row[perguntaId];
-          if (typeof valor === 'string' && valor.includes('Column')) {
-            const match = valor.match(/Column (\d+)/);
-            if (match) valor = parseInt(match[1]);
-          }
-          const numVal = typeof valor === 'number' ? valor : parseFloat(valor);
-          if (!isNaN(numVal) && numVal >= 1 && numVal <= 5) {
-            othersVals.push(numVal);
-          }
+    if (data.getDadosPerguntaDefasagem) {
+      competencias.forEach(comp => {
+        (comp.perguntasIds || []).forEach(perguntaId => {
+          const dados = data.getDadosPerguntaDefasagem!(perguntaId);
+          if (!dados) return;
+          const perguntaTexto = data.questionMap?.[perguntaId] || comp.nome;
+          gapData.push({
+            competencyName: perguntaTexto,
+            selfScore: dados.selfScore,
+            othersScore: dados.othersScore,
+            gap: dados.gap,
+          });
         });
       });
+    } else {
+      competencias.forEach(comp => {
+        const perguntas = comp.perguntasIds || [];
+        const selfVals: number[] = [];
+        const othersVals: number[] = [];
 
-      const selfScore = selfVals.length > 0 ? selfVals.reduce((a, b) => a + b, 0) / selfVals.length : null;
-      const othersScore = othersVals.length > 0 ? othersVals.reduce((a, b) => a + b, 0) / othersVals.length : null;
-      const gap = (selfScore !== null && othersScore !== null) ? selfScore - othersScore : null;
+        perguntas.forEach(perguntaId => {
+          const selfRows = data.dataSource.filter(row =>
+            this.mapCategoriaToGrupo(row['categoria'], data) === 'Avaliado(a)'
+          );
+          selfRows.forEach(row => {
+            let valor = row[perguntaId];
+            if (typeof valor === 'string' && valor.includes('Column')) {
+              const match = valor.match(/Column (\d+)/);
+              if (match) valor = parseInt(match[1]);
+            }
+            const numVal = typeof valor === 'number' ? valor : parseFloat(valor);
+            if (!isNaN(numVal) && numVal >= 1 && numVal <= 5) {
+              selfVals.push(numVal);
+            }
+          });
 
-      gapData.push({
-        competencyName: comp.nome,
-        selfScore,
-        othersScore,
-        gap
+          const othersRows = data.dataSource.filter(row =>
+            this.mapCategoriaToGrupo(row['categoria']) !== 'Avaliado(a)'
+          );
+          othersRows.forEach(row => {
+            let valor = row[perguntaId];
+            if (typeof valor === 'string' && valor.includes('Column')) {
+              const match = valor.match(/Column (\d+)/);
+              if (match) valor = parseInt(match[1]);
+            }
+            const numVal = typeof valor === 'number' ? valor : parseFloat(valor);
+            if (!isNaN(numVal) && numVal >= 1 && numVal <= 5) {
+              othersVals.push(numVal);
+            }
+          });
+        });
+
+        const selfScore = selfVals.length > 0 ? selfVals.reduce((a, b) => a + b, 0) / selfVals.length : null;
+        const othersScore = othersVals.length > 0 ? othersVals.reduce((a, b) => a + b, 0) / othersVals.length : null;
+        const gap = (selfScore !== null && othersScore !== null) ? selfScore - othersScore : null;
+
+        gapData.push({
+          competencyName: comp.nome,
+          selfScore,
+          othersScore,
+          gap
+        });
       });
-    });
+    }
 
     const gapImage = await this.createGapChartImage(gapData);
 

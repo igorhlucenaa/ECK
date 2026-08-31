@@ -20,6 +20,29 @@ export function roundReportValue(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/**
+ * Média oficial do relatório 360°: para cada grupo informado, calcula a média
+ * das respostas daquele grupo e depois tira a média simples dessas médias
+ * (cada grupo pesa igual, independente do número de respondentes).
+ */
+export function calcularMediaPorGrupos(
+  grupos: readonly string[],
+  getResponsesForGroup: (grupo: string) => readonly number[]
+): number | null {
+  let somaMediasGrupo = 0;
+  let gruposComDados = 0;
+
+  for (const grupo of grupos) {
+    const respostas = getResponsesForGroup(grupo);
+    if (respostas.length > 0) {
+      somaMediasGrupo += respostas.reduce((acc, val) => acc + val, 0) / respostas.length;
+      gruposComDados++;
+    }
+  }
+
+  return gruposComDados > 0 ? roundReportValue(somaMediasGrupo / gruposComDados) : null;
+}
+
 /** Formata número do relatório com locale pt-BR e 2 casas decimais. */
 export function formatReportDecimal(value: number, locale = 'pt-BR'): string {
   return new Intl.NumberFormat(locale, {

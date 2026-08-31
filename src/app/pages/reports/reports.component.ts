@@ -12,6 +12,7 @@ import {
   normalizeQuestionType,
   roundReportValue,
   formatReportDecimal,
+  calcularMediaPorGrupos,
 } from './reports-utils';
 import { MatTableModule } from '@angular/material/table';
 import { Firestore, collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from '@angular/fire/firestore';
@@ -153,7 +154,7 @@ export interface RelatorioSecao {
 interface ItemAvaliacao {
   classificacao: number;
   comportamento: string;
-  pontuacaoMediaAvaliado: number;
+  pontuacaoMediaAvaliado: number | null;
   pontuacaoMediaSemAutoavaliacao: number;
   perguntaId: string;
   competenciaId: string;
@@ -5921,8 +5922,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const othersData: number[] = [];
 
       for (const competencia of competenciasSelecionadas) {
-        const mediaSelf = this.getMediaRespostasCompetencia(competencia, ['Avaliado(a)']);
-        const mediaOthers = this.getMediaRespostasCompetencia(competencia, ['Gestor(es)', 'Pares', 'Subordinados', 'Outros']);
+        const gruposSemAuto = this.getGrupos().filter(grupo => grupo !== this.GRUPO_AVALIADO);
+        const mediaSelf = this.calcularMediaCompetenciaPorGrupos(competencia, [this.GRUPO_AVALIADO]) ?? 0;
+        const mediaOthers = this.calcularMediaCompetenciaPorGrupos(competencia, gruposSemAuto) ?? 0;
 
         selfData.push(mediaSelf > 0 ? -mediaSelf : 0); // Usar negativo para divergir
         othersData.push(mediaOthers > 0 ? mediaOthers : 0);
@@ -6255,7 +6257,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     });
 
-    items.sort((a, b) => b.pontuacaoMediaAvaliado - a.pontuacaoMediaAvaliado);
+    items.sort((a, b) => {
+      const diff = b.pontuacaoMediaSemAutoavaliacao - a.pontuacaoMediaSemAutoavaliacao;
+      return diff !== 0 ? diff : a.perguntaId.localeCompare(b.perguntaId);
+    });
     items.forEach((item, index) => {
       item.classificacao = index + 1;
     });
@@ -6270,10 +6275,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   // Método para gerar tabela de avaliações mais baixas
   gerarTabelaAvaliacoesBaixas(numeroItems: number = 5, avaliadoSelecionado?: string): TabelaAvaliacoesAltas {
     const items: ItemAvaliacao[] = [];
-    const avaliado = avaliadoSelecionado || this.selectedAvaliado;
+    const avaliado = avaliadoSelecionado || this.selectedAvaliado || undefined;
+    const tabelaAltas = this.gerarTabelaAvaliacoesAltas(numeroItems, avaliado);
+    const idsAltos = new Set(tabelaAltas.items.map(item => item.perguntaId));
 
     this.competencias.forEach(competencia => {
       competencia.perguntasIds.forEach(perguntaId => {
+        if (idsAltos.has(perguntaId)) return;
         const medias = this.calcularMediasComportamentoDestaque(perguntaId, avaliado);
         if (!medias) return;
 
@@ -6288,7 +6296,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     });
 
-    items.sort((a, b) => a.pontuacaoMediaAvaliado - b.pontuacaoMediaAvaliado);
+    items.sort((a, b) => {
+      const diff = a.pontuacaoMediaSemAutoavaliacao - b.pontuacaoMediaSemAutoavaliacao;
+      return diff !== 0 ? diff : a.perguntaId.localeCompare(b.perguntaId);
+    });
     items.forEach((item, index) => {
       item.classificacao = index + 1;
     });
@@ -6300,44 +6311,56 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
+  private getRespostasPerguntaPorGrupo(
+    perguntaId: string,
+    grupo: string,
+    avaliadoSelecionado?: string | null
+  ): number[] {
+    const avaliado = avaliadoSelecionado ?? this.selectedAvaliado;
+    return avaliado
+      ? this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, avaliado)
+      : this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
+  }
+
+  /** Autoavaliação da sentença (grupo Avaliado). */
+  private calcularMediaAutoPorPergunta(
+    perguntaId: string,
+    avaliadoSelecionado?: string | null
+  ): number | null {
+    return calcularMediaPorGrupos(
+      [this.GRUPO_AVALIADO],
+      (grupo) => this.getRespostasPerguntaPorGrupo(perguntaId, grupo, avaliadoSelecionado)
+    );
+  }
+
+  /**
+   * Média dos demais avaliadores para uma sentença:
+   * média por grupo (Gestor, Pares, etc.) e depois média simples dos grupos.
+   */
+  private calcularMediaDemaisAvaliadoresPorPergunta(
+    perguntaId: string,
+    avaliadoSelecionado?: string | null
+  ): number | null {
+    const gruposSemAuto = this.getGrupos().filter(grupo => grupo !== this.GRUPO_AVALIADO);
+    return calcularMediaPorGrupos(
+      gruposSemAuto,
+      (grupo) => this.getRespostasPerguntaPorGrupo(perguntaId, grupo, avaliadoSelecionado)
+    );
+  }
+
   /** Médias por pergunta/comportamento para a seção Destaques. */
   private calcularMediasComportamentoDestaque(
     perguntaId: string,
     avaliadoSelecionado?: string | null
-  ): { mediaGeral: number; mediaPorCategoria: number } | null {
-    const avaliado = avaliadoSelecionado || this.selectedAvaliado;
+  ): { mediaGeral: number | null; mediaPorCategoria: number } | null {
+    const mediaSemAuto = this.calcularMediaDemaisAvaliadoresPorPergunta(perguntaId, avaliadoSelecionado);
+    if (mediaSemAuto === null) return null;
 
-    const respostasGerais = avaliado
-      ? this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, 'Todos', avaliado)
-      : this.getRespostasParaPerguntaEGrupo(perguntaId, 'Todos');
-
-    if (respostasGerais.length === 0) return null;
-
-    const mediaGeral =
-      respostasGerais.reduce((sum, val) => sum + val, 0) / respostasGerais.length;
-
-    const grupos = this.getGrupos();
-    let somaPorCategoria = 0;
-    let contadorCategorias = 0;
-
-    grupos.forEach(grupo => {
-      const respostasGrupo = avaliado
-        ? this.getRespostasParaPerguntaEGrupoEAvaliado(perguntaId, grupo, avaliado)
-        : this.getRespostasParaPerguntaEGrupo(perguntaId, grupo);
-      if (respostasGrupo.length > 0) {
-        somaPorCategoria += respostasGrupo.reduce((sum, val) => sum + val, 0) / respostasGrupo.length;
-        contadorCategorias++;
-      }
-    });
-
-    const mediaPorCategoria =
-      contadorCategorias > 0 ? somaPorCategoria / contadorCategorias : mediaGeral;
-
-    if (isNaN(mediaGeral) || mediaGeral <= 0) return null;
+    const mediaAuto = this.calcularMediaAutoPorPergunta(perguntaId, avaliadoSelecionado);
 
     return {
-      mediaGeral: roundReportValue(mediaGeral),
-      mediaPorCategoria: roundReportValue(mediaPorCategoria),
+      mediaGeral: mediaAuto,
+      mediaPorCategoria: mediaSemAuto,
     };
   }
 
@@ -9268,30 +9291,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return null;
     }
 
-    // Coletar todas as respostas para esta pergunta especifica
-    const respostasSelf: number[] = [];
-    const respostasOutros: number[] = [];
+    const selfScore = this.calcularMediaAutoPorPergunta(perguntaId);
+    const othersScore = this.calcularMediaDemaisAvaliadoresPorPergunta(perguntaId);
 
-    this.dataSource.forEach((row) => {
-      if (this.isRowFromBlockedParticipant(row)) return;
-      if (row[perguntaId] !== undefined) {
-        const valor = this.parseLikertAnswer(row[perguntaId]);
-
-        if (valor !== null) {
-          if (this.mapCategoriaToGrupo(row.categoria) === 'Avaliado(a)') {
-            respostasSelf.push(valor);
-          } else {
-            respostasOutros.push(valor);
-          }
-        }
-      }
-    });
-
-    // Calcular medias
-    const selfScore = respostasSelf.length > 0 ? respostasSelf.reduce((a, b) => a + b, 0) / respostasSelf.length : null;
-    const othersScore = respostasOutros.length > 0 ? respostasOutros.reduce((a, b) => a + b, 0) / respostasOutros.length : null;
-
-    const gap = (selfScore !== null && othersScore !== null) ? (selfScore - othersScore) : null;
+    const gap = (selfScore !== null && othersScore !== null) ? roundReportValue(selfScore - othersScore) : null;
     if (selfScore === null && othersScore === null) {
       console.warn(`[PDF] Sem respostas validas para pergunta ${perguntaId}`);
     }
