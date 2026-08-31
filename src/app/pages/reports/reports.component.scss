@@ -1839,6 +1839,36 @@ ngx-charts-bar-horizontal,
   gap: 8px;
 }
 
+.rp-client-templates-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.rp-template-library-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #5b21b6;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  &__text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+}
+
 // Linha de filtros de contexto (Cliente / Projeto)
 .rp-filter-row {
   display: flex;

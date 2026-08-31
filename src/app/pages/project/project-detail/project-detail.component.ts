@@ -53,7 +53,7 @@ export class ProjectDetailComponent implements OnInit {
     deadline: new FormControl('', Validators.required),
     status: new FormControl('Em andamento', Validators.required),
     assessmentId: new FormControl(''),
-    reportTemplateId: new FormControl(''),
+    reportTemplateId: new FormControl('', Validators.required),
     responsible: new FormControl(''),
     clientId: new FormControl('', Validators.required),
     groupIds: new FormControl([], Validators.required),
@@ -284,9 +284,16 @@ export class ProjectDetailComponent implements OnInit {
 
   async saveProject(): Promise<void> {
     if (this.form.invalid) {
-      this.snackBar.open(this.translate.instant('Preencha todos os campos obrigatórios!'), this.translate.instant('Fechar'), {
-        duration: 3000,
-      });
+      const missingTemplate = this.form.get('reportTemplateId')?.hasError('required');
+      this.snackBar.open(
+        this.translate.instant(
+          missingTemplate
+            ? 'Selecione um template de relatório para o projeto.'
+            : 'Preencha todos os campos obrigatórios!'
+        ),
+        this.translate.instant('Fechar'),
+        { duration: 3000 }
+      );
       return;
     }
 

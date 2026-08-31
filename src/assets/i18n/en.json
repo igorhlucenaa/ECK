@@ -1317,6 +1317,7 @@
   "Selecione um cliente antes de publicar o relatório.": "Select a client before publishing the report.",
   "Selecione um cliente antes de salvar o relatório.": "Select a client before saving the report.",
   "Selecione um cliente antes de salvar o template.": "Select a client before saving the template.",
+  "Selecione um cliente antes de gerenciar templates.": "Select a client before managing templates.",
   "Selecione um cliente e gerencie grupos de competências": "Select a client and manage competency groups",
   "Selecione um cliente e um projeto para salvar as configurações.": "Select a client and a project to save settings.",
   "Selecione um cliente para ver os formulários disponíveis": "Select a client to see available forms",
@@ -1660,5 +1661,14 @@
   "Voltar para Lista": "Back to list",
   "Voltar para Relatórios": "Back to Reports",
   "Widgets": "Widgets",
-  "You do not have permission to assign this role.": "You do not have permission to assign this role."
+  "You do not have permission to assign this role.": "You do not have permission to assign this role.",
+  "Biblioteca de templates": "Template library",
+  "Templates do cliente": "Client templates",
+  "Gerenciar templates do cliente": "Manage client templates",
+  "Modo biblioteca de templates — edite layouts reutilizáveis sem selecionar projeto ou avaliação.": "Template library mode — edit reusable layouts without selecting a project or assessment.",
+  "Sair do modo biblioteca": "Exit library mode",
+  "Cria e edita templates da biblioteca do cliente": "Create and edit templates in the client library",
+  "Selecione um template de relatório para o projeto.": "Select a report template for the project.",
+  "Selecione uma avaliação para visualizar o relatório.": "Select an assessment to preview the report.",
+  "Obrigatório — todo projeto deve ter um template de relatório vinculado": "Required — every project must have a linked report template"
 }

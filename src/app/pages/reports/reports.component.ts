@@ -779,6 +779,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   /** true quando o projeto foi deduzido automaticamente (1 candidato). */
   projectAutoDeduced = false;
   /** Template fixo vinculado ao projeto selecionado (sem troca manual). */
+  /** Modo biblioteca: criar/editar templates do cliente sem projeto ou avaliação. */
+  clientTemplateLibraryMode = false;
+
   projectTemplateLocked = false;
   lockedProjectTemplateId = '';
   lockedProjectTemplateName = '';
@@ -1619,6 +1622,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(async id => {
         if (this.pendingQueryProjectId || this.isBatchGenerating) return;
+        if (id) {
+          this.clientTemplateLibraryMode = false;
+        }
         const loadGeneration = this.filterContextGeneration;
         this.selectedAssessmentId = id;
         if (id) {
@@ -5065,20 +5071,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.t(key);
   }
 
-  // Resetar relatório para configuração padrão
-  async resetarRelatorio() {
-    const confirmado = await this.confirmDialog.confirm({
-      type: 'warning',
-      title: 'Limpar configuração',
-      message: 'Todas as seções serão restauradas para a estrutura padrão. Esta ação não pode ser desfeita.',
-      confirmText: 'Sim, limpar',
-      cancelText: 'Cancelar',
-    });
-    if (!confirmado) return;
-
-    this.appliedTemplateId = null;
-    this.selectedTemplateId.setValue('', { emitEvent: false });
-    this.relatorioConfiguracao = [
+  private getDefaultRelatorioConfiguracao(): RelatorioSecao[] {
+    return [
       {
         id: 'capa',
         tipo: 'capa',
@@ -5112,9 +5106,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         visivel: true,
         ordem: 4,
         competenciasIds: [],
-        'tipoGrafico': 'barra',
-        'paletaCor': 'azul',
-        'coresPersonalizadas': []
+        tipoGrafico: 'barra',
+        paletaCor: 'azul',
+        coresPersonalizadas: []
       },
       {
         id: 'tabela',
@@ -5140,13 +5134,38 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         mostrarPontuacaoSemAuto: true
       }
     ];
+  }
 
-    // Limpar seleção de avaliado ao resetar
-    this.selectedAvaliado = null;
-    this.avaliadoControl.setValue('');
-
+  private applyDefaultRelatorioConfiguracao(clearAvaliado = true): void {
+    this.appliedTemplateId = null;
+    this.selectedTemplateId.setValue('', { emitEvent: false });
+    this.relatorioConfiguracao = this.getDefaultRelatorioConfiguracao();
+    if (clearAvaliado) {
+      this.selectedAvaliado = null;
+      this.avaliadoControl.setValue('');
+    }
     this.atualizarFormArrayComConfiguracao();
     this.builderHasUnsavedChanges = false;
+  }
+
+  private ensureEditorConfigForTemplates(): void {
+    if (this.relatorioConfiguracao.length === 0) {
+      this.applyDefaultRelatorioConfiguracao(false);
+    }
+  }
+
+  // Resetar relatório para configuração padrão
+  async resetarRelatorio() {
+    const confirmado = await this.confirmDialog.confirm({
+      type: 'warning',
+      title: 'Limpar configuração',
+      message: 'Todas as seções serão restauradas para a estrutura padrão. Esta ação não pode ser desfeita.',
+      confirmText: 'Sim, limpar',
+      cancelText: 'Cancelar',
+    });
+    if (!confirmado) return;
+
+    this.applyDefaultRelatorioConfiguracao();
     this.snackBar.open(this.t('Relatório resetado para configuração padrão!'), this.t('Fechar'), { duration: 2500 });
     this.cdr.markForCheck();
   }
@@ -5163,6 +5182,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Selecione um cliente antes de salvar o template.'), this.t('Fechar'), { duration: 3000 });
       return false;
     }
+    this.ensureEditorConfigForTemplates();
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
     // Salvar configuração de seções com competenciasIds zerados — templates são reutilizáveis
     // entre avaliações, então não devem fixar competências de uma avaliação específica.
@@ -5283,7 +5303,37 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  async enterClientTemplateLibrary(): Promise<void> {
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de gerenciar templates.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    this.clientTemplateLibraryMode = true;
+    await this.carregarTemplatesSalvos();
+    this.ensureEditorConfigForTemplates();
+    this.goToTab(1);
+  }
+
+  exitClientTemplateLibrary(): void {
+    this.clientTemplateLibraryMode = false;
+    this.selectedTabIndex = 0;
+    this.cdr.markForCheck();
+  }
+
+  async abrirGerenciarTemplatesCliente(): Promise<void> {
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de gerenciar templates.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    await this.carregarTemplatesSalvos();
+    this.ensureEditorConfigForTemplates();
+    await this.abrirGerenciarTemplatesDialog();
+  }
+
   async abrirGerenciarTemplatesDialog(): Promise<void> {
+    this.ensureEditorConfigForTemplates();
     const dialogData: ReportTemplateManageDialogData = {
       templates: [...this.savedTemplates],
       onCreate: (nome: string) => this.salvarTemplateNoFirebase(nome),
@@ -6393,12 +6443,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     const templateRef = doc(this.firestore, 'reportTemplates', this.selectedTemplateId.value);
     // Sanitizar undefined antes de salvar no Firestore (JSON.parse/stringify remove undefined)
+    this.ensureEditorConfigForTemplates();
     const sanitize = (val: any) => JSON.parse(JSON.stringify(val ?? []));
+    const configuracaoSemCompetencias = sanitize(this.relatorioConfiguracao).map((sec: any) => ({
+      ...sec,
+      competenciasIds: []
+    }));
     const templateData = {
       nome: nomeTemplate,
       clientId,
-      configuracao: sanitize(this.relatorioConfiguracao),
-      competencias: sanitize(this.competencias),
+      configuracao: configuracaoSemCompetencias,
       documentoConfig: sanitize(this.documentoConfig),
       atualizadoEm: new Date()
     };
@@ -7009,6 +7063,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   async onFilterClientChange(): Promise<void> {
     const loadGeneration = this.filterContextGeneration;
     const clientId = this.filterClientControl.value;
+    this.clientTemplateLibraryMode = false;
     this.filterProjectControl.setValue('');
     this.filterProjects = [];
     this.selectedClientId = clientId || null;
@@ -7102,6 +7157,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   clearFilterContext(): void {
     this.filterContextGeneration++;
+    this.clientTemplateLibraryMode = false;
     this.dismissOpenSelectOverlays();
     this.loadingService.reset();
     this.isLoading = false;
@@ -7177,7 +7233,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  /** Pré-seleciona o template de relatório vinculado ao projeto (campo opcional). */
+  /** Pré-seleciona o template de relatório vinculado ao projeto. */
   private async applyProjectReportTemplate(projectId: string): Promise<void> {
     if (!projectId) {
       this.resetProjectTemplateState();
@@ -8087,6 +8143,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   goToTab(index: number): void {
     if (this.currentUserRole === 'viewer' && index < 2) return;
+    if (index === 2 && this.clientTemplateLibraryMode && !this.selectedAssessmentId) {
+      this.snackBar.open(
+        this.t('Selecione uma avaliação para visualizar o relatório.'),
+        this.t('Fechar'),
+        { duration: 3500 }
+      );
+      return;
+    }
     this.selectedTabIndex = index;
     if (index === 2) {
       void this.applyBlockedParticipantsFilter().then(() => {

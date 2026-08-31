@@ -1239,6 +1239,7 @@
   "Selecione um cliente antes de publicar o relatório.": "Selecione um cliente antes de publicar o relatório.",
   "Selecione um cliente antes de salvar o relatório.": "Selecione um cliente antes de salvar o relatório.",
   "Selecione um cliente antes de salvar o template.": "Selecione um cliente antes de salvar o template.",
+  "Selecione um cliente antes de gerenciar templates.": "Selecione um cliente antes de gerenciar templates.",
   "Selecione um cliente e gerencie grupos de competências": "Selecione um cliente e gerencie grupos de competências",
   "Selecione um cliente para ver os formulários disponíveis": "Selecione um cliente para ver os formulários disponíveis",
   "Selecione um cliente para ver os grupos de competências": "Selecione um cliente para ver os grupos de competências",
@@ -1562,5 +1563,14 @@
   "Voltar para Lista": "Voltar para Lista",
   "Voltar para Relatórios": "Voltar para Relatórios",
   "Widgets": "Widgets",
-  "You do not have permission to assign this role.": "You do not have permission to assign this role."
+  "You do not have permission to assign this role.": "You do not have permission to assign this role.",
+  "Biblioteca de templates": "Biblioteca de templates",
+  "Templates do cliente": "Templates do cliente",
+  "Gerenciar templates do cliente": "Gerenciar templates do cliente",
+  "Modo biblioteca de templates — edite layouts reutilizáveis sem selecionar projeto ou avaliação.": "Modo biblioteca de templates — edite layouts reutilizáveis sem selecionar projeto ou avaliação.",
+  "Sair do modo biblioteca": "Sair do modo biblioteca",
+  "Cria e edita templates da biblioteca do cliente": "Cria e edita templates da biblioteca do cliente",
+  "Selecione um template de relatório para o projeto.": "Selecione um template de relatório para o projeto.",
+  "Selecione uma avaliação para visualizar o relatório.": "Selecione uma avaliação para visualizar o relatório.",
+  "Obrigatório — todo projeto deve ter um template de relatório vinculado": "Obrigatório — todo projeto deve ter um template de relatório vinculado"
 }

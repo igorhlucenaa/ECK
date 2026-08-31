@@ -95,17 +95,19 @@
             <mat-hint *ngIf="form.get('clientId')?.value && assessments.length === 0">{{ 'Nenhum formulário disponível para este cliente' | translate }}</mat-hint>
           </mat-form-field>
 
-          <!-- Template de relatório a utilizar (opcional) -->
+          <!-- Template de relatório a utilizar (obrigatório) -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>{{ 'Template de relatório a utilizar' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">description</mat-icon>
             <mat-select formControlName="reportTemplateId">
-              <mat-option value="">— Nenhum —</mat-option>
               <mat-option *ngFor="let t of reportTemplates" [value]="t.id">{{ t.name }}</mat-option>
             </mat-select>
             <mat-hint *ngIf="!form.get('clientId')?.value">{{ 'Selecione um cliente para ver os templates de relatório disponíveis' | translate }}</mat-hint>
             <mat-hint *ngIf="form.get('clientId')?.value && reportTemplates.length === 0">{{ 'Nenhum template de relatório disponível para este cliente' | translate }}</mat-hint>
-            <mat-hint *ngIf="form.get('clientId')?.value && reportTemplates.length > 0">{{ 'Opcional — pré-seleciona o layout na tela de relatórios' | translate }}</mat-hint>
+            <mat-hint *ngIf="form.get('clientId')?.value && reportTemplates.length > 0">{{ 'Obrigatório — todo projeto deve ter um template de relatório vinculado' | translate }}</mat-hint>
+            <mat-error *ngIf="form.get('reportTemplateId')?.hasError('required')">
+              {{ 'Selecione um template de relatório para o projeto.' | translate }}
+            </mat-error>
           </mat-form-field>
 
         </div>

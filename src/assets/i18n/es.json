@@ -1318,6 +1318,7 @@
   "Selecione um cliente antes de publicar o relatório.": "Seleccione un cliente antes de publicar el informe.",
   "Selecione um cliente antes de salvar o relatório.": "Seleccione un cliente antes de guardar el informe.",
   "Selecione um cliente antes de salvar o template.": "Seleccione un cliente antes de guardar la plantilla.",
+  "Selecione um cliente antes de gerenciar templates.": "Seleccione un cliente antes de gestionar plantillas.",
   "Selecione um cliente e gerencie grupos de competências": "Seleccione un cliente y gestione grupos de competencias",
   "Selecione um cliente e um projeto para salvar as configurações.": "Seleccione un cliente y un proyecto para guardar las configuraciones.",
   "Selecione um cliente para ver os formulários disponíveis": "Seleccione un cliente para ver los formularios disponibles",
@@ -1662,5 +1663,14 @@
   "Voltar para Lista": "Volver a la lista",
   "Voltar para Relatórios": "Volver a Informes",
   "Widgets": "Widgets",
-  "You do not have permission to assign this role.": "You do not have permission to assign this role."
+  "You do not have permission to assign this role.": "You do not have permission to assign this role.",
+  "Biblioteca de templates": "Biblioteca de plantillas",
+  "Templates do cliente": "Plantillas del cliente",
+  "Gerenciar templates do cliente": "Gestionar plantillas del cliente",
+  "Modo biblioteca de templates — edite layouts reutilizáveis sem selecionar projeto ou avaliação.": "Modo biblioteca de plantillas — edite diseños reutilizables sin seleccionar proyecto o evaluación.",
+  "Sair do modo biblioteca": "Salir del modo biblioteca",
+  "Cria e edita templates da biblioteca do cliente": "Crea y edita plantillas de la biblioteca del cliente",
+  "Selecione um template de relatório para o projeto.": "Seleccione una plantilla de informe para el proyecto.",
+  "Selecione uma avaliação para visualizar o relatório.": "Seleccione una evaluación para previsualizar el informe.",
+  "Obrigatório — todo projeto deve ter um template de relatório vinculado": "Obligatorio — todo proyecto debe tener una plantilla de informe vinculada"
 }

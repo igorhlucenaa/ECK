@@ -166,6 +166,16 @@
       <!-- Controle de publicação de relatório (apenas admin_master) -->
     </ng-container>
 
+    <!-- Atalho: biblioteca de templates do cliente (sem projeto/avaliação) -->
+    <button mat-stroked-button
+            class="rp-client-templates-btn"
+            *ngIf="filterClientControl.value && !isIndividualMode && currentUserRole !== 'viewer'"
+            (click)="enterClientTemplateLibrary()"
+            matTooltip="{{ 'Cria e edita templates da biblioteca do cliente' | translate }}">
+      <mat-icon>library_books</mat-icon>
+      {{ 'Templates do cliente' | translate }}
+    </button>
+
     <!-- Botão limpar (aparece quando há algo selecionado) -->
     <button mat-icon-button class="rp-seq-clear"
             *ngIf="filterClientControl.value"
@@ -247,9 +257,9 @@
        *ngIf="currentUserRole !== 'viewer'"
        [class.rp-workflow-tab--done]="selectedTabIndex === 2 && relatorioConfiguracao.length > 0"
        [class.rp-workflow-tab--active]="selectedTabIndex === 1"
-       [class.rp-workflow-tab--disabled]="competencias.length === 0"
-       (click)="competencias.length > 0 && goToTab(1)"
-       matTooltip="{{ competencias.length === 0 ? ('Configure as competências primeiro' | translate) : '' }}">
+       [class.rp-workflow-tab--disabled]="!clientTemplateLibraryMode && competencias.length === 0"
+       (click)="(clientTemplateLibraryMode || competencias.length > 0) && goToTab(1)"
+       matTooltip="{{ !clientTemplateLibraryMode && competencias.length === 0 ? ('Configure as competências primeiro' | translate) : (clientTemplateLibraryMode ? ('Modo biblioteca de templates — edite layouts reutilizáveis sem selecionar projeto ou avaliação.' | translate) : '') }}">
     <div class="rp-workflow-tab__icon">
       <mat-icon>dashboard_customize</mat-icon>
     </div>
@@ -483,6 +493,16 @@
 
   <!-- ============ PASSO 2: MONTAR RELATÓRIO ============ -->
   <div class="rp-step-panel" *ngIf="selectedTabIndex === 1 && currentUserRole !== 'viewer'">
+    <div class="rp-template-library-banner" *ngIf="clientTemplateLibraryMode">
+      <mat-icon>library_books</mat-icon>
+      <div class="rp-template-library-banner__text">
+        <strong>{{ 'Biblioteca de templates' | translate }}</strong>
+        <span>{{ 'Modo biblioteca de templates — edite layouts reutilizáveis sem selecionar projeto ou avaliação.' | translate }}</span>
+      </div>
+      <button mat-stroked-button type="button" (click)="exitClientTemplateLibrary()">
+        {{ 'Sair do modo biblioteca' | translate }}
+      </button>
+    </div>
     <div class="rp-step-panel__header">
       <h2 class="rp-step-panel__title">{{ 'Montar Relatório' | translate }}</h2>
       <p class="rp-step-panel__desc">{{ 'Organize as seções, textos e gráficos do relatório' | translate }}</p>
@@ -561,13 +581,20 @@
                 <mat-icon>edit</mat-icon>
                 {{ 'Editar projeto' | translate }}
               </button>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="abrirGerenciarTemplatesCliente()">
+                <mat-icon>library_books</mat-icon>
+                {{ 'Gerenciar templates do cliente' | translate }}
+              </button>
               <span *ngIf="currentUserRole !== 'admin_master'">
                 {{ 'Solicite ao administrador master a vinculação de um template na edição do projeto.' | translate }}
               </span>
             </div>
           </div>
 
-          <mat-form-field appearance="outline" class="rp-template-active__field" *ngIf="!projectTemplateLocked && projectHasLinkedTemplate !== false">
+          <mat-form-field appearance="outline" class="rp-template-active__field" *ngIf="clientTemplateLibraryMode || (!projectTemplateLocked && projectHasLinkedTemplate !== false)">
             <mat-label>{{ 'Template' | translate }}</mat-label>
             <mat-select [formControl]="selectedTemplateId">
               <mat-option *ngFor="let template of savedTemplates" [value]="template.id">
@@ -709,7 +736,10 @@
             </mat-button-toggle>
           </mat-button-toggle-group>
         </div>
-        <button mat-flat-button color="primary" class="rp-advance-btn" (click)="goToTab(2)">
+        <button mat-flat-button color="primary" class="rp-advance-btn"
+                [disabled]="clientTemplateLibraryMode && !selectedAssessmentId"
+                [matTooltip]="clientTemplateLibraryMode && !selectedAssessmentId ? ('Selecione uma avaliação para visualizar o relatório.' | translate) : ''"
+                (click)="goToTab(2)">
           {{ 'Visualizar Relatório' | translate }}
           <mat-icon iconPositionEnd>arrow_forward</mat-icon>
         </button>
