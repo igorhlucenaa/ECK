@@ -28,7 +28,7 @@
 
   <div class="client-export-dialog__projects" *ngIf="loadingProjects">
     <mat-spinner [diameter]="28"></mat-spinner>
-    <span>Carregando projetos...</span>
+    <span>{{ 'Carregando projetos...' | translate }}</span>
   </div>
 
   <p class="client-export-dialog__error" *ngIf="loadError">{{ loadError }}</p>

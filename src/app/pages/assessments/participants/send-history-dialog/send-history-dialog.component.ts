@@ -1,6 +1,7 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import {
   Firestore,
@@ -57,7 +58,7 @@ export interface HistoryRow extends EmailHistoryEntry {
 @Component({
   selector: 'app-send-history-dialog',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, TranslateModule],
   templateUrl: './send-history-dialog.component.html',
   styleUrls: ['./send-history-dialog.component.scss'],
 })

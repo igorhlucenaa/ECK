@@ -22,27 +22,27 @@
 
       <!-- Filtro por cliente (admin_master e admin_client com múltiplos clientes) -->
       <mat-form-field appearance="outline" class="client-filter-field" *ngIf="clients.length > 1">
-        <mat-label>Filtrar por cliente</mat-label>
+        <mat-label>{{ 'Filtrar por cliente' | translate }}</mat-label>
         <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:18px;">business</mat-icon>
         <mat-select [(ngModel)]="selectedClientId" (selectionChange)="onClientChange()"
                     (closed)="resetClientSearch()">
           <div class="client-search-wrap">
             <mat-icon class="client-search-icon">search</mat-icon>
             <input class="client-search-input" [formControl]="clientSearchCtrl"
-                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   [placeholder]="'Buscar cliente...' | translate" (click)="$event.stopPropagation()"
                    (keydown)="$event.stopPropagation()" />
           </div>
-          <mat-option [value]="null">Todos os clientes</mat-option>
+          <mat-option [value]="null">{{ 'Todos os clientes' | translate }}</mat-option>
           <mat-option *ngFor="let c of clientsFiltered" [value]="c.id">{{ c.name }}</mat-option>
-          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">{{ 'Nenhum cliente encontrado' | translate }}</div>
         </mat-select>
       </mat-form-field>
 
       <!-- Busca por nome do projeto -->
       <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Buscar projeto</mat-label>
+        <mat-label>{{ 'Buscar projeto' | translate }}</mat-label>
         <mat-icon matPrefix style="color:#8a8fa8;margin-right:4px;font-size:20px;">search</mat-icon>
-        <input matInput (keyup)="applyFilter($event)" placeholder="Nome do projeto..." />
+        <input matInput (keyup)="applyFilter($event)" [placeholder]="'Nome do projeto...' | translate" />
         <button mat-icon-button matSuffix *ngIf="searchValue" (click)="searchValue=''; applyFilter($event)">
           <mat-icon>close</mat-icon>
         </button>
@@ -56,7 +56,7 @@
                 [class.status-chip--concluido]="f.value === 'Concluído'"
                 [class.status-chip--cancelado]="f.value === 'Cancelado'"
                 (click)="applyStatusFilter(f.value)">
-          {{ f.label }}
+          {{ f.labelKey | translate }}
         </button>
       </div>
 
@@ -123,14 +123,14 @@
         <!-- Nome -->
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
-            <span class="col-header"><mat-icon class="col-icon">folder</mat-icon>Projeto</span>
+            <span class="col-header"><mat-icon class="col-icon">folder</mat-icon>{{ 'Projeto' | translate }}</span>
           </th>
           <td mat-cell *matCellDef="let p">
             <div class="project-cell">
               <div class="project-avatar">{{ getInitial(p.name) }}</div>
               <div>
                 <div class="project-name">{{ p.name }}</div>
-                <span class="status-badge" [ngClass]="getStatusClass(p.status)">{{ p.status }}</span>
+                <span class="status-badge" [ngClass]="getStatusClass(p.status)">{{ statusLabel(p.status) }}</span>
               </div>
             </div>
           </td>
@@ -139,7 +139,7 @@
         <!-- Prazo -->
         <ng-container matColumnDef="deadline">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>
-            <span class="col-header"><mat-icon class="col-icon">event</mat-icon>Prazo</span>
+            <span class="col-header"><mat-icon class="col-icon">event</mat-icon>{{ 'Prazo' | translate }}</span>
           </th>
           <td mat-cell *matCellDef="let p">
             <span class="deadline-cell" [class.deadline-overdue]="isOverdue(p.deadline)">
@@ -158,7 +158,7 @@
             <div class="responses-cell">
               <div class="responses-label">
                 <span class="responses-count">{{ p.respondedCount }}/{{ p.totalParticipants }}</span>
-                <span class="responses-pending" *ngIf="p.pendingCount > 0">{{ p.pendingCount }} pendente{{ p.pendingCount !== 1 ? 's' : '' }}</span>
+                <span class="responses-pending" *ngIf="p.pendingCount > 0">{{ p.pendingCount }} {{ 'pendentes' | translate }}</span>
               </div>
               <div class="responses-bar">
                 <div class="responses-bar-fill"
@@ -206,15 +206,15 @@
               <mat-menu #actionsMenu="matMenu" class="proj-actions-menu">
                 <button mat-menu-item (click)="goToProjectUsers(p.id)">
                   <mat-icon class="menu-icon menu-icon--neutral">groups</mat-icon>
-                  <span>Usuários do projeto</span>
+                  <span>{{ 'Usuários do projeto' | translate }}</span>
                 </button>
                 <button mat-menu-item (click)="goToProjectQuestionnaires(p.clientId)">
                   <mat-icon class="menu-icon menu-icon--neutral">assignment</mat-icon>
-                  <span>Formulário de avaliação</span>
+                  <span>{{ 'Formulário de avaliação' | translate }}</span>
                 </button>
                 <button mat-menu-item (click)="openProjectForm(p.id)">
                   <mat-icon class="menu-icon menu-icon--neutral">edit</mat-icon>
-                  <span>Editar projeto</span>
+                  <span>{{ 'Editar projeto' | translate }}</span>
                 </button>
                 <mat-divider *ngIf="isAdminMaster"></mat-divider>
                 <button mat-menu-item *ngIf="isAdminMaster && p.status !== 'Cancelado'" (click)="cancelProject(p.id)" class="menu-item--warn">

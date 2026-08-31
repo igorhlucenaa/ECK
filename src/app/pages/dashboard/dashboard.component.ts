@@ -28,6 +28,7 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router, RouterModule } from '@angular/router';
 import { fixMojibake } from 'src/app/utils/encoding.utils';
+import { translateParticipantCategory } from 'src/app/utils/i18n-labels.util';
 
 // â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -532,7 +533,7 @@ export class DashboardComponent implements OnInit {
 
     this.clientKpis = [
       { value: activeProjectsCount, label: this.translate.instant('kpi.projetos_ativos'), color: '#1B84FF', icon: 'folder_open' },
-      { value: totalParticipants,   label: 'Participantes Ativos', color: '#7c3aed', icon: 'groups' },
+      { value: totalParticipants,   label: this.translate.instant('kpi.participantes_ativos'), color: '#7c3aed', icon: 'groups' },
       ...(!isViewer ? [{ value: totalCredits, label: this.translate.instant('kpi.creditos_disponiveis'), color: '#4caf50', icon: 'toll' }] : []),
     ];
 
@@ -816,7 +817,9 @@ export class DashboardComponent implements OnInit {
     });
     if (byCategory.size === 0) return;
 
-    const labels = Array.from(byCategory.keys());
+    const labels = Array.from(byCategory.keys()).map((cat) =>
+      translateParticipantCategory(this.translate, cat)
+    );
     const values = Array.from(byCategory.values());
 
     this.participantsByCategoryChart = {
@@ -853,7 +856,8 @@ export class DashboardComponent implements OnInit {
   }
 
   private buildProjectsByStatusChart(projectDocs: any[]): void {
-    const counts: Record<string, number> = { 'Ativos': 0, 'Concluído': 0, 'Cancelado': 0 };
+    const statusKeys = ['Ativos', 'Concluído', 'Cancelado'] as const;
+    const counts: Record<(typeof statusKeys)[number], number> = { Ativos: 0, 'Concluído': 0, Cancelado: 0 };
     projectDocs.forEach(d => {
       const s = d.data()['status'];
       if (s === 'Em andamento' || s === 'Ativo') counts['Ativos']++;
@@ -862,12 +866,15 @@ export class DashboardComponent implements OnInit {
       else counts['Ativos']++;
     });
 
-    const labels = Object.keys(counts);
-    const values = Object.values(counts);
+    const labels = statusKeys.map((key) => {
+      if (key === 'Ativos') return this.translate.instant('Ativos');
+      return this.translate.instant(key);
+    });
+    const values = statusKeys.map((key) => counts[key]);
     const colors = ['#1B84FF', '#4caf50', '#fc4b6c'];
 
     this.projectsByStatusChart = {
-      series: [{ name: 'Projetos', data: values }],
+      series: [{ name: this.translate.instant('Projetos'), data: values }],
       chart: { type: 'bar', height: 220, toolbar: { show: false }, fontFamily: 'Poppins, sans-serif' },
       plotOptions: { bar: { horizontal: false, columnWidth: '40%', borderRadius: 6, borderRadiusApplication: 'end', distributed: true } },
       colors,
@@ -876,7 +883,15 @@ export class DashboardComponent implements OnInit {
       yaxis: { show: true, min: 0, tickAmount: 3, labels: { style: { fontSize: '11px' } } },
       grid: { borderColor: '#f1f5f9', yaxis: { lines: { show: true } }, xaxis: { lines: { show: false } } },
       legend: { show: false },
-      tooltip: { theme: 'light', y: { formatter: (val: number) => `${val} projeto${val !== 1 ? 's' : ''}` } },
+      tooltip: {
+        theme: 'light',
+        y: {
+          formatter: (val: number) => {
+            const word = val === 1 ? this.translate.instant('projeto') : this.translate.instant('projetos');
+            return `${val} ${word}`;
+          },
+        },
+      },
     };
   }
 
@@ -912,9 +927,9 @@ export class DashboardComponent implements OnInit {
       em_andamento: 'Em andamento',
       em_risco: 'Em risco',
       atrasado: 'Atrasado',
-      concluido: 'Conclu\u00eddo',
+      concluido: 'Concluído',
     };
-    return map[status];
+    return this.translate.instant(map[status]);
   }
 
   statusClass(status: ProjectStatus): string {
@@ -929,11 +944,16 @@ export class DashboardComponent implements OnInit {
 
   deadlineLabel(row: ProjectRow): string {
     if (!row.deadline) return '\u2014';
-    if (row.status === 'concluido') return row.deadline.toLocaleDateString('pt-BR');
-    if (row.daysUntilDeadline < 0) return `${Math.abs(row.daysUntilDeadline)}d atrasado`;
-    if (row.daysUntilDeadline === 0) return 'Hoje';
-    if (row.daysUntilDeadline <= 7) return `${row.daysUntilDeadline}d restante(s)`;
-    return row.deadline.toLocaleDateString('pt-BR');
+    const locale = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
+    if (row.status === 'concluido') return row.deadline.toLocaleDateString(locale);
+    if (row.daysUntilDeadline < 0) {
+      return `${Math.abs(row.daysUntilDeadline)}${this.translate.instant('d atrasado')}`;
+    }
+    if (row.daysUntilDeadline === 0) return this.translate.instant('Hoje');
+    if (row.daysUntilDeadline <= 7) {
+      return `${row.daysUntilDeadline}${this.translate.instant('d restante(s)')}`;
+    }
+    return row.deadline.toLocaleDateString(locale);
   }
 
   deadlineClass(row: ProjectRow): string {

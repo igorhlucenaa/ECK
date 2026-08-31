@@ -74,7 +74,7 @@ interface ReportGenerationData {
       <!-- Loading state -->
       <div *ngIf="isLoading" class="rgm-loading">
         <mat-spinner [diameter]="44"></mat-spinner>
-        <p>Carregando dados da avaliação...</p>
+        <p>{{ 'Carregando dados da avaliação...' | translate }}</p>
       </div>
 
       <div *ngIf="!isLoading">

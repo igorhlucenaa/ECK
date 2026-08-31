@@ -44,7 +44,7 @@
     <button
       mat-icon-button
       (click)="startPageTour()"
-      matTooltip="Ver tutorial desta página"
+      matTooltip="{{ 'Ver tutorial desta página' | translate }}"
       class="m-r-5"
     >
       <i-tabler name="help" class="icon-20 d-flex"></i-tabler>
@@ -172,7 +172,7 @@
     <button
       mat-icon-button
       [matMenuTriggerFor]="profilemenu"
-      aria-label="Menu do usuário"
+      [attr.aria-label]="'Menu do usuário' | translate"
       class="user-avatar-btn"
     >
       <div class="user-avatar-circle">
@@ -195,7 +195,7 @@
             </span>
           </div>
           <div class="m-l-12">
-            <h6 class="f-s-14 f-w-600 m-0 mat-subtitle-1">{{ userName || 'Usuário' }}</h6>
+            <h6 class="f-s-14 f-w-600 m-0 mat-subtitle-1">{{ userName || ('Usuário' | translate) }}</h6>
             <span class="d-flex align-items-center f-s-12" style="color:#888;margin-top:2px;">
               <i-tabler name="mail" class="icon-14 m-r-4"></i-tabler>
               {{ userEmail || '' }}
@@ -212,7 +212,7 @@
           (click)="openChangePasswordDialog()"
         >
           <mat-icon style="margin-right:8px;font-size:18px;vertical-align:middle;">lock_reset</mat-icon>
-          Alterar senha
+          {{ 'Alterar senha' | translate }}
         </button>
       </div>
 
@@ -223,7 +223,7 @@
           mat-stroked-button
           color="primary"
           class="w-100"
-          >Sair</a
+          >{{ 'Sair' | translate }}</a
         >
       </div>
     </mat-menu>

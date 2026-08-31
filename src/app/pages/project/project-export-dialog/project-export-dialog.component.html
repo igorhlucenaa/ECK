@@ -14,7 +14,7 @@
 <mat-dialog-content class="ped-content">
   <div *ngIf="isLoading" class="ped-loading">
     <mat-spinner [diameter]="40"></mat-spinner>
-    <p>Carregando opções...</p>
+    <p>{{ 'Carregando opções...' | translate }}</p>
   </div>
 
   <ng-container *ngIf="!isLoading">

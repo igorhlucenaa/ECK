@@ -7,6 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Firestore, collection, getDocs, doc, getDoc } from '@angular/fire/firestore';
 import { isParticipantIncludedInReports } from '../reports-utils';
+import { TranslateModule } from '@ngx-translate/core';
 import { Subject, takeUntil } from 'rxjs';
 
 // Importar SurveyJS Dashboard
@@ -23,7 +24,8 @@ import { SurveyModel } from 'survey-core';
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    MatTooltipModule
+    MatTooltipModule,
+    TranslateModule,
   ],
   templateUrl: './survey-dashboard.component.html',
   styleUrls: ['./survey-dashboard.component.scss']

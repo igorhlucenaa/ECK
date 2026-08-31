@@ -102,7 +102,7 @@
           <mat-icon matPrefix class="field-icon">group_work</mat-icon>
           <mat-select formControlName="groups" multiple (selectionChange)="onGroupsChange($event.value)">
             <mat-option *ngIf="filteredGroups.length === 0" disabled>
-              {{ allGroups.length === 0 ? 'Carregando grupos…' : 'Nenhum grupo encontrado' }}
+              {{ allGroups.length === 0 ? ('Carregando grupos…' | translate) : ('Nenhum grupo encontrado' | translate) }}
             </mat-option>
             <mat-option *ngFor="let group of filteredGroups" [value]="group.id">
               <span>{{ group.name }}</span>

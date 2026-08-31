@@ -4,6 +4,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { LoadingService, LoadingState } from '../../services/loading.service';
+import { TranslateModule } from '@ngx-translate/core';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -13,7 +14,8 @@ import { Subscription } from 'rxjs';
     CommonModule,
     MatProgressSpinnerModule,
     MatProgressBarModule,
-    MatIconModule
+    MatIconModule,
+    TranslateModule,
   ],
   template: `
     <div *ngIf="loadingState.isLoading" class="global-loading-overlay">
@@ -21,13 +23,13 @@ import { Subscription } from 'rxjs';
       <!-- Spinner simples -->
       <div *ngIf="loadingState.type !== 'progress'" class="loading-center">
         <mat-spinner [diameter]="48"></mat-spinner>
-        <p class="loading-message">{{ loadingState.message || 'Carregando...' }}</p>
+        <p class="loading-message">{{ (loadingState.message || 'Carregando...') | translate }}</p>
       </div>
 
       <!-- Progress bar -->
       <div *ngIf="loadingState.type === 'progress'" class="loading-center">
         <mat-icon class="progress-icon">cloud_upload</mat-icon>
-        <p class="loading-message">{{ loadingState.message || 'Carregando...' }}</p>
+        <p class="loading-message">{{ (loadingState.message || 'Carregando...') | translate }}</p>
         <mat-progress-bar
           mode="determinate"
           [value]="loadingState.progress || 0"

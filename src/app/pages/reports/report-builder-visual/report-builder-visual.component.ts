@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -28,7 +28,7 @@ import {
   normalizeRelatorioConfiguracao,
   normalizeSecaoTitulo,
 } from '../report-section-defaults';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { DocumentoConfig, DOCUMENTO_CONFIG_PADRAO } from '../../../services/report-pdfmake.service';
@@ -295,7 +295,7 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
 
   private readonly tipoGraficoLabels: Record<TipoGraficoRelatorio, string> = {
     barra: 'Barras Comparativas',
-    radar: 'Radar',
+    radar: 'Radar Comparativo',
     'pizza-comparativa': 'Pizza Comparativa',
     'pizza-individual': 'Pizza Individual',
     'barras-individuais': 'Barras Individuais',
@@ -382,12 +382,26 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   constructor(
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private confirmDialog: ConfirmDialogService
+    private confirmDialog: ConfirmDialogService,
+    private translate: TranslateService,
+    private cdr: ChangeDetectorRef
   ) {}
+
+  private t(key: string): string {
+    return this.translate.instant(key);
+  }
 
   ngOnInit(): void {
     this.canvasSections = this.normalizarSecoes([...this.relatorioConfiguracao]);
     this.ordenarSecoes();
+    this.translate.onLangChange.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.cdr.markForCheck();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -433,11 +447,6 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
       rodape: { ...this.documentoConfig.rodape, [campo]: valor }
     };
     this.documentoConfigChange.emit(this.documentoConfig);
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   /**
@@ -691,9 +700,11 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   getNomeTipoSecao(secao: RelatorioSecaoSimplificada): string {
     if (secao.tipo === 'graficos') {
       const tipoGrafico = this.resolverTipoGraficoSecao(secao);
-      return this.tipoGraficoLabels[tipoGrafico] || 'Gráficos';
+      const labelKey = this.tipoGraficoLabels[tipoGrafico] || 'Gráficos';
+      return this.t(labelKey);
     }
-    return this.getTemplatePorTipo(secao.tipo)?.nome || 'Seção';
+    const template = this.getTemplatePorTipo(secao.tipo);
+    return this.t(template?.nome || 'Seção');
   }
 
   /**
@@ -725,8 +736,8 @@ export class ReportBuilderVisualComponent implements OnInit, OnChanges, OnDestro
   async limparTudo(): Promise<void> {
     const confirmed = await this.confirmDialog.confirm({
       type: 'danger',
-      title: 'Remover todas as seções',
-      message: 'Tem certeza que deseja remover todas as seções?',
+      title: this.t('Remover todas as seções'),
+      message: this.t('Tem certeza que deseja remover todas as seções?'),
     });
     if (confirmed) {
       this.canvasSections = [];

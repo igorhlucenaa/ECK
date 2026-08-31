@@ -2,20 +2,20 @@
 <div class="rp-loading" *ngIf="isLoading">
   <div class="rp-loading-individual" *ngIf="isIndividualMode">
     <mat-spinner [diameter]="50"></mat-spinner>
-    <p>Carregando relatório individual para {{ individualParticipantName }}...</p>
+    <p>{{ 'Carregando relatório individual para {{name}}...' | translate:{ name: individualParticipantName } }}</p>
   </div>
   <div class="rp-loading-general" *ngIf="!isIndividualMode">
     <mat-spinner [diameter]="36"></mat-spinner>
-    <p>Carregando dados...</p>
+    <p>{{ 'Carregando dados...' | translate }}</p>
   </div>
 </div>
 
 <div class="rp-page-wrapper">
 <!-- ===================== PAGE HEADER ===================== -->
 <app-page-header
-  eyebrow="Análise 360°"
-  title="Relatórios"
-  subtitle="Configure e visualize relatórios de avaliação 360°">
+  [eyebrow]="'Análise 360°' | translate"
+  [title]="'Relatórios' | translate"
+  [subtitle]="'Configure e visualize relatórios de avaliação 360°' | translate">
 </app-page-header>
 
 <!-- ===================== INDIVIDUAL MODE BANNER ===================== -->
@@ -24,17 +24,17 @@
     <mat-icon>person</mat-icon>
   </div>
   <div class="rp-individual-banner__info">
-    <h3>Relatório Individual</h3>
+    <h3>{{ 'Relatório Individual' | translate }}</h3>
     <p>
-      <strong>Avaliado:</strong> {{ individualParticipantName }}
+      <strong>{{ 'Avaliado:' | translate }}</strong> {{ individualParticipantName }}
       <span class="rp-individual-template" *ngIf="individualTemplateName">
-        &nbsp;&bull;&nbsp;<strong>Template:</strong> {{ individualTemplateName }}
+        &nbsp;&bull;&nbsp;<strong>{{ 'Template:' | translate }}</strong> {{ individualTemplateName }}
       </span>
     </p>
   </div>
   <button mat-stroked-button class="rp-individual-banner__back" (click)="voltarParaLista()">
     <mat-icon>arrow_back</mat-icon>
-    Voltar para Lista
+    {{ 'Voltar para Lista' | translate }}
   </button>
 </div>
 
@@ -48,18 +48,18 @@
     <div class="rp-seq-step" [class.rp-seq-step--done]="!!filterClientControl.value">
       <div class="rp-seq-step__num">1</div>
       <mat-form-field appearance="outline" class="rp-seq-field">
-        <mat-label>Cliente</mat-label>
+        <mat-label>{{ 'Cliente' | translate }}</mat-label>
         <mat-icon matPrefix>business</mat-icon>
         <mat-select [formControl]="filterClientControl" (selectionChange)="onFilterClientChange()" (closed)="resetClientSearch()">
           <div class="client-search-wrap">
             <mat-icon class="client-search-icon">search</mat-icon>
             <input class="client-search-input" [formControl]="clientSearchCtrl"
-                   placeholder="Buscar cliente..." (click)="$event.stopPropagation()"
+                   [placeholder]="'Buscar cliente...' | translate" (click)="$event.stopPropagation()"
                    (keydown)="$event.stopPropagation()" />
           </div>
-          <mat-option value="">— Selecione um cliente —</mat-option>
+          <mat-option value="">{{ '— Selecione um cliente —' | translate }}</mat-option>
           <mat-option *ngFor="let c of clientsFiltered" [value]="c.id">{{ c.name }}</mat-option>
-          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">Nenhum cliente encontrado</div>
+          <div *ngIf="clientsFiltered.length === 0" class="client-search-empty">{{ 'Nenhum cliente encontrado' | translate }}</div>
         </mat-select>
       </mat-form-field>
     </div>
@@ -71,14 +71,14 @@
          *ngIf="filterClientControl.value">
       <div class="rp-seq-step__num">2</div>
       <mat-form-field appearance="outline" class="rp-seq-field">
-        <mat-label>Formulário</mat-label>
+        <mat-label>{{ 'Formulário' | translate }}</mat-label>
         <mat-icon matPrefix>assignment</mat-icon>
         <mat-select [formControl]="assessmentControl"
                     [disabled]="filteredAssessments.length === 0">
-          <mat-option value="">— Selecione o formulário —</mat-option>
+          <mat-option value="">{{ '— Selecione o formulário —' | translate }}</mat-option>
           <mat-option *ngFor="let a of filteredAssessments" [value]="a.id">{{ a.name }}</mat-option>
         </mat-select>
-        <mat-hint *ngIf="filteredAssessments.length === 0">Nenhum formulário cadastrado para este cliente</mat-hint>
+        <mat-hint *ngIf="filteredAssessments.length === 0">{{ 'Nenhum formulário cadastrado para este cliente' | translate }}</mat-hint>
       </mat-form-field>
     </div>
 
@@ -90,7 +90,7 @@
         <div class="rp-project-badge">
           <mat-icon class="rp-project-badge__icon">folder_open</mat-icon>
           <div class="rp-project-badge__info">
-            <span class="rp-project-badge__label">Projeto (automático)</span>
+            <span class="rp-project-badge__label">{{ 'Projeto (automático)' | translate }}</span>
             <span class="rp-project-badge__name">{{ getFilterProjectLabel() }}</span>
           </div>
         </div>
@@ -103,14 +103,14 @@
       <div class="rp-seq-step" [class.rp-seq-step--done]="!!filterProjectControl.value">
         <div class="rp-seq-step__num">3</div>
         <mat-form-field appearance="outline" class="rp-seq-field">
-          <mat-label>Projeto (ciclo)</mat-label>
+          <mat-label>{{ 'Projeto (ciclo)' | translate }}</mat-label>
           <mat-icon matPrefix>folder_open</mat-icon>
           <mat-select [formControl]="filterProjectControl" (selectionChange)="onFilterProjectChange()"
                       [disabled]="projectsForAssessment.length === 0">
-            <mat-option value="">— Selecione o projeto —</mat-option>
+            <mat-option value="">{{ '— Selecione um projeto —' | translate }}</mat-option>
             <mat-option *ngFor="let p of projectsForAssessment" [value]="p.id">{{ p.name }}</mat-option>
           </mat-select>
-          <mat-hint>Esta avaliação está em mais de um projeto ativo</mat-hint>
+          <mat-hint>{{ 'Esta avaliação está em mais de um projeto ativo' | translate }}</mat-hint>
         </mat-form-field>
       </div>
     </ng-container>
@@ -123,7 +123,7 @@
         <div class="rp-project-badge">
           <mat-icon class="rp-project-badge__icon">folder_open</mat-icon>
           <div class="rp-project-badge__info">
-            <span class="rp-project-badge__label">Projeto</span>
+            <span class="rp-project-badge__label">{{ 'Projeto' | translate }}</span>
             <span class="rp-project-badge__name">{{ getFilterProjectLabel() }}</span>
           </div>
         </div>
@@ -141,7 +141,7 @@
           <div class="rp-avaliado-badge">
             <mat-icon class="rp-avaliado-badge__icon">person_search</mat-icon>
             <div class="rp-avaliado-badge__info">
-              <span class="rp-avaliado-badge__label">Avaliado</span>
+              <span class="rp-avaliado-badge__label">{{ 'Avaliado' | translate }}</span>
               <span class="rp-avaliado-badge__name">{{ avaliadosDisponiveis[0] }}</span>
             </div>
           </div>
@@ -153,12 +153,12 @@
         <div class="rp-seq-step" [class.rp-seq-step--done]="!!selectedAvaliado">
           <div class="rp-seq-step__num">4</div>
           <mat-form-field appearance="outline" class="rp-seq-field">
-            <mat-label>Avaliado</mat-label>
+            <mat-label>{{ 'Avaliado' | translate }}</mat-label>
             <mat-icon matPrefix>person_search</mat-icon>
             <mat-select [formControl]="avaliadoControl" (selectionChange)="onAvaliadoChange()">
               <mat-option *ngFor="let avaliado of avaliadosDisponiveis" [value]="avaliado">{{ avaliado }}</mat-option>
             </mat-select>
-            <mat-hint>Selecione para visualizar o relatório individual</mat-hint>
+            <mat-hint>{{ 'Selecione para visualizar o relatório individual' | translate }}</mat-hint>
           </mat-form-field>
         </div>
       </ng-template>
@@ -169,7 +169,7 @@
     <!-- Botão limpar (aparece quando há algo selecionado) -->
     <button mat-icon-button class="rp-seq-clear"
             *ngIf="filterClientControl.value"
-            matTooltip="Limpar seleção"
+            matTooltip="{{ 'Limpar seleção' | translate }}"
             (click)="clearFilterContext()">
       <mat-icon>close</mat-icon>
     </button>
@@ -180,7 +180,7 @@
     <mat-form-field class="rp-selector" appearance="outline">
       <mat-label>{{ 'Formulário' | translate }}</mat-label>
       <mat-icon matPrefix>assignment</mat-icon>
-      <input matInput [formControl]="assessmentSearchControl" [readonly]="true" placeholder="Formulário carregado automaticamente">
+      <input matInput [formControl]="assessmentSearchControl" [readonly]="true" [placeholder]="'Formulário carregado automaticamente' | translate">
     </mat-form-field>
 
     <mat-form-field class="rp-selector" appearance="outline">
@@ -199,8 +199,8 @@
         <mat-icon>person_pin</mat-icon>
       </div>
       <div>
-        <strong>Visualizando dados individuais</strong>
-        <p>Avaliado selecionado: <strong>{{ selectedAvaliado }}</strong></p>
+        <strong>{{ 'Visualizando dados individuais' | translate }}</strong>
+        <p>{{ 'Avaliado selecionado:' | translate }} <strong>{{ selectedAvaliado }}</strong></p>
       </div>
     </div>
     <button mat-icon-button class="rp-avaliado-indicator__clear" (click)="limparSelecaoAvaliado()" matTooltip="{{ 'Limpar seleção de avaliado' | translate }}">
@@ -220,8 +220,8 @@
       <mat-icon>{{ selectedAssessmentId ? 'check_circle' : 'assignment' }}</mat-icon>
     </div>
     <div class="rp-workflow-tab__label">
-      <strong>Avaliação</strong>
-      <span>{{ selectedAssessmentId ? 'Selecionada' : 'Selecione acima' }}</span>
+      <strong>{{ 'Avaliação' | translate }}</strong>
+      <span>{{ selectedAssessmentId ? ('Selecionada' | translate) : ('Selecione acima' | translate) }}</span>
     </div>
   </div>
 
@@ -232,13 +232,13 @@
        [class.rp-workflow-tab--active]="selectedTabIndex === 0"
        [class.rp-workflow-tab--disabled]="!selectedAssessmentId"
        (click)="selectedAssessmentId && goToTab(0)"
-       matTooltip="{{ !selectedAssessmentId ? 'Selecione uma avaliação primeiro' : '' }}">
+       matTooltip="{{ !selectedAssessmentId ? ('Selecione uma avaliação primeiro' | translate) : '' }}">
     <div class="rp-workflow-tab__icon">
       <mat-icon>psychology</mat-icon>
     </div>
     <div class="rp-workflow-tab__label">
-      <strong>Competências</strong>
-      <span>{{ competencias.length > 0 ? competencias.length + ' ativa' + (competencias.length !== 1 ? 's' : '') : 'Configure' }}</span>
+      <strong>{{ 'Competências' | translate }}</strong>
+      <span>{{ competencias.length > 0 ? (competencias.length + ' ' + (competencias.length === 1 ? ('ativa' | translate) : ('ativas' | translate))) : ('Configure' | translate) }}</span>
     </div>
   </div>
 
@@ -249,13 +249,13 @@
        [class.rp-workflow-tab--active]="selectedTabIndex === 1"
        [class.rp-workflow-tab--disabled]="competencias.length === 0"
        (click)="competencias.length > 0 && goToTab(1)"
-       matTooltip="{{ competencias.length === 0 ? 'Configure as competências primeiro' : '' }}">
+       matTooltip="{{ competencias.length === 0 ? ('Configure as competências primeiro' | translate) : '' }}">
     <div class="rp-workflow-tab__icon">
       <mat-icon>dashboard_customize</mat-icon>
     </div>
     <div class="rp-workflow-tab__label">
-      <strong>Montar</strong>
-      <span>Seções e gráficos</span>
+      <strong>{{ 'Montar' | translate }}</strong>
+      <span>{{ 'Seções e gráficos' | translate }}</span>
     </div>
   </div>
 
@@ -264,13 +264,13 @@
        [class.rp-workflow-tab--active]="selectedTabIndex === 2"
        [class.rp-workflow-tab--disabled]="currentUserRole !== 'viewer' && competencias.length === 0"
        (click)="(currentUserRole === 'viewer' || competencias.length > 0) && goToTab(2)"
-       matTooltip="{{ currentUserRole !== 'viewer' && competencias.length === 0 ? 'Configure as competências primeiro' : '' }}">
+       matTooltip="{{ currentUserRole !== 'viewer' && competencias.length === 0 ? ('Configure as competências primeiro' | translate) : '' }}">
     <div class="rp-workflow-tab__icon">
       <mat-icon>preview</mat-icon>
     </div>
     <div class="rp-workflow-tab__label">
-      <strong>Visualizar</strong>
-      <span>PDF e exportação</span>
+      <strong>{{ 'Visualizar' | translate }}</strong>
+      <span>{{ 'PDF e exportação' | translate }}</span>
     </div>
   </div>
 
@@ -282,8 +282,8 @@
   <!-- ============ PASSO 1: COMPETÊNCIAS ============ -->
   <div class="rp-step-panel" *ngIf="selectedTabIndex === 0 && currentUserRole !== 'viewer'">
     <div class="rp-step-panel__header">
-      <h2 class="rp-step-panel__title">Competências</h2>
-      <p class="rp-step-panel__desc">Selecione quais competências aparecerão no relatório</p>
+      <h2 class="rp-step-panel__title">{{ 'Competências' | translate }}</h2>
+      <p class="rp-step-panel__desc">{{ 'Selecione quais competências aparecerão no relatório' | translate }}</p>
     </div>
     <div class="rp-tab-content">
 
@@ -292,8 +292,8 @@
         <div class="rp-comp-gate__icon-wrap">
           <mat-icon>assignment</mat-icon>
         </div>
-        <h4>Selecione uma avaliação primeiro</h4>
-        <p>Use o seletor acima para escolher qual avaliação 360° deseja analisar. As competências vinculadas serão carregadas automaticamente.</p>
+        <h4>{{ 'Selecione uma avaliação primeiro' | translate }}</h4>
+        <p>{{ 'Use o seletor acima para escolher qual avaliação 360° deseja analisar. As competências vinculadas serão carregadas automaticamente.' | translate }}</p>
       </div>
 
       <!-- Estado: avaliação selecionada -->
@@ -307,8 +307,8 @@
               <mat-icon>map</mat-icon>
             </div>
             <div>
-              <h4>Configure as competências para esta avaliação</h4>
-              <p>Antes de montar o relatório, é necessário vincular as perguntas da avaliação às competências. Siga os passos abaixo:</p>
+              <h4>{{ 'Configure as competências para esta avaliação' | translate }}</h4>
+              <p>{{ 'Antes de montar o relatório, é necessário vincular as perguntas da avaliação às competências. Siga os passos abaixo:' | translate }}</p>
             </div>
           </div>
 
@@ -319,7 +319,7 @@
                 <mat-icon>check</mat-icon>
               </div>
               <div class="rp-setup-step__body">
-                <strong>Avaliação selecionada</strong>
+                <strong>{{ 'Avaliação selecionada' | translate }}</strong>
                 <span>{{ selectedAssessmentName }}</span>
               </div>
             </div>
@@ -329,16 +329,15 @@
             <div class="rp-setup-step rp-setup-step--active">
               <div class="rp-setup-step__num">2</div>
               <div class="rp-setup-step__body">
-                <strong>Ir para Competências e vincular as perguntas</strong>
+                <strong>{{ 'Ir para Competências e vincular as perguntas' | translate }}</strong>
                 <span>
-                  Na página de Competências, selecione a mesma avaliação
-                  (<em>{{ selectedAssessmentName }}</em>), crie ou edite os grupos de competências
-                  vinculando as perguntas do formulário, e clique em <strong>Salvar</strong>.
+                  {{ 'Na página de Competências, selecione a mesma avaliação' | translate }}
+                  (<em>{{ selectedAssessmentName }}</em>), {{ 'crie ou edite os grupos de competências vinculando as perguntas do formulário, e clique em Salvar.' | translate }}
                 </span>
               </div>
               <button mat-flat-button color="primary" (click)="navigateToCompetencies()" class="rp-setup-step__btn">
                 <mat-icon>open_in_new</mat-icon>
-                Ir para Competências
+                {{ 'Ir para Competências' | translate }}
               </button>
             </div>
 
@@ -347,8 +346,8 @@
             <div class="rp-setup-step rp-setup-step--disabled">
               <div class="rp-setup-step__num">3</div>
               <div class="rp-setup-step__body">
-                <strong>Voltar para Relatórios</strong>
-                <span>Após salvar, volte aqui e selecione a mesma avaliação. As competências aparecerão automaticamente.</span>
+                <strong>{{ 'Voltar para Relatórios' | translate }}</strong>
+                <span>{{ 'Após salvar, volte aqui e selecione a mesma avaliação. As competências aparecerão automaticamente.' | translate }}</span>
               </div>
             </div>
 
@@ -365,23 +364,23 @@
               <mat-icon>tune</mat-icon>
             </div>
             <div class="rp-comp-instruction__text">
-              <strong>Ajuste quais competências aparecerão no relatório</strong>
-              <span>Clique em uma competência para ativar ou desativar. Todas estão ativas por padrão.</span>
+              <strong>{{ 'Ajuste quais competências aparecerão no relatório' | translate }}</strong>
+              <span>{{ 'Clique em uma competência para ativar ou desativar. Todas estão ativas por padrão.' | translate }}</span>
             </div>
             <div class="rp-comp-instruction__actions">
               <button mat-stroked-button size="small"
                       (click)="selectAllCompetencias()"
                       [disabled]="competencias.length === allCompetencies.length"
-                      matTooltip="Ativar todas as competências">
+                      matTooltip="{{ 'Ativar todas as competências' | translate }}">
                 <mat-icon>done_all</mat-icon>
-                Ativar todas
+                {{ 'Ativar todas' | translate }}
               </button>
               <button mat-stroked-button size="small"
                       (click)="deselectAllCompetencias()"
                       [disabled]="competencias.length === 0"
-                      matTooltip="Desativar todas as competências">
+                      matTooltip="{{ 'Desativar todas as competências' | translate }}">
                 <mat-icon>remove_done</mat-icon>
-                Desativar todas
+                {{ 'Desativar todas' | translate }}
               </button>
             </div>
           </div>
@@ -396,7 +395,7 @@
             </div>
             <button mat-button color="primary" (click)="navigateToCompetencies()" class="rp-comp-manage-link">
               <mat-icon>open_in_new</mat-icon>
-              Criar / editar competências
+              {{ 'Criar / editar competências' | translate }}
             </button>
           </div>
 
@@ -420,7 +419,7 @@
                   <mat-chip class="rp-comp-panel__chip"
                             [class.rp-comp-panel__chip--active]="isCompetenciaAtiva(c.id)"
                             [class.rp-comp-panel__chip--inactive]="!isCompetenciaAtiva(c.id)">
-                    {{ isCompetenciaAtiva(c.id) ? 'Ativa' : 'Inativa' }}
+                    {{ isCompetenciaAtiva(c.id) ? ('Ativa' | translate) : ('Inativa' | translate) }}
                   </mat-chip>
                 </mat-panel-title>
 
@@ -437,7 +436,7 @@
               <div class="rp-comp-panel__questions">
                 <p class="rp-comp-panel__questions-label">
                   <mat-icon>list_alt</mat-icon>
-                  Questões vinculadas a esta competência:
+                  {{ 'Questões vinculadas a esta competência:' | translate }}
                 </p>
                 <div *ngIf="(c.perguntasIds?.length || 0) > 0; else semPerguntas" class="rp-comp-panel__question-list">
                   <div *ngFor="let pId of c.perguntasIds; let qi = index" class="rp-comp-panel__question-item">
@@ -448,7 +447,7 @@
                 <ng-template #semPerguntas>
                   <p class="rp-comp-panel__no-questions">
                     <mat-icon>info_outline</mat-icon>
-                    Nenhuma questão vinculada ainda. Acesse a página de Competências para vincular perguntas.
+                    {{ 'Nenhuma questão vinculada ainda. Acesse a página de Competências para vincular perguntas.' | translate }}
                   </p>
                 </ng-template>
               </div>
@@ -460,18 +459,18 @@
           <div class="rp-tab-footer">
             <div class="rp-tab-footer__status" *ngIf="competencias.length === 0">
               <mat-icon>warning_amber</mat-icon>
-              <span>Ative pelo menos uma competência para avançar</span>
+              <span>{{ 'Ative pelo menos uma competência para avançar' | translate }}</span>
             </div>
             <div class="rp-tab-footer__status rp-tab-footer__status--ok" *ngIf="competencias.length > 0">
               <mat-icon>check_circle</mat-icon>
-              <span><strong>{{ competencias.length }}</strong> competência{{ competencias.length !== 1 ? 's' : '' }} pronta{{ competencias.length !== 1 ? 's' : '' }}</span>
+              <span><strong>{{ competencias.length }}</strong> {{ competencias.length === 1 ? ('competência pronta' | translate) : ('competências prontas' | translate) }}</span>
             </div>
             <button mat-flat-button
                     color="primary"
                     class="rp-advance-btn"
                     [disabled]="competencias.length === 0"
                     (click)="goToTab(1)">
-              Montar Relatório
+              {{ 'Montar Relatório' | translate }}
               <mat-icon iconPositionEnd>arrow_forward</mat-icon>
             </button>
           </div>
@@ -485,8 +484,8 @@
   <!-- ============ PASSO 2: MONTAR RELATÓRIO ============ -->
   <div class="rp-step-panel" *ngIf="selectedTabIndex === 1 && currentUserRole !== 'viewer'">
     <div class="rp-step-panel__header">
-      <h2 class="rp-step-panel__title">Montar Relatório</h2>
-      <p class="rp-step-panel__desc">Organize as seções, textos e gráficos do relatório</p>
+      <h2 class="rp-step-panel__title">{{ 'Montar Relatório' | translate }}</h2>
+      <p class="rp-step-panel__desc">{{ 'Organize as seções, textos e gráficos do relatório' | translate }}</p>
     </div>
     <div class="rp-tab-content">
 
@@ -496,17 +495,17 @@
         <div class="rp-montar-guide">
           <div class="rp-montar-guide__step">
             <span class="rp-montar-guide__num">1</span>
-            <span class="rp-montar-guide__text">{{ projectTemplateLocked ? 'Template vinculado ao projeto' : 'Escolha um template' }}</span>
+            <span class="rp-montar-guide__text">{{ projectTemplateLocked ? ('Template vinculado ao projeto' | translate) : ('Escolha um template' | translate) }}</span>
           </div>
           <mat-icon class="rp-montar-guide__arrow">chevron_right</mat-icon>
           <div class="rp-montar-guide__step">
             <span class="rp-montar-guide__num">2</span>
-            <span class="rp-montar-guide__text">Edite seções abaixo</span>
+            <span class="rp-montar-guide__text">{{ 'Edite seções abaixo' | translate }}</span>
           </div>
           <mat-icon class="rp-montar-guide__arrow">chevron_right</mat-icon>
           <div class="rp-montar-guide__step">
             <span class="rp-montar-guide__num">3</span>
-            <span class="rp-montar-guide__text">Visualize na aba Pré-visualizar</span>
+            <span class="rp-montar-guide__text">{{ 'Visualize na aba Pré-visualizar' | translate }}</span>
           </div>
         </div>
 
@@ -516,11 +515,11 @@
               <mat-icon>layers</mat-icon>
             </div>
             <div>
-              <p class="rp-template-active__title">Template ativo</p>
+              <p class="rp-template-active__title">{{ 'Template ativo' | translate }}</p>
               <p class="rp-template-active__desc">
                 {{ projectTemplateLocked
-                  ? 'Definido na criação do projeto — não pode ser alterado aqui'
-                  : 'Selecione um template — a estrutura é aplicada automaticamente' }}
+                  ? ('Definido na criação do projeto — não pode ser alterado aqui' | translate)
+                  : ('Selecione um template — a estrutura é aplicada automaticamente' | translate) }}
               </p>
             </div>
           </div>
@@ -533,43 +532,43 @@
               </mat-chip>
               <mat-chip *ngIf="builderHasUnsavedChanges" class="rp-chip--warn">
                 <mat-icon matChipAvatar>edit_note</mat-icon>
-                Alterações não salvas
+                {{ 'Alterações não salvas' | translate }}
               </mat-chip>
               <mat-chip *ngIf="!projectTemplateLocked && nomeTemplateAplicado" class="rp-chip--template">
                 <mat-icon matChipAvatar>check_circle</mat-icon>
                 {{ nomeTemplateAplicado }}
               </mat-chip>
               <mat-chip *ngIf="!projectTemplateLocked && !nomeTemplateAplicado && !builderHasUnsavedChanges" class="rp-chip--muted">
-                Nenhum template aplicado
+                {{ 'Nenhum template aplicado' | translate }}
               </mat-chip>
             </mat-chip-set>
           </div>
 
           <div class="rp-template-linked" *ngIf="projectTemplateLocked">
             <mat-icon>link</mat-icon>
-            <span>Template do projeto <strong>{{ getFilterProjectLabel() }}</strong>: {{ lockedProjectTemplateName }}</span>
+            <span>{{ 'Template do projeto' | translate }} <strong>{{ getFilterProjectLabel() }}</strong>: {{ lockedProjectTemplateName }}</span>
           </div>
 
           <div class="rp-template-linked rp-template-linked--warn" *ngIf="projectHasLinkedTemplate === false">
             <mat-icon>warning</mat-icon>
             <div class="rp-template-linked__content">
-              <span>Este projeto não possui template de relatório vinculado. Edite o projeto e selecione um template para habilitar PDF e DOCX.</span>
+              <span>{{ 'Este projeto não possui template de relatório vinculado. Edite o projeto e selecione um template para habilitar PDF e DOCX.' | translate }}</span>
               <button
                 *ngIf="currentUserRole === 'admin_master'"
                 mat-stroked-button
                 type="button"
                 (click)="goToEditSelectedProject()">
                 <mat-icon>edit</mat-icon>
-                Editar projeto
+                {{ 'Editar projeto' | translate }}
               </button>
               <span *ngIf="currentUserRole !== 'admin_master'">
-                Solicite ao administrador master a vinculação de um template na edição do projeto.
+                {{ 'Solicite ao administrador master a vinculação de um template na edição do projeto.' | translate }}
               </span>
             </div>
           </div>
 
           <mat-form-field appearance="outline" class="rp-template-active__field" *ngIf="!projectTemplateLocked && projectHasLinkedTemplate !== false">
-            <mat-label>Template</mat-label>
+            <mat-label>{{ 'Template' | translate }}</mat-label>
             <mat-select [formControl]="selectedTemplateId">
               <mat-option *ngFor="let template of savedTemplates" [value]="template.id">
                 {{ template.name }}
@@ -583,21 +582,21 @@
               class="btn-pc-outline-template"
               (click)="aplicarTemplateSelecionado()"
               [disabled]="!selectedTemplateId.value"
-              matTooltip="Recarrega a estrutura do template selecionado">
+              matTooltip="{{ 'Recarrega a estrutura do template selecionado' | translate }}">
               <mat-icon>refresh</mat-icon>
-              Reaplicar template
+              {{ 'Reaplicar template' | translate }}
             </button>
             <button
               mat-flat-button
               class="btn-pc-template"
               (click)="salvarAlteracoesNoTemplate()"
               [disabled]="!appliedTemplateId"
-              matTooltip="Grava no Firebase a estrutura atual do editor no template aplicado">
+              matTooltip="{{ 'Grava no Firebase a estrutura atual do editor no template aplicado' | translate }}">
               <mat-icon>save</mat-icon>
-              Salvar alterações
+              {{ 'Salvar alterações' | translate }}
             </button>
             <button mat-button type="button" class="rp-template-active__manage" (click)="abrirGerenciarTemplatesDialog()">
-              Gerenciar templates…
+              {{ 'Gerenciar templates…' | translate }}
             </button>
           </div>
         </div>
@@ -606,10 +605,10 @@
           <mat-expansion-panel-header>
             <mat-panel-title>
               <mat-icon class="rp-rascunhos-panel__icon">bookmark</mat-icon>
-              Rascunho por avaliado (opcional)
+              {{ 'Rascunho por avaliado (opcional)' | translate }}
             </mat-panel-title>
             <mat-panel-description>
-              Snapshots com competências e dados específicos
+              {{ 'Snapshots com competências e dados específicos' | translate }}
             </mat-panel-description>
           </mat-expansion-panel-header>
 
@@ -618,26 +617,26 @@
               <div class="rp-persist-card__top">
                 <mat-icon class="rp-persist-card__icon">save</mat-icon>
                 <div>
-                  <p class="rp-persist-card__name">Salvar rascunho</p>
-                  <p class="rp-persist-card__hint">Guarda a configuração atual vinculada a um avaliado</p>
+                  <p class="rp-persist-card__name">{{ 'Salvar rascunho' | translate }}</p>
+                  <p class="rp-persist-card__hint">{{ 'Guarda a configuração atual vinculada a um avaliado' | translate }}</p>
                 </div>
               </div>
               <mat-form-field appearance="outline" class="rp-persist-card__field">
-                <mat-label>Nome do rascunho</mat-label>
-                <input matInput [formControl]="nomeRelatorioControl" placeholder="Ex: Relatório João Silva">
+                <mat-label>{{ 'Nome do rascunho' | translate }}</mat-label>
+                <input matInput [formControl]="nomeRelatorioControl" [placeholder]="'Ex: Relatório João Silva' | translate">
               </mat-form-field>
               <div class="rp-template-link-badge" *ngIf="appliedTemplateId">
                 <mat-icon>link</mat-icon>
-                <span>Vinculado ao template: <strong>{{ nomeTemplateAplicado }}</strong></span>
+                <span>{{ 'Vinculado ao template:' | translate }} <strong>{{ nomeTemplateAplicado }}</strong></span>
               </div>
               <div class="rp-template-link-badge rp-template-link-badge--none" *ngIf="!appliedTemplateId">
                 <mat-icon>link_off</mat-icon>
-                <span>Sem template aplicado — aplique um template acima antes de salvar</span>
+                <span>{{ 'Sem template aplicado — aplique um template acima antes de salvar' | translate }}</span>
               </div>
               <div class="rp-persist-card__actions">
                 <button mat-flat-button class="btn-pc-primary" (click)="salvarRelatorioNoFirebase()">
                   <mat-icon>save</mat-icon>
-                  Salvar rascunho
+                  {{ 'Salvar rascunho' | translate }}
                 </button>
               </div>
             </div>
@@ -646,12 +645,12 @@
               <div class="rp-persist-card__top">
                 <mat-icon class="rp-persist-card__icon">history</mat-icon>
                 <div>
-                  <p class="rp-persist-card__name">Carregar rascunho salvo</p>
-                  <p class="rp-persist-card__hint">Selecione e clique em Carregar — não carrega automaticamente</p>
+                  <p class="rp-persist-card__name">{{ 'Carregar rascunho salvo' | translate }}</p>
+                  <p class="rp-persist-card__hint">{{ 'Selecione e clique em Carregar — não carrega automaticamente' | translate }}</p>
                 </div>
               </div>
               <mat-form-field appearance="outline" class="rp-persist-card__field">
-                <mat-label>Rascunho salvo</mat-label>
+                <mat-label>{{ 'Rascunho salvo' | translate }}</mat-label>
                 <mat-select [formControl]="selectedReportId">
                   <mat-option *ngFor="let report of savedReports" [value]="report.id">{{ report.name }}</mat-option>
                 </mat-select>
@@ -659,18 +658,18 @@
               <div class="rp-persist-card__actions">
                 <button mat-stroked-button class="btn-pc-outline" (click)="carregarRelatorioSelecionado()" [disabled]="!selectedReportId.value">
                   <mat-icon>download</mat-icon>
-                  Carregar rascunho
+                  {{ 'Carregar rascunho' | translate }}
                 </button>
                 <button mat-flat-button class="btn-pc-primary" *ngIf="selectedReportId.value" (click)="atualizarRelatorioNoFirebase()">
                   <mat-icon>sync</mat-icon>
-                  Atualizar rascunho
+                  {{ 'Atualizar rascunho' | translate }}
                 </button>
                 <button mat-stroked-button class="btn-pc-danger" *ngIf="selectedReportId.value" (click)="excluirRelatorio()">
                   <mat-icon>delete_outline</mat-icon>
-                  Excluir
+                  {{ 'Excluir' | translate }}
                 </button>
                 <button mat-icon-button class="btn-pc-clear" *ngIf="selectedReportId.value" (click)="selectedReportId.setValue(null)"
-                  matTooltip="Remover seleção">
+                  matTooltip="{{ 'Remover seleção' | translate }}">
                   <mat-icon>close</mat-icon>
                 </button>
               </div>
@@ -680,14 +679,14 @@
               <div class="rp-persist-card__top">
                 <mat-icon class="rp-persist-card__icon rp-persist-card__icon--reset">restart_alt</mat-icon>
                 <div>
-                  <p class="rp-persist-card__name">Restaurar estrutura padrão</p>
-                  <p class="rp-persist-card__hint">Descarta seções atuais e volta ao layout inicial</p>
+                  <p class="rp-persist-card__name">{{ 'Restaurar estrutura padrão' | translate }}</p>
+                  <p class="rp-persist-card__hint">{{ 'Descarta seções atuais e volta ao layout inicial' | translate }}</p>
                 </div>
               </div>
               <div class="rp-persist-card__actions">
                 <button mat-stroked-button class="btn-pc-danger" (click)="resetarRelatorio()">
                   <mat-icon>restart_alt</mat-icon>
-                  Limpar e resetar
+                  {{ 'Limpar e resetar' | translate }}
                 </button>
               </div>
             </div>
@@ -702,16 +701,16 @@
           <mat-button-toggle-group [(value)]="modoMontagem" (change)="onModoMontagemChange()">
             <mat-button-toggle value="visual">
               <mat-icon>dashboard</mat-icon>
-              Visual (Drag & Drop)
+              {{ 'Visual (Drag & Drop)' | translate }}
             </mat-button-toggle>
             <mat-button-toggle value="classico">
               <mat-icon>list</mat-icon>
-              Clássico
+              {{ 'Clássico' | translate }}
             </mat-button-toggle>
           </mat-button-toggle-group>
         </div>
         <button mat-flat-button color="primary" class="rp-advance-btn" (click)="goToTab(2)">
-          Visualizar Relatório
+          {{ 'Visualizar Relatório' | translate }}
           <mat-icon iconPositionEnd>arrow_forward</mat-icon>
         </button>
       </div>
@@ -741,7 +740,7 @@
         <div class="rp-add-section-bar">
           <mat-chip-listbox>
             <mat-chip-option (click)="addSecaoCustomizada('texto')">
-              <mat-icon>text_fields</mat-icon> Bloco de Texto
+              <mat-icon>text_fields</mat-icon> {{ 'Bloco de Texto' | translate }}
             </mat-chip-option>
             <mat-chip-option (click)="addSecaoCustomizada('graficos')">
               <mat-icon>bar_chart</mat-icon> {{ 'Gráficos' | translate }}
@@ -801,23 +800,23 @@
                       <mat-form-field appearance="outline" class="rp-section-type-select">
                         <mat-label>{{ 'Tipo' | translate }}</mat-label>
                         <mat-select formControlName="tipo" (selectionChange)="atualizarSecaoConfiguracao(i)">
-                          <mat-option value="capa">Capa</mat-option>
-                          <mat-option value="introducao">Introdução</mat-option>
+                          <mat-option value="capa">{{ 'Capa' | translate }}</mat-option>
+                          <mat-option value="introducao">{{ 'Introdução' | translate }}</mat-option>
                           <mat-option value="resumo">{{ 'Resumo de Competências' | translate }}</mat-option>
                           <mat-option value="graficos">{{ 'Gráficos' | translate }}</mat-option>
                           <mat-option value="tabela">{{ 'Tabela de Frequência' | translate }}</mat-option>
                           <mat-option value="tabela_detalhada">{{ 'Tabela de Distribuição' | translate }}</mat-option>
-                          <mat-option value="competencia_detalhada">Análise Detalhada</mat-option>
+                          <mat-option value="competencia_detalhada">{{ 'Análise Detalhada' | translate }}</mat-option>
                           <mat-option value="destaques">{{ 'Destaques' | translate }}</mat-option>
-                          <mat-option value="texto">Texto Livre</mat-option>
+                          <mat-option value="texto">{{ 'Texto Livre' | translate }}</mat-option>
                           <mat-option value="grafico_defasagem">{{ 'Gráfico de Defasagem' | translate }}</mat-option>
                           <mat-option value="perguntas_abertas">{{ 'Perguntas Abertas' | translate }}</mat-option>
                         </mat-select>
                       </mat-form-field>
-                      <button mat-icon-button color="accent" (click)="addSecaoCustomizadaAbaixo(i, secaoCtrl.get('tipo')?.value)" matTooltip="Adicionar seção abaixo">
+                      <button mat-icon-button color="accent" (click)="addSecaoCustomizadaAbaixo(i, secaoCtrl.get('tipo')?.value)" matTooltip="{{ 'Adicionar seção abaixo' | translate }}">
                         <mat-icon>add</mat-icon>
                       </button>
-                      <button mat-icon-button color="warn" (click)="removerSecao(i)" matTooltip="Remover seção">
+                      <button mat-icon-button color="warn" (click)="removerSecao(i)" matTooltip="{{ 'Remover seção' | translate }}">
                         <mat-icon>delete</mat-icon>
                       </button>
                     </div>
@@ -906,11 +905,11 @@
                       <mat-form-field appearance="outline">
                         <mat-label>{{ 'Tipo de gráfico' | translate }}</mat-label>
                         <mat-select formControlName="tipoGrafico" (selectionChange)="atualizarSecaoConfiguracao(i)">
-                          <mat-option value="barra">Barra Comparativa</mat-option>
-                          <mat-option value="radar">Radar Comparativo</mat-option>
-                          <mat-option value="pizza-comparativa">Pizza Comparativa</mat-option>
-                          <mat-option value="pizza-individual">Pizza Individual</mat-option>
-                          <mat-option value="barras-individuais">Barras Individuais</mat-option>
+                          <mat-option value="barra">{{ 'Barra Comparativa' | translate }}</mat-option>
+                          <mat-option value="radar">{{ 'Radar Comparativo' | translate }}</mat-option>
+                          <mat-option value="pizza-comparativa">{{ 'Pizza Comparativa' | translate }}</mat-option>
+                          <mat-option value="pizza-individual">{{ 'Pizza Individual' | translate }}</mat-option>
+                          <mat-option value="barras-individuais">{{ 'Barras Individuais' | translate }}</mat-option>
                           <mat-option value="janela_johari">{{ 'Janela de Johari' | translate }}</mat-option>
                         </mat-select>
                       </mat-form-field>
@@ -921,7 +920,7 @@
                       <mat-card-header>
                         <mat-card-title class="rp-color-card__title">
                           <mat-icon>palette</mat-icon>
-                          Personalização de Cores
+                          {{ 'Personalização de Cores' | translate }}
                         </mat-card-title>
                       </mat-card-header>
                       <mat-card-content>
@@ -937,7 +936,7 @@
                         <p class="rp-palette-label">{{ 'Paleta de cores' | translate }}</p>
 
                         <!-- Grupo: Gradientes -->
-                        <p class="rp-palette-group-label">Gradientes</p>
+                        <p class="rp-palette-group-label">{{ 'Gradientes' | translate }}</p>
                         <div class="rp-palette-grid">
                           <div *ngFor="let paleta of paletasGradiente"
                                class="rp-palette-card"
@@ -950,14 +949,14 @@
                                     [style.background-color]="cor">
                               </span>
                             </div>
-                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome | translate }}</span>
                             <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
                                       class="rp-palette-card__check">check_circle</mat-icon>
                           </div>
                         </div>
 
                         <!-- Grupo: Cores Sólidas -->
-                        <p class="rp-palette-group-label">Cores Sólidas</p>
+                        <p class="rp-palette-group-label">{{ 'Cores Sólidas' | translate }}</p>
                         <div class="rp-palette-grid">
                           <div *ngFor="let paleta of paletasFlat"
                                class="rp-palette-card"
@@ -970,14 +969,14 @@
                                     [style.background-color]="cor">
                               </span>
                             </div>
-                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome | translate }}</span>
                             <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
                                       class="rp-palette-card__check">check_circle</mat-icon>
                           </div>
                         </div>
 
                         <!-- Grupo: Especiais -->
-                        <p class="rp-palette-group-label">Especiais</p>
+                        <p class="rp-palette-group-label">{{ 'Especiais' | translate }}</p>
                         <div class="rp-palette-grid">
                           <div *ngFor="let paleta of paletasEspecial"
                                class="rp-palette-card"
@@ -990,7 +989,7 @@
                                     [style.background-color]="cor">
                               </span>
                             </div>
-                            <span class="rp-palette-card__name">{{ paleta.value.nome }}</span>
+                            <span class="rp-palette-card__name">{{ paleta.value.nome | translate }}</span>
                             <mat-icon *ngIf="secaoCtrl.get('paletaCor')?.value === paleta.key"
                                       class="rp-palette-card__check">check_circle</mat-icon>
                           </div>
@@ -1042,46 +1041,46 @@
                     <div class="rp-info-section rp-info-section--blue">
                       <div class="rp-info-section__header">
                         <mat-icon>info</mat-icon>
-                        <span>Configuração da Janela de Johari</span>
+                        <span>{{ 'Configuração da Janela de Johari' | translate }}</span>
                       </div>
-                      <p>A Janela de Johari classifica as competências em quatro quadrantes com base na autoavaliação e na avaliação dos outros. Selecione as competências que você deseja incluir nesta análise. O gráfico será gerado automaticamente.</p>
+                      <p>{{ 'A Janela de Johari classifica as competências em quatro quadrantes com base na autoavaliação e na avaliação dos outros. Selecione as competências que você deseja incluir nesta análise. O gráfico será gerado automaticamente.' | translate }}</p>
                     </div>
                   </div>
 
                   <div *ngIf="isSecaoTipo(secaoCtrl, 'tabela')">
                     <mat-form-field appearance="outline" class="rp-full-field rp-section-title-field">
-                      <mat-label>Competências para a tabela</mat-label>
+                      <mat-label>{{ 'Competências para a tabela' | translate }}</mat-label>
                       <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
                         <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
                       </mat-select>
-                      <mat-hint>Selecione as competências que devem aparecer na tabela de frequência.</mat-hint>
+                      <mat-hint>{{ 'Selecione as competências que devem aparecer na tabela de frequência.' | translate }}</mat-hint>
                     </mat-form-field>
                   </div>
 
                   <div *ngIf="isSecaoTipo(secaoCtrl, 'tabela_detalhada')">
                     <mat-form-field appearance="outline" class="rp-full-field rp-section-title-field">
-                      <mat-label>Competências para tabela detalhada</mat-label>
+                      <mat-label>{{ 'Competências para tabela detalhada' | translate }}</mat-label>
                       <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
                         <mat-option *ngFor="let c of competencias" [value]="c.id">{{ c.nome }}</mat-option>
                       </mat-select>
-                      <mat-hint>Selecione as competências para exibir na tabela de distribuição de notas (1-5).</mat-hint>
+                      <mat-hint>{{ 'Selecione as competências para exibir na tabela de distribuição de notas (1-5).' | translate }}</mat-hint>
                     </mat-form-field>
                     <div class="rp-info-section rp-info-section--green">
                       <div class="rp-info-section__header">
                         <mat-icon>info</mat-icon>
-                        <span>Sobre a Tabela de Distribuição</span>
+                        <span>{{ 'Sobre a Tabela de Distribuição' | translate }}</span>
                       </div>
-                      <p>Esta tabela mostra a contagem de respostas para cada nota (1-5) por categoria de avaliador, similar ao formato de frequência mostrado na imagem de exemplo. Cada competência selecionada gerará uma tabela completa com todas as suas perguntas.</p>
+                      <p>{{ 'Esta tabela mostra a contagem de respostas para cada nota (1-5) por categoria de avaliador, similar ao formato de frequência mostrado na imagem de exemplo. Cada competência selecionada gerará uma tabela completa com todas as suas perguntas.' | translate }}</p>
                     </div>
                   </div>
 
                   <div *ngIf="isSecaoTipo(secaoCtrl, 'grafico_defasagem')">
                     <mat-form-field appearance="outline" class="rp-full-field rp-section-title-field">
-                      <mat-label>Competências para o Gráfico de Defasagem</mat-label>
+                      <mat-label>{{ 'Competências para o Gráfico de Defasagem' | translate }}</mat-label>
                       <mat-select formControlName="competenciasIds" multiple (selectionChange)="atualizarSecaoConfiguracao(i)">
                         <mat-option *ngFor="let comp of competencias" [value]="comp.id">{{ comp.nome }}</mat-option>
                       </mat-select>
-                      <mat-hint>Selecione as competências que devem aparecer no gráfico.</mat-hint>
+                      <mat-hint>{{ 'Selecione as competências que devem aparecer no gráfico.' | translate }}</mat-hint>
                     </mat-form-field>
 
                     <div *ngIf="getCompetenciasSelecionadasParaSecao(secaoCtrl.value).length > 0; else noDataDefasagem" class="rp-defasagem-preview">
@@ -1093,7 +1092,7 @@
                     <ng-template #noDataDefasagem>
                       <div class="rp-empty-placeholder">
                         <mat-icon>waterfall_chart</mat-icon>
-                        <p>Selecione uma ou mais competências para gerar o gráfico.</p>
+                        <p>{{ 'Selecione uma ou mais competências para gerar o gráfico.' | translate }}</p>
                       </div>
                     </ng-template>
                   </div>
@@ -1101,15 +1100,15 @@
                   <div *ngIf="secaoCtrl.get('tipo')?.value === 'destaques'">
                     <div class="rp-destaques-options">
                       <mat-checkbox formControlName="mostrarPontuacaoSemAuto" (change)="atualizarSecaoConfiguracao(i)">
-                        Mostrar pontuação sem autoavaliação
+                        {{ 'Mostrar pontuação sem autoavaliação' | translate }}
                       </mat-checkbox>
                     </div>
                     <div class="rp-info-section rp-info-section--orange">
                       <div class="rp-info-section__header">
                         <mat-icon>info</mat-icon>
-                        <span>Sobre Avaliações Mais Altas e Baixas</span>
+                        <span>{{ 'Sobre Avaliações Mais Altas e Baixas' | translate }}</span>
                       </div>
-                      <p>Esta seção lista os comportamentos/perguntas com maior e menor pontuação média geral. Inclui todas as competências automaticamente.</p>
+                      <p>{{ 'Esta seção lista os comportamentos/perguntas com maior e menor pontuação média geral. Inclui todas as competências automaticamente.' | translate }}</p>
                     </div>
                   </div>
 
@@ -1132,10 +1131,10 @@
       <div class="rp-tab-footer rp-tab-footer--between">
         <button mat-stroked-button (click)="goToTab(0)" class="rp-back-btn">
           <mat-icon>arrow_back</mat-icon>
-          Competências
+          {{ 'Competências' | translate }}
         </button>
         <button mat-flat-button color="primary" class="rp-advance-btn" (click)="goToTab(2)">
-          Visualizar Relatório
+          {{ 'Visualizar Relatório' | translate }}
           <mat-icon iconPositionEnd>arrow_forward</mat-icon>
         </button>
       </div>
@@ -1146,8 +1145,8 @@
   <!-- ============ PASSO 3: VISUALIZAR RELATÓRIO ============ -->
   <div class="rp-step-panel" *ngIf="selectedTabIndex === 2">
     <div class="rp-step-panel__header rp-step-panel__header--visualizar ui-only">
-      <h2 class="rp-step-panel__title">Visualizar e Exportar</h2>
-      <p class="rp-step-panel__desc">Pré-visualize o relatório e exporte em PDF ou DOCX</p>
+      <h2 class="rp-step-panel__title">{{ 'Visualizar e Exportar' | translate }}</h2>
+      <p class="rp-step-panel__desc">{{ 'Pré-visualize o relatório e exporte em PDF ou DOCX' | translate }}</p>
     </div>
     <div class="rp-tab-content">
 
@@ -1155,7 +1154,7 @@
       <div class="rp-tab-footer rp-tab-footer--start ui-only" *ngIf="currentUserRole !== 'viewer'">
         <button mat-stroked-button (click)="goToTab(1)" class="rp-back-btn">
           <mat-icon>arrow_back</mat-icon>
-          Montar Relatório
+          {{ 'Montar Relatório' | translate }}
         </button>
       </div>
 
@@ -1171,23 +1170,23 @@
           <div class="rp-publish-bar__text">
             <!-- Estado inconsistente: status diz não publicado mas viewer ainda acessa -->
             <ng-container *ngIf="isSnapshotOrphaned">
-              <strong>Visualizador ainda tem acesso</strong>
-              <span>O relatório consta como não publicado, mas o visualizador ainda consegue vê-lo. Clique em "Despublicar" para cortar o acesso.</span>
+              <strong>{{ 'Visualizador ainda tem acesso' | translate }}</strong>
+              <span>{{ 'O relatório consta como não publicado, mas o visualizador ainda consegue vê-lo. Clique em "Despublicar" para cortar o acesso.' | translate }}</span>
             </ng-container>
             <!-- Não publicado e sem snapshot ativo -->
             <ng-container *ngIf="!viewerHasAccess">
-              <strong>Relatório não publicado</strong>
-              <span>Publique para que o visualizador tenha acesso.</span>
+              <strong>{{ 'Relatório não publicado' | translate }}</strong>
+              <span>{{ 'Publique para que o visualizador tenha acesso.' | translate }}</span>
             </ng-container>
             <!-- Publicado com alterações pendentes -->
             <ng-container *ngIf="viewerHasAccess && !isSnapshotOrphaned && hasUnpublishedChanges">
-              <strong>Alterações não publicadas</strong>
-              <span>Você alterou o relatório desde a última publicação. Publique novamente para o visualizador ver as mudanças.</span>
+              <strong>{{ 'Alterações não publicadas' | translate }}</strong>
+              <span>{{ 'Você alterou o relatório desde a última publicação. Publique novamente para o visualizador ver as mudanças.' | translate }}</span>
             </ng-container>
             <!-- Publicado e em dia -->
             <ng-container *ngIf="viewerHasAccess && !isSnapshotOrphaned && !hasUnpublishedChanges">
-              <strong>Relatório publicado</strong>
-              <span>O visualizador já tem acesso a esta versão.</span>
+              <strong>{{ 'Relatório publicado' | translate }}</strong>
+              <span>{{ 'O visualizador já tem acesso a esta versão.' | translate }}</span>
             </ng-container>
           </div>
         </div>
@@ -1200,7 +1199,7 @@
                   (click)="releaseReport(selectedAvaliado!)">
             <span class="rp-publish-btn__dot"></span>
             <mat-icon>cloud_upload</mat-icon>
-            {{ selectedAvaliadoReleaseStatus === 'released' ? 'Republicar alterações' : 'Publicar relatório' }}
+            {{ selectedAvaliadoReleaseStatus === 'released' ? ('Republicar alterações' | translate) : ('Publicar relatório' | translate) }}
           </button>
           <!-- Despublicar: aparece sempre que o viewer tiver acesso (inclui estado órfão) -->
           <button mat-stroked-button
@@ -1209,7 +1208,7 @@
                   *ngIf="viewerHasAccess"
                   (click)="revokeReportRelease(selectedAvaliado!)">
             <mat-icon>lock</mat-icon>
-            Despublicar
+            {{ 'Despublicar' | translate }}
           </button>
         </div>
       </div>
@@ -1219,22 +1218,22 @@
         <div class="rp-project-template-gate" *ngIf="showProjectTemplateSetupWarning">
           <mat-icon>warning</mat-icon>
           <div class="rp-project-template-gate__content">
-            <strong>Template não configurado no projeto.</strong>
-            <span>PDF e DOCX ficam indisponíveis até vincular um template na edição do projeto.</span>
+            <strong>{{ 'Template não configurado no projeto.' | translate }}</strong>
+            <span>{{ 'PDF e DOCX ficam indisponíveis até vincular um template na edição do projeto.' | translate }}</span>
             <button
               *ngIf="currentUserRole === 'admin_master'"
               mat-stroked-button
               type="button"
               (click)="goToEditSelectedProject()">
               <mat-icon>edit</mat-icon>
-              Editar projeto
+              {{ 'Editar projeto' | translate }}
             </button>
           </div>
         </div>
 
         <!-- Individual -->
         <button mat-flat-button color="accent" *ngIf="canExportPdf" (click)="exportarRelatorioPDF()" [disabled]="isExporting || isBatchGenerating || !canExportFormattedReport">
-          <mat-icon>picture_as_pdf</mat-icon> Exportar PDF individual
+          <mat-icon>picture_as_pdf</mat-icon> {{ 'Exportar PDF individual' | translate }}
         </button>
         <button mat-flat-button color="primary" *ngIf="canExportExcel" (click)="exportarBaseExcel()" [disabled]="isExporting || isBatchGenerating">
           <mat-icon>grid_on</mat-icon> {{ 'Exportar base (Excel)' | translate }}

@@ -219,7 +219,7 @@
     <!-- ── Overlay de inicialização ──────────────────────────── -->
     <div class="init-overlay" *ngIf="isInitializing">
       <mat-spinner [diameter]="52"></mat-spinner>
-      <p class="init-overlay__label">Carregando participantes...</p>
+      <p class="init-overlay__label">{{ 'Carregando participantes...' | translate }}</p>
     </div>
 
     <!-- Header -->

@@ -11,7 +11,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { navItems } from '../../vertical/sidebar/sidebar-data';
 import { navItems as hNavItems } from '../sidebar/sidebar-data';
 import { AppHorizontalNavItemComponent } from '../sidebar/nav-item/nav-item.component';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { RouterModule } from '@angular/router';
 import { TablerIconsModule } from 'angular-tabler-icons';
 import { MaterialModule } from 'src/app/material.module';
@@ -54,7 +54,7 @@ interface profiledd {
 @Component({
   selector: 'app-horizontal-header',
   standalone: true,
-  imports: [RouterModule, TablerIconsModule, MaterialModule, NgFor, AppHorizontalNavItemComponent, CommonModule],
+  imports: [RouterModule, TablerIconsModule, MaterialModule, NgFor, AppHorizontalNavItemComponent, CommonModule, TranslateModule],
   templateUrl: './header.component.html',
   encapsulation: ViewEncapsulation.None,
   styles: [`
@@ -223,7 +223,7 @@ export class AppHorizontalHeaderComponent implements OnInit {
     });
     dialogRef.afterClosed().subscribe((success) => {
       if (success) {
-        this.snackBar.open('Senha alterada com sucesso!', 'Fechar', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('Senha alterada com sucesso!'), this.translate.instant('Fechar'), { duration: 3000 });
       }
     });
   }
@@ -345,13 +345,13 @@ export class AppHorizontalHeaderComponent implements OnInit {
 @Component({
   selector: 'app-change-password-dialog',
   standalone: true,
-  imports: [MaterialModule, ReactiveFormsModule, CommonModule],
+  imports: [MaterialModule, ReactiveFormsModule, CommonModule, TranslateModule],
   template: `
-    <h2 mat-dialog-title>Alterar Senha</h2>
+    <h2 mat-dialog-title>{{ 'Alterar Senha' | translate }}</h2>
     <mat-dialog-content style="min-width: 320px; padding-top: 8px;">
       <form [formGroup]="form">
         <mat-form-field appearance="outline" class="w-100" style="margin-bottom: 8px;">
-          <mat-label>Senha atual</mat-label>
+          <mat-label>{{ 'Senha atual' | translate }}</mat-label>
           <input matInput [type]="hideCurrentPwd ? 'password' : 'text'" formControlName="currentPassword" />
           <button mat-icon-button matSuffix (click)="hideCurrentPwd = !hideCurrentPwd" type="button">
             <mat-icon>{{ hideCurrentPwd ? 'visibility_off' : 'visibility' }}</mat-icon>

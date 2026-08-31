@@ -411,7 +411,7 @@
             <mat-option value="concluido">{{ 'Concluído' | translate }}</mat-option>
           </mat-select>
         </mat-form-field>
-        <span class="projects-filter-bar__count">{{ filteredProjectRows.length }} projeto{{ filteredProjectRows.length !== 1 ? 's' : '' }}</span>
+        <span class="projects-filter-bar__count">{{ filteredProjectRows.length }} {{ (filteredProjectRows.length === 1 ? 'projeto' : 'projetos') | translate }}</span>
       </div>
 
       <div class="dash-card__body dash-card__body--no-pad">
@@ -813,7 +813,7 @@
             <mat-option value="concluido">{{ 'Concluído' | translate }}</mat-option>
           </mat-select>
         </mat-form-field>
-        <span class="projects-filter-bar__count">{{ filteredProjectRows.length }} projeto{{ filteredProjectRows.length !== 1 ? 's' : '' }}</span>
+        <span class="projects-filter-bar__count">{{ filteredProjectRows.length }} {{ (filteredProjectRows.length === 1 ? 'projeto' : 'projetos') | translate }}</span>
       </div>
 
       <div class="dash-card__body dash-card__body--no-pad">
@@ -839,7 +839,7 @@
                   </div>
                   <span class="rate-label">{{ row.responseRate }}%</span>
                 </div>
-                <span class="rate-count">{{ row.respondedParticipants }} / {{ row.totalParticipants }} responderam</span>
+                <span class="rate-count">{{ row.respondedParticipants }} / {{ row.totalParticipants }} {{ 'responderam' | translate }}</span>
               </div>
             </td>
           </ng-container>

@@ -45,6 +45,7 @@ import {
 } from '../client-pdf-batch-dialog/client-pdf-batch-dialog.component';
 import { ReportClientExportService } from 'src/app/services/report-client-export.service';
 import { LoadingService } from 'src/app/services/loading.service';
+import { translateProjectStatus } from 'src/app/utils/i18n-labels.util';
 
 @Component({
   selector: 'app-projects-list',
@@ -76,11 +77,15 @@ export class ProjectsListComponent implements OnInit {
   statusFilter: string = 'all';
 
   readonly STATUS_FILTERS = [
-    { value: 'all',          label: 'Todos' },
-    { value: 'Em andamento', label: 'Em andamento' },
-    { value: 'Concluído',    label: 'Concluído' },
-    { value: 'Cancelado',    label: 'Cancelado' },
+    { value: 'all',          labelKey: 'Todos' },
+    { value: 'Em andamento', labelKey: 'Em andamento' },
+    { value: 'Concluído',    labelKey: 'Concluído' },
+    { value: 'Cancelado',    labelKey: 'Cancelado' },
   ];
+
+  statusLabel(status: string): string {
+    return translateProjectStatus(this.translate, status);
+  }
 
   getInitial(name: string): string {
     return name?.charAt(0)?.toUpperCase() || 'P';

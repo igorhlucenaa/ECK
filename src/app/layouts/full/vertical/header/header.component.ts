@@ -16,6 +16,7 @@ import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgScrollbarModule } from 'ngx-scrollbar';
+import { TranslateModule } from '@ngx-translate/core';
 import { BrandingComponent } from '../sidebar/branding.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 
@@ -69,6 +70,7 @@ interface quicklinks {
     TablerIconsModule,
     MaterialModule,
     BrandingComponent,
+    TranslateModule,
   ],
   templateUrl: './header.component.html',
   encapsulation: ViewEncapsulation.None,

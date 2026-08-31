@@ -24,7 +24,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { debounceTime, Subject } from 'rxjs';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 interface Client {
@@ -48,7 +48,7 @@ interface ModalData {
 @Component({
   selector: 'app-add-participant-modal',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [MaterialModule, CommonModule, FormsModule, ReactiveFormsModule, TranslateModule],
   template: `
     <!-- ── Header ─────────────────────────────────────────────── -->
     <div class="ap-header">
@@ -72,7 +72,7 @@ interface ModalData {
     <!-- ── Loading ────────────────────────────────────────────── -->
     <div class="ap-loading" *ngIf="isLoading">
       <mat-spinner [diameter]="36"></mat-spinner>
-      <span>Carregando dados...</span>
+      <span>{{ 'Carregando dados...' | translate }}</span>
     </div>
 
     <!-- ── No clients ─────────────────────────────────────────── -->

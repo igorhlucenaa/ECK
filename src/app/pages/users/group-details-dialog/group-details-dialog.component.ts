@@ -6,13 +6,14 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { TranslateModule } from '@ngx-translate/core';
 import { UserGroup } from '../users.component';
 
 @Component({
   selector: 'app-group-details-dialog',
   standalone: true,
   encapsulation: ViewEncapsulation.None,
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslateModule],
   template: `
     <div class="gdlg">
 
@@ -66,7 +67,7 @@ import { UserGroup } from '../users.component';
 
         <div class="gdlg__members-loading" *ngIf="isLoadingMembers">
           <mat-spinner diameter="24"></mat-spinner>
-          <span>Carregando membros…</span>
+          <span>{{ 'Carregando membros…' | translate }}</span>
         </div>
 
         <div *ngIf="!isLoadingMembers">

@@ -18,7 +18,7 @@ import {
 } from '@angular/fire/firestore';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
@@ -49,13 +49,13 @@ interface ReminderRunSummary {
 
 interface WeekdayOption {
   value: number;
-  label: string;
+  labelKey: string;
 }
 
 @Component({
   selector: 'app-reminder-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MaterialModule, AppPageHeaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, MaterialModule, AppPageHeaderComponent, TranslateModule],
   templateUrl: './reminder-settings.component.html',
   styleUrl: './reminder-settings.component.scss',
 })
@@ -86,13 +86,13 @@ export class ReminderSettingsComponent implements OnInit {
   readonly filterStartDates = (d: Date | null): boolean => !d || d >= this.today;
 
   readonly weekdayOptions: WeekdayOption[] = [
-    { value: 1, label: 'Seg' },
-    { value: 2, label: 'Ter' },
-    { value: 3, label: 'Qua' },
-    { value: 4, label: 'Qui' },
-    { value: 5, label: 'Sex' },
-    { value: 6, label: 'Sab' },
-    { value: 0, label: 'Dom' },
+    { value: 1, labelKey: 'Seg' },
+    { value: 2, labelKey: 'Ter' },
+    { value: 3, labelKey: 'Qua' },
+    { value: 4, labelKey: 'Qui' },
+    { value: 5, labelKey: 'Sex' },
+    { value: 6, labelKey: 'Sáb' },
+    { value: 0, labelKey: 'Dom' },
   ];
 
   readonly timezoneOptions = [
@@ -252,7 +252,7 @@ export class ReminderSettingsComponent implements OnInit {
 
   async saveSettings(): Promise<void> {
     if (!this.selectedClientId || !this.selectedProjectId) {
-      this.snackBar.open(this.translate.instant('Selecione um cliente e um projeto para salvar as configuracoes.'), this.translate.instant('Fechar'), {
+      this.snackBar.open(this.translate.instant('Selecione um cliente e um projeto para salvar as configurações.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -266,14 +266,14 @@ export class ReminderSettingsComponent implements OnInit {
 
     const sendTime = this.normalizeTime(this.form.controls.sendTime.value);
     if (!sendTime) {
-      this.snackBar.open(this.translate.instant('Informe um horario valido no formato HH:mm.'), this.translate.instant('Fechar'), {
+      this.snackBar.open(this.translate.instant('Informe um horário válido no formato HH:mm.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
     }
 
     if (!this.isValidTimeZone(this.form.controls.timezone.value)) {
-      this.snackBar.open(this.translate.instant('Informe um timezone valido (ex.: America/Fortaleza).'), this.translate.instant('Fechar'), {
+      this.snackBar.open(this.translate.instant('Informe um fuso horário válido (ex.: America/Fortaleza).'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       return;
@@ -327,12 +327,12 @@ export class ReminderSettingsComponent implements OnInit {
 
       await this.triggerImmediateReminderProcessing(this.selectedClientId, this.selectedProjectId);
 
-      this.snackBar.open(this.translate.instant('Configuracoes de lembrete salvas com sucesso.'), this.translate.instant('Fechar'), {
+      this.snackBar.open(this.translate.instant('Configurações de lembrete salvas com sucesso.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } catch (error) {
       console.error('Erro ao salvar configuracoes de lembrete:', error);
-      this.snackBar.open(this.translate.instant('Erro ao salvar configuracoes de lembrete.'), this.translate.instant('Fechar'), {
+      this.snackBar.open(this.translate.instant('Erro ao salvar configurações de lembrete.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     } finally {
@@ -566,7 +566,7 @@ export class ReminderSettingsComponent implements OnInit {
       });
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
-      this.snackBar.open(this.translate.instant('Nao foi possivel carregar os clientes.'), this.translate.instant('Fechar'), {
+      this.snackBar.open(this.translate.instant('Não foi possível carregar os clientes.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
       this.clients = [];
@@ -699,7 +699,7 @@ export class ReminderSettingsComponent implements OnInit {
       }
     } catch (error) {
       console.error('Erro ao carregar configuracoes de lembrete:', error);
-      this.snackBar.open(this.translate.instant('Nao foi possivel carregar as configuracoes.'), this.translate.instant('Fechar'), {
+      this.snackBar.open(this.translate.instant('Não foi possível carregar as configurações.'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
     }

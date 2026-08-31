@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MaterialModule } from '../../../material.module';
+import { TranslateModule } from '@ngx-translate/core';
 import {
   ClientExportProjectOption,
   ReportClientExportService,
@@ -24,7 +25,7 @@ export interface ClientExportDialogResult {
 @Component({
   selector: 'app-client-export-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MaterialModule],
+  imports: [CommonModule, FormsModule, MaterialModule, TranslateModule],
   templateUrl: './client-export-dialog.component.html',
   styleUrls: ['./client-export-dialog.component.scss'],
 })

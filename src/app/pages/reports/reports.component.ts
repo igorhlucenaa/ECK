@@ -1386,6 +1386,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       await this.carregarRelatorioSelecionado();
     }
 
+    this.translate.onLangChange.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.cdr.markForCheck();
+    });
+
     // Processar os queryParams após carregar templates
     this.route.queryParams.pipe(
       takeUntil(this.destroy$),
@@ -1444,7 +1448,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (isClientBatchExport) {
           // Geração em lote PDF multi-projeto desabilitada nesta versão.
           this.snackBar.open(
-            'Exportação em lote de PDF temporariamente indisponível.',
+            this.t('Exportação em lote de PDF temporariamente indisponível.'),
             this.t('Fechar'),
             { duration: 4000 }
           );
@@ -5030,33 +5034,35 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return this.getTipoGraficoLabel(tipoGrafico);
     }
 
-    switch (tipo) {
-      case 'capa': return 'Capa';
-      case 'introducao': return 'Introdução';
-      case 'resumo': return 'Resumo de Competências';
-      case 'grafico_defasagem': return 'Gráfico de Defasagem (Gap)';
-      case 'janela_johari': return 'Janela de Johari';
-      case 'tabela': return 'Tabela de Consolidação';
-      case 'tabela_detalhada': return 'Tabela de Distribuição';
-      case 'competencia_detalhada': return 'Tabela por Competência';
-      case 'destaques': return 'Pontos de Destaque';
-      case 'custom': return 'Customizado';
-      case 'texto': return 'Bloco de Texto';
-      case 'perguntas_abertas': return 'Perguntas Abertas';
-      default: return 'Desconhecido';
-    }
+    const labels: Record<string, string> = {
+      capa: 'Capa',
+      introducao: 'Introdução',
+      resumo: 'Resumo de Competências',
+      grafico_defasagem: 'Gráfico de Defasagem (Gap)',
+      janela_johari: 'Janela de Johari',
+      tabela: 'Tabela de Consolidação',
+      tabela_detalhada: 'Tabela de Distribuição',
+      competencia_detalhada: 'Tabela por Competência',
+      destaques: 'Pontos de Destaque',
+      custom: 'Customizado',
+      texto: 'Bloco de Texto',
+      perguntas_abertas: 'Perguntas Abertas',
+    };
+    const key = labels[tipo];
+    return key ? this.t(key) : this.t('Desconhecido');
   }
 
   getTipoGraficoLabel(tipoGrafico?: string): string {
-    switch (tipoGrafico) {
-      case 'radar': return 'Radar Comparativo';
-      case 'pizza-comparativa': return 'Pizza Comparativa';
-      case 'pizza-individual': return 'Pizza Individual';
-      case 'barras-individuais': return 'Barras Individuais';
-      case 'janela_johari': return 'Janela de Johari';
-      case 'barra':
-      default: return 'Barras Comparativas';
-    }
+    const labels: Record<string, string> = {
+      radar: 'Radar Comparativo',
+      'pizza-comparativa': 'Pizza Comparativa',
+      'pizza-individual': 'Pizza Individual',
+      'barras-individuais': 'Barras Individuais',
+      janela_johari: 'Janela de Johari',
+      barra: 'Barras Comparativas',
+    };
+    const key = labels[tipoGrafico || 'barra'] || 'Barras Comparativas';
+    return this.t(key);
   }
 
   // Resetar relatório para configuração padrão
@@ -5403,7 +5409,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.isExporting) return false;
 
     if (!this.isDataReady()) {
-      this.snackBar.open('Selecione uma avaliação antes de exportar.', this.t('Fechar'), { duration: 4000 });
+      this.snackBar.open(this.t('Selecione uma avaliação antes de exportar.'), this.t('Fechar'), { duration: 4000 });
       return false;
     }
 
@@ -5417,7 +5423,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return true;
     } catch (err: any) {
       console.error('Erro ao gerar PDF:', err);
-      this.snackBar.open(`Erro ao gerar PDF: ${err?.message || 'erro desconhecido'}`, this.t('Fechar'), { duration: 6000 });
+      this.snackBar.open(
+        this.t('Erro ao gerar PDF: {{message}}').replace('{{message}}', err?.message || this.t('erro desconhecido')),
+        this.t('Fechar'),
+        { duration: 6000 }
+      );
       return false;
     } finally {
       this.isExporting = false;
@@ -6775,7 +6785,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
 
       if (htmlBlocks.length === 0) {
-        this.snackBar.open('Nenhum relatório pôde ser capturado.', this.t('Fechar'), { duration: 4000 });
+        this.snackBar.open(this.t('Nenhum relatório pôde ser capturado.'), this.t('Fechar'), { duration: 4000 });
         return;
       }
 
@@ -6885,7 +6895,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       );
     } catch (err: any) {
       console.error('Erro na geração em lote:', err);
-      this.snackBar.open(`Erro: ${err?.message || 'desconhecido'}`, this.t('Fechar'), { duration: 5000 });
+      this.snackBar.open(
+        this.t('Erro: {{message}}').replace('{{message}}', err?.message || this.t('desconhecido')),
+        this.t('Fechar'),
+        { duration: 5000 }
+      );
     } finally {
       if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
       this.selectedAvaliado = originalAvaliado;
@@ -8190,7 +8204,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getCompetenciaText(): string {
     const count = this.competencias.length;
-    return `${count} competência${count !== 1 ? 's' : ''} ativa${count !== 1 ? 's' : ''}`;
+    const key = count === 1 ? '{{count}} competência ativa' : '{{count}} competências ativas';
+    return this.t(key).replace('{{count}}', String(count));
   }
 
   getGrupoText(): string {
@@ -8199,17 +8214,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getQuestaoText(count: number): string {
-    return `${count} questão${count !== 1 ? 'ões' : ''}`;
+    const suffix = count === 1 ? this.t('questão') : this.t('questões');
+    return `${count} ${suffix}`;
   }
 
   getSecaoText(): string {
     const count = this.getSecoesVisiveisOrdenadas().length;
-    return `${count} seção${count !== 1 ? 'ões' : ''} ativa${count !== 1 ? 's' : ''}`;
+    const key = count === 1 ? '{{count}} seção ativa' : '{{count}} seções ativas';
+    return this.t(key).replace('{{count}}', String(count));
   }
 
   getCompetenciaCountText(competenciasIds: string[]): string {
     const count = competenciasIds?.length || 0;
-    return `${count} competência${count !== 1 ? 's' : ''}`;
+    const key = count === 1 ? '{{count}} competência' : '{{count}} competências';
+    return this.t(key).replace('{{count}}', String(count));
   }
 
   // Métodos para verificar condições de paleta personalizada
