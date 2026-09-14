@@ -1,6 +1,6 @@
 import sizeOf from 'image-size';
 import type { HtmlPdfRenderOptions } from '../shared/pdf-html-renderer.js';
-import { launchPuppeteerBrowser } from '../shared/puppeteer-browser.js';
+import { launchPuppeteerBrowser, PDF_RENDER_VIEWPORT } from '../shared/puppeteer-browser.js';
 import { DocxExportError } from './errors.js';
 
 export interface CapturedElementImage {
@@ -30,6 +30,11 @@ async function prepareBrowserPage(html: string, _options: HtmlPdfRenderOptions) 
   const browser = await launchPuppeteerBrowser();
 
   const page = await browser.newPage();
+  await page.setViewport({
+    width: PDF_RENDER_VIEWPORT.width,
+    height: PDF_RENDER_VIEWPORT.height,
+    deviceScaleFactor: PDF_RENDER_VIEWPORT.deviceScaleFactor,
+  });
   page.setDefaultNavigationTimeout(60000);
   page.setDefaultTimeout(480000);
 

@@ -3439,6 +3439,14 @@ ngx-charts-bar-horizontal,
   margin-bottom: 16px;
 }
 
+#report-preview.rp-pdf-export-mode {
+  width: 1240px;
+  max-width: 1240px;
+  min-width: 1240px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
 .rp-competencia-detailed-item {
   margin-bottom: 24px;
 }

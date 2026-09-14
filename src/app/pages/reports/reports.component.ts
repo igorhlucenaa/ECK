@@ -234,6 +234,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly barChartMaxYAxisTickLength = 22;
   readonly barChartPlotWidth = 700;
 
+  /** Deve coincidir com PDF_RENDER_VIEWPORT em functions/src/shared/puppeteer-browser.ts */
+  private static readonly PDF_RENDER_VIEWPORT_WIDTH_PX = 1240;
+  private static readonly PDF_HTML2CANVAS_SCALE = 2;
+
   private toChartValue(value: number | null | undefined): number {
     if (value === null || value === undefined || isNaN(value)) {
       return 0;
@@ -3737,9 +3741,68 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async exportReportPreviewAsPdfBlob(fileName: string): Promise<Blob> {
-    const previewEl = await this.prepareReportPreviewForPdfExport();
-    const { html, options } = await this.buildReportPreviewHtml(previewEl, fileName);
-    return this.pdfMakeService.generateReportBlobFromHtml(html, fileName, options);
+    return this.withPdfExportLayout(async () => {
+      const previewEl = await this.prepareReportPreviewForPdfExport();
+      const { html, options } = await this.buildReportPreviewHtml(previewEl, fileName);
+      return this.pdfMakeService.generateReportBlobFromHtml(html, fileName, options);
+    });
+  }
+
+  /**
+   * Largura fixa durante captura HTML/gráficos — mesmo resultado em Windows, Mac e Linux.
+   */
+  private async withPdfExportLayout<T>(action: () => Promise<T>): Promise<T> {
+    const preview = document.getElementById('report-preview') as HTMLElement | null;
+    const saved = preview
+      ? {
+          width: preview.style.width,
+          maxWidth: preview.style.maxWidth,
+          minWidth: preview.style.minWidth,
+          className: preview.className,
+        }
+      : null;
+
+    if (preview) {
+      preview.classList.add('rp-pdf-export-mode');
+      preview.style.width = `${ReportsComponent.PDF_RENDER_VIEWPORT_WIDTH_PX}px`;
+      preview.style.maxWidth = `${ReportsComponent.PDF_RENDER_VIEWPORT_WIDTH_PX}px`;
+      preview.style.minWidth = `${ReportsComponent.PDF_RENDER_VIEWPORT_WIDTH_PX}px`;
+      this.refreshEchartsInPreview(preview);
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      );
+    }
+
+    try {
+      return await action();
+    } finally {
+      if (preview && saved) {
+        preview.className = saved.className;
+        preview.style.width = saved.width;
+        preview.style.maxWidth = saved.maxWidth;
+        preview.style.minWidth = saved.minWidth;
+        if (preview.classList.contains('rp-pdf-export-mode')) {
+          preview.classList.remove('rp-pdf-export-mode');
+        }
+      }
+    }
+  }
+
+  private getStandardPdfHtmlOptions(
+    hasHeaderFooter: boolean,
+    headerTemplate: string,
+    footerTemplate: string,
+    docxExport = false
+  ): PdfHtmlRenderOptions {
+    return {
+      displayHeaderFooter: hasHeaderFooter,
+      headerTemplate,
+      footerTemplate,
+      scale: 1,
+      preferCssPageSize: true,
+      marginMm: { top: 18, right: 7, bottom: 16, left: 7 },
+      docxDocumentChrome: docxExport ? this.buildDocxDocumentChrome() : undefined,
+    };
   }
 
   /**
@@ -3888,12 +3951,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       section.style.setProperty('page-break-before', 'auto', 'important');
       section.style.setProperty('break-after', 'auto', 'important');
       section.style.setProperty('page-break-after', 'auto', 'important');
-      section.style.setProperty('break-inside', 'avoid', 'important');
-      section.style.setProperty('page-break-inside', 'avoid', 'important');
+      section.style.setProperty('break-inside', 'auto', 'important');
+      section.style.setProperty('page-break-inside', 'auto', 'important');
       section.style.setProperty('min-height', '0', 'important');
       section.style.setProperty('max-height', 'none', 'important');
       section.style.setProperty('margin-bottom', '0', 'important');
       section.style.setProperty('display', 'block', 'important');
+      section.style.setProperty('position', 'relative', 'important');
 
       const prev = sections[index - 1] as HTMLElement | undefined;
       const prevForcedBreak = !!prev?.classList.contains('report-section--page-break-after');
@@ -4014,6 +4078,121 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  /**
+   * Johari (plot-area) e Gap usam position:absolute/flex — no print (Chromium/WebKit, comum no Mac)
+   * o bloco pode colapsar em altura zero e sobrepor a seção seguinte. Rasteriza antes do Puppeteer.
+   */
+  private async replaceLayoutSensitiveChartsWithImages(
+    source: HTMLElement,
+    clone: HTMLElement
+  ): Promise<void> {
+    const { default: html2canvas } = await import('html2canvas');
+
+    const captureToImage = async (
+      sourceEl: HTMLElement,
+      cloneEl: HTMLElement,
+      className: string,
+      alt: string
+    ): Promise<void> => {
+      try {
+        const viewportWidth = ReportsComponent.PDF_RENDER_VIEWPORT_WIDTH_PX;
+        const rect = sourceEl.getBoundingClientRect();
+        const captureWidth = Math.max(1, Math.round(rect.width || sourceEl.offsetWidth || viewportWidth));
+        const captureHeight = Math.max(1, Math.round(rect.height || sourceEl.offsetHeight || sourceEl.scrollHeight));
+        const scale = ReportsComponent.PDF_HTML2CANVAS_SCALE;
+        const canvas = await html2canvas(sourceEl, {
+          scale,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          width: captureWidth,
+          height: captureHeight,
+          windowWidth: viewportWidth,
+        });
+        const img = document.createElement('img');
+        img.className = className;
+        img.alt = alt;
+        img.src = canvas.toDataURL('image/png');
+        img.setAttribute('width', String(Math.round(canvas.width / scale)));
+        img.setAttribute('height', String(Math.round(canvas.height / scale)));
+        img.style.width = '100%';
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        cloneEl.replaceWith(img);
+      } catch (error) {
+        console.warn(`[Relatório] Falha ao rasterizar ${className}:`, error);
+      }
+    };
+
+    const sourceJohariPlots = Array.from(
+      source.querySelectorAll('.report-section--johari .plot-area')
+    ) as HTMLElement[];
+    const cloneJohariPlots = Array.from(
+      clone.querySelectorAll('.report-section--johari .plot-area')
+    ) as HTMLElement[];
+
+    for (let i = 0; i < sourceJohariPlots.length; i++) {
+      const clonePlot = cloneJohariPlots[i];
+      if (!clonePlot) continue;
+      await captureToImage(sourceJohariPlots[i], clonePlot, 'pdf-johari-plot-image', 'Janela de Johari');
+    }
+
+    const sourceGapCharts = Array.from(source.querySelectorAll('.gap-chart-container')) as HTMLElement[];
+    const cloneGapCharts = Array.from(clone.querySelectorAll('.gap-chart-container')) as HTMLElement[];
+
+    for (let i = 0; i < sourceGapCharts.length; i++) {
+      const cloneGap = cloneGapCharts[i];
+      if (!cloneGap) continue;
+      await captureToImage(sourceGapCharts[i], cloneGap, 'pdf-gap-chart-image', 'Gráfico de defasagem');
+    }
+  }
+
+  private stampPdfExportRootStyles(root: HTMLElement): void {
+    const widthPx = `${ReportsComponent.PDF_RENDER_VIEWPORT_WIDTH_PX}px`;
+    root.classList.add('rp-pdf-export-root');
+    root.style.width = widthPx;
+    root.style.maxWidth = widthPx;
+    root.style.minWidth = widthPx;
+    root.style.margin = '0';
+    root.style.boxSizing = 'border-box';
+    root.setAttribute('data-pdf-render-profile', 'eck-v1');
+  }
+
+  private normalizeJohariAndDefasagemForPdf(root: HTMLElement): void {
+    root.querySelectorAll('.report-section[data-secao-tipo="janela_johari"]').forEach((node) => {
+      const section = node as HTMLElement;
+      section.style.setProperty('break-inside', 'auto', 'important');
+      section.style.setProperty('page-break-inside', 'auto', 'important');
+      section.style.setProperty('display', 'block', 'important');
+      section.style.setProperty('position', 'relative', 'important');
+    });
+
+    root.querySelectorAll('.report-section[data-secao-tipo="grafico_defasagem"]').forEach((node) => {
+      const section = node as HTMLElement;
+      const prev = section.previousElementSibling;
+      const alreadyHasBreak = prev?.classList.contains('pdf-page-break');
+      if (!alreadyHasBreak) {
+        const breaker = document.createElement('div');
+        breaker.className = 'pdf-page-break';
+        breaker.setAttribute('aria-hidden', 'true');
+        breaker.style.cssText =
+          'display:block;height:0;margin:0;padding:0;border:0;line-height:0;overflow:hidden;' +
+          'break-before:page !important;page-break-before:always !important;';
+        section.parentNode?.insertBefore(breaker, section);
+      }
+      section.style.setProperty('break-inside', 'auto', 'important');
+      section.style.setProperty('page-break-inside', 'auto', 'important');
+      section.style.setProperty('clear', 'both', 'important');
+    });
+
+    root.querySelectorAll('.rp-defasagem-section, .rp-defasagem-item').forEach((node) => {
+      const el = node as HTMLElement;
+      el.style.setProperty('position', 'relative', 'important');
+      el.style.setProperty('overflow', 'visible', 'important');
+    });
+  }
+
   private async buildReportPreviewHtml(
     previewEl: HTMLElement,
     fileName: string,
@@ -4024,10 +4203,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const clone = previewEl.cloneNode(true) as HTMLElement;
+    this.stampPdfExportRootStyles(clone);
     this.replaceCanvasWithImages(previewEl, clone);
     this.replaceEchartsHostsWithImages(previewEl, clone);
     this.replaceNgxChartsWithSvgImages(previewEl, clone);
     this.preserveSvgDimensions(previewEl, clone);
+    await this.replaceLayoutSensitiveChartsWithImages(previewEl, clone);
     this.replaceReportChipsForPdf(previewEl, clone);
     clone.querySelectorAll('.ui-only').forEach(el => el.remove());
     this.replaceAngularEditorsForExport(clone);
@@ -4036,6 +4217,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.normalizePdfPageBreaks(clone);
     this.normalizeCompetenciaDetailedForPdf(clone);
+    this.normalizeJohariAndDefasagemForPdf(clone);
 
     // Remover header/footer fixos — serão substituídos pelos templates do Puppeteer
     clone.querySelector('.rp-doc-cabecalho')?.remove();
@@ -4058,7 +4240,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const documentStyles = this.collectDocumentStyles();
     const safeTitle = this.escapeHtml(fileName.replace(/\.pdf$/i, ''));
 
-    const html = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <title>${safeTitle}</title>\n  <base href="${window.location.origin}/">\n  <style>
+    const viewportWidth = ReportsComponent.PDF_RENDER_VIEWPORT_WIDTH_PX;
+    const html = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=${viewportWidth}">\n  <title>${safeTitle}</title>\n  <base href="${window.location.origin}/">\n  <style>
     ${documentStyles}
     ${CAPA_HTML_PDF_STYLES}
     ${docxExport ? `
@@ -4129,9 +4312,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       width: auto !important;
       max-width: none !important;
     }
-    #report-preview {
-      width: 100% !important;
-      max-width: none !important;
+    #report-preview,
+    #report-preview.rp-pdf-export-root,
+    .rp-pdf-export-root {
+      width: ${viewportWidth}px !important;
+      max-width: ${viewportWidth}px !important;
+      min-width: ${viewportWidth}px !important;
       margin: 0 !important;
       box-shadow: none !important;
       border-radius: 0 !important;
@@ -4139,15 +4325,38 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       padding-top: 0 !important;
       padding-bottom: 0 !important;
       background: #fff !important;
+      box-sizing: border-box !important;
     }
     #report-preview > .report-section {
       width: 100% !important;
       max-width: none !important;
     }
     .report-section {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+      margin-bottom: 4mm;
+      position: relative !important;
+      overflow: visible !important;
+    }
+    .report-section[data-secao-tipo="janela_johari"],
+    .report-section[data-secao-tipo="grafico_defasagem"] {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+      display: block !important;
+    }
+    .pdf-johari-plot-image,
+    .pdf-gap-chart-image {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      display: block !important;
       break-inside: avoid !important;
       page-break-inside: avoid !important;
-      margin-bottom: 4mm;
+      margin: 0 0 8px !important;
+    }
+    .gap-chart-container {
+      position: relative !important;
+      overflow: visible !important;
     }
     h1, h2, h3, h4, h5, h6 {
       break-after: avoid-page !important;
@@ -4191,8 +4400,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     .report-section--johari-compact .johari-explanation {
       break-before: auto !important;
       page-break-before: auto !important;
-      break-inside: avoid !important;
-      page-break-inside: avoid !important;
+      break-inside: auto !important;
+      page-break-inside: auto !important;
       break-after: auto !important;
       page-break-after: auto !important;
     }
@@ -4577,21 +4786,41 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   </style>
 </head>
-<body>
+<body data-pdf-render-profile="eck-v1">
   ${clone.outerHTML}
+  <script>
+    (function () {
+      function markReady() { window.__pdfLayoutReady = true; }
+      function waitImages() {
+        var imgs = Array.prototype.slice.call(document.images || []);
+        var pending = imgs.filter(function (img) { return !img.complete; });
+        if (!pending.length) { markReady(); return; }
+        var left = pending.length;
+        pending.forEach(function (img) {
+          function done() { if (--left <= 0) markReady(); }
+          img.addEventListener('load', done);
+          img.addEventListener('error', done);
+        });
+      }
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(waitImages).catch(waitImages);
+      } else {
+        waitImages();
+      }
+      setTimeout(markReady, 10000);
+    })();
+  </script>
 </body>
 </html>`;
 
     return {
       html,
-      options: {
-        displayHeaderFooter: hasHeaderFooter,
+      options: this.getStandardPdfHtmlOptions(
+        hasHeaderFooter,
         headerTemplate,
         footerTemplate,
-        scale: 1,
-        marginMm: { top: 18, right: 7, bottom: 16, left: 7 },
-        docxDocumentChrome: docxExport ? this.buildDocxDocumentChrome() : undefined,
-      },
+        docxExport
+      ),
       manifest,
     };
   }
@@ -5680,9 +5909,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       const fileName = this.getExportFileName('docx');
       this.setExportOverlay('Preparando preview do relatorio...', 12);
-      const previewEl = await this.prepareReportPreviewForPdfExport();
-      this.setExportOverlay('Gerando HTML do relatorio...', 16);
-      const { html, options, manifest } = await this.buildReportPreviewHtml(previewEl, fileName, true);
+      const { html, options, manifest } = await this.withPdfExportLayout(async () => {
+        const previewEl = await this.prepareReportPreviewForPdfExport();
+        this.setExportOverlay('Gerando HTML do relatorio...', 16);
+        return this.buildReportPreviewHtml(previewEl, fileName, true);
+      });
       if (!manifest?.content?.length) {
         throw new Error('Nao foi possivel montar o manifesto hibrido do DOCX.');
       }
@@ -6954,212 +7185,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  /**
-   * Geração em lote usando html2canvas + jsPDF (PDF de imagem).
-   * Não usa PDFMake nem abre diálogos de impressão — renderiza o DOM
-   * de cada avaliado, captura como imagem e monta o PDF página a página.
-   */
+  /** @deprecated Usa o mesmo pipeline Cloud (generateBatchReports) para resultado idêntico em qualquer SO. */
   async generateBatchReportsPDF(): Promise<void> {
-    if (this.isBatchGenerating || this.batchSelectedParticipants.size === 0) return;
-    if (!this.selectedAssessmentId || this.competencias.length === 0) {
-      this.snackBar.open(this.t('Configure as competências antes de gerar relatórios em lote.'), this.t('Fechar'), { duration: 4000 });
-      return;
-    }
-
-    this.isBatchGenerating = true;
-    this.batchErrors = [];
-    const participants = Array.from(this.batchSelectedParticipants);
-    this.batchTotal = participants.length;
-    this.batchProgress = 0;
-    this.cdr.detectChanges();
-
-    const originalAvaliado = this.selectedAvaliado;
-    const originalDataSource = this.dataSource;
-    let iframe: HTMLIFrameElement | null = null;
-
-    try {
-      // ── Fase 1: capturar o HTML de cada participante ────────────────────────
-      // Usa o mesmo processo do exportarRelatorioPDF: clona o #report-preview,
-      // converte <canvas> em <img> e remove elementos de UI.
-      const htmlBlocks: string[] = [];
-
-      for (let i = 0; i < participants.length; i++) {
-        const avaliado = participants[i];
-        this.batchProgress = i;
-        this.batchCurrentName = avaliado;
-
-        // Aplica filtro de categorias se houver exclusões
-        this.selectedAvaliado = avaliado;
-        if (this.batchExcludedCategories.size > 0) {
-          this.dataSource = originalDataSource.filter(row => {
-            if (row['avaliado'] !== avaliado) return true;
-            return !this.batchExcludedCategories.has(this.mapCategoriaToGrupo(row['categoria']));
-          });
-        } else {
-          this.dataSource = originalDataSource;
-        }
-        this.invalidateCache();
-        this.cdr.detectChanges();
-        // Aguarda DOM + gráficos renderizarem
-        await new Promise(r => setTimeout(r, 800));
-
-        try {
-          const previewEl = document.getElementById('report-preview');
-          if (!previewEl) throw new Error('Elemento #report-preview não encontrado');
-
-          // Converter <canvas> → <img> (canvas não é clonável via cloneNode)
-          const canvases = Array.from(previewEl.querySelectorAll('canvas')) as HTMLCanvasElement[];
-          const canvasDataUrls = canvases.map(c => {
-            try { return c.toDataURL('image/jpeg', 0.92); } catch { return ''; }
-          });
-
-          const clone = previewEl.cloneNode(true) as HTMLElement;
-          Array.from(clone.querySelectorAll('canvas')).forEach((clonedCanvas, j) => {
-            const dataUrl = canvasDataUrls[j];
-            if (!dataUrl) return;
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.width  = canvases[j].style.width  || `${canvases[j].offsetWidth}px`;
-            img.style.height = canvases[j].style.height || `${canvases[j].offsetHeight}px`;
-            img.style.maxWidth = '100%';
-            img.style.display = 'block';
-            clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
-          });
-
-          clone.querySelectorAll('.ui-only').forEach(el => el.remove());
-          this.normalizePdfPageBreaks(clone);
-          this.normalizeCompetenciaDetailedForPdf(clone);
-
-          htmlBlocks.push(clone.innerHTML);
-        } catch (err: any) {
-          this.batchErrors.push({ name: avaliado, error: err?.message || 'Erro desconhecido' });
-        }
-      }
-
-      if (htmlBlocks.length === 0) {
-        this.snackBar.open(this.t('Nenhum relatório pôde ser capturado.'), this.t('Fechar'), { duration: 4000 });
-        return;
-      }
-
-      this.batchProgress = participants.length;
-      this.cdr.detectChanges();
-
-      // ── Fase 2: montar único iframe com todos os relatórios ────────────────
-      // Idêntico ao exportarRelatorioPDF — mesmos estilos, mesma estrutura.
-      // Cada participante é separado por page-break-after para o browser
-      // paginar corretamente ao imprimir/salvar como PDF.
-      const angularStyles = Array.from(document.head.querySelectorAll('style'))
-        .map(s => s.innerHTML).join('\n');
-      const linkTags = Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
-        .map(l => l.outerHTML).join('\n');
-
-      const combinedBody = htmlBlocks.map((html, idx) => {
-        const isLast = idx === htmlBlocks.length - 1;
-        return `<div class="rp-batch-report"${isLast ? '' : ' style="page-break-after:always;"'}>${html}</div>`;
-      }).join('\n');
-
-      iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:1px;border:none;opacity:0;pointer-events:none;';
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentDocument!;
-      iframeDoc.open();
-      iframeDoc.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <base href="${window.location.origin}/">
-  ${linkTags}
-  <style>
-    @page { size: A4 portrait; margin: 10mm 12mm; }
-    * { box-sizing: border-box; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
-    body { margin: 0; padding: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background: #fff; width: 186mm; }
-    .rp-batch-report {
-      width: 100%;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-      padding: 0 !important;
-      background: transparent !important;
-      zoom: 0.82;
-    }
-    .report-section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 4mm; }
-    h1 { font-size: 1.5em !important; margin: 3mm 0 2mm !important; }
-    h2 { font-size: 1.2em !important; margin: 2mm 0 1.5mm !important; }
-    h3 { font-size: 1.05em !important; margin: 2mm 0 1mm !important; }
-    p  { margin: 1.5mm 0 !important; }
-    td, th { padding: 4px 8px !important; }
-    table { border-collapse: collapse; }
-    img, svg { max-width: 100% !important; height: auto; }
-    ${angularStyles}
-  </style>
-</head>
-<body>
-  ${combinedBody}
-  <script>
-    (function scaleOverflowingTables() {
-      var bodyWidth = document.body.offsetWidth;
-      document.querySelectorAll('table').forEach(function(table) {
-        var natural = table.scrollWidth;
-        if (natural <= bodyWidth + 2) return;
-        var scale    = bodyWidth / natural;
-        var origH    = table.offsetHeight;
-        var wrap = document.createElement('div');
-        wrap.style.cssText = 'width:100%;overflow:hidden;display:block;';
-        table.parentNode.insertBefore(wrap, table);
-        wrap.appendChild(table);
-        table.style.transformOrigin = 'top left';
-        table.style.transform       = 'scale(' + scale + ')';
-        table.style.marginBottom    = (origH * (scale - 1)) + 'px';
-      });
-    })();
-  <\/script>
-</body>
-</html>`);
-      iframeDoc.close();
-
-      // ── Fase 3: imprimir ────────────────────────────────────────────────────
-      await new Promise<void>((resolve) => {
-        setTimeout(() => {
-          let done = false;
-          const finish = () => {
-            if (done) return;
-            done = true;
-            window.removeEventListener('afterprint', finish);
-            try { iframe!.contentWindow?.removeEventListener('afterprint', finish); } catch {}
-            clearTimeout(safetyTimer);
-            resolve();
-          };
-          window.addEventListener('afterprint', finish);
-          try { iframe!.contentWindow?.addEventListener('afterprint', finish); } catch {}
-          const safetyTimer = setTimeout(finish, 5 * 60 * 1000);
-          iframe!.contentWindow?.focus();
-          iframe!.contentWindow?.print();
-        }, 600);
-      });
-
-      const ok = htmlBlocks.length;
-      this.snackBar.open(
-        this.batchErrors.length > 0
-          ? `${ok} relatório(s) impressos. ${this.batchErrors.length} erro(s).`
-          : `${ok} relatório(s) prontos — salve como PDF na janela de impressão!`,
-        this.t('Fechar'),
-        { duration: 6000 }
-      );
-    } catch (err: any) {
-      console.error('Erro na geração em lote:', err);
-      this.snackBar.open(
-        this.t('Erro: {{message}}').replace('{{message}}', err?.message || this.t('desconhecido')),
-        this.t('Fechar'),
-        { duration: 5000 }
-      );
-    } finally {
-      if (iframe && document.body.contains(iframe)) document.body.removeChild(iframe);
-      this.selectedAvaliado = originalAvaliado;
-      this.dataSource = originalDataSource;
-      this.invalidateCache();
-      this.isBatchGenerating = false;
-      this.cdr.detectChanges();
-    }
+    return this.generateBatchReports();
   }
 
   // ── Filtros de Cliente/Projeto no topo ─────────────────────────

@@ -1,11 +1,14 @@
 import { existsSync } from 'fs';
 import { platform } from 'os';
 
-const DEFAULT_VIEWPORT = {
+/** Viewport fixo — deve coincidir com PDF_RENDER_VIEWPORT_WIDTH_PX no frontend (reports). */
+export const PDF_RENDER_VIEWPORT = {
   width: 1240,
   height: 1754,
   deviceScaleFactor: 1,
-};
+} as const;
+
+const DEFAULT_VIEWPORT = PDF_RENDER_VIEWPORT;
 
 const LOCAL_CHROME_ARGS = [
   '--no-sandbox',
@@ -49,11 +52,10 @@ function resolveLocalChromeExecutablePath(): string | null {
   return candidates.find((path) => path && existsSync(path)) ?? null;
 }
 
+/** Chrome local só em dev explícito — produção usa sempre @sparticuz/chromium (mesmo motor). */
 function shouldPreferLocalChrome(): boolean {
   return process.env.FUNCTIONS_EMULATOR === 'true'
-    || process.env.USE_LOCAL_CHROME === 'true'
-    || platform() === 'win32'
-    || platform() === 'darwin';
+    || process.env.USE_LOCAL_CHROME === 'true';
 }
 
 export async function launchPuppeteerBrowser(): Promise<{

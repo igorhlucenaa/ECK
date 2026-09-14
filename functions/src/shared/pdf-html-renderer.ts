@@ -1,4 +1,4 @@
-import { launchPuppeteerBrowser } from './puppeteer-browser.js';
+import { launchPuppeteerBrowser, PDF_RENDER_VIEWPORT } from './puppeteer-browser.js';
 
 export type HtmlPdfRenderOptions = {
   format: 'A4' | 'Letter';
@@ -120,6 +120,11 @@ export async function createPdfBufferFromHtml(html: string, options: HtmlPdfRend
     browser = await launchPuppeteerBrowser();
 
     const page = await browser.newPage();
+    await page.setViewport({
+      width: PDF_RENDER_VIEWPORT.width,
+      height: PDF_RENDER_VIEWPORT.height,
+      deviceScaleFactor: PDF_RENDER_VIEWPORT.deviceScaleFactor,
+    });
     page.setDefaultNavigationTimeout(60000);
     page.setDefaultTimeout(480000);
 
@@ -155,7 +160,16 @@ export async function createPdfBufferFromHtml(html: string, options: HtmlPdfRend
       },
       { timeout: 20000 }
     ).catch(() => undefined);
-    await new Promise((resolve) => setTimeout(resolve, 120));
+    await page.evaluate(() => {
+      document.querySelectorAll('.pdf-johari-plot-image, .pdf-gap-chart-image, .pdf-svg-chart__image')
+        .forEach((img) => {
+          const el = img as HTMLImageElement;
+          if (!el.getAttribute('height') && el.naturalHeight > 0) {
+            el.setAttribute('height', String(el.naturalHeight));
+          }
+        });
+    }).catch(() => undefined);
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     return Buffer.from(await page.pdf({
       format: options.format,
