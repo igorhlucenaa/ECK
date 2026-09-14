@@ -247,6 +247,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return Math.max(360, itemCount * perBar + 140);
   }
 
+  /** Análise detalhada: gráfico mais compacto para caber com título na mesma página do PDF. */
+  getBarChartHeightForDetail(itemCount: number): number {
+    const safeCount = Math.max(1, itemCount);
+    const perBar = 40;
+    return Math.min(280, Math.max(220, safeCount * perBar + 64));
+  }
+
   /** Itens da legenda HTML à direita do gráfico (cores alinhadas ao ngx-charts). */
   getBarChartLegendItems(
     dados: Array<{ name: string; value: number }>,
@@ -2644,13 +2651,18 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!secao.textosPorCompetencia) {
       secao.textosPorCompetencia = {};
     }
-    if (!secao.textosPorCompetencia[comp.id]) {
-      // Cria o texto padrão a partir das perguntas
-      secao.textosPorCompetencia[comp.id] = comp.perguntasIds
+    if (secao.textosPorCompetencia[comp.id] === undefined) {
+      secao.textosPorCompetencia[comp.id] = (comp.perguntasIds || [])
         .map(pId => this.questionMap[pId] || '')
+        .filter(Boolean)
         .join('. ');
     }
     return secao.textosPorCompetencia[comp.id];
+  }
+
+  ensureTextoCompetencia(secao: RelatorioSecao, comp: Competencia): boolean {
+    this.getOrInitTextoCompetencia(secao, comp);
+    return true;
   }
 
   // Mapeamento de categorias do banco para os grupos do relatório
@@ -3870,13 +3882,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
+      section.classList.add('report-section--johari-compact');
       section.classList.remove('report-section--page-break-before');
       section.style.setProperty('break-before', 'auto', 'important');
       section.style.setProperty('page-break-before', 'auto', 'important');
       section.style.setProperty('break-after', 'auto', 'important');
       section.style.setProperty('page-break-after', 'auto', 'important');
-      section.style.setProperty('break-inside', 'auto', 'important');
-      section.style.setProperty('page-break-inside', 'auto', 'important');
+      section.style.setProperty('break-inside', 'avoid', 'important');
+      section.style.setProperty('page-break-inside', 'avoid', 'important');
       section.style.setProperty('min-height', '0', 'important');
       section.style.setProperty('max-height', 'none', 'important');
       section.style.setProperty('margin-bottom', '0', 'important');
@@ -3897,57 +3910,107 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       const inner = section.querySelector('.rp-johari-section') as HTMLElement | null;
       if (inner) {
-        inner.style.setProperty('display', 'flex', 'important');
-        inner.style.setProperty('flex-direction', 'column', 'important');
-        inner.style.setProperty('height', '252mm', 'important');
-        inner.style.setProperty('min-height', '252mm', 'important');
-        inner.style.setProperty('max-height', '252mm', 'important');
+        inner.style.setProperty('display', 'block', 'important');
+        inner.style.setProperty('height', 'auto', 'important');
+        inner.style.setProperty('min-height', '0', 'important');
+        inner.style.setProperty('max-height', 'none', 'important');
         inner.style.setProperty('break-inside', 'avoid', 'important');
         inner.style.setProperty('page-break-inside', 'avoid', 'important');
         inner.style.setProperty('box-sizing', 'border-box', 'important');
+        inner.style.setProperty('overflow', 'visible', 'important');
       }
 
       const wrap = section.querySelector('.rp-johari-wrap') as HTMLElement | null;
       if (wrap) {
-        wrap.style.setProperty('flex', '1 1 auto', 'important');
-        wrap.style.setProperty('display', 'flex', 'important');
-        wrap.style.setProperty('flex-direction', 'column', 'important');
+        wrap.style.setProperty('display', 'block', 'important');
         wrap.style.setProperty('min-height', '0', 'important');
+        wrap.style.setProperty('break-inside', 'avoid', 'important');
+        wrap.style.setProperty('page-break-inside', 'avoid', 'important');
       }
 
       const chartHost = section.querySelector('app-johari-window-chart') as HTMLElement | null;
       if (chartHost) {
-        chartHost.style.setProperty('flex', '1 1 auto', 'important');
-        chartHost.style.setProperty('display', 'flex', 'important');
-        chartHost.style.setProperty('flex-direction', 'column', 'important');
+        chartHost.style.setProperty('display', 'block', 'important');
         chartHost.style.setProperty('min-height', '0', 'important');
+        chartHost.style.setProperty('break-inside', 'avoid', 'important');
+        chartHost.style.setProperty('page-break-inside', 'avoid', 'important');
       }
 
       section.querySelectorAll('.johari-wrapper').forEach((wrapper) => {
         const el = wrapper as HTMLElement;
-        el.style.setProperty('flex', '1 1 auto', 'important');
-        el.style.setProperty('display', 'flex', 'important');
-        el.style.setProperty('flex-direction', 'column', 'important');
-        el.style.setProperty('min-height', '0', 'important');
+        el.classList.add('johari-export-compact');
+        el.style.setProperty('display', 'block', 'important');
         el.style.setProperty('max-width', '100%', 'important');
-        el.style.setProperty('margin', '0', 'important');
+        el.style.setProperty('margin', '4px 0 0', 'important');
+        el.style.setProperty('height', 'auto', 'important');
+        el.style.setProperty('break-inside', 'avoid', 'important');
+        el.style.setProperty('page-break-inside', 'avoid', 'important');
+        el.style.setProperty('overflow', 'visible', 'important');
       });
 
       section.querySelectorAll('.plot-area').forEach((plot) => {
         const el = plot as HTMLElement;
-        el.style.setProperty('flex', '1 1 auto', 'important');
-        el.style.setProperty('min-height', '0', 'important');
-        el.style.setProperty('height', 'auto', 'important');
-        el.style.setProperty('max-height', 'none', 'important');
-        el.style.setProperty('aspect-ratio', 'unset', 'important');
+        el.style.setProperty('position', 'relative', 'important');
         el.style.setProperty('width', '100%', 'important');
+        el.style.setProperty('max-width', '100%', 'important');
+        el.style.setProperty('height', '380px', 'important');
+        el.style.setProperty('min-height', '380px', 'important');
+        el.style.setProperty('max-height', '380px', 'important');
+        el.style.setProperty('aspect-ratio', 'unset', 'important');
+        el.style.setProperty('margin', '0 0 8px', 'important');
+        el.style.setProperty('overflow', 'hidden', 'important');
+        el.style.setProperty('break-inside', 'avoid', 'important');
+        el.style.setProperty('page-break-inside', 'avoid', 'important');
+      });
+
+      section.querySelectorAll('.johari-explanation').forEach((block) => {
+        const el = block as HTMLElement;
+        el.style.setProperty('break-inside', 'avoid', 'important');
+        el.style.setProperty('page-break-inside', 'avoid', 'important');
+        el.style.setProperty('margin-top', '8px', 'important');
       });
 
       section.querySelectorAll('.legend-table').forEach((legend) => {
         const el = legend as HTMLElement;
-        el.style.setProperty('flex', '0 0 auto', 'important');
-        el.style.setProperty('margin-top', '8px', 'important');
+        el.style.setProperty('margin-top', '6px', 'important');
+        el.style.setProperty('break-inside', 'avoid', 'important');
+        el.style.setProperty('page-break-inside', 'avoid', 'important');
       });
+    });
+  }
+
+  private normalizeCompetenciaDetailedForPdf(root: HTMLElement): void {
+    root.querySelectorAll('.rp-competencia-detailed-section').forEach((sectionNode) => {
+      const section = sectionNode as HTMLElement;
+      const reportSection = section.closest('.report-section') as HTMLElement | null;
+      if (reportSection) {
+        reportSection.style.setProperty('break-inside', 'auto', 'important');
+        reportSection.style.setProperty('page-break-inside', 'auto', 'important');
+      }
+      section.style.setProperty('break-inside', 'auto', 'important');
+      section.style.setProperty('page-break-inside', 'auto', 'important');
+    });
+
+    root.querySelectorAll('.rp-competencia-detailed-item__keep-with-chart').forEach((blockNode) => {
+      const block = blockNode as HTMLElement;
+      block.style.setProperty('break-inside', 'avoid', 'important');
+      block.style.setProperty('page-break-inside', 'avoid', 'important');
+      block.style.setProperty('break-before', 'auto', 'important');
+      block.style.setProperty('page-break-before', 'auto', 'important');
+    });
+
+    root.querySelectorAll('.rp-competencia-detailed-item__title').forEach((titleNode) => {
+      const title = titleNode as HTMLElement;
+      title.style.setProperty('break-after', 'avoid-page', 'important');
+      title.style.setProperty('page-break-after', 'avoid', 'important');
+    });
+
+    root.querySelectorAll('.rp-competencia-detailed-item .pdf-svg-chart__image').forEach((imgNode) => {
+      const img = imgNode as HTMLElement;
+      img.style.setProperty('max-height', '260px', 'important');
+      img.style.setProperty('height', 'auto', 'important');
+      img.style.setProperty('width', '100%', 'important');
+      img.style.setProperty('object-fit', 'contain', 'important');
     });
   }
 
@@ -3972,6 +4035,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.stripCapaDecorationsForDocxExport(clone);
     }
     this.normalizePdfPageBreaks(clone);
+    this.normalizeCompetenciaDetailedForPdf(clone);
 
     // Remover header/footer fixos — serão substituídos pelos templates do Puppeteer
     clone.querySelector('.rp-doc-cabecalho')?.remove();
@@ -4117,26 +4181,40 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       break-before: page !important;
       page-break-before: always !important;
     }
-    .report-section--johari {
+    .report-section--johari,
+    .report-section--johari-compact,
+    .report-section--johari-compact .rp-johari-section,
+    .report-section--johari-compact .rp-johari-wrap,
+    .report-section--johari-compact app-johari-window-chart,
+    .report-section--johari-compact .johari-wrapper,
+    .report-section--johari-compact .legend-table,
+    .report-section--johari-compact .johari-explanation {
       break-before: auto !important;
       page-break-before: auto !important;
-      break-inside: auto !important;
-      page-break-inside: auto !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
       break-after: auto !important;
       page-break-after: auto !important;
+    }
+    .report-section--johari {
       margin-bottom: 0 !important;
       display: block !important;
     }
     .report-section--johari .rp-johari-section {
-      display: flex !important;
-      flex-direction: column !important;
-      height: 252mm !important;
-      min-height: 252mm !important;
-      max-height: 252mm !important;
+      display: block !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
       width: 100% !important;
       box-sizing: border-box !important;
-      break-inside: avoid !important;
-      page-break-inside: avoid !important;
+      overflow: visible !important;
+    }
+    .report-section--johari-compact .johari-wrapper {
+      display: block !important;
+      height: auto !important;
+      max-width: 100% !important;
+      margin: 4px 0 0 !important;
+      overflow: visible !important;
     }
     .report-section--johari .rp-secao-header {
       flex: 0 0 auto !important;
@@ -4144,33 +4222,111 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       page-break-inside: avoid !important;
     }
     .report-section--johari .rp-johari-wrap {
-      flex: 1 1 auto !important;
-      display: flex !important;
-      flex-direction: column !important;
+      display: block !important;
       min-height: 0 !important;
       margin-top: 4px !important;
       width: 100% !important;
     }
-    .report-section--johari app-johari-window-chart,
-    .report-section--johari .johari-wrapper {
-      flex: 1 1 auto !important;
-      display: flex !important;
-      flex-direction: column !important;
-      min-height: 0 !important;
+    .report-section--johari app-johari-window-chart {
+      display: block !important;
       width: 100% !important;
       max-width: 100% !important;
+    }
+    .report-section--johari-compact .plot-area {
+      position: relative !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: 380px !important;
+      min-height: 380px !important;
+      max-height: 380px !important;
+      aspect-ratio: unset !important;
+      margin: 0 0 8px !important;
+      overflow: hidden !important;
+    }
+    .report-section--johari-compact .point {
+      width: 22px !important;
+      height: 22px !important;
+      font-size: 11px !important;
+    }
+    .report-section--johari-compact .quad-label {
+      font-size: 11px !important;
+    }
+    .report-section--johari-compact .x-title {
+      font-size: 12px !important;
+      margin-bottom: 6px !important;
+    }
+    .report-section--johari-compact .y-title {
+      font-size: 11px !important;
+      bottom: 48px !important;
+    }
+    .report-section--johari-compact .legend-table {
+      margin-top: 8px !important;
+      font-size: 10px !important;
+    }
+    .report-section--johari-compact .legend-table th,
+    .report-section--johari-compact .legend-table td {
+      padding: 4px 6px !important;
+    }
+    .report-section--johari-compact .chip {
+      width: 22px !important;
+      height: 22px !important;
+      font-size: 11px !important;
+    }
+    .report-section--johari-compact .johari-explanation {
+      margin-top: 10px !important;
+    }
+    .report-section--johari-compact .johari-explanation__item {
+      font-size: 10px !important;
+      line-height: 1.4 !important;
+      margin: 0 0 7px !important;
+    }
+    .report-section:has(.rp-competencia-detailed-section),
+    .rp-competencia-detailed-section {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+    .rp-competencia-detailed-item {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+      margin-bottom: 8mm !important;
+    }
+    .rp-competencia-detailed-item__keep-with-chart {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    .rp-competencia-detailed-item__title {
+      font-size: 16px !important;
+      font-weight: 700 !important;
+      margin: 0 0 6px !important;
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
+    .rp-competencia-detailed-item__desc {
+      color: #555 !important;
+      font-style: italic !important;
+      margin: 0 0 8px !important;
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
+    .rp-competencia-detailed-item .rp-competencia-block--detail-text {
+      margin-top: 8px !important;
+      margin-bottom: 0 !important;
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+    .rp-competencia-detailed-item .rp-bar-chart-wrap--detail,
+    .rp-competencia-detailed-item .pdf-svg-chart {
+      width: 100% !important;
+      max-width: 100% !important;
+      display: block !important;
       margin: 0 !important;
     }
-    .report-section--johari .x-title {
-      flex: 0 0 auto !important;
-    }
-    .report-section--johari .plot-area {
-      flex: 1 1 auto !important;
-      min-height: 0 !important;
-      height: auto !important;
-      max-height: none !important;
-      aspect-ratio: unset !important;
+    .rp-competencia-detailed-item .pdf-svg-chart__image {
       width: 100% !important;
+      max-width: 100% !important;
+      max-height: 260px !important;
+      height: auto !important;
+      object-fit: contain !important;
     }
     .report-section--johari .legend-table {
       flex: 0 0 auto !important;
@@ -4533,6 +4689,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       replacement.className = 'rp-comp-detail-text';
       const editableArea = editor.querySelector('.angular-editor-textarea') as HTMLElement | null;
       replacement.innerHTML = editableArea?.innerHTML || editor.textContent || '';
+      const plain = (replacement.textContent || '').replace(/\s+/g, '').trim();
+      if (!plain) {
+        replacement.style.display = 'none';
+      }
       parent.replaceChild(replacement, editor);
     });
   }
@@ -4703,16 +4863,30 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const width = Math.max(1, Math.round(svgRect.width || chartRect.width || 800));
       const height = Math.max(1, Math.round(svgRect.height || chartRect.height || 300));
 
+      const inDetailedSection = !!sourceChart.closest('.rp-competencia-detailed-item');
       const wrapper = document.createElement('div');
       wrapper.className = 'pdf-svg-chart';
-      wrapper.style.width = `${Math.round(chartRect.width || width)}px`;
+      if (inDetailedSection) {
+        wrapper.style.width = '100%';
+        wrapper.style.maxWidth = '100%';
+      } else {
+        wrapper.style.width = `${Math.round(chartRect.width || width)}px`;
+      }
 
       const img = document.createElement('img');
       img.className = 'pdf-svg-chart__image';
       img.alt = 'Grafico do relatorio';
       img.src = svgDataUrl;
-      img.style.width = `${width}px`;
-      img.style.height = `${height}px`;
+      if (inDetailedSection) {
+        img.style.width = '100%';
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '260px';
+        img.style.height = 'auto';
+        img.style.objectFit = 'contain';
+      } else {
+        img.style.width = `${width}px`;
+        img.style.height = `${height}px`;
+      }
 
       wrapper.appendChild(img);
 
@@ -6854,6 +7028,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
           clone.querySelectorAll('.ui-only').forEach(el => el.remove());
           this.normalizePdfPageBreaks(clone);
+          this.normalizeCompetenciaDetailedForPdf(clone);
 
           htmlBlocks.push(clone.innerHTML);
         } catch (err: any) {

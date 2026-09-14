@@ -19,8 +19,7 @@
       <div
         *ngIf="canPlot(p)"
         class="point"
-        [style.left.%]="toPercentX(p.self!)"
-        [style.top.%]="toPercentY(p.others!)"
+        [ngStyle]="getPointPlotStyle(p)"
         [style.background-color]="p.color"
         [matTooltip]="p.name + ' — ' + analysisLabel(p)">
         {{ p.label }}

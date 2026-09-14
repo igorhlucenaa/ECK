@@ -1851,33 +1851,39 @@
               </ng-template>
             </div>
 
-            <div *ngSwitchCase="'competencia_detalhada'">
+            <div *ngSwitchCase="'competencia_detalhada'" class="rp-competencia-detailed-section">
               <h2>{{ secao.titulo }}</h2>
-              <div *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let i = index; let lastComp = last">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; margin-bottom: 20px;">
-                  <div *ngIf="getOrInitTextoCompetencia(secao, comp)" class="rp-competencia-block">
-                    <h3 style="margin-bottom: 4px;">{{ comp.nome }}</h3>
-                    <p style="color: #666; font-style: italic; margin-top: 0;">{{ comp.descricao }}</p>
-                    <angular-editor [(ngModel)]="secao.textosPorCompetencia![comp.id]" [config]="editorConfig"></angular-editor>
-                  </div>
+              <div
+                *ngFor="let comp of getCompetenciasParaSecaoCached(secao); let lastComp = last"
+                class="rp-competencia-detailed-item">
+                <div class="rp-competencia-detailed-item__keep-with-chart">
+                  <h3 class="rp-competencia-detailed-item__title">{{ comp.nome }}</h3>
+                  <p *ngIf="comp.descricao" class="rp-competencia-detailed-item__desc">{{ comp.descricao }}</p>
                   <ng-container *ngIf="getDadosGraficoCompetenciaCached(comp) as dadosGraficoComp">
-                  <div class="rp-bar-chart-wrap rp-bar-chart-wrap--compact">
-                    <ngx-charts-bar-horizontal
-                      [scheme]="getColorSchemeParaSecao(secao)"
-                      [results]="dadosGraficoComp"
-                      [xAxis]="true"
-                      [yAxis]="true"
-                      [view]="[barChartPlotWidth, getBarChartHeight(dadosGraficoComp.length)]"
-                      [showDataLabel]="true"
-                      [dataLabelFormatting]="formatChartDataLabel"
-                      [wrapTicks]="barChartWrapTicks"
-                      [trimYAxisTicks]="barChartTrimYAxisTicks"
-                      [maxYAxisTickLength]="barChartMaxYAxisTickLength"
-                      [barPadding]="10"
-                      [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
-                    </ngx-charts-bar-horizontal>
-                  </div>
+                    <div class="rp-bar-chart-wrap rp-bar-chart-wrap--detail">
+                      <ngx-charts-bar-horizontal
+                        [scheme]="getColorSchemeParaSecao(secao)"
+                        [results]="dadosGraficoComp"
+                        [xAxis]="true"
+                        [yAxis]="true"
+                        [view]="[barChartPlotWidth, getBarChartHeightForDetail(dadosGraficoComp.length)]"
+                        [showDataLabel]="true"
+                        [dataLabelFormatting]="formatChartDataLabel"
+                        [wrapTicks]="barChartWrapTicks"
+                        [trimYAxisTicks]="barChartTrimYAxisTicks"
+                        [maxYAxisTickLength]="barChartMaxYAxisTickLength"
+                        [barPadding]="8"
+                        [xAxisTicks]="[0, 1, 2, 3, 4, 5]">
+                      </ngx-charts-bar-horizontal>
+                    </div>
                   </ng-container>
+                </div>
+                <div class="rp-competencia-block rp-competencia-block--detail-text">
+                  <angular-editor
+                    *ngIf="ensureTextoCompetencia(secao, comp)"
+                    [(ngModel)]="secao.textosPorCompetencia![comp.id]"
+                    [config]="editorConfig">
+                  </angular-editor>
                 </div>
                 <mat-divider *ngIf="!lastComp"></mat-divider>
               </div>

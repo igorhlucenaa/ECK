@@ -33,11 +33,49 @@ export class JohariWindowChartComponent implements OnChanges {
   @Input() data: JohariWindowData = { points: [], threshold: JOHARI_THRESHOLD };
 
   readonly explanationParagraphs = JOHARI_EXPLANATION_PARAGRAPHS;
+  /** Deslocamento em px para pontos com mesmas coordenadas (evita sobreposição). */
+  private plotOffsetByLabel = new Map<string, { dx: number; dy: number }>();
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['data']?.currentValue) {
       this.data = changes['data'].currentValue;
     }
+    this.recomputePlotOffsets();
+  }
+
+  private recomputePlotOffsets(): void {
+    this.plotOffsetByLabel.clear();
+    const groups = new Map<string, JohariPoint[]>();
+
+    for (const point of this.data.points || []) {
+      if (!this.canPlot(point)) continue;
+      const key = `${point.self!.toFixed(2)}|${point.others!.toFixed(2)}`;
+      const bucket = groups.get(key) ?? [];
+      bucket.push(point);
+      groups.set(key, bucket);
+    }
+
+    groups.forEach((points) => {
+      if (points.length <= 1) return;
+      const radius = Math.min(18, 8 + points.length * 2);
+      points.forEach((point, index) => {
+        const angle = (Math.PI * 2 * index) / points.length;
+        this.plotOffsetByLabel.set(point.label, {
+          dx: Math.round(Math.cos(angle) * radius),
+          dy: Math.round(Math.sin(angle) * radius),
+        });
+      });
+    });
+  }
+
+  getPointPlotStyle(point: JohariPoint): { left: string; top: string } {
+    const offset = this.plotOffsetByLabel.get(point.label) ?? { dx: 0, dy: 0 };
+    const leftPct = this.toPercentX(point.self!);
+    const topPct = this.toPercentY(point.others!);
+    return {
+      left: `calc(${leftPct}% + ${offset.dx}px)`,
+      top: `calc(${topPct}% + ${offset.dy}px)`,
+    };
   }
 
   toPercentX(value: number): number {

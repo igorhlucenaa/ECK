@@ -40,6 +40,15 @@
   break-inside: avoid;
 }
 
+@media print {
+  .johari-wrapper,
+  .legend-table,
+  .johari-explanation {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
 .y-title {
   position: absolute;
   left: -12px;

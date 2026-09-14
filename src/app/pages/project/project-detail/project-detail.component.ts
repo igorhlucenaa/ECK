@@ -102,9 +102,14 @@ export class ProjectDetailComponent implements OnInit {
     this.form.get('clientId')?.valueChanges.subscribe(clientId => {
       this.assessments = [];
       this.reportTemplates = [];
+      this.form.patchValue({ groupIds: [] }, { emitEvent: false });
+      this.usersInGroups = [];
       if (clientId) {
         this.loadAssessments(clientId);
         this.loadReportTemplates(clientId);
+        void this.loadUserGroups(clientId);
+      } else {
+        this.groups = [];
       }
     });
 
@@ -125,10 +130,9 @@ export class ProjectDetailComponent implements OnInit {
 
       if (currentUser.role === 'admin_master') {
         this.loadClients();
-        this.loadUserGroups(); // Carregar grupos de usuários
       } else if (this.clientId) {
         this.form.get('clientId')?.setValue(this.clientId);
-        this.loadUserGroups(); // Também carrega grupos para admin_client
+        void this.loadUserGroups(this.clientId);
       } else {
         this.snackBar.open(
           this.translate.instant('Cliente não identificado. Redirecionando...'),
@@ -192,14 +196,42 @@ export class ProjectDetailComponent implements OnInit {
     }
   }
 
-  async loadUserGroups(): Promise<void> {
+  async loadUserGroups(clientId?: string | null): Promise<void> {
     try {
+      const effectiveClientId =
+        clientId ?? this.form.get('clientId')?.value ?? this.clientId ?? null;
+
       const groupsCollection = collection(this.firestore, 'userGroups');
-      const snapshot = await getDocs(groupsCollection);
-      this.groups = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'],
-      }));
+      let snapshot;
+
+      if (this.currentUserRole === 'admin_client') {
+        const clientIds = await this.authService.getCurrentUserClientIds();
+        if (clientIds.length === 0) {
+          this.groups = [];
+          return;
+        }
+        snapshot = await getDocs(
+          query(groupsCollection, where('clientId', 'in', clientIds))
+        );
+      } else if (this.currentUserRole === 'admin_master') {
+        if (!effectiveClientId) {
+          this.groups = [];
+          return;
+        }
+        snapshot = await getDocs(
+          query(groupsCollection, where('clientId', '==', effectiveClientId))
+        );
+      } else {
+        this.groups = [];
+        return;
+      }
+
+      this.groups = snapshot.docs
+        .map((docSnap) => ({
+          id: docSnap.id,
+          name: docSnap.data()['name'] as string,
+        }))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
     } catch (error) {
       console.error('Erro ao carregar grupos de usuários:', error);
       this.snackBar.open(this.translate.instant('Erro ao carregar grupos de usuários.'), this.translate.instant('Fechar'), {
@@ -231,6 +263,7 @@ export class ProjectDetailComponent implements OnInit {
           await Promise.all([
             this.loadAssessments(clientId),
             this.loadReportTemplates(clientId),
+            this.loadUserGroups(clientId),
           ]);
         }
         await this.updateUsersInGroups(); // Carregar usuários dos grupos selecionados
@@ -364,7 +397,7 @@ export class ProjectDetailComponent implements OnInit {
       panelClass: 'users-dialog-panel',
     });
     ref.afterClosed().subscribe(() => {
-      this.loadUserGroups();
+      void this.loadUserGroups();
     });
   }
 

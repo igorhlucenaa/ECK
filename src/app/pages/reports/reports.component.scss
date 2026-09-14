@@ -44,11 +44,17 @@
   margin-bottom: 0 !important;
 }
 
-.report-section--johari .rp-johari-section {
+#report-preview .report-section--johari .rp-johari-section {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 920px;
+  width: 100%;
+}
+
+.report-section--johari .rp-johari-section {
+  display: flex;
+  flex-direction: column;
   width: 100%;
 }
 
@@ -1709,10 +1715,9 @@ ngx-charts-bar-horizontal,
   }
 
   .report-section--johari .rp-johari-section {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 920px;
+    display: block;
+    min-height: 0;
+    height: auto;
   }
 
   .report-section--johari .rp-johari-wrap {
@@ -1738,13 +1743,72 @@ ngx-charts-bar-horizontal,
     margin: 0;
   }
 
+  .report-section--johari-compact .plot-area,
   .report-section--johari .plot-area {
-    flex: 1 1 auto;
-    min-height: 0;
-    height: auto !important;
-    max-height: none !important;
-    aspect-ratio: unset !important;
+    flex: 0 0 auto;
+    position: relative;
     width: 100% !important;
+    max-width: 100% !important;
+    height: 380px !important;
+    min-height: 380px !important;
+    max-height: 380px !important;
+    aspect-ratio: unset !important;
+    margin: 0 0 8px !important;
+    overflow: hidden !important;
+  }
+
+  .report-section--johari-compact .johari-explanation__item {
+    font-size: 10px !important;
+    line-height: 1.4 !important;
+    margin: 0 0 7px !important;
+  }
+
+  .report-section--johari-compact .legend-table th,
+  .report-section--johari-compact .legend-table td {
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+  }
+
+  .report-section:has(.rp-competencia-detailed-section),
+  .rp-competencia-detailed-section {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .rp-competencia-detailed-item__keep-with-chart {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .rp-competencia-detailed-item__title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    margin: 0 0 6px !important;
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+
+  .rp-competencia-detailed-item .pdf-svg-chart,
+  .rp-competencia-detailed-item .rp-bar-chart-wrap--detail {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .rp-competencia-detailed-item .pdf-svg-chart__image {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 260px !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+
+  .report-section--johari,
+  .report-section--johari .rp-johari-section,
+  .report-section--johari .johari-wrapper,
+  .report-section--johari .legend-table,
+  .report-section--johari .johari-explanation {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   .report-section--johari .legend-table {
@@ -3373,6 +3437,37 @@ ngx-charts-bar-horizontal,
 /* Chart selectors */
 .rp-chart-selectors {
   margin-bottom: 16px;
+}
+
+.rp-competencia-detailed-item {
+  margin-bottom: 24px;
+}
+
+.rp-competencia-detailed-item__title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.rp-competencia-detailed-item__desc {
+  margin: 0 0 12px;
+  color: #666;
+  font-style: italic;
+}
+
+.rp-competencia-detailed-item__keep-with-chart {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.rp-bar-chart-wrap--detail {
+  width: 100%;
+  min-width: 0;
+}
+
+.rp-competencia-block--detail-text {
+  margin-top: 16px;
 }
 
 /* Defasagem preview */
