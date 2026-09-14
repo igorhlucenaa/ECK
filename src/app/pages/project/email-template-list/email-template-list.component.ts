@@ -350,7 +350,15 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         `/projects/${this.clientId}/templates/${templateId}/edit`,
       ]);
     } else if (this.userRole === 'admin_master') {
-      this.router.navigate([`projects/default-template/${templateId}/edit`]);
+      const template = this.allTemplates.find((t) => t.id === templateId);
+      const ownerClientId = template?.clientId as string | undefined;
+      if (ownerClientId) {
+        this.router.navigate([
+          `/projects/${ownerClientId}/templates/${templateId}/edit`,
+        ]);
+      } else {
+        this.router.navigate([`projects/default-template/${templateId}/edit`]);
+      }
     } else if (
       !isGlobal &&
       this.userRole === 'admin_client' &&
@@ -438,26 +446,16 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
 
     if (confirmed) {
       try {
-        let templateDocRef;
-        if (isGlobal && this.userRole === 'admin_master') {
-          templateDocRef = doc(this.firestore, `mailTemplates/${templateId}`);
-        } else if (
-          !isGlobal &&
-          this.userRole === 'admin_client' &&
-          this.userClientId
-        ) {
-          templateDocRef = doc(this.firestore, `mailTemplates/${templateId}`);
-        } else {
+        if (!this.canDeleteMailTemplate(templateId, isGlobal)) {
           this.snackBar.open(
-            'Você não tem permissão para excluir este template.',
-            'Fechar',
-            {
-              duration: 3000,
-            }
+            this.translate.instant('Você não tem permissão para excluir este template.'),
+            this.translate.instant('Fechar'),
+            { duration: 3000 }
           );
           return;
         }
 
+        const templateDocRef = doc(this.firestore, `mailTemplates/${templateId}`);
         await deleteDoc(templateDocRef);
         this.dataSource.data = this.dataSource.data.filter(
           (template) => template.id !== templateId
@@ -472,6 +470,21 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         });
       }
     }
+  }
+
+  private canDeleteMailTemplate(templateId: string, isGlobal: boolean): boolean {
+    if (this.userRole === 'admin_master') {
+      return true;
+    }
+    if (this.userRole === 'admin_client') {
+      if (isGlobal) {
+        return false;
+      }
+      const template = this.allTemplates.find((t) => t.id === templateId);
+      const clientId = template?.clientId as string | undefined;
+      return !!clientId && this.userClientIds.includes(clientId);
+    }
+    return false;
   }
 
   getEmailTypeClass(emailType: string): string {
