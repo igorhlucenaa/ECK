@@ -2,6 +2,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import { defineString } from 'firebase-functions/params';
+import { normalizeUnlayerHtmlForEmail } from './shared/email-template-html.js';
 
 const DEFAULT_FRONTEND_URL = 'https://eck360.web.app';
 const EMAIL_USER_PARAM = defineString('EMAIL_USER', { default: '' });
@@ -119,7 +120,7 @@ function renderTemplateToHtml(
       for (const content of contents) {
         const values = ((content as Record<string, unknown>).values || {}) as Record<string, unknown>;
         const rawText = normalizeOptionalString(values.text) || '';
-        html += applyTemplateVariables(rawText, replacements);
+        html += normalizeUnlayerHtmlForEmail(applyTemplateVariables(rawText, replacements));
       }
     }
   }

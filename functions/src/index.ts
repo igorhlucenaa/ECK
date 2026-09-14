@@ -18,6 +18,7 @@ import {
   processReportDocxExportJob,
 } from './docx-export/handlers.js';
 import { notifyReportReleased } from './report-release-notify.js';
+import { normalizeUnlayerHtmlForEmail } from './shared/email-template-html.js';
 
 export {
   createReportDocxExport,
@@ -497,7 +498,9 @@ function renderTemplateToHtml(
           const headingSize = normalizeOptionalString(values.fontSize) || '24px';
           const headingAlign = normalizeOptionalString(values.textAlign) || 'left';
           const headingLineHeight = normalizeOptionalString(values.lineHeight) || '1.4';
-          const headingText = applyTemplateVariables(rawText, replacements);
+          const headingText = normalizeUnlayerHtmlForEmail(
+            applyTemplateVariables(rawText, replacements)
+          );
 
           html += `<${headingType} style="padding:${containerPadding};font-size:${headingSize};text-align:${headingAlign};line-height:${headingLineHeight};">${headingText}</${headingType}>`;
           continue;
@@ -507,14 +510,18 @@ function renderTemplateToHtml(
           const textSize = normalizeOptionalString(values.fontSize) || '16px';
           const textAlign = normalizeOptionalString(values.textAlign) || 'left';
           const textLineHeight = normalizeOptionalString(values.lineHeight) || '1.5';
-          const textContent = applyTemplateVariables(rawText, replacements);
+          const textContent = normalizeUnlayerHtmlForEmail(
+            applyTemplateVariables(rawText, replacements)
+          );
 
           html += `<div style="padding:${containerPadding};font-size:${textSize};text-align:${textAlign};line-height:${textLineHeight};">${textContent}</div>`;
           continue;
         }
 
         if (contentType === 'html') {
-          const htmlContent = applyTemplateVariables(rawText, replacements);
+          const htmlContent = normalizeUnlayerHtmlForEmail(
+            applyTemplateVariables(rawText, replacements)
+          );
           html += `<div style="padding:${containerPadding};">${htmlContent}</div>`;
           continue;
         }

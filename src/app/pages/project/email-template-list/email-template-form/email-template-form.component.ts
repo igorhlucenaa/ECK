@@ -56,6 +56,16 @@ export class EmailTemplateFormComponent implements OnInit {
   clientIdFromRoute: string | null = null; // Novo campo para clientId da rota
   clientNameFromRoute: string | null = null; // Nome do cliente da rota
 
+  /** Alinha preview do Unlayer ao HTML enviado (margens de <p> sem “duplo espaço”). */
+  readonly emailEditorOptions: Record<string, unknown> = {
+    locale: 'pt',
+    customCSS: [
+      'p { margin: 0 0 10px 0 !important; padding: 0 !important; }',
+      'h1, h2, h3, h4 { margin: 0 0 12px 0 !important; padding: 0 !important; }',
+      'p:last-child { margin-bottom: 0 !important; }',
+    ].join('\n'),
+  };
+
   constructor(
     private fb: FormBuilder,
     private firestore: Firestore,
@@ -269,8 +279,9 @@ export class EmailTemplateFormComponent implements OnInit {
                       textAlign: 'center',
                       lineHeight: '140%',
                       hideDesktop: false,
-                      text: `Olá, <strong>{{nome_participante}}</strong>\n\n\n
-                      ${message}<p><a href="${this.getLinkPlaceholder(emailType)}">Clique aqui!</a></p>`,
+                      text: `<p>Olá, <strong>{{nome_participante}}</strong></p>
+                      ${message}
+                      <p><a href="${this.getLinkPlaceholder(emailType)}">Clique aqui!</a></p>`,
                     },
                   },
                 ],
