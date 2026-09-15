@@ -22,6 +22,7 @@ import { AppBreadcrumbComponent } from './shared/breadcrumb/breadcrumb.component
 import { CustomizerComponent } from './shared/customizer/customizer.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TourService } from 'src/app/services/tour/tour.service';
+import { environment } from 'src/enviroments/environment';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
 
 const MOBILE_VIEW = 'screen and (max-width: 768px)';
@@ -137,6 +138,11 @@ export class FullComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (environment.disableProductTour) {
+      this.tourService.resetAllTours();
+      this.tourService.closeTour();
+    }
+
     // Aguarda Firebase restaurar o estado de auth antes de filtrar o menu.
     // Sem isso, auth.currentUser é null no primeiro render e o menu fica vazio.
     const unsub = onAuthStateChanged(this.auth, async (user) => {

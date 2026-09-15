@@ -211,6 +211,23 @@
       },
       "entryPoint": "onAssessmentCompleted"
     },
+    "setUserPasswordByMaster": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "us-central1"
+      ],
+      "labels": {},
+      "callableTrigger": {},
+      "entryPoint": "setUserPasswordByMaster"
+    },
     "safeDelete": {
       "availableMemoryMb": null,
       "timeoutSeconds": null,

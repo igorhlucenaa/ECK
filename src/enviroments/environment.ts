@@ -1,5 +1,9 @@
 export const environment = {
   production: false,
+  /** Desliga tour de primeiro acesso (overlay bloqueia cliques no QA/automação). */
+  disableProductTour: true,
+  /** Senha padrão sugerida ao master definir acesso de contas QA (somente dev). */
+  qaDefaultPassword: '123@qwe',
   firebase: {
     apiKey: 'AIzaSyCxUZGayShvR7Ckm3Dpk4JUPgDwoIvquWY',
     authDomain: 'pwa-workana.firebaseapp.com',

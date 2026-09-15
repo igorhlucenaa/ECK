@@ -10,7 +10,9 @@
     "functions:serve": "npm --prefix functions run serve",
     "functions:serve:full": "npm --prefix functions run serve:full",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "seed:qa": "node scripts/seed-qa-revisao-users.mjs",
+    "qa:set-ui-passwords": "node scripts/set-rev61-ui-qa-passwords.mjs"
   },
   "private": true,
   "dependencies": {

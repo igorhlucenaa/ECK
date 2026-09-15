@@ -1,5 +1,8 @@
 export const environment = {
   production: true,
+  disableProductTour: false,
+  /** Não usar em produção; master informa a senha manualmente. */
+  qaDefaultPassword: '',
   firebase: {
     apiKey: 'AIzaSyCxUZGayShvR7Ckm3Dpk4JUPgDwoIvquWY',
     authDomain: 'pwa-workana.firebaseapp.com',

@@ -63,7 +63,7 @@ export class ProjectExportDialogComponent implements OnInit {
       title: 'PDF individual',
       description: 'Gera o relatório formatado do avaliado do projeto.',
       requiresTemplate: true,
-      roles: ['admin_master', 'admin_client', 'viewer'],
+      roles: ['admin_master', 'viewer'],
     },
     /*
     {
@@ -72,7 +72,7 @@ export class ProjectExportDialogComponent implements OnInit {
       title: 'PDF em lote (ZIP)',
       description: 'Gera um PDF por avaliado e baixa tudo em um arquivo ZIP.',
       requiresTemplate: true,
-      roles: ['admin_master', 'admin_client', 'viewer'],
+      roles: ['admin_master', 'viewer'],
     },
     */
     {
@@ -97,7 +97,7 @@ export class ProjectExportDialogComponent implements OnInit {
       title: 'Abrir tela de relatórios',
       description: 'Configurar seções, preview e exportações manualmente.',
       requiresTemplate: false,
-      roles: ['admin_master', 'admin_client', 'viewer'],
+      roles: ['admin_master', 'viewer'],
     },
   ];
 

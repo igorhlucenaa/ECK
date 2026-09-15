@@ -942,7 +942,7 @@
         <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
       </a>
 
-      <a class="quick-action-btn" routerLink="/reports">
+      <a class="quick-action-btn" routerLink="/reports" *ngIf="userRole === 'viewer'">
         <div class="quick-action-btn__icon quick-action-btn__icon--purple">
           <mat-icon>bar_chart</mat-icon>
         </div>
@@ -965,17 +965,6 @@
         <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
       </a>
 
-      <a class="quick-action-btn" routerLink="/mail-templates"
-         *ngIf="userRole === 'admin_client'">
-        <div class="quick-action-btn__icon quick-action-btn__icon--orange">
-          <mat-icon>email</mat-icon>
-        </div>
-        <div class="quick-action-btn__text">
-          <span class="quick-action-btn__label">{{ 'Modelos de E-mail' | translate }}</span>
-          <span class="quick-action-btn__sub">{{ 'Configurar templates de convites' | translate }}</span>
-        </div>
-        <mat-icon class="quick-action-btn__arrow">arrow_forward</mat-icon>
-      </a>
     </div>
 
     <!-- ── Gráfico participantes ──────────────────────────────── -->

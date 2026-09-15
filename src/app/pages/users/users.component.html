@@ -322,6 +322,13 @@
                       <span>{{ 'Editar usuário' | translate }}</span>
                     </button>
 
+                    <!-- Definir senha Auth (master — QA) -->
+                    <button mat-menu-item *ngIf="currentUserRole === 'admin_master'"
+                      (click)="setAccessPassword(user)">
+                      <mat-icon class="menu-icon menu-icon--neutral">password</mat-icon>
+                      <span>{{ 'Definir senha de acesso' | translate }}</span>
+                    </button>
+
                   </mat-menu>
 
                 </div>

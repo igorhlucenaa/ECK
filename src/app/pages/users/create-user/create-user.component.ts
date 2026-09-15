@@ -229,7 +229,7 @@ export class CreateUserComponent implements OnInit {
 
   onClientFilterChange(clientId: string): void {
     this.clientFilterCtrl.setValue(clientId);
-    this.applyGroupClientFilter();
+    void this.loadAllGroups().then(() => this.applyGroupClientFilter());
     // Limpa grupos selecionados se não pertencem mais ao filtro
     const current: string[] = this.userForm.get('groups')?.value || [];
     const valid = current.filter(id => this.filteredGroups.some(g => g.id === id));

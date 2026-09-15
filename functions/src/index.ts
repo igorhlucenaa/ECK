@@ -45,7 +45,9 @@ const EMAIL_USER_PARAM = defineString('EMAIL_USER', { default: '' });
 const EMAIL_PASS_PARAM = defineString('EMAIL_PASS', { default: '' });
 
 function getDb(): admin.firestore.Firestore {
-  if (!admin.apps.length) {
+  try {
+    admin.app();
+  } catch {
     admin.initializeApp();
   }
   if (!firestoreDb) {
@@ -1738,6 +1740,43 @@ interface BlockerInfo { collection: string; label: string; count: number; }
  * Retorno: { deleted: true } ou lança HttpsError('failed-precondition') com
  * a lista de bloqueios em err.details.blockers.
  */
+/** Master define senha de acesso (Auth) — QA / suporte sem e-mail de reset. */
+export const setUserPasswordByMaster = onCall(
+  { region: DELETE_REGION, invoker: 'public' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Login necessário.');
+    }
+    const role = await getCallerRole(request.auth.token.email as string | undefined);
+    if (role !== 'admin_master') {
+      throw new HttpsError('permission-denied', 'Apenas admin master pode definir senha.');
+    }
+
+    const emailRaw = normalizeOptionalString((request.data as { email?: string })?.email);
+    const password = normalizeOptionalString((request.data as { password?: string })?.password);
+    if (!emailRaw || !emailRaw.includes('@')) {
+      throw new HttpsError('invalid-argument', 'E-mail inválido.');
+    }
+    if (!password || password.length < 6) {
+      throw new HttpsError('invalid-argument', 'Senha deve ter no mínimo 6 caracteres.');
+    }
+
+    const email = emailRaw.toLowerCase();
+    try {
+      const authUser = await admin.auth().getUserByEmail(email);
+      await admin.auth().updateUser(authUser.uid, { password, disabled: false });
+      return { ok: true };
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === 'auth/user-not-found') {
+        throw new HttpsError('not-found', 'Usuário não encontrado no Firebase Auth.');
+      }
+      console.error('setUserPasswordByMaster:', err);
+      throw new HttpsError('internal', 'Não foi possível definir a senha.');
+    }
+  }
+);
+
 export const safeDelete = onCall(
   { region: DELETE_REGION },
   async (request) => {

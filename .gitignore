@@ -37,6 +37,11 @@ yarn-error.log
 testem.log
 /typings
 
+# QA local (credenciais / chaves)
+scripts/qa-credentials.local.json
+*-firebase-adminsdk*.json
+serviceAccount*.json
+
 # System files
 .DS_Store
 Thumbs.db

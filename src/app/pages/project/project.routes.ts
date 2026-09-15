@@ -61,7 +61,7 @@ export const ProjectsRoutes: Routes = [
     path: 'default-template/new',
     component: EmailTemplateFormComponent,
     canActivate: [AuthGuard],
-    data: { role: CLIENT_SCOPE_ALLOWED },
+    data: { role: MASTER_ONLY },
   },
   {
     path: ':id/templates/:templateId/edit',
@@ -73,7 +73,7 @@ export const ProjectsRoutes: Routes = [
     path: 'default-template/:templateId/edit',
     component: EmailTemplateFormComponent,
     canActivate: [AuthGuard],
-    data: { role: CLIENT_SCOPE_ALLOWED },
+    data: { role: MASTER_ONLY },
   },
   {
     path: ':id/questionnaires',

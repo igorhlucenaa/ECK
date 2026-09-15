@@ -32,6 +32,8 @@ import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Router, RouterModule } from '@angular/router';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { UserAdminService } from 'src/app/services/user-admin.service';
+import { environment } from 'src/enviroments/environment';
 
 export interface User {
   id: string;
@@ -140,6 +142,7 @@ export class UsersComponent implements OnInit, AfterViewInit {
     private translate: TranslateService,
     private router: Router,
     private auth: Auth,
+    private userAdminService: UserAdminService,
     @Optional() public dialogRef: MatDialogRef<UsersComponent>
   ) {}
 
@@ -726,6 +729,49 @@ export class UsersComponent implements OnInit, AfterViewInit {
 
   hasDuplicateEmail(user: User): boolean {
     return this.duplicateEmails.has(user.email?.toLowerCase());
+  }
+
+  /** Master define senha no Auth (sem depender de e-mail de reset) — QA e suporte. */
+  async setAccessPassword(user: User): Promise<void> {
+    if (this.currentUserRole !== 'admin_master') {
+      return;
+    }
+    const password = (environment.qaDefaultPassword || '').trim();
+    if (!password) {
+      this.snackBar.open(
+        this.translate.instant('Configure qaDefaultPassword no environment de desenvolvimento.'),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+      return;
+    }
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '440px',
+      data: {
+        message: this.translate.instant(
+          'Definir a senha de login (Auth) para {{email}}? A senha usada será a configurada em qaDefaultPassword no ambiente de dev.',
+          { email: user.email }
+        ),
+      },
+    });
+    const confirmed = await dialogRef.afterClosed().toPromise();
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await this.userAdminService.setUserPasswordByMaster(user.email, password);
+      this.snackBar.open(
+        this.translate.instant('Senha definida. O usuário já pode entrar na plataforma.'),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
+    } catch (error: unknown) {
+      console.error('Erro ao definir senha:', error);
+      const msg =
+        (error as { message?: string })?.message ||
+        this.translate.instant('Erro ao definir senha. Verifique se a função setUserPasswordByMaster está publicada.');
+      this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 7000 });
+    }
   }
 
   // Enviar link de criação / redefinição de senha

@@ -3,6 +3,7 @@ import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { BehaviorSubject } from 'rxjs';
 import { TOUR_REGISTRY, TourStep } from './tour-registry';
+import { environment } from 'src/enviroments/environment';
 
 const STORAGE_KEY = 'eck_tour_completed';
 
@@ -78,6 +79,10 @@ export class TourService {
   }
 
   startTour(route?: string, force = false): void {
+    if (environment.disableProductTour && !force) {
+      return;
+    }
+
     const targetRoute = route || this.currentRoute;
 
     if (!targetRoute || targetRoute === '/' || targetRoute.includes('/authentication') || targetRoute === '/assessment') {
