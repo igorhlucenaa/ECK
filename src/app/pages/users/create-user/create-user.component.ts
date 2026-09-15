@@ -209,19 +209,27 @@ export class CreateUserComponent implements OnInit {
       clientsCtrl.setValidators([Validators.required]);
     } else if (role === 'viewer') {
       groupsCtrl.setValidators([this.groupsRequiredValidator()]);
-      this.loadAllGroups().then(() => {
-        this.filteredGroups = [...this.allGroups];
-      });
+      this.loadAllGroups().then(() => this.applyGroupClientFilter());
     }
 
     clientsCtrl.updateValueAndValidity();
     groupsCtrl.updateValueAndValidity();
   }
 
+  private applyGroupClientFilter(): void {
+    const clientId = this.clientFilterCtrl.value;
+    if (clientId) {
+      this.filteredGroups = this.allGroups.filter(g => g.clientId === clientId);
+    } else if (this.clients.length === 1) {
+      this.filteredGroups = this.allGroups.filter(g => g.clientId === this.clients[0].id);
+    } else {
+      this.filteredGroups = [];
+    }
+  }
+
   onClientFilterChange(clientId: string): void {
-    this.filteredGroups = clientId
-      ? this.allGroups.filter(g => g.clientId === clientId)
-      : [...this.allGroups];
+    this.clientFilterCtrl.setValue(clientId);
+    this.applyGroupClientFilter();
     // Limpa grupos selecionados se não pertencem mais ao filtro
     const current: string[] = this.userForm.get('groups')?.value || [];
     const valid = current.filter(id => this.filteredGroups.some(g => g.id === id));
@@ -292,10 +300,28 @@ export class CreateUserComponent implements OnInit {
   private async loadAllGroups(): Promise<void> {
     try {
       const userRole = await this.getCurrentUserRole();
-      const groupsSnap = userRole === 'admin_client'
-        ? await getDocs(query(collection(this.firestore, 'userGroups'),
-            where('clientId', 'in', await this.authService.getCurrentUserClientIds())))
-        : await getDocs(collection(this.firestore, 'userGroups'));
+      let scope: string[] = [];
+      if (userRole === 'admin_client') {
+        scope = await this.authService.getCurrentUserClientIds();
+      } else if (this.clients.length === 1) {
+        scope = [this.clients[0].id];
+      } else {
+        const fromFilter = this.clientFilterCtrl.value;
+        if (fromFilter) {
+          scope = [fromFilter];
+        }
+      }
+
+      if (scope.length === 0) {
+        this.allGroups = [];
+        this.filteredGroups = [];
+        return;
+      }
+
+      const groupsSnap = await getDocs(query(
+        collection(this.firestore, 'userGroups'),
+        where('clientId', 'in', scope.slice(0, 10))
+      ));
 
       const clientsSnap = await getDocs(collection(this.firestore, 'clients'));
       const clientMap = new Map(clientsSnap.docs.map(d => [d.id, d.data()['companyName'] || '']));
@@ -316,7 +342,7 @@ export class CreateUserComponent implements OnInit {
         };
       }).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
-      this.filteredGroups = [...this.allGroups];
+      this.applyGroupClientFilter();
     } catch (e) {
       console.error('Erro ao carregar grupos:', e);
     }

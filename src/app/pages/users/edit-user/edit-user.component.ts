@@ -113,8 +113,8 @@ export class EditUserComponent implements OnInit {
 
     if (role === 'viewer') {
       groupsCtrl.setValidators([this.groupsRequiredValidator()]);
-      if (this.allGroups.length === 0) this.loadAllGroups().then(() => { this.filteredGroups = [...this.allGroups]; });
-      else this.filteredGroups = [...this.allGroups];
+      const scope: string[] = this.userForm.get('clients')?.value || [];
+      this.loadAllGroups(scope).then(() => this.applyGroupClientFilter());
     } else if (role === 'admin_client') {
       clientsCtrl.setValidators([Validators.required]);
     }
@@ -125,10 +125,20 @@ export class EditUserComponent implements OnInit {
 
   onClientFilterChange(clientId: string): void {
     this.clientFilterValue = clientId;
-    this.filteredGroups = clientId ? this.allGroups.filter(g => g.clientId === clientId) : [...this.allGroups];
+    this.applyGroupClientFilter();
     const cur: string[] = this.userForm.get('groups')?.value || [];
     const valid = cur.filter(id => this.filteredGroups.some(g => g.id === id));
     if (valid.length !== cur.length) { this.userForm.get('groups')?.setValue(valid); this.onGroupsChange(valid); }
+  }
+
+  private applyGroupClientFilter(): void {
+    if (this.clientFilterValue) {
+      this.filteredGroups = this.allGroups.filter(g => g.clientId === this.clientFilterValue);
+    } else if (this.clients.length === 1) {
+      this.filteredGroups = this.allGroups.filter(g => g.clientId === this.clients[0].id);
+    } else {
+      this.filteredGroups = [];
+    }
   }
 
   onGroupsChange(groupIds: string[]): void {
@@ -140,13 +150,26 @@ export class EditUserComponent implements OnInit {
     this.derivedProjectNames = [...ps];
   }
 
-  private async loadAllGroups(): Promise<void> {
+  private async loadAllGroups(scopeClientIds: string[] = []): Promise<void> {
     try {
       const currentRole = await this.authService.getCurrentUserRole();
-      const groupsSnap = currentRole === 'admin_client'
-        ? await getDocs(query(collection(this.firestore, 'userGroups'),
-            where('clientId', 'in', await this.authService.getCurrentUserClientIds())))
-        : await getDocs(collection(this.firestore, 'userGroups'));
+      let effectiveScope = scopeClientIds.filter(Boolean);
+      if (currentRole === 'admin_client') {
+        effectiveScope = await this.authService.getCurrentUserClientIds();
+      } else if (effectiveScope.length === 0 && this.clients.length === 1) {
+        effectiveScope = [this.clients[0].id];
+      }
+
+      if (effectiveScope.length === 0) {
+        this.allGroups = [];
+        this.filteredGroups = [];
+        return;
+      }
+
+      const groupsSnap = await getDocs(query(
+        collection(this.firestore, 'userGroups'),
+        where('clientId', 'in', effectiveScope.slice(0, 10))
+      ));
 
       const clientsSnap = await getDocs(collection(this.firestore, 'clients'));
       const clientMap = new Map(clientsSnap.docs.map(d => [d.id, (d.data() as any)['companyName'] || '']));
@@ -163,7 +186,7 @@ export class EditUserComponent implements OnInit {
         };
       }).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
-      this.filteredGroups = [...this.allGroups];
+      this.applyGroupClientFilter();
     } catch (e) { console.error('Erro ao carregar grupos:', e); }
   }
 
@@ -208,15 +231,24 @@ export class EditUserComponent implements OnInit {
       });
 
       if (data['role'] === 'viewer') {
-        // Carregar grupos e detectar grupos atuais do viewer via Firestore
-        await this.loadAllGroups();
         const currentGroupsSnap = await getDocs(
           query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', this.userId))
         );
+        const groupClientIds = [
+          ...new Set(
+            currentGroupsSnap.docs
+              .map(d => (d.data() as { clientId?: string })['clientId'])
+              .filter((id): id is string => !!id)
+          ),
+        ];
+        const scope = existingClients.length > 0 ? existingClients : groupClientIds;
+        if (scope.length === 1) {
+          this.clientFilterValue = scope[0];
+        }
+        await this.loadAllGroups(scope);
         const currentGroupIds = currentGroupsSnap.docs.map(d => d.id);
         this.userForm.get('groups')?.setValue(currentGroupIds);
         this.onGroupsChange(currentGroupIds);
-        this.filteredGroups = [...this.allGroups];
       }
 
       this.onRoleChange(data['role'] || '');

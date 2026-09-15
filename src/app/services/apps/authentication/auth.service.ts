@@ -43,6 +43,7 @@ export class AuthService {
         : browserSessionPersistence;
 
       await this.auth.setPersistence(persistence).then(async () => {
+        this._roleCache = undefined;
         await signInWithEmailAndPassword(this.auth, email, password);
 
         // Verificar se o usuário está bloqueado antes de prosseguir
@@ -99,6 +100,7 @@ export class AuthService {
         : browserSessionPersistence;
 
       await this.auth.setPersistence(persistence).then(async () => {
+        this._roleCache = undefined;
         await signInWithEmailAndPassword(this.auth, email, password);
 
         const userRole = await this.getCurrentUserRole();
@@ -175,35 +177,8 @@ export class AuthService {
   }
 
   async getCurrentUserClientId(): Promise<string | null> {
-    try {
-      const user = this.auth.currentUser;
-
-      if (!user || !user.email) {
-        console.warn('Usuário não autenticado ou email não encontrado.');
-        return null;
-      }
-
-      // Busca o documento do usuário pelo email
-      const usersCollection = collection(this.firestore, 'users');
-      const emailQuery = query(
-        usersCollection,
-        where('email', '==', user.email)
-      );
-      const querySnapshot = await getDocs(emailQuery);
-
-      if (querySnapshot.empty) {
-        console.warn(
-          `Nenhum documento encontrado para o e-mail ${user.email}.`
-        );
-        return null;
-      }
-
-      const docSnap = querySnapshot.docs[0];
-      return docSnap.data()?.['clientId'] || null;
-    } catch (error) {
-      console.error('Erro ao obter clientId do usuário:', error);
-      return null;
-    }
+    const ids = await this.getCurrentUserClientIds();
+    return ids.length > 0 ? ids[0] : null;
   }
 
   async getCurrentUserName(): Promise<string | null> {
@@ -387,7 +362,7 @@ export class AuthService {
     return null;
   }
 
-  /** Retorna todos os clientIds vinculados ao usuário (suporta clients[] e campo legado client) */
+  /** Retorna todos os clientIds vinculados ao usuário (clients[], client e clientId legados) */
   async getCurrentUserClientIds(): Promise<string[]> {
     try {
       const user = this.auth.currentUser;
@@ -396,11 +371,17 @@ export class AuthService {
       const snap = await getDocs(query(usersCollection, where('email', '==', user.email)));
       if (snap.empty) return [];
       const data = snap.docs[0].data();
-      if (Array.isArray(data['clients']) && data['clients'].length > 0) {
-        return data['clients'];
+      const ids = new Set<string>();
+      if (Array.isArray(data['clients'])) {
+        data['clients'].filter((id: unknown) => typeof id === 'string' && id).forEach((id: string) => ids.add(id));
       }
-      if (data['client']) return [data['client']];
-      return [];
+      if (typeof data['client'] === 'string' && data['client']) {
+        ids.add(data['client']);
+      }
+      if (typeof data['clientId'] === 'string' && data['clientId']) {
+        ids.add(data['clientId']);
+      }
+      return [...ids];
     } catch {
       return [];
     }

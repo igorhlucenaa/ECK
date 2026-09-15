@@ -39,7 +39,7 @@ export const navItems: NavItem[] = [
         displayName: 'Modelos de E-mail',
         iconName: 'solar:mailbox-bold-duotone',
         route: '/mail-templates',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master'],
       },
       {
         displayName: 'Lembretes Automáticos',
@@ -51,7 +51,7 @@ export const navItems: NavItem[] = [
         displayName: 'Gerenciar Competências',
         iconName: 'solar:diploma-bold-duotone',
         route: '/competencies',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master'],
       },
       {
         displayName: 'Formulários',
@@ -63,7 +63,7 @@ export const navItems: NavItem[] = [
         displayName: 'Relatórios',
         iconName: 'solar:pie-chart-2-bold-duotone',
         route: '/reports',
-        role: ['admin_master', 'admin_client'],
+        role: ['admin_master'],
       },
     ],
   },

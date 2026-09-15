@@ -61,7 +61,7 @@ export class ClientsListComponent implements OnInit {
   sectorFilter: string = '';
   sectors: string[] = [];
   selectedClientIds = new Set<string>();
-  isAdminMaster = true;
+  isAdminMaster = false;
   userClientIds: string[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -85,7 +85,10 @@ export class ClientsListComponent implements OnInit {
     if (!this.isAdminMaster) {
       this.displayedColumns = ['companyName', 'sector', 'cnpj', 'credits', 'actions'];
     }
-    this.loadClients();
+    await this.loadClients();
+    if (!this.isAdminMaster && this.userClientIds.length === 1) {
+      this.router.navigate(['/clients', this.userClientIds[0]]);
+    }
   }
 
   private async loadClients() {

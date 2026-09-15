@@ -1,11 +1,13 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import {
   Firestore,
   doc,
   getDoc,
   collection,
   query,
+  where,
   getDocs,
 } from '@angular/fire/firestore';
 import { MatTableDataSource } from '@angular/material/table';
@@ -38,19 +40,35 @@ export class ClientDetailsViewComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private location: Location,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private authService: AuthService
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     const clientId = this.route.snapshot.paramMap.get('id');
-    if (clientId) {
-      this.loadClientDetails(clientId);
-      this.loadClientUsers(clientId);
+    if (!clientId) {
+      return;
     }
+
+    const role = await this.authService.getCurrentUserRole();
+    if (role === 'admin_client') {
+      const allowed = await this.authService.getCurrentUserClientIds();
+      if (!allowed.includes(clientId)) {
+        this.router.navigate(['/nao-autorizado']);
+        return;
+      }
+    } else if (role !== 'admin_master') {
+      this.router.navigate(['/nao-autorizado']);
+      return;
+    }
+
+    this.loadClientDetails(clientId);
+    this.loadClientUsers(clientId);
   }
 
   async loadClientDetails(clientId: string) {
@@ -75,12 +93,10 @@ export class ClientDetailsViewComponent implements OnInit {
   async loadClientUsers(clientId: string) {
     try {
       const usersCollection = collection(this.firestore, 'users');
-      const usersQuery = query(usersCollection);
-      const snapshot = await getDocs(usersQuery);
+      const byClientField = query(usersCollection, where('client', '==', clientId));
+      const snapshot = await getDocs(byClientField);
 
-      const users = snapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((user: any) => user.clientId === clientId);
+      const users = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 
       // Inicializa o controle de visibilidade de senhas
       users.forEach((user: any) => {

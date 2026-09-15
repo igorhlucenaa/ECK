@@ -88,7 +88,7 @@
           <mat-label>Filtrar grupos por cliente</mat-label>
           <mat-icon matPrefix class="field-icon">business</mat-icon>
           <mat-select [formControl]="clientFilterCtrl" (selectionChange)="onClientFilterChange($event.value)">
-            <mat-option value="">Todos os clientes</mat-option>
+            <mat-option value="" disabled>{{ 'users.groups.select_client_to_list_groups' | translate }}</mat-option>
             <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
           </mat-select>
           <mat-hint>Use para filtrar a lista de grupos abaixo</mat-hint>

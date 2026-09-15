@@ -69,10 +69,8 @@ export const PERMISSIONS: Record<AppRole, RolePermissions> = {
       'clients',
       'projects',
       'participants',
-      'reports',
       'orders',
       'users', // página Usuários e Grupos — admin_client acessa apenas a aba Grupos
-      'mail-templates',
       'settings',
       'emails-notifications',
     ],

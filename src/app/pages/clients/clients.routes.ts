@@ -28,6 +28,6 @@ export const ClientsRoutes: Routes = [
     path: ':id',
     component: ClientDetailsViewComponent,
     canActivate: [AuthGuard],
-    data: { role: ['admin_master'] },
+    data: { appRoute: 'clients' },
   },
 ];

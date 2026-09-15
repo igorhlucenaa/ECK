@@ -145,10 +145,10 @@
 
             <!-- Filtro por cliente (quando há múltiplos clientes) -->
             <mat-form-field appearance="outline" class="eu-field eu-field--full" *ngIf="clients.length > 1">
-              <mat-label>Filtrar grupos por cliente</mat-label>
+              <mat-label>{{ 'users.groups.filter_by_client' | translate }}</mat-label>
               <mat-icon matPrefix>business</mat-icon>
               <mat-select [value]="clientFilterValue" (selectionChange)="onClientFilterChange($event.value)">
-                <mat-option value="">Todos os clientes</mat-option>
+                <mat-option value="" disabled>{{ 'users.groups.select_client_to_list_groups' | translate }}</mat-option>
                 <mat-option *ngFor="let c of clients" [value]="c.id">{{ c.name }}</mat-option>
               </mat-select>
             </mat-form-field>

@@ -3,7 +3,7 @@
   <app-page-header
     [eyebrow]="'Gestão' | translate"
     [title]="'Clientes' | translate"
-    [subtitle]="'Gerencie os clientes cadastrados na plataforma' | translate"
+    [subtitle]="(isAdminMaster ? 'clients.pageSubtitle.master' : 'clients.pageSubtitle.admin_client') | translate"
     data-tour="clients-header">
 
     <button mat-raised-button class="btn-action" (click)="openAddClientDialog()" data-tour="clients-add"
@@ -197,6 +197,7 @@
               <button
                 mat-icon-button
                 class="action-templates"
+                *ngIf="isAdminMaster"
                 [routerLink]="['/projects', client.id, 'templates']"
                 [queryParams]="{fromClient: client.id}"
                 [matTooltip]="'Ver modelos de e-mail' | translate"
