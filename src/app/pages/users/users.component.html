@@ -3,7 +3,7 @@
   <app-page-header
     [eyebrow]="'Gestão' | translate"
     [title]="'Usuários e Grupos' | translate"
-    [subtitle]="'Gerencie os usuários e grupos de usuários da plataforma' | translate">
+    [subtitle]="pageSubtitleKey | translate">
 
     <button mat-icon-button *ngIf="dialogRef" (click)="dialogRef.close()" [matTooltip]="'Fechar' | translate">
       <mat-icon>close</mat-icon>
@@ -352,6 +352,11 @@
     <!-- ═══════════════════════════════════ Tab: Grupos ══════ -->
     <mat-tab label="{{ 'Grupos' | translate }}">
       <div class="tab-card">
+
+        <div class="groups-role-hint" *ngIf="currentUserRole === 'admin_client'">
+          <mat-icon>info</mat-icon>
+          <span>{{ 'users.groups.admin_client_hint' | translate }}</span>
+        </div>
 
         <!-- Toolbar -->
         <div class="search-bar">

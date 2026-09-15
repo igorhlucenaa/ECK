@@ -107,6 +107,12 @@ export class UsersComponent implements OnInit, AfterViewInit {
   currentUserEmail: string | null = null;
   currentUserRole: string | null = null;
 
+  get pageSubtitleKey(): string {
+    return this.currentUserRole === 'admin_client'
+      ? 'users.pageSubtitle.admin_client'
+      : 'Gerencie os usuários e grupos de usuários da plataforma';
+  }
+
   selectedUserIds  = new Set<string>();
   selectedGroupIds = new Set<string>();
   duplicateEmails  = new Set<string>();
