@@ -11,6 +11,33 @@
   mat-icon { font-size: 18px; vertical-align: middle; }
 }
 
+.templates-global-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+
+  mat-icon {
+    color: #2563eb;
+    margin-top: 2px;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: #475569;
+    font-size: 14px;
+  }
+
+  button {
+    margin-left: auto;
+    white-space: nowrap;
+  }
+}
+
 // ─── Card principal ──────────────────────────────────────────
 .templates-card {
   background: #fff;

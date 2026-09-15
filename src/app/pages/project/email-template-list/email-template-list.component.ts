@@ -363,6 +363,10 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     this.applyFilter();
   }
 
+  openGlobalTemplateEditor(): void {
+    this.router.navigate(['/projects/default-template/new']);
+  }
+
   createTemplate(): void {
     if (this.clientId) {
       this.router.navigate([`/projects/${this.clientId}/templates/new`]);

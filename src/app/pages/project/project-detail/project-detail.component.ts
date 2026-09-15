@@ -83,6 +83,10 @@ export class ProjectDetailComponent implements OnInit {
   currentUserRole: string = '';
   currentUserId: string = '';
 
+  get canConfigureReminders(): boolean {
+    return ['admin_master', 'admin_client', 'viewer'].includes(this.currentUserRole);
+  }
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -492,5 +496,16 @@ export class ProjectDetailComponent implements OnInit {
         }
       }
     }
+  }
+
+  openReminderSettings(): void {
+    const clientId =
+      this.form.get('clientId')?.value || this.clientId || null;
+    if (!clientId || !this.projectId) {
+      return;
+    }
+    this.router.navigate(['/settings'], {
+      queryParams: { clientId, projectId: this.projectId },
+    });
   }
 }

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import {
   DocumentData,
   FieldValue,
@@ -127,7 +128,8 @@ export class ReminderSettingsComponent implements OnInit {
     private snackBar: MatSnackBar,
     private fb: FormBuilder,
     private authService: AuthService,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private route: ActivatedRoute
   ) {}
 
   get isAdminMaster(): boolean {
@@ -166,12 +168,26 @@ export class ReminderSettingsComponent implements OnInit {
       return;
     }
 
-    this.selectedClientId = this.clients[0].id;
-    // Carrega projetos e templates; settings só carregam depois que o usuário selecionar um projeto
+    const queryClientId = this.route.snapshot.queryParamMap.get('clientId');
+    const queryProjectId = this.route.snapshot.queryParamMap.get('projectId');
+    const initialClientId =
+      queryClientId && this.clients.some((c) => c.id === queryClientId)
+        ? queryClientId
+        : this.clients[0].id;
+
+    this.selectedClientId = initialClientId;
     await Promise.all([
       this.loadTemplates(this.selectedClientId),
       this.loadProjects(this.selectedClientId),
     ]);
+
+    if (
+      queryProjectId &&
+      this.projects.some((p) => p.id === queryProjectId)
+    ) {
+      await this.onProjectChange(queryProjectId);
+    }
+
     this.isLoading = false;
   }
 

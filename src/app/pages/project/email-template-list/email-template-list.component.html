@@ -18,6 +18,17 @@
 
   </app-page-header>
 
+  <div class="templates-global-banner" *ngIf="userRole === 'admin_master' && !clientId">
+    <mat-icon>library_books</mat-icon>
+    <div>
+      <strong>{{ 'mailTemplates.globalBanner.title' | translate }}</strong>
+      <p>{{ 'mailTemplates.globalBanner.body' | translate }}</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="openGlobalTemplateEditor()">
+      {{ 'mailTemplates.globalBanner.action' | translate }}
+    </button>
+  </div>
+
   <!-- Card principal -->
   <div class="templates-card">
 

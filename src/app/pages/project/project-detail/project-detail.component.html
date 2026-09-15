@@ -226,6 +226,25 @@
         </div>
       </div>
 
+      <!-- Lembretes automáticos (por projeto) -->
+      <div class="form-card" *ngIf="isEditMode && projectId && canConfigureReminders">
+        <div class="form-card-header">
+          <div class="form-card-icon">
+            <mat-icon>notifications_active</mat-icon>
+          </div>
+          <div>
+            <h3 class="form-card-title">{{ 'projects.reminders.sectionTitle' | translate }}</h3>
+            <p class="form-card-subtitle">{{ 'projects.reminders.sectionHint' | translate }}</p>
+          </div>
+        </div>
+        <div class="form-card-body">
+          <button mat-stroked-button type="button" (click)="openReminderSettings()">
+            <mat-icon>settings</mat-icon>
+            {{ 'projects.reminders.configureButton' | translate }}
+          </button>
+        </div>
+      </div>
+
     </div>
 
     <!-- Bottom save bar -->
