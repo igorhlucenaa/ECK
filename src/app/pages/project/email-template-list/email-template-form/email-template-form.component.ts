@@ -97,26 +97,25 @@ export class EmailTemplateFormComponent implements OnInit {
     }
 
     this.userRole = user.role;
-    this.userClientId = user.clientId;
+    const linkedClientIds = await this.authService.getCurrentUserClientIds();
+    this.userClientId = linkedClientIds[0] || user.clientId || null;
 
     this.templateId = this.route.snapshot.paramMap.get('templateId');
     this.isEditMode = !!this.templateId;
 
     // Pegar clientId da rota
     this.clientIdFromRoute = this.route.snapshot.paramMap.get('id');
+    if (this.userRole === 'admin_master') {
+      await this.loadClients();
+    }
+
     if (this.clientIdFromRoute) {
       this.form.get('clientId')?.setValue(this.clientIdFromRoute);
-      this.form.get('clientId')?.disable(); // Desabilitar edição do clientId
-      await this.loadClientName(this.clientIdFromRoute); // Carregar nome do cliente
-    } else {
-      if (this.userRole === 'admin_master') {
-        await this.loadClients();
-      }
-      if (this.userRole === 'admin_client' && this.userClientId) {
-        this.form.get('clientId')?.setValue(this.userClientId);
-        this.form.get('clientId')?.disable();
-        await this.loadClientName(this.userClientId);
-      }
+      await this.loadClientName(this.clientIdFromRoute);
+    } else if (this.userRole === 'admin_client' && this.userClientId) {
+      this.form.get('clientId')?.setValue(this.userClientId);
+      this.form.get('clientId')?.disable();
+      await this.loadClientName(this.userClientId);
     }
 
     this.form.get('clientId')?.valueChanges.subscribe((clientId) => {

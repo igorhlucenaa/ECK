@@ -25,13 +25,13 @@ export const ProjectsRoutes: Routes = [
     path: 'new',
     component: ProjectDetailComponent,
     canActivate: [AuthGuard],
-    data: { role: MASTER_ONLY },
+    data: { role: CLIENT_SCOPE_ALLOWED },
   },
   {
     path: ':id/edit',
     component: ProjectDetailComponent,
     canActivate: [AuthGuard],
-    data: { role: MASTER_ONLY },
+    data: { role: CLIENT_SCOPE_ALLOWED },
   },
   {
     path: ':id/users',

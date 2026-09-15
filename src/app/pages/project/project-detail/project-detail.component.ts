@@ -130,9 +130,24 @@ export class ProjectDetailComponent implements OnInit {
 
       if (currentUser.role === 'admin_master') {
         this.loadClients();
-      } else if (this.clientId) {
-        this.form.get('clientId')?.setValue(this.clientId);
-        void this.loadUserGroups(this.clientId);
+      } else if (currentUser.role === 'admin_client') {
+        const allowedIds = await this.authService.getCurrentUserClientIds();
+        const effectiveClientId = this.clientId || allowedIds[0] || null;
+        if (!effectiveClientId || !allowedIds.includes(effectiveClientId)) {
+          this.snackBar.open(
+            this.translate.instant('Cliente não identificado. Redirecionando...'),
+            this.translate.instant('Fechar'),
+            { duration: 3000 }
+          );
+          this.router.navigate(['/projects']);
+          return;
+        }
+        this.clientId = effectiveClientId;
+        this.form.get('clientId')?.setValue(effectiveClientId);
+        this.form.get('clientId')?.disable();
+        void this.loadAssessments(effectiveClientId);
+        void this.loadReportTemplates(effectiveClientId);
+        void this.loadUserGroups(effectiveClientId);
       } else {
         this.snackBar.open(
           this.translate.instant('Cliente não identificado. Redirecionando...'),

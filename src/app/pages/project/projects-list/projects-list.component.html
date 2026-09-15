@@ -7,7 +7,7 @@
     data-tour="projects-title">
 
     <button mat-raised-button class="btn-action" (click)="openProjectForm()" data-tour="projects-add"
-            *ngIf="isAdminMaster">
+            *ngIf="isAdminMaster || isClienteAdmin">
       <mat-icon>add</mat-icon>
       {{ 'Adicionar Projeto' | translate }}
     </button>

@@ -772,14 +772,17 @@ export class ProjectsListComponent implements OnInit {
   }
 
   openProjectForm(projectId?: string): void {
-    if (!this.clientId && !this.isAdminMaster) {
+    const effectiveClientId =
+      this.selectedClientId || this.clientId || this.userClientIds[0] || null;
+
+    if (!effectiveClientId && !this.isAdminMaster) {
       this.snackBar.open(this.translate.instant('Cliente não identificado. Contate o suporte.'), this.translate.instant('Fechar'), { duration: 3000 });
       return;
     }
 
     this.router.navigate(
       projectId ? [`/projects/${projectId}/edit`] : ['/projects/new'],
-      { queryParams: { clientId: this.clientId } }
+      { queryParams: effectiveClientId ? { clientId: effectiveClientId } : {} }
     );
   }
 

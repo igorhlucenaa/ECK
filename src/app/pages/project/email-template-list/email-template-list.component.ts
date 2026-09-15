@@ -168,6 +168,16 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     }
   }
 
+  /** Template global (sem clientId) — reutilizável em qualquer cliente. */
+  private isGlobalMailTemplate(data: Record<string, unknown>): boolean {
+    const cid = data['clientId'];
+    return cid === undefined || cid === null || cid === '';
+  }
+
+  private templateVisibleForClient(data: Record<string, unknown>, clientId: string): boolean {
+    return this.isGlobalMailTemplate(data) || data['clientId'] === clientId;
+  }
+
   private async loadTemplates(): Promise<void> {
     try {
       const templatesCollection = collection(this.firestore, 'mailTemplates');
@@ -175,19 +185,46 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
 
       if (this.userRole === 'admin_master') {
         if (this.clientId) {
-          queryConstraint = query(
-            templatesCollection,
-            where('clientId', 'in', [this.clientId, ''])
-          );
+          const snapshot = await getDocs(query(templatesCollection));
+          this.allTemplates = snapshot.docs
+            .map((d) => {
+              const data = d.data();
+              return {
+                id: d.id,
+                ...data,
+                isGlobal: this.isGlobalMailTemplate(data),
+                clientName:
+                  this.clients.find((c) => c.id === data['clientId'])?.name ||
+                  'TEMPLATE PADRÃO',
+              };
+            })
+            .filter((t) => this.templateVisibleForClient(t, this.clientId!));
+          this.dataSource.data = this.allTemplates;
+          this.applyFilter();
+          return;
         } else {
           queryConstraint = query(templatesCollection);
         }
       } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
-        // Filtra apenas templates dos clientes vinculados ao admin_client
-        queryConstraint = query(
-          templatesCollection,
-          where('clientId', 'in', this.userClientIds)
-        );
+        const snapshot = await getDocs(query(templatesCollection));
+        this.allTemplates = snapshot.docs
+          .map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              ...data,
+              isGlobal: this.isGlobalMailTemplate(data),
+              clientName:
+                this.clients.find((c) => c.id === data['clientId'])?.name ||
+                'TEMPLATE PADRÃO',
+            };
+          })
+          .filter((t) =>
+            this.userClientIds.some((cid) => this.templateVisibleForClient(t, cid))
+          );
+        this.dataSource.data = this.allTemplates;
+        this.applyFilter();
+        return;
       } else {
         this.snackBar.open(
           'Você não tem permissão para visualizar templates.',
@@ -205,7 +242,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         return {
           id: doc.id,
           ...data,
-          isGlobal: !data['clientId'],
+          isGlobal: this.isGlobalMailTemplate(data),
           clientName:
             this.clients.find((c) => c.id === data['clientId'])?.name ||
             'TEMPLATE PADRÃO',
@@ -235,7 +272,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         : true;
 
       const matchesClient = this.clientFilter
-        ? data.clientId === this.clientFilter
+        ? this.templateVisibleForClient(data, this.clientFilter)
         : true;
 
       return matchesSearch && matchesType && matchesClient;
@@ -416,7 +453,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
 
       const data = templateSnap.data();
       const templatesCollection = collection(this.firestore, 'mailTemplates');
-      await addDoc(templatesCollection, {
+      const newDocRef = await addDoc(templatesCollection, {
         name: newName,
         subject: data?.['subject'] ?? template.subject,
         content: data?.['content'] ?? template.content,
@@ -428,7 +465,14 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
       this.snackBar.open(this.translate.instant('Template duplicado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
-      await this.loadTemplates();
+      const ownerClientId = (data?.['clientId'] ?? template.clientId) as string | undefined;
+      if (this.userRole === 'admin_master' && !ownerClientId) {
+        this.router.navigate([`projects/default-template/${newDocRef.id}/edit`]);
+      } else if (ownerClientId) {
+        this.router.navigate([`/projects/${ownerClientId}/templates/${newDocRef.id}/edit`]);
+      } else {
+        await this.loadTemplates();
+      }
     } catch (error) {
       console.error('Erro ao duplicar template:', error);
       this.snackBar.open(this.translate.instant('Erro ao duplicar template.'), this.translate.instant('Fechar'), {
