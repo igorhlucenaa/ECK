@@ -209,11 +209,9 @@ export class NewCreditOrderComponent implements OnInit {
 
     if (this.orderForm.invalid) {
       this.snackBar.open(
-        'Preencha os campos obrigatórios corretamente.',
-        'Fechar',
-        {
-          duration: 3000,
-        }
+        this.translate.instant('Preencha os campos obrigatórios corretamente.'),
+        this.translate.instant('Fechar'),
+        { duration: 3000 }
       );
       return;
     }
@@ -226,11 +224,9 @@ export class NewCreditOrderComponent implements OnInit {
 
     if (!normalizedStartDate || !normalizedValidityDate) {
       this.snackBar.open(
-        'Informe datas válidas no formato dd/mm/aaaa.',
-        'Fechar',
-        {
-          duration: 3000,
-        }
+        this.translate.instant('Informe datas válidas no formato dd/mm/aaaa.'),
+        this.translate.instant('Fechar'),
+        { duration: 3000 }
       );
       return;
     }

@@ -242,8 +242,8 @@ export class CreditOrdersComponent implements OnInit {
   applyFilter(): void {
     if (this.startDate && this.endDate && this.startDate > this.endDate) {
       this.snackBar.open(
-        'A data inicial não pode ser maior que a data final.',
-        'Fechar',
+        this.translate.instant('A data inicial não pode ser maior que a data final.'),
+        this.translate.instant('Fechar'),
         { duration: 3000 }
       );
       return;
@@ -282,6 +282,28 @@ export class CreditOrdersComponent implements OnInit {
     this.dataSource.paginator?.firstPage();
   }
 
+  private coerceFirestoreDate(value: unknown): Date | null {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value;
+    }
+    if (typeof value === 'object' && value !== null && 'toDate' in value) {
+      const candidate = value as { toDate?: () => Date };
+      if (typeof candidate.toDate === 'function') {
+        const parsed = candidate.toDate();
+        if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  }
+
+  private formatDatePtBr(date: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+  }
+
   async approveOrder(orderId: string): Promise<void> {
     try {
       const orderDoc = doc(this.firestore, `creditOrders/${orderId}`);
@@ -293,22 +315,38 @@ export class CreditOrdersComponent implements OnInit {
       const clientId = orderData['clientId'];
       const creditsToAdd: number = orderData['credits'];
 
-      // approvedAt = agora; validityDate = approvedAt + 12 meses
       const now = new Date();
-      const validityDate = new Date(now);
-      validityDate.setMonth(validityDate.getMonth() + 12);
+      const startDate = this.coerceFirestoreDate(orderData['startDate']);
+      const validityFromOrder = this.coerceFirestoreDate(orderData['validityDate']);
+
+      let validityDate: Date;
+      if (validityFromOrder) {
+        validityDate = validityFromOrder;
+      } else {
+        const base = startDate && startDate > now ? startDate : now;
+        validityDate = new Date(base);
+        validityDate.setFullYear(validityDate.getFullYear() + 1);
+      }
 
       await updateDoc(orderDoc, {
         status: 'Aprovado',
         remainingCredits: creditsToAdd,
         approvedAt: now,
         validityDate,
+        ...(startDate ? { startDate } : {}),
       });
 
       // Recalcula saldo do cliente a partir dos pedidos aprovados válidos
       await this.sincronizarCreditosCliente(clientId);
 
-        this.snackBar.open(this.translate.instant('Pedido aprovado! Créditos adicionados com validade de 12 meses.'), this.translate.instant('Fechar'), { duration: 3000 });
+      const validadeLabel = this.formatDatePtBr(validityDate);
+      this.snackBar.open(
+        this.translate.instant('Pedido aprovado! Créditos adicionados. Validade: {{validade}}.', {
+          validade: validadeLabel,
+        }),
+        this.translate.instant('Fechar'),
+        { duration: 4000 }
+      );
       await this.loadOrders();
     } catch (error) {
       console.error('Erro ao aprovar pedido:', error);
@@ -371,8 +409,8 @@ export class CreditOrdersComponent implements OnInit {
       await this.sincronizarCreditosCliente(clientId);
 
       this.snackBar.open(
-        'Pedido excluído e créditos atualizados com sucesso!',
-        'Fechar',
+        this.translate.instant('Pedido excluído e créditos atualizados com sucesso!'),
+        this.translate.instant('Fechar'),
         { duration: 3000 }
       );
     } catch (error) {
