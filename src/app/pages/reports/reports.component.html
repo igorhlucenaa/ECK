@@ -304,6 +304,7 @@
         </div>
         <h4>{{ 'Selecione uma avaliação primeiro' | translate }}</h4>
         <p>{{ 'Use o seletor acima para escolher qual avaliação 360° deseja analisar. As competências vinculadas serão carregadas automaticamente.' | translate }}</p>
+        <p class="rp-comp-gate__hint">{{ 'reports.importGroup.gateHint' | translate }}</p>
       </div>
 
       <!-- Estado: avaliação selecionada -->
@@ -363,6 +364,37 @@
 
           </div>
 
+          <div class="rp-comp-import">
+            <div class="rp-comp-import__head">
+              <mat-icon>library_books</mat-icon>
+              <div>
+                <strong>{{ 'reports.importGroup.title' | translate }}</strong>
+                <span>{{ 'reports.importGroup.hint' | translate }}</span>
+              </div>
+            </div>
+            <div class="rp-comp-import__row">
+              <button mat-stroked-button type="button" (click)="loadAllAvailableGroups(true)"
+                [disabled]="importGroupLoading">
+                <mat-icon>refresh</mat-icon>
+                {{ 'reports.importGroup.refresh' | translate }}
+              </button>
+              <mat-form-field appearance="outline" class="rp-comp-import__select">
+                <mat-label>{{ 'reports.importGroup.select' | translate }}</mat-label>
+                <mat-select [formControl]="importGroupControl" (openedChange)="onImportGroupSelectOpened($event)">
+                  <mat-option *ngFor="let g of allAvailableGroups" [value]="g.id">
+                    {{ g.name }} — {{ g.clientName }} ({{ g.competencias.length }}
+                    {{ 'competencies.reuse.competenciesShort' | translate }})
+                  </mat-option>
+                </mat-select>
+                <mat-hint *ngIf="importGroupControl.value">{{ getImportGroupHint() }}</mat-hint>
+              </mat-form-field>
+              <button mat-flat-button color="primary" type="button" (click)="importCompetenciasFromGroup()"
+                [disabled]="!importGroupControl.value">
+                {{ 'reports.importGroup.confirm' | translate }}
+              </button>
+            </div>
+          </div>
+
         </div>
 
         <!-- Competências carregadas -->
@@ -407,6 +439,30 @@
               <mat-icon>open_in_new</mat-icon>
               {{ 'Criar / editar competências' | translate }}
             </button>
+          </div>
+
+          <div class="rp-comp-import rp-comp-import--compact">
+            <div class="rp-comp-import__head">
+              <mat-icon>library_books</mat-icon>
+              <div>
+                <strong>{{ 'reports.importGroup.title' | translate }}</strong>
+                <span>{{ 'reports.importGroup.hintShort' | translate }}</span>
+              </div>
+            </div>
+            <div class="rp-comp-import__row">
+              <mat-form-field appearance="outline" class="rp-comp-import__select">
+                <mat-label>{{ 'reports.importGroup.select' | translate }}</mat-label>
+                <mat-select [formControl]="importGroupControl" (openedChange)="onImportGroupSelectOpened($event)">
+                  <mat-option *ngFor="let g of allAvailableGroups" [value]="g.id">
+                    {{ g.name }} — {{ g.clientName }} ({{ g.competencias.length }})
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+              <button mat-stroked-button color="primary" type="button" (click)="importCompetenciasFromGroup()"
+                [disabled]="!importGroupControl.value">
+                {{ 'reports.importGroup.confirm' | translate }}
+              </button>
+            </div>
           </div>
 
           <!-- Cards expansíveis de competências -->

@@ -37,6 +37,41 @@
       </mat-form-field>
     </div>
 
+    <div class="credit-summary-panel" *ngIf="isEditing">
+      <div class="credit-summary-panel__head">
+        <mat-icon>account_balance_wallet</mat-icon>
+        <div>
+          <strong>{{ 'clients.creditSummary.title' | translate }}</strong>
+          <span>{{ 'clients.creditSummary.subtitle' | translate }}</span>
+        </div>
+      </div>
+      <div class="credit-summary-panel__stats" *ngIf="!creditSummaryLoading; else creditLoading">
+        <div>
+          <span>{{ 'Disponíveis' | translate }}</span>
+          <strong>{{ creditSummary.creditsAvailable }}</strong>
+        </div>
+        <div>
+          <span>{{ 'Validade' | translate }}</span>
+          <strong>{{ formatDatePtBr(creditSummary.nearestValidity) }}</strong>
+          <small *ngIf="creditSummary.nearestOrderStatus === 'Pendente'">
+            {{ 'clients.creditSummary.pendingOrder' | translate }}
+          </small>
+        </div>
+        <div>
+          <span>{{ 'Prazo' | translate }}</span>
+          <strong *ngIf="creditSummary.daysRemaining !== null">{{ creditSummary.daysRemaining }}d</strong>
+          <strong *ngIf="creditSummary.daysRemaining === null">—</strong>
+        </div>
+      </div>
+      <ng-template #creditLoading>
+        <mat-spinner diameter="28"></mat-spinner>
+      </ng-template>
+      <button type="button" mat-stroked-button color="primary" class="credit-summary-panel__link" (click)="openCreditOrders()">
+        <mat-icon>receipt_long</mat-icon>
+        {{ 'clients.creditSummary.openOrders' | translate }}
+      </button>
+    </div>
+
     <!-- CNPJ -->
     <div class="form-group">
       <mat-form-field appearance="outline" class="w-100">

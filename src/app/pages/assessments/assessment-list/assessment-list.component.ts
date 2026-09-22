@@ -12,6 +12,7 @@ import {
   where,
   getDoc,
   setDoc,
+  addDoc,
   CollectionReference,
   DocumentData,
   Query,
@@ -32,6 +33,8 @@ import { TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { isGlobalAssessmentTemplate } from 'src/app/utils/assessment-templates.util';
+import { DuplicateAssessmentDialogComponent } from './duplicate-assessment-dialog.component';
 
 interface Assessment {
   id: string;
@@ -41,6 +44,7 @@ interface Assessment {
   responsesCount?: number;
   clientId?: string;
   clientName?: string;
+  isGlobalTemplate?: boolean;
   projectId?: string;
   projectName?: string; // Mantido por compatibilidade, mas não será usado
 }
@@ -135,8 +139,12 @@ export class AssessmentListComponent implements OnInit {
 
       const textMatch = !f.text || data.name.toLowerCase().includes(f.text);
       const clientMatch =
-        (!f.client || data.clientId === f.client) &&
-        (!this.clientId || data.clientId === this.clientId);
+        (!f.client ||
+          data.clientId === f.client ||
+          data.isGlobalTemplate === true) &&
+        (!this.clientId ||
+          data.clientId === this.clientId ||
+          data.isGlobalTemplate === true);
       const creatorMatch = !f.creator ||
         (data.createdBy?.name || '').toLowerCase().includes(f.creator);
 
@@ -189,21 +197,48 @@ export class AssessmentListComponent implements OnInit {
   async loadAssessments(): Promise<void> {
     try {
       const assessmentsCollection = collection(this.firestore, 'assessments');
-      let q:
-        | CollectionReference<DocumentData, DocumentData>
-        | Query<DocumentData, DocumentData> = assessmentsCollection;
+      const docMap = new Map<string, DocumentData>();
+
+      const pushDocs = (
+        docs: { id: string; data: () => DocumentData }[]
+      ) => {
+        docs.forEach((document) => {
+          if (!docMap.has(document.id)) {
+            docMap.set(document.id, { ...document.data(), __id: document.id });
+          }
+        });
+      };
 
       if (this.clientId) {
-        q = query(assessmentsCollection, where('clientId', '==', this.clientId));
+        const [clientSnap, globalSnap] = await Promise.all([
+          getDocs(
+            query(assessmentsCollection, where('clientId', '==', this.clientId))
+          ),
+          getDocs(
+            query(assessmentsCollection, where('isGlobalTemplate', '==', true))
+          ),
+        ]);
+        pushDocs(clientSnap.docs);
+        pushDocs(globalSnap.docs);
       } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
-        q = query(assessmentsCollection, where('clientId', 'in', this.userClientIds));
+        for (let i = 0; i < this.userClientIds.length; i += 10) {
+          const chunk = this.userClientIds.slice(i, i + 10);
+          const snap = await getDocs(
+            query(assessmentsCollection, where('clientId', 'in', chunk))
+          );
+          pushDocs(snap.docs);
+        }
+        const globalSnap = await getDocs(
+          query(assessmentsCollection, where('isGlobalTemplate', '==', true))
+        );
+        pushDocs(globalSnap.docs);
+      } else {
+        const snapshot = await getDocs(assessmentsCollection);
+        pushDocs(snapshot.docs);
       }
 
-      const snapshot = await getDocs(q);
-
       const assessments: Assessment[] = await Promise.all(
-        snapshot.docs.map(async (document) => {
-          const data = document.data();
+        [...docMap.entries()].map(async ([id, data]) => {
           let createdAtDate: Date;
 
           if (data['createdAt'] instanceof Timestamp) {
@@ -215,16 +250,18 @@ export class AssessmentListComponent implements OnInit {
           } else {
             createdAtDate = new Date();
             console.warn(
-              `createdAt inválido para assessment ${document.id}, usando data atual.`
+              `createdAt inválido para assessment ${id}, usando data atual.`
             );
           }
 
+          const isGlobal = isGlobalAssessmentTemplate(data as Record<string, unknown>);
           const assessment: Assessment = {
-            id: document.id,
+            id,
             name: data['name'] || 'Sem Nome',
             createdBy: data['createdBy'] || { name: 'Desconhecido' },
             createdAt: createdAtDate,
             clientId: data['clientId'],
+            isGlobalTemplate: isGlobal,
             projectId: data['projectId'], // Mantido por compatibilidade, mas não será usado
           };
 
@@ -234,7 +271,9 @@ export class AssessmentListComponent implements OnInit {
           );
 
           // Buscar nome do cliente
-          if (assessment.clientId) {
+          if (isGlobal) {
+            assessment.clientName = this.translate.instant('assessments.global.badge');
+          } else if (assessment.clientId) {
             const clientDoc = await getDoc(
               doc(this.firestore, 'clients', assessment.clientId)
             );
@@ -242,7 +281,7 @@ export class AssessmentListComponent implements OnInit {
               ? clientDoc.data()['companyName'] || 'Desconhecido'
               : 'Desconhecido';
           } else {
-            assessment.clientName = 'Sem Cliente';
+            assessment.clientName = this.translate.instant('Sem Cliente');
           }
 
           // Removido o bloco de busca de projectName, pois não será mais usado
@@ -553,6 +592,70 @@ export class AssessmentListComponent implements OnInit {
     this.dateFrom = null;
     this.dateTo = null;
     this.applyFilters();
+  }
+
+  async duplicateAssessmentForClient(item: Assessment): Promise<void> {
+    if (!this.canManageAssessments || !item?.id) return;
+    const dialogRef = this.dialog.open(DuplicateAssessmentDialogComponent, {
+      width: '440px',
+      maxWidth: '95vw',
+      data: {
+        sourceName: item.name,
+        clients: this.clients,
+      },
+    });
+    const targetClientId = await dialogRef.afterClosed().toPromise();
+    if (!targetClientId) return;
+
+    try {
+      const sourceSnap = await getDoc(doc(this.firestore, 'assessments', item.id));
+      if (!sourceSnap.exists()) {
+        this.snackBar.open(
+          this.translate.instant('assessments.duplicate.notFound'),
+          this.translate.instant('Fechar'),
+          { duration: 3000 }
+        );
+        return;
+      }
+      const src = sourceSnap.data();
+      const clientName =
+        this.clients.find((c) => c.id === targetClientId)?.companyName || '';
+      const currentUser = await this.authService.getCurrentUser();
+      await addDoc(collection(this.firestore, 'assessments'), {
+        name: `${src['name'] || item.name} (${clientName})`.trim(),
+        description: src['description'] || '',
+        clientId: targetClientId,
+        isGlobalTemplate: false,
+        competencyIds: src['competencyIds'] || [],
+        mixQuestions: src['mixQuestions'] ?? true,
+        competencyGroupId: null,
+        surveyJSON: src['surveyJSON'] || {},
+        theme: src['theme'] || null,
+        createdBy: currentUser
+          ? {
+              name: currentUser.name,
+              email: currentUser.email,
+              role: currentUser.role,
+            }
+          : src['createdBy'] || { name: 'Desconhecido' },
+        createdAt: new Date(),
+      });
+      this.snackBar.open(
+        this.translate.instant('assessments.duplicate.success'),
+        this.translate.instant('Fechar'),
+        { duration: 3500 }
+      );
+      await this.loadAssessments();
+      this.buildCreators();
+      this.applyFilters();
+    } catch (error) {
+      console.error('Erro ao duplicar formulário:', error);
+      this.snackBar.open(
+        this.translate.instant('assessments.duplicate.error'),
+        this.translate.instant('Fechar'),
+        { duration: 4000 }
+      );
+    }
   }
 
   createNewAssessment(): void {

@@ -16,7 +16,7 @@ import {
   where,
 } from '@angular/fire/firestore';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -49,6 +49,7 @@ import { AppPageHeaderComponent } from 'src/app/components/page-header/page-head
     MatIconModule,
     RouterModule,
     AppPageHeaderComponent,
+    TranslateModule,
   ],
   templateUrl: './new-credit-order.component.html',
   styleUrls: ['./new-credit-order.component.scss'],

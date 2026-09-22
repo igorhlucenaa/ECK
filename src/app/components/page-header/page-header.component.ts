@@ -1,19 +1,20 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { MaterialModule } from 'src/app/material.module';
 
 @Component({
   selector: 'app-page-header',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, TranslateModule],
   template: `
     <div class="page-header">
       <div class="page-header-left">
         <div class="page-header-accent"></div>
         <div class="page-header-text">
-          <div class="page-header-eyebrow" *ngIf="eyebrow">{{ eyebrow }}</div>
-          <h1 class="page-header-title">{{ title }}</h1>
-          <p class="page-header-subtitle" *ngIf="subtitle">{{ subtitle }}</p>
+          <div class="page-header-eyebrow" *ngIf="eyebrow">{{ eyebrow | translate }}</div>
+          <h1 class="page-header-title">{{ title | translate }}</h1>
+          <p class="page-header-subtitle" *ngIf="subtitle">{{ subtitle | translate }}</p>
         </div>
       </div>
       <div class="page-header-actions">

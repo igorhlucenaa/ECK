@@ -138,6 +138,18 @@
   gap: 4px;
 }
 
+.reminders-summary-list {
+  margin: 0 0 12px;
+  padding-left: 1.25rem;
+  color: #5c6378;
+  font-size: 13px;
+  line-height: 1.5;
+
+  li + li {
+    margin-top: 4px;
+  }
+}
+
 .field-icon {
   color: #94a3b8 !important;
   font-size: 18px !important;

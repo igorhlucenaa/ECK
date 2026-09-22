@@ -26,6 +26,7 @@ import { MatSelectSearchModule } from 'mat-select-search';
 import { MatSelectModule } from '@angular/material/select';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { fetchAssessmentsForClientScope } from 'src/app/utils/assessment-templates.util';
 import { MatDialog } from '@angular/material/dialog';
 import { UsersComponent } from '../../users/users.component';
 import { ProjectService } from 'src/app/services/project.service';
@@ -74,7 +75,7 @@ export class ProjectDetailComponent implements OnInit {
   clientId: string | null = null;
   clients: { id: string; name: string }[] = [];
   groups: { id: string; name: string }[] = [];
-  assessments: { id: string; name: string }[] = [];
+  assessments: { id: string; name: string; isGlobalTemplate?: boolean }[] = [];
   reportTemplates: { id: string; name: string }[] = [];
   usersInGroups: { id: string; name: string; groupNames: string[] }[] = [];
   isLoading = false;
@@ -187,13 +188,10 @@ export class ProjectDetailComponent implements OnInit {
 
   async loadAssessments(clientId: string): Promise<void> {
     try {
-      const snap = await getDocs(
-        query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
+      this.assessments = await fetchAssessmentsForClientScope(
+        this.firestore,
+        clientId
       );
-      this.assessments = snap.docs.map(d => ({
-        id: d.id,
-        name: d.data()['name'] || 'Sem nome',
-      }));
     } catch (error) {
       console.error('Erro ao carregar formulários:', error);
     }

@@ -26,6 +26,11 @@ import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
+import {
+  provideFunctions,
+  getFunctions,
+  connectFunctionsEmulator,
+} from '@angular/fire/functions';
 
 // icons
 import { TablerIconsModule } from 'angular-tabler-icons';
@@ -67,6 +72,29 @@ registerLocaleData(localePt);
 registerLocaleData(localeEs);
 registerLocaleData(localeEn);
 
+const FUNCTIONS_EMULATOR_HOST = '127.0.0.1';
+const FUNCTIONS_EMULATOR_PORT = 5001;
+let functionsEmulatorConnected = false;
+
+function provideFunctionsWithOptionalEmulator() {
+  return provideFunctions(() => {
+    const functions = getFunctions(undefined, 'us-central1');
+    if (
+      environment.useFunctionsEmulator &&
+      !functionsEmulatorConnected &&
+      typeof window !== 'undefined'
+    ) {
+      connectFunctionsEmulator(
+        functions,
+        FUNCTIONS_EMULATOR_HOST,
+        FUNCTIONS_EMULATOR_PORT
+      );
+      functionsEmulatorConnected = true;
+    }
+    return functions;
+  });
+}
+
 function getInitialLocale(): string {
   try {
     const stored = typeof window !== 'undefined' ? localStorage.getItem('lang') : null;
@@ -103,6 +131,7 @@ export const appConfig: ApplicationConfig = {
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAuth()),
     provideFirestore(() => getFirestore()),
+    provideFunctionsWithOptionalEmulator(),
     importProvidersFrom(
       EmailEditorModule,
       FormsModule,

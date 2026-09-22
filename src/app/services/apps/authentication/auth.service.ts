@@ -23,6 +23,7 @@ import {
   where,
 } from '@angular/fire/firestore';
 import { firstValueFrom } from 'rxjs';
+import { UserAdminService } from '../../user-admin.service';
 
 @Injectable({
   providedIn: 'root',
@@ -30,7 +31,12 @@ import { firstValueFrom } from 'rxjs';
 export class AuthService {
   private _roleCache: string | null | undefined = undefined;
 
-  constructor(private auth: Auth, private firestore: Firestore, private router: Router) {}
+  constructor(
+    private auth: Auth,
+    private firestore: Firestore,
+    private router: Router,
+    private userAdminService: UserAdminService
+  ) {}
 
   async login(
     email: string,
@@ -119,11 +125,20 @@ export class AuthService {
   }
 
   async resetPassword(email: string): Promise<void> {
+    const continueUrl = `${window.location.origin}/authentication/login`;
     try {
-      await sendPasswordResetEmail(this.auth, email);
-    } catch (error: any) {
-      console.error('Erro ao redefinir senha:', error);
-      throw new Error('Erro ao enviar o e-mail de redefinição.');
+      await this.userAdminService.sendBrandedPasswordResetEmail(email, continueUrl);
+    } catch (brandedError) {
+      console.warn('E-mail branded indisponível, usando Firebase:', brandedError);
+      try {
+        await sendPasswordResetEmail(this.auth, email, {
+          url: continueUrl,
+          handleCodeInApp: false,
+        });
+      } catch (error: unknown) {
+        console.error('Erro ao redefinir senha:', error);
+        throw new Error('Erro ao enviar o e-mail de redefinição.');
+      }
     }
   }
 

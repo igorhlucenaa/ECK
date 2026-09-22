@@ -1,13 +1,17 @@
 /**
  * Ambiente LOCAL — usado apenas com `npm run start:local`.
  * Nao altera `npm run build` (producao) nem deploy no Firebase.
- * Requer emulador: `npm run functions:serve`
+ * Requer emulador: `npm run functions:serve` (Functions em 5001; UI do emulador em 4002 se 4000 estiver em uso)
  * (Firestore emulado exige Java: use `npm run functions:serve:full`)
  */
 const functionsBaseUrl = 'http://127.0.0.1:5001/pwa-workana/us-central1';
 
 export const environment = {
   production: false,
+  /** Conecta httpsCallable ao emulador (porta 5001). */
+  useFunctionsEmulator: true,
+  disableProductTour: true,
+  qaDefaultPassword: '123@qwe',
   firebase: {
     apiKey: 'AIzaSyCxUZGayShvR7Ckm3Dpk4JUPgDwoIvquWY',
     authDomain: 'pwa-workana.firebaseapp.com',

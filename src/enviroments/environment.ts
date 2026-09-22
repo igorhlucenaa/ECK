@@ -1,5 +1,7 @@
 export const environment = {
   production: false,
+  /** Quando true, httpsCallable usa 127.0.0.1:5001 (ver environment.local + functions:serve). */
+  useFunctionsEmulator: false,
   /** Desliga tour de primeiro acesso (overlay bloqueia cliques no QA/automação). */
   disableProductTour: true,
   /** Senha padrão sugerida ao master definir acesso de contas QA (somente dev). */

@@ -12,7 +12,12 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "seed:qa": "node scripts/seed-qa-revisao-users.mjs",
-    "qa:set-ui-passwords": "node scripts/set-rev61-ui-qa-passwords.mjs"
+    "qa:set-ui-passwords": "node scripts/set-rev61-ui-qa-passwords.mjs",
+    "i18n:audit": "node scripts/i18n-audit.mjs",
+    "i18n:qa": "node scripts/i18n-qa-assert.mjs",
+    "i18n:sync-pt": "node scripts/sync-pt-br-missing-keys.mjs",
+    "i18n:sync-locales": "node scripts/sync-en-es-missing-from-pt.mjs",
+    "i18n:patch-dashboard": "node scripts/patch-i18n-es-en.mjs"
   },
   "private": true,
   "dependencies": {

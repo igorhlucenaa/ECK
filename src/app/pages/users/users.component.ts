@@ -27,7 +27,7 @@ import { ConfirmDialogComponent } from '../clients/clients-list/confirm-dialog/c
 import { DetailsModalComponent } from 'src/app/layouts/full/shared/details-modal/details-modal.component';
 import { UserDetailsDialogComponent } from './user-details-dialog/user-details-dialog.component';
 import { GroupDetailsDialogComponent } from './group-details-dialog/group-details-dialog.component';
-import { Auth, sendPasswordResetEmail } from '@angular/fire/auth';
+import { Auth } from '@angular/fire/auth';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Router, RouterModule } from '@angular/router';
@@ -777,11 +777,7 @@ export class UsersComponent implements OnInit, AfterViewInit {
   // Enviar link de criação / redefinição de senha
   async sendEmailNotification(user: User): Promise<void> {
     try {
-      const actionCodeSettings = {
-        url: `${window.location.origin}/authentication/login`,
-        handleCodeInApp: false,
-      };
-      await sendPasswordResetEmail(this.auth, user.email, actionCodeSettings);
+      await this.userAdminService.sendBrandedPasswordResetEmail(user.email);
 
       const now = new Date();
 

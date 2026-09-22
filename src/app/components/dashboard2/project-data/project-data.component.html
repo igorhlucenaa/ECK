@@ -1,11 +1,7 @@
 <mat-card class="cardWithShadow">
   <mat-card-header>
-    <mat-card-title
-      >Clientes com Créditos Próximos ao Vencimento</mat-card-title
-    >
-    <mat-card-subtitle
-      >Verifique os créditos que expiram em breve</mat-card-subtitle
-    >
+    <mat-card-title>{{ 'Clientes com Créditos Próximos ao Vencimento' | translate }}</mat-card-title>
+    <mat-card-subtitle>{{ 'Verifique os créditos que expiram em breve' | translate }}</mat-card-subtitle>
   </mat-card-header>
   <mat-card-content>
     <div class="table-responsive m-t-30">
@@ -17,7 +13,7 @@
             *matHeaderCellDef
             class="f-w-500 mat-subtitle-1 f-s-14"
           >
-            Cliente
+            {{ 'Cliente' | translate }}
           </th>
           <td mat-cell *matCellDef="let element">
             <div class="d-flex align-items-center">
@@ -44,7 +40,7 @@
             *matHeaderCellDef
             class="f-w-500 mat-subtitle-1 f-s-14"
           >
-            Créditos
+            {{ 'Créditos' | translate }}
           </th>
           <td mat-cell *matCellDef="let element" class="mat-body-1">
             {{ element.credits }}
@@ -58,7 +54,7 @@
             *matHeaderCellDef
             class="f-w-500 mat-subtitle-1 f-s-14"
           >
-            Vencimento
+            {{ 'Vencimento' | translate }}
           </th>
           <td mat-cell *matCellDef="let element" class="mat-body-1">
             {{ element.validityDate | date : "shortDate" }}
@@ -72,32 +68,32 @@
             *matHeaderCellDef
             class="f-w-500 mat-subtitle-1 f-s-14"
           >
-            Prioridade
+            {{ 'Prioridade' | translate }}
           </th>
           <td mat-cell *matCellDef="let element">
             <span
               *ngIf="element.priority === 'critical'"
               class="bg-light-error text-error rounded f-w-500 p-6 p-y-4 f-s-12"
             >
-              Crítica
+              {{ 'Crítica' | translate }}
             </span>
             <span
               *ngIf="element.priority === 'high'"
               class="bg-light-warning text-warning rounded f-w-500 p-6 p-y-4 f-s-12"
             >
-              Alta
+              {{ 'Alta' | translate }}
             </span>
             <span
               *ngIf="element.priority === 'medium'"
               class="bg-light-primary text-primary rounded f-w-500 p-6 p-y-4 f-s-12"
             >
-              Média
+              {{ 'Média' | translate }}
             </span>
             <span
               *ngIf="element.priority === 'low'"
               class="bg-light-accent text-accent rounded f-w-500 p-6 p-y-4 f-s-12"
             >
-              Baixa
+              {{ 'Baixa' | translate }}
             </span>
           </td>
         </ng-container>

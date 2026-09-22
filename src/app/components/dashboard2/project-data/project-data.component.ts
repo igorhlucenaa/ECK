@@ -6,6 +6,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { TablerIconsModule } from 'angular-tabler-icons';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { TranslateModule } from '@ngx-translate/core';
 
 export interface CreditExpiryData {
   clientName: string;
@@ -18,7 +19,7 @@ export interface CreditExpiryData {
 @Component({
   selector: 'app-project-data',
   standalone: true,
-  imports: [CommonModule, MaterialModule, TablerIconsModule],
+  imports: [CommonModule, MaterialModule, TablerIconsModule, TranslateModule],
   templateUrl: './project-data.component.html',
 })
 export class AppProjectDataComponent implements OnInit {

@@ -126,6 +126,15 @@
           <span>{{ 'Grupos de Competências' | translate }}</span>
           <span class="sidebar-count" *ngIf="competencyGroups.length > 0">{{ competencyGroups.length }}</span>
         </div>
+        <button mat-icon-button class="sidebar-add-btn"
+                [matTooltip]="'competencies.globalLibrary.action' | translate"
+                [disabled]="!selectedClientId" (click)="openGlobalCompetencyLibraryDialog()">
+          <mat-icon>public</mat-icon>
+        </button>
+        <button mat-icon-button class="sidebar-add-btn" [matTooltip]="'competencies.reuse.action' | translate"
+                [disabled]="!selectedClientId" (click)="openReuseCompetencyGroupDialog()">
+          <mat-icon>content_copy</mat-icon>
+        </button>
         <button mat-icon-button class="sidebar-add-btn" [matTooltip]="'Criar novo grupo de competências' | translate"
                 [disabled]="!selectedClientId" (click)="startNewGroup()">
           <mat-icon>add</mat-icon>
@@ -185,27 +194,27 @@
         <div class="ws-welcome__icon">
           <mat-icon>psychology</mat-icon>
         </div>
-        <h2 class="ws-welcome__title">Configure as Competências</h2>
-        <p class="ws-welcome__desc">Selecione um cliente na barra lateral para começar.</p>
+        <h2 class="ws-welcome__title">{{ 'Configure as Competências' | translate }}</h2>
+        <p class="ws-welcome__desc">{{ 'Selecione um cliente na barra lateral para começar.' | translate }}</p>
         <div class="ws-steps-hint">
           <div class="ws-step-item">
             <div class="ws-step-item__num">1</div>
-            <span>Selecione o <strong>cliente</strong></span>
+            <span [innerHTML]="'competencies.step1' | translate"></span>
           </div>
           <mat-icon class="ws-step-arrow">arrow_forward</mat-icon>
           <div class="ws-step-item">
             <div class="ws-step-item__num">2</div>
-            <span>Crie ou selecione um <strong>grupo</strong></span>
+            <span [innerHTML]="'competencies.step2' | translate"></span>
           </div>
           <mat-icon class="ws-step-arrow">arrow_forward</mat-icon>
           <div class="ws-step-item">
             <div class="ws-step-item__num">3</div>
-            <span>Adicione as <strong>competências</strong></span>
+            <span [innerHTML]="'competencies.step3' | translate"></span>
           </div>
           <mat-icon class="ws-step-arrow">arrow_forward</mat-icon>
           <div class="ws-step-item">
             <div class="ws-step-item__num">4</div>
-            <span>Salve o <strong>grupo</strong></span>
+            <span [innerHTML]="'competencies.step4' | translate"></span>
           </div>
         </div>
       </div>

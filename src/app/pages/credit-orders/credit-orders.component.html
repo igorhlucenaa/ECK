@@ -184,12 +184,22 @@
             </span>
           </th>
           <td mat-cell *matCellDef="let order" class="credit-col">
-            <span class="days-badge"
-              [class.days-ok]="order.daysRemaining > 7"
-              [class.days-critical]="order.daysRemaining <= 7 && order.daysRemaining > 0"
-              [class.days-zero]="order.daysRemaining === 0">
+            <span class="days-badge days-neutral"
+              *ngIf="order.status === 'Pendente' && order.daysRemaining === null">—</span>
+            <span class="days-badge days-planned"
+              *ngIf="order.status === 'Pendente' && order.daysRemaining !== null">
               {{ order.daysRemaining }}d
+              <span class="days-planned__label">{{ 'creditOrders.daysPlanned' | translate }}</span>
             </span>
+            <span class="days-badge"
+              *ngIf="order.status === 'Aprovado'"
+              [class.days-ok]="order.daysRemaining !== null && order.daysRemaining > 7"
+              [class.days-critical]="order.daysRemaining !== null && order.daysRemaining <= 7 && order.daysRemaining > 0"
+              [class.days-zero]="order.daysRemaining === 0">
+              {{ order.daysRemaining ?? 0 }}d
+            </span>
+            <span class="days-badge days-neutral"
+              *ngIf="order.status !== 'Pendente' && order.status !== 'Aprovado'">—</span>
           </td>
         </ng-container>
 

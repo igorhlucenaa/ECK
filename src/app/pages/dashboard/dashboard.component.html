@@ -112,7 +112,7 @@
           </mat-select>
         </mat-form-field>
         <span class="projects-filter-bar__count">
-          {{ filteredCreditRows.length }} cliente{{ filteredCreditRows.length !== 1 ? 's' : '' }}
+          {{ filteredCreditRows.length }} {{ (filteredCreditRows.length === 1 ? 'cliente' : 'clientes') | translate }}
         </span>
       </div>
 
@@ -300,7 +300,7 @@
               <mat-option *ngFor="let c of alertClients" [value]="c">{{ c }}</mat-option>
             </mat-select>
           </mat-form-field>
-          <span class="projects-filter-bar__count">{{ filteredAlerts.length }} alerta{{ filteredAlerts.length !== 1 ? 's' : '' }}</span>
+          <span class="projects-filter-bar__count">{{ filteredAlerts.length }} {{ (filteredAlerts.length === 1 ? 'alerta' : 'alertas') | translate }}</span>
         </div>
       </div>
 

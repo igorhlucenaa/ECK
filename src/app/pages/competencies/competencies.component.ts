@@ -13,6 +13,15 @@ import { ActivatedRoute } from '@angular/router';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { CompetencyQuestionsService } from '../../services/competency-questions.service';
+import { formatCountLabel } from '../../utils/i18n-labels.util';
+import {
+  ReuseCompetencyGroupDialogComponent,
+  ReuseCompetencyGroupDialogResult,
+} from './reuse-competency-group-dialog/reuse-competency-group-dialog.component';
+import {
+  GlobalCompetencyLibraryDialogComponent,
+  GlobalCompetencyLibraryDialogResult,
+} from './global-competency-library-dialog/global-competency-library-dialog.component';
 
 // Interface igual ao reports
 interface Competencia {
@@ -930,6 +939,244 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     }
   }
 
+  async openReuseCompetencyGroupDialog(): Promise<void> {
+    if (!this.selectedClientId) {
+      this.snackBar.open(this.t('Selecione um cliente primeiro.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    const targetClient = this.clients.find((c) => c.id === this.selectedClientId);
+    const scopeClientIds = this.clients.map((c) => c.id);
+    if (!scopeClientIds.length) {
+      this.snackBar.open(this.t('Erro ao carregar clientes'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+
+    const currentGroup = this.competencyGroups.find((g) => g.id === this.currentGroupId);
+
+    const dialogRef = this.dialog.open(ReuseCompetencyGroupDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: {
+        targetClientId: this.selectedClientId,
+        targetClientName: targetClient?.companyName || '',
+        scopeClientIds,
+        currentGroupId: this.currentGroupId,
+        currentGroupName: currentGroup?.name || '',
+      },
+    });
+
+    const result = (await dialogRef.afterClosed().toPromise()) as
+      | ReuseCompetencyGroupDialogResult
+      | undefined;
+    if (!result?.sourceGroupId) {
+      return;
+    }
+    if (result.mode === 'mergeIntoCurrent' && this.currentGroupId) {
+      await this.mergeCompetenciesFromGroupIntoCurrent(result.sourceGroupId);
+      return;
+    }
+    if (result.mode === 'createNew' && result.newGroupName?.trim()) {
+      await this.duplicateCompetencyGroupToCurrentClient(
+        result.sourceGroupId,
+        result.newGroupName.trim()
+      );
+    }
+  }
+
+  /** Slide 2 PPT 6.1 — visão global de grupos (todos os clientes no escopo). */
+  async openGlobalCompetencyLibraryDialog(): Promise<void> {
+    if (!this.selectedClientId) {
+      this.snackBar.open(this.t('Selecione um cliente primeiro.'), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    const targetClient = this.clients.find((c) => c.id === this.selectedClientId);
+    const scopeClientIds = this.clients.map((c) => c.id);
+    if (!scopeClientIds.length) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(GlobalCompetencyLibraryDialogComponent, {
+      width: '600px',
+      maxWidth: '95vw',
+      data: {
+        scopeClientIds,
+        targetClientId: this.selectedClientId,
+        targetClientName: targetClient?.companyName || '',
+      },
+    });
+
+    const result = (await dialogRef.afterClosed().toPromise()) as
+      | GlobalCompetencyLibraryDialogResult
+      | undefined;
+    if (!result?.groupId) {
+      return;
+    }
+
+    if (result.action === 'duplicate') {
+      const suffix = targetClient?.companyName || '';
+      const newName = suffix
+        ? `${result.groupName} (${suffix})`
+        : result.groupName;
+      await this.duplicateCompetencyGroupToCurrentClient(result.groupId, newName);
+      return;
+    }
+
+    await this.openCompetencyGroupFromLibrary(result.clientId, result.groupId);
+  }
+
+  private async openCompetencyGroupFromLibrary(
+    clientId: string,
+    groupId: string
+  ): Promise<void> {
+    if (this.selectedClientId !== clientId) {
+      this.clientControl.setValue(clientId);
+      await this.loadCompetencyGroups(clientId);
+    }
+    let group = this.competencyGroups.find((g) => g.id === groupId);
+    if (!group) {
+      const snap = await getDoc(doc(this.firestore, 'competencyGroups', groupId));
+      if (snap.exists()) {
+        group = { id: snap.id, ...snap.data() };
+      }
+    }
+    if (group) {
+      this.editCompetencyGroup(group);
+    } else {
+      this.snackBar.open(this.t('Erro ao carregar grupos de competências.'), this.t('Fechar'), {
+        duration: 3000,
+      });
+    }
+  }
+
+  /** Slide 1 PPT 6.1 — importar competências no grupo aberto, sem criar outro grupo. */
+  private async mergeCompetenciesFromGroupIntoCurrent(sourceGroupId: string): Promise<void> {
+    if (!this.currentGroupId || !this.selectedClientId) {
+      return;
+    }
+
+    try {
+      const sourceSnap = await getDoc(doc(this.firestore, 'competencyGroups', sourceGroupId));
+      if (!sourceSnap.exists()) {
+        this.snackBar.open(this.t('Erro ao carregar grupos de competências.'), this.t('Fechar'), {
+          duration: 3000,
+        });
+        return;
+      }
+
+      const src = sourceSnap.data();
+      const incoming: Competencia[] = (src['competencias'] || []).map((c: Competencia) => ({
+        id: `comp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        nome: c.nome || 'Competência sem nome',
+        descricao: c.descricao || '',
+        perguntasIds: Array.isArray(c.perguntasIds) ? [...c.perguntasIds] : [],
+      }));
+
+      const existingNames = new Set(
+        this.competencias.map((c) => (c.nome || '').trim().toLowerCase()).filter(Boolean)
+      );
+      let added = 0;
+      const merged = [...this.competencias];
+      for (const c of incoming) {
+        const key = (c.nome || '').trim().toLowerCase();
+        if (key && existingNames.has(key)) {
+          continue;
+        }
+        if (key) {
+          existingNames.add(key);
+        }
+        merged.push(c);
+        added++;
+      }
+
+      if (added === 0) {
+        this.snackBar.open(this.t('competencies.reuse.alreadyInGroup'), this.t('Fechar'), {
+          duration: 3500,
+        });
+        return;
+      }
+
+      this.competencias = merged;
+      await this.saveCompetencyGroup();
+    } catch (error) {
+      console.error('Erro ao importar competências no grupo:', error);
+      this.snackBar.open(this.t('Erro ao salvar grupo de competências.'), this.t('Fechar'), {
+        duration: 3000,
+      });
+    }
+  }
+
+  private async duplicateCompetencyGroupToCurrentClient(
+    sourceGroupId: string,
+    newGroupName: string
+  ): Promise<void> {
+    if (!this.selectedClientId) return;
+
+    try {
+      const sourceSnap = await getDoc(doc(this.firestore, 'competencyGroups', sourceGroupId));
+      if (!sourceSnap.exists()) {
+        this.snackBar.open(this.t('Erro ao carregar grupos de competências.'), this.t('Fechar'), {
+          duration: 3000,
+        });
+        return;
+      }
+
+      const src = sourceSnap.data();
+      const idMap = new Map<string, string>();
+      const competencias = (src['competencias'] || []).map((c: Competencia) => {
+        const newId = `comp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        idMap.set(c.id, newId);
+        return {
+          id: newId,
+          nome: c.nome || 'Competência sem nome',
+          descricao: c.descricao || '',
+          perguntasIds: Array.isArray(c.perguntasIds) ? [...c.perguntasIds] : [],
+        };
+      });
+
+      const customQuestionsByCompetency: Record<
+        string,
+        { id: string; title: string; type: string }[]
+      > = {};
+      const rawCustom = src['customQuestionsByCompetency'];
+      if (rawCustom && typeof rawCustom === 'object') {
+        for (const [oldCompId, questions] of Object.entries(rawCustom)) {
+          const newCompId = idMap.get(oldCompId);
+          if (newCompId && Array.isArray(questions)) {
+            customQuestionsByCompetency[newCompId] = questions.map((p: any) => ({
+              id: p.id,
+              title: p.title || p.id,
+              type: p.type || 'rating',
+            }));
+          }
+        }
+      }
+
+      const groupData: Record<string, unknown> = {
+        name: newGroupName,
+        clientId: this.selectedClientId,
+        competencias,
+        assessmentId: src['assessmentId'] || null,
+        customQuestionsByCompetency,
+        createdAt: new Date(),
+      };
+      if (Array.isArray(src['customQuestions']) && src['customQuestions'].length) {
+        groupData['customQuestions'] = [...src['customQuestions']];
+      }
+
+      const docRef = await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
+      await this.loadCompetencyGroups(this.selectedClientId);
+      const created = this.competencyGroups.find((g) => g.id === docRef.id);
+      if (created) {
+        this.isGroupEditorOpen = false;
+        this.editCompetencyGroup(created);
+      }
+      this.snackBar.open(this.t('competencies.reuse.success'), this.t('Fechar'), { duration: 4000 });
+    } catch (error) {
+      console.error('Erro ao reutilizar grupo:', error);
+      this.snackBar.open(this.t('Erro ao salvar grupo de competências.'), this.t('Fechar'), { duration: 3000 });
+    }
+  }
+
   async saveCompetencyGroup(): Promise<void> {
     if (!this.selectedClientId) {
       this.snackBar.open(this.t('Selecione um cliente primeiro.'), this.t('Fechar'), { duration: 3000 });
@@ -1431,7 +1678,9 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
 
   getGrupoText(): string {
     const count = this.competencyGroups.length;
-    return `${count} grupo${count !== 1 ? 's' : ''} salvo${count !== 1 ? 's' : ''}`;
+    const base = formatCountLabel(this.translate, count, 'grupo', 'grupos');
+    const saved = this.translate.instant(count === 1 ? 'salvo' : 'salvos');
+    return `${base} ${saved}`;
   }
 
   getQuestaoText(count: number): string {

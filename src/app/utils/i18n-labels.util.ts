@@ -58,3 +58,32 @@ export function translateProjectStatusFilterLabel(
   }
   return translateProjectStatus(translate, filterValue);
 }
+
+/** Contagem + substantivo com plural (chaves PT no i18n: ex. "cliente" / "clientes"). */
+export function formatCountLabel(
+  translate: TranslateService,
+  count: number,
+  singularKey: string,
+  pluralKey: string
+): string {
+  const word = translate.instant(count === 1 ? singularKey : pluralKey);
+  return `${count} ${word}`;
+}
+
+const PARTICIPANT_TYPE_I18N_KEYS: Record<string, string> = {
+  avaliado: 'Avaliado',
+  avaliador: 'Avaliador',
+  candidato: 'Avaliado',
+};
+
+export function translateParticipantType(
+  translate: TranslateService,
+  type: string | null | undefined
+): string {
+  if (!type) {
+    return '—';
+  }
+  const key = PARTICIPANT_TYPE_I18N_KEYS[type.toLowerCase()] ?? type;
+  const translated = translate.instant(key);
+  return translated === key && key !== type ? type : translated;
+}

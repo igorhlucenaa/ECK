@@ -1,0 +1,1302 @@
+﻿Pente-fino de TraduÃ§Ã£o â€” Plataforma ECK360
+Auditoria comparativa PT (origem) x EN x ES â€” eck360.web.app
+Data da anÃ¡lise: 15/09/2026
+Resumo Executivo
+Foi feita uma varredura pelas principais telas do sistema (Dashboard, Projetos, Clientes, Pedidos de CrÃ©dito, UsuÃ¡rios e Grupos, Modelos de E-mail, Lembretes AutomÃ¡ticos, Gerenciar CompetÃªncias, FormulÃ¡rios, RelatÃ³rios e Participantes), comparando o conteÃºdo em 
+PortuguÃªs
+ (idioma de origem) com as versÃµes em 
+InglÃªs
+ e Espanhol.
+Em 
+InglÃªs
+, a cobertura Ã© boa: os problemas ficam concentrados em contadores dinÃ¢micos nÃ£o traduzidos, nas contagens de vÃ­nculo da tela de UsuÃ¡rios e, principalmente, na tela "Gerenciar CompetÃªncias", que ficou quase inteira em portuguÃªs. Foram encontrados 29 itens.
+Em 
+Espanhol
+, a traduÃ§Ã£o estÃ¡ bem mais incompleta: o Dashboard mistura constantemente portuguÃªs, inglÃªs e espanhol (Ã s vezes na mesma cÃ©lula), e telas inteiras como "Pedidos de CrÃ©dito" e "Gerenciar CompetÃªncias" estÃ£o praticamente 100% 
+intraduzidas
+. Foram encontrados 66 itens.
+AlÃ©m da lista item a item, a seÃ§Ã£o "PadrÃµes Recorrentes" reÃºne 8 causas raiz que se repetem em vÃ¡rias telas â€” corrigi-las no cÃ³digo deve resolver vÃ¡rias linhas de uma sÃ³ vez.
+Como usar este documento
+SeÃ§Ã£o "Erros â€” InglÃªs": todos os problemas encontrados no idioma 
+InglÃªs
+, tela por tela.
+SeÃ§Ã£o "Erros â€” Espanhol": todos os problemas encontrados no idioma Espanhol, tela por tela.
+SeÃ§Ã£o "PadrÃµes Recorrentes": problemas que se repetem em vÃ¡rias telas por uma mesma causa â€” resolver aqui
+ pode
+ corrig
+ir
+ vÃ¡rias linhas de uma vez.
+Coluna "Texto Atual" mostra exatamente o que aparece na tela hoje; "Texto Sugerido" Ã© a traduÃ§Ã£o proposta.
+Erros em 
+InglÃªs
+ (EN) â€” 29 itens
+#
+Tela / Local
+Elemento
+Texto Atual
+Texto Sugerido
+ObservaÃ§Ã£o
+1
+Dashboard
+SubtÃ­tulo da pÃ¡gina
+Indicadores e mÃ©tricas de toda a plataforma em tempo real
+Real-time 
+indicators
+ 
+and
+ 
+metrics
+ 
+across
+ 
+the
+ 
+entire
+ 
+platform
+Frase inteira ficou em portuguÃªs; Ã© o texto de apresentaÃ§Ã£o da tela principal do sistema.
+2
+Dashboard â€º CrÃ©ditos por Cliente
+Contador de linhas
+9 clientes
+9 
+clients
+Contador dinÃ¢mico nÃ£o traduzido.
+3
+Dashboard â€º Alertas Operacionais
+Contador de linhas
+7 alertas
+7 
+alerts
+Contador dinÃ¢mico nÃ£o traduzido.
+4
+Dashboard â€º Funil de Projetos
+Filtro "Filter 
+by
+ 
+client
+"
+Todos os clientes
+All
+ 
+clients
+A mesma opÃ§Ã£o jÃ¡ aparece corretamente traduzida em outro filtro da mesma pÃ¡gina (Alertas Operacionais) â€” inconsistÃªncia.
+5
+Dashboard â€º CrÃ©ditos 
+PrÃ³x
+. Vencimento
+TÃ­tulo do card interno
+Clientes com CrÃ©ditos PrÃ³ximos ao Vencimento
+Clients
+ 
+with
+ 
+Credits
+ 
+Nearing
+ 
+Expiration
+Bloco inteiro (tÃ­tulo + subtÃ­tulo + cabeÃ§alho de tabela) ficou 100% em portuguÃªs.
+6
+Dashboard â€º CrÃ©ditos 
+PrÃ³x
+. Vencimento
+SubtÃ­tulo do card interno
+Verifique os crÃ©ditos que expiram em breve
+Check
+ 
+the
+ 
+credits
+ 
+expiring
+ 
+soon
+Ver observaÃ§Ã£o da linha anterior.
+7
+Dashboard â€º CrÃ©ditos 
+PrÃ³x
+. Vencimento
+CabeÃ§alho da tabela
+Cliente | CrÃ©ditos | Vencimento | Prioridade
+Client
+ | 
+Credits
+ | 
+Expiration
+ | 
+Priority
+CabeÃ§alho inteiro nÃ£o traduzido.
+8
+Dashboard â€º CrÃ©ditos 
+PrÃ³x
+. Vencimento
+Valor de prioridade
+Alta
+High
+Valor da cÃ©lula de prioridade nÃ£o traduzido (coincide com a palavra em portuguÃªs).
+9
+Dashboard â€º Participantes por Categoria
+Legenda do grÃ¡fico
+Par/Subordinado(s)/Avaliado/Gestor(es)/Outros â†’ 
+Peer
+/
+Subordinates
+/
+Evaluatee
+/Manager(s)/
+Others
+Peer
+ / 
+Subordinate
+ / 
+Evaluatee
+ / Manager / 
+Others
+ (padronizar singular)
+"Manager(s)" ficou com parÃªntese estranho e o plural Ã© inconsistente com os demais itens da mesma legenda.
+10
+UsuÃ¡rios e Grupos (tabela)
+Contadores de vÃ­nculo por usuÃ¡rio
+1 cliente / 2 projetos / 3 grupos / 1 projeto / 1 grupo
+1 
+client
+ / 2 
+projects
+ / 3 
+groups
+ / 1 
+project
+ / 1 
+group
+Nenhuma linha da tabela de usuÃ¡rios traduz essas contagens â€” repetido nos 45 usuÃ¡rios 
+listados. Ver seÃ§Ã£o "PadrÃµes Recorrentes".
+11
+Modelos de E-mail
+Categoria (
+breadcrumb
+)
+PROJETOS
+PROJECTS
+Etiqueta de categoria acima do tÃ­tulo da pÃ¡gina.
+12
+Modelos de E-mail
+SubtÃ­tulo da pÃ¡gina
+Gerencie os modelos de e-mail para notificaÃ§Ãµes do projeto
+Manage
+ 
+email
+ 
+templates
+ for 
+project
+ 
+notifications
+Frase inteira nÃ£o traduzida.
+13
+Modelos de E-mail
+BotÃ£o principal
+Novo Modelo
+New 
+Template
+BotÃ£o de aÃ§Ã£o principal da tela.
+14
+Modelos de E-mail
+Filtro
+Tipo de NotificaÃ§Ã£o
+Notification
+ 
+Type
+15
+Modelos de E-mail
+BotÃ£o de filtro
+Limpar
+Clear
+16
+Modelos de E-mail
+CabeÃ§alho de coluna
+ASSUNTO
+SUBJECT
+17
+Modelos de E-mail
+Contador de linhas
+6 modelos
+6 
+templates
+18
+Modelos de E-mail
+Estado vazio
+Nenhum modelo encontrado
+No 
+templates
+ 
+found
+SÃ³ aparece quando o filtro nÃ£o encontra nada.
+19
+Gerenciar CompetÃªncias
+PÃ¡gina inteira
+DEFINIÃ‡Ã•ES / Gerenciar CompetÃªncias / "Configure grupos de competÃªncias..." / rÃ³tulos dos 4 passos / "Configure as CompetÃªncias" / instruÃ§Ãµes da barra lateral
+SETTINGS / 
+Manage
+ 
+Competencies
+ / "Configure 
+competency
+ 
+groups
+..." / step 
+labels
+ / "Configure 
+the
+ 
+Competencies
+" / 
+sidebar
+ 
+instructions
+Praticamente toda a tela ficou em portuguÃªs â€” sÃ³ "
+Competency
+ 
+group
+" e duas frases da coluna direita foram traduzidas. Ã‰ a pior tela em inglÃªs.
+20
+FormulÃ¡rios de AvaliaÃ§Ã£o
+Contador de linhas
+8 formulÃ¡rios encontrados
+8 
+forms
+ 
+found
+21
+FormulÃ¡rios de AvaliaÃ§Ã£o
+Formato de data
+28/08/2026 (DD/MM/AAAA)
+08/28/2026 (MM/DD/AAAA, padrÃ£o dos EUA)
+Inconsistente: no Dashboard as datas em inglÃªs jÃ¡ aparecem convertidas para o formato americano (ex.: 9/17/2026), mas aqui continuam no formato brasileiro.
+22
+Participantes (lista)
+Breadcrumb
+PARTICIPANTES
+PARTICIPANTS
+Categoria acima do tÃ­tulo â€” mesma palavra do menu principal, que estÃ¡ correta; aqui ficou esquecida.
+23
+Participantes (lista)
+SubtÃ­tulo da pÃ¡gina
+Busque por nome ou filtre por cliente e projeto. Para enviar e-mails, selecione o contexto completo.
+Search 
+by
+ 
+name
+ 
+or
+ 
+filter
+ 
+by
+ 
+client
+ 
+and
+ 
+project
+. 
+To
+ 
+send
+ 
+emails
+, 
+select
+ 
+the
+ full 
+context
+.
+24
+Participantes (lista)
+TÃ­tulo do bloco de busca
+Buscar e Filtrar Participantes
+Search 
+and
+ Filter 
+Participants
+25
+Participantes (lista)
+Texto de apoio do bloco de busca
+Cliente e projeto sÃ£o opcionais para consulta
+Client
+ 
+and
+ 
+project
+ are 
+optional
+ for 
+search
+26
+Participantes (lista)
+Contador de linhas
+30 participantes
+30 
+participants
+27
+Participantes (lista)
+Aviso informativo (banner azul)
+Busque por nome para localizar participantes em qualquer projeto. Selecione cliente e projeto para enviar e-mails.
+Search 
+by
+ 
+name
+ 
+to
+ 
+find
+ 
+participants
+ in 
+any
+ 
+project
+. 
+Select
+ 
+client
+ 
+and
+ 
+project
+ 
+to
+ 
+send
+ 
+emails
+.
+28
+Participantes (lista)
+Valores de Tipo/Categoria na tabela
+Avaliador / Avaliado / Par / Subordinado / Gestor / Outros
+Evaluator
+ / 
+Evaluatee
+ / 
+Peer
+ / 
+Subordinate
+ / Manager / Other
+Os mesmos termos aparecem corretamente traduzidos no grÃ¡fico "
+Participants
+ 
+by
+ 
+Category
+" do Dashboard â€” mas na tabela de Participantes continuam 100% em portuguÃªs.
+29
+Pedidos de CrÃ©dito
+Contador de linhas (estado vazio)
+0 resultados
+0 
+results
+Aparece sÃ³ quando a busca nÃ£o encontra nada; o restante da tela em inglÃªs estÃ¡ correto.
+Erros em 
+Espanhol
+ (ES) â€” 66 itens
+#
+Tela / Local
+Elemento
+Texto Atual
+Texto Sugerido
+Sev
+.
+ObservaÃ§Ã£o
+1
+NavegaÃ§Ã£o principal (topo)
+Item de menu
+Participants
+Participantes
+Alta
+Ã‰ um dos 4 itens do menu principal do sistema, visÃ­vel em toda tela â€” ficou em inglÃªs em vez de espanhol.
+2
+Menu "
+Configuraciones
+" (
+dropdown
+)
+Item de submenu
+Clients
+Clientes
+Alta
+Item de menu de configuraÃ§Ãµes ficou em inglÃªs.
+3
+Menu "
+Configuraciones
+" (
+dropdown
+)
+Item de submenu
+Credit
+ 
+Orders
+Pedidos de CrÃ©dito
+Alta
+Item de menu de configuraÃ§Ãµes ficou em inglÃªs.
+4
+Dashboard (
+Panel
+)
+Card "CrÃ©ditos por Cliente" â€” tÃ­tulo
+Credits
+ 
+by
+ 
+Client
+CrÃ©ditos por Cliente
+Alta
+TÃ­tulo do card ficou em inglÃªs.
+5
+Dashboard (
+Panel
+)
+Card "CrÃ©ditos por Cliente" â€” subtÃ­tulo
+Used
+ 
+and
+ 
+available
+ â€” 
+critical
+ 
+clients
+ 
+at
+ 
+the
+ top
+Usados y 
+disponibles
+ â€” clientes crÃ­ticos arriba
+Alta
+6
+Dashboard (
+Panel
+)
+Selos de resumo do card de crÃ©ditos
+CONSUMED / RESERVED / DISPONIBLES
+CONSUMIDOS / RESERVADOS / DISPONIBLES
+MÃ©dia
+Dos 3 selos lado a lado, 2 ficaram em inglÃªs e sÃ³ 1 foi traduzido.
+7
+Dashboard (
+Panel
+)
+CabeÃ§alho da tabela de crÃ©ditos
+RESERVED / CONSUMED
+RESERVADOS / CONSUMIDOS
+MÃ©dia
+Mesmo padrÃ£o do item anterior, agora no cabeÃ§alho da tabela.
+8
+Dashboard (
+Panel
+)
+Status de crÃ©dito por cliente
+No 
+credits
+ / 
+Low
+ / Active
+Sin
+ crÃ©ditos / Bajo / 
+Activo
+Alta
+Nenhum dos 3 status foi traduzido.
+9
+Dashboard (
+Panel
+)
+Card "Alertas Operacionais" â€” tÃ­tulo e subtÃ­tulo
+Operational
+ Alerts / "
+Items
+ 
+requiring
+ 
+immediate
+ 
+attention
+ 
+or
+ follow-up"
+Alertas Operativos / "Elementos que 
+requieren
+ 
+atenciÃ³n
+ 
+inmediata
+ o 
+seguimiento
+"
+Alta
+10
+Dashboard (
+Panel
+)
+Chips de severidade dos alertas
+Critical
+ / 
+Attention
+ / 
+Warning
+CrÃ­tico / 
+AtenciÃ³n
+ / Aviso
+Alta
+Aparecem repetidos 2x na tela (contadores e chips de filtro) â€” nenhuma ocorrÃªncia foi traduzida.
+11
+Dashboard (
+Panel
+)
+CabeÃ§alho da tabela de alertas
+LEVEL / TYPE
+NIVEL / TIPO
+MÃ©dia
+"Cliente" e "
+DescripciÃ³n
+", na mesma linha, jÃ¡ estÃ£o corretos.
+12
+Dashboard (
+Panel
+)
+BotÃ£o de aÃ§Ã£o na tabela de alertas
+View
+Ver
+MÃ©dia
+Repetido em todas as linhas da tabela de alertas.
+13
+Dashboard (
+Panel
+)
+Card "Projetos em Andamento" â€” tÃ­tulo e subtÃ­tulo
+Projects
+ in 
+Progress
+ / "
+Ordered
+ 
+by
+ 
+criticality
+ â€” 
+overdue
+ 
+and
+ 
+at
+ 
+risk
+ 
+at
+ 
+the
+ top"
+Proyectos
+ 
+en
+ Curso / "Ordenados por 
+criticidad
+ â€” atrasados y 
+en
+ 
+riesgo
+ arriba"
+Alta
+14
+Dashboard (
+Panel
+)
+CabeÃ§alho da tabela de projetos
+PROGRESS
+PROGRESO
+MÃ©dia
+Os demais cabeÃ§alhos da mesma linha jÃ¡ estÃ£o certos.
+15
+Dashboard (
+Panel
+)
+Selo de status na tabela de projetos
+Overdue
+Atrasado
+MÃ©dia
+Na mesma cÃ©lula o texto "1d de retraso" jÃ¡ estÃ¡ em espanhol, mas o selo ao lado nÃ£o â€” mistura na mesma cÃ©lula.
+16
+Dashboard (
+Panel
+)
+Card "Funil de Projetos" â€” tÃ­tulo
+Project 
+Funnel
+Embudo de 
+Proyectos
+Alta
+O subtÃ­tulo abaixo jÃ¡ estÃ¡ traduzido; sÃ³ o tÃ­tulo ficou em inglÃªs.
+17
+Dashboard (
+Panel
+)
+Filtro do funil de projetos
+Filter 
+by
+ 
+client
+Filtrar por cliente
+MÃ©dia
+18
+Dashboard (
+Panel
+)
+OpÃ§Ã£o do filtro do funil
+Todos os clientes
+Todos 
+los
+ clientes
+MÃ©dia
+A mesma opÃ§Ã£o jÃ¡ aparece certa em outro filtro da mesma pÃ¡gina â€” inconsistÃªncia interna.
+19
+Dashboard (
+Panel
+)
+Contador do funil
+Completed
+Completados
+Baixa
+Os outros dois nÃºmeros do funil jÃ¡ estÃ£o em espanhol.
+20
+Dashboard (
+Panel
+)
+Card "Projetos por Status" â€” tÃ­tulo
+Projects
+ 
+by
+ Status
+Proyectos
+ por Estado
+Alta
+SubtÃ­tulo abaixo jÃ¡ traduzido; sÃ³ o tÃ­tulo ficou em inglÃªs.
+21
+Dashboard (
+Panel
+)
+Legenda do grÃ¡fico de status
+Cancelled
+Cancelados
+Baixa
+Os outros dois itens da mesma legenda jÃ¡ estÃ£o em espanhol.
+22
+Dashboard (
+Panel
+)
+Legenda "Participantes por Categoria"
+Peer
+ / 
+Subordinate
+ / Manager
+Par / Subordinado / Gerente
+Alta
+Dos 5 itens da legenda, sÃ³ "
+Evaluado
+" e "
+Otros
+" foram traduzidos.
+23
+Dashboard (
+Panel
+)
+Card "CrÃ©ditos PrÃ³ximos a 
+Vencimiento
+" â€” subtÃ­tulo
+Orders
+ 
+expiring
+ in 
+the
+ 
+next
+ 30 
+days
+Pedidos que 
+vencen
+ 
+en
+ 
+los
+ prÃ³ximos 30 
+dÃ­as
+MÃ©dia
+24
+Dashboard (
+Panel
+)
+Card interno de crÃ©ditos a vencer â€” tÃ­tulo e subtÃ­tulo
+Clientes com CrÃ©ditos PrÃ³ximos ao Vencimento / Verifique os crÃ©ditos que expiram em breve
+Clientes 
+con
+ CrÃ©ditos PrÃ³ximos a Vencer / Verifique 
+los
+ crÃ©ditos que 
+vencen
+ pronto
+Alta
+Ficou 100% em portuguÃªs, sem nenhuma palavra em espanhol.
+25
+Dashboard (
+Panel
+)
+CabeÃ§alho da tabela de crÃ©ditos a vencer
+Cliente CrÃ©ditos Vencimento Prioridade
+Cliente CrÃ©ditos 
+Vencimiento
+ 
+Prioridad
+Alta
+CabeÃ§alho inteiro em portuguÃªs.
+26
+Projetos
+Filtro
+Filter 
+by
+ 
+client
+Filtrar por cliente
+MÃ©dia
+27
+Projetos
+Aba de status
+Cancelled
+Cancelado
+MÃ©dia
+As outras 3 abas (Todos, 
+En
+ curso, 
+Concluido
+) jÃ¡ estÃ£o em espanhol.
+28
+Projetos
+Contador de resultados
+9 
+results
+9 resultados
+Baixa
+29
+Clientes
+TÃ­tulo da pÃ¡gina
+Clients
+Clientes
+Alta
+Ã‰ o tÃ­tulo principal da tela (H1) â€” ficou em inglÃªs. Muito visÃ­vel.
+30
+Clientes
+Contador de resultados
+10 
+results
+10 resultados
+Baixa
+31
+Clientes
+CabeÃ§alho de coluna
+CREDITS
+CRÃ‰DITOS
+MÃ©dia
+32
+Clientes
+Selos de crÃ©dito por linha
+ACQUIRED / USED
+ADQUIRIDOS / USADOS
+MÃ©dia
+De 3 selos, sÃ³ "DISPONIBLES" foi traduzido.
+33
+Pedidos de CrÃ©dito
+Categoria + tÃ­tulo + subtÃ­tulo da pÃ¡gina
+FINANCIAL / 
+Credit
+ 
+Orders
+ / "
+Manage
+ 
+client
+ 
+credit
+ 
+orders
+"
+FINANCIERO / Pedidos de CrÃ©dito / "
+Gestione
+ 
+los
+ pedidos de crÃ©dito de 
+los
+ clientes"
+Alta
+A tela inteira de Pedidos de CrÃ©dito estÃ¡ praticamente 100% em inglÃªs em espanhol.
+34
+Pedidos de CrÃ©dito
+BotÃ£o principal
+Create
+ New 
+Order
+Crear
+ Nuevo Pedido
+Alta
+35
+Pedidos de CrÃ©dito
+Filtro de status
+All
+ 
+statuses
+Todos 
+los
+ estados
+MÃ©dia
+36
+Pedidos de CrÃ©dito
+CabeÃ§alhos de coluna
+ACQUIRED / USED / VALIDITY / CREATED ON
+ADQUIRIDOS / UTILIZADOS / VALIDEZ / CREADO EL
+Alta
+4 dos 8 cabeÃ§alhos de coluna ficaram em inglÃªs.
+37
+Pedidos de CrÃ©dito
+Estado vazio
+No 
+orders
+ 
+found
+No se 
+encontraron
+ pedidos
+Baixa
+38
+UsuÃ¡rios e Grupos
+SubtÃ­tulo da pÃ¡gina
+Manage
+ 
+platform
+ 
+users
+ 
+and
+ 
+user
+ 
+groups
+Gestione
+ 
+los
+ 
+usuarios
+ y grupos de 
+usuarios
+ de 
+la
+ plataforma
+Alta
+39
+UsuÃ¡rios e Grupos
+Texto de apoio do painel de perfis
+What
+ 
+each
+ profile 
+can
+ do 
+on
+ 
+the
+ 
+platform
+QuÃ©
+ 
+puede
+ 
+hacer
+ cada perfil 
+en
+ 
+la
+ plataforma
+MÃ©dia
+40
+UsuÃ¡rios e Grupos
+Aba de listagem
+Groups
+Grupos
+Alta
+A aba vizinha "
+Usuarios
+" jÃ¡ estÃ¡ em espanhol; "
+Groups
+" ficou em inglÃªs.
+41
+UsuÃ¡rios e Grupos
+Filtro e selo de status
+Blocked
+Bloqueados / Bloqueado
+MÃ©dia
+Aparece tanto no filtro quanto no selo de cada usuÃ¡rio bloqueado.
+42
+UsuÃ¡rios e Grupos
+CabeÃ§alhos de coluna
+GROUPS / PROFILE / ACCESS
+GRUPOS / PERFIL / ACCESO
+MÃ©dia
+43
+UsuÃ¡rios e Grupos
+Placeholder
+ do campo de busca
+Search 
+by
+ 
+name
+, 
+email
+...
+Buscar por 
+nombre
+, 
+correo
+...
+Baixa
+44
+UsuÃ¡rios e Grupos
+Contadores de vÃ­nculo por usuÃ¡rio
+1 cliente / 2 projetos / 3 grupos
+1 cliente / 2 
+proyectos
+ / 3 grupos
+Alta
+Mesmo problema do inglÃªs: nenhuma linha da tabela traduz essas contagens.
+45
+UsuÃ¡rios e Grupos â€º Painel de Perfis e PermissÃµes
+TÃ­tulo dos perfis
+Client
+ Admin / 
+Viewer
+Admin Cliente / Visualizador
+MÃ©dia
+Todo o texto explicativo de cada perfil jÃ¡ foi traduzido corretamente (usa "Admin Cliente"/"Visualizador"), mas o tÃ­tulo do card ficou em inglÃªs â€” incoerente com o prÃ³prio conteÃºdo abaixo.
+46
+Modelos de E-mail
+Categoria + subtÃ­tulo
+PROJETOS / "Gerencie os modelos de e-mail..."
+PROYECTOS / "
+Gestione
+ 
+las
+ 
+plantillas
+ de 
+correo
+..."
+Alta
+47
+Modelos de E-mail
+BotÃ£o principal
+Novo Modelo
+Nueva 
+Plantilla
+Alta
+48
+Modelos de E-mail
+Filtro
+Tipo de NotificaÃ§Ã£o
+Tipo de 
+NotificaciÃ³n
+MÃ©dia
+Ficou em portuguÃªs (faltou trocar "
+Ã§Ã£o
+" por "
+ciÃ³n
+").
+49
+Modelos de E-mail
+BotÃ£o de filtro
+Limpar
+Limpiar
+Baixa
+50
+Modelos de E-mail
+CabeÃ§alhos de coluna
+ASSUNTO / TYPE
+ASUNTO / TIPO
+MÃ©dia
+"ASSUNTO" ficou em portuguÃªs e "TYPE" em inglÃªs â€” dois idiomas diferentes no mesmo cabeÃ§alho.
+51
+Modelos de E-mail
+Contador de linhas
+6 modelos
+6 
+plantillas
+MÃ©dia
+52
+Gerenciar CompetÃªncias
+PÃ¡gina inteira
+Mesmo conjunto citado na versÃ£o em inglÃªs â€” DEFINIÃ‡Ã•ES, os 4 passos, "Configure as CompetÃªncias", instruÃ§Ãµes da barra lateral
+DEFINICIONES / 
+Gestionar
+ 
+Competencias
+ / 
+pasos
+ numerados / "Configure 
+las
+ 
+Competencias
+" / 
+instrucciones
+ 
+traducidas
+Alta
+Assim como em inglÃªs, esta Ã© a tela mais crÃ­tica: quase nada foi traduzido para o espanhol.
+53
+FormulÃ¡rios de AvaliaÃ§Ã£o
+Categoria
+PROJETOS
+PROYECTOS
+MÃ©dia
+54
+FormulÃ¡rios de AvaliaÃ§Ã£o
+SubtÃ­tulo da pÃ¡gina
+Gerencie os formulÃ¡rios de avaliaÃ§Ã£o dos projetos
+Gestione
+ 
+los
+ 
+formularios
+ de 
+evaluaciÃ³n
+ de 
+los
+ 
+proyectos
+Alta
+55
+FormulÃ¡rios de AvaliaÃ§Ã£o
+CabeÃ§alho de coluna
+RESPONDED
+RESPONDIDO
+MÃ©dia
+56
+FormulÃ¡rios de AvaliaÃ§Ã£o
+Filtro "Criador"
+All
+ 
+creators
+Todos 
+los
+ 
+creadores
+Baixa
+57
+FormulÃ¡rios de AvaliaÃ§Ã£o
+Contador de linhas
+8 formulÃ¡rios encontrados
+8 
+formularios
+ encontrados
+MÃ©dia
+58
+RelatÃ³rios
+RÃ³tulo do passo 3
+Build
+Armar
+Baixa
+Ãšnico texto nÃ£o traduzido nesta tela, que no restante estÃ¡ bem localizada para o espanhol.
+59
+Participantes (lista)
+SubtÃ­tulo da pÃ¡gina
+Busque por nome ou filtre por cliente e projeto. Para enviar e-mails, selecione o contexto completo.
+Busque por 
+nombre
+ o filtre por cliente y 
+proyecto
+. Para enviar 
+correos
+, 
+seleccione
+ 
+el
+ contexto completo.
+Alta
+60
+Participantes (lista)
+TÃ­tulo do bloco de busca
+Buscar e Filtrar Participantes
+Buscar y Filtrar Participantes
+MÃ©dia
+61
+Participantes (lista)
+Texto de apoio do bloco de busca
+Cliente e projeto sÃ£o opcionais para consulta
+Cliente y 
+proyecto
+ 
+son
+ 
+opcionales
+ para 
+la
+ consulta
+MÃ©dia
+62
+Participantes (lista)
+Filtro "
+Type
+"
+Type
+Tipo
+MÃ©dia
+Os filtros vizinhos (Cliente, 
+Proyecto
+, 
+CategorÃ­a
+, Estado) jÃ¡ estÃ£o em espanhol.
+63
+Participantes (lista)
+Aviso informativo (banner azul)
+Busque por nome para localizar participantes em qualquer projeto. Selecione cliente e projeto para enviar e-mails.
+Busque por 
+nombre
+ para localizar participantes 
+en
+ 
+cualquier
+ 
+proyecto
+. 
+Seleccione
+ cliente y 
+proyecto
+ para enviar 
+correos
+.
+Alta
+64
+Participantes (lista)
+CabeÃ§alhos de coluna
+TYPE / REMINDER / SEND / RESPONSE
+TIPO / RECORDATORIO / ENVÃO / RESPUESTA
+MÃ©dia
+Ao lado, "CATEGORÃA", "CLIENTE", "PROYECTO", "ESTADO" e "ACCIONES" jÃ¡ estÃ£o certos.
+65
+Participantes (lista)
+Valores de Tipo/Categoria na tabela
+Avaliador / Avaliado / Outros
+Evaluador
+ / 
+Evaluado
+ / 
+Otros
+Alta
+"Par", "Subordinado" e "Gestor" coincidem com palavras vÃ¡lidas em espanhol, mas estes trÃªs sÃ£o claramente 
+portuguÃªs
+.
+66
+Participantes (lista)
+Selo de status
+Responded
+ / 
+Blocked
+ / 
+Awaiting
+ 
+send
+ / No 
+config
+.
+Respondido / Bloqueado / Esperando 
+envÃ­o
+ / 
+Sin
+ 
+config
+.
+Alta
+Nenhum desses 4 selos de status foi traduzido â€” ficaram em inglÃªs.
+PadrÃµes Recorrentes â€” 8 causas raiz
+Estes problemas aparecem repetidos em vÃ¡rias telas, provavelmente pela mesma causa no cÃ³digo. Corrigir a causa costuma resolver vÃ¡rias linhas das seÃ§Ãµes anteriores de uma sÃ³ vez.
+#
+PadrÃ£o observado
+Onde aparece
+Idiomas
+RecomendaÃ§Ã£o
+1
+Contagens "X cliente(s) / X projeto(s) / X grupo(s)" nunca traduzidas
+Tela "UsuÃ¡rios e Grupos", coluna de vÃ­nculos de cada usuÃ¡rio (ex.: "1 cliente", "2 projetos", "3 grupos")
+InglÃªs e 
+Espanhol
+Provavelmente Ã© texto montado no cÃ³digo concatenando o nÃºmero com a palavra em portuguÃªs direto do banco de dados, sem passar pela camada de traduÃ§Ã£o (i18n). Vale localizar essa funÃ§Ã£o de formataÃ§Ã£o e usar chaves de traduÃ§Ã£o com pluralizaÃ§Ã£o.
+2
+Mesma taxonomia de participante traduzida em um lugar e nÃ£o em outro
+"Avaliador/Avaliado/Par/Subordinado/Gestor/Outros" aparecem traduzidos no grÃ¡fico "Participantes por Categoria" do Dashboard, mas continuam em portuguÃªs na tabela da tela "Participantes"
+InglÃªs e 
+Espanhol
+Indica duas fontes diferentes para o mesmo texto (uma usada pelo grÃ¡fico, outra pela tabela). Unificar em uma Ãºnica chave de traduÃ§Ã£o compartilhada evita essa divergÃªncia.
+3
+Contadores de resultado ("X resultados", "X alertas", "X modelos", "X participantes"...)
+Repetido em quase toda tela com lista/tabela (Projetos, Clientes, Pedidos de CrÃ©dito, Modelos de E-mail, FormulÃ¡rios, Participantes, widgets do Dashboard)
+Principalmente Espanhol, tambÃ©m ocorre em 
+InglÃªs
+Ã‰ o tipo de erro mais frequente do sistema. Sugerimos criar uma Ãºnica chave de traduÃ§Ã£o genÃ©rica para "contador + substantivo" e reaproveitÃ¡-la em todas as listagens.
+4
+PÃ¡gina quase 100% 
+intraduzida
+: "Gerenciar CompetÃªncias"
+Categoria, tÃ­tulo, subtÃ­tulo, rÃ³tulos dos 4 passos, cabeÃ§alho de coluna e instruÃ§Ãµes da barra lateral â€” quase nada foi traduzido, tanto em inglÃªs quanto em espanhol
+InglÃªs e 
+Espanhol
+Parece que esta tela nunca recebeu as chaves de traduÃ§Ã£o em EN/ES. Recomendamos tratÃ¡-la como prioridade, pois hoje um usuÃ¡rio estrangeiro nÃ£o consegue entender a tela.
+5
+Tela "Pedidos de CrÃ©dito" quase 100% 
+intraduzida
+ (somente em 
+Espanhol
+)
+Categoria, tÃ­tulo, subtÃ­tulo, botÃ£o principal, 4 de 8 cabeÃ§alhos de coluna e estado vazio
+Espanhol
+Ao contrÃ¡rio da versÃ£o em inglÃªs (que estÃ¡ correta), a traduÃ§Ã£o em espanhol desta tela parece nunca ter sido feita.
+6
+Mistura de dois idiomas na mesma cÃ©lula, cabeÃ§alho ou legenda
+Muito comum no Dashboard em espanhol: cÃ©lula com "1d de retraso 
+Overdue
+", selo "CONSUMED / RESERVED / DISPONIBLES", legenda com "
+Peer
+ / 
+Subordinate
+ / 
+Evaluado
+ / Manager / 
+Otros
+"
+Espanhol (pontualmente em 
+InglÃªs
+)
+Sinal de que a traduÃ§Ã£o de cada componente foi feita separadamente, sem revisÃ£o do conjunto. Uma revisÃ£o visual tela por tela, comparando os 3 idiomas lado a lado, ajudaria a evitar isso.
+7
+Papel de usuÃ¡rio "
+viewer
+" nunca traduzido
+Tela "UsuÃ¡rios e Grupos", coluna de Perfil â€” aparece em minÃºsculo e em inglÃªs nos 3 idiomas (PT, EN e ES), enquanto "Admin" e "Master" sÃ£o mantidos corretamente sem traduÃ§Ã£o
+PortuguÃªs, 
+InglÃªs
+ e 
+Espanhol
+NÃ£o Ã© um erro de traduÃ§Ã£o em si (Ã© igual em todo idioma), mas uma inconsistÃªncia de estilo. Recomenda-se padronizar como "Visualizador" (ES) / "
+Viewer
+" com inicial maiÃºscula (EN), jÃ¡ usados corretamente no texto do painel de Perfis e PermissÃµes.
+8
+Formato de data nÃ£o padronizado por idioma
+No Dashboard em inglÃªs as datas aparecem convertidas para o padrÃ£o americano (ex.: 9/17/2026); na tela de FormulÃ¡rios de AvaliaÃ§Ã£o, as mesmas datas continuam no padrÃ£o brasileiro (28/08/2026) mesmo com o idioma em inglÃªs
+InglÃªs (e, em menor grau, 
+Espanhol
+)
+NÃ£o Ã© bem um erro de texto, mas de localizaÃ§Ã£o: vale garantir que todas as telas usem a mesma funÃ§Ã£o central de formataÃ§Ã£o de data conforme o idioma selecionado.

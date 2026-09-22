@@ -1,3 +1,66 @@
+.credit-summary-panel {
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+  background: #f8fafc;
+
+  &__head {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+
+    mat-icon {
+      color: #1b84ff;
+    }
+
+    strong {
+      display: block;
+      font-size: 14px;
+      color: #1b2d56;
+    }
+
+    span {
+      display: block;
+      font-size: 12px;
+      color: #5c6b80;
+    }
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+
+    div {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      span {
+        font-size: 11px;
+        color: #5c6b80;
+      }
+
+      strong {
+        font-size: 15px;
+        color: #1b2d56;
+      }
+
+      small {
+        font-size: 10px;
+        color: #1b84ff;
+      }
+    }
+  }
+
+  &__link {
+    width: 100%;
+  }
+}
+
 // ─── Cabeçalho ────────────────────────────────────────────────
 .dialog-header {
   display: flex;

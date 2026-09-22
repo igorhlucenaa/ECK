@@ -133,12 +133,12 @@
 
         <ng-container matColumnDef="type">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Tipo' | translate }}</th>
-          <td mat-cell *matCellDef="let participant">{{ participant.type }}</td>
+          <td mat-cell *matCellDef="let participant">{{ participantTypeLabel(participant.type) }}</td>
         </ng-container>
 
         <ng-container matColumnDef="category">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Categoria' | translate }}</th>
-          <td mat-cell *matCellDef="let participant">{{ participant.category }}</td>
+          <td mat-cell *matCellDef="let participant">{{ participantCategoryLabel(participant.category) }}</td>
         </ng-container>
 
         <ng-container matColumnDef="projectName">
@@ -543,7 +543,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Tipo' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
             <span class="type-badge" [class.type-badge--avaliado]="participant.type === 'avaliado'" [class.type-badge--avaliador]="participant.type === 'avaliador'">
-              {{ participant.type }}
+              {{ participantTypeLabel(participant.type) }}
             </span>
           </td>
         </ng-container>
@@ -551,7 +551,7 @@
         <ng-container matColumnDef="category">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Categoria' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
-            <span class="category-text">{{ participant.category }}</span>
+            <span class="category-text">{{ participantCategoryLabel(participant.category) }}</span>
           </td>
         </ng-container>
 

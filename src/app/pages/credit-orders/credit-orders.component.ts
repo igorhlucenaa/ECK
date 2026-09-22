@@ -16,7 +16,7 @@ import {
   where,
   writeBatch,
 } from '@angular/fire/firestore';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,6 +28,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { computeDaysRemaining } from 'src/app/utils/credit-validity.util';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -40,7 +41,7 @@ export interface Order {
   openingBalance: number; // Créditos iniciais
   usedBalance: number; // Créditos utilizados
   remainingBalance: number; // Créditos restantes
-  daysRemaining: number; // Dias até expiração
+  daysRemaining: number | null; // Dias até expiração
   status: 'Pendente' | 'Aprovado' | 'Rejeitado' | 'Expirado';
   createdAt: Date;
   expirationDate: Date; // Data de expiração
@@ -112,11 +113,17 @@ export class CreditOrdersComponent implements OnInit {
     private authService: AuthService,
     private dialog: MatDialog,
     private dependencyCheck: DependencyCheckService,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private route: ActivatedRoute
   ) {}
 
-  ngOnInit(): void {
-    this.loadOrders();
+  async ngOnInit(): Promise<void> {
+    const clientIdFromUrl = this.route.snapshot.queryParamMap.get('clientId');
+    await this.loadOrders();
+    if (clientIdFromUrl && this.clientsList.some((c) => c.id === clientIdFromUrl)) {
+      this.selectedClient = clientIdFromUrl;
+      this.applyFilter();
+    }
   }
 
   private getStatusPriority(status: string): number {
@@ -191,15 +198,8 @@ export class CreditOrdersComponent implements OnInit {
 
       const orders = ordersSnapshot.docs.map((doc) => {
         const data = doc.data();
-        const validityDate = data['validityDate']?.toDate();
-        const daysRemaining = validityDate
-          ? Math.max(
-              0,
-              Math.ceil(
-                (validityDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-              )
-            )
-          : 0;
+        const validityDate = data['validityDate']?.toDate?.() ?? null;
+        const daysRemaining = computeDaysRemaining(validityDate);
 
         const totalCredits = data['credits'] || 0;
         // FIFO: cada pedido rastreia seu próprio remainingCredits

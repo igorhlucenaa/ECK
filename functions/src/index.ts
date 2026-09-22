@@ -29,6 +29,8 @@ export {
   notifyReportReleased,
 };
 
+export { sendBrandedPasswordResetEmail } from './branded-password-reset-email.js';
+
 const PdfPrinter = require('pdfmake/js/Printer').default as {
   new (fonts: Record<string, unknown>): {
     createPdfKitDocument: (docDefinition: Record<string, unknown>) => Promise<{

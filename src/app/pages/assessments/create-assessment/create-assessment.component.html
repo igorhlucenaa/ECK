@@ -27,7 +27,11 @@
           <mat-icon>tune</mat-icon>
         </div>
         <span class="info-card__title">Configurações do formulário</span>
-        <div class="info-card__ok" *ngIf="form.get('clientId')?.value">
+        <div class="info-card__ok" *ngIf="form.get('isGlobalTemplate')?.value">
+          <mat-icon>public</mat-icon>
+          {{ 'assessments.global.badge' | translate }}
+        </div>
+        <div class="info-card__ok" *ngIf="!form.get('isGlobalTemplate')?.value && form.get('clientId')?.value">
           <mat-icon>check_circle</mat-icon>
           Cliente selecionado
         </div>
@@ -49,8 +53,18 @@
             <input class="info-field__input" formControlName="description" placeholder="Opcional — descreva o objetivo desta avaliação" />
           </div>
 
+          <div class="info-field info-field--span2" *ngIf="canSetGlobalTemplate">
+            <div class="global-template-toggle">
+              <mat-slide-toggle color="primary" formControlName="isGlobalTemplate"></mat-slide-toggle>
+              <div>
+                <strong>{{ 'assessments.global.toggle' | translate }}</strong>
+                <span>{{ 'assessments.global.toggleHint' | translate }}</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Cliente -->
-          <div class="info-field">
+          <div class="info-field" *ngIf="!form.get('isGlobalTemplate')?.value">
             <label class="info-field__label"><mat-icon>business</mat-icon>Cliente<span class="req">*</span></label>
             <mat-form-field appearance="outline" class="info-select-field">
               <mat-select formControlName="clientId" (selectionChange)="onClientChange($event)">

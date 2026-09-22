@@ -1,5 +1,6 @@
 export const environment = {
   production: true,
+  useFunctionsEmulator: false,
   disableProductTour: false,
   /** Não usar em produção; master informa a senha manualmente. */
   qaDefaultPassword: '',

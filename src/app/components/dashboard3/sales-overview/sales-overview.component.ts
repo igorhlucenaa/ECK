@@ -6,7 +6,10 @@ import {
   Input,
   OnChanges,
   SimpleChanges,
+  inject,
 } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
+import { formatCountLabel } from 'src/app/utils/i18n-labels.util';
 import {
   ApexChart,
   ChartComponent,
@@ -47,6 +50,8 @@ export interface SalesOverviewChart {
 export class AppSalesOverview2Component implements OnChanges {
   @ViewChild('chart') chart: ChartComponent = Object.create(null);
 
+  private translate = inject(TranslateService);
+
   // Alterado para receber projetos ativos por cliente
   @Input() projectsByClientData!: { client: string; projects: number }[];
 
@@ -70,8 +75,9 @@ export class AppSalesOverview2Component implements OnChanges {
     const projects = sorted.map(d => d.projects);
     const maxVal   = Math.max(...projects);
 
+    const translate = this.translate;
     this.salesoverChart = {
-      series: [{ name: 'Projetos Ativos', data: projects }],
+      series: [{ name: translate.instant('Projetos Ativos'), data: projects }],
       chart: {
         type: 'bar',
         // Altura dinâmica: cada cliente ocupa ~36px, mínimo 200px
@@ -125,7 +131,10 @@ export class AppSalesOverview2Component implements OnChanges {
       legend: { show: false },
       tooltip: {
         theme: 'light',
-        y: { formatter: (val: number) => `${val} projeto${val !== 1 ? 's' : ''}` },
+        y: {
+          formatter: (val: number) =>
+            formatCountLabel(translate, val, 'projeto', 'projetos'),
+        },
       },
     };
   }

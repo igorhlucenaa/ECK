@@ -34,6 +34,46 @@
 }
 
 // ─── Grid de cards ────────────────────────────────────────────
+.credit-summary-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.credit-summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+
+  &__label {
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  strong {
+    font-size: 18px;
+    color: #0f172a;
+  }
+}
+
+.credit-summary-hint {
+  font-size: 11px;
+  color: #2563eb;
+}
+
+.credit-summary-link {
+  margin-left: auto;
+}
+
+.form-card-icon--credit {
+  background: #ecfdf5;
+  mat-icon {
+    color: #059669;
+  }
+}
+
 .form-grid {
   display: flex;
   flex-direction: column;

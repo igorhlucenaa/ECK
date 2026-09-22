@@ -30,6 +30,7 @@ import { editorLocalization } from 'survey-creator-core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { CompetencyQuestionsService, CompetencyQuestionSource } from 'src/app/services/competency-questions.service';
+import { isGlobalAssessmentTemplate } from 'src/app/utils/assessment-templates.util';
 
 // Sobrescrevendo traduções
 const ptBRLocale = editorLocalization.getLocale('pt');
@@ -74,11 +75,16 @@ export class CreateAssessmentComponent implements OnInit {
     // Inicializa o formulário de metadados
     this.form = this.fb.group({
       clientId: ['', Validators.required],
+      isGlobalTemplate: [false],
       name: ['', Validators.required],
       description: [''],
       competencyIds: [[]], // Alterado para FormControl para multi-select
       mixQuestions: [true],
     });
+  }
+
+  get canSetGlobalTemplate(): boolean {
+    return this.userRole === 'admin_master';
   }
 
   async ngOnInit(): Promise<void> {
@@ -119,6 +125,10 @@ export class CreateAssessmentComponent implements OnInit {
       if (assessmentId) {
         await this.loadAssessment(assessmentId);
       }
+    });
+
+    this.form.get('isGlobalTemplate')?.valueChanges.subscribe((global) => {
+      this.applyGlobalTemplateMode(!!global);
     });
 
     // Observa mudanças no clientId para carregar competências
@@ -500,6 +510,9 @@ export class CreateAssessmentComponent implements OnInit {
 
       const data = docSnap.data();
       const clientId = data['clientId'];
+      const isGlobal = isGlobalAssessmentTemplate(data as Record<string, unknown>);
+      this.form.patchValue({ isGlobalTemplate: isGlobal }, { emitEvent: false });
+      this.applyGlobalTemplateMode(isGlobal);
       const savedCompetencyIds: string[] = data['competencyIds'] || [];
       const savedMixQuestions: boolean = data['mixQuestions'] ?? true;
 
@@ -642,10 +655,18 @@ export class CreateAssessmentComponent implements OnInit {
       const surveyJSON = this.creatorModel.JSON;
       const currentTheme = this.creatorModel.theme as ITheme;
       const rawFormValue = this.form.getRawValue();
+      const isGlobal =
+        this.canSetGlobalTemplate && !!rawFormValue.isGlobalTemplate;
+      const clientIdForSave = isGlobal ? null : rawFormValue.clientId;
 
-      const formData = {
-        ...rawFormValue,
-        competencyGroupId: this.selectedGroupId || null,
+      const formData: Record<string, unknown> = {
+        name: rawFormValue.name,
+        description: rawFormValue.description || '',
+        clientId: clientIdForSave,
+        isGlobalTemplate: isGlobal,
+        competencyIds: rawFormValue.competencyIds || [],
+        mixQuestions: rawFormValue.mixQuestions ?? true,
+        competencyGroupId: isGlobal ? null : this.selectedGroupId || null,
         surveyJSON,
         theme: currentTheme,
         createdBy: {
@@ -660,8 +681,11 @@ export class CreateAssessmentComponent implements OnInit {
       if (assessmentId) {
         // Atualiza documento existente
         const docRef = doc(this.firestore, 'assessments', assessmentId);
-        await updateDoc(docRef, formData);
-        await this.syncSelectedCompetencyGroup(assessmentId, rawFormValue.clientId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await updateDoc(docRef, formData as any);
+        if (!isGlobal && clientIdForSave) {
+          await this.syncSelectedCompetencyGroup(assessmentId, clientIdForSave);
+        }
 
         this.snackBar.open(this.translate.instant('Formulário atualizado com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
@@ -670,7 +694,9 @@ export class CreateAssessmentComponent implements OnInit {
         // Cria um novo formulário associado ao cliente
         const assessmentsCollection = collection(this.firestore, 'assessments');
         const assessmentRef = await addDoc(assessmentsCollection, formData);
-        await this.syncSelectedCompetencyGroup(assessmentRef.id, rawFormValue.clientId);
+        if (!isGlobal && clientIdForSave) {
+          await this.syncSelectedCompetencyGroup(assessmentRef.id, clientIdForSave);
+        }
 
         this.snackBar.open(this.translate.instant('Formulário criado com sucesso!'), this.translate.instant('Fechar'), {
           duration: 3000,
@@ -684,6 +710,27 @@ export class CreateAssessmentComponent implements OnInit {
         duration: 3000,
       });
     }
+  }
+
+  private applyGlobalTemplateMode(global: boolean): void {
+    const clientCtrl = this.form.get('clientId');
+    if (!clientCtrl) return;
+    if (global && this.canSetGlobalTemplate) {
+      clientCtrl.clearValidators();
+      clientCtrl.setValue('', { emitEvent: false });
+      clientCtrl.disable({ emitEvent: false });
+      this.competencies = [];
+      this.competencyGroups = [];
+      this.competencyLists = [];
+      this.selectedGroupId = '';
+      this.form.get('competencyIds')?.setValue([], { emitEvent: false });
+    } else {
+      clientCtrl.setValidators(Validators.required);
+      if (this.userRole !== 'admin_client') {
+        clientCtrl.enable({ emitEvent: false });
+      }
+    }
+    clientCtrl.updateValueAndValidity({ emitEvent: false });
   }
 
   onClientChange(event: any): void {

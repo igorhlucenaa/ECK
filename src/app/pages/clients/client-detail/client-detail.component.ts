@@ -12,6 +12,11 @@ import { MaterialModule } from 'src/app/material.module';
 import { CommonModule, Location } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { ClientCreditValiditySummary } from 'src/app/utils/credit-validity.util';
+import {
+  formatDatePtBr,
+  loadClientCreditValiditySummary,
+} from 'src/app/utils/client-credit-summary.util';
 
 @Component({
   selector: 'app-client-detail',
@@ -24,6 +29,12 @@ export class ClientDetailComponent implements OnInit {
   clientId!: string; // ID do cliente (definido pela rota)
   clientForm!: FormGroup; // Formulário reativo
   isLoading = true; // Indicador de carregamento
+  creditSummary: ClientCreditValiditySummary = {
+    creditsAvailable: 0,
+    nearestValidity: null,
+    nearestOrderStatus: null,
+    daysRemaining: null,
+  };
 
   constructor(
     private route: ActivatedRoute,
@@ -45,7 +56,9 @@ export class ClientDetailComponent implements OnInit {
     try {
       const docSnap = await getDoc(clientDocRef);
       if (docSnap.exists()) {
-        this.initForm(docSnap.data());
+        const data = docSnap.data();
+        this.initForm(data);
+        await this.loadCreditSummary(data);
       } else {
         this.snackBar.open(this.translate.instant('Cliente não encontrado.'), this.translate.instant('Fechar'), {
           duration: 3000,
@@ -117,4 +130,14 @@ export class ClientDetailComponent implements OnInit {
   goBack(): void {
     this.location.back();
   }
+
+  private async loadCreditSummary(clientData: Record<string, unknown>): Promise<void> {
+    this.creditSummary = await loadClientCreditValiditySummary(
+      this.firestore,
+      this.clientId,
+      clientData
+    );
+  }
+
+  formatDatePtBr = formatDatePtBr;
 }

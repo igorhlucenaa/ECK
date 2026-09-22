@@ -190,7 +190,7 @@
                 <button class="link-chip" *ngIf="user.clients?.length > 0"
                   (click)="openDetailsModal(clientUsersTitle, user.clients)">
                   <mat-icon>business</mat-icon>
-                  <span>{{ user.clients.length }} cliente{{ user.clients.length !== 1 ? 's' : '' }}</span>
+                  <span>{{ user.clients.length }} {{ (user.clients.length === 1 ? 'cliente' : 'clientes') | translate }}</span>
                 </button>
                 <span class="empty-tag" *ngIf="!user.clients?.length">—</span>
               </td>
@@ -205,7 +205,7 @@
                 <button class="link-chip link-chip--project" *ngIf="user.projects.length > 0"
                   (click)="openDetailsModal(userProjectsTitle, user.projects)">
                   <mat-icon>folder_open</mat-icon>
-                  <span>{{ user.projects.length }} projeto{{ user.projects.length !== 1 ? 's' : '' }}</span>
+                  <span>{{ user.projects.length }} {{ (user.projects.length === 1 ? 'projeto' : 'projetos') | translate }}</span>
                 </button>
                 <span class="empty-tag" *ngIf="user.projects.length === 0">—</span>
               </td>
@@ -220,7 +220,7 @@
                 <button class="link-chip link-chip--group" *ngIf="user.groups.length > 0"
                   (click)="openDetailsModal(userGroupsTitle, user.groups)">
                   <mat-icon>group</mat-icon>
-                  <span>{{ user.groups.length }} grupo{{ user.groups.length !== 1 ? 's' : '' }}</span>
+                  <span>{{ user.groups.length }} {{ (user.groups.length === 1 ? 'grupo' : 'grupos') | translate }}</span>
                 </button>
                 <span class="empty-tag" *ngIf="user.groups.length === 0">—</span>
               </td>

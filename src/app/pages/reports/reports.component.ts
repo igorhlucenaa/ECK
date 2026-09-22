@@ -68,6 +68,8 @@ import { LoadingService } from '../../services/loading.service';
 import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
 import { AuthService } from '../../services/apps/authentication/auth.service';
 import { CompetencyQuestionsService } from '../../services/competency-questions.service';
+import { formatCountLabel } from '../../utils/i18n-labels.util';
+import { fetchAssessmentsForClientScope } from '../../utils/assessment-templates.util';
 import { query, where } from '@angular/fire/firestore';
 import { JohariWindowChartComponent, JohariWindowData } from './charts/johari-window-chart/johari-window-chart.component';
 import { JOHARI_THRESHOLD } from './charts/johari-window-chart/johari-window.utils';
@@ -3612,7 +3614,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (reportSnap.exists()) {
         const reportData = reportSnap.data();
         this.relatorioConfiguracao = normalizeRelatorioConfiguracao(reportData['configuracao'] || []);
-        this.competencias = reportData['competencias'] || [];
+        const savedCompetencias: Competencia[] = reportData['competencias'] || [];
+        this.mergeImportedCompetenciasIntoCatalog(savedCompetencias);
+        this.competencias =
+          savedCompetencias.length > 0 ? [...savedCompetencias] : [...this.competencias];
         if (reportData['documentoConfig']) {
           this.documentoConfig = {
             cabecalho: { ...DOCUMENTO_CONFIG_PADRAO.cabecalho, ...reportData['documentoConfig'].cabecalho },
@@ -5594,11 +5599,19 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       ...sec,
       competenciasIds: []
     }));
+    const competenciasModelo = sanitize(
+      (this.competencias || []).map((c) => ({
+        nome: c.nome,
+        descricao: c.descricao || '',
+        perguntasIds: Array.isArray(c.perguntasIds) ? [...c.perguntasIds] : [],
+      }))
+    );
     const templateData = {
       nome,
       clientId,
       configuracao: configuracaoSemCompetencias,
       documentoConfig: sanitize(this.documentoConfig),
+      competenciasModelo,
       criadoEm: new Date()
     };
     try {
@@ -5828,7 +5841,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.nomeTemplateControl.setValue(templateData['nome']);
       }
 
-      // Injetar as competências da avaliação atual em todas as seções que dependem delas
+      const modelo: { nome?: string; descricao?: string; perguntasIds?: string[] }[] = Array.isArray(
+        templateData['competenciasModelo']
+      )
+        ? templateData['competenciasModelo']
+        : [];
+      if (modelo.length > 0) {
+        this.applyCompetenciasModeloFromTemplate(modelo);
+      }
+
+      // Injetar as competências ativas em todas as seções que dependem delas
       if (this.competencias.length > 0) {
         const compIds = this.competencias.map(c => c.id);
         this.relatorioConfiguracao.forEach(sec => {
@@ -7209,26 +7231,28 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    const assessmentsSnap = await getDocs(
-      query(collection(this.firestore, 'assessments'), where('clientId', '==', clientId))
-    );
-    this.clientAssessments = assessmentsSnap.docs
-      .map(d => ({
-        id: d.id,
-        name: d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    const scoped = await fetchAssessmentsForClientScope(this.firestore, clientId);
+    this.clientAssessments = scoped.map((a) => ({
+      id: a.id,
+      name: a.name,
+    }));
 
-    assessmentsSnap.docs.forEach(d => {
-      const projectId = d.data()['projectId'] as string | undefined;
+    for (const item of scoped) {
+      const d = await getDoc(doc(this.firestore, 'assessments', item.id));
+      if (!d.exists()) continue;
+      const data = d.data();
+      const projectId = data['projectId'] as string | undefined;
       if (projectId && this.filterProjects.some(p => p.id === projectId)) {
         this.registerAssessmentProjectLink(d.id, projectId);
       }
-      const entry = { id: d.id, name: d.data()['name'] || d.data()['surveyJSON']?.['title'] || d.id };
-      if (!this.assessments.find(a => a.id === entry.id)) {
-        this.assessments.push(entry);
+      const assessmentEntry = {
+        id: d.id,
+        name: data['name'] || data['surveyJSON']?.['title'] || d.id,
+      };
+      if (!this.assessments.find(a => a.id === assessmentEntry.id)) {
+        this.assessments.push(assessmentEntry);
       }
-    });
+    }
 
     this.filteredAssessments = [...this.clientAssessments];
   }
@@ -8414,34 +8438,107 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  async loadAllAvailableGroups(): Promise<void> {
-    if (this.allAvailableGroups.length > 0) return; // já carregado
+  async loadAllAvailableGroups(force = false): Promise<void> {
+    if (!force && this.allAvailableGroups.length > 0) return;
     this.importGroupLoading = true;
     this.cdr.detectChanges();
     try {
+      const allowedClientIds = new Set((this.clients || []).map((c) => c.id).filter(Boolean));
       const snap = await getDocs(collection(this.firestore, 'competencyGroups'));
-      // Monta mapa de assessmentId �?' nome para exibição
       const assessmentNames: { [id: string]: string } = {};
-      this.assessments.forEach(a => { assessmentNames[a.id] = a.name; });
+      this.assessments.forEach((a) => {
+        assessmentNames[a.id] = a.name;
+      });
+      const clientNameById = new Map((this.clients || []).map((c) => [c.id, c.name]));
 
       this.allAvailableGroups = snap.docs
-        .map(d => {
+        .map((d) => {
           const data = d.data();
-          const competencias: any[] = Array.isArray(data['competencias']) ? data['competencias'] : [];
+          const clientId = data['clientId'] as string | undefined;
+          if (allowedClientIds.size > 0 && clientId && !allowedClientIds.has(clientId)) {
+            return null;
+          }
+          const competencias: Competencia[] = Array.isArray(data['competencias'])
+            ? data['competencias']
+            : [];
           return {
             id: d.id,
             name: data['name'] || 'Grupo sem nome',
-            assessmentName: assessmentNames[data['assessmentId']] || data['assessmentId'] || '—',
-            clientName: data['clientName'] || data['clientId'] || '—',
-            competencias
+            assessmentName:
+              assessmentNames[data['assessmentId']] || data['assessmentId'] || '—',
+            clientName: clientNameById.get(clientId || '') || clientId || '—',
+            competencias,
           };
         })
-        .filter(g => g.competencias.length > 0); // só grupos com competências
+        .filter(
+          (g): g is NonNullable<typeof g> => !!g && g.competencias.length > 0
+        )
+        .sort((a, b) =>
+          `${a.clientName} ${a.name}`.localeCompare(`${b.clientName} ${b.name}`, 'pt-BR')
+        );
     } catch (e) {
       console.error('Erro ao carregar grupos disponíveis:', e);
     }
     this.importGroupLoading = false;
     this.cdr.detectChanges();
+  }
+
+  private mergeImportedCompetenciasIntoCatalog(list: Competencia[]): void {
+    if (!list?.length) return;
+    const merged = [...this.allCompetencies];
+    const seen = new Set(merged.map((c) => c.id));
+    for (const c of list) {
+      if (!c?.id || seen.has(c.id)) continue;
+      seen.add(c.id);
+      merged.push({
+        id: c.id,
+        nome: c.nome || 'Competência sem nome',
+        descricao: c.descricao || '',
+        perguntasIds: Array.isArray(c.perguntasIds) ? [...c.perguntasIds] : [],
+      });
+    }
+    this.allCompetencies = merged;
+  }
+
+  private applyCompetenciasModeloFromTemplate(
+    modelo: { nome?: string; descricao?: string; perguntasIds?: string[] }[]
+  ): void {
+    const imported: Competencia[] = [];
+    for (const item of modelo) {
+      const perguntasIds = Array.isArray(item.perguntasIds) ? item.perguntasIds : [];
+      const byQuestions = this.allCompetencies.find(
+        (c) =>
+          perguntasIds.length > 0 &&
+          perguntasIds.every((id) => (c.perguntasIds || []).includes(id))
+      );
+      const byName = this.allCompetencies.find(
+        (c) =>
+          item.nome &&
+          c.nome?.localeCompare(item.nome, 'pt-BR', { sensitivity: 'accent' }) === 0
+      );
+      const existing = byQuestions || byName;
+      if (existing) {
+        imported.push(existing);
+        continue;
+      }
+      const newComp: Competencia = {
+        id: `import_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        nome: item.nome || 'Competência importada',
+        descricao: item.descricao || '',
+        perguntasIds: [...perguntasIds],
+      };
+      this.allCompetencies = [...this.allCompetencies, newComp];
+      imported.push(newComp);
+    }
+    if (imported.length > 0) {
+      this.competencias = imported;
+    }
+  }
+
+  onImportGroupSelectOpened(opened: boolean): void {
+    if (opened) {
+      void this.loadAllAvailableGroups(true);
+    }
   }
 
   getImportGroupHint(): string {
@@ -8478,9 +8575,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.invalidateCache('secao-');
     this.snackBar.open(
       added > 0
-        ? `${added} competência${added !== 1 ? 's' : ''} importada${added !== 1 ? 's' : ''} de "${group.name}"`
-        : 'Todas as competências desse grupo já estão na lista.',
-      'Fechar',
+        ? this.t('reports.importGroup.success')
+            .replace('{{count}}', String(added))
+            .replace('{{name}}', group.name)
+        : this.t('reports.importGroup.alreadyImported'),
+      this.t('Fechar'),
       { duration: 3500 }
     );
     this.cdr.detectChanges();
@@ -8500,7 +8599,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getGrupoText(): string {
     const count = this.competencyGroups.length;
-    return `${count} grupo${count !== 1 ? 's' : ''} salvo${count !== 1 ? 's' : ''}`;
+    const base = formatCountLabel(this.translate, count, 'grupo', 'grupos');
+    return `${base} ${this.t(count === 1 ? 'salvo' : 'salvos')}`;
   }
 
   getQuestaoText(count: number): string {

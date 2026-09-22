@@ -28,7 +28,10 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router, RouterModule } from '@angular/router';
 import { fixMojibake } from 'src/app/utils/encoding.utils';
-import { translateParticipantCategory } from 'src/app/utils/i18n-labels.util';
+import {
+  formatCountLabel,
+  translateParticipantCategory,
+} from 'src/app/utils/i18n-labels.util';
 
 // â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -420,7 +423,7 @@ export class DashboardComponent implements OnInit {
     this.funnelInvitedProjectIds = invitedParticipantProjectIds;
     this.funnelClientsMap = new Map(clientsSnap.docs.map(d => [d.id, fixMojibake((d.data()['companyName'] as string) || '')]));
     this.funnelClientOptions = [
-      { id: 'all', name: 'Todos os clientes' },
+      { id: 'all', name: this.translate.instant('Todos os clientes') },
       ...clientsSnap.docs.map(d => ({ id: d.id, name: fixMojibake((d.data()['companyName'] as string) || '—') })),
     ];
     this.buildFunnelData(projectsSnap.docs, invitedParticipantProjectIds);
@@ -479,7 +482,7 @@ export class DashboardComponent implements OnInit {
       });
       this.clientName = clientSnaps.length === 1
         ? (clientSnaps[0].exists() ? fixMojibake(clientSnaps[0].data()['companyName'] || '') : '')
-        : `${clientSnaps.length} clientes`;
+        : formatCountLabel(this.translate, clientSnaps.length, 'cliente', 'clientes');
     }
 
     // Busca projetos, participantes e assessments

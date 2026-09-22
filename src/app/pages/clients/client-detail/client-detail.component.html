@@ -30,6 +30,40 @@
   <form [formGroup]="clientForm" (ngSubmit)="saveChanges()">
     <div class="form-grid">
 
+      <div class="form-card credit-summary-card">
+        <div class="form-card-header">
+          <div class="form-card-icon form-card-icon--credit">
+            <mat-icon>account_balance_wallet</mat-icon>
+          </div>
+          <div>
+            <h3 class="form-card-title">{{ 'clients.creditSummary.title' | translate }}</h3>
+            <p class="form-card-subtitle">{{ 'clients.creditSummary.subtitle' | translate }}</p>
+          </div>
+        </div>
+        <div class="form-card-body credit-summary-body">
+          <div class="credit-summary-stat">
+            <span class="credit-summary-stat__label">{{ 'Disponíveis' | translate }}</span>
+            <strong>{{ creditSummary.creditsAvailable }}</strong>
+          </div>
+          <div class="credit-summary-stat">
+            <span class="credit-summary-stat__label">{{ 'Validade' | translate }}</span>
+            <strong>{{ formatDatePtBr(creditSummary.nearestValidity) }}</strong>
+            <span class="credit-summary-hint" *ngIf="creditSummary.nearestOrderStatus === 'Pendente'">
+              {{ 'clients.creditSummary.pendingOrder' | translate }}
+            </span>
+          </div>
+          <div class="credit-summary-stat">
+            <span class="credit-summary-stat__label">{{ 'Prazo' | translate }}</span>
+            <strong *ngIf="creditSummary.daysRemaining !== null">{{ creditSummary.daysRemaining }}d</strong>
+            <strong *ngIf="creditSummary.daysRemaining === null">—</strong>
+          </div>
+          <a mat-stroked-button color="primary" routerLink="/orders" [queryParams]="{ clientId: clientId }" class="credit-summary-link">
+            <mat-icon>receipt_long</mat-icon>
+            {{ 'clients.creditSummary.openOrders' | translate }}
+          </a>
+        </div>
+      </div>
+
       <!-- Seção: Dados da Empresa -->
       <div class="form-card">
         <div class="form-card-header">

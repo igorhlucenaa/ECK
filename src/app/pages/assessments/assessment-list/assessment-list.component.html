@@ -115,7 +115,10 @@
           <td mat-cell *matCellDef="let item">
             <div class="name-cell">
               <div class="name-avatar">{{ (item.name || 'F').charAt(0).toUpperCase() }}</div>
-              <span class="name-text">{{ item.name }}</span>
+              <span class="name-text">
+                <span class="global-badge" *ngIf="item.isGlobalTemplate">{{ 'assessments.global.badge' | translate }}</span>
+                {{ item.name }}
+              </span>
             </div>
           </td>
         </ng-container>
@@ -152,6 +155,12 @@
               [matTooltip]="'Pré-visualizar' | translate"
               (click)="previewAssessment(item)">
               <mat-icon>visibility</mat-icon>
+            </button>
+            <button mat-icon-button class="action-edit"
+              *ngIf="canManageAssessments"
+              [matTooltip]="'assessments.duplicate.action' | translate"
+              (click)="duplicateAssessmentForClient(item)">
+              <mat-icon>content_copy</mat-icon>
             </button>
             <button mat-icon-button class="action-edit"
               *ngIf="canManageAssessments"

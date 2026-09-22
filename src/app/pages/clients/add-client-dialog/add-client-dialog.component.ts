@@ -1,5 +1,6 @@
-import { CommonModule, Location } from '@angular/common';
-import { Component, Inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, Inject, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   Firestore,
   addDoc,
@@ -19,6 +20,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { NgxMaskDirective, NgxMaskPipe } from 'ngx-mask';
 import { MaterialModule } from 'src/app/material.module';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { ClientCreditValiditySummary } from 'src/app/utils/credit-validity.util';
+import {
+  formatDatePtBr,
+  loadClientCreditValiditySummary,
+} from 'src/app/utils/client-credit-summary.util';
 
 @Component({
   selector: 'app-add-client-dialog',
@@ -33,7 +39,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
   templateUrl: './add-client-dialog.component.html',
   styleUrls: ['./add-client-dialog.component.scss'],
 })
-export class AddClientDialogComponent {
+export class AddClientDialogComponent implements OnInit {
   form = new FormGroup({
     companyName: new FormControl('', [Validators.required]), // Nome do Cliente
     sector: new FormControl(''), // Setor
@@ -45,13 +51,22 @@ export class AddClientDialogComponent {
   isSubmitting = false;
   isEditing = false; // Flag para edição
   clientId: string | null = null; // ID do cliente, se for edição
+  creditSummaryLoading = false;
+  creditSummary: ClientCreditValiditySummary = {
+    creditsAvailable: 0,
+    nearestValidity: null,
+    nearestOrderStatus: null,
+    daysRemaining: null,
+  };
+  formatDatePtBr = formatDatePtBr;
 
   constructor(
     private firestore: Firestore,
     private snackBar: MatSnackBar,
     private dialogRef: MatDialogRef<AddClientDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private router: Router
   ) {
     if (data?.client) {
       this.isEditing = true;
@@ -65,6 +80,32 @@ export class AddClientDialogComponent {
       });
       this.logoPreview = data.client.logo; // Pré-visualização da logo existente
     }
+  }
+
+  ngOnInit(): void {
+    void this.loadCreditSummaryIfEditing();
+  }
+
+  private async loadCreditSummaryIfEditing(): Promise<void> {
+    if (!this.isEditing || !this.clientId || !this.data?.client) {
+      return;
+    }
+    this.creditSummaryLoading = true;
+    try {
+      this.creditSummary = await loadClientCreditValiditySummary(
+        this.firestore,
+        this.clientId,
+        this.data.client as Record<string, unknown>
+      );
+    } finally {
+      this.creditSummaryLoading = false;
+    }
+  }
+
+  openCreditOrders(): void {
+    if (!this.clientId) return;
+    this.dialogRef.close(false);
+    void this.router.navigate(['/orders'], { queryParams: { clientId: this.clientId } });
   }
 
   onFileSelected(event: Event): void {

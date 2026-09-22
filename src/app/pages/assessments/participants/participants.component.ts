@@ -47,14 +47,19 @@ import { SendHistoryDialogComponent } from './send-history-dialog/send-history-d
 import { ReportGenerationModalComponent } from '../../project/report-generation-modal/report-generation-modal.component';
 import { Router, RouterLink } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import {
+  translateParticipantCategory,
+  translateParticipantType,
+} from 'src/app/utils/i18n-labels.util';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ProjectService } from 'src/app/services/project.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 import { ParticipantCreditService } from 'src/app/services/participant-credit.service';
+import { UserAdminService } from 'src/app/services/user-admin.service';
 import { HasPermissionDirective } from 'src/app/directives/has-permission.directive';
 import { hasPermission, AppRole } from 'src/app/config/permissions.config';
-import { Auth, sendPasswordResetEmail, ActionCodeSettings } from '@angular/fire/auth';
+import { Auth } from '@angular/fire/auth';
 import { FirebaseApp } from '@angular/fire/app';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
@@ -278,9 +283,18 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     private auth: Auth,
     private firebaseApp: FirebaseApp,
     private translate: TranslateService,
+    private userAdminService: UserAdminService,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: ModalData | null,
     @Optional() public dialogRef: MatDialogRef<ParticipantsComponent>
   ) {}
+
+  participantTypeLabel(type: string | undefined): string {
+    return translateParticipantType(this.translate, type);
+  }
+
+  participantCategoryLabel(category: string | undefined): string {
+    return translateParticipantCategory(this.translate, category);
+  }
 
   async ngOnInit(): Promise<void> {
     this.isTableLoading = true;
@@ -2520,13 +2534,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       try { await deleteApp(secondaryApp); } catch {}
     }
 
-    // Envia e-mail com link de acesso
     try {
-      const actionCodeSettings: ActionCodeSettings = {
-        url: `${window.location.origin}/authentication/login`,
-        handleCodeInApp: false,
-      };
-      await sendPasswordResetEmail(this.auth, participant.email, actionCodeSettings);
+      await this.userAdminService.sendBrandedPasswordResetEmail(participant.email);
     } catch (err: any) {
       this.snackBar.open(
         `Visualizador criado, mas o e-mail não foi enviado: ${err?.message}`,

@@ -33,8 +33,6 @@ import {
 } from '@angular/fire/firestore';
 import {
   Auth,
-  sendPasswordResetEmail,
-  ActionCodeSettings,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from '@angular/fire/auth';
@@ -45,6 +43,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { updateDoc, doc } from '@angular/fire/firestore';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { UserAdminService } from 'src/app/services/user-admin.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Observable, of, timer } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
@@ -97,7 +96,8 @@ export class CreateUserComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: any,
     private router: Router,
     private authService: AuthService,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private userAdminService: UserAdminService
   ) {}
 
   ngOnInit(): void {
@@ -518,13 +518,8 @@ export class CreateUserComponent implements OnInit {
       return { authCreated: false, emailSent: false };
     }
 
-    // Envia e-mail com link de criação/redefinição de senha
     try {
-      const actionCodeSettings: ActionCodeSettings = {
-        url: `${window.location.origin}/authentication/login`,
-        handleCodeInApp: false,
-      };
-      await sendPasswordResetEmail(this.auth, email, actionCodeSettings);
+      await this.userAdminService.sendBrandedPasswordResetEmail(email);
       return { authCreated: true, emailSent: true };
     } catch (err: any) {
       console.error('Erro ao enviar e-mail de boas-vindas:', err?.code, err?.message);

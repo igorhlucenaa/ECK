@@ -99,6 +99,7 @@
             <mat-error *ngIf="orderForm.get('validityDate')?.hasError('minDate')">
               A data de validade deve ser igual ou posterior à data de início.
             </mat-error>
+            <mat-hint>{{ 'creditOrders.validityHint' | translate }}</mat-hint>
           </mat-form-field>
         </div>
 

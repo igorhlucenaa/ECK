@@ -9,9 +9,20 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
+import { TranslateModule } from '@ngx-translate/core';
+
+export interface DuplicateTemplateDialogResult {
+  name: string;
+  clientId: string;
+}
 
 export interface DuplicateTemplateDialogData {
   suggestedName: string;
+  clients: { id: string; name: string }[];
+  allowClientSelection: boolean;
+  initialClientId: string;
 }
 
 @Component({
@@ -24,20 +35,36 @@ export interface DuplicateTemplateDialogData {
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatSelectModule,
+    MatIconModule,
+    TranslateModule,
   ],
   template: `
-    <h2 mat-dialog-title>Duplicar template</h2>
+    <h2 mat-dialog-title>{{ 'mailTemplates.duplicate.title' | translate }}</h2>
     <mat-dialog-content>
-      <p class="mb-3">Defina o nome do novo template (copiado do original):</p>
+      <p class="mb-3">{{ 'mailTemplates.duplicate.intro' | translate }}</p>
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Nome do template</mat-label>
+        <mat-label>{{ 'Nome do template' | translate }}</mat-label>
         <input matInput [(ngModel)]="name" (keyup.enter)="confirm()" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-100" *ngIf="data.allowClientSelection">
+        <mat-label>{{ 'Cliente' | translate }}</mat-label>
+        <mat-icon matPrefix>business</mat-icon>
+        <mat-select [(ngModel)]="selectedClientId">
+          <mat-option [value]="globalClientValue">
+            {{ 'mailTemplates.defaultClientLabel' | translate }}
+          </mat-option>
+          <mat-option *ngFor="let client of data.clients" [value]="client.id">
+            {{ client.name }}
+          </mat-option>
+        </mat-select>
+        <mat-hint>{{ 'mailTemplates.duplicate.clientHint' | translate }}</mat-hint>
       </mat-form-field>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button color="primary" (click)="confirm()">
-        Duplicar
+      <button mat-button mat-dialog-close>{{ 'Cancelar' | translate }}</button>
+      <button mat-flat-button color="primary" (click)="confirm()" [disabled]="!(name || '').trim()">
+        {{ 'Duplicar' | translate }}
       </button>
     </mat-dialog-actions>
   `,
@@ -54,16 +81,32 @@ export interface DuplicateTemplateDialogData {
 })
 export class DuplicateTemplateDialogComponent {
   name: string;
+  selectedClientId: string;
+  readonly globalClientValue = '';
 
   constructor(
-    private dialogRef: MatDialogRef<DuplicateTemplateDialogComponent>,
+    private dialogRef: MatDialogRef<
+      DuplicateTemplateDialogComponent,
+      DuplicateTemplateDialogResult | undefined
+    >,
     @Inject(MAT_DIALOG_DATA) public data: DuplicateTemplateDialogData
   ) {
     this.name = data.suggestedName;
+    this.selectedClientId = data.allowClientSelection
+      ? data.initialClientId
+      : data.initialClientId;
   }
 
   confirm(): void {
     const trimmed = (this.name || '').trim();
-    this.dialogRef.close(trimmed || this.data.suggestedName);
+    if (!trimmed) {
+      return;
+    }
+    this.dialogRef.close({
+      name: trimmed,
+      clientId: this.data.allowClientSelection
+        ? this.selectedClientId
+        : this.data.initialClientId,
+    });
   }
 }

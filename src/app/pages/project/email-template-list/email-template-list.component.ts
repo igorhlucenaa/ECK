@@ -25,10 +25,15 @@ import { ParticipantsComponent } from '../../assessments/participants/participan
 import {
   DuplicateTemplateDialogComponent,
   DuplicateTemplateDialogData,
+  DuplicateTemplateDialogResult,
 } from './duplicate-template-dialog/duplicate-template-dialog.component';
+
+/** Valor do filtro «somente templates padrão (globais)». */
+export const MAIL_TEMPLATE_GLOBAL_CLIENT_FILTER = '__global__';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
+import { formatCountLabel } from 'src/app/utils/i18n-labels.util';
 
 @Component({
   selector: 'app-email-template-list',
@@ -62,8 +67,15 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
   projects: any[] = [];
   projectFilter: string = '';
 
+  readonly globalClientFilterValue = MAIL_TEMPLATE_GLOBAL_CLIENT_FILTER;
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+
+  get templatesCountLabel(): string {
+    const n = this.dataSource.data?.length ?? 0;
+    return formatCountLabel(this.translate, n, 'modelo', 'modelos');
+  }
 
   constructor(
     private firestore: Firestore,
@@ -178,6 +190,20 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     return this.isGlobalMailTemplate(data) || data['clientId'] === clientId;
   }
 
+  private mapTemplateRow(id: string, data: Record<string, unknown>): Record<string, unknown> {
+    const isGlobal = this.isGlobalMailTemplate(data);
+    const defaultLabel = this.translate.instant('mailTemplates.defaultClientLabel');
+    const clientName = isGlobal
+      ? defaultLabel
+      : this.clients.find((c) => c.id === data['clientId'])?.name || defaultLabel;
+    return {
+      id,
+      ...data,
+      isGlobal,
+      clientName,
+    };
+  }
+
   private async loadTemplates(): Promise<void> {
     try {
       const templatesCollection = collection(this.firestore, 'mailTemplates');
@@ -187,17 +213,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         if (this.clientId) {
           const snapshot = await getDocs(query(templatesCollection));
           this.allTemplates = snapshot.docs
-            .map((d) => {
-              const data = d.data();
-              return {
-                id: d.id,
-                ...data,
-                isGlobal: this.isGlobalMailTemplate(data),
-                clientName:
-                  this.clients.find((c) => c.id === data['clientId'])?.name ||
-                  'TEMPLATE PADRÃO',
-              };
-            })
+            .map((d) => this.mapTemplateRow(d.id, d.data()))
             .filter((t) => this.templateVisibleForClient(t, this.clientId!));
           this.dataSource.data = this.allTemplates;
           this.applyFilter();
@@ -208,17 +224,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
       } else if (this.userRole === 'admin_client' && this.userClientIds.length > 0) {
         const snapshot = await getDocs(query(templatesCollection));
         this.allTemplates = snapshot.docs
-          .map((d) => {
-            const data = d.data();
-            return {
-              id: d.id,
-              ...data,
-              isGlobal: this.isGlobalMailTemplate(data),
-              clientName:
-                this.clients.find((c) => c.id === data['clientId'])?.name ||
-                'TEMPLATE PADRÃO',
-            };
-          })
+          .map((d) => this.mapTemplateRow(d.id, d.data()))
           .filter((t) =>
             this.userClientIds.some((cid) => this.templateVisibleForClient(t, cid))
           );
@@ -237,17 +243,9 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
       }
 
       const snapshot = await getDocs(queryConstraint);
-      this.allTemplates = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          isGlobal: this.isGlobalMailTemplate(data),
-          clientName:
-            this.clients.find((c) => c.id === data['clientId'])?.name ||
-            'TEMPLATE PADRÃO',
-        };
-      });
+      this.allTemplates = snapshot.docs.map((doc) =>
+        this.mapTemplateRow(doc.id, doc.data())
+      );
 
       this.dataSource.data = this.allTemplates;
       this.applyFilter();
@@ -271,11 +269,17 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
         ? (data.emailType || '').toLowerCase() === this.emailTypeFilter.toLowerCase()
         : true;
 
-      const matchesClient = this.clientFilter
-        ? this.templateVisibleForClient(data, this.clientFilter)
-        : true;
+      let matchesClient = true;
+      if (this.clientFilter === MAIL_TEMPLATE_GLOBAL_CLIENT_FILTER) {
+        matchesClient = !!data.isGlobal;
+      } else if (this.clientFilter) {
+        matchesClient = this.templateVisibleForClient(data, this.clientFilter);
+      }
 
-      return matchesSearch && matchesType && matchesClient;
+      const matchesProject =
+        !this.projectFilter || (data.projectId || '') === this.projectFilter;
+
+      return matchesSearch && matchesType && matchesClient && matchesProject;
     });
 
     this.dataSource.data = filteredData;
@@ -288,7 +292,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     this.clientFilter = clientId;
     this.projectFilter = '';
     this.projects = [];
-    if (clientId) {
+    if (clientId && clientId !== MAIL_TEMPLATE_GLOBAL_CLIENT_FILTER) {
       await this.loadProjects(clientId);
     }
     this.applyFilter();
@@ -310,6 +314,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
 
   onProjectChange(projectId: string): void {
     this.projectFilter = projectId;
+    this.applyFilter();
   }
 
   /** clientId efetivo para o envio: rota tem prioridade, senão usa o filtro */
@@ -437,13 +442,21 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
 
   async duplicateTemplate(template: any): Promise<void> {
     const suggestedName = this.getSuggestedDuplicateName(template.name);
+    const sourceClientId = (template.clientId ?? '') as string;
     const dialogRef = this.dialog.open(DuplicateTemplateDialogComponent, {
-      width: '400px',
-      data: { suggestedName } as DuplicateTemplateDialogData,
+      width: '440px',
+      data: {
+        suggestedName,
+        clients: this.clients,
+        allowClientSelection: this.userRole === 'admin_master',
+        initialClientId: template.isGlobal ? '' : sourceClientId,
+      } satisfies DuplicateTemplateDialogData,
     });
 
-    const newName = await dialogRef.afterClosed().toPromise();
-    if (newName == null || newName === '') return;
+    const result = (await dialogRef.afterClosed().toPromise()) as
+      | DuplicateTemplateDialogResult
+      | undefined;
+    if (!result?.name) return;
 
     try {
       const templateRef = doc(this.firestore, 'mailTemplates', template.id);
@@ -456,24 +469,31 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
       }
 
       const data = templateSnap.data();
+      const targetClientId =
+        this.userRole === 'admin_master'
+          ? (result.clientId ?? '')
+          : sourceClientId || this.userClientId || '';
+      const sourceProjectId = (data?.['projectId'] ?? template.projectId ?? '') as string;
+      const projectIdForCopy =
+        targetClientId === sourceClientId ? sourceProjectId : '';
+
       const templatesCollection = collection(this.firestore, 'mailTemplates');
       const newDocRef = await addDoc(templatesCollection, {
-        name: newName,
+        name: result.name,
         subject: data?.['subject'] ?? template.subject,
         content: data?.['content'] ?? template.content,
         emailType: data?.['emailType'] ?? template.emailType,
-        clientId: data?.['clientId'] ?? template.clientId ?? '',
-        projectId: data?.['projectId'] ?? template.projectId ?? '',
+        clientId: targetClientId,
+        projectId: projectIdForCopy,
       });
 
       this.snackBar.open(this.translate.instant('Template duplicado com sucesso!'), this.translate.instant('Fechar'), {
         duration: 3000,
       });
-      const ownerClientId = (data?.['clientId'] ?? template.clientId) as string | undefined;
-      if (this.userRole === 'admin_master' && !ownerClientId) {
+      if (this.userRole === 'admin_master' && !targetClientId) {
         this.router.navigate([`projects/default-template/${newDocRef.id}/edit`]);
-      } else if (ownerClientId) {
-        this.router.navigate([`/projects/${ownerClientId}/templates/${newDocRef.id}/edit`]);
+      } else if (targetClientId) {
+        this.router.navigate([`/projects/${targetClientId}/templates/${newDocRef.id}/edit`]);
       } else {
         await this.loadTemplates();
       }
