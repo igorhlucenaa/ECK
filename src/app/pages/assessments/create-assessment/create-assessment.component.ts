@@ -364,14 +364,18 @@ export class CreateAssessmentComponent implements OnInit {
 
       if (pages.length === 0) {
         this.snackBar.open(
-          'Nenhuma pergunta encontrada nas competências selecionadas. Verifique se elas têm perguntas vinculadas no grupo de competências.',
-          'Fechar',
+          this.translate.instant(
+            'Nenhuma pergunta encontrada nas competências selecionadas. Verifique se elas têm perguntas vinculadas no grupo de competências.'
+          ),
+          this.translate.instant('Fechar'),
           { duration: 5000 }
         );
       } else if (competenciesWithoutQuestions > 0) {
         this.snackBar.open(
-          `${competenciesWithoutQuestions} competência(s) sem perguntas foram ignoradas.`,
-          'Fechar',
+          this.translate.instant('{{count}} competência(s) sem perguntas foram ignoradas.', {
+            count: competenciesWithoutQuestions,
+          }),
+          this.translate.instant('Fechar'),
           { duration: 4000 }
         );
       }
@@ -452,9 +456,20 @@ export class CreateAssessmentComponent implements OnInit {
 
     if (competencyIds.length > 0) {
       this.form.get('competencyIds')?.setValue(competencyIds);
-      this.snackBar.open(`Grupo "${group.name}" selecionado com ${competencyIds.length} competências`, 'Fechar', { duration: 3000 });
+      this.snackBar.open(
+        this.translate.instant('Grupo "{{name}}" selecionado com {{count}} competências', {
+          name: group.name,
+          count: competencyIds.length,
+        }),
+        this.translate.instant('Fechar'),
+        { duration: 3000 }
+      );
     } else {
-      this.snackBar.open(`Nenhuma competência encontrada para o grupo "${group.name}"`, 'Fechar', { duration: 3000 });
+      this.snackBar.open(
+        this.translate.instant('Nenhuma competência encontrada para o grupo "{{name}}"', { name: group.name }),
+        this.translate.instant('Fechar'),
+        { duration: 3000 }
+      );
     }
   }
 

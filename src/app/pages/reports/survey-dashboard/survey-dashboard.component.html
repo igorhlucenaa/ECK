@@ -4,20 +4,20 @@
     <div class="header-left">
       <h2>
         <mat-icon>analytics</mat-icon>
-        Dashboard Interativo
+        {{ 'Dashboard Interativo' | translate }}
       </h2>
-      <p class="subtitle">Visualização interativa dos resultados da avaliação</p>
+      <p class="subtitle">{{ 'Visualização interativa dos resultados da avaliação' | translate }}</p>
     </div>
     <div class="header-actions" *ngIf="!isLoading && !error && dashboard">
-      <button mat-stroked-button (click)="reload()" matTooltip="Recarregar dashboard">
+      <button mat-stroked-button (click)="reload()" [matTooltip]="'Recarregar dashboard' | translate">
         <mat-icon>refresh</mat-icon>
-        Recarregar
+        {{ 'Recarregar' | translate }}
       </button>
-      <button mat-stroked-button (click)="exportToExcel()" matTooltip="Exportar para Excel">
+      <button mat-stroked-button (click)="exportToExcel()" [matTooltip]="'Exportar para Excel' | translate">
         <mat-icon>grid_on</mat-icon>
         Excel
       </button>
-      <button mat-stroked-button (click)="exportToPDF()" matTooltip="Exportar para PDF">
+      <button mat-stroked-button (click)="exportToPDF()" [matTooltip]="'Exportar para PDF' | translate">
         <mat-icon>picture_as_pdf</mat-icon>
         PDF
       </button>
@@ -33,11 +33,11 @@
   <!-- Erro -->
   <div *ngIf="error && !isLoading" class="error-container">
     <mat-icon color="warn">error_outline</mat-icon>
-    <h3>Erro ao carregar dashboard</h3>
+    <h3>{{ 'Erro ao carregar dashboard' | translate }}</h3>
     <p>{{ error }}</p>
     <button mat-raised-button color="primary" (click)="reload()">
       <mat-icon>refresh</mat-icon>
-      Tentar Novamente
+      {{ 'Tentar Novamente' | translate }}
     </button>
   </div>
 
@@ -53,6 +53,6 @@
   <!-- Informações -->
   <div *ngIf="!isLoading && !error && surveyResults.length > 0" class="dashboard-info">
     <mat-icon>info</mat-icon>
-    <span>{{ surveyResults.length }} resultado(s) carregado(s)</span>
+    <span>{{ '{{count}} resultado(s) carregado(s)' | translate:{ count: surveyResults.length } }}</span>
   </div>
 </div>

@@ -3,11 +3,12 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-export-dialog',
   standalone: true,
-  imports: [FormsModule, MaterialModule, CommonModule],
+  imports: [FormsModule, MaterialModule, CommonModule, TranslateModule],
   templateUrl: './export-dialog.component.html',
 })
 export class ExportDialogComponent {

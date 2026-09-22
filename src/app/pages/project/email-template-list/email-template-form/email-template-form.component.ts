@@ -527,7 +527,11 @@ export class EmailTemplateFormComponent implements OnInit {
 
   copyVar(variable: string): void {
     navigator.clipboard.writeText(variable).then(() => {
-      this.snackBar.open(`Copiado: ${variable}`, 'OK', { duration: 1800 });
+      this.snackBar.open(
+        this.translate.instant('mailTemplates.snack.copiedVariable', { variable }),
+        this.translate.instant('common.ok'),
+        { duration: 1800 }
+      );
     });
   }
 

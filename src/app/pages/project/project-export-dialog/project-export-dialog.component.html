@@ -34,13 +34,13 @@
 
     <div class="ped-linked-template" *ngIf="hasProjectTemplateId && linkedTemplate">
       <mat-icon>description</mat-icon>
-      <span>Template do projeto: <strong>{{ linkedTemplate.name }}</strong> — definido na criação do projeto.</span>
+      <span>{{ 'Template do projeto:' | translate }} <strong>{{ linkedTemplate.name }}</strong> — {{ 'definido na criação do projeto.' | translate }}</span>
     </div>
 
     <div class="ped-linked-template ped-linked-template--warn" *ngIf="projectNeedsTemplateSetup">
       <mat-icon>warning</mat-icon>
       <div class="ped-linked-template__content">
-        <span>Este projeto não possui template de relatório vinculado. PDF e DOCX ficam indisponíveis até configurar um template no projeto.</span>
+        <span>{{ 'Este projeto não possui template de relatório vinculado. PDF e DOCX ficam indisponíveis até configurar um template no projeto.' | translate }}</span>
         <button
           *ngIf="data.userRole === 'admin_master'"
           mat-stroked-button
@@ -48,10 +48,10 @@
           class="ped-linked-template__action"
           (click)="editProject()">
           <mat-icon>edit</mat-icon>
-          Editar projeto
+          {{ 'Editar projeto' | translate }}
         </button>
         <span *ngIf="data.userRole !== 'admin_master'">
-          Solicite ao administrador master a vinculação de um template na edição do projeto.
+          {{ 'Solicite ao administrador master a vinculação de um template na edição do projeto.' | translate }}
         </span>
       </div>
     </div>
@@ -59,7 +59,7 @@
     <div class="ped-linked-template ped-linked-template--warn" *ngIf="projectTemplateMissing">
       <mat-icon>warning</mat-icon>
       <div class="ped-linked-template__content">
-        <span>O template vinculado a este projeto não foi encontrado. Atualize o projeto ou recrie o template em Relatórios.</span>
+        <span>{{ 'O template vinculado a este projeto não foi encontrado. Atualize o projeto ou recrie o template em Relatórios.' | translate }}</span>
         <button
           *ngIf="data.userRole === 'admin_master'"
           mat-stroked-button
@@ -67,7 +67,7 @@
           class="ped-linked-template__action"
           (click)="editProject()">
           <mat-icon>edit</mat-icon>
-          Editar projeto
+          {{ 'Editar projeto' | translate }}
         </button>
       </div>
     </div>
@@ -77,8 +77,8 @@
       <div class="ped-step__header">
         <div class="ped-step__number">1</div>
         <div>
-          <p class="ped-step__title">Formato de exportação</p>
-          <p class="ped-step__desc">Escolha como deseja obter os dados deste projeto.</p>
+          <p class="ped-step__title">{{ 'Formato de exportação' | translate }}</p>
+          <p class="ped-step__desc">{{ 'Escolha como deseja obter os dados deste projeto.' | translate }}</p>
         </div>
       </div>
 
@@ -93,8 +93,8 @@
           (click)="selectAction(opt.id)">
           <mat-icon class="ped-option__icon">{{ opt.icon }}</mat-icon>
           <div class="ped-option__body">
-            <span class="ped-option__title">{{ opt.title }}</span>
-            <span class="ped-option__desc">{{ opt.description }}</span>
+            <span class="ped-option__title">{{ opt.title | translate }}</span>
+            <span class="ped-option__desc">{{ opt.description | translate }}</span>
           </div>
           <mat-icon class="ped-option__check" *ngIf="selectedAction === opt.id">check_circle</mat-icon>
         </button>
@@ -104,7 +104,7 @@
 </mat-dialog-content>
 
 <div class="ped-actions">
-  <button mat-button type="button" class="ped-btn-cancel" (click)="cancel()">Cancelar</button>
+  <button mat-button type="button" class="ped-btn-cancel" (click)="cancel()">{{ 'Cancelar' | translate }}</button>
   <button
     mat-flat-button
     type="button"
@@ -112,6 +112,6 @@
     [disabled]="!canConfirm"
     (click)="confirm()">
     <mat-icon>download</mat-icon>
-    Continuar
+    {{ 'Continuar' | translate }}
   </button>
 </div>

@@ -2,17 +2,17 @@
 
   <app-page-header
     eyebrow="Formulários de Avaliação"
-    [title]="isEditMode ? 'Editar Formulário' : 'Criar Formulário'"
-    [subtitle]="isEditMode ? 'Atualize as informações e perguntas do formulário' : 'Configure as informações e crie as perguntas da avaliação'">
+    [title]="(isEditMode ? 'Editar Formulário' : 'Criar Formulário') | translate"
+    [subtitle]="(isEditMode ? 'Atualize as informações e perguntas do formulário' : 'Configure as informações e crie as perguntas da avaliação') | translate">
 
     <button mat-button class="btn-back" (click)="goBack()">
       <mat-icon>arrow_back</mat-icon>
-      Voltar
+      {{ 'Voltar' | translate }}
     </button>
 
     <button mat-raised-button class="btn-save" type="button" [disabled]="form.invalid" (click)="saveForm()">
       <mat-icon>{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>
-      {{ isEditMode ? 'Salvar Alterações' : 'Salvar Formulário' }}
+      {{ (isEditMode ? 'Salvar Alterações' : 'Salvar Formulário') | translate }}
     </button>
 
   </app-page-header>
@@ -26,14 +26,14 @@
         <div class="info-card__icon">
           <mat-icon>tune</mat-icon>
         </div>
-        <span class="info-card__title">Configurações do formulário</span>
+        <span class="info-card__title">{{ 'Configurações do formulário' | translate }}</span>
         <div class="info-card__ok" *ngIf="form.get('isGlobalTemplate')?.value">
           <mat-icon>public</mat-icon>
           {{ 'assessments.global.badge' | translate }}
         </div>
         <div class="info-card__ok" *ngIf="!form.get('isGlobalTemplate')?.value && form.get('clientId')?.value">
           <mat-icon>check_circle</mat-icon>
-          Cliente selecionado
+          {{ 'Cliente selecionado' | translate }}
         </div>
       </div>
 
@@ -42,15 +42,15 @@
 
           <!-- Título -->
           <div class="info-field info-field--span2">
-            <label class="info-field__label"><mat-icon>title</mat-icon>Título do Formulário<span class="req">*</span></label>
-            <input class="info-field__input" formControlName="name" placeholder="Ex: Avaliação de Liderança 2026" />
-            <span class="info-field__error" *ngIf="form.get('name')?.invalid && form.get('name')?.touched">Título obrigatório</span>
+            <label class="info-field__label"><mat-icon>title</mat-icon>{{ 'Título do Formulário' | translate }}<span class="req">*</span></label>
+            <input class="info-field__input" formControlName="name" [placeholder]="'Ex: Avaliação de Liderança 2026' | translate" />
+            <span class="info-field__error" *ngIf="form.get('name')?.invalid && form.get('name')?.touched">{{ 'Título obrigatório' | translate }}</span>
           </div>
 
           <!-- Descrição -->
           <div class="info-field info-field--span2">
-            <label class="info-field__label"><mat-icon>notes</mat-icon>Descrição</label>
-            <input class="info-field__input" formControlName="description" placeholder="Opcional — descreva o objetivo desta avaliação" />
+            <label class="info-field__label"><mat-icon>notes</mat-icon>{{ 'Descrição' | translate }}</label>
+            <input class="info-field__input" formControlName="description" [placeholder]="'Opcional — descreva o objetivo desta avaliação' | translate" />
           </div>
 
           <div class="info-field info-field--span2" *ngIf="canSetGlobalTemplate">
@@ -65,7 +65,7 @@
 
           <!-- Cliente -->
           <div class="info-field" *ngIf="!form.get('isGlobalTemplate')?.value">
-            <label class="info-field__label"><mat-icon>business</mat-icon>Cliente<span class="req">*</span></label>
+            <label class="info-field__label"><mat-icon>business</mat-icon>{{ 'Cliente' | translate }}<span class="req">*</span></label>
             <mat-form-field appearance="outline" class="info-select-field">
               <mat-select formControlName="clientId" (selectionChange)="onClientChange($event)">
                 <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
@@ -75,10 +75,10 @@
 
           <!-- Grupo de Competências -->
           <div class="info-field" *ngIf="form.get('clientId')?.value && competencyGroups.length > 0">
-            <label class="info-field__label"><mat-icon>folder_special</mat-icon>Grupo de Competências</label>
+            <label class="info-field__label"><mat-icon>folder_special</mat-icon>{{ 'Grupo de Competências' | translate }}</label>
             <mat-form-field appearance="outline" class="info-select-field">
               <mat-select [value]="selectedGroupId" (selectionChange)="onCompetencyGroupChange($event.value)">
-                <mat-option [value]="''">— Nenhum —</mat-option>
+                <mat-option [value]="''">{{ '— Nenhum —' | translate }}</mat-option>
                 <mat-option *ngFor="let group of competencyGroups" [value]="group.id">
                   {{ group.name }} ({{ group.competencias?.length || 0 }})
                 </mat-option>
@@ -88,7 +88,7 @@
 
           <!-- Competências -->
           <div class="info-field info-field--comp" *ngIf="form.get('clientId')?.value && competencies.length > 0">
-            <label class="info-field__label"><mat-icon>psychology</mat-icon>Competências</label>
+            <label class="info-field__label"><mat-icon>psychology</mat-icon>{{ 'Competências' | translate }}</label>
             <div class="info-comp-row">
               <mat-form-field appearance="outline" class="info-select-field">
                 <mat-select formControlName="competencyIds" multiple>
@@ -97,7 +97,7 @@
               </mat-form-field>
               <div class="toggle-pill">
                 <mat-slide-toggle color="primary" formControlName="mixQuestions"></mat-slide-toggle>
-                <span>Misturar</span>
+                <span>{{ 'Misturar' | translate }}</span>
               </div>
             </div>
           </div>
@@ -105,7 +105,7 @@
           <!-- Listas salvas -->
           <ng-container *ngIf="form.get('clientId')?.value && competencyLists.length > 0">
             <div class="info-field">
-              <label class="info-field__label"><mat-icon>list_alt</mat-icon>Lista salva</label>
+              <label class="info-field__label"><mat-icon>list_alt</mat-icon>{{ 'Lista salva' | translate }}</label>
               <mat-form-field appearance="outline" class="info-select-field">
                 <mat-select (selectionChange)="onCompetencyListChange($event.value)">
                   <mat-option *ngFor="let list of competencyLists" [value]="list.id">{{ list.name }}</mat-option>
@@ -114,11 +114,11 @@
             </div>
 
             <div class="info-field">
-              <label class="info-field__label"><mat-icon>add_box</mat-icon>Salvar como lista</label>
+              <label class="info-field__label"><mat-icon>add_box</mat-icon>{{ 'Salvar como lista' | translate }}</label>
               <div class="info-comp-row">
-                <input class="info-field__input" #listName placeholder="Nome da nova lista" />
+                <input class="info-field__input" #listName [placeholder]="'Nome da nova lista' | translate" />
                 <button mat-icon-button class="btn-list-save" type="button"
-                        (click)="saveCurrentSelectionAsList(listName.value)" matTooltip="Salvar lista">
+                        (click)="saveCurrentSelectionAsList(listName.value)" [matTooltip]="'Salvar lista' | translate">
                   <mat-icon>save</mat-icon>
                 </button>
               </div>
@@ -136,8 +136,8 @@
           <mat-icon>build</mat-icon>
         </div>
         <div>
-          <h3 class="card-title">Construtor de Formulários</h3>
-          <p class="card-subtitle">Adicione e configure as perguntas da avaliação</p>
+          <h3 class="card-title">{{ 'Construtor de Formulários' | translate }}</h3>
+          <p class="card-subtitle">{{ 'Adicione e configure as perguntas da avaliação' | translate }}</p>
         </div>
       </div>
       <div class="builder-body" *ngIf="creatorModel">
@@ -149,12 +149,12 @@
     <div class="save-bar">
       <button mat-button class="btn-back" type="button" (click)="goBack()">
         <mat-icon>arrow_back</mat-icon>
-        Voltar
+        {{ 'Voltar' | translate }}
       </button>
       <span class="save-bar-spacer"></span>
       <button mat-raised-button class="btn-save" type="submit" [disabled]="form.invalid">
         <mat-icon>{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>
-        {{ isEditMode ? 'Salvar Alterações' : 'Salvar Formulário' }}
+        {{ (isEditMode ? 'Salvar Alterações' : 'Salvar Formulário') | translate }}
       </button>
     </div>
 

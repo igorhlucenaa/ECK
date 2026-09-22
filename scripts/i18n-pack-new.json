@@ -1,0 +1,242 @@
+{
+  "auth.login.left.headlineHtml": {
+    "pt-BR": "Avaliação<br /><em>360°</em> para<br />times de alta<br />performance",
+    "en": "360°<br /><em>feedback</em> for<br />high-performance<br />teams",
+    "es": "Evaluación<br /><em>360°</em> para<br />equipos de alto<br />rendimiento"
+  },
+  "auth.login.left.subtitle": {
+    "pt-BR": "Gerencie avaliações, acompanhe o desenvolvimento das pessoas e gere relatórios completos em um único lugar.",
+    "en": "Manage assessments, track people development, and generate full reports in one place.",
+    "es": "Gestione evaluaciones, siga el desarrollo de las personas y genere informes completos en un solo lugar."
+  },
+  "auth.login.left.feature1": {
+    "pt-BR": "Dashboards e relatórios em tempo real",
+    "en": "Real-time dashboards and reports",
+    "es": "Paneles e informes en tiempo real"
+  },
+  "auth.login.left.feature2": {
+    "pt-BR": "Avaliação por competências e comportamentos",
+    "en": "Competency and behavior assessments",
+    "es": "Evaluación por competencias y comportamientos"
+  },
+  "auth.login.left.feature3": {
+    "pt-BR": "Acesso seguro por perfis e permissões",
+    "en": "Secure access with roles and permissions",
+    "es": "Acceso seguro por perfiles y permisos"
+  },
+  "auth.login.footer.rights": {
+    "pt-BR": "© {{year}} ECK Consulting · Todos os direitos reservados",
+    "en": "© {{year}} ECK Consulting · All rights reserved",
+    "es": "© {{year}} ECK Consulting · Todos los derechos reservados"
+  },
+  "auth.login.accessLabel": {
+    "pt-BR": "Acesso à plataforma",
+    "en": "Platform access",
+    "es": "Acceso a la plataforma"
+  },
+  "auth.login.welcomeTitle": {
+    "pt-BR": "Bem-vindo de volta",
+    "en": "Welcome back",
+    "es": "Bienvenido de nuevo"
+  },
+  "auth.login.welcomeSubtitle": {
+    "pt-BR": "Insira suas credenciais para acessar a plataforma ECK.",
+    "en": "Enter your credentials to access the ECK platform.",
+    "es": "Introduzca sus credenciales para acceder a la plataforma ECK."
+  },
+  "auth.login.emailLabel": {
+    "pt-BR": "E-mail",
+    "en": "Email",
+    "es": "Correo electrónico"
+  },
+  "auth.login.emailPlaceholder": {
+    "pt-BR": "seu@email.com",
+    "en": "you@email.com",
+    "es": "tu@email.com"
+  },
+  "auth.login.emailRequired": {
+    "pt-BR": "O e-mail é obrigatório.",
+    "en": "Email is required.",
+    "es": "El correo es obligatorio."
+  },
+  "auth.login.emailInvalid": {
+    "pt-BR": "Insira um e-mail válido.",
+    "en": "Enter a valid email address.",
+    "es": "Introduzca un correo válido."
+  },
+  "auth.login.passwordLabel": {
+    "pt-BR": "Senha",
+    "en": "Password",
+    "es": "Contraseña"
+  },
+  "auth.login.passwordRequired": {
+    "pt-BR": "A senha é obrigatória.",
+    "en": "Password is required.",
+    "es": "La contraseña es obligatoria."
+  },
+  "auth.login.passwordMinLength": {
+    "pt-BR": "Mínimo 6 caracteres.",
+    "en": "Minimum 6 characters.",
+    "es": "Mínimo 6 caracteres."
+  },
+  "auth.login.submit": {
+    "pt-BR": "Entrar na plataforma",
+    "en": "Sign in",
+    "es": "Entrar a la plataforma"
+  },
+  "auth.login.submitting": {
+    "pt-BR": "Autenticando...",
+    "en": "Signing in...",
+    "es": "Autenticando..."
+  },
+  "auth.login.supportHtml": {
+    "pt-BR": "Problemas para acessar? Entre em contato com o <a href=\"mailto:contato@eckconsulting.com.br\">suporte</a>.",
+    "en": "Having trouble signing in? Contact <a href=\"mailto:contato@eckconsulting.com.br\">support</a>.",
+    "es": "¿Problemas para acceder? Contacte al <a href=\"mailto:contato@eckconsulting.com.br\">soporte</a>."
+  },
+  "auth.login.fillFieldsError": {
+    "pt-BR": "Preencha os campos corretamente.",
+    "en": "Please fill in the fields correctly.",
+    "es": "Complete los campos correctamente."
+  },
+  "auth.login.error.invalidCredential": {
+    "pt-BR": "E-mail ou senha incorretos. Verifique seus dados e tente novamente.",
+    "en": "Incorrect email or password. Check your details and try again.",
+    "es": "Correo o contraseña incorrectos. Verifique e intente de nuevo."
+  },
+  "auth.login.error.invalidEmail": {
+    "pt-BR": "O e-mail informado não é válido.",
+    "en": "The email address is not valid.",
+    "es": "El correo informado no es válido."
+  },
+  "auth.login.error.userDisabled": {
+    "pt-BR": "Esta conta foi desativada. Entre em contato com o administrador.",
+    "en": "This account has been disabled. Contact your administrator.",
+    "es": "Esta cuenta fue desactivada. Contacte al administrador."
+  },
+  "auth.login.error.tooManyRequests": {
+    "pt-BR": "Muitas tentativas incorretas. Aguarde alguns minutos e tente novamente.",
+    "en": "Too many failed attempts. Wait a few minutes and try again.",
+    "es": "Demasiados intentos fallidos. Espere unos minutos e intente de nuevo."
+  },
+  "auth.login.error.network": {
+    "pt-BR": "Falha na conexão. Verifique sua internet e tente novamente.",
+    "en": "Connection failed. Check your internet and try again.",
+    "es": "Error de conexión. Verifique su internet e intente de nuevo."
+  },
+  "auth.login.error.generic": {
+    "pt-BR": "Não foi possível realizar o login. Tente novamente.",
+    "en": "Could not sign in. Please try again.",
+    "es": "No se pudo iniciar sesión. Intente de nuevo."
+  },
+  "assessment.public.blocked.title": {
+    "pt-BR": "Acesso bloqueado",
+    "en": "Access blocked",
+    "es": "Acceso bloqueado"
+  },
+  "assessment.public.blocked.bodyHtml": {
+    "pt-BR": "Seu acesso a esta avaliação foi bloqueado pelo administrador.<br>Não é possível preencher o formulário neste momento.<br><br>Se isso parecer um erro, entre em contato com o responsável pelo projeto.",
+    "en": "Your access to this assessment was blocked by an administrator.<br>You cannot complete the form at this time.<br><br>If this seems wrong, contact the project owner.",
+    "es": "Su acceso a esta evaluación fue bloqueado por un administrador.<br>No puede completar el formulario en este momento.<br><br>Si cree que es un error, contacte al responsable del proyecto."
+  },
+  "assessment.public.linkCancelled.title": {
+    "pt-BR": "Link cancelado",
+    "en": "Link cancelled",
+    "es": "Enlace cancelado"
+  },
+  "assessment.public.linkCancelled.bodyHtml": {
+    "pt-BR": "O envio desta avaliação foi cancelado pelo administrador.<br>Não será possível preencher o formulário neste momento.<br><br>Se isso parecer um erro, entre em contato com o responsável pelo projeto.",
+    "en": "This assessment delivery was cancelled by an administrator.<br>You cannot complete the form at this time.<br><br>If this seems wrong, contact the project owner.",
+    "es": "El envío de esta evaluación fue cancelado por un administrador.<br>No podrá completar el formulario en este momento.<br><br>Si cree que es un error, contacte al responsable del proyecto."
+  },
+  "assessment.public.expired.title": {
+    "pt-BR": "Avaliação encerrada",
+    "en": "Assessment closed",
+    "es": "Evaluación cerrada"
+  },
+  "assessment.public.expired.bodyHtml": {
+    "pt-BR": "Esta avaliação foi encerrada pelo responsável.<br>Não é mais possível enviar respostas.<br><br>Entre em contato com o responsável pelo projeto se tiver dúvidas.",
+    "en": "This assessment was closed by the owner.<br>You can no longer submit answers.<br><br>Contact the project owner if you have questions.",
+    "es": "Esta evaluación fue cerrada por el responsable.<br>Ya no puede enviar respuestas.<br><br>Contacte al responsable del proyecto si tiene dudas."
+  },
+  "assessment.public.thankYou": {
+    "pt-BR": "Obrigado por completar a avaliação!",
+    "en": "Thank you for completing the assessment!",
+    "es": "¡Gracias por completar la evaluación!"
+  },
+  "assessment.public.alreadyCompleted": {
+    "pt-BR": "Esta avaliação já foi concluída. Obrigado pela sua participação!",
+    "en": "This assessment is already completed. Thank you for participating!",
+    "es": "Esta evaluación ya fue completada. ¡Gracias por participar!"
+  },
+  "assessment.public.midFillBlocked.bodyHtml": {
+    "pt-BR": "Seu acesso foi bloqueado enquanto você preenchia o formulário.<br>Seu progresso não será mais salvo.<br><br>Entre em contato com o responsável se tiver dúvidas.",
+    "en": "Your access was blocked while you were filling out the form.<br>Your progress will no longer be saved.<br><br>Contact the owner if you have questions.",
+    "es": "Su acceso fue bloqueado mientras completaba el formulario.<br>Su progreso ya no se guardará.<br><br>Contacte al responsable si tiene dudas."
+  },
+  "assessment.public.midFillExpired.bodyHtml": {
+    "pt-BR": "Esta avaliação foi encerrada enquanto você preenchia o formulário.<br>Seu progresso não foi salvo.<br><br>Entre em contato com o responsável se tiver dúvidas.",
+    "en": "This assessment was closed while you were filling out the form.<br>Your progress was not saved.<br><br>Contact the owner if you have questions.",
+    "es": "Esta evaluación se cerró mientras completaba el formulario.<br>Su progreso no se guardó.<br><br>Contacte al responsable si tiene dudas."
+  },
+  "emailsNotifications.title": {
+    "pt-BR": "E-mails e Notificações",
+    "en": "Emails and Notifications",
+    "es": "Correos y Notificaciones"
+  },
+  "emailsNotifications.subtitle": {
+    "pt-BR": "Configure e gerencie as notificações por e-mail enviadas pela plataforma.",
+    "en": "Configure and manage email notifications sent by the platform.",
+    "es": "Configure y gestione las notificaciones por correo enviadas por la plataforma."
+  },
+  "common.ok": {
+    "pt-BR": "OK",
+    "en": "OK",
+    "es": "OK"
+  },
+  "competencies.snack.editingGroup": {
+    "pt-BR": "Editando grupo: {{name}}",
+    "en": "Editing group: {{name}}",
+    "es": "Editando grupo: {{name}}"
+  },
+  "competencies.snack.groupDeleted": {
+    "pt-BR": "Grupo \"{{name}}\" excluído com sucesso.",
+    "en": "Group \"{{name}}\" deleted successfully.",
+    "es": "Grupo \"{{name}}\" eliminado con éxito."
+  },
+  "participants.validation.importFailed": {
+    "pt-BR": "Falha de validação no import.",
+    "en": "Import validation failed.",
+    "es": "Error de validación en la importación."
+  },
+  "participants.validation.invalidEmail": {
+    "pt-BR": "E-mail inválido.",
+    "en": "Invalid email.",
+    "es": "Correo inválido."
+  },
+  "participants.validation.registerEvaluateeFirst": {
+    "pt-BR": "Cadastre o avaliado primeiro.",
+    "en": "Register the evaluatee first.",
+    "es": "Registre primero al evaluado."
+  },
+  "participants.snack.viewerCreateError": {
+    "pt-BR": "Erro ao criar visualizador: {{message}}",
+    "en": "Error creating viewer: {{message}}",
+    "es": "Error al crear visualizador: {{message}}"
+  },
+  "assessments.snack.groupSelected": {
+    "pt-BR": "Grupo \"{{name}}\" selecionado. Competências carregadas.",
+    "en": "Group \"{{name}}\" selected. Competencies loaded.",
+    "es": "Grupo \"{{name}}\" seleccionado. Competencias cargadas."
+  },
+  "assessments.snack.noCompetenciesInGroup": {
+    "pt-BR": "Nenhuma competência encontrada neste grupo.",
+    "en": "No competencies found in this group.",
+    "es": "No se encontraron competencias en este grupo."
+  },
+  "mailTemplates.snack.copiedVariable": {
+    "pt-BR": "Copiado: {{variable}}",
+    "en": "Copied: {{variable}}",
+    "es": "Copiado: {{variable}}"
+  }
+}

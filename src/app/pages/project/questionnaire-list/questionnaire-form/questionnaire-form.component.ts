@@ -11,7 +11,7 @@ import {
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CommonModule, Location } from '@angular/common';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MaterialModule } from 'src/app/material.module';
 import { ReactiveFormsModule } from '@angular/forms';
 import { EditorModule } from '@tinymce/tinymce-angular';
@@ -19,7 +19,7 @@ import { EditorModule } from '@tinymce/tinymce-angular';
 @Component({
   selector: 'app-questionnaire-form',
   standalone: true,
-  imports: [CommonModule, MaterialModule, ReactiveFormsModule, EditorModule],
+  imports: [CommonModule, MaterialModule, ReactiveFormsModule, EditorModule, TranslateModule],
   templateUrl: './questionnaire-form.component.html',
   styleUrls: ['./questionnaire-form.component.scss'],
 })

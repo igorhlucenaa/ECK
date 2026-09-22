@@ -3,12 +3,13 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule } from '@ngx-translate/core';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 
 @Component({
   selector: 'app-participants-confirmation-dialog',
   standalone: true,
-  imports: [MaterialModule, CommonModule, FormsModule],
+  imports: [MaterialModule, CommonModule, FormsModule, TranslateModule],
   templateUrl: './participants-confirmation-dialog.component.html',
   styleUrls: ['./participants-confirmation-dialog.component.scss'],
 })

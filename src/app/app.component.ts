@@ -30,7 +30,14 @@ export class AppComponent implements OnInit {
     this.translate.addLangs(supportedLangs);
     const storedLang = localStorage.getItem('lang');
     const browserLang = this.translate.getBrowserLang();
-    const initialLang = storedLang || (browserLang === 'pt' ? 'pt-BR' : (supportedLangs.includes(browserLang || '') ? (browserLang as string) : 'pt-BR'));
+    const initialLang =
+      storedLang && supportedLangs.includes(storedLang)
+        ? storedLang
+        : browserLang === 'pt'
+          ? 'pt-BR'
+          : supportedLangs.includes(browserLang || '')
+            ? (browserLang as string)
+            : 'pt-BR';
     this.translate.setDefaultLang('pt-BR');
     this.translate.use(initialLang);
 

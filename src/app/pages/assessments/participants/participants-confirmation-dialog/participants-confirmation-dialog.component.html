@@ -6,17 +6,17 @@
       <mat-icon>upload_file</mat-icon>
     </div>
     <div class="pcd__header-text">
-      <h2>Importar Participantes</h2>
-      <p>{{ data.participants.length }} participante{{ data.participants.length !== 1 ? 's' : '' }} encontrado{{ data.participants.length !== 1 ? 's' : '' }} na planilha</p>
+      <h2>{{ 'Importar Participantes' | translate }}</h2>
+      <p>{{ '{{count}} participante(s) encontrado(s) na planilha' | translate:{ count: data.participants.length } }}</p>
     </div>
     <div class="pcd__badges">
       <span class="pcd__badge pcd__badge--blue">
         <mat-icon>person</mat-icon>
-        {{ countByType.avaliados }} avaliado{{ countByType.avaliados !== 1 ? 's' : '' }}
+        {{ '{{count}} avaliado(s)' | translate:{ count: countByType.avaliados } }}
       </span>
       <span class="pcd__badge pcd__badge--indigo">
         <mat-icon>supervisor_account</mat-icon>
-        {{ countByType.avaliadores }} avaliador{{ countByType.avaliadores !== 1 ? 'es' : '' }}
+        {{ '{{count}} avaliador(es)' | translate:{ count: countByType.avaliadores } }}
       </span>
     </div>
   </div>
@@ -27,29 +27,29 @@
     <div class="pcd__section">
       <div class="pcd__section-label">
         <mat-icon>place</mat-icon>
-        Destino da importação
-        <span class="pcd__required">obrigatório</span>
+        {{ 'Destino da importação' | translate }}
+        <span class="pcd__required">{{ 'obrigatório' | translate }}</span>
       </div>
 
       <div class="pcd__fields-row">
         <mat-form-field appearance="outline" class="pcd__field">
-          <mat-label>Cliente</mat-label>
+          <mat-label>{{ 'Cliente' | translate }}</mat-label>
           <mat-icon matPrefix class="pcd__field-icon">business</mat-icon>
           <mat-select [(ngModel)]="selectedClientId" (ngModelChange)="onClientChange()" required>
-            <mat-option value="">— Selecione —</mat-option>
+            <mat-option value="">{{ '— Selecione —' | translate }}</mat-option>
             <mat-option *ngFor="let c of data.clients" [value]="c.id">{{ c.name }}</mat-option>
           </mat-select>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="pcd__field">
-          <mat-label>Projeto</mat-label>
+          <mat-label>{{ 'Projeto' | translate }}</mat-label>
           <mat-icon matPrefix class="pcd__field-icon">folder_open</mat-icon>
           <mat-select [(ngModel)]="selectedProjectId" (ngModelChange)="onProjectChange()"
                       [disabled]="!selectedClientId" required>
-            <mat-option value="">— Selecione —</mat-option>
+            <mat-option value="">{{ '— Selecione —' | translate }}</mat-option>
             <mat-option *ngFor="let p of filteredProjects" [value]="p.id">{{ p.name }}</mat-option>
           </mat-select>
-          <mat-hint *ngIf="!selectedClientId">Selecione um cliente primeiro</mat-hint>
+          <mat-hint *ngIf="!selectedClientId">{{ 'Selecione um cliente primeiro' | translate }}</mat-hint>
         </mat-form-field>
       </div>
 
@@ -57,15 +57,15 @@
       <div class="pcd__eval-row" *ngIf="selectedProjectId">
         <ng-container *ngIf="isLoadingEval">
           <mat-spinner diameter="16"></mat-spinner>
-          <span class="pcd__eval-text pcd__eval-text--loading">Buscando formulário...</span>
+          <span class="pcd__eval-text pcd__eval-text--loading">{{ 'Buscando formulário...' | translate }}</span>
         </ng-container>
         <ng-container *ngIf="!isLoadingEval && evaluation">
           <mat-icon class="pcd__eval-icon pcd__eval-icon--ok">assignment_turned_in</mat-icon>
-          <span class="pcd__eval-text pcd__eval-text--ok">Formulário vinculado: <strong>{{ evaluation.name }}</strong></span>
+          <span class="pcd__eval-text pcd__eval-text--ok">{{ 'Formulário vinculado:' | translate }} <strong>{{ evaluation.name }}</strong></span>
         </ng-container>
         <ng-container *ngIf="!isLoadingEval && !evaluation">
           <mat-icon class="pcd__eval-icon pcd__eval-icon--none">info_outline</mat-icon>
-          <span class="pcd__eval-text pcd__eval-text--none">Nenhum formulário vinculado a este projeto</span>
+          <span class="pcd__eval-text pcd__eval-text--none">{{ 'Nenhum formulário vinculado a este projeto' | translate }}</span>
         </ng-container>
       </div>
 
@@ -80,7 +80,7 @@
     <div class="pcd__section">
       <div class="pcd__section-label">
         <mat-icon>preview</mat-icon>
-        Prévia dos participantes
+        {{ 'Prévia dos participantes' | translate }}
       </div>
 
       <div class="pcd__table-wrap">
@@ -92,7 +92,7 @@
           </ng-container>
 
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Nome</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Nome' | translate }}</th>
             <td mat-cell *matCellDef="let p">
               <div class="pcd__name-cell">
                 <div class="pcd__avatar">{{ p.name?.[0]?.toUpperCase() || '?' }}</div>
@@ -102,12 +102,12 @@
           </ng-container>
 
           <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef>E-mail</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'E-mail' | translate }}</th>
             <td mat-cell *matCellDef="let p">{{ p.email }}</td>
           </ng-container>
 
           <ng-container matColumnDef="category">
-            <th mat-header-cell *matHeaderCellDef>Categoria</th>
+            <th mat-header-cell *matHeaderCellDef>{{ 'Categoria' | translate }}</th>
             <td mat-cell *matCellDef="let p">
               <span class="pcd__cat" [class.pcd__cat--avaliado]="p.type === 'avaliado'">{{ p.category }}</span>
             </td>
@@ -125,11 +125,11 @@
   <div class="pcd__actions">
     <button mat-button class="pcd__btn-cancel" (click)="dialogRef.close(null)">
       <mat-icon>close</mat-icon>
-      Cancelar
+      {{ 'Cancelar' | translate }}
     </button>
     <button mat-raised-button class="pcd__btn-confirm" [disabled]="!isValid" (click)="confirmSelection()">
       <mat-icon>cloud_upload</mat-icon>
-      Importar {{ data.participants.length }} participante{{ data.participants.length !== 1 ? 's' : '' }}
+      {{ 'Importar {{count}} participante(s)' | translate:{ count: data.participants.length } }}
     </button>
   </div>
 

@@ -6,8 +6,8 @@
       <mat-icon>{{ data?.existingQuestion ? 'edit_note' : 'add_circle_outline' }}</mat-icon>
     </div>
     <div class="cqd__header-text">
-      <h2>{{ data?.existingQuestion ? 'Editar Pergunta' : 'Nova Pergunta' }}</h2>
-      <p>{{ data?.existingQuestion ? 'Altere o título ou tipo da pergunta' : 'Configure a nova pergunta da avaliação' }}</p>
+      <h2>{{ (data?.existingQuestion ? 'Editar Pergunta' : 'Nova Pergunta') | translate }}</h2>
+      <p>{{ (data?.existingQuestion ? 'Altere o título ou tipo da pergunta' : 'Configure a nova pergunta da avaliação') | translate }}</p>
     </div>
   </div>
 
@@ -16,16 +16,16 @@
 
       <!-- Título -->
       <mat-form-field appearance="outline" class="cqd__field">
-        <mat-label>Título da Pergunta</mat-label>
+        <mat-label>{{ 'Título da Pergunta' | translate }}</mat-label>
         <mat-icon matPrefix class="cqd__prefix-icon">title</mat-icon>
-        <input matInput formControlName="title" placeholder="Ex: Como você avalia sua liderança?" />
-        <mat-error *ngIf="questionForm.get('title')?.hasError('required')">Título obrigatório</mat-error>
-        <mat-error *ngIf="questionForm.get('title')?.hasError('minlength')">Mínimo 3 caracteres</mat-error>
+        <input matInput formControlName="title" [placeholder]="'Ex: Como você avalia sua liderança?' | translate" />
+        <mat-error *ngIf="questionForm.get('title')?.hasError('required')">{{ 'Título obrigatório' | translate }}</mat-error>
+        <mat-error *ngIf="questionForm.get('title')?.hasError('minlength')">{{ 'Mínimo 3 caracteres' | translate }}</mat-error>
       </mat-form-field>
 
       <!-- Tipo -->
       <mat-form-field appearance="outline" class="cqd__field">
-        <mat-label>Tipo de Pergunta</mat-label>
+        <mat-label>{{ 'Tipo de Pergunta' | translate }}</mat-label>
         <mat-icon matPrefix class="cqd__prefix-icon">category</mat-icon>
         <mat-select formControlName="type" (selectionChange)="onQuestionTypeChange($event.value)">
           <mat-select-trigger>
@@ -45,14 +45,14 @@
            class="cqd__options-block">
         <div class="cqd__options-label">
           <mat-icon>list</mat-icon>
-          Opções de Resposta
+          {{ 'Opções de Resposta' | translate }}
         </div>
         <div formArrayName="options" class="cqd__options-list">
           <div *ngFor="let option of optionsArray.controls; let i = index" class="cqd__option-row">
             <span class="cqd__option-num">{{ i + 1 }}</span>
             <mat-form-field appearance="outline" class="cqd__option-field">
-              <input matInput [formControlName]="i" placeholder="Digite a opção..." />
-              <mat-error *ngIf="option.hasError('required')">Obrigatório</mat-error>
+              <input matInput [formControlName]="i" [placeholder]="'Digite a opção...' | translate" />
+              <mat-error *ngIf="option.hasError('required')">{{ 'Obrigatório' | translate }}</mat-error>
             </mat-form-field>
             <button type="button" mat-icon-button class="cqd__option-del"
                     [disabled]="optionsArray.length <= 2"
@@ -63,14 +63,14 @@
         </div>
         <button type="button" mat-stroked-button class="cqd__add-option" (click)="addOption()">
           <mat-icon>add</mat-icon>
-          Adicionar Opção
+          {{ 'Adicionar Opção' | translate }}
         </button>
       </div>
 
       <!-- Obrigatória -->
       <div class="cqd__required-row">
         <mat-checkbox formControlName="required" class="cqd__checkbox">
-          Pergunta obrigatória
+          {{ 'Pergunta obrigatória' | translate }}
         </mat-checkbox>
       </div>
 
@@ -78,12 +78,12 @@
       <div class="cqd__preview">
         <div class="cqd__preview-label">
           <mat-icon>visibility</mat-icon>
-          Preview
+          {{ 'Preview' | translate }}
         </div>
         <div class="cqd__preview-body">
           <div class="cqd__preview-title">
-            {{ questionForm.get('title')?.value || 'Título da pergunta...' }}
-            <span *ngIf="questionForm.get('required')?.value" class="cqd__required-badge">Obrigatória</span>
+            {{ questionForm.get('title')?.value || ('Título da pergunta...' | translate) }}
+            <span *ngIf="questionForm.get('required')?.value" class="cqd__required-badge">{{ 'Obrigatória' | translate }}</span>
           </div>
 
           <!-- Rating -->
@@ -97,8 +97,8 @@
               </div>
             </div>
             <div class="cqd__rating-labels">
-              <span>Discordo Totalmente</span>
-              <span>Concordo Totalmente</span>
+              <span>{{ 'Discordo Totalmente' | translate }}</span>
+              <span>{{ 'Concordo Totalmente' | translate }}</span>
             </div>
           </div>
 
@@ -106,25 +106,25 @@
           <div *ngIf="questionForm.get('type')?.value === 'radiogroup' || questionForm.get('type')?.value === 'checkbox'" class="cqd__preview-choices">
             <div *ngFor="let opt of optionsArray.controls" class="cqd__preview-choice">
               <div class="cqd__choice-dot"></div>
-              <span>{{ opt.value || 'Opção...' }}</span>
+              <span>{{ opt.value || ('Opção...' | translate) }}</span>
             </div>
           </div>
 
           <!-- Dropdown -->
           <div *ngIf="questionForm.get('type')?.value === 'dropdown'" class="cqd__preview-dropdown">
-            <span>Selecione uma opção</span>
+            <span>{{ 'Selecione uma opção' | translate }}</span>
             <mat-icon>expand_more</mat-icon>
           </div>
 
           <!-- Texto / Comentário -->
           <div *ngIf="questionForm.get('type')?.value === 'text' || questionForm.get('type')?.value === 'comment'" class="cqd__preview-text">
-            <span>{{ questionForm.get('type')?.value === 'text' ? 'Resposta em texto...' : 'Comentários...' }}</span>
+            <span>{{ questionForm.get('type')?.value === 'text' ? ('Resposta em texto...' | translate) : ('Comentários...' | translate) }}</span>
           </div>
 
           <!-- Sim/Não -->
           <div *ngIf="questionForm.get('type')?.value === 'boolean'" class="cqd__preview-boolean">
-            <div class="cqd__bool-btn">Sim</div>
-            <div class="cqd__bool-btn">Não</div>
+            <div class="cqd__bool-btn">{{ 'Sim' | translate }}</div>
+            <div class="cqd__bool-btn">{{ 'Não' | translate }}</div>
           </div>
         </div>
       </div>
@@ -134,12 +134,12 @@
     <!-- Ações -->
     <mat-dialog-actions class="cqd__actions">
       <button type="button" mat-stroked-button class="cqd__btn-cancel" (click)="cancel()" [disabled]="isLoading">
-        Cancelar
+        {{ 'Cancelar' | translate }}
       </button>
       <button type="submit" mat-raised-button class="cqd__btn-save" [disabled]="questionForm.invalid || isLoading">
         <mat-spinner *ngIf="isLoading" diameter="16" class="cqd__spinner"></mat-spinner>
         <mat-icon *ngIf="!isLoading">save</mat-icon>
-        {{ data?.existingQuestion ? 'Salvar Alterações' : 'Criar Pergunta' }}
+        {{ (data?.existingQuestion ? 'Salvar Alterações' : 'Criar Pergunta') | translate }}
       </button>
     </mat-dialog-actions>
   </form>

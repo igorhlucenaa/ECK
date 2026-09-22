@@ -11,6 +11,7 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { MaterialModule } from 'src/app/material.module';
 import { NgIf } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 
 @Component({
@@ -22,6 +23,7 @@ import { NgIf } from '@angular/common';
     NgIf,
     FormsModule,
     ReactiveFormsModule,
+    TranslateModule,
   ],
   templateUrl: './side-login.component.html',
   styleUrls: ['./side-login.component.scss'],
@@ -45,7 +47,8 @@ export class AppSideLoginComponent {
   constructor(
     private settings: CoreService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private translate: TranslateService
   ) {}
 
   get f() {
@@ -55,7 +58,7 @@ export class AppSideLoginComponent {
   async submit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.errorMessage = 'Preencha os campos corretamente.';
+      this.errorMessage = this.translate.instant('auth.login.fillFieldsError');
       return;
     }
 
@@ -79,17 +82,17 @@ export class AppSideLoginComponent {
       case 'auth/invalid-credential':
       case 'auth/wrong-password':
       case 'auth/user-not-found':
-        return 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.';
+        return this.translate.instant('auth.login.error.invalidCredential');
       case 'auth/invalid-email':
-        return 'O e-mail informado não é válido.';
+        return this.translate.instant('auth.login.error.invalidEmail');
       case 'auth/user-disabled':
-        return 'Esta conta foi desativada. Entre em contato com o administrador.';
+        return this.translate.instant('auth.login.error.userDisabled');
       case 'auth/too-many-requests':
-        return 'Muitas tentativas incorretas. Aguarde alguns minutos e tente novamente.';
+        return this.translate.instant('auth.login.error.tooManyRequests');
       case 'auth/network-request-failed':
-        return 'Falha na conexão. Verifique sua internet e tente novamente.';
+        return this.translate.instant('auth.login.error.network');
       default:
-        return 'Não foi possível realizar o login. Tente novamente.';
+        return this.translate.instant('auth.login.error.generic');
     }
   }
 }

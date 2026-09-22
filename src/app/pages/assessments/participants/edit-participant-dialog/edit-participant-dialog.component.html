@@ -6,42 +6,42 @@
       <mat-icon>edit</mat-icon>
     </div>
     <div class="epd__header-text">
-      <h2>Editar Participante</h2>
-      <p>Altere o nome, e-mail e/ou categoria do participante</p>
+      <h2>{{ 'Editar Participante' | translate }}</h2>
+      <p>{{ 'Altere o nome, e-mail e/ou categoria do participante' | translate }}</p>
     </div>
   </div>
 
   <mat-dialog-content class="epd__body">
     <mat-form-field appearance="outline" class="epd__field">
-      <mat-label>Nome</mat-label>
+      <mat-label>{{ 'Nome' | translate }}</mat-label>
       <mat-icon matPrefix class="epd__prefix-icon">person</mat-icon>
-      <input matInput [(ngModel)]="name" placeholder="Nome completo"
+      <input matInput [(ngModel)]="name" [placeholder]="'Nome completo' | translate"
              (keydown.enter)="confirm()" (keydown.escape)="dialogRef.close(null)" autofocus />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="epd__field">
-      <mat-label>E-mail</mat-label>
+      <mat-label>{{ 'E-mail' | translate }}</mat-label>
       <mat-icon matPrefix class="epd__prefix-icon">email</mat-icon>
-      <input matInput [(ngModel)]="email" placeholder="email@exemplo.com" type="email"
+      <input matInput [(ngModel)]="email" [placeholder]="'email@exemplo.com' | translate" type="email"
              (keydown.enter)="confirm()" (keydown.escape)="dialogRef.close(null)" />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="epd__field">
-      <mat-label>Categoria</mat-label>
+      <mat-label>{{ 'Categoria' | translate }}</mat-label>
       <mat-icon matPrefix class="epd__prefix-icon">group</mat-icon>
       <mat-select [(ngModel)]="category">
         <mat-option
           value="Avaliado"
           [disabled]="!canSelectAvaliado && category !== 'Avaliado'">
-          Avaliado
+          {{ 'Avaliado' | translate }}
         </mat-option>
-        <mat-option value="Gestor">Gestor</mat-option>
-        <mat-option value="Par">Par</mat-option>
-        <mat-option value="Subordinado">Subordinado</mat-option>
-        <mat-option value="Outros">Outros</mat-option>
+        <mat-option value="Gestor">{{ 'Gestor' | translate }}</mat-option>
+        <mat-option value="Par">{{ 'Par' | translate }}</mat-option>
+        <mat-option value="Subordinado">{{ 'Subordinado' | translate }}</mat-option>
+        <mat-option value="Outros">{{ 'Outros' | translate }}</mat-option>
       </mat-select>
       <mat-hint *ngIf="!canSelectAvaliado && existingEvaluateeName">
-        Este projeto já possui o avaliado {{ existingEvaluateeName }}.
+        {{ 'Este projeto já possui o avaliado {{name}}.' | translate:{ name: existingEvaluateeName } }}
       </mat-hint>
     </mat-form-field>
   </mat-dialog-content>
@@ -50,11 +50,11 @@
   <div class="epd__actions">
     <button mat-button class="epd__btn-cancel" (click)="dialogRef.close(null)">
       <mat-icon>close</mat-icon>
-      Cancelar
+      {{ 'Cancelar' | translate }}
     </button>
     <button mat-raised-button class="epd__btn-confirm" [disabled]="!isValid" (click)="confirm()">
       <mat-icon>check</mat-icon>
-      Salvar
+      {{ 'Salvar' | translate }}
     </button>
   </div>
 

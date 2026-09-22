@@ -4,8 +4,8 @@
     <mat-icon>{{ isEditMode ? 'manage_accounts' : 'person_add' }}</mat-icon>
   </div>
   <div class="dialog-header-text">
-    <h2 class="dialog-title">{{ isEditMode ? 'Editar Usuário' : 'Novo Usuário' }}</h2>
-    <p class="dialog-subtitle">{{ isEditMode ? 'Atualize os dados do usuário' : 'Preencha os dados para criar um novo usuário' }}</p>
+    <h2 class="dialog-title">{{ (isEditMode ? 'Editar Usuário' : 'Novo Usuário') | translate }}</h2>
+    <p class="dialog-subtitle">{{ (isEditMode ? 'Atualize os dados do usuário' : 'Preencha os dados para criar um novo usuário') | translate }}</p>
   </div>
   <button mat-icon-button mat-dialog-close class="dialog-close-btn">
     <mat-icon>close</mat-icon>
@@ -19,63 +19,63 @@
     <!-- Nome + Sobrenome -->
     <div class="form-group form-row">
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Nome</mat-label>
+        <mat-label>{{ 'Nome' | translate }}</mat-label>
         <mat-icon matPrefix class="field-icon">person_outline</mat-icon>
-        <input matInput formControlName="name" placeholder="Digite o nome" />
-        <mat-error *ngIf="userForm.get('name')?.hasError('required')">Nome é obrigatório</mat-error>
+        <input matInput formControlName="name" [placeholder]="'Digite o nome' | translate" />
+        <mat-error *ngIf="userForm.get('name')?.hasError('required')">{{ 'Nome é obrigatório' | translate }}</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Sobrenome</mat-label>
+        <mat-label>{{ 'Sobrenome' | translate }}</mat-label>
         <mat-icon matPrefix class="field-icon">person_outline</mat-icon>
-        <input matInput formControlName="surname" placeholder="Digite o sobrenome" />
-        <mat-error *ngIf="userForm.get('surname')?.hasError('required')">Sobrenome é obrigatório</mat-error>
+        <input matInput formControlName="surname" [placeholder]="'Digite o sobrenome' | translate" />
+        <mat-error *ngIf="userForm.get('surname')?.hasError('required')">{{ 'Sobrenome é obrigatório' | translate }}</mat-error>
       </mat-form-field>
     </div>
 
     <!-- E-mail -->
     <div class="form-group">
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>E-mail</mat-label>
+        <mat-label>{{ 'E-mail' | translate }}</mat-label>
         <mat-icon matPrefix class="field-icon">email</mat-icon>
         <input matInput formControlName="email" placeholder="exemplo@empresa.com" [readonly]="isEditMode" />
         <mat-spinner matSuffix *ngIf="emailChecking" diameter="18" style="margin-right:8px"></mat-spinner>
         <mat-icon matSuffix *ngIf="!emailChecking && emailCtrl.valid && emailCtrl.dirty && !isEditMode"
                   style="color:#10b981">check_circle</mat-icon>
-        <mat-error *ngIf="emailCtrl.hasError('required')">E-mail é obrigatório</mat-error>
-        <mat-error *ngIf="emailCtrl.hasError('email')">Digite um e-mail válido</mat-error>
-        <mat-error *ngIf="emailCtrl.hasError('emailExists')">Este e-mail já está cadastrado na plataforma</mat-error>
-        <mat-error *ngIf="emailCtrl.hasError('emailExistsInactive')">Este e-mail pertence a um usuário inativo. Reative o cadastro existente ou use outro e-mail</mat-error>
-        <mat-hint *ngIf="isEditMode">O e-mail não pode ser alterado</mat-hint>
+        <mat-error *ngIf="emailCtrl.hasError('required')">{{ 'E-mail é obrigatório' | translate }}</mat-error>
+        <mat-error *ngIf="emailCtrl.hasError('email')">{{ 'Digite um e-mail válido' | translate }}</mat-error>
+        <mat-error *ngIf="emailCtrl.hasError('emailExists')">{{ 'Este e-mail já está cadastrado na plataforma' | translate }}</mat-error>
+        <mat-error *ngIf="emailCtrl.hasError('emailExistsInactive')">{{ 'Este e-mail pertence a um usuário inativo. Reative o cadastro existente ou use outro e-mail' | translate }}</mat-error>
+        <mat-hint *ngIf="isEditMode">{{ 'O e-mail não pode ser alterado' | translate }}</mat-hint>
       </mat-form-field>
     </div>
 
     <!-- Papel / Perfil -->
     <div class="form-group">
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Papel / Perfil</mat-label>
+        <mat-label>{{ 'Papel / Perfil' | translate }}</mat-label>
         <mat-icon matPrefix class="field-icon">shield</mat-icon>
         <mat-select formControlName="role" (selectionChange)="onRoleChange($event.value)">
           <mat-option *ngFor="let role of roles" [value]="role.value">
             {{ role.label }}
           </mat-option>
         </mat-select>
-        <mat-error *ngIf="userForm.get('role')?.hasError('required')">Papel é obrigatório</mat-error>
+        <mat-error *ngIf="userForm.get('role')?.hasError('required')">{{ 'Papel é obrigatório' | translate }}</mat-error>
       </mat-form-field>
     </div>
 
     <!-- Clientes (apenas para admin_client) -->
     <div class="form-group" *ngIf="selectedRole === 'admin_client'">
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Clientes</mat-label>
+        <mat-label>{{ 'Clientes' | translate }}</mat-label>
         <mat-icon matPrefix class="field-icon">business</mat-icon>
         <mat-select formControlName="clients" multiple>
           <mat-option *ngFor="let client of clients" [value]="client.id">
             {{ client.name }}
           </mat-option>
         </mat-select>
-        <mat-hint>Selecione um ou mais clientes</mat-hint>
-        <mat-error *ngIf="userForm.get('clients')?.hasError('required')">Selecione pelo menos um cliente</mat-error>
+        <mat-hint>{{ 'Selecione um ou mais clientes' | translate }}</mat-hint>
+        <mat-error *ngIf="userForm.get('clients')?.hasError('required')">{{ 'Selecione pelo menos um cliente' | translate }}</mat-error>
       </mat-form-field>
     </div>
 
@@ -85,20 +85,20 @@
       <!-- Filtro por cliente (opcional, apenas para admin_master ver menos grupos) -->
       <div class="form-group" *ngIf="clients.length > 1">
         <mat-form-field appearance="outline" class="w-100">
-          <mat-label>Filtrar grupos por cliente</mat-label>
+          <mat-label>{{ 'Filtrar grupos por cliente' | translate }}</mat-label>
           <mat-icon matPrefix class="field-icon">business</mat-icon>
           <mat-select [formControl]="clientFilterCtrl" (selectionChange)="onClientFilterChange($event.value)">
             <mat-option value="" disabled>{{ 'users.groups.select_client_to_list_groups' | translate }}</mat-option>
             <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
           </mat-select>
-          <mat-hint>Use para filtrar a lista de grupos abaixo</mat-hint>
+          <mat-hint>{{ 'Use para filtrar a lista de grupos abaixo' | translate }}</mat-hint>
         </mat-form-field>
       </div>
 
       <!-- Seleção de grupos -->
       <div class="form-group">
         <mat-form-field appearance="outline" class="w-100">
-          <mat-label>Grupo(s) *</mat-label>
+          <mat-label>{{ 'Grupo(s) *' | translate }}</mat-label>
           <mat-icon matPrefix class="field-icon">group_work</mat-icon>
           <mat-select formControlName="groups" multiple (selectionChange)="onGroupsChange($event.value)">
             <mat-option *ngIf="filteredGroups.length === 0" disabled>
@@ -109,8 +109,8 @@
               <span style="font-size:11px;color:#94a3b8;margin-left:6px">— {{ group.clientName }}</span>
             </mat-option>
           </mat-select>
-          <mat-hint>O acesso ao cliente e aos projetos vem do grupo selecionado</mat-hint>
-          <mat-error *ngIf="userForm.get('groups')?.hasError('groupRequired')">Selecione pelo menos um grupo</mat-error>
+          <mat-hint>{{ 'O acesso ao cliente e aos projetos vem do grupo selecionado' | translate }}</mat-hint>
+          <mat-error *ngIf="userForm.get('groups')?.hasError('groupRequired')">{{ 'Selecione pelo menos um grupo' | translate }}</mat-error>
         </mat-form-field>
       </div>
 
@@ -118,11 +118,11 @@
       <div class="derived-info" *ngIf="derivedClientName || derivedProjectNames.length > 0">
         <div class="derived-info__item" *ngIf="derivedClientName">
           <mat-icon>business</mat-icon>
-          <span><strong>Cliente:</strong> {{ derivedClientName }}</span>
+          <span><strong>{{ 'Cliente:' | translate }}</strong> {{ derivedClientName }}</span>
         </div>
         <div class="derived-info__item" *ngIf="derivedProjectNames.length > 0">
           <mat-icon>folder_open</mat-icon>
-          <span><strong>Projetos com acesso:</strong> {{ derivedProjectNames.join(', ') }}</span>
+          <span><strong>{{ 'Projetos com acesso:' | translate }}</strong> {{ derivedProjectNames.join(', ') }}</span>
         </div>
       </div>
 
@@ -134,12 +134,12 @@
 <!-- ── Footer ── -->
 <mat-dialog-actions class="dialog-actions">
   <button mat-button class="btn-cancel" mat-dialog-close>
-    Cancelar
+    {{ 'Cancelar' | translate }}
   </button>
   <button mat-flat-button class="btn-save"
           [disabled]="userForm.invalid || userForm.pending || emailChecking || emailCtrl.hasError('emailExists') || emailCtrl.hasError('emailExistsInactive')"
           (click)="saveUser()">
     <mat-icon>{{ isEditMode ? 'save' : 'person_add' }}</mat-icon>
-    {{ isEditMode ? 'Salvar Alterações' : 'Criar Usuário' }}
+    {{ (isEditMode ? 'Salvar Alterações' : 'Criar Usuário') | translate }}
   </button>
 </mat-dialog-actions>

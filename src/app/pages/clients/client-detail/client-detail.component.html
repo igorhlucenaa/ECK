@@ -82,19 +82,19 @@
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'Nome Fantasia' | translate }}</mat-label>
                 <mat-icon matPrefix class="field-icon">badge</mat-icon>
-                <input matInput formControlName="companyName" placeholder="Nome da empresa" />
+                <input matInput formControlName="companyName" [placeholder]="'Nome da empresa' | translate" />
                 <mat-error *ngIf="clientForm.get('companyName')?.invalid">
-                  Nome é obrigatório.
+                  {{ 'Nome é obrigatório.' | translate }}
                 </mat-error>
               </mat-form-field>
             </div>
             <div class="col-md-6">
               <mat-form-field appearance="outline" class="w-100">
-                <mat-label>E-mail</mat-label>
+                <mat-label>{{ 'E-mail' | translate }}</mat-label>
                 <mat-icon matPrefix class="field-icon">mail_outline</mat-icon>
                 <input matInput formControlName="email" placeholder="email@empresa.com" />
                 <mat-error *ngIf="clientForm.get('email')?.hasError('email')">
-                  E-mail inválido.
+                  {{ 'E-mail inválido.' | translate }}
                 </mat-error>
               </mat-form-field>
             </div>
@@ -129,7 +129,7 @@
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'Notas Adicionais' | translate }}</mat-label>
                 <mat-icon matPrefix class="field-icon">notes</mat-icon>
-                <textarea matInput formControlName="notes" rows="1" placeholder="Observações..."></textarea>
+                <textarea matInput formControlName="notes" rows="1" [placeholder]="'Observações...' | translate"></textarea>
               </mat-form-field>
             </div>
           </div>
@@ -154,7 +154,7 @@
               <mat-form-field appearance="outline" class="w-100">
                 <mat-label>{{ 'Nome do Representante' | translate }}</mat-label>
                 <mat-icon matPrefix class="field-icon">person_outline</mat-icon>
-                <input matInput formControlName="representativeName" placeholder="Nome completo" />
+                <input matInput formControlName="representativeName" [placeholder]="'Nome completo' | translate" />
               </mat-form-field>
             </div>
             <div class="col-md-6">
@@ -163,7 +163,7 @@
                 <mat-icon matPrefix class="field-icon">alternate_email</mat-icon>
                 <input matInput formControlName="representativeEmail" placeholder="email@contato.com" />
                 <mat-error *ngIf="clientForm.get('representativeEmail')?.hasError('email')">
-                  E-mail inválido.
+                  {{ 'E-mail inválido.' | translate }}
                 </mat-error>
               </mat-form-field>
             </div>
@@ -172,9 +172,9 @@
           <div class="row">
             <div class="col-md-6">
               <mat-form-field appearance="outline" class="w-100">
-                <mat-label>Função / Cargo</mat-label>
+                <mat-label>{{ 'Função / Cargo' | translate }}</mat-label>
                 <mat-icon matPrefix class="field-icon">work_outline</mat-icon>
-                <input matInput formControlName="representativeRole" placeholder="Ex: Diretor de RH" />
+                <input matInput formControlName="representativeRole" [placeholder]="'Ex: Diretor de RH' | translate" />
               </mat-form-field>
             </div>
           </div>

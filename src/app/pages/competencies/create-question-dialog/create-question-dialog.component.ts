@@ -5,7 +5,7 @@ import { MaterialModule } from '../../../material.module';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Firestore, addDoc, collection, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface Question {
   id: string;
@@ -18,7 +18,7 @@ interface Question {
 @Component({
   selector: 'app-create-question-dialog',
   standalone: true,
-  imports: [CommonModule, MaterialModule, ReactiveFormsModule],
+  imports: [CommonModule, MaterialModule, ReactiveFormsModule, TranslateModule],
   templateUrl: './create-question-dialog.component.html',
   styleUrls: ['./create-question-dialog.component.scss']
 })

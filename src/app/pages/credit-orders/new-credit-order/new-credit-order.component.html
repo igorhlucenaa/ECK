@@ -1,20 +1,20 @@
 <div class="form-wrapper">
 
   <app-page-header
-    eyebrow="Financeiro"
-    title="Novo Pedido de Crédito"
-    subtitle="Preencha as informações para solicitar créditos ao cliente"
+    [eyebrow]="'Financeiro' | translate"
+    [title]="'Novo Pedido de Crédito' | translate"
+    [subtitle]="'Preencha as informações para solicitar créditos ao cliente' | translate"
     data-tour="new-order-header">
 
     <button mat-button class="btn-back" type="button" (click)="cancel()">
       <mat-icon>arrow_back</mat-icon>
-      Voltar
+      {{ 'Voltar' | translate }}
     </button>
 
     <button mat-raised-button class="btn-save" type="button"
       [disabled]="orderForm.invalid" (click)="createOrder()">
       <mat-icon>add_circle</mat-icon>
-      Criar Pedido
+      {{ 'Criar Pedido' | translate }}
     </button>
 
   </app-page-header>
@@ -28,8 +28,8 @@
           <mat-icon>receipt_long</mat-icon>
         </div>
         <div>
-          <h3 class="card-title">Dados do Pedido</h3>
-          <p class="card-subtitle">Informe o cliente, a quantidade de créditos e o período de vigência</p>
+          <h3 class="card-title">{{ 'Dados do Pedido' | translate }}</h3>
+          <p class="card-subtitle">{{ 'Informe o cliente, a quantidade de créditos e o período de vigência' | translate }}</p>
         </div>
       </div>
 
@@ -38,15 +38,15 @@
         <!-- Linha 1: Cliente -->
         <div class="fields-row">
           <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Cliente</mat-label>
+            <mat-label>{{ 'Cliente' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">business</mat-icon>
             <mat-select formControlName="clientId">
               <mat-option *ngFor="let client of clients" [value]="client.id">
-                {{ client.name || 'Cliente sem nome' }}
+                {{ client.name || ('Cliente sem nome' | translate) }}
               </mat-option>
             </mat-select>
             <mat-error *ngIf="orderForm.get('clientId')?.hasError('required')">
-              Selecione um cliente.
+              {{ 'Selecione um cliente.' | translate }}
             </mat-error>
           </mat-form-field>
         </div>
@@ -54,15 +54,15 @@
         <!-- Linha 2: Quantidade de Créditos -->
         <div class="fields-row">
           <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Quantidade de Créditos</mat-label>
+            <mat-label>{{ 'Quantidade de Créditos' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">toll</mat-icon>
             <input matInput formControlName="credits" type="number"
-              placeholder="Ex.: 100" min="1" />
+              [placeholder]="'Ex.: 100' | translate" min="1" />
             <mat-error *ngIf="orderForm.get('credits')?.hasError('required')">
-              A quantidade de créditos é obrigatória.
+              {{ 'A quantidade de créditos é obrigatória.' | translate }}
             </mat-error>
             <mat-error *ngIf="orderForm.get('credits')?.hasError('min')">
-              A quantidade deve ser maior que zero.
+              {{ 'A quantidade deve ser maior que zero.' | translate }}
             </mat-error>
           </mat-form-field>
         </div>
@@ -70,7 +70,7 @@
         <!-- Linha 3: Datas -->
         <div class="fields-row">
           <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Data de Início</mat-label>
+            <mat-label>{{ 'Data de Início' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">calendar_today</mat-icon>
             <input matInput formControlName="startDate"
               [matDatepicker]="startDatePicker"
@@ -79,12 +79,12 @@
             <mat-datepicker-toggle matSuffix [for]="startDatePicker"></mat-datepicker-toggle>
             <mat-datepicker #startDatePicker></mat-datepicker>
             <mat-error *ngIf="orderForm.get('startDate')?.hasError('required')">
-              A data de início é obrigatória.
+              {{ 'A data de início é obrigatória.' | translate }}
             </mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="field-half">
-            <mat-label>Data de Validade</mat-label>
+            <mat-label>{{ 'Data de Validade' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">event_busy</mat-icon>
             <input matInput formControlName="validityDate"
               [matDatepicker]="validityDatePicker"
@@ -94,10 +94,10 @@
             <mat-datepicker-toggle matSuffix [for]="validityDatePicker"></mat-datepicker-toggle>
             <mat-datepicker #validityDatePicker></mat-datepicker>
             <mat-error *ngIf="orderForm.get('validityDate')?.hasError('required')">
-              A data de validade é obrigatória.
+              {{ 'A data de validade é obrigatória.' | translate }}
             </mat-error>
             <mat-error *ngIf="orderForm.get('validityDate')?.hasError('minDate')">
-              A data de validade deve ser igual ou posterior à data de início.
+              {{ 'A data de validade deve ser igual ou posterior à data de início.' | translate }}
             </mat-error>
             <mat-hint>{{ 'creditOrders.validityHint' | translate }}</mat-hint>
           </mat-form-field>
@@ -106,10 +106,10 @@
         <!-- Linha 4: Notas -->
         <div class="fields-row">
           <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Notas Adicionais</mat-label>
+            <mat-label>{{ 'Notas Adicionais' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">notes</mat-icon>
             <textarea matInput formControlName="notes" rows="3"
-              placeholder="Observações sobre o pedido (opcional)"></textarea>
+              [placeholder]="'Observações sobre o pedido (opcional)' | translate"></textarea>
           </mat-form-field>
         </div>
 
@@ -120,12 +120,12 @@
     <div class="save-bar">
       <button mat-button class="btn-back" type="button" (click)="cancel()">
         <mat-icon>arrow_back</mat-icon>
-        Voltar
+        {{ 'Voltar' | translate }}
       </button>
       <span class="save-bar-spacer"></span>
       <button mat-raised-button class="btn-save" type="submit" [disabled]="orderForm.invalid">
         <mat-icon>add_circle</mat-icon>
-        Criar Pedido
+        {{ 'Criar Pedido' | translate }}
       </button>
     </div>
 

@@ -101,7 +101,7 @@
               <mat-icon class="client-search-icon">search</mat-icon>
               <input class="client-search-input"
                      [formControl]="clientSearchControl"
-                     placeholder="Buscar cliente..."
+                     [placeholder]="'Buscar cliente...' | translate"
                      (click)="$event.stopPropagation()"
                      (keydown)="$event.stopPropagation()" />
             </div>
@@ -154,11 +154,11 @@
             <span class="sgi__meta">{{ group.competencias?.length || 0 }} competência{{ (group.competencias?.length || 0) !== 1 ? 's' : '' }}</span>
           </div>
           <div class="sgi__actions" (click)="$event.stopPropagation()">
-            <button mat-icon-button class="sgi__btn sgi__btn--edit" matTooltip="Editar grupo"
+            <button mat-icon-button class="sgi__btn sgi__btn--edit" [matTooltip]="'Editar grupo' | translate"
                     (click)="openGroupEditor(group)">
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button class="sgi__btn sgi__btn--del" matTooltip="Excluir grupo"
+            <button mat-icon-button class="sgi__btn sgi__btn--del" [matTooltip]="'Excluir grupo' | translate"
                     (click)="deleteCompetencyGroup(group)">
               <mat-icon>delete_outline</mat-icon>
             </button>
@@ -250,7 +250,7 @@
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Nome do Grupo</mat-label>
             <mat-icon matPrefix class="field-icon">label</mat-icon>
-            <input matInput [formControl]="groupNameControl" placeholder="Ex: Liderança Executiva" />
+            <input matInput [formControl]="groupNameControl" [placeholder]="'Ex: Liderança Executiva' | translate" />
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">
@@ -353,7 +353,7 @@
           </div>
           <div class="coverage-strip__divider" *ngIf="getUnlinkedOpen().length > 0"></div>
           <div class="coverage-strip__stat coverage-strip__stat--open" *ngIf="getUnlinkedOpen().length > 0"
-               matTooltip="Perguntas abertas vão para a seção 'Perguntas Abertas' do relatório automaticamente">
+               [matTooltip]="'Perguntas abertas vão para a seção \'Perguntas Abertas\' do relatório automaticamente' | translate">
             <span class="coverage-strip__value">{{ getUnlinkedOpen().length }}</span>
             <span class="coverage-strip__label">Abertas ℹ</span>
           </div>
@@ -377,7 +377,7 @@
               <p *ngIf="selectedAssessmentId">Preencha os dados e vincule as perguntas do formulário</p>
             </div>
             <button mat-icon-button class="form-back-btn" type="button"
-                    matTooltip="Voltar para a lista"
+                    [matTooltip]="'Voltar para a lista' | translate"
                     (click)="cancelarEdicaoCompetencia()">
               <mat-icon>arrow_back</mat-icon>
             </button>
@@ -389,14 +389,14 @@
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label>Nome da Competência</mat-label>
                 <mat-icon matPrefix class="field-icon">label</mat-icon>
-                <input matInput formControlName="nome" placeholder="Ex: Liderança, Comunicação..." />
+                <input matInput formControlName="nome" [placeholder]="'Ex: Liderança, Comunicação...' | translate" />
               </mat-form-field>
 
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label>Descrição</mat-label>
                 <mat-icon matPrefix class="field-icon">notes</mat-icon>
                 <textarea matInput formControlName="descricao" rows="2"
-                          placeholder="Descreva brevemente esta competência..."></textarea>
+                          [placeholder]="'Descreva brevemente esta competência...' | translate"></textarea>
               </mat-form-field>
 
               <!-- Perguntas manuais (sem avaliação) -->
@@ -511,12 +511,12 @@
                   </span>
                   <div class="comp-card__actions" (click)="$event.stopPropagation()">
                     <button mat-icon-button class="tbl-btn tbl-btn--edit"
-                            matTooltip="Editar competência"
+                            [matTooltip]="'Editar competência' | translate"
                             (click)="editarCompetencia(c)">
                       <mat-icon>edit</mat-icon>
                     </button>
                     <button mat-icon-button class="tbl-btn tbl-btn--del"
-                            matTooltip="Remover competência"
+                            [matTooltip]="'Remover competência' | translate"
                             (click)="removerCompetencia(c)">
                       <mat-icon>delete_outline</mat-icon>
                     </button>
@@ -535,7 +535,7 @@
                     <span class="comp-card__q-num">{{ qi + 1 }}</span>
                     <span class="comp-card__q-text">{{ getTituloPerguntaCustom(c.id, pId) }}</span>
                     <button mat-icon-button class="comp-card__q-edit" *ngIf="selectedAssessmentId"
-                            matTooltip="Editar texto da pergunta"
+                            [matTooltip]="'Editar texto da pergunta' | translate"
                             (click)="openEditQuestionDialog(pId); $event.stopPropagation()">
                       <mat-icon style="font-size:16px;width:16px;height:16px">edit</mat-icon>
                     </button>
@@ -589,11 +589,11 @@
                   <div *ngFor="let q of getUnlinkedLinkable()" class="coverage-q-item coverage-q-item--linkable">
                     <mat-icon class="coverage-q-item__icon">{{ getQuestionTypeIcon(q.type) }}</mat-icon>
                     <span class="coverage-q-item__text">{{ q.title }}</span>
-                    <button mat-icon-button class="coverage-q-item__edit" matTooltip="Editar pergunta"
+                    <button mat-icon-button class="coverage-q-item__edit" [matTooltip]="'Editar pergunta' | translate"
                             (click)="openEditQuestionDialog(q.id)">
                       <mat-icon>edit</mat-icon>
                     </button>
-                    <button mat-icon-button class="coverage-q-item__del" matTooltip="Remover pergunta"
+                    <button mat-icon-button class="coverage-q-item__del" [matTooltip]="'Remover pergunta' | translate"
                             (click)="removerPerguntaCustom(q.id)">
                       <mat-icon>delete_outline</mat-icon>
                     </button>
@@ -609,18 +609,18 @@
                   Perguntas abertas
                   <span class="coverage-unlinked__badge coverage-unlinked__badge--open">Aparecerão no relatório</span>
                   <mat-icon class="coverage-unlinked__info-icon"
-                    matTooltip="Perguntas do tipo texto/comentário serão exibidas na seção 'Perguntas Abertas' do relatório. Não geram pontuação numérica e não precisam ser vinculadas a competências."
+                    [matTooltip]="'Perguntas do tipo texto/comentário serão exibidas na seção \'Perguntas Abertas\' do relatório. Não geram pontuação numérica e não precisam ser vinculadas a competências.' | translate"
                     matTooltipPosition="above">info_outline</mat-icon>
                 </div>
                 <div class="coverage-unlinked__list">
                   <div *ngFor="let q of getUnlinkedOpen()" class="coverage-q-item coverage-q-item--open">
                     <mat-icon class="coverage-q-item__icon">{{ getQuestionTypeIcon(q.type) }}</mat-icon>
                     <span class="coverage-q-item__text">{{ q.title }}</span>
-                    <button mat-icon-button class="coverage-q-item__edit" matTooltip="Editar pergunta"
+                    <button mat-icon-button class="coverage-q-item__edit" [matTooltip]="'Editar pergunta' | translate"
                             (click)="openEditQuestionDialog(q.id)">
                       <mat-icon>edit</mat-icon>
                     </button>
-                    <button mat-icon-button class="coverage-q-item__del" matTooltip="Remover pergunta"
+                    <button mat-icon-button class="coverage-q-item__del" [matTooltip]="'Remover pergunta' | translate"
                             (click)="removerPerguntaCustom(q.id)">
                       <mat-icon>delete_outline</mat-icon>
                     </button>

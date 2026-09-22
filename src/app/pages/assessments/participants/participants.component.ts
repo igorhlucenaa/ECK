@@ -223,7 +223,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     if (this.isProjectConcluded || this.isProjectCancelled) {
       this.snackBar.open(
         `Ação bloqueada: projeto ${this.projectStatusLabel || 'indisponível'}.`,
-        'Fechar',
+        this.translate.instant('Fechar'),
         { duration: 4000 }
       );
       return false;
@@ -936,7 +936,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       if (this.mailTemplates.length === 0) {
         this.snackBar.open(
           'Nenhum template encontrado para este cliente.',
-          'Fechar',
+          this.translate.instant('Fechar'),
           {
             duration: 3000,
           }
@@ -973,7 +973,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       if (this.assessments.length === 0) {
         this.snackBar.open(
           'Nenhuma avaliação encontrada para este cliente.',
-          'Fechar',
+          this.translate.instant('Fechar'),
           {
             duration: 3000,
           }
@@ -1055,7 +1055,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         const msg = newBlocked
           ? 'Participante bloqueado com sucesso.'
           : 'Participante desbloqueado com sucesso.';
-        this.snackBar.open(msg, 'Fechar', { duration: 3000 });
+        this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 3000 });
       } catch (error) {
         console.error(`Erro ao ${actionKey} participante:`, error);
         this.snackBar.open(this.translate.instant('Erro ao alterar o bloqueio do participante.'), this.translate.instant('Fechar'), {
@@ -1513,7 +1513,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         if (!selectedTemplateId) {
           this.snackBar.open(
             'Por favor, selecione um template antes de enviar.',
-            'Fechar',
+            this.translate.instant('Fechar'),
             {
               duration: 3000,
             }
@@ -1539,7 +1539,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       ) {
         this.snackBar.open(
           'Por favor, selecione uma avaliação antes de enviar.',
-          'Fechar',
+          this.translate.instant('Fechar'),
           {
             duration: 3000,
           }
@@ -1560,7 +1560,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       if (!projectIdForDeadline) {
         this.snackBar.open(
           'Por favor, selecione um projeto antes de enviar.',
-          'Fechar',
+          this.translate.instant('Fechar'),
           {
             duration: 3000,
           }
@@ -1678,7 +1678,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
       this.snackBar.open(
         `E-mails enviados para ${emailCount} participante${emailCount !== 1 ? 's' : ''}!`,
-        'Fechar',
+        this.translate.instant('Fechar'),
         { duration: 3000 }
       );
 
@@ -1811,7 +1811,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
           projectName
         );
         if (!importValidation.valid) {
-          this.snackBar.open(importValidation.error || 'Falha de validação no import.', 'Fechar', { duration: 6000 });
+          this.snackBar.open(importValidation.error || this.translate.instant('participants.validation.importFailed'), this.translate.instant('Fechar'), { duration: 6000 });
           return;
         }
 
@@ -1882,7 +1882,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         const msg = saved === total
           ? `${saved} participante${saved !== 1 ? 's' : ''} importado${saved !== 1 ? 's' : ''} com sucesso!`
           : `${saved} de ${total} participante${total !== 1 ? 's' : ''} importados (${total - saved} com erro)`;
-        this.snackBar.open(msg, 'Fechar', { duration: 5000 });
+        this.snackBar.open(msg, this.translate.instant('Fechar'), { duration: 5000 });
         if (result.project) await this.revertProjectIfConcluded(result.project);
         // Ajustar filtros para exibir os novos participantes sem recarregar cliente/projeto
         if (!this.filterClient) {
@@ -1912,7 +1912,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       if (!assessmentId) {
         this.snackBar.open(
           'Nenhuma avaliação associada a este projeto.',
-          'Fechar',
+          this.translate.instant('Fechar'),
           { duration: 3000 }
         );
         return null;
@@ -1977,7 +1977,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         participant.id
       );
       if (!emailCheck.valid) {
-        this.snackBar.open(emailCheck.error || 'E-mail inválido.', 'Fechar', { duration: 5000 });
+        this.snackBar.open(emailCheck.error || this.translate.instant('participants.validation.invalidEmail'), this.translate.instant('Fechar'), { duration: 5000 });
         return;
       }
 
@@ -1990,7 +1990,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         if (!validation.valid) {
           this.snackBar.open(
             `Este projeto já possui um avaliado cadastrado (${validation.existingEvaluateeName}). É permitido apenas um avaliado por projeto.`,
-            'Fechar',
+            this.translate.instant('Fechar'),
             { duration: 5000 }
           );
           return;
@@ -2005,7 +2005,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         console.error('Erro ao atualizar participante:', error);
         const message =
           (error as { message?: string })?.message || 'Erro ao atualizar participante.';
-        this.snackBar.open(message, 'Fechar', { duration: 5000 });
+        this.snackBar.open(message, this.translate.instant('Fechar'), { duration: 5000 });
       }
     });
   }
@@ -2486,7 +2486,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       } else {
         this.snackBar.open(
           `Este e-mail já está cadastrado com o perfil "${existingData['role']}". Edite o usuário para alterar permissões.`,
-          'Fechar',
+          this.translate.instant('Fechar'),
           { duration: 5000 }
         );
       }
@@ -2507,7 +2507,11 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
         createdAt: new Date(),
       });
     } catch (err: any) {
-      this.snackBar.open(`Erro ao criar visualizador: ${err?.message}`, 'Fechar', { duration: 5000 });
+      this.snackBar.open(
+        this.translate.instant('participants.snack.viewerCreateError', { message: err?.message || '' }),
+        this.translate.instant('Fechar'),
+        { duration: 5000 }
+      );
       return;
     }
 
@@ -2525,7 +2529,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       if (err?.code !== 'auth/email-already-in-use') {
         this.snackBar.open(
           `Conta Firestore criada, mas erro ao criar Auth: ${err?.message}`,
-          'Fechar', { duration: 6000 }
+          this.translate.instant('Fechar'), { duration: 6000 }
         );
         try { await deleteApp(secondaryApp); } catch {}
         return;
@@ -2539,14 +2543,14 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     } catch (err: any) {
       this.snackBar.open(
         `Visualizador criado, mas o e-mail não foi enviado: ${err?.message}`,
-        'Fechar', { duration: 6000 }
+        this.translate.instant('Fechar'), { duration: 6000 }
       );
       return;
     }
 
     this.snackBar.open(
       `Acesso criado! E-mail de acesso enviado para ${participant.email}.`,
-      'Fechar', { duration: 4000 }
+          this.translate.instant('Fechar'), { duration: 4000 }
     );
   }
 }

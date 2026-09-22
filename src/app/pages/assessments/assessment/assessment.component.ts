@@ -16,6 +16,7 @@ import {
   updateDoc,
 } from '@angular/fire/firestore';
 import { ProjectService } from 'src/app/services/project.service';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface Assessment {
   surveyJSON: any;
@@ -25,7 +26,7 @@ interface Assessment {
 @Component({
   selector: 'app-assessment',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './assessment.component.html',
   styleUrls: ['./assessment.component.scss'],
 })

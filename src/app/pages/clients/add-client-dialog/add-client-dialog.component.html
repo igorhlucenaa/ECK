@@ -5,7 +5,7 @@
   </div>
   <div class="dialog-header-text">
     <h2 class="dialog-title">{{ (isEditing ? 'Editar Cliente' : 'Cadastrar Cliente') | translate }}</h2>
-    <p class="dialog-subtitle">{{ isEditing ? 'Atualize os dados do cliente' : 'Preencha os dados para cadastrar um novo cliente' }}</p>
+    <p class="dialog-subtitle">{{ (isEditing ? 'Atualize os dados do cliente' : 'Preencha os dados para cadastrar um novo cliente') | translate }}</p>
   </div>
   <button mat-icon-button class="dialog-close-btn" (click)="close()">
     <mat-icon>close</mat-icon>
@@ -19,11 +19,11 @@
     <!-- Nome da Empresa -->
     <div class="form-group">
       <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Nome da Empresa</mat-label>
+        <mat-label>{{ 'Nome da Empresa' | translate }}</mat-label>
         <mat-icon matPrefix class="field-icon">business_center</mat-icon>
-        <input matInput formControlName="companyName" placeholder="Ex: Empresa Ltda." />
+        <input matInput formControlName="companyName" [placeholder]="'Ex: Empresa Ltda.' | translate" />
         <mat-error *ngIf="form.get('companyName')?.touched && form.get('companyName')?.invalid">
-          Nome da empresa é obrigatório.
+          {{ 'Nome da empresa é obrigatório.' | translate }}
         </mat-error>
       </mat-form-field>
     </div>
@@ -33,7 +33,7 @@
       <mat-form-field appearance="outline" class="w-100">
         <mat-label>{{ 'Setor' | translate }}</mat-label>
         <mat-icon matPrefix class="field-icon">category</mat-icon>
-        <input matInput formControlName="sector" placeholder="Ex: Tecnologia, Saúde..." />
+        <input matInput formControlName="sector" [placeholder]="'Ex: Tecnologia, Saúde...' | translate" />
       </mat-form-field>
     </div>
 

@@ -3,7 +3,7 @@
   <app-page-header
     eyebrow="Modelos de E-mail"
     [title]="(isEditMode ? 'Editar Template' : 'Criar Template') | translate"
-    subtitle="Configure o conteúdo e as configurações do modelo de e-mail"
+    [subtitle]="'Configure o conteúdo e as configurações do modelo de e-mail' | translate"
     data-tour="template-form-header">
 
     <button mat-button class="btn-back" (click)="goBack()">
@@ -77,7 +77,7 @@
         <!-- Admin Cliente: cliente fixo -->
         <div *ngIf="userRole === 'admin_client'" class="client-info">
           <mat-icon>business</mat-icon>
-          <span><strong>{{ 'Cliente' | translate }}:</strong> {{ clientNameFromRoute || 'Não identificado' }}</span>
+          <span><strong>{{ 'Cliente' | translate }}:</strong> {{ clientNameFromRoute || ('Não identificado' | translate) }}</span>
         </div>
       </div>
     </div>
@@ -93,8 +93,8 @@
       <div class="vars-card-header">
         <div class="vars-header-icon-wrap"><mat-icon>code</mat-icon></div>
         <div>
-          <h3 class="vars-card-title">Variáveis Dinâmicas</h3>
-          <p class="vars-card-subtitle">Insira as variáveis abaixo no editor. Elas serão substituídas automaticamente no momento do envio.</p>
+          <h3 class="vars-card-title">{{ 'Variáveis Dinâmicas' | translate }}</h3>
+          <p class="vars-card-subtitle">{{ 'Insira as variáveis abaixo no editor. Elas serão substituídas automaticamente no momento do envio.' | translate }}</p>
         </div>
       </div>
 
@@ -102,55 +102,55 @@
       <div class="vars-group">
         <div class="vars-group-label">
           <mat-icon>person_outline</mat-icon>
-          Participante
+          {{ 'Participante' | translate }}
         </div>
         <div class="vars-grid">
 
           <div class="var-item var-item--blue">
             <div class="var-header">
               <div class="var-icon var-icon--blue"><mat-icon>person</mat-icon></div>
-              <span class="var-name">Nome do participante</span>
+              <span class="var-name">{{ 'Nome do participante' | translate }}</span>
             </div>
             <div class="var-pill var-pill--blue">
               <code class="var-pill__text" ngNonBindable>{{nome_participante}}</code>
               <button class="var-pill__copy" (click)="copyVar('{{nome_participante}}')">
-                <mat-icon>content_copy</mat-icon>Copiar
+                <mat-icon>content_copy</mat-icon>{{ 'Copiar' | translate }}
               </button>
             </div>
-            <p class="var-desc">Nome completo de quem receberá o e-mail.</p>
-            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+            <p class="var-desc">{{ 'Nome completo de quem receberá o e-mail.' | translate }}</p>
+            <div class="var-tags"><span class="var-tag">{{ 'Todos os tipos' | translate }}</span></div>
           </div>
 
           <div class="var-item var-item--amber">
             <div class="var-header">
               <div class="var-icon var-icon--amber"><mat-icon>groups</mat-icon></div>
-              <span class="var-name">Categoria do participante</span>
+              <span class="var-name">{{ 'Categoria do participante' | translate }}</span>
             </div>
             <div class="var-pill var-pill--amber">
               <code class="var-pill__text" ngNonBindable>{{categoria}}</code>
               <button class="var-pill__copy" (click)="copyVar('{{categoria}}')">
-                <mat-icon>content_copy</mat-icon>Copiar
+                <mat-icon>content_copy</mat-icon>{{ 'Copiar' | translate }}
               </button>
             </div>
-            <p class="var-desc">Papel do participante no ciclo 360° (ex.: Avaliado, Gestor, Par, Subordinado, Outros).</p>
-            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+            <p class="var-desc">{{ 'Papel do participante no ciclo 360° (ex.: Avaliado, Gestor, Par, Subordinado, Outros).' | translate }}</p>
+            <div class="var-tags"><span class="var-tag">{{ 'Todos os tipos' | translate }}</span></div>
           </div>
 
           <div class="var-item var-item--teal">
             <div class="var-header">
               <div class="var-icon var-icon--teal"><mat-icon>badge</mat-icon></div>
-              <span class="var-name">Nome do avaliado</span>
+              <span class="var-name">{{ 'Nome do avaliado' | translate }}</span>
             </div>
             <div class="var-pill var-pill--teal">
               <code class="var-pill__text" ngNonBindable>{{nome_avaliado}}</code>
               <button class="var-pill__copy" (click)="copyVar('{{nome_avaliado}}')">
-                <mat-icon>content_copy</mat-icon>Copiar
+                <mat-icon>content_copy</mat-icon>{{ 'Copiar' | translate }}
               </button>
             </div>
-            <p class="var-desc">Nome de quem está sendo avaliado (apenas em e-mails para o avaliador).</p>
+            <p class="var-desc">{{ 'Nome de quem está sendo avaliado (apenas em e-mails para o avaliador).' | translate }}</p>
             <div class="var-tags">
-              <span class="var-tag var-tag--orange">Convite Avaliador</span>
-              <span class="var-tag var-tag--orange">Lembrete Avaliador</span>
+              <span class="var-tag var-tag--orange">{{ 'Convite Avaliador' | translate }}</span>
+              <span class="var-tag var-tag--orange">{{ 'Lembrete Avaliador' | translate }}</span>
             </div>
           </div>
 
@@ -161,53 +161,53 @@
       <div class="vars-group">
         <div class="vars-group-label">
           <mat-icon>folder_open</mat-icon>
-          Projeto &amp; Cliente
+          {{ 'Projeto & Cliente' | translate }}
         </div>
         <div class="vars-grid">
 
           <div class="var-item var-item--indigo">
             <div class="var-header">
               <div class="var-icon var-icon--indigo"><mat-icon>folder_open</mat-icon></div>
-              <span class="var-name">Nome do projeto</span>
+              <span class="var-name">{{ 'Nome do projeto' | translate }}</span>
             </div>
             <div class="var-pill var-pill--indigo">
               <code class="var-pill__text" ngNonBindable>{{nome_projeto}}</code>
               <button class="var-pill__copy" (click)="copyVar('{{nome_projeto}}')">
-                <mat-icon>content_copy</mat-icon>Copiar
+                <mat-icon>content_copy</mat-icon>{{ 'Copiar' | translate }}
               </button>
             </div>
-            <p class="var-desc">Nome do projeto de avaliação selecionado.</p>
-            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+            <p class="var-desc">{{ 'Nome do projeto de avaliação selecionado.' | translate }}</p>
+            <div class="var-tags"><span class="var-tag">{{ 'Todos os tipos' | translate }}</span></div>
           </div>
 
           <div class="var-item var-item--gray">
             <div class="var-header">
               <div class="var-icon var-icon--gray"><mat-icon>business</mat-icon></div>
-              <span class="var-name">Nome do cliente</span>
+              <span class="var-name">{{ 'Nome do cliente' | translate }}</span>
             </div>
             <div class="var-pill var-pill--gray">
               <code class="var-pill__text" ngNonBindable>{{nome_cliente}}</code>
               <button class="var-pill__copy" (click)="copyVar('{{nome_cliente}}')">
-                <mat-icon>content_copy</mat-icon>Copiar
+                <mat-icon>content_copy</mat-icon>{{ 'Copiar' | translate }}
               </button>
             </div>
-            <p class="var-desc">Nome da empresa / cliente associado ao projeto.</p>
-            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+            <p class="var-desc">{{ 'Nome da empresa / cliente associado ao projeto.' | translate }}</p>
+            <div class="var-tags"><span class="var-tag">{{ 'Todos os tipos' | translate }}</span></div>
           </div>
 
           <div class="var-item var-item--amber">
             <div class="var-header">
               <div class="var-icon var-icon--amber"><mat-icon>event</mat-icon></div>
-              <span class="var-name">Data de expiração</span>
+              <span class="var-name">{{ 'Data de expiração' | translate }}</span>
             </div>
             <div class="var-pill var-pill--amber">
               <code class="var-pill__text" ngNonBindable>{{data_expiracao}}</code>
               <button class="var-pill__copy" (click)="copyVar('{{data_expiracao}}')">
-                <mat-icon>content_copy</mat-icon>Copiar
+                <mat-icon>content_copy</mat-icon>{{ 'Copiar' | translate }}
               </button>
             </div>
-            <p class="var-desc">Data limite do projeto no formato DD/MM/AAAA.</p>
-            <div class="var-tags"><span class="var-tag">Todos os tipos</span></div>
+            <p class="var-desc">{{ 'Data limite do projeto no formato DD/MM/AAAA.' | translate }}</p>
+            <div class="var-tags"><span class="var-tag">{{ 'Todos os tipos' | translate }}</span></div>
           </div>
 
         </div>
@@ -217,44 +217,44 @@
       <div class="vars-group">
         <div class="vars-group-label">
           <mat-icon>link</mat-icon>
-          Links gerados automaticamente
+          {{ 'Links gerados automaticamente' | translate }}
         </div>
         <div class="vars-grid">
 
           <div class="var-item var-item--green">
             <div class="var-header">
               <div class="var-icon var-icon--green"><mat-icon>link</mat-icon></div>
-              <span class="var-name">Link da avaliação</span>
+              <span class="var-name">{{ 'Link da avaliação' | translate }}</span>
             </div>
             <div class="var-pill var-pill--green">
               <code class="var-pill__text">[LINK_AVALIACAO]</code>
               <button class="var-pill__copy" (click)="copyVar('[LINK_AVALIACAO]')">
-                <mat-icon>content_copy</mat-icon>Copiar
+                <mat-icon>content_copy</mat-icon>{{ 'Copiar' | translate }}
               </button>
             </div>
-            <p class="var-desc">URL única de acesso ao formulário. Inserido automaticamente ao salvar o template.</p>
+            <p class="var-desc">{{ 'URL única de acesso ao formulário. Inserido automaticamente ao salvar o template.' | translate }}</p>
             <div class="var-tags">
-              <span class="var-tag var-tag--blue">Convite</span>
-              <span class="var-tag var-tag--blue">Lembrete</span>
-              <span class="var-tag var-tag--teal">Cadastro do Usuário</span>
+              <span class="var-tag var-tag--blue">{{ 'Convite' | translate }}</span>
+              <span class="var-tag var-tag--blue">{{ 'Lembrete' | translate }}</span>
+              <span class="var-tag var-tag--teal">{{ 'Cadastro do Usuário' | translate }}</span>
             </div>
           </div>
 
           <div class="var-item var-item--purple">
             <div class="var-header">
               <div class="var-icon var-icon--purple"><mat-icon>description</mat-icon></div>
-              <span class="var-name">Link do relatório</span>
+              <span class="var-name">{{ 'Link do relatório' | translate }}</span>
             </div>
             <div class="var-pill var-pill--purple">
               <code class="var-pill__text">[LINK_RELATORIO]</code>
               <button class="var-pill__copy" (click)="copyVar('[LINK_RELATORIO]')">
-                <mat-icon>content_copy</mat-icon>Copiar
+                <mat-icon>content_copy</mat-icon>{{ 'Copiar' | translate }}
               </button>
             </div>
-            <p class="var-desc">URL de acesso ao relatório finalizado do participante.</p>
+            <p class="var-desc">{{ 'URL de acesso ao relatório finalizado do participante.' | translate }}</p>
             <div class="var-tags">
-              <span class="var-tag var-tag--purple">Relatório Finalizado</span>
-              <span class="var-tag var-tag--purple">Relatório Finalizado - Equipe</span>
+              <span class="var-tag var-tag--purple">{{ 'Relatório Finalizado' | translate }}</span>
+              <span class="var-tag var-tag--purple">{{ 'Relatório Finalizado - Equipe' | translate }}</span>
             </div>
           </div>
 
@@ -265,7 +265,7 @@
       <div class="vars-example">
         <div class="vars-example__header">
           <mat-icon>lightbulb_outline</mat-icon>
-          <span>Exemplo de uso no corpo do e-mail</span>
+          <span>{{ 'Exemplo de uso no corpo do e-mail' | translate }}</span>
         </div>
         <pre class="vars-example__code" ngNonBindable>Olá, <span class="ex-var">{{nome_participante}}</span>!
 

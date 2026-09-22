@@ -2223,7 +2223,11 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     }
 
     this.cancelarEdicaoCompetencia();
-    this.snackBar.open(`Editando grupo: ${group.name}`, 'OK', { duration: 2500 });
+    this.snackBar.open(
+      this.translate.instant('competencies.snack.editingGroup', { name: group.name }),
+      this.translate.instant('common.ok'),
+      { duration: 2500 }
+    );
   }
 
   async deleteCompetencyGroup(group: any): Promise<void> {
@@ -2243,7 +2247,11 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         await this.loadCompetencyGroups(this.selectedClientId);
       }
 
-      this.snackBar.open(`Grupo "${group.name}" excluído com sucesso.`, 'OK', { duration: 3000 });
+      this.snackBar.open(
+        this.translate.instant('competencies.snack.groupDeleted', { name: group.name }),
+        this.translate.instant('common.ok'),
+        { duration: 3000 }
+      );
     } catch (error) {
       console.error('Erro ao excluir grupo:', error);
       this.snackBar.open(this.translate.instant('Erro ao excluir grupo.'), this.translate.instant('Fechar'), { duration: 3000 });

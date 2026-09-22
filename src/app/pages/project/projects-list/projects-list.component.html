@@ -219,11 +219,11 @@
                 <mat-divider *ngIf="isAdminMaster"></mat-divider>
                 <button mat-menu-item *ngIf="isAdminMaster && p.status !== 'Cancelado'" (click)="cancelProject(p.id)" class="menu-item--warn">
                   <mat-icon class="menu-icon menu-icon--warn">block</mat-icon>
-                  <span>Cancelar projeto</span>
+                  <span>{{ 'Cancelar projeto' | translate }}</span>
                 </button>
                 <button mat-menu-item *ngIf="isAdminMaster" (click)="deleteProject(p.id)" class="menu-item--danger">
                   <mat-icon class="menu-icon menu-icon--danger">delete_outline</mat-icon>
-                  <span>Excluir projeto</span>
+                  <span>{{ 'Excluir projeto' | translate }}</span>
                 </button>
               </mat-menu>
 

@@ -2,6 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule } from '@ngx-translate/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import {
   Firestore,
@@ -45,7 +46,7 @@ export interface LinkEvaluateeModalResult {
 @Component({
   selector: 'app-link-evaluatee-modal',
   standalone: true,
-  imports: [CommonModule, MaterialModule, ReactiveFormsModule],
+  imports: [CommonModule, MaterialModule, ReactiveFormsModule, TranslateModule],
   templateUrl: './link-evaluatee-modal.component.html',
   styleUrls: ['./link-evaluatee-modal.component.scss'],
 })

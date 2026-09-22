@@ -1204,7 +1204,11 @@ export class ParticipantsModalComponent implements OnInit {
           projectName
         );
         if (!validation.valid) {
-          this.snackBar.open(validation.error || 'Falha de validação no import.', 'Fechar', { duration: 6000 });
+          this.snackBar.open(
+          validation.error || this.translate.instant('participants.validation.importFailed'),
+          this.translate.instant('Fechar'),
+          { duration: 6000 }
+        );
           return;
         }
 

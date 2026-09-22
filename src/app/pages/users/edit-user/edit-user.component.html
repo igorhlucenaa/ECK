@@ -13,9 +13,9 @@
       <mat-icon>arrow_back</mat-icon>
     </button>
     <span class="eu-breadcrumb__trail">
-      <a class="eu-breadcrumb__link" routerLink="/users">Usuários</a>
+      <a class="eu-breadcrumb__link" routerLink="/users">{{ 'Usuários' | translate }}</a>
       <mat-icon class="eu-breadcrumb__sep">chevron_right</mat-icon>
-      <span class="eu-breadcrumb__current">Editar usuário</span>
+      <span class="eu-breadcrumb__current">{{ 'Editar usuário' | translate }}</span>
     </span>
   </div>
 
@@ -35,14 +35,14 @@
           <div class="eu-profile-info__row">
             <mat-icon>shield</mat-icon>
             <div>
-              <span class="eu-profile-info__label">Perfil atual</span>
+              <span class="eu-profile-info__label">{{ 'Perfil atual' | translate }}</span>
               <span class="eu-profile-info__val eu-role"
                 [class.eu-role--master]="userForm.get('role')?.value === 'admin_master'"
                 [class.eu-role--admin]="userForm.get('role')?.value === 'admin_client'"
                 [class.eu-role--viewer]="userForm.get('role')?.value === 'viewer'">
-                {{ userForm.get('role')?.value === 'admin_master' ? 'Master'
-                  : userForm.get('role')?.value === 'admin_client' ? 'Admin Cliente'
-                  : userForm.get('role')?.value === 'viewer' ? 'Visualizador'
+                {{ userForm.get('role')?.value === 'admin_master' ? ('Master' | translate)
+                  : userForm.get('role')?.value === 'admin_client' ? ('Admin Cliente' | translate)
+                  : userForm.get('role')?.value === 'viewer' ? ('Visualizador' | translate)
                   : '—' }}
               </span>
             </div>
@@ -50,14 +50,14 @@
           <div class="eu-profile-info__row">
             <mat-icon>business</mat-icon>
             <div>
-              <span class="eu-profile-info__label">Clientes</span>
+              <span class="eu-profile-info__label">{{ 'Clientes' | translate }}</span>
               <span class="eu-profile-info__val">{{ clientNames }}</span>
             </div>
           </div>
           <div class="eu-profile-info__row" *ngIf="userForm.get('role')?.value === 'viewer' && derivedProjectNames.length > 0">
             <mat-icon>folder_open</mat-icon>
             <div>
-              <span class="eu-profile-info__label">Projetos com acesso</span>
+              <span class="eu-profile-info__label">{{ 'Projetos com acesso' | translate }}</span>
               <span class="eu-profile-info__val">{{ derivedProjectNames.join(', ') }}</span>
             </div>
           </div>
@@ -65,7 +65,7 @@
 
         <div class="eu-profile-card__hint">
           <mat-icon>info</mat-icon>
-          Alterações refletirão imediatamente no sistema
+          {{ 'Alterações refletirão imediatamente no sistema' | translate }}
         </div>
       </div>
     </aside>
@@ -80,68 +80,68 @@
             <mat-icon>manage_accounts</mat-icon>
           </div>
           <div>
-            <h2 class="eu-form-card__title">Editar usuário</h2>
-            <p class="eu-form-card__sub">Atualize os dados do usuário abaixo</p>
+            <h2 class="eu-form-card__title">{{ 'Editar usuário' | translate }}</h2>
+            <p class="eu-form-card__sub">{{ 'Atualize os dados do usuário abaixo' | translate }}</p>
           </div>
         </div>
 
         <form [formGroup]="userForm" class="eu-form">
 
           <!-- Identificação -->
-          <p class="eu-section-label">Identificação</p>
+          <p class="eu-section-label">{{ 'Identificação' | translate }}</p>
           <div class="eu-form-row">
             <mat-form-field appearance="outline" class="eu-field">
-              <mat-label>Nome</mat-label>
+              <mat-label>{{ 'Nome' | translate }}</mat-label>
               <mat-icon matPrefix>person_outline</mat-icon>
-              <input matInput formControlName="name" placeholder="Nome">
-              <mat-error *ngIf="userForm.get('name')?.hasError('required')">Nome é obrigatório</mat-error>
+              <input matInput formControlName="name" [placeholder]="'Nome' | translate">
+              <mat-error *ngIf="userForm.get('name')?.hasError('required')">{{ 'Nome é obrigatório' | translate }}</mat-error>
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="eu-field">
-              <mat-label>Sobrenome</mat-label>
+              <mat-label>{{ 'Sobrenome' | translate }}</mat-label>
               <mat-icon matPrefix>person_outline</mat-icon>
-              <input matInput formControlName="surname" placeholder="Sobrenome">
-              <mat-error *ngIf="userForm.get('surname')?.hasError('required')">Sobrenome é obrigatório</mat-error>
+              <input matInput formControlName="surname" [placeholder]="'Sobrenome' | translate">
+              <mat-error *ngIf="userForm.get('surname')?.hasError('required')">{{ 'Sobrenome é obrigatório' | translate }}</mat-error>
             </mat-form-field>
           </div>
 
           <!-- Acesso -->
-          <p class="eu-section-label">Acesso</p>
+          <p class="eu-section-label">{{ 'Acesso' | translate }}</p>
           <mat-form-field appearance="outline" class="eu-field eu-field--full">
-            <mat-label>E-mail</mat-label>
+            <mat-label>{{ 'E-mail' | translate }}</mat-label>
             <mat-icon matPrefix>email</mat-icon>
             <input matInput formControlName="email">
-            <mat-hint>O e-mail não pode ser alterado</mat-hint>
+            <mat-hint>{{ 'O e-mail não pode ser alterado' | translate }}</mat-hint>
           </mat-form-field>
 
           <!-- Perfil -->
-          <p class="eu-section-label">Perfil</p>
+          <p class="eu-section-label">{{ 'Perfil' | translate }}</p>
           <mat-form-field appearance="outline" class="eu-field eu-field--full">
-            <mat-label>Papel / Perfil</mat-label>
+            <mat-label>{{ 'Papel / Perfil' | translate }}</mat-label>
             <mat-icon matPrefix>shield</mat-icon>
             <mat-select formControlName="role" (selectionChange)="onRoleChange($event.value)">
               <mat-option *ngFor="let role of roles" [value]="role.value">
                 {{ role.label }}
               </mat-option>
             </mat-select>
-            <mat-error *ngIf="userForm.get('role')?.hasError('required')">Papel é obrigatório</mat-error>
+            <mat-error *ngIf="userForm.get('role')?.hasError('required')">{{ 'Papel é obrigatório' | translate }}</mat-error>
           </mat-form-field>
 
           <!-- Vínculo: cliente (admin_client) ou grupo (viewer) -->
           <ng-container *ngIf="selectedRole === 'admin_client'">
-            <p class="eu-section-label">Vínculo com Cliente</p>
+            <p class="eu-section-label">{{ 'Vínculo com Cliente' | translate }}</p>
             <mat-form-field appearance="outline" class="eu-field eu-field--full">
-              <mat-label>Clientes</mat-label>
+              <mat-label>{{ 'Clientes' | translate }}</mat-label>
               <mat-icon matPrefix>business</mat-icon>
               <mat-select formControlName="clients" multiple>
                 <mat-option *ngFor="let client of clients" [value]="client.id">{{ client.name }}</mat-option>
               </mat-select>
-              <mat-hint>Selecione um ou mais clientes</mat-hint>
+              <mat-hint>{{ 'Selecione um ou mais clientes' | translate }}</mat-hint>
             </mat-form-field>
           </ng-container>
 
           <ng-container *ngIf="selectedRole === 'viewer'">
-            <p class="eu-section-label">Grupos de Acesso</p>
+            <p class="eu-section-label">{{ 'Grupos de Acesso' | translate }}</p>
 
             <!-- Filtro por cliente (quando há múltiplos clientes) -->
             <mat-form-field appearance="outline" class="eu-field eu-field--full" *ngIf="clients.length > 1">
@@ -154,7 +154,7 @@
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="eu-field eu-field--full">
-              <mat-label>Grupo(s) *</mat-label>
+              <mat-label>{{ 'Grupo(s) *' | translate }}</mat-label>
               <mat-icon matPrefix>group_work</mat-icon>
               <mat-select formControlName="groups" multiple (selectionChange)="onGroupsChange($event.value)">
                 <mat-option *ngIf="filteredGroups.length === 0" disabled>
@@ -165,19 +165,19 @@
                   <span style="font-size:11px;color:#94a3b8;margin-left:6px">— {{ group.clientName }}</span>
                 </mat-option>
               </mat-select>
-              <mat-hint>Defina os grupos que este viewer pertence</mat-hint>
-              <mat-error *ngIf="userForm.get('groups')?.hasError('groupRequired')">Selecione pelo menos um grupo</mat-error>
+              <mat-hint>{{ 'Defina os grupos que este viewer pertence' | translate }}</mat-hint>
+              <mat-error *ngIf="userForm.get('groups')?.hasError('groupRequired')">{{ 'Selecione pelo menos um grupo' | translate }}</mat-error>
             </mat-form-field>
 
             <!-- Info derivada -->
             <div class="eu-derived-info" *ngIf="derivedClientName || derivedProjectNames.length > 0">
               <div class="eu-derived-info__item" *ngIf="derivedClientName">
                 <mat-icon>business</mat-icon>
-                <span><strong>Cliente:</strong> {{ derivedClientName }}</span>
+                <span><strong>{{ 'Cliente:' | translate }}</strong> {{ derivedClientName }}</span>
               </div>
               <div class="eu-derived-info__item" *ngIf="derivedProjectNames.length > 0">
                 <mat-icon>folder_open</mat-icon>
-                <span><strong>Projetos com acesso:</strong> {{ derivedProjectNames.join(', ') }}</span>
+                <span><strong>{{ 'Projetos com acesso:' | translate }}</strong> {{ derivedProjectNames.join(', ') }}</span>
               </div>
             </div>
           </ng-container>
@@ -188,14 +188,14 @@
         <div class="eu-form-card__footer">
           <button mat-stroked-button class="eu-btn-cancel" (click)="goBack()">
             <mat-icon>close</mat-icon>
-            Cancelar
+            {{ 'Cancelar' | translate }}
           </button>
           <button mat-raised-button class="eu-btn-save"
             [disabled]="userForm.invalid || isSaving"
             (click)="save()">
             <mat-spinner *ngIf="isSaving" diameter="18" class="eu-btn-save__spinner"></mat-spinner>
             <mat-icon *ngIf="!isSaving">save</mat-icon>
-            {{ isSaving ? 'Salvando...' : 'Salvar alterações' }}
+            {{ (isSaving ? 'Salvando...' : 'Salvar alterações') | translate }}
           </button>
         </div>
 

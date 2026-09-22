@@ -52,7 +52,8 @@ export interface AssessmentLinkDoc {
 
 export interface HistoryRow extends EmailHistoryEntry {
   linkId: string;
-  sequenceLabel: string; // "Convite" | "Lembrete 1" | "Lembrete 2" ...
+  sequenceLabel: string;
+  sequenceParams?: Record<string, string | number>;
 }
 
 @Component({
@@ -107,9 +108,8 @@ export class SendHistoryDialogComponent implements OnInit {
             rows.push({
               ...entry,
               linkId: link.id,
-              sequenceLabel: entry.type === 'convite'
-                ? 'Convite inicial'
-                : `Lembrete ${lembreteCounter}`,
+              sequenceLabel: entry.type === 'convite' ? 'Convite inicial' : 'Lembrete {{index}}',
+              sequenceParams: entry.type === 'convite' ? undefined : { index: lembreteCounter },
             });
           }
         } else {
@@ -132,7 +132,8 @@ export class SendHistoryDialogComponent implements OnInit {
                 status: 'enviado',
                 templateId: link.reminderTemplateId,
                 linkId: link.id,
-                sequenceLabel: `Lembrete ${i}`,
+                sequenceLabel: 'Lembrete {{index}}',
+                sequenceParams: { index: i },
               });
             }
           }

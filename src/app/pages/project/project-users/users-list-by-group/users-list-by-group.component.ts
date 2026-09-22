@@ -12,11 +12,12 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-users-list-by-group',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, TranslateModule],
   templateUrl: './users-list-by-group.component.html',
   styleUrls: ['./users-list-by-group.component.scss'],
 })

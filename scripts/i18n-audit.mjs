@@ -1,47 +1,37 @@
 import fs from 'fs';
+import path from 'path';
 import { execSync } from 'child_process';
 
-function flatten(obj, prefix = '') {
-  const out = {};
-  for (const [k, v] of Object.entries(obj)) {
-    const key = prefix ? `${prefix}.${k}` : k;
-    if (v && typeof v === 'object' && !Array.isArray(v)) Object.assign(out, flatten(v, key));
-    else out[key] = v;
+const repo = path.resolve(import.meta.dirname, '..');
+const i18nDir = path.join(repo, 'src/assets/i18n');
+const langs = ['pt-BR', 'en', 'es'];
+const dict = Object.fromEntries(
+  langs.map((l) => [l, JSON.parse(fs.readFileSync(path.join(i18nDir, `${l}.json`), 'utf8'))])
+);
+
+function rg(pattern, globs) {
+  try {
+    const cmd = `rg -o ${pattern} ${globs.map((g) => `--glob "${g}"`).join(' ')} src/app/pages src/app/components src/app/layouts`;
+    return execSync(cmd, { cwd: repo, encoding: 'utf8', shell: true })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+  } catch {
+    return [];
   }
-  return out;
 }
 
-const pt = flatten(JSON.parse(fs.readFileSync('src/assets/i18n/pt-BR.json', 'utf8')));
-const enData = flatten(JSON.parse(fs.readFileSync('src/assets/i18n/en.json', 'utf8')));
-const esData = flatten(JSON.parse(fs.readFileSync('src/assets/i18n/es.json', 'utf8')));
+const instantKeys = rg(String.raw`translate\.instant\(['"]([^'"]+)['"]`, ['*.ts']);
+const pipeKeys = rg(String.raw`['"]([a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)+)['"]\s*\|\s*translate`, ['*.html', '*.ts']);
 
-const content = execSync('rg "." src/app -g"*.html" -g"*.ts" --no-filename -N', {
-  encoding: 'utf8',
-  maxBuffer: 50 * 1024 * 1024,
-});
-
-const keys = new Set();
-const patterns = [
-  /translate\.instant\(\s*['"]([^'"]+)['"]/g,
-  /\{\{\s*['"]([^'"]+)['"]\s*\|\s*translate/g,
-  /this\.t\(\s*['"]([^'"]+)['"]/g,
-];
-
-for (const pattern of patterns) {
-  let m;
-  while ((m = pattern.exec(content)) !== null) keys.add(m[1]);
+const dotted = [...new Set([...instantKeys, ...pipeKeys].filter((k) => k.includes('.')))];
+const missing = {};
+for (const l of langs) {
+  missing[l] = dotted.filter((k) => !(k in dict[l]));
 }
 
-const missingPt = [...keys].filter((k) => !(k in pt));
-const missingEn = [...keys].filter((k) => k in pt && !(k in enData));
-const missingEs = [...keys].filter((k) => k in pt && !(k in esData));
+const enKeys = new Set(Object.keys(dict.en));
+const esExtra = Object.keys(dict.es).filter((k) => !enKeys.has(k));
+const esMissingInEn = esExtra.filter((k) => !(k in dict.en));
 
-console.log('Referenced keys:', keys.size);
-console.log('Missing in pt-BR:', missingPt.length);
-missingPt.forEach((k) => console.log('  [pt]', k));
-console.log('Missing in EN (used in app):', missingEn.length);
-missingEn.slice(0, 50).forEach((k) => console.log('  [en]', k));
-if (missingEn.length > 50) console.log(`  ... +${missingEn.length - 50}`);
-console.log('Missing in ES (used in app):', missingEs.length);
-missingEs.slice(0, 50).forEach((k) => console.log('  [es]', k));
-if (missingEs.length > 50) console.log(`  ... +${missingEs.length - 50}`);
+console.log(JSON.stringify({ dottedUsed: dotted.length, missing, esExtraCount: esExtra.length, esExtra }, null, 2));

@@ -438,7 +438,11 @@ export class AddParticipantModalComponent implements OnInit {
           projectName
         );
         if (!existsCheck.valid) {
-          this.snackBar.open(existsCheck.error || 'Cadastre o avaliado primeiro.', 'Fechar', { duration: 6000 });
+          this.snackBar.open(
+            existsCheck.error || this.translate.instant('participants.validation.registerEvaluateeFirst'),
+            this.translate.instant('Fechar'),
+            { duration: 6000 }
+          );
           this.isSaving = false;
           return;
         }
