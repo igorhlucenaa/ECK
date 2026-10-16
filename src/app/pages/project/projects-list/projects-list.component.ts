@@ -24,6 +24,7 @@ import { CommonModule, Location } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ViewerScopeService } from 'src/app/services/viewer-scope.service';
 import { ProjectService } from 'src/app/services/project.service';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
 import { EmailSelectionDialogComponent } from './email-selection-dialog/email-selection-dialog.component';
@@ -163,7 +164,8 @@ export class ProjectsListComponent implements OnInit {
     private translate: TranslateService,
     private dependencyCheck: DependencyCheckService,
     private clientExportService: ReportClientExportService,
-    private loadingService: LoadingService
+    private loadingService: LoadingService,
+    private viewerScopeService: ViewerScopeService
   ) {}
 
   ngOnInit(): void {
@@ -174,7 +176,9 @@ export class ProjectsListComponent implements OnInit {
       this.userClientIds = await this.authService.getCurrentUserClientIds();
       this.clientId = this.userClientIds[0] || null;
       if (this.isViewer) {
-        await this.loadViewerProjectIds();
+        this.viewerProjectIds = new Set(
+          await this.viewerScopeService.getViewerProjectIds()
+        );
       }
 
       this.displayedColumns = [
@@ -188,18 +192,23 @@ export class ProjectsListComponent implements OnInit {
 
       if (this.isAdminMaster) {
         await this.loadClients();
-      } else if (this.userClientIds.length > 0) {
-        // admin_client e viewer: carrega clientes vinculados em clientsMap E clients[]
-        const snaps = await Promise.all(
-          this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
-        );
-        snaps.forEach(snap => {
-          if (snap.exists()) {
-            const name = fixMojibake(snap.data()['companyName'] || snap.id);
-            this.clientsMap[snap.id] = name;
-            this.clients.push({ id: snap.id, name });
-          }
-        });
+      } else {
+        let scopedClientIds = this.userClientIds;
+        if (this.isViewer && scopedClientIds.length === 0) {
+          scopedClientIds = await this.viewerScopeService.getViewerClientIds();
+        }
+        if (scopedClientIds.length > 0) {
+          const snaps = await Promise.all(
+            scopedClientIds.map((id) => getDoc(doc(this.firestore, 'clients', id)))
+          );
+          snaps.forEach((snap) => {
+            if (snap.exists()) {
+              const name = fixMojibake(snap.data()['companyName'] || snap.id);
+              this.clientsMap[snap.id] = name;
+              this.clients.push({ id: snap.id, name });
+            }
+          });
+        }
       }
       // Inicializar lista filtrada e busca por cliente (disponível para todos os roles)
       this.clientsFiltered = [...this.clients];
@@ -426,54 +435,6 @@ export class ProjectsListComponent implements OnInit {
     } catch (error) {
       console.error('Erro ao contar respostas da avaliação:', error);
       return [0, 0];
-    }
-  }
-
-  private async loadViewerProjectIds(): Promise<void> {
-    this.viewerProjectIds.clear();
-    const email = await this.authService.getCurrentUserEmail();
-    if (!email) return;
-
-    const usersSnap = await getDocs(
-      query(collection(this.firestore, 'users'), where('email', '==', email))
-    );
-    if (usersSnap.empty) return;
-
-    const userDocId = usersSnap.docs[0].id;
-    const userData = usersSnap.docs[0].data() || {};
-    const isOnNewStructure = 'groups' in userData;
-
-    // Fonte principal: grupos onde o viewer aparece em userIds
-    const groupsSnap = await getDocs(
-      query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', userDocId))
-    );
-
-    const allProjectsClientIds = new Set<string>();
-    groupsSnap.forEach(snap => {
-      const data = snap.data();
-      if (data['allProjects'] === true && data['clientId']) {
-        allProjectsClientIds.add(data['clientId']);
-      } else {
-        const projectIds: string[] = data['projectIds'] || [];
-        projectIds.forEach(id => this.viewerProjectIds.add(id));
-      }
-    });
-
-    // Para grupos com allProjects: buscar todos os projetos do cliente
-    if (allProjectsClientIds.size > 0) {
-      const allClientsArr = [...allProjectsClientIds];
-      const projSnap = await getDocs(
-        query(collection(this.firestore, 'projects'), where('clientId', 'in', allClientsArr))
-      );
-      projSnap.forEach(d => this.viewerProjectIds.add(d.id));
-    }
-
-    // Fallback legado: APENAS se o usuário nunca foi migrado para grupos
-    if (!isOnNewStructure && this.viewerProjectIds.size === 0) {
-      const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
-      const fromSingle = typeof userData['project'] === 'string' && userData['project'].trim()
-        ? [userData['project']] : [];
-      [...fromArray, ...fromSingle].forEach(id => this.viewerProjectIds.add(id));
     }
   }
 

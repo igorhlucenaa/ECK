@@ -23,6 +23,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ViewerScopeService } from 'src/app/services/viewer-scope.service';
 import { environment } from 'src/enviroments/environment';
 
 interface ClientOption {
@@ -128,6 +129,7 @@ export class ReminderSettingsComponent implements OnInit {
     private snackBar: MatSnackBar,
     private fb: FormBuilder,
     private authService: AuthService,
+    private viewerScopeService: ViewerScopeService,
     private translate: TranslateService,
     private route: ActivatedRoute
   ) {}
@@ -153,7 +155,9 @@ export class ReminderSettingsComponent implements OnInit {
     this.userRole = (await this.authService.getCurrentUserRole()) || '';
     this.userEmail = (await this.authService.getCurrentUserEmail()) || '';
     if (this.userRole === 'viewer') {
-      await this.loadViewerProjectIds();
+      this.viewerProjectIds = new Set(
+        await this.viewerScopeService.getViewerProjectIds(this.userEmail)
+      );
     }
 
     await this.loadClients();
@@ -555,7 +559,8 @@ export class ReminderSettingsComponent implements OnInit {
   private async loadClients(): Promise<void> {
     try {
       if (this.userRole === 'admin_client' || this.userRole === 'viewer') {
-        const clientIds = await this.authService.getCurrentUserClientIds();
+        const clientIds =
+          await this.viewerScopeService.getScopedClientIdsForRole(this.userRole);
         const docs = await Promise.all(
           clientIds.map((clientId) => getDoc(doc(this.firestore, 'clients', clientId)))
         );
@@ -587,25 +592,6 @@ export class ReminderSettingsComponent implements OnInit {
       });
       this.clients = [];
     }
-  }
-
-  private async loadViewerProjectIds(): Promise<void> {
-    this.viewerProjectIds.clear();
-    if (!this.userEmail) return;
-
-    const usersSnap = await getDocs(
-      query(collection(this.firestore, 'users'), where('email', '==', this.userEmail))
-    );
-    if (usersSnap.empty) return;
-
-    const userData = usersSnap.docs[0].data() || {};
-    const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
-    const fromSingle =
-      typeof userData['project'] === 'string' && userData['project'].trim()
-        ? [userData['project']]
-        : [];
-
-    [...fromArray, ...fromSingle].forEach((projectId) => this.viewerProjectIds.add(projectId));
   }
 
   private async triggerImmediateReminderProcessing(clientId: string, projectId?: string): Promise<void> {

@@ -53,6 +53,7 @@ import {
 } from 'src/app/utils/i18n-labels.util';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ViewerScopeService } from 'src/app/services/viewer-scope.service';
 import { ProjectService } from 'src/app/services/project.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 import { ParticipantCreditService } from 'src/app/services/participant-credit.service';
@@ -284,6 +285,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     private firebaseApp: FirebaseApp,
     private translate: TranslateService,
     private userAdminService: UserAdminService,
+    private viewerScopeService: ViewerScopeService,
     @Optional() @Inject(MAT_DIALOG_DATA) public data: ModalData | null,
     @Optional() public dialogRef: MatDialogRef<ParticipantsComponent>
   ) {}
@@ -303,7 +305,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     this.userClientIds = await this.authService.getCurrentUserClientIds();
 
     if (this.userRole === 'viewer') {
-      await this.loadViewerProjectIds();
+      this.viewerProjectIds = await this.viewerScopeService.getViewerProjectIds();
     }
 
     this.isEmailSendingMode =
@@ -510,60 +512,22 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     return true;
   }
 
-  private async loadViewerProjectIds(): Promise<void> {
-    this.viewerProjectIds = [];
-    const email = await this.authService.getCurrentUserEmail();
-    if (!email) return;
-
-    const usersSnap = await getDocs(query(collection(this.firestore, 'users'), where('email', '==', email)));
-    if (usersSnap.empty) return;
-
-    const userDocId = usersSnap.docs[0].id;
-    const userData = usersSnap.docs[0].data();
-    const isOnNewStructure = 'groups' in userData;
-    const projectIds = new Set<string>();
-
-    // Fonte principal: grupos onde o viewer aparece em userIds
-    const groupsSnap = await getDocs(
-      query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', userDocId))
-    );
-
-    const allProjectsClientIds = new Set<string>();
-    groupsSnap.forEach(snap => {
-      const gData = snap.data();
-      if (gData['allProjects'] === true && gData['clientId']) {
-        allProjectsClientIds.add(gData['clientId']);
-      } else {
-        (gData['projectIds'] || []).forEach((id: string) => projectIds.add(id));
-      }
-    });
-
-    // Grupos com allProjects: buscar todos os projetos do cliente
-    if (allProjectsClientIds.size > 0) {
-      const projSnap = await getDocs(
-        query(collection(this.firestore, 'projects'), where('clientId', 'in', [...allProjectsClientIds]))
-      );
-      projSnap.forEach(d => projectIds.add(d.id));
-    }
-
-    // Fallback legado: apenas se nunca foi migrado para grupos
-    if (!isOnNewStructure && projectIds.size === 0) {
-      const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
-      const fromSingle = userData['project'] ? [userData['project']] : [];
-      [...fromArray, ...fromSingle].forEach((id: string) => projectIds.add(id));
-    }
-
-    this.viewerProjectIds = [...projectIds];
-  }
-
   async loadClients(): Promise<void> {
     try {
       let docs: any[] = [];
-      if (this.userRole !== 'admin_master' && this.userClientIds.length > 0) {
-        const snaps = await Promise.all(
-          this.userClientIds.map(id => getDoc(doc(this.firestore, 'clients', id)))
-        );
-        docs = snaps.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }));
+      if (this.userRole !== 'admin_master') {
+        const clientIds =
+          this.userRole === 'viewer'
+            ? await this.viewerScopeService.getViewerClientIds()
+            : this.userClientIds;
+        if (clientIds.length > 0) {
+          const snaps = await Promise.all(
+            clientIds.map((id) => getDoc(doc(this.firestore, 'clients', id)))
+          );
+          docs = snaps
+            .filter((d) => d.exists())
+            .map((d) => ({ id: d.id, ...d.data() }));
+        }
       } else if (this.userRole === 'admin_master') {
         const snapshot = await getDocs(collection(this.firestore, 'clients'));
         docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));

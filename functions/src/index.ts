@@ -19,6 +19,7 @@ import {
 } from './docx-export/handlers.js';
 import { notifyReportReleased } from './report-release-notify.js';
 import { normalizeUnlayerHtmlForEmail } from './shared/email-template-html.js';
+import { getFirebaseAuth } from './shared/firebase-admin.js';
 
 export {
   createReportDocxExport,
@@ -1765,8 +1766,9 @@ export const setUserPasswordByMaster = onCall(
 
     const email = emailRaw.toLowerCase();
     try {
-      const authUser = await admin.auth().getUserByEmail(email);
-      await admin.auth().updateUser(authUser.uid, { password, disabled: false });
+      const auth = getFirebaseAuth();
+      const authUser = await auth.getUserByEmail(email);
+      await auth.updateUser(authUser.uid, { password, disabled: false });
       return { ok: true };
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;

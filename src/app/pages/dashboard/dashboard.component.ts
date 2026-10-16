@@ -23,6 +23,7 @@ import { ExportDialogComponent } from './export-dialog/export-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ViewerScopeService } from 'src/app/services/viewer-scope.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -266,6 +267,7 @@ export class DashboardComponent implements OnInit {
 
   private firestore = inject(Firestore);
   private authService = inject(AuthService);
+  private viewerScopeService = inject(ViewerScopeService);
   private translate = inject(TranslateService);
   private router = inject(Router);
 
@@ -328,7 +330,9 @@ export class DashboardComponent implements OnInit {
 
     // Carregar projetos do viewer se for viewer
     if (this.userRole === 'viewer') {
-      await this.loadViewerProjectIds();
+      this.viewerProjectIds = new Set(
+        await this.viewerScopeService.getViewerProjectIds()
+      );
     }
 
     if (this.userRole === 'admin_master') {
@@ -1170,24 +1174,6 @@ export class DashboardComponent implements OnInit {
     if (!ts?.seconds) return '';
     const d = new Date(ts.seconds * 1000);
     return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
-  }
-
-  private async loadViewerProjectIds(): Promise<void> {
-    this.viewerProjectIds.clear();
-    const email = await this.authService.getCurrentUserEmail();
-    if (!email) return;
-
-    const usersSnap = await getDocs(
-      query(collection(this.firestore, 'users'), where('email', '==', email))
-    );
-
-    if (usersSnap.empty) return;
-
-    const userData = usersSnap.docs[0].data();
-    const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
-    const fromSingle = userData['project'] ? [userData['project']] : [];
-
-    [...fromArray, ...fromSingle].forEach((projectId) => this.viewerProjectIds.add(projectId));
   }
 
   private async getFormattedData(tableKey: string): Promise<any[]> {

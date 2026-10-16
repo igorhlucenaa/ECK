@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as nodemailer from 'nodemailer';
 import { defineString } from 'firebase-functions/params';
-import { getFirebaseAdmin } from './shared/firebase-admin.js';
+import { getFirebaseAuth } from './shared/firebase-admin.js';
 
 const DEFAULT_FRONTEND_URL = 'https://eck360.web.app';
 const EMAIL_USER_PARAM = defineString('EMAIL_USER', { default: '' });
@@ -38,6 +38,17 @@ function resolveLoginContinueUrl(requested: string): string {
     loginContinue = `${DEFAULT_FRONTEND_URL.replace(/\/$/, '')}/authentication/login`;
   }
   return loginContinue;
+}
+
+function smtpErrorMessage(err: unknown): string | null {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/535|BadCredentials|Username and Password not accepted/i.test(msg)) {
+    return (
+      'Falha ao autenticar no Gmail (SMTP). Use uma senha de app do Google em EMAIL_PASS ' +
+      'e confira EMAIL_USER nas variáveis/secrets das Cloud Functions em produção.'
+    );
+  }
+  return null;
 }
 
 function authErrorMessage(err: unknown): string | null {
@@ -115,7 +126,7 @@ async function sendBrandedPasswordResetToEmail(
   continueUrl: string
 ): Promise<void> {
   const normalizedEmail = email.toLowerCase();
-  const auth = getFirebaseAdmin().auth();
+  const auth = getFirebaseAuth();
   try {
     await auth.getUserByEmail(normalizedEmail);
   } catch (err: unknown) {
@@ -168,12 +179,14 @@ export const sendBrandedPasswordResetEmail = onCall(
         throw err;
       }
       const authMsg = authErrorMessage(err);
+      const smtpMsg = smtpErrorMessage(err);
       const message =
+        smtpMsg ||
         authMsg ||
         (err instanceof Error && err.message
           ? err.message
           : 'Não foi possível enviar o e-mail de redefinição de senha.');
-      throw new HttpsError('internal', message);
+      throw new HttpsError(smtpMsg || authMsg ? 'failed-precondition' : 'internal', message);
     }
   }
 );

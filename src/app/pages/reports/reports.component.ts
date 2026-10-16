@@ -67,6 +67,7 @@ import { AppPageHeaderComponent } from '../../components/page-header/page-header
 import { LoadingService } from '../../services/loading.service';
 import { FirestoreLoadingInterceptor } from '../../interceptors/firestore-loading.interceptor';
 import { AuthService } from '../../services/apps/authentication/auth.service';
+import { ViewerScopeService } from '../../services/viewer-scope.service';
 import { CompetencyQuestionsService } from '../../services/competency-questions.service';
 import { formatCountLabel } from '../../utils/i18n-labels.util';
 import { fetchAssessmentsForClientScope } from '../../utils/assessment-templates.util';
@@ -1169,6 +1170,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     private loadingService: LoadingService,
     private firestoreInterceptor: FirestoreLoadingInterceptor,
     private authService: AuthService,
+    private viewerScopeService: ViewerScopeService,
     private fb: FormBuilder,
     private reportsPdf: ReportsPdfService,
     private pdfMakeService: ReportPdfMakeService,
@@ -1381,7 +1383,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.today = new Date();
     this.currentUserRole = (await this.authService.getCurrentUserRole()) || '';
     if (this.currentUserRole === 'viewer') {
-      await this.loadViewerProjectIds();
+      this.viewerProjectIds = new Set(
+        await this.viewerScopeService.getViewerProjectIds()
+      );
     }
 
     // Configurar o listener para mudanças no filtro de perguntas
@@ -6972,7 +6976,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const clientsCollection = collection(this.firestore, 'clients');
 
       if (userRole === 'admin_client' || userRole === 'viewer') {
-        const clientIds = await this.authService.getCurrentUserClientIds();
+        const clientIds =
+          await this.viewerScopeService.getScopedClientIdsForRole(userRole);
         if (clientIds.length === 0) {
           this.clients = [];
           return;
@@ -7912,54 +7917,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(this.t('Erro ao carregar grupos de competências.'), this.t('Fechar'), {
         duration: 3000,
       });
-    }
-  }
-
-  private async loadViewerProjectIds(): Promise<void> {
-    this.viewerProjectIds.clear();
-    const email = await this.authService.getCurrentUserEmail();
-    if (!email) return;
-
-    const usersSnap = await getDocs(
-      query(collection(this.firestore, 'users'), where('email', '==', email))
-    );
-    if (usersSnap.empty) return;
-
-    const userDocId = usersSnap.docs[0].id;
-    const userData = usersSnap.docs[0].data() || {};
-    const isOnNewStructure = 'groups' in userData;
-
-    // Fonte principal: grupos onde o viewer aparece em userIds
-    const groupsSnap = await getDocs(
-      query(collection(this.firestore, 'userGroups'), where('userIds', 'array-contains', userDocId))
-    );
-
-    const allProjectsClientIds = new Set<string>();
-    groupsSnap.forEach(snap => {
-      const data = snap.data();
-      if (data['allProjects'] === true && data['clientId']) {
-        allProjectsClientIds.add(data['clientId']);
-      } else {
-        const projectIds: string[] = data['projectIds'] || [];
-        projectIds.forEach(id => this.viewerProjectIds.add(id));
-      }
-    });
-
-    // Para grupos com allProjects: buscar todos os projetos do cliente
-    if (allProjectsClientIds.size > 0) {
-      const allClientsArr = [...allProjectsClientIds];
-      const projSnap = await getDocs(
-        query(collection(this.firestore, 'projects'), where('clientId', 'in', allClientsArr))
-      );
-      projSnap.forEach(d => this.viewerProjectIds.add(d.id));
-    }
-
-    // Fallback legado: APENAS se o usuário nunca foi migrado para grupos
-    if (!isOnNewStructure && this.viewerProjectIds.size === 0) {
-      const fromArray = Array.isArray(userData['projects']) ? userData['projects'] : [];
-      const fromSingle = typeof userData['project'] === 'string' && userData['project'].trim()
-        ? [userData['project']] : [];
-      [...fromArray, ...fromSingle].forEach(id => this.viewerProjectIds.add(id));
     }
   }
 
