@@ -42,6 +42,9 @@ interface ReportGenerationData {
   assessmentId: string;
   clientId: string;
   reportTemplateId?: string;
+  /** Quando true (contexto do projeto), template e competências ficam fixos. */
+  lockToProject?: boolean;
+  userRole?: string;
 }
 
 @Component({
@@ -100,18 +103,44 @@ interface ReportGenerationData {
             <div class="rgm-step__number">1</div>
             <div>
               <p class="rgm-step__title">Estrutura do Relatório</p>
-              <p class="rgm-step__desc">Selecione um template salvo ou prossiga sem template</p>
+              <p class="rgm-step__desc">{{ isProjectLocked ? 'Template vinculado ao projeto (definido na criação)' : 'Selecione um template salvo ou prossiga sem template' }}</p>
             </div>
           </div>
 
-          <!-- No templates state -->
-          <div *ngIf="reportTemplates.length === 0" class="rgm-empty-state">
+          <div class="rgm-linked-template rgm-linked-template--warn" *ngIf="isProjectLocked && projectNeedsTemplateSetup">
+            <mat-icon>warning</mat-icon>
+            <div class="rgm-linked-template__content">
+              <span>{{ 'Este projeto não possui template de relatório vinculado. Configure um template na edição do projeto.' | translate }}</span>
+              <button
+                *ngIf="data.userRole === 'admin_master'"
+                mat-stroked-button
+                type="button"
+                class="rgm-linked-template__action"
+                (click)="editProject()">
+                <mat-icon>edit</mat-icon>
+                {{ 'Editar projeto' | translate }}
+              </button>
+            </div>
+          </div>
+
+          <div class="rgm-linked-template rgm-linked-template--warn" *ngIf="isProjectLocked && projectTemplateMissing">
+            <mat-icon>warning</mat-icon>
+            <span>{{ 'O template vinculado a este projeto não foi encontrado. Atualize o projeto ou recrie o template em Relatórios.' | translate }}</span>
+          </div>
+
+          <div class="rgm-linked-template" *ngIf="isProjectLocked && templateControl.value">
+            <mat-icon>lock</mat-icon>
+            <span>{{ 'Template do projeto:' | translate }} <strong>{{ templateControl.value.name }}</strong></span>
+          </div>
+
+          <!-- No templates state (modo livre) -->
+          <div *ngIf="!isProjectLocked && reportTemplates.length === 0" class="rgm-empty-state">
             <mat-icon>dashboard_customize</mat-icon>
             <p>Nenhum template salvo ainda.</p>
             <span>Você pode prosseguir sem template e configurar manualmente na página de relatórios, ou criar um template primeiro em <b>Relatórios → Montar Relatório → Templates</b>.</span>
           </div>
 
-          <mat-form-field *ngIf="reportTemplates.length > 0" appearance="outline" class="rgm-field">
+          <mat-form-field *ngIf="!isProjectLocked && reportTemplates.length > 0" appearance="outline" class="rgm-field">
             <mat-label>Template de Relatório</mat-label>
             <mat-select [formControl]="templateControl">
               <mat-option [value]="null">— Sem template (configurar manualmente) —</mat-option>
@@ -135,7 +164,7 @@ interface ReportGenerationData {
             <div class="rgm-step__number">2</div>
             <div>
               <p class="rgm-step__title">Competências</p>
-              <p class="rgm-step__desc">Selecione as competências a incluir no relatório</p>
+              <p class="rgm-step__desc">{{ isProjectLocked ? 'Todas as competências da avaliação serão incluídas' : 'Selecione as competências a incluir no relatório' }}</p>
             </div>
           </div>
 
@@ -145,7 +174,12 @@ interface ReportGenerationData {
             <span>Configure competências em <b>Definições → Competências</b> antes de gerar o relatório.</span>
           </div>
 
-          <mat-form-field *ngIf="competencies.length > 0" appearance="outline" class="rgm-field">
+          <div class="rgm-linked-template" *ngIf="isProjectLocked && competencies.length > 0">
+            <mat-icon>lock</mat-icon>
+            <span>{{ competencies.length }} competência(s) vinculada(s) à avaliação do projeto</span>
+          </div>
+
+          <mat-form-field *ngIf="competencies.length > 0 && !isProjectLocked" appearance="outline" class="rgm-field">
             <mat-label>Competências</mat-label>
             <mat-select [formControl]="competenciesControl" multiple>
               <mat-option *ngFor="let comp of competencies" [value]="comp">
@@ -192,7 +226,7 @@ interface ReportGenerationData {
       >
         <mat-spinner *ngIf="isGenerating" [diameter]="18" class="rgm-btn-spinner"></mat-spinner>
         <mat-icon *ngIf="!isGenerating">open_in_new</mat-icon>
-        <span>{{ isGenerating ? 'Abrindo relatório...' : 'Abrir no Relatório' }}</span>
+        <span>{{ isGenerating ? (isProjectLocked ? 'Gerando PDF...' : 'Abrindo relatório...') : (isProjectLocked ? 'Gerar PDF' : 'Abrir no Relatório') }}</span>
       </button>
     </div>
   `,
@@ -389,6 +423,43 @@ interface ReportGenerationData {
     .rgm-btn-spinner {
       display: inline-block;
     }
+
+    .rgm-linked-template {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #1e40af;
+
+      mat-icon {
+        flex-shrink: 0;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        margin-top: 1px;
+      }
+
+      &--warn {
+        background: #fff7ed;
+        border-color: #fed7aa;
+        color: #9a3412;
+      }
+    }
+
+    .rgm-linked-template__content {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .rgm-linked-template__action {
+      align-self: flex-start;
+    }
   `]
 })
 export class ReportGenerationModalComponent implements OnInit {
@@ -400,6 +471,29 @@ export class ReportGenerationModalComponent implements OnInit {
 
   isLoading = true;
   isGenerating = false;
+
+  /** ID do template salvo no documento do projeto. */
+  private projectReportTemplateId = '';
+
+  get isProjectLocked(): boolean {
+    return this.data.lockToProject !== false && !!this.data.projectId;
+  }
+
+  get hasProjectTemplateId(): boolean {
+    return !!this.projectReportTemplateId;
+  }
+
+  get projectNeedsTemplateSetup(): boolean {
+    return this.isProjectLocked && !this.hasProjectTemplateId;
+  }
+
+  get projectTemplateMissing(): boolean {
+    return (
+      this.isProjectLocked &&
+      this.hasProjectTemplateId &&
+      !this.templateControl.value
+    );
+  }
 
   constructor(
     public dialogRef: MatDialogRef<ReportGenerationModalComponent>,
@@ -431,9 +525,11 @@ export class ReportGenerationModalComponent implements OnInit {
     try {
       await Promise.all([
         this.loadReportTemplates(),
-        this.loadCompetencies()
+        this.loadCompetencies(),
+        this.resolveProjectReportTemplateId(),
       ]);
       await this.applyDefaultReportTemplate();
+      this.applyLockedDefaults();
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -443,8 +539,61 @@ export class ReportGenerationModalComponent implements OnInit {
   }
 
   canGenerate(): boolean {
-    // Require at least 1 competency selected
-    return (this.competenciesControl.value || []).length > 0;
+    const selected = this.getSelectedCompetencies();
+    if (selected.length === 0) {
+      return false;
+    }
+    if (this.isProjectLocked) {
+      if (this.projectNeedsTemplateSetup || this.projectTemplateMissing) {
+        return false;
+      }
+      return !!this.templateControl.value;
+    }
+    return true;
+  }
+
+  private getSelectedCompetencies(): Competency[] {
+    const raw = this.competenciesControl.value || [];
+    if (raw.length > 0) {
+      return raw;
+    }
+    if (this.isProjectLocked && this.competencies.length > 0) {
+      return this.competencies;
+    }
+    return [];
+  }
+
+  private async resolveProjectReportTemplateId(): Promise<void> {
+    this.projectReportTemplateId = this.data.reportTemplateId || '';
+    if (this.projectReportTemplateId || !this.data.projectId) {
+      return;
+    }
+    try {
+      const projectDoc = await getDoc(doc(this.firestore, 'projects', this.data.projectId));
+      if (projectDoc.exists()) {
+        this.projectReportTemplateId = projectDoc.data()['reportTemplateId'] || '';
+      }
+    } catch (error) {
+      console.error('Erro ao ler template do projeto:', error);
+    }
+  }
+
+  private applyLockedDefaults(): void {
+    if (this.competencies.length > 0) {
+      this.competenciesControl.setValue([...this.competencies]);
+    }
+    if (this.isProjectLocked) {
+      this.competenciesControl.disable({ emitEvent: false });
+      this.templateControl.disable({ emitEvent: false });
+    }
+  }
+
+  editProject(): void {
+    if (!this.data.projectId) return;
+    this.dialogRef.close();
+    void this.router.navigate([`/projects/${this.data.projectId}/edit`], {
+      queryParams: this.data.clientId ? { clientId: this.data.clientId } : undefined,
+    });
   }
 
   async loadReportTemplates(): Promise<void> {
@@ -492,44 +641,132 @@ export class ReportGenerationModalComponent implements OnInit {
 
     if (!templateId) return;
 
-    const match = this.reportTemplates.find(t => t.id === templateId);
+    let match = this.reportTemplates.find(t => t.id === templateId);
+    if (!match) {
+      try {
+        const templateDoc = await getDoc(doc(this.firestore, 'reportTemplates', templateId));
+        if (templateDoc.exists()) {
+          const d = templateDoc.data();
+          match = {
+            id: templateDoc.id,
+            name: d['name'] || d['nome'] || 'Template sem nome',
+            description: d['description'] || d['descricao'] || '',
+            sections: d['sections'] || d['configuracao'] || [],
+            clientId: d['clientId'] || '',
+            assessmentId: d['assessmentId'] || d['avaliacaoId'] || undefined,
+          };
+          this.reportTemplates = [...this.reportTemplates, match];
+        }
+      } catch {
+        /* aviso via projectTemplateMissing */
+      }
+    }
     if (match) {
       this.templateControl.setValue(match);
     }
   }
 
+  /** Mesma origem da tela Relatórios: sub-competências dentro de competencyGroups. */
   async loadCompetencies(): Promise<void> {
     try {
-      const groupsCollection = collection(this.firestore, 'competencyGroups');
+      const seen = new Set<string>();
+      const result: Competency[] = [];
 
-      if (this.data.clientId) {
-        const snap = await getDocs(query(groupsCollection, where('clientId', '==', this.data.clientId)));
-        this.competencies = snap.docs.map(doc => {
-          const d = doc.data();
-          return {
-            id: doc.id,
-            name: d['name'] || 'Grupo sem nome',
-            description: `Grupo: ${d['competencias']?.length || 0} competências`,
-            perguntasIds: d['competencias'] || [],
-            assessmentId: d['assessmentId'] || undefined
-          } as Competency;
+      if (this.data.assessmentId) {
+        const groupsSnap = await getDocs(
+          query(
+            collection(this.firestore, 'competencyGroups'),
+            where('assessmentId', '==', this.data.assessmentId)
+          )
+        );
+        groupsSnap.docs.forEach((groupDoc) => {
+          const groupData = groupDoc.data();
+          if (this.data.clientId && groupData['clientId'] && groupData['clientId'] !== this.data.clientId) {
+            return;
+          }
+          const list: unknown[] = Array.isArray(groupData['competencias'])
+            ? groupData['competencias']
+            : [];
+          list.forEach((item) => {
+            const c = item as Record<string, unknown>;
+            const compId = (c['id'] as string) || `${groupDoc.id}_${c['nome'] || c['name'] || 'comp'}`;
+            if (seen.has(compId)) {
+              return;
+            }
+            seen.add(compId);
+            const perguntasIds = (c['perguntasIds'] || c['questionIds'] || []) as string[];
+            result.push({
+              id: compId,
+              name: (c['nome'] || c['name'] || 'Competência sem nome') as string,
+              description: (c['descricao'] || c['description'] || '') as string,
+              perguntasIds: Array.isArray(perguntasIds) ? perguntasIds : [],
+              assessmentId: this.data.assessmentId,
+            });
+          });
         });
-      } else {
+      }
+
+      if (result.length === 0 && this.data.clientId) {
+        const snap = await getDocs(
+          query(
+            collection(this.firestore, 'competencyGroups'),
+            where('clientId', '==', this.data.clientId)
+          )
+        );
+        snap.docs.forEach((groupDoc) => {
+          const groupData = groupDoc.data();
+          if (this.data.assessmentId && groupData['assessmentId'] !== this.data.assessmentId) {
+            return;
+          }
+          const list: unknown[] = Array.isArray(groupData['competencias'])
+            ? groupData['competencias']
+            : [];
+          list.forEach((item) => {
+            const c = item as Record<string, unknown>;
+            const compId = (c['id'] as string) || `${groupDoc.id}_${c['nome'] || c['name'] || 'comp'}`;
+            if (seen.has(compId)) {
+              return;
+            }
+            seen.add(compId);
+            const perguntasIds = (c['perguntasIds'] || c['questionIds'] || []) as string[];
+            result.push({
+              id: compId,
+              name: (c['nome'] || c['name'] || 'Competência sem nome') as string,
+              description: (c['descricao'] || c['description'] || '') as string,
+              perguntasIds: Array.isArray(perguntasIds) ? perguntasIds : [],
+              assessmentId: (groupData['assessmentId'] as string) || this.data.assessmentId,
+            });
+          });
+        });
+      }
+
+      if (result.length === 0) {
         const col = this.data.assessmentId
-          ? query(collection(this.firestore, 'competencies'), where('assessmentId', '==', this.data.assessmentId))
+          ? query(
+              collection(this.firestore, 'competencies'),
+              where('assessmentId', '==', this.data.assessmentId)
+            )
           : collection(this.firestore, 'competencies');
         const snap = await getDocs(col);
-        this.competencies = snap.docs.map(doc => {
-          const d: any = doc.data();
-          return {
-            id: doc.id,
+        snap.docs.forEach((docSnap) => {
+          if (seen.has(docSnap.id)) {
+            return;
+          }
+          seen.add(docSnap.id);
+          const d = docSnap.data();
+          result.push({
+            id: docSnap.id,
             name: d['name'] || d['nome'] || 'Competência sem nome',
             description: d['description'] || d['descricao'] || '',
             perguntasIds: d['perguntasIds'] || d['questionIds'] || [],
-            assessmentId: d['assessmentId'] || undefined
-          } as Competency;
+            assessmentId: d['assessmentId'] || undefined,
+          });
         });
       }
+
+      this.competencies = result.sort((a, b) =>
+        a.name.localeCompare(b.name, 'pt-BR')
+      );
     } catch (error) {
       console.error('Erro ao carregar competências:', error);
       this.competencies = [];
@@ -550,27 +787,59 @@ export class ReportGenerationModalComponent implements OnInit {
 
     try {
       const selectedTemplate = this.templateControl.value;
-      const selectedCompetencies = this.competenciesControl.value || [];
+      const selectedCompetencies = this.getSelectedCompetencies();
 
-      const queryParams: any = {
+      this.dialog.closeAll();
+
+      if (this.isProjectLocked && selectedTemplate) {
+        const queryParams: Record<string, string> = {
+          clientId: this.data.clientId,
+          projectId: this.data.projectId,
+          assessmentId: this.data.assessmentId,
+          templateId: selectedTemplate.id,
+          exportAction: 'individualPdf',
+          returnTo: 'projects',
+          avaliado: this.data.participant.name,
+        };
+        if (this.data.participant.id) {
+          queryParams['participantId'] = this.data.participant.id;
+        }
+        await this.router.navigate(['/reports'], { queryParams });
+        this.snackBar.open(
+          this.translate.instant('Gerando relatório PDF...'),
+          this.translate.instant('Fechar'),
+          { duration: 3000 }
+        );
+        return;
+      }
+
+      const queryParams: Record<string, string> = {
         mode: 'individual',
         assessmentId: this.data.assessmentId,
         participantId: this.data.participant.id,
         participantName: this.data.participant.name,
-        competencyIds: JSON.stringify(selectedCompetencies.map(c => c.id)),
+        competencyIds: JSON.stringify(selectedCompetencies.map((c) => c.id)),
         autoGenerate: 'true',
-        aba: 'visualizar'
+        aba: 'visualizar',
       };
 
       if (selectedTemplate) {
         queryParams['templateId'] = selectedTemplate.id;
       }
+      if (this.data.clientId) {
+        queryParams['clientId'] = this.data.clientId;
+      }
+      if (this.data.projectId) {
+        queryParams['projectId'] = this.data.projectId;
+      }
 
-      this.dialog.closeAll();
+      await this.router.navigate(['/reports'], { queryParams });
 
-      this.router.navigate(['/reports'], { queryParams });
-
-      this.snackBar.open(this.translate.instant('Redirecionando para geração do relatório...'), this.translate.instant('Fechar'), { duration: 3000 });
+      this.snackBar.open(
+        this.translate.instant('Redirecionando para geração do relatório...'),
+        this.translate.instant('Fechar'),
+        { duration: 3000 }
+      );
     } catch (error) {
       console.error('Erro ao abrir relatório:', error);
       this.snackBar.open(this.translate.instant('Erro ao abrir relatório. Tente novamente.'), this.translate.instant('Fechar'), { duration: 5000 });

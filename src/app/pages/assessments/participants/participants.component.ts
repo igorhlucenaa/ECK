@@ -2211,15 +2211,22 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   generateReportForParticipant(participant: UnifiedParticipant) {
-    // Abrir o modal de geração para escolher competências e gerar PDF em background (sem navegação)
+    const inProjectContext = !!(
+      this.filterProject &&
+      participant.projectId &&
+      participant.projectId === this.filterProject
+    );
+
     const dialogRef = this.dialog.open(ReportGenerationModalComponent, {
       width: '700px',
       maxWidth: '90vw',
       data: {
         participant: participant,
-        projectId: participant.projectId,
+        projectId: participant.projectId || this.filterProject || '',
         assessmentId: participant.assessmentId,
-        clientId: participant.clientId
+        clientId: participant.clientId || this.filterClient,
+        lockToProject: inProjectContext,
+        userRole: this.userRole,
       },
       disableClose: false
     });

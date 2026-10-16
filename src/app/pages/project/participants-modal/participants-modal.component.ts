@@ -40,6 +40,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { ParticipantValidationService } from 'src/app/services/participant-validation.service';
 import { ParticipantCreditService } from 'src/app/services/participant-credit.service';
+import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { ReportGenerationModalComponent } from '../report-generation-modal/report-generation-modal.component';
 
 interface ModalData {
   projectId: string;
@@ -317,7 +319,8 @@ export class ParticipantsModalComponent implements OnInit {
     private translate: TranslateService,
     private confirmDialog: ConfirmDialogService,
     private participantValidationService: ParticipantValidationService,
-    private participantCreditService: ParticipantCreditService
+    private participantCreditService: ParticipantCreditService,
+    private authService: AuthService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -1302,29 +1305,33 @@ export class ParticipantsModalComponent implements OnInit {
     }
   }
 
-  generateReportForParticipant(participant: UnifiedParticipant) {
-    // Validar seleção de avaliação antes de prosseguir
+  async generateReportForParticipant(participant: UnifiedParticipant): Promise<void> {
     const selectedAssessmentId = this.assessmentFormControl.value;
     if (!selectedAssessmentId) {
-      this.snackBar.open(this.translate.instant('Selecione um Formulário (Avaliação) para gerar o relatório.'), this.translate.instant('Fechar'), { duration: 3000 });
+      this.snackBar.open(
+        this.translate.instant('Selecione um Formulário (Avaliação) para gerar o relatório.'),
+        this.translate.instant('Fechar'),
+        { duration: 3000 }
+      );
       return;
     }
 
-    // Fechar todos os modais e navegar direto para a página de relatórios.
-    // As competências são auto-selecionadas pela página de relatórios.
-    this.dialog.closeAll();
+    const user = await this.authService.getCurrentUser();
 
-    this.router.navigate(['/reports'], {
-      queryParams: {
-        mode: 'individual',
-        clientId: participant.clientId || this.data.clientId,
+    this.dialog.open(ReportGenerationModalComponent, {
+      width: '700px',
+      maxWidth: '90vw',
+      data: {
+        participant: {
+          ...participant,
+          status: participant.status || 'Respondido',
+        },
         projectId: this.data.projectId,
         assessmentId: selectedAssessmentId,
-        participantId: participant.id,
-        participantName: participant.name,
-        autoGenerate: 'true',
-        aba: 'visualizar'
-      }
+        clientId: participant.clientId || this.data.clientId,
+        lockToProject: true,
+        userRole: user?.role || '',
+      },
     });
   }
 }

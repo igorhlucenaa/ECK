@@ -222,17 +222,37 @@ export class DashboardComponent implements OnInit {
   projectStatusFilter = '';
 
   get uniqueProjectClients(): string[] {
-    return [...new Set(this.projectRows.map(r => r.clientName).filter(Boolean))].sort();
+    const source = this.projectRows.filter((r) => r.status !== 'concluido');
+    return [...new Set(source.map((r) => r.clientName).filter(Boolean))].sort();
+  }
+
+  /** Lista padrão de «Projetos em andamento»: exclui concluídos (filtro vazio = em aberto). */
+  get hasInProgressProjects(): boolean {
+    return this.projectRows.some((r) => r.status !== 'concluido');
   }
 
   get filteredProjectRows(): ProjectRow[] {
     const q = this.projectSearchQuery.trim().toLowerCase();
-    return this.projectRows.filter(r => {
-      const matchSearch = !q || r.name.toLowerCase().includes(q) || r.clientName.toLowerCase().includes(q);
-      const matchClient = !this.projectClientFilter || r.clientName === this.projectClientFilter;
-      const matchStatus = !this.projectStatusFilter || r.status === this.projectStatusFilter;
+    return this.projectRows.filter((r) => {
+      const matchSearch =
+        !q ||
+        r.name.toLowerCase().includes(q) ||
+        r.clientName.toLowerCase().includes(q);
+      const matchClient =
+        !this.projectClientFilter || r.clientName === this.projectClientFilter;
+      const matchStatus = this.matchesProjectStatusFilter(r);
       return matchSearch && matchClient && matchStatus;
     });
+  }
+
+  private matchesProjectStatusFilter(row: ProjectRow): boolean {
+    if (row.status === 'concluido') {
+      return false;
+    }
+    if (this.projectStatusFilter) {
+      return row.status === this.projectStatusFilter;
+    }
+    return true;
   }
 
   get pagedProjectRows(): ProjectRow[] {
@@ -252,6 +272,10 @@ export class DashboardComponent implements OnInit {
   // â”€â”€ Funnel (master only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   funnelData = { total: 0, active: 0, completed: 0 };
   funnelAllProjects: any[] = [];
+  private funnelStatsByProject = new Map<
+    string,
+    { total: number; responded: number; withInvite: number }
+  >();
   funnelInvitedProjectIds = new Set<string>();
   funnelClientsMap = new Map<string, string>();
   funnelClientOptions: { id: string; name: string }[] = [];
@@ -380,7 +404,11 @@ export class DashboardComponent implements OnInit {
     );
 
     // KPIs â€” pendentes = participantes com link pending
-    const activeProjectsCount = this.countProjectsInProgress(projectsSnap.docs);
+    const activeProjectsCount = this.countProjectsInProgress(
+      projectsSnap.docs,
+      statsByProject,
+      today
+    );
     this.masterKpis = [
       { value: clientsSnap.size,      label: this.translate.instant('kpi.clientes_ativos'), color: '#1B84FF', icon: 'business' },
       { value: activeProjectsCount,   label: this.translate.instant('kpi.projetos_ativos'), color: '#26c6da', icon: 'folder_open' },
@@ -424,25 +452,29 @@ export class DashboardComponent implements OnInit {
 
     // Funil â€” dados base (todos os clientes)
     this.funnelAllProjects = projectsSnap.docs;
+    this.funnelStatsByProject = statsByProject;
     this.funnelInvitedProjectIds = invitedParticipantProjectIds;
     this.funnelClientsMap = new Map(clientsSnap.docs.map(d => [d.id, fixMojibake((d.data()['companyName'] as string) || '')]));
-    this.funnelClientOptions = [
-      { id: 'all', name: this.translate.instant('Todos os clientes') },
-      ...clientsSnap.docs.map(d => ({ id: d.id, name: fixMojibake((d.data()['companyName'] as string) || '—') })),
-    ];
+    this.funnelClientOptions = this.buildFunnelClientOptions(
+      projectsSnap.docs,
+      this.funnelClientsMap
+    );
+    if (
+      this.funnelClientFilter !== 'all' &&
+      !this.funnelClientOptions.some((o) => o.id === this.funnelClientFilter)
+    ) {
+      this.funnelClientFilter = 'all';
+    }
     this.buildFunnelData(projectsSnap.docs, invitedParticipantProjectIds);
 
     // Existing chart data (charts section)
     this.totalActiveProjects = activeProjects.length;
-    const projectCountByClient = new Map<string, number>();
-    activeProjects.forEach(d => {
-      const id = d.data()['clientId'];
-      if (id) projectCountByClient.set(id, (projectCountByClient.get(id) || 0) + 1);
-    });
-    this.projectsByClientData = clientsSnap.docs.map(d => ({
-      client: fixMojibake(d.data()['companyName'] || ''),
-      projects: projectCountByClient.get(d.id) || 0,
-    }));
+    this.projectsByClientData = this.buildProjectsInProgressByClientData(
+      projectsSnap.docs,
+      statsByProject,
+      this.funnelClientsMap,
+      today
+    );
 
     const byClientAssessments = new Map<string, number>();
     assessmentsSnap.docs.forEach(d => {
@@ -455,7 +487,7 @@ export class DashboardComponent implements OnInit {
       remaining: 0,
     }));
     this.buildCategoryChartFromDocs(participantsSnap.docs);
-    this.buildProjectsByStatusChart(projectsSnap.docs);
+    this.buildProjectsByStatusChart(projectsSnap.docs, statsByProject, today);
   }
 
   // ─── Client data loading ────────────────────────────────────────────────────────
@@ -532,10 +564,15 @@ export class DashboardComponent implements OnInit {
       const invitedProjectIds = new Set(
         participantsSnap.docs.filter(d => withInviteIds.has(d.id)).map(d => d.data()['projectId'] as string)
       );
+      this.funnelStatsByProject = statsByProject;
       this.buildFunnelData(projectsSnap.docs, invitedProjectIds);
     }
 
-    const activeProjectsCount = this.countProjectsInProgress(projectsSnap.docs);
+    const activeProjectsCount = this.countProjectsInProgress(
+      projectsSnap.docs,
+      statsByProject,
+      today
+    );
     const totalParticipants = participantsSnap.docs.filter(d => d.data()['type'] === 'avaliado').length;
 
     this.clientKpis = [
@@ -552,13 +589,20 @@ export class DashboardComponent implements OnInit {
     this.alerts = this.buildAlerts(projectsSnap.docs, fakeClientDocs, statsByProject, today);
 
     this.buildCategoryChartFromDocs(participantsSnap.docs);
-    this.buildProjectsByStatusChart(projectsSnap.docs);
+    this.buildProjectsByStatusChart(projectsSnap.docs, statsByProject, today);
 
-    // Gráfico de projetos por cliente (relevante quando há múltiplos clientes)
-    this.projectsByClientData = Array.from(clientDataMap.entries()).map(([id, data]) => ({
-      client: fixMojibake(data['companyName'] || id),
-      projects: activeProjects.filter(d => d.data()['clientId'] === id).length,
-    }));
+    const clientNameById = new Map(
+      Array.from(clientDataMap.entries()).map(([id, data]) => [
+        id,
+        fixMojibake(data['companyName'] || id),
+      ])
+    );
+    this.projectsByClientData = this.buildProjectsInProgressByClientData(
+      projectsSnap.docs,
+      statsByProject,
+      clientNameById,
+      today
+    );
 
     this.assessmentsData = Array.from(clientDataMap.entries()).map(([id, data]) => ({
       client: fixMojibake(data['companyName'] || id),
@@ -571,14 +615,109 @@ export class DashboardComponent implements OnInit {
 
   // ─── Helpers ────────────────────────────────────────────────────────────────────
 
-  /** Projetos ativos = em execução (Em andamento / Ativo), sem concluídos nem cancelados. */
-  private countProjectsInProgress(projectDocs: { data: () => Record<string, unknown> }[]): number {
+  /** Contagem por cliente alinhada ao KPI «Projetos em andamento» (exclui concluídos). */
+  private buildProjectsInProgressByClientData(
+    projectDocs: { id: string; data: () => Record<string, unknown> }[],
+    statsByProject: Map<
+      string,
+      { total: number; responded: number; withInvite: number }
+    >,
+    clientNameById: Map<string, string>,
+    today: Date
+  ): { client: string; projects: number }[] {
+    const projectCountByClient = new Map<string, number>();
+    projectDocs.forEach((d) => {
+      const data = d.data();
+      if (
+        ['Cancelado', 'cancelado', 'Inativo'].includes(
+          (data['status'] as string) || ''
+        )
+      ) {
+        return;
+      }
+      const stats = statsByProject.get(d.id) || {
+        total: 0,
+        responded: 0,
+        withInvite: 0,
+      };
+      if (this.resolveProjectRowStatus(data, stats, today) === 'concluido') {
+        return;
+      }
+      const clientId = data['clientId'] as string | undefined;
+      if (clientId) {
+        projectCountByClient.set(
+          clientId,
+          (projectCountByClient.get(clientId) || 0) + 1
+        );
+      }
+    });
+    return [...projectCountByClient.entries()]
+      .filter(([, count]) => count > 0)
+      .map(([clientId, projects]) => ({
+        client: clientNameById.get(clientId) || clientId,
+        projects,
+      }))
+      .sort((a, b) => a.client.localeCompare(b.client, 'pt-BR'));
+  }
+
+  /**
+   * Mesma regra da tabela «Projetos em andamento»: concluído no Firestore ou 100% de respostas dos avaliados.
+   */
+  private resolveProjectRowStatus(
+    data: Record<string, unknown>,
+    stats: { total: number; responded: number },
+    today: Date
+  ): ProjectStatus {
+    const responseRate =
+      stats.total > 0 ? Math.round((stats.responded / stats.total) * 100) : 0;
+    const deadlineRaw = data['deadline'] as { seconds?: number } | undefined;
+    const deadline = deadlineRaw?.seconds
+      ? new Date(deadlineRaw.seconds * 1000)
+      : null;
+    const daysLeft = deadline
+      ? Math.ceil((deadline.getTime() - today.getTime()) / 86400000)
+      : 9999;
+
+    if (
+      data['status'] === 'Concluído' ||
+      data['status'] === 'concluido' ||
+      (stats.total > 0 && responseRate === 100)
+    ) {
+      return 'concluido';
+    }
+    if (daysLeft < 0 && responseRate < 100) {
+      return 'atrasado';
+    }
+    if (daysLeft >= 0 && daysLeft <= 7 && responseRate < 100) {
+      return 'em_risco';
+    }
+    return 'em_andamento';
+  }
+
+  /** Projetos ativos = não cancelados e status calculado ≠ concluído. */
+  private countProjectsInProgress(
+    projectDocs: { id: string; data: () => Record<string, unknown> }[],
+    statsByProject: Map<
+      string,
+      { total: number; responded: number; withInvite: number }
+    >,
+    today: Date
+  ): number {
     return projectDocs.filter((d) => {
-      const status = d.data()['status'] as string | undefined;
-      if (status === 'Em andamento' || status === 'Ativo') return true;
-      if (status === 'Concluído' || status === 'concluido') return false;
-      if (status === 'Cancelado' || status === 'cancelado' || status === 'Inativo') return false;
-      return true;
+      const data = d.data();
+      if (
+        ['Cancelado', 'cancelado', 'Inativo'].includes(
+          (data['status'] as string) || ''
+        )
+      ) {
+        return false;
+      }
+      const stats = statsByProject.get(d.id) || {
+        total: 0,
+        responded: 0,
+        withInvite: 0,
+      };
+      return this.resolveProjectRowStatus(data, stats, today) !== 'concluido';
     }).length;
   }
 
@@ -705,14 +844,7 @@ export class DashboardComponent implements OnInit {
           : 9999;
         const clientData = clientsMap.get(data['clientId']);
 
-        let status: ProjectStatus = 'em_andamento';
-        if (data['status'] === 'Concluído' || data['status'] === 'concluido' || (stats.total > 0 && responseRate === 100)) {
-          status = 'concluido';
-        } else if (daysLeft < 0 && responseRate < 100) {
-          status = 'atrasado';
-        } else if (daysLeft >= 0 && daysLeft <= 7 && responseRate < 100) {
-          status = 'em_risco';
-        }
+        const status = this.resolveProjectRowStatus(data, stats, today);
 
         return {
           id: d.id,
@@ -862,21 +994,36 @@ export class DashboardComponent implements OnInit {
     };
   }
 
-  private buildProjectsByStatusChart(projectDocs: any[]): void {
-    const statusKeys = ['Ativos', 'Concluído', 'Cancelado'] as const;
-    const counts: Record<(typeof statusKeys)[number], number> = { Ativos: 0, 'Concluído': 0, Cancelado: 0 };
+  private buildProjectsByStatusChart(
+    projectDocs: any[],
+    statsByProject: Map<
+      string,
+      { total: number; responded: number; withInvite: number }
+    >,
+    today: Date
+  ): void {
+    const statusKeys = ['Em andamento', 'Concluído', 'Cancelado'] as const;
+    const counts: Record<(typeof statusKeys)[number], number> = {
+      'Em andamento': 0,
+      'Concluído': 0,
+      Cancelado: 0,
+    };
     projectDocs.forEach(d => {
-      const s = d.data()['status'];
-      if (s === 'Em andamento' || s === 'Ativo') counts['Ativos']++;
-      else if (s === 'Concluído' || s === 'concluido') counts['Concluído']++;
-      else if (s === 'Cancelado' || s === 'cancelado' || s === 'Inativo') counts['Cancelado']++;
-      else counts['Ativos']++;
+      const data = d.data();
+      const s = data['status'];
+      if (s === 'Cancelado' || s === 'cancelado' || s === 'Inativo') {
+        counts['Cancelado']++;
+        return;
+      }
+      const stats = statsByProject.get(d.id) || { total: 0, responded: 0, withInvite: 0 };
+      if (this.resolveProjectRowStatus(data, stats, today) === 'concluido') {
+        counts['Concluído']++;
+      } else {
+        counts['Em andamento']++;
+      }
     });
 
-    const labels = statusKeys.map((key) => {
-      if (key === 'Ativos') return this.translate.instant('Ativos');
-      return this.translate.instant(key);
-    });
+    const labels = statusKeys.map((key) => this.translate.instant(key));
     const values = statusKeys.map((key) => counts[key]);
     const colors = ['#1B84FF', '#4caf50', '#fc4b6c'];
 
@@ -902,7 +1049,46 @@ export class DashboardComponent implements OnInit {
     };
   }
 
+  /** Clientes com ao menos um projeto não cancelado/inativo (dropdown do bloco «Projetos por cliente»). */
+  private buildFunnelClientOptions(
+    projectDocs: { id: string; data: () => Record<string, unknown> }[],
+    clientNameById: Map<string, string>
+  ): { id: string; name: string }[] {
+    const clientIds = new Set<string>();
+    projectDocs.forEach((d) => {
+      const data = d.data();
+      const status = data['status'] as string | undefined;
+      if (['Cancelado', 'cancelado', 'Inativo'].includes(status || '')) {
+        return;
+      }
+      const clientId = data['clientId'] as string | undefined;
+      if (clientId) {
+        clientIds.add(clientId);
+      }
+    });
+
+    const clientOptions = [...clientIds]
+      .map((id) => ({
+        id,
+        name: clientNameById.get(id) || '—',
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+    if (clientOptions.length <= 1) {
+      return clientOptions;
+    }
+
+    return [
+      { id: 'all', name: this.translate.instant('Todos os clientes') },
+      ...clientOptions,
+    ];
+  }
+
   buildFunnelData(projectDocs: any[], _invitedProjectIds: Set<string>, clientFilter = 'all'): void {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const statsByProject = this.funnelStatsByProject;
+
     const filtered = clientFilter === 'all'
       ? projectDocs
       : projectDocs.filter(d => d.data()['clientId'] === clientFilter);
@@ -910,10 +1096,14 @@ export class DashboardComponent implements OnInit {
     const eligible = filtered.filter(
       d => !['Cancelado', 'cancelado', 'Inativo'].includes(d.data()['status'] as string)
     );
-    const completed = eligible.filter(
-      d => ['Concluído', 'concluido'].includes(d.data()['status'] as string)
-    ).length;
-    const active = this.countProjectsInProgress(eligible);
+    let completed = 0;
+    eligible.forEach((d) => {
+      const stats = statsByProject.get(d.id) || { total: 0, responded: 0, withInvite: 0 };
+      if (this.resolveProjectRowStatus(d.data(), stats, today) === 'concluido') {
+        completed++;
+      }
+    });
+    const active = this.countProjectsInProgress(eligible, statsByProject, today);
 
     this.funnelData = {
       total: eligible.length,

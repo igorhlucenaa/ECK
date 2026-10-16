@@ -349,16 +349,18 @@
 // ─── Templates ────────────────────────────────────────────────
 .rs-templates-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 14px;
+  align-items: start;
 }
 
 .rs-template-card {
+  display: flex;
+  flex-direction: column;
   background: #fbfdff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  padding: 14px 14px 4px;
-  min-height: 108px;
+  padding: 14px;
 
   &--avaliado { border-left: 3px solid #1B84FF; }
   &--avaliador { border-left: 3px solid #7c3aed; }
@@ -372,6 +374,21 @@
     color: #334155;
     margin-bottom: 8px;
     mat-icon { font-size: 15px; width: 15px; height: 15px; color: #94a3b8; }
+  }
+
+  &__hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #64748b;
+  }
+
+  .rs-field-full {
+    width: 100%;
+
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
   }
 }
 

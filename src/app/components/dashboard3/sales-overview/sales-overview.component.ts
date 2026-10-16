@@ -52,7 +52,9 @@ export class AppSalesOverview2Component implements OnChanges {
 
   private translate = inject(TranslateService);
 
-  // Alterado para receber projetos ativos por cliente
+  /** Oculta título interno quando o card pai já exibe cabeçalho (ex.: dashboard). */
+  @Input() hideHeader = false;
+
   @Input() projectsByClientData!: { client: string; projects: number }[];
 
   public salesoverChart!: Partial<SalesOverviewChart>;
@@ -77,7 +79,12 @@ export class AppSalesOverview2Component implements OnChanges {
 
     const translate = this.translate;
     this.salesoverChart = {
-      series: [{ name: translate.instant('Projetos Ativos'), data: projects }],
+      series: [
+        {
+          name: translate.instant('kpi.projetos_ativos'),
+          data: projects,
+        },
+      ],
       chart: {
         type: 'bar',
         // Altura dinâmica: cada cliente ocupa ~36px, mínimo 200px

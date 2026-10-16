@@ -1,7 +1,7 @@
 <mat-card class="cardWithShadow">
-  <mat-card-header>
-    <mat-card-title>{{ 'Projetos Ativos por Cliente' | translate }}</mat-card-title>
-    <mat-card-subtitle>{{ 'Distribuição de projetos ativos entre os clientes' | translate }}</mat-card-subtitle>
+  <mat-card-header *ngIf="!hideHeader">
+    <mat-card-title>{{ 'dashboard.projectsInProgressByClient.title' | translate }}</mat-card-title>
+    <mat-card-subtitle>{{ 'dashboard.projectsInProgressByClient.subtitle' | translate }}</mat-card-subtitle>
   </mat-card-header>
   <mat-card-content class="p-b-24">
     <apx-chart
