@@ -210,6 +210,11 @@
     color: #b45309;
   }
 
+  &--expired {
+    background: rgba(100, 116, 139, 0.12);
+    color: #475569;
+  }
+
   &--available {
     background: rgba(76, 175, 80, 0.1);
     color: #2e7d32;

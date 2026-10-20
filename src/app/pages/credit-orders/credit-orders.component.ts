@@ -10,6 +10,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  deleteField,
   getDoc,
   query,
   orderBy,
@@ -28,7 +29,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
-import { computeDaysRemaining } from 'src/app/utils/credit-validity.util';
+import {
+  computeDaysRemaining,
+  isCreditOrderExpired,
+} from 'src/app/utils/credit-validity.util';
+import { calculateCreditOrderBalance } from 'src/app/utils/client-credit-aggregate.util';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -199,25 +204,24 @@ export class CreditOrdersComponent implements OnInit {
       const orders = ordersSnapshot.docs.map((doc) => {
         const data = doc.data();
         const validityDate = data['validityDate']?.toDate?.() ?? null;
-        const daysRemaining = computeDaysRemaining(validityDate);
-
-        const totalCredits = data['credits'] || 0;
-        // FIFO: cada pedido rastreia seu próprio remainingCredits
-        // remainingCredits é inicializado = credits quando aprovado e decrementado a cada uso
-        const orderRemaining: number = data['remainingCredits'] ?? (data['status'] === 'Aprovado' ? totalCredits : 0);
-        const usedBalance = data['status'] === 'Aprovado' ? totalCredits - orderRemaining : 0;
-        const remainingBalance = data['status'] === 'Aprovado' ? orderRemaining : 0;
+        const now = new Date();
+        const daysRemaining = computeDaysRemaining(validityDate, now);
+        const balance = calculateCreditOrderBalance(data, now);
+        const status =
+          data['status'] === 'Aprovado' && isCreditOrderExpired(validityDate, now)
+            ? 'Expirado'
+            : data['status'];
 
         return {
           id: doc.id,
           clientId: data['clientId'],
           clientName: clientsMap[data['clientId']] || 'Não identificado',
-          openingBalance: totalCredits,
-          usedBalance,
-          remainingBalance,
+          openingBalance: balance.creditsPurchased,
+          usedBalance: balance.creditsUsed,
+          remainingBalance: balance.creditsAvailable,
           daysRemaining,
           expirationDate: validityDate,
-          status: data['status'],
+          status,
           createdAt: data['createdAt']?.toDate(),
         } as Order;
       });
@@ -441,9 +445,16 @@ export class CreditOrdersComponent implements OnInit {
       const available = ordersSnap.docs
         .filter(d => {
           const v = d.data()['validityDate']?.toDate();
-          return !v || v >= now;
+          return !isCreditOrderExpired(v, now);
         })
-        .reduce((s, d) => s + ((d.data()['remainingCredits'] as number) || 0), 0);
+        .reduce((s, d) => {
+          const orderData = d.data();
+          const remaining =
+            typeof orderData['remainingCredits'] === 'number'
+              ? orderData['remainingCredits']
+              : (orderData['credits'] as number) || 0;
+          return s + Math.max(0, remaining);
+        }, 0);
 
       // 2. Reservados = avaliados com creditReserved:true e creditConsumed:false
       const reservedSnap = await getDocs(
@@ -487,7 +498,10 @@ export class CreditOrdersComponent implements OnInit {
       ordersSnapshot.docs.forEach((d) => {
         const orderData = d.data();
         const validityDate = orderData['validityDate']?.toDate();
-        if (validityDate && validityDate < now && orderData['status'] === 'Aprovado') {
+        if (
+          orderData['status'] === 'Aprovado' &&
+          isCreditOrderExpired(validityDate, now)
+        ) {
           expiredOrders.push({ orderId: d.id, clientId: orderData['clientId'] });
         }
       });
@@ -497,8 +511,15 @@ export class CreditOrdersComponent implements OnInit {
       // ── Batch 1: marca pedidos como Expirado ────────────────────────────
       const orderBatch = writeBatch(this.firestore);
       for (const { orderId } of expiredOrders) {
+        const orderData = ordersSnapshot.docs.find((d) => d.id === orderId)?.data();
+        const rawRemaining = orderData?.['remainingCredits'];
+        const remainingAtExpiry =
+          typeof rawRemaining === 'number'
+            ? Math.max(0, rawRemaining)
+            : Math.max(0, (orderData?.['credits'] as number) || 0);
         orderBatch.update(doc(this.firestore, `creditOrders/${orderId}`), {
           status: 'Expirado',
+          expiredUnusedCredits: remainingAtExpiry,
           remainingCredits: 0,
         });
       }
@@ -551,15 +572,25 @@ export class CreditOrdersComponent implements OnInit {
 
       const update: Record<string, any> = { validityDate: newDate };
 
-      // Expirado + nova data futura → reativa como Aprovado
-      // remainingCredits = credits total (sincronizarCreditosClientes vai recalcular FIFO)
-      if (currentStatus === 'Expirado' && newDate > now) {
+      // Reativa somente os créditos não utilizados antes do vencimento.
+      if (currentStatus === 'Expirado' && !isCreditOrderExpired(newDate, now)) {
         update['status'] = 'Aprovado';
-        update['remainingCredits'] = orderData['credits'] || 0;
+        update['remainingCredits'] =
+          typeof orderData['expiredUnusedCredits'] === 'number'
+            ? orderData['expiredUnusedCredits']
+            : orderData['credits'] || 0;
+        update['expiredUnusedCredits'] = deleteField();
       }
-      // Aprovado + nova data passada → expira imediatamente
-      else if (currentStatus === 'Aprovado' && newDate <= now) {
+      // Ao expirar manualmente, guarda o saldo disponível antes de zerá-lo.
+      else if (
+        currentStatus === 'Aprovado' &&
+        isCreditOrderExpired(newDate, now)
+      ) {
         update['status'] = 'Expirado';
+        update['expiredUnusedCredits'] =
+          typeof orderData['remainingCredits'] === 'number'
+            ? orderData['remainingCredits']
+            : orderData['credits'] || 0;
         update['remainingCredits'] = 0;
       }
       // Pendente / Rejeitado → apenas atualiza a data, sem alterar status

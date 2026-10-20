@@ -178,6 +178,11 @@
                 <span class="credits-stat__label">{{ 'Usados' | translate }}</span>
                 <span class="credits-stat__value">{{ client.creditsUsed || 0 }}</span>
               </div>
+              <div class="credits-stat credits-stat--expired"
+                   [matTooltip]="'Créditos que venceram sem uso (pedidos expirados)' | translate" matTooltipPosition="above">
+                <span class="credits-stat__label">{{ 'Vencidos' | translate }}</span>
+                <span class="credits-stat__value">{{ client.creditsExpired || 0 }}</span>
+              </div>
               <div class="credits-stat"
                    [class.credits-stat--available]="client.creditsAvailable > 0"
                    [class.credits-stat--zero]="client.creditsAvailable === 0"

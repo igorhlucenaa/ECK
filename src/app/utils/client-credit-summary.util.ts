@@ -8,7 +8,9 @@ import {
 import {
   ClientCreditValiditySummary,
   computeDaysRemaining,
+  isCreditOrderExpired,
 } from './credit-validity.util';
+import { aggregateClientCreditsFromOrders } from './client-credit-aggregate.util';
 
 /** Resumo de créditos/validade alinhado à listagem em /orders. */
 export async function loadClientCreditValiditySummary(
@@ -16,7 +18,7 @@ export async function loadClientCreditValiditySummary(
   clientId: string,
   clientData: Record<string, unknown>
 ): Promise<ClientCreditValiditySummary> {
-  const creditsAvailable =
+  let creditsAvailable =
     typeof clientData['credits'] === 'number' ? clientData['credits'] : 0;
 
   let nearestValidity: Date | null = null;
@@ -30,6 +32,7 @@ export async function loadClientCreditValiditySummary(
         where('clientId', '==', clientId)
       )
     );
+    creditsAvailable = aggregateClientCreditsFromOrders(snap.docs, now).creditsAvailable;
 
     for (const orderDoc of snap.docs) {
       const order = orderDoc.data();
@@ -38,7 +41,7 @@ export async function loadClientCreditValiditySummary(
         continue;
       }
       const validity = order['validityDate']?.toDate?.() as Date | undefined;
-      if (!validity || validity < now) {
+      if (!validity || isCreditOrderExpired(validity, now)) {
         continue;
       }
       if (!nearestValidity || validity < nearestValidity) {

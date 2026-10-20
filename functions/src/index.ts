@@ -1532,6 +1532,15 @@ async function sincronizarCreditosCliente(clientId: string): Promise<void> {
   const db = getDb();
   const now = new Date();
 
+  const isExpiredAtEndOfDay = (
+    validityDate: admin.firestore.Timestamp | undefined
+  ): boolean => {
+    if (!validityDate) return false;
+    const endOfValidityDay = validityDate.toDate();
+    endOfValidityDay.setHours(23, 59, 59, 999);
+    return endOfValidityDay < now;
+  };
+
   // 1. Pedidos aprovados válidos deste cliente, ordenados FIFO
   const ordersSnap = await db
     .collection('creditOrders')
@@ -1541,8 +1550,9 @@ async function sincronizarCreditosCliente(clientId: string): Promise<void> {
 
   const orders = ordersSnap.docs
     .filter(d => {
-      const v = (d.data()['validityDate'] as admin.firestore.Timestamp | undefined)?.toDate();
-      return !v || v >= now;
+      return !isExpiredAtEndOfDay(
+        d.data()['validityDate'] as admin.firestore.Timestamp | undefined
+      );
     })
     .sort((a, b) => {
       const tA = (a.data()['createdAt'] as admin.firestore.Timestamp | undefined)?.toMillis() ?? 0;

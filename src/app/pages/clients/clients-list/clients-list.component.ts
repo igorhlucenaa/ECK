@@ -21,6 +21,7 @@ import { FormsModule } from '@angular/forms';
 import { MaterialModule } from 'src/app/material.module';
 import { Router, RouterModule } from '@angular/router';
 import { AddClientDialogComponent } from '../add-client-dialog/add-client-dialog.component';
+import { aggregateClientCreditsFromOrders } from 'src/app/utils/client-credit-aggregate.util';
 import { PhonePipe } from 'src/app/pipe/phone.pipe';
 import { CnpjPipe } from 'src/app/pipe/cnpj.pipe';
 import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
@@ -146,34 +147,16 @@ export class ClientsListComponent implements OnInit {
     const ordersCollection = collection(this.firestore, 'creditOrders');
     const ordersQuery = query(
       ordersCollection,
-      where('clientId', '==', client.id),
-      where('status', '==', 'Aprovado')
+      where('clientId', '==', client.id)
     );
 
     try {
       const ordersSnapshot = await getDocs(ordersQuery);
-      const now = new Date();
-      let creditsPurchased = 0;
-      let creditsAvailable = 0;
-
-      ordersSnapshot.docs.forEach((orderDoc) => {
-        const orderData = orderDoc.data();
-        const validityDate = orderData['validityDate']?.toDate();
-        // Mesma regra de validade usada em /orders e sincronizarCreditosCliente
-        if (validityDate && validityDate < now) {
-          return;
-        }
-
-        const total = orderData['credits'] || 0;
-        const remaining = (orderData['remainingCredits'] as number) ?? total;
-        creditsPurchased += total;
-        creditsAvailable += remaining;
-      });
-
-      client.creditsPurchased = creditsPurchased;
-      client.creditsAvailable = creditsAvailable;
-      // Utilizados = retirados do pedido (reservados + consumidos), igual à coluna Utilizados em /orders
-      client.creditsUsed = Math.max(0, creditsPurchased - creditsAvailable);
+      const totals = aggregateClientCreditsFromOrders(ordersSnapshot.docs);
+      client.creditsPurchased = totals.creditsPurchased;
+      client.creditsAvailable = totals.creditsAvailable;
+      client.creditsUsed = totals.creditsUsed;
+      client.creditsExpired = totals.creditsExpired;
     } catch (error) {
       console.error('Erro ao calcular créditos:', error);
     }
