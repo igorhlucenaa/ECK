@@ -1,7 +1,7 @@
 <mat-card class="cardWithShadow">
   <mat-card-header>
     <mat-card-title>{{ 'Clientes com Créditos Próximos ao Vencimento' | translate }}</mat-card-title>
-    <mat-card-subtitle>{{ 'Verifique os créditos que expiram em breve' | translate }}</mat-card-subtitle>
+    <mat-card-subtitle>{{ 'Exibe pedidos aprovados com saldo disponível que vencem nos próximos 90 dias. Prioridade: crítica até 7 dias, alta até 14, média até 30 e baixa até 90.' | translate }}</mat-card-subtitle>
   </mat-card-header>
   <mat-card-content>
     <div class="table-responsive m-t-30">
@@ -101,6 +101,13 @@
         <tr mat-header-row *matHeaderRowDef="displayedColumns2"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns2"></tr>
       </table>
+
+      <div class="p-16 text-center" *ngIf="!loadError && dataSource2.data.length === 0">
+        {{ 'Nenhum crédito disponível vence nos próximos 90 dias.' | translate }}
+      </div>
+      <div class="p-16 text-center text-error" *ngIf="loadError">
+        {{ 'Não foi possível carregar os vencimentos de créditos.' | translate }}
+      </div>
 
       <!-- Paginator -->
       <mat-paginator

@@ -2251,5 +2251,10 @@
   "Search by project or client…": "Search by project or client…",
   "Search by project or description…": "Search by project or description…",
   "Search by project…": "Search by project…",
-  "View": "View"
+  "View": "View",
+  "Pedidos aprovados com saldo disponível que vencem nos próximos 90 dias": "Pedidos aprovados com saldo disponível que vencem nos próximos 90 dias",
+  "Lista de pedidos aprovados com créditos disponíveis que vencem nos próximos 90 dias. Prioridade crítica: até 7 dias; alta: até 14 dias; média: até 30 dias; baixa: até 90 dias. Pedidos vencidos não são exibidos.": "Lista de pedidos aprovados com créditos disponíveis que vencem nos próximos 90 dias. Prioridade crítica: até 7 dias; alta: até 14 dias; média: até 30 dias; baixa: até 90 dias. Pedidos vencidos não são exibidos.",
+  "Exibe pedidos aprovados com saldo disponível que vencem nos próximos 90 dias. Prioridade: crítica até 7 dias, alta até 14, média até 30 e baixa até 90.": "Exibe pedidos aprovados com saldo disponível que vencem nos próximos 90 dias. Prioridade: crítica até 7 dias, alta até 14, média até 30 e baixa até 90.",
+  "Nenhum crédito disponível vence nos próximos 90 dias.": "Nenhum crédito disponível vence nos próximos 90 dias.",
+  "Não foi possível carregar os vencimentos de créditos.": "Não foi possível carregar os vencimentos de créditos."
 }

@@ -1,3 +1,14 @@
+export const CREDIT_EXPIRY_ALERT_WINDOW_DAYS = 90;
+
+export type CreditExpiryPriority = 'critical' | 'high' | 'medium' | 'low';
+
+export function getCreditExpiryPriority(daysRemaining: number): CreditExpiryPriority {
+  if (daysRemaining <= 7) return 'critical';
+  if (daysRemaining <= 14) return 'high';
+  if (daysRemaining <= 30) return 'medium';
+  return 'low';
+}
+
 /** Dias até o fim do dia da validade (mesma regra em /orders e ficha do cliente). */
 export function computeDaysRemaining(
   validityDate: Date | null | undefined,
