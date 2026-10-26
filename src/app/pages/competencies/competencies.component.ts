@@ -163,10 +163,10 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     // Listener para mudanças na avaliação
     this.assessmentControl.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe(id => {
+      .subscribe(async (id) => {
         this.selectedAssessmentId = id;
         if (id) {
-          this.onAssessmentChange();
+          await this.onAssessmentChange();
         } else {
           this.competencias = [];
           this.questionMap = {};
@@ -182,10 +182,10 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     // Listener para mudanças no cliente
     this.clientControl.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe(clientId => {
+      .subscribe(async (clientId) => {
         this.selectedClientId = clientId;
         if (clientId) {
-          this.loadCompetencyGroups(clientId);
+          await this.loadCompetencyGroups(clientId);
           // Limpar competências quando mudar de cliente
           this.competencias = [];
           this.customQuestions = [];
@@ -2008,17 +2008,19 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     // Se não há ID, usar o ID temporário da competência sendo editada
     let idParaUsar = competenciaId || this.competenciaEditando.id;
 
-    // Se ainda não há ID, tentar encontrar perguntas em qualquer chave temporária
+    // Se ainda não há ID, procurar em todas as chaves temporárias
     if (!idParaUsar) {
       const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
         k.startsWith('comp_temp_') || k.startsWith('comp_')
       );
       if (tempKeys.length > 0) {
-        idParaUsar = tempKeys[0];
-      } else {
-        console.warn('Não foi possível encontrar ID da competência para remover pergunta custom');
+        // Retornar perguntas da primeira chave temporária encontrada
+        const result = this.customQuestionsByCompetency[tempKeys[0]] || [];
+        this.perguntasCustomCache = result;
         return;
       }
+      this.perguntasCustomCache = [];
+      return;
     }
 
     // Garantir que o array existe
@@ -2048,7 +2050,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     // Se não há ID, usar o ID temporário da competência sendo editada
     let idParaUsar = competenciaId || this.competenciaEditando.id;
 
-    // Se ainda não há ID, tentar encontrar perguntas em qualquer chave temporária
+    // Se ainda não há ID, procurar em todas as chaves temporárias
     if (!idParaUsar) {
       const tempKeys = Object.keys(this.customQuestionsByCompetency).filter(k =>
         k.startsWith('comp_temp_') || k.startsWith('comp_')
@@ -2109,11 +2111,11 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         // Reconstruir perguntas custom a partir dos IDs
         const result = competenciaExistente.perguntasIds.map((id, idx) => {
           // Tentar encontrar a pergunta em outras competências ou em arrays temporários
-          const perguntaExistente = Object.values(this.customQuestionsByCompetency)
+          const perguntaEncontrada = Object.values(this.customQuestionsByCompetency)
             .flat()
             .find(q => q.id === id);
 
-          return perguntaExistente || {
+          return perguntaEncontrada || {
             id: id,
             title: `Pergunta ${idx + 1}`,
             type: 'rating'

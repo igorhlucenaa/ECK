@@ -104,15 +104,17 @@ export class ProjectDetailComponent implements OnInit {
     this.projectId = this.route.snapshot.paramMap.get('id');
 
     // Recarrega formulários sempre que o cliente mudar
-    this.form.get('clientId')?.valueChanges.subscribe(clientId => {
+    this.form.get('clientId')?.valueChanges.subscribe(async (clientId) => {
       this.assessments = [];
       this.reportTemplates = [];
       this.form.patchValue({ groupIds: [] }, { emitEvent: false });
       this.usersInGroups = [];
       if (clientId) {
-        this.loadAssessments(clientId);
-        this.loadReportTemplates(clientId);
-        void this.loadUserGroups(clientId);
+        await Promise.all([
+          this.loadAssessments(clientId),
+          this.loadReportTemplates(clientId),
+          this.loadUserGroups(clientId),
+        ]);
       } else {
         this.groups = [];
       }
@@ -134,7 +136,7 @@ export class ProjectDetailComponent implements OnInit {
       this.currentUserId = currentUser.uid || '';
 
       if (currentUser.role === 'admin_master') {
-        this.loadClients();
+        await this.loadClients();
       } else if (currentUser.role === 'admin_client') {
         const allowedIds = await this.authService.getCurrentUserClientIds();
         const effectiveClientId = this.clientId || allowedIds[0] || null;
@@ -150,9 +152,8 @@ export class ProjectDetailComponent implements OnInit {
         this.clientId = effectiveClientId;
         this.form.get('clientId')?.setValue(effectiveClientId);
         this.form.get('clientId')?.disable();
-        void this.loadAssessments(effectiveClientId);
-        void this.loadReportTemplates(effectiveClientId);
-        void this.loadUserGroups(effectiveClientId);
+        // NOTA: o valueChanges do clientId já disparou com setValue acima
+        // e fará o carregamento de assessments, reportTemplates e userGroups
       } else {
         this.snackBar.open(
           this.translate.instant('Cliente não identificado. Redirecionando...'),

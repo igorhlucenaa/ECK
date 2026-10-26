@@ -121,7 +121,7 @@ export class EmailTemplateFormComponent implements OnInit {
     this.form.get('clientId')?.valueChanges.subscribe((clientId) => {
       if (this.clientIdFromRoute) return;
       if (clientId) {
-        this.loadClientName(clientId);
+        void this.loadClientName(clientId);
       } else if (this.userRole === 'admin_master') {
         this.clientNameFromRoute = 'TEMPLATE PADRÃO';
       }

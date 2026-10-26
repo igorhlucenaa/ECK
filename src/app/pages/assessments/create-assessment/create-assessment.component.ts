@@ -132,11 +132,13 @@ export class CreateAssessmentComponent implements OnInit {
     });
 
     // Observa mudanças no clientId para carregar competências
-    this.form.get('clientId')?.valueChanges.subscribe(clientId => {
+    this.form.get('clientId')?.valueChanges.subscribe(async (clientId) => {
       if (clientId) {
-        this.loadCompetencies(clientId);
-        this.loadCompetencyLists(clientId);
-        this.loadCompetencyGroups(clientId);
+        await Promise.all([
+          this.loadCompetencies(clientId),
+          this.loadCompetencyLists(clientId),
+          this.loadCompetencyGroups(clientId),
+        ]);
       } else {
         this.competencies = []; // Limpa as competências se nenhum cliente for selecionado
         this.competencyLists = [];
@@ -153,6 +155,20 @@ export class CreateAssessmentComponent implements OnInit {
       const competencyIds = this.form.get('competencyIds')?.value as string[];
       await this.generateSurveyFromCompetencies(competencyIds);
     });
+
+    // ── Carregar dados para admin_client após setValue ──
+    // O setValue do clientId acontece ANTES da inscrição do valueChanges,
+    // então precisamos carregar manualmente aqui
+    if (this.userRole === 'admin_client') {
+      const clientId = this.form.get('clientId')?.value;
+      if (clientId) {
+        await Promise.all([
+          this.loadCompetencies(clientId),
+          this.loadCompetencyLists(clientId),
+          this.loadCompetencyGroups(clientId),
+        ]);
+      }
+    }
   }
 
   async loadCompetencies(clientId: string): Promise<void> {
@@ -208,23 +224,26 @@ export class CreateAssessmentComponent implements OnInit {
           
           // Adicionar cada competência do grupo à lista
           competencias.forEach((comp: any, index: number) => {
-            if (comp && comp.nome) {
-              // Criar um ID único para a competência: grupoId_comp_index
-              const uniqueId = `${groupDoc.id}_comp_${index}`;
-              console.log(`    ✅ Competência encontrada no grupo:`, {
-                uniqueId: uniqueId,
-                nome: comp.nome,
-                descricao: comp.descricao,
-                perguntasIds: comp.perguntasIds,
-                index: index
-              });
-              competenciesSet.set(uniqueId, {
-                id: uniqueId,
-                name: comp.nome || `Competência ${index + 1}`
-              });
-            } else {
-              console.warn(`    ⚠️ Competência inválida no índice ${index}:`, comp);
+            if (!comp) {
+              console.warn(`    ⚠️ Competência nula no índice ${index}`);
+              return;
             }
+            
+            // Criar um ID único para a competência: grupoId_comp_index
+            const uniqueId = `${groupDoc.id}_comp_${index}`;
+            const compNome = comp.nome?.trim() || comp.name?.trim() || `Competência ${index + 1}`;
+            
+            console.log(`    ✅ Competência encontrada no grupo:`, {
+              uniqueId: uniqueId,
+              nome: compNome,
+              descricao: comp.descricao,
+              perguntasIds: comp.perguntasIds,
+              index: index
+            });
+            competenciesSet.set(uniqueId, {
+              id: uniqueId,
+              name: compNome
+            });
           });
         });
       } catch (error) {

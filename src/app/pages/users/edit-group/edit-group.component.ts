@@ -78,7 +78,7 @@ export class EditGroupComponent implements OnInit {
 
     // Reload projects + users when client changes
     this.groupForm.get('clientId')!.valueChanges.subscribe(id => {
-      if (id) { this.loadProjects(id); this.loadUsers(id); }
+      if (id) { void this.loadProjects(id); void this.loadUsers(id); }
     });
   }
 
