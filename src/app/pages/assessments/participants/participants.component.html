@@ -330,7 +330,7 @@
 
     <div class="browse-hint" *ngIf="!hasOperationContext && !isTableLoading && dataSource.data.length > 0">
       <mat-icon>info</mat-icon>
-      <span>{{ 'Busque por nome para localizar participantes em qualquer projeto. Selecione cliente e projeto para enviar e-mails.' | translate }}</span>
+      <span>{{ 'participants.browseHint' | translate }}</span>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════
@@ -559,7 +559,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Cliente' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
             <button type="button" class="context-link" (click)="focusParticipantContext(participant); $event.stopPropagation()"
-                    [matTooltip]="'Selecionar cliente e projeto' | translate">
+                    [matTooltip]="'participants.contextLinkTooltip' | translate">
               {{ participant.clientName || '—' }}
             </button>
           </td>
@@ -569,9 +569,14 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Projeto' | translate }}</th>
           <td mat-cell *matCellDef="let participant">
             <button type="button" class="context-link project-cell" (click)="focusParticipantContext(participant); $event.stopPropagation()"
-                    [matTooltip]="'Selecionar cliente e projeto' | translate">
+                    [matTooltip]="'participants.contextLinkTooltip' | translate">
               <mat-icon class="project-icon">folder_open</mat-icon>
               <span>{{ participant.projectName || '—' }}</span>
+            </button>
+            <button type="button" class="context-link context-link--settings"
+                    (click)="openProjectSettings(participant); $event.stopPropagation()"
+                    [matTooltip]="'participants.openProjectSettings' | translate">
+              <mat-icon>settings</mat-icon>
             </button>
           </td>
         </ng-container>
@@ -686,7 +691,7 @@
               <button class="act-btn act-btn--neutral" *hasPermission="'editar'"
                       [disabled]="!canActOnParticipant(participant)"
                       [matTooltip]="getParticipantActionTooltip(participant, 'Editar participante' | translate)"
-                      (click)="canActOnParticipant(participant) && openEditParticipantDialog(participant); $event.stopPropagation()">
+                      (click)="onEditParticipantClick(participant); $event.stopPropagation()">
                 <mat-icon>edit</mat-icon>
               </button>
               <button class="act-btn act-btn--history"

@@ -73,6 +73,8 @@ export class ProjectDetailComponent implements OnInit {
   isEditMode = false;
   projectId: string | null = null;
   clientId: string | null = null;
+  /** Rota interna para voltar (ex.: /assessments/participants). */
+  returnToUrl: string | null = null;
   clients: { id: string; name: string }[] = [];
   groups: { id: string; name: string }[] = [];
   assessments: { id: string; name: string; isGlobalTemplate?: boolean }[] = [];
@@ -83,6 +85,9 @@ export class ProjectDetailComponent implements OnInit {
   projectStatus: string = '';
   currentUserRole: string = '';
   currentUserId: string = '';
+
+  /** Nome do formulário (avaliação) para exibição quando o campo está travado na edição. */
+  lockedAssessmentName = '';
 
   get canConfigureReminders(): boolean {
     return ['admin_master', 'admin_client', 'viewer'].includes(this.currentUserRole);
@@ -122,6 +127,11 @@ export class ProjectDetailComponent implements OnInit {
 
     this.route.queryParamMap.subscribe(async (params) => {
       this.clientId = params.get('clientId');
+      const returnTo = params.get('returnTo');
+      this.returnToUrl =
+        returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
+          ? returnTo
+          : null;
 
       const currentUser = await this.authService.getCurrentUser();
 
@@ -284,7 +294,8 @@ export class ProjectDetailComponent implements OnInit {
             this.loadUserGroups(clientId),
           ]);
         }
-        await this.updateUsersInGroups(); // Carregar usuários dos grupos selecionados
+        await this.updateUsersInGroups();
+        await this.applyStructuralFieldLocks();
       } else {
         this.snackBar.open(this.translate.instant('Projeto não encontrado!'), this.translate.instant('Fechar'), {
           duration: 3000,
@@ -298,6 +309,43 @@ export class ProjectDetailComponent implements OnInit {
       });
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  /**
+   * Após criado, cliente e formulário não podem mudar (participantes, links e relatórios dependem deles).
+   * Template de relatório permanece editável.
+   */
+  private async applyStructuralFieldLocks(): Promise<void> {
+    if (!this.isEditMode) {
+      return;
+    }
+
+    this.form.get('clientId')?.disable({ emitEvent: false });
+    this.form.get('assessmentId')?.disable({ emitEvent: false });
+
+    const assessmentId = this.form.get('assessmentId')?.value as string | undefined;
+    if (assessmentId) {
+      const inList = this.assessments.some((a) => a.id === assessmentId);
+      if (!inList) {
+        try {
+          const snap = await getDoc(doc(this.firestore, 'assessments', assessmentId));
+          if (snap.exists()) {
+            const data = snap.data();
+            this.assessments = [
+              {
+                id: assessmentId,
+                name: data['name'] || 'Formulário do projeto',
+              },
+              ...this.assessments,
+            ];
+          }
+        } catch {
+          /* mantém lista atual */
+        }
+      }
+      this.lockedAssessmentName =
+        this.assessments.find((a) => a.id === assessmentId)?.name || this.lockedAssessmentName;
     }
   }
 
@@ -361,7 +409,7 @@ export class ProjectDetailComponent implements OnInit {
     this.isLoading = true;
 
     const projectData = {
-      ...this.form.value,
+      ...this.form.getRawValue(),
       updatedAt: new Date(),
     };
 
@@ -388,7 +436,7 @@ export class ProjectDetailComponent implements OnInit {
         this.translate.instant('Fechar'),
         { duration: 3000 }
       );
-      this.router.navigate(['/projects']);
+      this.navigateAfterProjectSave();
     } catch (error) {
       console.error('Erro ao salvar projeto:', error);
       this.snackBar.open(this.translate.instant('Erro ao salvar projeto.'), this.translate.instant('Fechar'), {
@@ -404,7 +452,19 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   goBack(): void {
+    if (this.returnToUrl) {
+      void this.router.navigateByUrl(this.returnToUrl);
+      return;
+    }
     this.location.back();
+  }
+
+  private navigateAfterProjectSave(): void {
+    if (this.returnToUrl) {
+      void this.router.navigateByUrl(this.returnToUrl);
+      return;
+    }
+    void this.router.navigate(['/projects']);
   }
 
   openUsersDialog(): void {

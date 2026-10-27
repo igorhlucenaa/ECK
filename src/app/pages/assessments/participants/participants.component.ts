@@ -187,6 +187,8 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   isClientDisabled: boolean = false;
   isProjectDisabled: boolean = false;
   projectStatus: string = '';
+  /** Status por projeto (para ações na lista sem filtro cliente+projeto). */
+  projectStatusById = new Map<string, string>();
   isEmailSendingMode: boolean = false;
   emailType: string | undefined;
   reportTemplates: any[] = [];
@@ -216,20 +218,43 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
     );
   }
 
-  private ensureCanMutateParticipants(action: 'criar' | 'editar' | 'excluir' = 'editar'): boolean {
+  private ensureCanMutateParticipants(
+    action: 'criar' | 'editar' | 'excluir' = 'editar',
+    projectId?: string
+  ): boolean {
     if (!hasPermission(this.userRole as AppRole, action)) {
       this.snackBar.open(this.translate.instant('Você não tem permissão para esta ação.'), this.translate.instant('Fechar'), { duration: 4000 });
       return false;
     }
-    if (this.isProjectConcluded || this.isProjectCancelled) {
+    const status = this.resolveProjectStatus(projectId);
+    if (['Concluído', 'concluido'].includes(status)) {
       this.snackBar.open(
-        `Ação bloqueada: projeto ${this.projectStatusLabel || 'indisponível'}.`,
+        this.translate.instant('participants.actionBlockedConcluded'),
+        this.translate.instant('Fechar'),
+        { duration: 4000 }
+      );
+      return false;
+    }
+    if (['Cancelado', 'cancelado'].includes(status)) {
+      this.snackBar.open(
+        this.translate.instant('participants.actionBlockedCancelled'),
         this.translate.instant('Fechar'),
         { duration: 4000 }
       );
       return false;
     }
     return true;
+  }
+
+  private resolveProjectStatus(projectId?: string): string {
+    const pid = projectId || this.filterProject;
+    if (!pid) {
+      return this.projectStatus;
+    }
+    if (this.filterProject === pid && this.projectStatus) {
+      return this.projectStatus;
+    }
+    return this.projectStatusById.get(pid) || '';
   }
 
   get canManageViewers(): boolean {
@@ -603,6 +628,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
 
   async loadParticipants(): Promise<void> {
     this.isTableLoading = true;
+    this.projectStatusById.clear();
     try {
       const participantsCollection = collection(this.firestore, 'participants');
       let participantsSnapshot;
@@ -636,11 +662,13 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
             const projectSnapshot = await getDoc(projectDoc);
             if (projectSnapshot.exists()) {
               const pd = projectSnapshot.data();
+              const status = (pd['status'] as string) || '';
               projectsMap[projectId] = {
                 name: pd['name'] || 'Projeto Sem Nome',
                 clientId: pd['clientId'] || '',
                 assessmentId: pd['assessmentId'] || undefined,
               };
+              this.projectStatusById.set(projectId, status);
             } else {
               projectsMap[projectId] = { name: 'N/A', clientId: '' };
             }
@@ -1181,22 +1209,53 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   canActOnParticipant(participant: UnifiedParticipant): boolean {
+    if (!hasPermission(this.userRole as AppRole, 'editar')) {
+      return false;
+    }
+    const status = this.resolveProjectStatus(participant.projectId);
     return (
-      this.hasOperationContext &&
-      participant.projectId === this.filterProject &&
-      !this.isProjectConcluded &&
-      !this.isProjectCancelled
+      !['Concluído', 'concluido', 'Cancelado', 'cancelado'].includes(status)
     );
   }
 
   getParticipantActionTooltip(participant: UnifiedParticipant, fallback: string): string {
-    if (!this.hasOperationContext || participant.projectId !== this.filterProject) {
-      return 'Clique no projeto para selecionar o contexto de operação';
+    const status = this.resolveProjectStatus(participant.projectId);
+    if (['Concluído', 'concluido'].includes(status)) {
+      return this.translate.instant('participants.editBlockedConcluded');
     }
-    if (this.isProjectConcluded || this.isProjectCancelled) {
-      return `Ação bloqueada: projeto ${this.projectStatusLabel}`;
+    if (['Cancelado', 'cancelado'].includes(status)) {
+      return this.translate.instant('participants.editBlockedCancelled');
     }
     return fallback;
+  }
+
+  /** Abre edição; opcionalmente alinha filtros para envio de e-mail no mesmo projeto. */
+  async onEditParticipantClick(participant: UnifiedParticipant): Promise<void> {
+    if (!this.canActOnParticipant(participant)) {
+      return;
+    }
+    if (
+      !this.hasOperationContext ||
+      participant.projectId !== this.filterProject
+    ) {
+      await this.focusParticipantContext(participant);
+    }
+    if (!this.ensureCanMutateParticipants('editar', participant.projectId)) {
+      return;
+    }
+    this.openEditParticipantDialog(participant);
+  }
+
+  openProjectSettings(participant: UnifiedParticipant): void {
+    if (!participant.projectId) {
+      return;
+    }
+    void this.router.navigate(['/projects', participant.projectId, 'edit'], {
+      queryParams: {
+        clientId: participant.clientId || undefined,
+        returnTo: '/assessments/participants',
+      },
+    });
   }
 
   get lockedAssessmentName(): string {
@@ -1262,6 +1321,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
       if (!snap.exists()) { this.projectStatus = ''; return; }
       const status: string = snap.data()['status'] || '';
       this.projectStatus = status;
+      this.projectStatusById.set(this.filterProject, status);
 
       // Migração automática: se o projeto está Concluído mas ainda tem créditos reservados,
       // dispara o concludeProject para mover reservedCredits → consumedCredits
@@ -1906,7 +1966,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   private async openEditParticipantDialogAsync(participant: UnifiedParticipant): Promise<void> {
-    if (!this.ensureCanMutateParticipants('editar')) return;
+    if (!this.ensureCanMutateParticipants('editar', participant.projectId)) return;
 
     const evaluateeCheck = await this.participantValidationService.validateSingleEvaluateePerProject(
       participant.projectId,
@@ -2239,7 +2299,7 @@ export class ParticipantsComponent implements OnInit, AfterViewInit {
   }
 
   async cancelSend(participant: UnifiedParticipant): Promise<void> {
-    if (!this.ensureCanMutateParticipants('editar')) return;
+    if (!this.ensureCanMutateParticipants('editar', participant.projectId)) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '420px',
       data: { message: `Deseja cancelar o envio pendente para ${participant.name}?` },

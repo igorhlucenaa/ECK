@@ -61,6 +61,7 @@
                 {{ client.name }}
               </mat-option>
             </mat-select>
+            <mat-hint *ngIf="isEditMode">{{ 'projects.edit.clientLockedHint' | translate }}</mat-hint>
             <mat-error *ngIf="form.get('clientId')?.hasError('required')">
               {{ 'O cliente é obrigatório.' | translate }}
             </mat-error>
@@ -93,8 +94,9 @@
                 <span *ngIf="a.isGlobalTemplate" class="assessment-global-tag">{{ 'assessments.global.badge' | translate }} — </span>{{ a.name }}
               </mat-option>
             </mat-select>
-            <mat-hint *ngIf="!form.get('clientId')?.value">{{ 'Selecione um cliente para ver os formulários disponíveis' | translate }}</mat-hint>
-            <mat-hint *ngIf="form.get('clientId')?.value && assessments.length === 0">{{ 'Nenhum formulário disponível para este cliente' | translate }}</mat-hint>
+            <mat-hint *ngIf="isEditMode">{{ 'projects.edit.assessmentLockedHint' | translate }}</mat-hint>
+            <mat-hint *ngIf="!isEditMode && !form.get('clientId')?.value">{{ 'Selecione um cliente para ver os formulários disponíveis' | translate }}</mat-hint>
+            <mat-hint *ngIf="!isEditMode && form.get('clientId')?.value && assessments.length === 0">{{ 'Nenhum formulário disponível para este cliente' | translate }}</mat-hint>
           </mat-form-field>
 
           <!-- Template de relatório a utilizar (obrigatório) -->
