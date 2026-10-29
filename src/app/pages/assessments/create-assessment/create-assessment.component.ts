@@ -476,7 +476,7 @@ export class CreateAssessmentComponent implements OnInit {
     if (competencyIds.length > 0) {
       this.form.get('competencyIds')?.setValue(competencyIds);
       this.snackBar.open(
-        this.translate.instant('Grupo "{{name}}" selecionado com {{count}} competências', {
+        this.translate.instant("Grupo \"{{name}}\" selecionado com {{count}} competências", {
           name: group.name,
           count: competencyIds.length,
         }),
@@ -485,7 +485,7 @@ export class CreateAssessmentComponent implements OnInit {
       );
     } else {
       this.snackBar.open(
-        this.translate.instant('Nenhuma competência encontrada para o grupo "{{name}}"', { name: group.name }),
+        this.translate.instant("Nenhuma competência encontrada para o grupo \"{{name}}\"", { name: group.name }),
         this.translate.instant('Fechar'),
         { duration: 3000 }
       );

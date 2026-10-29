@@ -1,0 +1,71 @@
+{{count}} relatório(s) empacotados em {{file}}!
+Avaliação excluída com sucesso.
+Avaliação não encontrada
+Avaliação removida com sucesso!
+Avaliações adicionadas com sucesso!
+Avaliações atualizadas com sucesso!
+Centralize com alinhamento, altere cores no seletor, ou use Modo HTML / botão de código-fonte para layout avançado.
+Centralize textos e logos com os botões de alinhamento. Altere cores com o seletor de cor do texto ou do fundo. Para HTML avançado (rotação, layout flex), use Modo HTML ou o botão de código-fonte no editor. Placeholders: $%NOME_AVALIADO$%, $%DATA_RELATORIO$%.
+Cliente e projeto são opcionais para consulta
+Cliente não identificado. Redirecionando...
+Cole ou edite HTML completo. O preview e o PDF respeitarão tags, estilos inline, imagens e transformações CSS.
+Configure as competências antes de gerar relatórios.
+Configure o formulário em Projetos → Editar projeto
+Créditos insuficientes para importar o avaliado.
+Definir a senha de login (Auth) para {{email}}? A senha usada será a configurada em qaDefaultPassword no ambiente de dev.
+Erro ao abrir relatório. Tente novamente.
+Erro ao carregar avaliação
+Erro ao carregar avaliação.
+Erro ao carregar avaliações
+Erro ao carregar avaliações disponíveis.
+Erro ao carregar competências
+Erro ao carregar grupos de competências
+Erro ao carregar lista de avaliações
+Erro ao carregar os usuários.
+Erro ao carregar pré-visualização.
+Erro ao carregar questionário.
+Erro ao definir senha. Verifique se a função setUserPasswordByMaster está publicada.
+Erro ao excluir avaliação.
+Erro ao gerar formulário a partir das competências
+Erro ao gerar PDF do formulário.
+Erro ao obter dados do usuário.
+Erro ao obter informações do usuário.
+Erro ao salvar questionário.
+Erro: ID da avaliação não fornecido
+Este participante ainda não respondeu.
+Este participante já possui acesso como visualizador.
+Formulário atualizado com sucesso!
+Formulário criado com sucesso!
+Formulário definido na criação do projeto
+Informe um nome e selecione ao menos uma competência.
+Já existe um grupo com este nome para o cliente selecionado. Escolha outro nome.
+Link de avaliação enviado com sucesso!
+Modelo de e-mail não encontrado.
+Não foi possível identificar o avaliado para exportar.
+Não há resultados elegíveis para esta avaliação.
+Não há resultados para esta avaliação.
+Nenhum participante válido encontrado na planilha.
+Nenhuma competência encontrada para o grupo \
+O prazo de preenchimento não pode ser uma data anterior a hoje.
+Ocultar bloco automático de avaliado/respondentes no preview
+Operação não permitida.
+Participante não tem e-mail cadastrado.
+Participantes excluídos com sucesso!
+PDF do formulário baixado com sucesso.
+Pergunta criada e adicionada à avaliação com sucesso!
+Pergunta não encontrada na avaliação
+Preencha todos os campos obrigatórios
+Preencha todos os campos obrigatórios!
+Preencha todos os campos obrigatórios.
+Projeto concluído com sucesso! 1 crédito debitado.
+Projeto não encontrado!
+Questionário não encontrado.
+Relatório gerado com sucesso!
+Relatório restaurado — continue de onde parou.
+Selecione pelo menos uma competência para gerar o relatório.
+Selecione um Formulário (Avaliação) para gerar o relatório.
+Selecione uma ou mais competências para gerar a Janela de Johari.
+Senha definida. O usuário já pode entrar na plataforma.
+Upload e salvamento concluídos!
+Você não tem permissão para esta ação.
+Você não tem permissão para excluir este template.

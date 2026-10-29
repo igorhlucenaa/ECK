@@ -613,7 +613,7 @@ export class UsersComponent implements OnInit, AfterViewInit {
   async deleteGroup(group: UserGroup): Promise<void> {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        message: this.translate.instant('Tem certeza de que deseja excluir o grupo "{{name}}"?', { name: group.name }),
+        message: this.translate.instant('Tem certeza de que deseja excluir o grupo {{name}}?', { name: group.name }),
       },
     });
 
