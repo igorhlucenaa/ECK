@@ -9,7 +9,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { CreateQuestionDialogComponent } from './create-question-dialog/create-question-dialog.component';
 import { Subject, takeUntil } from 'rxjs';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { ConfirmDialogService } from 'src/app/shared/confirm-dialog/confirm-dialog.service';
 import { CompetencyQuestionsService } from '../../services/competency-questions.service';
@@ -102,6 +102,10 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   showCompForm = false;
   hasUnsavedChanges = false;
 
+  /** Voltar ao assistente de Relatórios com o mesmo contexto (query params). */
+  reportsReturnEnabled = false;
+  private reportsReturnQuery: Record<string, string> = {};
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -113,6 +117,7 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog,
     private route: ActivatedRoute,
+    private router: Router,
     private confirmDialog: ConfirmDialogService,
     private competencyQuestionsService: CompetencyQuestionsService
   ) {
@@ -145,6 +150,13 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
     // Carregar grupos se cliente já estiver definido
     if (this.selectedClientId) {
       await this.loadCompetencyGroups(this.selectedClientId);
+    }
+
+    this.parseReportsReturnContext();
+
+    const clientIdParam = this.route.snapshot.queryParamMap.get('clientId');
+    if (clientIdParam && this.clients.some(c => c.id === clientIdParam)) {
+      this.clientControl.setValue(clientIdParam);
     }
 
     // Pré-selecionar avaliação se vier via query param (ex: redirecionado do Reports)
@@ -215,6 +227,51 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private parseReportsReturnContext(): void {
+    const q = this.route.snapshot.queryParamMap;
+    if (q.get('reportsReturn') !== '1') {
+      return;
+    }
+    this.reportsReturnEnabled = true;
+    const keys = [
+      'restoreReports',
+      'clientId',
+      'projectId',
+      'assessmentId',
+      'reportsStep',
+      'templateId',
+      'templateLibrary',
+    ] as const;
+    for (const key of keys) {
+      const value = q.get(key);
+      if (value) {
+        this.reportsReturnQuery[key] = value;
+      }
+    }
+    this.reportsReturnQuery['restoreReports'] = '1';
+  }
+
+  returnToReports(): void {
+    if (!this.reportsReturnEnabled) {
+      void this.router.navigate(['/reports']);
+      return;
+    }
+    void this.router.navigate(['/reports'], { queryParams: { ...this.reportsReturnQuery } });
+  }
+
+  private notifyGroupSavedWithReportsReturn(messageKey: string): void {
+    if (!this.reportsReturnEnabled) {
+      this.snackBar.open(this.t(messageKey), this.t('Fechar'), { duration: 3000 });
+      return;
+    }
+    const ref = this.snackBar.open(
+      this.t(messageKey),
+      this.t('Voltar para Relatórios'),
+      { duration: 8000 }
+    );
+    ref.onAction().subscribe(() => this.returnToReports());
   }
 
   private async loadUserData(): Promise<void> {
@@ -1151,11 +1208,13 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         }
       }
 
+      const sameClient = src['clientId'] === this.selectedClientId;
       const groupData: Record<string, unknown> = {
         name: newGroupName,
         clientId: this.selectedClientId,
         competencias,
-        assessmentId: src['assessmentId'] || null,
+        // assessmentId de outro cliente quebra Relatórios (query por avaliação do projeto).
+        assessmentId: sameClient ? (src['assessmentId'] || null) : null,
         customQuestionsByCompetency,
         createdAt: new Date(),
       };
@@ -1354,12 +1413,12 @@ export class CompetenciesComponent implements OnInit, OnDestroy {
         const groupDocRef = doc(this.firestore, 'competencyGroups', this.currentGroupId);
         await updateDoc(groupDocRef, groupData);
         this.hasUnsavedChanges = false;
-        this.snackBar.open(this.t('Grupo atualizado com sucesso!'), this.t('Fechar'), { duration: 3000 });
+        this.notifyGroupSavedWithReportsReturn('Grupo atualizado com sucesso!');
       } else {
         const docRef = await addDoc(collection(this.firestore, 'competencyGroups'), groupData);
         this.currentGroupId = docRef.id;
         this.hasUnsavedChanges = false;
-        this.snackBar.open(this.t('Grupo salvo com sucesso!'), this.t('Fechar'), { duration: 3000 });
+        this.notifyGroupSavedWithReportsReturn('Grupo salvo com sucesso!');
       }
 
       // Mantém o controle sincronizado para evitar bloqueio de autosave

@@ -509,20 +509,23 @@ export class ParticipantsModalComponent implements OnInit {
       }
 
       const templatesCollection = collection(this.firestore, 'mailTemplates');
-      const templatesQuery = query(
-        templatesCollection,
-        where('clientId', '==', this.data.clientId)
-      );
-      const snapshot = await getDocs(templatesQuery);
+      const snapshot = await getDocs(templatesCollection);
+      const clientId = this.data.clientId;
 
-      this.mailTemplates = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data()['name'] || 'Sem Nome',
-        content: doc.data()['content'] || '',
-        emailType: doc.data()['emailType'] || '',
-        subject: doc.data()['subject'] || '',
-        clientId: doc.data()['clientId'] || '',
-      }));
+      this.mailTemplates = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          name: doc.data()['name'] || 'Sem Nome',
+          content: doc.data()['content'] || '',
+          emailType: doc.data()['emailType'] || '',
+          subject: doc.data()['subject'] || '',
+          clientId: doc.data()['clientId'] || '',
+        }))
+        .filter((t) => {
+          const cid = t.clientId;
+          const isGlobal = cid === undefined || cid === null || cid === '';
+          return isGlobal || cid === clientId;
+        });
 
       if (this.mailTemplates.length === 0) {
         this.snackBar.open(this.translate.instant('Nenhum template encontrado para este cliente.'), this.translate.instant('Fechar'), { duration: 3000 });

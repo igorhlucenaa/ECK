@@ -5,6 +5,7 @@ import {
   filterQuestionsByType,
   computeConsolidation,
   getQuestionTypeStats,
+  extractAvaliadosDisponiveisFromReportRows,
   isParticipantIncludedInReports,
   resolveExportAnswer,
   getExportAnswerTipoResposta,
@@ -239,7 +240,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Deve coincidir com PDF_RENDER_VIEWPORT em functions/src/shared/puppeteer-browser.ts */
   private static readonly PDF_RENDER_VIEWPORT_WIDTH_PX = 1240;
-  private static readonly PDF_HTML2CANVAS_SCALE = 2;
+  /** Escala menor reduz bloqueio da main thread (html2canvas) sem perder legibilidade no Puppeteer. */
+  private static readonly PDF_HTML2CANVAS_SCALE = 1.5;
+  private static cachedDocumentStylesForPdf: string | null = null;
 
   private toChartValue(value: number | null | undefined): number {
     if (value === null || value === undefined || isNaN(value)) {
@@ -695,13 +698,93 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.exportarRelatorioPDF();
   }
 
+  /** Dados da avaliação carregados (sem exigir DOM da aba Visualizar). */
+  private async waitForReportDataReady(timeoutMs: number = 20000): Promise<boolean> {
+    let reloadAttempted = false;
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      if (this.dataSource.length > 0 && this.dynamicColumns.length > 0) {
+        return true;
+      }
+      if (
+        !reloadAttempted &&
+        this.selectedAssessmentId &&
+        Date.now() - start > 1200
+      ) {
+        reloadAttempted = true;
+        const gen = this.filterContextGeneration;
+        await this.onAssessmentChange(gen);
+        if (gen === this.filterContextGeneration) {
+          await this.calcularMediasPorCompetencia();
+        }
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return this.dataSource.length > 0 && this.dynamicColumns.length > 0;
+  }
+
   private async waitForReportReady(timeoutMs: number = 5000): Promise<boolean> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       const el = document.getElementById('report-preview');
-      const ready = !!el && this.dataSource && this.dataSource.length > 0 && this.dynamicColumns && this.dynamicColumns.length > 0;
+      const ready = !!el && this.dataSource.length > 0 && this.dynamicColumns.length > 0;
       if (ready) return true;
       await new Promise(r => setTimeout(r, 200));
+    }
+    return false;
+  }
+
+  /** Devolve o controle ao browser para o overlay de exportação e evitar "página sem resposta". */
+  private yieldToMainThread(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 0));
+  }
+
+  private applyAvaliadoSelection(name: string): void {
+    this.selectedAvaliado = name;
+    this.avaliadoControl.setValue(name, { emitEvent: false });
+    this.pendingAvaliadoFromQuery = null;
+    this.updateSelectedAvaliadoParticipantId();
+    this.invalidateCache();
+    this.cdr.markForCheck();
+  }
+
+  /** Garante avaliado correto (query/modal) antes de exportar a partir da lista de projetos. */
+  private async ensureAvaliadoSelectedForExport(timeoutMs = 15000): Promise<boolean> {
+    const preferred =
+      this.pendingAvaliadoFromQuery ||
+      this.route.snapshot.queryParamMap.get('avaliado') ||
+      this.selectedAvaliado ||
+      null;
+
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      this.avaliadosDisponiveis = this.getAvaliadosDisponiveis();
+      if (preferred && this.avaliadosDisponiveis.includes(preferred)) {
+        this.applyAvaliadoSelection(preferred);
+        return true;
+      }
+      if (!preferred && this.avaliadosDisponiveis.length === 1) {
+        this.applyAvaliadoSelection(this.avaliadosDisponiveis[0]);
+        return true;
+      }
+      if (this.avaliadosDisponiveis.length > 0 && preferred) {
+        await new Promise(r => setTimeout(r, 150));
+        continue;
+      }
+      if (this.avaliadosDisponiveis.length > 0) {
+        this.applyAvaliadoSelection(this.avaliadosDisponiveis[0]);
+        return true;
+      }
+      await new Promise(r => setTimeout(r, 150));
+    }
+
+    if (this.avaliadosDisponiveis.length > 0) {
+      const fallback =
+        preferred && this.avaliadosDisponiveis.includes(preferred)
+          ? preferred
+          : this.avaliadosDisponiveis[0];
+      this.applyAvaliadoSelection(fallback);
+      return true;
     }
     return false;
   }
@@ -1425,7 +1508,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         a['exportAction'] === b['exportAction'] &&
         a['returnTo'] === b['returnTo'] &&
         a['projectIds'] === b['projectIds'] &&
-        a['projectTemplates'] === b['projectTemplates']
+        a['projectTemplates'] === b['projectTemplates'] &&
+        a['restoreReports'] === b['restoreReports'] &&
+        a['reportsStep'] === b['reportsStep'] &&
+        a['templateLibrary'] === b['templateLibrary']
       )
     ).subscribe(async params => {
       if (this.suppressQueryParamsHandler) return;
@@ -1435,7 +1521,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.resetIndividualMode();
         const clientIdParam: string | undefined = params['clientId'];
         const projectIdParam: string | undefined = params['projectId'];
-        if (!clientIdParam && !projectIdParam) return;
+        const restoreReports = params['restoreReports'] === '1';
+        if (!clientIdParam && !projectIdParam && !restoreReports) return;
 
         let resolvedClientId = clientIdParam;
         if (!resolvedClientId && projectIdParam) {
@@ -1457,13 +1544,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           .filter(Boolean) || [];
         const isClientBatchExport = exportAction === 'clientBatchPdf' && batchProjectIds.length > 0;
 
+        const hasProjectExport =
+          !!projectIdParam &&
+          !!exportAction &&
+          exportAction !== 'openReports';
+
         if (resolvedClientId) {
           this.pendingQueryProjectId = isClientBatchExport
             ? ReportsComponent.CLIENT_BATCH_QUERY_SENTINEL
             : (projectIdParam || null);
           this.filterClientControl.setValue(resolvedClientId, { emitEvent: false });
           await this.onFilterClientChange();
-          this.pendingQueryProjectId = null;
+          if (!hasProjectExport) {
+            this.pendingQueryProjectId = null;
+          }
         }
 
         if (isClientBatchExport) {
@@ -1494,11 +1588,22 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           } else if (avaliadoParam) {
             this.pendingAvaliadoFromQuery = avaliadoParam;
           }
-          if (exportAction && exportAction !== 'openReports') {
-            await this.executeProjectExportAction(exportAction);
-          } else if (params['templateId'] || exportAction === 'openReports') {
-            this.selectedTabIndex = 2;
+          try {
+            if (exportAction && exportAction !== 'openReports') {
+              await this.executeProjectExportAction(exportAction);
+            } else if (params['templateId'] || exportAction === 'openReports') {
+              this.selectedTabIndex = 2;
+            } else if (restoreReports) {
+              this.applyReportsStepFromQuery(params);
+              this.notifyReportsSessionRestored();
+            }
+          } finally {
+            if (hasProjectExport) {
+              this.pendingQueryProjectId = null;
+            }
           }
+        } else if (restoreReports) {
+          await this.restoreReportsWizardFromQuery(params);
         }
 
         this.cdr.markForCheck();
@@ -2536,6 +2641,62 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           break;
       }
     });
+  }
+
+  /** Versão com pausas na main thread — usada só na exportação PDF/DOCX. */
+  private async prewarmPreviewCacheForExport(): Promise<void> {
+    if (!this.dataSource.length) return;
+
+    this.getSecoesVisiveisOrdenadas();
+    this.getContagemRespondentesCached();
+    await this.yieldToMainThread();
+
+    const secoes = this.getSecoesVisiveisOrdenadas();
+    for (let i = 0; i < secoes.length; i++) {
+      const secao = secoes[i];
+      switch (secao.tipo) {
+        case 'destaques':
+          this.getDestaquesAltasCached(secao);
+          this.getDestaquesBaixasCached(secao);
+          break;
+        case 'tabela':
+          this.getCompetenciasSelecionadasParaTabela().forEach(c => this.getTabelaCompetencia(c));
+          break;
+        case 'tabela_detalhada':
+          this.getCompetenciasParaSecaoCached(secao).forEach(c => this.getTabelaCompetencia(c));
+          break;
+        case 'competencia_detalhada':
+          this.getCompetenciasParaSecaoCached(secao).forEach(c => {
+            this.getTabelaCompetencia(c);
+            this.getDadosGraficoCompetenciaCached(c);
+          });
+          break;
+        case 'graficos':
+          this.getCompetenciasGraficosCached(secao).forEach(c => {
+            this.getCompetenciaBarraComparativaData(c);
+            this.getCompetenciaPieData(c);
+            this.getCompetenciaStackedData(c);
+          });
+          if (this.getTipoGraficoControl(i)?.value === 'janela_johari') {
+            this.getJohariWindowDataCached(secao);
+          }
+          break;
+        case 'resumo':
+          this.getResumoMedias();
+          this.getResumoMediasPorCompetencia();
+          break;
+        case 'grafico_defasagem':
+        case 'janela_johari':
+          this.getCompetenciasParaSecaoCached(secao);
+          this.getJohariWindowDataCached(secao);
+          break;
+        default:
+          break;
+      }
+      if (i % 2 === 1) {
+        await this.yieldToMainThread();
+      }
+    }
   }
 
   mostrarSecao(id: string) {
@@ -3819,8 +3980,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
    * Garante dados, change detection (OnPush) e renderização de gráficos antes da captura HTML.
    */
   private async prepareReportPreviewForPdfExport(): Promise<HTMLElement> {
-    this.prewarmPreviewCache();
+    await this.prewarmPreviewCacheForExport();
     await this.calcularMediasPorCompetencia();
+    await this.yieldToMainThread();
     this.prepareGapChartData();
     this.cdr.detectChanges();
     await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -4145,6 +4307,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const clonePlot = cloneJohariPlots[i];
       if (!clonePlot) continue;
       await captureToImage(sourceJohariPlots[i], clonePlot, 'pdf-johari-plot-image', 'Janela de Johari');
+      await this.yieldToMainThread();
     }
 
     const sourceGapCharts = Array.from(source.querySelectorAll('.gap-chart-container')) as HTMLElement[];
@@ -4154,6 +4317,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const cloneGap = cloneGapCharts[i];
       if (!cloneGap) continue;
       await captureToImage(sourceGapCharts[i], cloneGap, 'pdf-gap-chart-image', 'Gráfico de defasagem');
+      await this.yieldToMainThread();
     }
   }
 
@@ -4213,8 +4377,9 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const clone = previewEl.cloneNode(true) as HTMLElement;
     this.stampPdfExportRootStyles(clone);
-    this.replaceCanvasWithImages(previewEl, clone);
-    this.replaceEchartsHostsWithImages(previewEl, clone);
+    await this.replaceCanvasWithImagesAsync(previewEl, clone);
+    await this.replaceEchartsHostsWithImagesAsync(previewEl, clone);
+    await this.yieldToMainThread();
     this.replaceNgxChartsWithSvgImages(previewEl, clone);
     this.preserveSvgDimensions(previewEl, clone);
     await this.replaceLayoutSensitiveChartsWithImages(previewEl, clone);
@@ -4246,6 +4411,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const footerTemplate = this.buildPdfFooterTemplate();
     const hasHeaderFooter = this.documentoConfig.cabecalho.ativo || this.documentoConfig.rodape.ativo;
 
+    await this.yieldToMainThread();
     const documentStyles = this.collectDocumentStyles();
     const safeTitle = this.escapeHtml(fileName.replace(/\.pdf$/i, ''));
 
@@ -4936,6 +5102,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private collectDocumentStyles(): string {
+    if (ReportsComponent.cachedDocumentStylesForPdf) {
+      return ReportsComponent.cachedDocumentStylesForPdf;
+    }
+
     const inlineStyles = Array.from(document.head.querySelectorAll('style'))
       .map(style => style.innerHTML)
       .join('\n');
@@ -4957,7 +5127,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       })
       .join('\n');
 
-    return `${inlineStyles}\n${sameOriginStyles}`;
+    ReportsComponent.cachedDocumentStylesForPdf = `${inlineStyles}\n${sameOriginStyles}`;
+    return ReportsComponent.cachedDocumentStylesForPdf;
   }
 
   private replaceCanvasWithImages(source: HTMLElement, clone: HTMLElement): void {
@@ -4996,6 +5167,46 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  private async replaceCanvasWithImagesAsync(source: HTMLElement, clone: HTMLElement): Promise<void> {
+    const sourceCanvases = Array.from(source.querySelectorAll('canvas')) as HTMLCanvasElement[];
+
+    for (let index = 0; index < sourceCanvases.length; index++) {
+      const sourceCanvas = sourceCanvases[index];
+      if (!this.canvasHasVisibleContent(sourceCanvas)) continue;
+
+      const host = sourceCanvas.closest('.rp-radar-chart, [echarts], ngx-charts-bar-horizontal, ngx-charts-pie-chart') as HTMLElement | null;
+      let clonedCanvas: HTMLCanvasElement | null = null;
+
+      if (host?.id) {
+        clonedCanvas = clone.querySelector(`#${CSS.escape(host.id)} canvas`) as HTMLCanvasElement | null;
+      }
+      if (!clonedCanvas) {
+        const clonedCanvases = Array.from(clone.querySelectorAll('canvas')) as HTMLCanvasElement[];
+        clonedCanvas = clonedCanvases[index] || null;
+      }
+      if (!clonedCanvas) continue;
+
+      try {
+        const dataUrl = sourceCanvas.toDataURL('image/png');
+        if (!dataUrl) continue;
+
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.width = sourceCanvas.style.width || `${sourceCanvas.offsetWidth}px`;
+        img.style.height = sourceCanvas.style.height || `${sourceCanvas.offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+        clonedCanvas.parentNode?.replaceChild(img, clonedCanvas);
+      } catch {
+        // canvas externo — mantém no clone
+      }
+
+      if (index > 0 && index % 2 === 0) {
+        await this.yieldToMainThread();
+      }
+    }
+  }
+
   private replaceEchartsHostsWithImages(source: HTMLElement, clone: HTMLElement): void {
     const hosts = Array.from(source.querySelectorAll('.rp-radar-chart, [echarts]')) as HTMLElement[];
 
@@ -5027,6 +5238,44 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         console.warn('[Relatório] Nao foi possivel converter grafico ECharts para imagem.', error);
       }
     });
+  }
+
+  private async replaceEchartsHostsWithImagesAsync(source: HTMLElement, clone: HTMLElement): Promise<void> {
+    const hosts = Array.from(source.querySelectorAll('.rp-radar-chart, [echarts]')) as HTMLElement[];
+
+    for (let index = 0; index < hosts.length; index++) {
+      const sourceHost = hosts[index];
+      const sourceCanvas = sourceHost.querySelector('canvas') as HTMLCanvasElement | null;
+      if (!sourceCanvas || !this.canvasHasVisibleContent(sourceCanvas)) continue;
+
+      const clonedHost = sourceHost.id
+        ? clone.querySelector(`#${CSS.escape(sourceHost.id)}`) as HTMLElement | null
+        : null;
+      if (!clonedHost) continue;
+
+      try {
+        const dataUrl = sourceCanvas.toDataURL('image/png');
+        if (!dataUrl) continue;
+
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.className = 'pdf-echarts-chart';
+        img.alt = 'Grafico radar do relatorio';
+        img.style.width = sourceHost.style.width || `${sourceHost.offsetWidth || sourceCanvas.offsetWidth}px`;
+        img.style.height = sourceHost.style.height || `${sourceHost.offsetHeight || sourceCanvas.offsetHeight}px`;
+        img.style.maxWidth = '100%';
+        img.style.display = 'block';
+
+        clonedHost.innerHTML = '';
+        clonedHost.appendChild(img);
+      } catch (error) {
+        console.warn('[Relatório] Nao foi possivel converter grafico ECharts para imagem.', error);
+      }
+
+      if (index > 0 && index % 2 === 0) {
+        await this.yieldToMainThread();
+      }
+    }
   }
 
   private replaceReportChipsForPdf(source: HTMLElement, clone: HTMLElement): void {
@@ -5896,6 +6145,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isExporting = true;
     this.exportingLabel = 'Gerando PDF...';
     this.cdr.markForCheck();
+    await this.yieldToMainThread();
 
     try {
       const fileName = `${this.getExportBaseName()}.pdf`;
@@ -6819,21 +7069,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return count > 0 ? soma / count : null;
   }
 
-  // Método para obter lista de avaliados disponíveis (apenas participantes tipo 'avaliado')
+  /** Avaliados com respostas no dataSource (nome vem também das linhas de avaliadores). */
   getAvaliadosDisponiveis(): string[] {
-    const avaliados = new Set<string>();
-    const selectedProjectId = this.filterProjectControl.value;
-
-    this.dataSource.forEach(row => {
-      const tipo = (row['tipo'] || '').toLowerCase();
-      const avaliado = row['avaliado'];
-      if (tipo !== 'avaliado' || !avaliado || !avaliado.trim()) return;
-      // Quando projeto está selecionado, restringir ao avaliado daquele projeto
-      if (selectedProjectId && row['projectId'] && row['projectId'] !== selectedProjectId) return;
-      avaliados.add(avaliado.trim());
-    });
-
-    return Array.from(avaliados).sort();
+    return extractAvaliadosDisponiveisFromReportRows(
+      this.dataSource as Record<string, unknown>[],
+      this.filterProjectControl.value
+    );
   }
 
   // Removido: funções relacionadas a características ADEO
@@ -7596,7 +7837,26 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Inicializa filtros e dados a partir do projeto (ex.: botão Gerar Relatório na lista). */
   private async initializeReportFromProject(projectId: string, templateIdParam?: string): Promise<void> {
-    const project = this.filterProjects.find(p => p.id === projectId);
+    let project = this.filterProjects.find(p => p.id === projectId);
+    if (!project?.assessmentId) {
+      try {
+        const projectDoc = await getDoc(doc(this.firestore, 'projects', projectId));
+        if (projectDoc.exists()) {
+          const data = projectDoc.data();
+          project = {
+            id: projectId,
+            name: data['name'] || '—',
+            assessmentId: data['assessmentId'] || undefined,
+            reportTemplateId: data['reportTemplateId'] || undefined,
+          };
+          if (!this.filterProjects.some(p => p.id === projectId)) {
+            this.filterProjects = [...this.filterProjects, project];
+          }
+        }
+      } catch (e) {
+        console.error('[Relatório] Erro ao carregar projeto para exportação:', e);
+      }
+    }
     if (!project?.assessmentId) {
       this.filterProjectControl.setValue(projectId, { emitEvent: false });
       return;
@@ -7639,6 +7899,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.fillCompetenciasInReportSections();
+    this.avaliadosDisponiveis = this.getAvaliadosDisponiveis();
   }
 
   /** Preenche competências nas seções do relatório a partir das competências carregadas. */
@@ -7660,7 +7921,6 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     try {
       this.fillCompetenciasInReportSections();
-      this.selectedTabIndex = 2;
       this.cdr.markForCheck();
 
       if (action === 'excelBase') {
@@ -7681,6 +7941,25 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
+      const dataReady = await this.waitForReportDataReady(60000);
+      if (!dataReady) {
+        this.snackBar.open(
+          this.t('Os dados do relatório ainda não carregaram. Tente novamente em instantes.'),
+          this.t('Fechar'),
+          { duration: 5000 }
+        );
+        return;
+      }
+
+      this.selectedTabIndex = 2;
+      this.cdr.markForCheck();
+
+      this.avaliadosDisponiveis = this.getAvaliadosDisponiveis();
+      if (this.competencias.length === 0 && this.allCompetencies.length > 0) {
+        this.competencias = [...this.allCompetencies];
+        this.fillCompetenciasInReportSections();
+      }
+
       if (!this.avaliadosDisponiveis.length) {
         this.snackBar.open(
           this.t('Nenhum avaliado com respostas para exportar neste projeto.'),
@@ -7699,12 +7978,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      await this.waitForReportReady(8000);
+      const avaliadoOk = await this.ensureAvaliadoSelectedForExport(15000);
+      if (!avaliadoOk) {
+        this.snackBar.open(
+          this.t('Não foi possível identificar o avaliado para exportar.'),
+          this.t('Fechar'),
+          { duration: 4000 }
+        );
+        return;
+      }
 
-      const avaliado = this.avaliadosDisponiveis[0];
-      this.selectedAvaliado = avaliado;
-      this.avaliadoControl.setValue(avaliado, { emitEvent: false });
-      this.invalidateCache();
+      await this.waitForReportReady(12000);
 
       if (action === 'individualPdf') {
         await this.exportarRelatorioPDF();
@@ -8341,11 +8625,120 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  /** Query params para voltar ao assistente de Relatórios após editar competências. */
+  buildReportsReturnQueryParams(): Record<string, string> {
+    const qp: Record<string, string> = {
+      restoreReports: '1',
+      reportsReturn: '1',
+      reportsStep: String(this.selectedTabIndex),
+    };
+    const clientId = this.filterClientControl.value || this.selectedClientId;
+    if (clientId) {
+      qp['clientId'] = clientId;
+    }
+    const projectId = this.filterProjectControl.value;
+    if (projectId) {
+      qp['projectId'] = projectId;
+    }
+    if (this.selectedAssessmentId) {
+      qp['assessmentId'] = this.selectedAssessmentId;
+    }
+    if (this.clientTemplateLibraryMode) {
+      qp['templateLibrary'] = '1';
+    }
+    const templateId =
+      (this.selectedTemplateId.value as string) || this.appliedTemplateId || '';
+    if (templateId) {
+      qp['templateId'] = templateId;
+    }
+    return qp;
+  }
+
   navigateToCompetencies(): void {
-    const extras = this.selectedAssessmentId
-      ? { queryParams: { assessmentId: this.selectedAssessmentId } }
-      : {};
-    this.router.navigate(['/competencies'], extras);
+    this.router.navigate(['/competencies'], {
+      queryParams: this.buildReportsReturnQueryParams(),
+    });
+  }
+
+  private applyReportsStepFromQuery(params: Record<string, unknown>): void {
+    const raw = params['reportsStep'];
+    if (raw == null || raw === '') {
+      return;
+    }
+    const step = Number(raw);
+    if (Number.isNaN(step)) {
+      return;
+    }
+    this.selectedTabIndex = Math.min(2, Math.max(0, step));
+  }
+
+  private notifyReportsSessionRestored(): void {
+    this.snackBar.open(
+      this.t('Relatório restaurado — continue de onde parou.'),
+      this.t('Fechar'),
+      { duration: 4500 }
+    );
+  }
+
+  /** Restaura cliente/avaliação/aba ao voltar de Competências (sem fluxo de export de projeto). */
+  private async restoreReportsWizardFromQuery(params: Record<string, unknown>): Promise<void> {
+    if (params['templateLibrary'] === '1') {
+      const clientId = this.filterClientControl.value;
+      if (!clientId) {
+        return;
+      }
+      this.clientTemplateLibraryMode = true;
+      await this.carregarTemplatesSalvos();
+      this.ensureEditorConfigForTemplates();
+      this.applyReportsStepFromQuery(params);
+      const templateId = params['templateId'] as string | undefined;
+      if (templateId) {
+        this.selectedTemplateId.setValue(templateId, { emitEvent: false });
+        await this.aplicarTemplateSelecionado();
+      }
+      this.notifyReportsSessionRestored();
+      return;
+    }
+
+    const assessmentId = params['assessmentId'] as string | undefined;
+    if (!assessmentId) {
+      this.applyReportsStepFromQuery(params);
+      return;
+    }
+
+    const projectId = params['projectId'] as string | undefined;
+    if (projectId && this.filterProjects.some(p => p.id === projectId)) {
+      this.filterProjectControl.setValue(projectId, { emitEvent: false });
+    }
+
+    const assessmentName =
+      this.clientAssessments.find(a => a.id === assessmentId)?.name
+      || this.assessments.find(a => a.id === assessmentId)?.name
+      || '';
+    if (assessmentName) {
+      this.assessmentSearchControl.setValue(assessmentName, { emitEvent: false });
+    }
+    this.assessmentControl.setValue(assessmentId, { emitEvent: false });
+    this.selectedAssessmentId = assessmentId;
+
+    const ready = await this.resolveProjectForAssessment(assessmentId);
+    if (ready) {
+      await this.onAssessmentChange();
+      await this.calcularMediasPorCompetencia();
+      const linkedProjectId = this.filterProjectControl.value;
+      if (linkedProjectId) {
+        await this.applyProjectReportTemplate(linkedProjectId);
+      }
+    }
+
+    const templateId = params['templateId'] as string | undefined;
+    if (templateId) {
+      this.selectedTemplateId.setValue(templateId, { emitEvent: false });
+      await this.aplicarTemplateSelecionado();
+    }
+
+    this.applyReportsStepFromQuery(params);
+    this.notifyReportsSessionRestored();
   }
 
   goToTab(index: number): void {
@@ -8359,6 +8752,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.selectedTabIndex = index;
+    if (index === 0 && this.selectedAssessmentId) {
+      void this.loadAllCompetencies().then(() => {
+        if (this.competencias.length === 0 && this.allCompetencies.length > 0) {
+          this.competencias = [...this.allCompetencies];
+        }
+        this.cdr.markForCheck();
+      });
+    }
     if (index === 2) {
       void this.applyBlockedParticipantsFilter().then(() => {
         this.prewarmPreviewCache();
@@ -9121,47 +9522,151 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.substituirVariaveisRelatorio(this.questionMap[perguntaId] || perguntaId);
   }
 
+  /** Mescla sub-competências de um documento competencyGroups em `result`. */
+  private appendCompetenciesFromGroupDoc(
+    groupDoc: { id: string; data: () => Record<string, unknown> },
+    seen: Set<string>,
+    result: Competencia[]
+  ): void {
+    const groupData = groupDoc.data();
+    this.competencyQuestionsService.mergeCustomQuestionsFromGroup(groupData, this.customQuestionsByCompetency);
+    this.competencyQuestionsService.populateQuestionMapFromCustom(this.customQuestionsByCompetency, this.questionMap);
+
+    const competencias: unknown[] = Array.isArray(groupData['competencias']) ? groupData['competencias'] : [];
+    competencias.forEach((raw: unknown) => {
+      const c = raw as Record<string, unknown>;
+      const compId = (c['id'] as string) || `${groupDoc.id}_${c['nome'] || c['name']}`;
+      if (seen.has(compId)) {
+        return;
+      }
+      seen.add(compId);
+      result.push({
+        id: compId,
+        nome: (c['nome'] || c['name'] || 'Competência sem nome') as string,
+        descricao: (c['descricao'] || c['description'] || '') as string,
+        perguntasIds: (c['perguntasIds'] || c['questionIds'] || []) as string[],
+        groupId: groupDoc.id,
+      } as Competencia);
+    });
+  }
+
+  /** Cliente ativo para buscar competencyGroups (filtro ou projeto selecionado). */
+  private async resolveClientIdForCompetencyLoad(): Promise<string> {
+    const fromFilter = this.getReportClientId();
+    if (fromFilter) {
+      return fromFilter;
+    }
+    const projectId = this.filterProjectControl.value;
+    if (!projectId) {
+      return '';
+    }
+    const cached = this.filterProjects.find(p => p.id === projectId);
+    if (cached && this.filterClientControl.value) {
+      return this.filterClientControl.value;
+    }
+    try {
+      const projectDoc = await getDoc(doc(this.firestore, 'projects', projectId));
+      return (projectDoc.data()?.['clientId'] as string) || '';
+    } catch {
+      return '';
+    }
+  }
+
+  private appendCompetenciesFromCachedGroups(
+    groups: { id: string; [key: string]: unknown }[],
+    assessmentId: string | null,
+    seen: Set<string>,
+    result: Competencia[],
+    strictAssessmentMatch: boolean
+  ): void {
+    groups.forEach(group => {
+      const groupAssessmentId = group['assessmentId'] as string | undefined;
+      if (strictAssessmentMatch && assessmentId && groupAssessmentId && groupAssessmentId !== assessmentId) {
+        return;
+      }
+      this.appendCompetenciesFromGroupDoc(
+        { id: group.id, data: () => group as Record<string, unknown> },
+        seen,
+        result
+      );
+    });
+  }
+
   async loadAllCompetencies(): Promise<void> {
     try {
       const seen = new Set<string>();
       const result: Competencia[] = [];
+      const assessmentId = this.selectedAssessmentId;
+      const clientId = await this.resolveClientIdForCompetencyLoad();
 
-      // �"?�"?�"? competencyGroups filtrado pelo assessmentId atual �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
-      // Esta é a fonte principal: a página de Competências salva grupos em
-      // `competencyGroups` com assessmentId + array `competencias` contendo
-      // os perguntasIds que batem com as colunas do dataSource.
-      if (this.selectedAssessmentId) {
+      // Fonte principal: competencyGroups com assessmentId (igual Competências → Firestore).
+      if (assessmentId) {
         const groupsSnap = await getDocs(
           query(
             collection(this.firestore, 'competencyGroups'),
-            where('assessmentId', '==', this.selectedAssessmentId)
+            where('assessmentId', '==', assessmentId)
           )
         );
         groupsSnap.docs.forEach(groupDoc => {
-          const groupData = groupDoc.data();
-          this.competencyQuestionsService.mergeCustomQuestionsFromGroup(groupData, this.customQuestionsByCompetency);
-          this.competencyQuestionsService.populateQuestionMapFromCustom(this.customQuestionsByCompetency, this.questionMap);
-
-          const competencias: any[] = Array.isArray(groupData['competencias']) ? groupData['competencias'] : [];
-          competencias.forEach((c: any) => {
-            const compId = c.id || `${groupDoc.id}_${c.nome || c.name}`;
-            if (!seen.has(compId)) {
-              seen.add(compId);
-              result.push({
-                id: compId,
-                nome: c.nome || c.name || 'Competência sem nome',
-                descricao: c.descricao || c.description || '',
-                perguntasIds: c.perguntasIds || c.questionIds || [],
-                groupId: groupDoc.id  // rastreia o grupo pai para matching com pendingCompetencyIds
-              } as any);
-            }
-          });
+          this.appendCompetenciesFromGroupDoc(groupDoc, seen, result);
         });
-        console.log('Grupos para esta avaliação:', groupsSnap.size, '->', result.length, 'competências');
+        console.log('[Relatório] Grupos por assessmentId:', groupsSnap.size, '→', result.length, 'competências');
       }
 
-      // �"?�"?�"? Fallback: competencies collection (formato competency-dialog) �"?�"?�"?�"?
-      // Se não encontrou nada via grupos, tenta a coleção individual.
+      // Grupos já carregados por onFilterClientChange (mesmo clientId).
+      if (result.length === 0 && clientId && this.competencyGroups.length > 0) {
+        this.appendCompetenciesFromCachedGroups(
+          this.competencyGroups,
+          assessmentId,
+          seen,
+          result,
+          true
+        );
+        console.log('[Relatório] Grupos do cache clientId:', this.competencyGroups.length, '→', result.length);
+      }
+
+      // Fallback alinhado ao modal de Projetos: clientId + competencias (assessmentId opcional).
+      if (result.length === 0 && clientId) {
+        const clientSnap = await getDocs(
+          query(
+            collection(this.firestore, 'competencyGroups'),
+            where('clientId', '==', clientId)
+          )
+        );
+        clientSnap.docs.forEach(groupDoc => {
+          const groupAssessmentId = groupDoc.data()['assessmentId'] as string | undefined;
+          if (assessmentId && groupAssessmentId && groupAssessmentId !== assessmentId) {
+            return;
+          }
+          this.appendCompetenciesFromGroupDoc(groupDoc, seen, result);
+        });
+        console.log(
+          '[Relatório] Fallback grupos por clientId:',
+          clientSnap.size,
+          '→',
+          result.length,
+          'competências (assessmentId=',
+          assessmentId || '—',
+          ')'
+        );
+      }
+
+      // Último recurso: todos os grupos do cliente (ex.: assessmentId do grupo desatualizado no Firestore).
+      if (result.length === 0 && clientId) {
+        let groups = this.competencyGroups;
+        if (!groups.length) {
+          await this.loadCompetencyGroups(clientId);
+          groups = this.competencyGroups;
+        }
+        this.appendCompetenciesFromCachedGroups(groups, assessmentId, seen, result, false);
+        if (result.length > 0) {
+          console.warn(
+            '[Relatório] Competências carregadas por clientId sem filtrar assessmentId — verifique assessmentId do grupo em Definições → Competências → Salvar.'
+          );
+        }
+      }
+
+      // Fallback legado: coleção `competencies` (formato antigo do competency-dialog).
       if (result.length === 0) {
         const competenciesSnap = await getDocs(collection(this.firestore, 'competencies'));
         competenciesSnap.docs.forEach(docSnap => {

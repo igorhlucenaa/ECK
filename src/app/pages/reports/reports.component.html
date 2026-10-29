@@ -354,12 +354,17 @@
 
             <div class="rp-setup-step__connector"></div>
 
-            <div class="rp-setup-step rp-setup-step--disabled">
+            <div class="rp-setup-step" [class.rp-setup-step--disabled]="allCompetencies.length === 0" [class.rp-setup-step--active]="allCompetencies.length > 0">
               <div class="rp-setup-step__num">3</div>
               <div class="rp-setup-step__body">
                 <strong>{{ 'Voltar para Relatórios' | translate }}</strong>
-                <span>{{ 'Após salvar, volte aqui e selecione a mesma avaliação. As competências aparecerão automaticamente.' | translate }}</span>
+                <span *ngIf="allCompetencies.length === 0">{{ 'Após salvar em Competências, use o botão «Voltar para Relatórios» no topo daquela página — cliente, avaliação e aba serão restaurados automaticamente.' | translate }}</span>
+                <span *ngIf="allCompetencies.length > 0">{{ 'Competências carregadas. Avance para montar o relatório ou aplicar um template.' | translate }}</span>
               </div>
+              <button mat-flat-button color="primary" *ngIf="allCompetencies.length > 0" (click)="goToTab(1)" class="rp-setup-step__btn">
+                <mat-icon>arrow_forward</mat-icon>
+                {{ 'Continuar para Montar' | translate }}
+              </button>
             </div>
 
           </div>

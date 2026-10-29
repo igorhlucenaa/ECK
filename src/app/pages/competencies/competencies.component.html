@@ -77,6 +77,18 @@
 
   </div>
 
+  <div class="comp-reports-return" *ngIf="reportsReturnEnabled">
+    <mat-icon>assignment</mat-icon>
+    <div class="comp-reports-return__text">
+      <strong>{{ 'Você veio da tela de Relatórios' | translate }}</strong>
+      <span>{{ 'Após salvar o grupo, use o botão ao lado para voltar ao mesmo cliente, avaliação e aba — sem recomeçar do zero.' | translate }}</span>
+    </div>
+    <button mat-flat-button color="primary" type="button" (click)="returnToReports()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'Voltar para Relatórios' | translate }}
+    </button>
+  </div>
+
   <div class="comp-layout">
 
     <!-- ══════════════════════════════════════════════

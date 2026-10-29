@@ -6,6 +6,25 @@ export function isParticipantIncludedInReports(
   return participantData['blocked'] !== true;
 }
 
+/** Nomes de avaliados com linhas no dataSource (autoavaliação ou respostas de avaliadores). */
+export function extractAvaliadosDisponiveisFromReportRows(
+  rows: readonly Record<string, unknown>[],
+  selectedProjectId?: string | null
+): string[] {
+  const avaliados = new Set<string>();
+  for (const row of rows) {
+    const avaliado = row['avaliado'];
+    if (typeof avaliado !== 'string' || !avaliado.trim()) {
+      continue;
+    }
+    if (selectedProjectId && row['projectId'] && row['projectId'] !== selectedProjectId) {
+      continue;
+    }
+    avaliados.add(avaliado.trim());
+  }
+  return Array.from(avaliados).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
 export function parseNumeric(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
   const num = Number(value);

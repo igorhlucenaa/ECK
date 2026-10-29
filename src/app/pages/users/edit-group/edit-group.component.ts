@@ -21,6 +21,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
+import { findUserGroupWithSameNameForClient } from '../user-group-validation';
 
 @Component({
   selector: 'app-edit-group',
@@ -198,8 +199,26 @@ export class EditGroupComponent implements OnInit {
     if (this.groupForm.invalid || this.isSaving) return;
     this.isSaving = true;
     try {
-      const { name, description, allProjects, projectIds, userIds } = this.groupForm.value;
-      const clientId = this.groupForm.get('clientId')?.value;
+      const { name, description, clientId, allProjects, projectIds, userIds } =
+        this.groupForm.getRawValue();
+
+      const duplicate = await findUserGroupWithSameNameForClient(
+        this.firestore,
+        clientId,
+        name,
+        this.groupId
+      );
+      if (duplicate) {
+        this.snackBar.open(
+          this.translate.instant(
+            'Já existe um grupo com este nome para o cliente selecionado. Escolha outro nome.'
+          ),
+          this.translate.instant('Fechar'),
+          { duration: 5000 }
+        );
+        return;
+      }
+
       await updateDoc(doc(this.firestore, `userGroups/${this.groupId}`), {
         name,
         description,

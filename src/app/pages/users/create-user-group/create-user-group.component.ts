@@ -30,6 +30,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { findUserGroupWithSameNameForClient } from '../user-group-validation';
 
 export interface UserGroup {
   id?: string;
@@ -269,9 +270,10 @@ export class CreateUserGroupComponent implements OnInit {
       return;
     }
 
-    const userIds = this.groupForm.get('userIds')?.value || [];
-    const clientId = this.groupForm.get('clientId')?.value;
-    const projectIds = this.groupForm.get('projectIds')?.value || [];
+    const raw = this.groupForm.getRawValue();
+    const userIds = raw.userIds || [];
+    const clientId = raw.clientId;
+    const projectIds = raw.projectIds || [];
 
     if (this.isEditMode) {
       // Atualizar o grupo
@@ -294,9 +296,26 @@ export class CreateUserGroupComponent implements OnInit {
         return;
       }
 
+      const formValue = this.groupForm.getRawValue();
+      const duplicate = await findUserGroupWithSameNameForClient(
+        this.firestore,
+        clientId,
+        formValue.name
+      );
+      if (duplicate) {
+        this.snackBar.open(
+          this.translate.instant(
+            'Já existe um grupo com este nome para o cliente selecionado. Escolha outro nome.'
+          ),
+          this.translate.instant('Fechar'),
+          { duration: 5000 }
+        );
+        return;
+      }
+
       const groupsCollection = collection(this.firestore, 'userGroups');
       const groupRef = await addDoc(groupsCollection, {
-        ...this.groupForm.value,
+        ...formValue,
         createdBy: currentUser.name,
         createdByEmail: currentUser.email,
         createdAt: new Date(),
@@ -321,9 +340,27 @@ export class CreateUserGroupComponent implements OnInit {
     projectIds: string[]
   ): Promise<void> {
     try {
+      const formValue = this.groupForm.getRawValue();
+      const duplicate = await findUserGroupWithSameNameForClient(
+        this.firestore,
+        clientId,
+        formValue.name,
+        this.data?.id
+      );
+      if (duplicate) {
+        this.snackBar.open(
+          this.translate.instant(
+            'Já existe um grupo com este nome para o cliente selecionado. Escolha outro nome.'
+          ),
+          this.translate.instant('Fechar'),
+          { duration: 5000 }
+        );
+        return;
+      }
+
       const groupDocRef = doc(this.firestore, `userGroups/${this.data?.id}`);
       await updateDoc(groupDocRef, {
-        ...this.groupForm.value,
+        ...formValue,
       });
 
       // Atualizar os usuários e o cliente/projeto para cada usuário

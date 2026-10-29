@@ -1,4 +1,8 @@
-import { calcularMediaPorGrupos, roundReportValue } from './reports-utils';
+import {
+  calcularMediaPorGrupos,
+  extractAvaliadosDisponiveisFromReportRows,
+  roundReportValue,
+} from './reports-utils';
 
 describe('calcularMediaPorGrupos', () => {
   it('calcula média das médias por grupo (cada grupo pesa igual)', () => {
@@ -45,5 +49,23 @@ describe('calcularMediaPorGrupos', () => {
 
   it('retorna null quando nenhum grupo tem respostas', () => {
     expect(calcularMediaPorGrupos(['Gestor(es)'], () => [])).toBeNull();
+  });
+});
+
+describe('extractAvaliadosDisponiveisFromReportRows', () => {
+  it('inclui avaliado a partir de linhas de avaliadores', () => {
+    const rows = [
+      { avaliado: 'Maria', tipo: 'avaliador', projectId: 'p1' },
+      { avaliado: 'Maria', tipo: 'avaliador', projectId: 'p1' },
+    ];
+    expect(extractAvaliadosDisponiveisFromReportRows(rows, 'p1')).toEqual(['Maria']);
+  });
+
+  it('filtra por projeto quando informado', () => {
+    const rows = [
+      { avaliado: 'Ana', projectId: 'p1' },
+      { avaliado: 'Bob', projectId: 'p2' },
+    ];
+    expect(extractAvaliadosDisponiveisFromReportRows(rows, 'p1')).toEqual(['Ana']);
   });
 });

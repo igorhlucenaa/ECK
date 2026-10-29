@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout, throwError } from 'rxjs';
 import { environment } from 'src/enviroments/environment';
 import {
   classifyJohariPoint,
@@ -553,7 +553,18 @@ export class ReportPdfMakeService {
       const blob = await firstValueFrom(
         this.http.post(functionUrl, { html, fileName, options }, {
           responseType: 'blob'
-        })
+        }).pipe(
+          timeout({
+            first: 300_000,
+            with: () =>
+              throwError(
+                () =>
+                  new Error(
+                    'Tempo esgotado ao gerar o PDF (5 min). Tente novamente ou reduza seções do template.'
+                  )
+              ),
+          })
+        )
       );
 
       if (!blob || blob.size === 0) {

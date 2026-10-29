@@ -280,17 +280,32 @@ export class UsersComponent implements OnInit, AfterViewInit {
         return acc;
       }, {} as { [key: string]: { name: string; groupIds: string[] } });
 
-      // Mapear grupos
+      // Mapear grupos → nomes, clientes e projetos inferidos da associação ao grupo
       const groupsMap = groupsSnapshot.docs.reduce((acc, doc) => {
         const groupData = doc.data();
         const groupId = doc.id;
+        const groupClientId =
+          typeof groupData['clientId'] === 'string' ? groupData['clientId'] : '';
+        const groupProjectIds: string[] = Array.isArray(groupData['projectIds'])
+          ? groupData['projectIds']
+          : [];
 
         if (groupData['userIds'] && Array.isArray(groupData['userIds'])) {
           groupData['userIds'].forEach((userId: string) => {
             if (!acc[userId]) {
-              acc[userId] = { groups: [], projects: [] };
+              acc[userId] = { groups: [], projects: [], clientIds: [] };
             }
             acc[userId].groups.push(groupData['name']);
+
+            if (groupClientId && !acc[userId].clientIds.includes(groupClientId)) {
+              acc[userId].clientIds.push(groupClientId);
+            }
+
+            for (const projectId of groupProjectIds) {
+              if (projectId && !acc[userId].projects.includes(projectId)) {
+                acc[userId].projects.push(projectId);
+              }
+            }
 
             projectsSnapshot.docs.forEach((projectDoc) => {
               const project = projectDoc.data();
@@ -306,18 +321,20 @@ export class UsersComponent implements OnInit, AfterViewInit {
           });
         }
         return acc;
-      }, {} as { [key: string]: { groups: string[]; projects: string[] } });
+      }, {} as { [key: string]: { groups: string[]; projects: string[]; clientIds: string[] } });
 
       // Mapear usuários com grupos e projetos
       const users: User[] = usersSnapshot.docs
         .map((userDoc: QueryDocumentSnapshot<DocumentData>) => {
           const data = userDoc.data();
 
-          // Suporta tanto campo único 'client' quanto array 'clients'
+          // Suporta campo 'client' / 'clients' no usuário e clientes dos grupos aos quais pertence
           const rawClients: string[] = Array.isArray(data['clients'])
             ? data['clients']
             : data['client'] ? [data['client']] : [];
-          const clientNames = rawClients
+          const clientIdsFromGroups = groupsMap[userDoc.id]?.clientIds || [];
+          const mergedClientIds = [...new Set([...rawClients, ...clientIdsFromGroups])];
+          const clientNames = mergedClientIds
             .map((id) => clientsMap[id])
             .filter((name): name is string => !!name);
 

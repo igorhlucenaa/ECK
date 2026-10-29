@@ -523,6 +523,7 @@ export class ReportGenerationModalComponent implements OnInit {
     const safetyTimer = setTimeout(finishLoading, 5_000);
 
     try {
+      await this.resolveAssessmentIdFromProject();
       await Promise.all([
         this.loadReportTemplates(),
         this.loadCompetencies(),
@@ -539,17 +540,30 @@ export class ReportGenerationModalComponent implements OnInit {
   }
 
   canGenerate(): boolean {
-    const selected = this.getSelectedCompetencies();
-    if (selected.length === 0) {
-      return false;
-    }
     if (this.isProjectLocked) {
       if (this.projectNeedsTemplateSetup || this.projectTemplateMissing) {
         return false;
       }
       return !!this.templateControl.value;
     }
-    return true;
+    return this.getSelectedCompetencies().length > 0;
+  }
+
+  private async resolveAssessmentIdFromProject(): Promise<void> {
+    if (this.data.assessmentId || !this.data.projectId) {
+      return;
+    }
+    try {
+      const projectDoc = await getDoc(doc(this.firestore, 'projects', this.data.projectId));
+      if (projectDoc.exists()) {
+        const assessmentId = projectDoc.data()['assessmentId'];
+        if (typeof assessmentId === 'string' && assessmentId) {
+          this.data.assessmentId = assessmentId;
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao resolver assessmentId do projeto:', error);
+    }
   }
 
   private getSelectedCompetencies(): Competency[] {
@@ -681,9 +695,6 @@ export class ReportGenerationModalComponent implements OnInit {
         );
         groupsSnap.docs.forEach((groupDoc) => {
           const groupData = groupDoc.data();
-          if (this.data.clientId && groupData['clientId'] && groupData['clientId'] !== this.data.clientId) {
-            return;
-          }
           const list: unknown[] = Array.isArray(groupData['competencias'])
             ? groupData['competencias']
             : [];

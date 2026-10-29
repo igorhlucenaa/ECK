@@ -17,6 +17,33 @@
   gap: 0;
 }
 
+.comp-reports-return {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: linear-gradient(90deg, #eef2ff 0%, #f8fafc 100%);
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+
+  > mat-icon {
+    color: #4f46e5;
+    flex-shrink: 0;
+  }
+
+  &__text {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    strong { font-size: 14px; color: #1e293b; }
+    span { font-size: 13px; color: #64748b; line-height: 1.4; }
+  }
+}
+
 .step-node {
   display: flex;
   align-items: center;
