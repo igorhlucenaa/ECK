@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule } from '@ngx-translate/core';
 import { DependencyLink } from 'src/app/services/dependency-check.service';
 
 export interface DependencyBlockData {
@@ -15,7 +16,7 @@ export interface DependencyBlockData {
 @Component({
   selector: 'app-dependency-block-dialog',
   standalone: true,
-  imports: [CommonModule, MaterialModule, RouterModule],
+  imports: [CommonModule, MaterialModule, RouterModule, TranslateModule],
   templateUrl: './dependency-block-dialog.component.html',
   styleUrls: ['./dependency-block-dialog.component.scss'],
 })

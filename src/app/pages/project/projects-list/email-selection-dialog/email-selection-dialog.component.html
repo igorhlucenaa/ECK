@@ -65,7 +65,7 @@
         <mat-select (selectionChange)="filterByLinkExpired($event.value)">
           <mat-option value="">Todos</mat-option>
           <mat-option value="true">Sim</mat-option>
-          <mat-option value="false">Não</mat-option>
+          <mat-option value="false">{{ 'Não' | translate }}</mat-option>
         </mat-select>
       </mat-form-field>
     </div>

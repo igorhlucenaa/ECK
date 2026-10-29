@@ -2,8 +2,8 @@
   <!-- Cabeçalho -->
   <mat-card class="mb-15">
     <mat-card-header>
-      <mat-card-title>Dashboard de Avaliações</mat-card-title>
-      <mat-card-subtitle>Visualize e analise os resultados das suas avaliações</mat-card-subtitle>
+      <mat-card-title>{{ 'Dashboard de Avaliações' | translate }}</mat-card-title>
+      <mat-card-subtitle>{{ 'Visualize e analise os resultados das suas avaliações' | translate }}</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
       <!-- Seletor de Avaliação -->
@@ -141,7 +141,7 @@
           </div>
           <div *ngIf="questionChart.question.type === 'matrix'" class="matrix-placeholder">
             <mat-icon>table_chart</mat-icon>
-            <p>Visualizações detalhadas para perguntas de matriz serão exibidas na tabela abaixo.</p>
+            <p>{{ 'Visualizações detalhadas para perguntas de matriz serão exibidas na tabela abaixo.' | translate }}</p>
           </div>
 
           <!-- Métricas Dinâmicas -->
@@ -156,7 +156,7 @@
             <ng-container *ngIf="questionChart.question.type === 'rating' || (questionChart.question.type === 'matrix' && areMatrixColumnsNumeric(questionChart.question))">
               <div class="metric-item" *ngIf="questionChart.statistics.average !== undefined">
                 <mat-icon>trending_up</mat-icon>
-                <span class="metric-label">Média:</span>
+                <span class="metric-label">{{ 'Média:' | translate }}</span>
                 <span class="metric-value">{{ questionChart.statistics.average | number:'1.1-2' }}</span>
               </div>
               <div class="metric-item" *ngIf="questionChart.statistics.median !== undefined">
@@ -171,17 +171,17 @@
               </div>
               <div class="metric-item" *ngIf="questionChart.statistics.stdDev !== undefined">
                 <mat-icon>show_chart</mat-icon>
-                <span class="metric-label">Desvio Padrão:</span>
+                <span class="metric-label">{{ 'Desvio Padrão:' | translate }}</span>
                 <span class="metric-value">{{ questionChart.statistics.stdDev | number:'1.1-2' }}</span>
               </div>
               <div class="metric-item" *ngIf="questionChart.statistics.min !== undefined">
                 <mat-icon>arrow_downward</mat-icon>
-                <span class="metric-label">Mínimo:</span>
+                <span class="metric-label">{{ 'Mínimo:' | translate }}</span>
                 <span class="metric-value">{{ questionChart.statistics.min }}</span>
               </div>
               <div class="metric-item" *ngIf="questionChart.statistics.max !== undefined">
                 <mat-icon>arrow_upward</mat-icon>
-                <span class="metric-label">Máximo:</span>
+                <span class="metric-label">{{ 'Máximo:' | translate }}</span>
                 <span class="metric-value">{{ questionChart.statistics.max }}</span>
               </div>
             </ng-container>
@@ -252,7 +252,7 @@
 
             <!-- Data Column -->
             <ng-container matColumnDef="completedAt">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Data de Conclusão </th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'Data de Conclusão' | translate }}</th>
               <td mat-cell *matCellDef="let row"> {{row.completedAt | date:'dd/MM/yyyy HH:mm'}} </td>
             </ng-container>
 

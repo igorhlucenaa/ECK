@@ -36,7 +36,7 @@
         </div>
         <div>
           <h3 class="card-title">Perfil</h3>
-          <p class="card-subtitle">Dados cadastrais do usuário</p>
+          <p class="card-subtitle">{{ 'Dados cadastrais do usuário' | translate }}</p>
         </div>
       </div>
 
@@ -72,7 +72,7 @@
           <div class="field-item">
             <mat-icon class="field-icon">notifications</mat-icon>
             <div>
-              <span class="field-label">Status de Notificação</span>
+              <span class="field-label">{{ 'Status de Notificação' | translate }}</span>
               <span class="notif-chip"
                 [class.notif-sent]="user.notificationStatus === 'Enviado'"
                 [class.notif-pending]="user.notificationStatus !== 'Enviado'">
@@ -91,8 +91,8 @@
           <mat-icon>hub</mat-icon>
         </div>
         <div>
-          <h3 class="card-title">Vínculos</h3>
-          <p class="card-subtitle">Grupos e projetos aos quais o usuário pertence</p>
+          <h3 class="card-title">{{ 'Vínculos' | translate }}</h3>
+          <p class="card-subtitle">{{ 'Grupos e projetos aos quais o usuário pertence' | translate }}</p>
         </div>
       </div>
 
@@ -132,7 +132,7 @@
   <!-- Não encontrado -->
   <div class="not-found" *ngIf="!isLoading && !user">
     <mat-icon>person_off</mat-icon>
-    <span>Usuário não encontrado</span>
+    <span>{{ 'Usuário não encontrado' | translate }}</span>
     <button mat-stroked-button (click)="goBack()">Voltar</button>
   </div>
 

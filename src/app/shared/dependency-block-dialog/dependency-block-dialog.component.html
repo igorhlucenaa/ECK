@@ -4,7 +4,7 @@
   <div class="dbd__header">
     <div class="dbd__icon"><mat-icon>link_off</mat-icon></div>
     <div>
-      <h2 class="dbd__title">Não é possível excluir</h2>
+      <h2 class="dbd__title">{{ 'Não é possível excluir' | translate }}</h2>
       <p class="dbd__subtitle">{{ entityLabelCapitalized }} possui vínculos ativos</p>
     </div>
     <button mat-icon-button class="dbd__close" (click)="dialogRef.close()">

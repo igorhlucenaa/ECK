@@ -36,6 +36,11 @@ import { isGlobalAssessmentTemplate } from 'src/app/utils/assessment-templates.u
 const ptBRLocale = editorLocalization.getLocale('pt');
 ptBRLocale.ed.addNewQuestion = 'Adicionar Nova Pergunta';
 
+const I18N_GROUP_SELECTED_WITH_COUNT =
+  'Grupo "{{name}}" selecionado com {{count}} competências';
+const I18N_GROUP_NO_COMPETENCIES =
+  'Nenhuma competência encontrada para o grupo "{{name}}"';
+
 @Component({
   selector: 'app-create-assessment',
   standalone: true,
@@ -476,7 +481,7 @@ export class CreateAssessmentComponent implements OnInit {
     if (competencyIds.length > 0) {
       this.form.get('competencyIds')?.setValue(competencyIds);
       this.snackBar.open(
-        this.translate.instant("Grupo \"{{name}}\" selecionado com {{count}} competências", {
+        this.translate.instant(I18N_GROUP_SELECTED_WITH_COUNT, {
           name: group.name,
           count: competencyIds.length,
         }),
@@ -485,7 +490,7 @@ export class CreateAssessmentComponent implements OnInit {
       );
     } else {
       this.snackBar.open(
-        this.translate.instant("Nenhuma competência encontrada para o grupo \"{{name}}\"", { name: group.name }),
+        this.translate.instant(I18N_GROUP_NO_COMPETENCIES, { name: group.name }),
         this.translate.instant('Fechar'),
         { duration: 3000 }
       );

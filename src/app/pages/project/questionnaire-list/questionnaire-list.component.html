@@ -1,7 +1,7 @@
 <div class="container my-4" data-tour="questionnaires-page">
   <mat-card>
     <mat-card-title style="margin: 20px 20px 5px"
-      >Questionários do Projeto</mat-card-title
+      >{{ 'Questionários do Projeto' | translate }}</mat-card-title
     >
     <mat-card-content>
       <!-- Campo de Busca -->
@@ -39,7 +39,7 @@
 
         <!-- Ações -->
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef>Ações</th>
+          <th mat-header-cell *matHeaderCellDef>{{ 'Ações' | translate }}</th>
           <td mat-cell *matCellDef="let questionnaire">
             <button
               mat-icon-button

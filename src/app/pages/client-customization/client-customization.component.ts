@@ -14,7 +14,7 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MaterialModule } from 'src/app/material.module';
 import { CommonModule } from '@angular/common';
 import { CoreService } from 'src/app/services/core.service';
@@ -22,7 +22,7 @@ import { CoreService } from 'src/app/services/core.service';
 @Component({
   selector: 'app-client-customization',
   standalone: true,
-  imports: [MaterialModule, ReactiveFormsModule, CommonModule],
+  imports: [MaterialModule, ReactiveFormsModule, CommonModule, TranslateModule],
   templateUrl: './client-customization.component.html',
   styleUrls: ['./client-customization.component.scss'],
 })

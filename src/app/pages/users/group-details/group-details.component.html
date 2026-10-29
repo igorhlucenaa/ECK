@@ -33,8 +33,8 @@
           <mat-icon>group_work</mat-icon>
         </div>
         <div>
-          <h3 class="card-title">Informações do Grupo</h3>
-          <p class="card-subtitle">Dados cadastrais do grupo de usuários</p>
+          <h3 class="card-title">{{ 'Informações do Grupo' | translate }}</h3>
+          <p class="card-subtitle">{{ 'Dados cadastrais do grupo de usuários' | translate }}</p>
         </div>
       </div>
 
@@ -51,7 +51,7 @@
           <div class="field-item">
             <mat-icon class="field-icon">notes</mat-icon>
             <div>
-              <span class="field-label">Descrição</span>
+              <span class="field-label">{{ 'Descrição' | translate }}</span>
               <span class="field-value">{{ group.description || '—' }}</span>
             </div>
           </div>
@@ -91,7 +91,7 @@
           <!-- Nome -->
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>
-              <span class="col-header"><mat-icon class="col-icon">person</mat-icon>Usuário</span>
+              <span class="col-header"><mat-icon class="col-icon">person</mat-icon>{{ 'Usuário' | translate }}</span>
             </th>
             <td mat-cell *matCellDef="let m">
               <div class="member-cell">
@@ -111,7 +111,7 @@
 
           <!-- Ações -->
           <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef class="actions-col">Ações</th>
+            <th mat-header-cell *matHeaderCellDef class="actions-col">{{ 'Ações' | translate }}</th>
             <td mat-cell *matCellDef="let m" class="actions-col">
               <div class="actions-cell">
                 <button mat-icon-button class="action-view"
@@ -141,7 +141,7 @@
   <!-- Não encontrado -->
   <div class="not-found" *ngIf="!isLoading && !group">
     <mat-icon>group_off</mat-icon>
-    <span>Grupo não encontrado</span>
+    <span>{{ 'Grupo não encontrado' | translate }}</span>
     <button mat-stroked-button (click)="goBack()">Voltar</button>
   </div>
 

@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 export interface GapChartDataItem {
   competencyName: string;
@@ -11,7 +12,7 @@ export interface GapChartDataItem {
 @Component({
   selector: 'app-gap-chart',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './gap-chart.component.html',
   styleUrls: ['./gap-chart.component.scss']
 })

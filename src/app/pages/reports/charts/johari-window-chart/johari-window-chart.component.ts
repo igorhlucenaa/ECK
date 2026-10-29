@@ -1,6 +1,7 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule } from '@ngx-translate/core';
 import {
   classifyJohariPoint,
   formatJohariScore,
@@ -25,7 +26,7 @@ export interface JohariWindowData {
 @Component({
   selector: 'app-johari-window-chart',
   standalone: true,
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, TranslateModule],
   templateUrl: './johari-window-chart.component.html',
   styleUrls: ['./johari-window-chart.component.scss'],
 })

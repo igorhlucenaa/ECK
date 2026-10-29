@@ -1,0 +1,567 @@
+[
+  {
+    "file": "src/app/layouts/full/shared/customizer/customizer.component.html",
+    "line": 176,
+    "text": "<button mat-stroked-button (click)=\"setLang('pt-BR')\">Português</button>"
+  },
+  {
+    "file": "src/app/layouts/full/vertical/header/search-dialog.component.html",
+    "line": 25,
+    "text": "<h4 class=\"f-s-18 f-w-600 mat-subtitle-1 m-b-16\">Links Rápidos</h4>"
+  },
+  {
+    "file": "src/app/pages/assessments/assessment-list/assessment-list.component.html",
+    "line": 6,
+    "text": "subtitle=\"Gerencie os formulários de avaliação dos projetos\""
+  },
+  {
+    "file": "src/app/pages/assessments/assessment-preview/assessment-preview.component.html",
+    "line": 9,
+    "text": "<p class=\"preview-subtitle\">Pré-visualização do Formulário</p>"
+  },
+  {
+    "file": "src/app/pages/assessments/assessment-preview/assessment-preview.component.html",
+    "line": 22,
+    "text": "<span class=\"meta-label\">Descrição:</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/assessment-preview/assessment-preview.component.html",
+    "line": 43,
+    "text": "<span>Este formulário não possui perguntas configuradas.</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/assessment-preview/assessment-preview.component.html",
+    "line": 69,
+    "text": "<span class=\"preview-export-overlay__label\">Gerando PDF do formulário...</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/assessment-preview/assessment-preview.component.html",
+    "line": 70,
+    "text": "<span class=\"preview-export-overlay__hint\">Gerando PDF em página contínua (sem quebras). Aguarde...</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/create-assessment/create-assessment.component.html",
+    "line": 4,
+    "text": "eyebrow=\"Formulários de Avaliação\""
+  },
+  {
+    "file": "src/app/pages/assessments/dashboard/dashboard.component.html",
+    "line": 5,
+    "text": "<mat-card-title>Dashboard de Avaliações</mat-card-title>"
+  },
+  {
+    "file": "src/app/pages/assessments/dashboard/dashboard.component.html",
+    "line": 6,
+    "text": "<mat-card-subtitle>Visualize e analise os resultados das suas avaliações</mat-card-subtitle>"
+  },
+  {
+    "file": "src/app/pages/assessments/dashboard/dashboard.component.html",
+    "line": 144,
+    "text": "<p>Visualizações detalhadas para perguntas de matriz serão exibidas na tabela abaixo.</p>"
+  },
+  {
+    "file": "src/app/pages/assessments/dashboard/dashboard.component.html",
+    "line": 159,
+    "text": "<span class=\"metric-label\">Média:</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/dashboard/dashboard.component.html",
+    "line": 174,
+    "text": "<span class=\"metric-label\">Desvio Padrão:</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/dashboard/dashboard.component.html",
+    "line": 179,
+    "text": "<span class=\"metric-label\">Mínimo:</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/dashboard/dashboard.component.html",
+    "line": 184,
+    "text": "<span class=\"metric-label\">Máximo:</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/dashboard/dashboard.component.html",
+    "line": 255,
+    "text": "<th mat-header-cell *matHeaderCellDef mat-sort-header> Data de Conclusão </th>"
+  },
+  {
+    "file": "src/app/pages/assessments/participants/participants.component.html",
+    "line": 412,
+    "text": "<span>Créditos do Cliente</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/participants/participants.component.html",
+    "line": 419,
+    "text": "<span class=\"credit-item__label\">Disponíveis</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/participants/participants.component.html",
+    "line": 432,
+    "text": "<span class=\"credit-item__hint\">projetos concluídos</span>"
+  },
+  {
+    "file": "src/app/pages/assessments/participants/participants.component.html",
+    "line": 443,
+    "text": "<span>1 crédito é reservado ao cadastrar um Avaliado e consumido ao concluir o projeto</span>"
+  },
+  {
+    "file": "src/app/pages/client-customization/client-customization.component.html",
+    "line": 11,
+    "text": "<mat-label>Nome da Organização</mat-label>"
+  },
+  {
+    "file": "src/app/pages/client-customization/client-customization.component.html",
+    "line": 15,
+    "text": "placeholder=\"Digite o nome da organização\""
+  },
+  {
+    "file": "src/app/pages/client-customization/client-customization.component.html",
+    "line": 32,
+    "text": "<mat-label>Logo da Organização</mat-label>"
+  },
+  {
+    "file": "src/app/pages/clients/client-detail/client-detail.component.html",
+    "line": 75,
+    "text": "<p class=\"form-card-subtitle\">Informações gerais do cliente</p>"
+  },
+  {
+    "file": "src/app/pages/clients/client-detail/client-detail.component.html",
+    "line": 147,
+    "text": "<p class=\"form-card-subtitle\">Contato responsável pelo cliente</p>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 5,
+    "text": "eyebrow=\"Definições\""
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 6,
+    "text": "title=\"Gerenciar Competências\""
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 7,
+    "text": "subtitle=\"Configure grupos de competências e vincule perguntas para análise em relatórios\">"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 55,
+    "text": "<span class=\"step-node__title\">Avaliação <span class=\"step-node__optional-tag\">opcional</span></span>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 56,
+    "text": "<span class=\"step-node__sub\" *ngIf=\"!selectedAssessmentId\">Vincule para usar perguntas do formulário</span>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 72,
+    "text": "<span class=\"step-node__title\">Competências</span>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 73,
+    "text": "<span class=\"step-node__sub\" *ngIf=\"competencias.length === 0\">Adicione competências</span>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 240,
+    "text": "<p>Clique em um grupo na barra lateral para gerenciar suas competências, ou crie um novo.</p>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 269,
+    "text": "<mat-label>Avaliação vinculada (opcional)</mat-label>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 331,
+    "text": "<strong>Vincular avaliação (opcional)</strong>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 332,
+    "text": "<p>Você já pode cadastrar competências. Vincule um formulário se quiser associar perguntas existentes às competências de"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 335,
+    "text": "<mat-label>Avaliação</mat-label>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 354,
+    "text": "<span class=\"coverage-strip__label\">Vinculáveis</span>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 364,
+    "text": "<span class=\"coverage-strip__label\">Sem competência</span>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 388,
+    "text": "<p *ngIf=\"!selectedAssessmentId\">Preencha nome e descrição. Você pode adicionar perguntas manualmente ou vincular uma av"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 389,
+    "text": "<p *ngIf=\"selectedAssessmentId\">Preencha os dados e vincule as perguntas do formulário</p>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 402,
+    "text": "<mat-label>Nome da Competência</mat-label>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 408,
+    "text": "<mat-label>Descrição</mat-label>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 420,
+    "text": "<span>Crie perguntas manualmente ou vincule uma avaliação depois</span>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 450,
+    "text": "<mat-label>Questões Vinculadas</mat-label>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 497,
+    "text": "<h3>Competências do Grupo</h3>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 570,
+    "text": "<h4>Nenhuma competência cadastrada</h4>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 571,
+    "text": "<p>Clique em \"Nova Competência\" para começar.</p>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 598,
+    "text": "<span class=\"coverage-unlinked__hint\">Vincule a uma competência para incluir nos gráficos</span>"
+  },
+  {
+    "file": "src/app/pages/competencies/competencies.component.html",
+    "line": 622,
+    "text": "<span class=\"coverage-unlinked__badge coverage-unlinked__badge--open\">Aparecerão no relatório</span>"
+  },
+  {
+    "file": "src/app/pages/project/email-template-list/email-template-form/email-template-form.component.html",
+    "line": 270,
+    "text": "<pre class=\"vars-example__code\" ngNonBindable>Olá, <span class=\"ex-var\">{{nome_participante}}</span>!"
+  },
+  {
+    "file": "src/app/pages/project/email-template-list/email-template-form/email-template-form.component.html",
+    "line": 272,
+    "text": "Como <span class=\"ex-var\">{{categoria}}</span>, você foi convidado(a) a avaliar <span class=\"ex-var\">{{nome_avaliado}}</"
+  },
+  {
+    "file": "src/app/pages/project/email-template-list/email-template-list.component.html",
+    "line": 6,
+    "text": "subtitle=\"Gerencie os modelos de e-mail para notificações do projeto\""
+  },
+  {
+    "file": "src/app/pages/project/projects-list/email-selection-dialog/email-selection-dialog.component.html",
+    "line": 68,
+    "text": "<mat-option value=\"false\">Não</mat-option>"
+  },
+  {
+    "file": "src/app/pages/project/questionnaire-list/questionnaire-list.component.html",
+    "line": 4,
+    "text": ">Questionários do Projeto</mat-card-title"
+  },
+  {
+    "file": "src/app/pages/project/questionnaire-list/questionnaire-list.component.html",
+    "line": 42,
+    "text": "<th mat-header-cell *matHeaderCellDef>Ações</th>"
+  },
+  {
+    "file": "src/app/pages/reports/charts/gap-chart/gap-chart.component.html",
+    "line": 5,
+    "text": "<div class=\"competency-header\">Competência</div>"
+  },
+  {
+    "file": "src/app/pages/reports/charts/gap-chart/gap-chart.component.html",
+    "line": 31,
+    "text": "<div class=\"score-header\">Autoavaliação</div>"
+  },
+  {
+    "file": "src/app/pages/reports/charts/gap-chart/gap-chart.component.html",
+    "line": 33,
+    "text": "<div class=\"score-header\">Análise de defasagem</div>"
+  },
+  {
+    "file": "src/app/pages/reports/charts/johari-window-chart/johari-window-chart.component.html",
+    "line": 2,
+    "text": "<div class=\"y-title\"><span>Média das demais avaliações</span></div>"
+  },
+  {
+    "file": "src/app/pages/reports/charts/johari-window-chart/johari-window-chart.component.html",
+    "line": 3,
+    "text": "<div class=\"x-title\">Autoavaliação</div>"
+  },
+  {
+    "file": "src/app/pages/reports/charts/johari-window-chart/johari-window-chart.component.html",
+    "line": 41,
+    "text": "<th>Autoavaliação</th>"
+  },
+  {
+    "file": "src/app/pages/reports/charts/johari-window-chart/johari-window-chart.component.html",
+    "line": 43,
+    "text": "<th>Análise de defasagem</th>"
+  },
+  {
+    "file": "src/app/pages/reports/report-builder-visual/report-builder-visual.component.html",
+    "line": 650,
+    "text": "placeholder=\"Ex: ECK - Avaliação 360°\">"
+  },
+  {
+    "file": "src/app/pages/reports/report-builder-visual/report-builder-visual.component.html",
+    "line": 703,
+    "text": "<ng-container *ngIf=\"documentoConfig.rodape.mostrarNumeroPagina\"> | Pág. 1/10</ng-container>"
+  },
+  {
+    "file": "src/app/pages/reports/report-template-manage-dialog/report-template-manage-dialog.component.html",
+    "line": 17,
+    "text": "<input matInput [formControl]=\"nomeNovoTemplate\" placeholder=\"Ex: Padrão Liderança\">"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1380,
+    "text": "<span>Avaliadores incluídos</span>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1430,
+    "text": "<span class=\"rp-batch-hint\" *ngIf=\"competencias.length === 0\">Configure as competências primeiro</span>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1468,
+    "text": "<h3 class=\"rp-pending-banner__title\">Relatório aguardando publicação</h3>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1497,
+    "text": "<span class=\"rp-doc-cabecalho__pagina\" *ngIf=\"documentoConfig.cabecalho.mostrarNumeroPagina\">Pág. </span>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1545,
+    "text": "<th>Média</th>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1557,
+    "text": "<p *ngIf=\"!getResumoMedias().length\"><i>Nenhuma competência selecionada ou sem dados.</i></p>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1568,
+    "text": "<mat-label>Tipo de gráfico</mat-label>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1580,
+    "text": "<h4>Competências analisadas:</h4>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1712,
+    "text": "<i>Nenhuma competência selecionada para exibir gráficos.</i>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1758,
+    "text": "<td style=\"border: 1px solid #ddd; padding: 8px; font-size: 12px;\">Média</td>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1764,
+    "text": "<td style=\"border: 1px solid #ddd; padding: 8px; font-size: 12px; font-weight: bold;\">Média sem autoavaliação</td>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1780,
+    "text": "<p>Selecione uma ou mais competências na aba \"Montar Relatório\" para visualizar a tabela.</p>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1824,
+    "text": "<td style=\"border: 1px solid #ddd; padding: 8px;\">Média</td>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1832,
+    "text": "<p style=\"margin: 0; font-size: 12px; color: #666;\"><strong>Importante:</strong> A opção \"Sem dados\" não é exibida no re"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1847,
+    "text": "<i>Selecione uma ou mais competências na aba \"Montar Relatório\" para visualizar as tabelas detalhadas.</i>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1856,
+    "text": "<h3 [style.color]=\"getDestaquesAltasColors(secao).text\" style=\"margin-top: 20px;\">Avaliações mais altas</h3>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1858,
+    "text": "Esta seção apresenta os comportamentos em que você obteve as maiores pontuações <strong>médias</strong> (com base na ava"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1864,
+    "text": "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 80px;\">Classificação</th>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1866,
+    "text": "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;\">Pontuação do(a) A"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1867,
+    "text": "<th *ngIf=\"secao['mostrarPontuacaoSemAuto']\" style=\"border: 1px solid #ddd; padding: 8px; text-align: center; font-weigh"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1883,
+    "text": "<h3 [style.color]=\"getDestaquesBaixasColors(secao).text\" style=\"margin-top: 30px;\">Avaliações mais baixas</h3>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1885,
+    "text": "Esta seção apresenta os comportamentos em que você obteve as menores pontuações <strong>médias</strong> (com base na ava"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1891,
+    "text": "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 80px;\">Classificação</th>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1893,
+    "text": "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; width: 120px;\">Pontuação do(a) A"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1894,
+    "text": "<th *ngIf=\"secao['mostrarPontuacaoSemAuto']\" style=\"border: 1px solid #ddd; padding: 8px; text-align: center; font-weigh"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1910,
+    "text": "<i>Nenhum dado disponível para gerar as tabelas de avaliações. Certifique-se de que há competências cadastradas e dados "
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1967,
+    "text": "<p>Selecione uma ou mais competências para gerar o gráfico.</p>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 1983,
+    "text": "<p>Selecione uma ou mais competências para gerar a Janela de Johari.</p>"
+  },
+  {
+    "file": "src/app/pages/reports/reports.component.html",
+    "line": 2027,
+    "text": "<span class=\"rp-doc-rodape__pagina\" *ngIf=\"documentoConfig.rodape.mostrarNumeroPagina\">Pág. </span>"
+  },
+  {
+    "file": "src/app/pages/users/group-details/group-details.component.html",
+    "line": 4,
+    "text": "eyebrow=\"Gestão / Grupos\""
+  },
+  {
+    "file": "src/app/pages/users/group-details/group-details.component.html",
+    "line": 6,
+    "text": "subtitle=\"Informações e membros do grupo de usuários\">"
+  },
+  {
+    "file": "src/app/pages/users/group-details/group-details.component.html",
+    "line": 36,
+    "text": "<h3 class=\"card-title\">Informações do Grupo</h3>"
+  },
+  {
+    "file": "src/app/pages/users/group-details/group-details.component.html",
+    "line": 37,
+    "text": "<p class=\"card-subtitle\">Dados cadastrais do grupo de usuários</p>"
+  },
+  {
+    "file": "src/app/pages/users/group-details/group-details.component.html",
+    "line": 54,
+    "text": "<span class=\"field-label\">Descrição</span>"
+  },
+  {
+    "file": "src/app/pages/users/group-details/group-details.component.html",
+    "line": 94,
+    "text": "<span class=\"col-header\"><mat-icon class=\"col-icon\">person</mat-icon>Usuário</span>"
+  },
+  {
+    "file": "src/app/pages/users/group-details/group-details.component.html",
+    "line": 114,
+    "text": "<th mat-header-cell *matHeaderCellDef class=\"actions-col\">Ações</th>"
+  },
+  {
+    "file": "src/app/pages/users/group-details/group-details.component.html",
+    "line": 144,
+    "text": "<span>Grupo não encontrado</span>"
+  },
+  {
+    "file": "src/app/pages/users/user-details/user-details.component.html",
+    "line": 4,
+    "text": "eyebrow=\"Gestão / Usuários\""
+  },
+  {
+    "file": "src/app/pages/users/user-details/user-details.component.html",
+    "line": 6,
+    "text": "subtitle=\"Informações detalhadas do usuário\">"
+  },
+  {
+    "file": "src/app/pages/users/user-details/user-details.component.html",
+    "line": 39,
+    "text": "<p class=\"card-subtitle\">Dados cadastrais do usuário</p>"
+  },
+  {
+    "file": "src/app/pages/users/user-details/user-details.component.html",
+    "line": 75,
+    "text": "<span class=\"field-label\">Status de Notificação</span>"
+  },
+  {
+    "file": "src/app/pages/users/user-details/user-details.component.html",
+    "line": 94,
+    "text": "<h3 class=\"card-title\">Vínculos</h3>"
+  },
+  {
+    "file": "src/app/pages/users/user-details/user-details.component.html",
+    "line": 95,
+    "text": "<p class=\"card-subtitle\">Grupos e projetos aos quais o usuário pertence</p>"
+  },
+  {
+    "file": "src/app/pages/users/user-details/user-details.component.html",
+    "line": 135,
+    "text": "<span>Usuário não encontrado</span>"
+  },
+  {
+    "file": "src/app/shared/confirm-dialog/confirm-dialog.component.html",
+    "line": 20,
+    "text": "<p class=\"confirm-dialog__warning\">Esta ação <strong>não pode ser desfeita</strong>.</p>"
+  },
+  {
+    "file": "src/app/shared/dependency-block-dialog/dependency-block-dialog.component.html",
+    "line": 7,
+    "text": "<h2 class=\"dbd__title\">Não é possível excluir</h2>"
+  }
+]

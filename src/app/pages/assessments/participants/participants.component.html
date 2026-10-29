@@ -409,14 +409,14 @@
     <div class="credit-panel" *ngIf="filterClient && currentClientCredits && userRole !== 'viewer'">
       <div class="credit-panel__title">
         <mat-icon>toll</mat-icon>
-        <span>Créditos do Cliente</span>
+        <span>{{ 'Créditos do Cliente' | translate }}</span>
       </div>
       <div class="credit-panel__items">
         <div class="credit-item"
              [class.credit-item--green]="currentClientCredits!.disponivel > 0"
              [class.credit-item--red]="currentClientCredits!.disponivel <= 0">
           <span class="credit-item__value">{{ currentClientCredits!.disponivel }}</span>
-          <span class="credit-item__label">Disponíveis</span>
+          <span class="credit-item__label">{{ 'Disponíveis' | translate }}</span>
           <span class="credit-item__hint">prontos para usar</span>
         </div>
         <div class="credit-sep"></div>
@@ -429,7 +429,7 @@
         <div class="credit-item credit-item--blue">
           <span class="credit-item__value">{{ currentClientCredits!.consumido }}</span>
           <span class="credit-item__label">Consumidos</span>
-          <span class="credit-item__hint">projetos concluídos</span>
+          <span class="credit-item__hint">{{ 'projetos concluídos' | translate }}</span>
         </div>
         <div class="credit-sep"></div>
         <div class="credit-item credit-item--gray">
@@ -440,7 +440,7 @@
       </div>
       <div class="credit-panel__note">
         <mat-icon>info</mat-icon>
-        <span>1 crédito é reservado ao cadastrar um Avaliado e consumido ao concluir o projeto</span>
+        <span>{{ '1 crédito é reservado ao cadastrar um Avaliado e consumido ao concluir o projeto' | translate }}</span>
       </div>
     </div>
 

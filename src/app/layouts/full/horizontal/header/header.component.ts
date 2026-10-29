@@ -444,7 +444,7 @@ export class AppChangePasswordDialogComponent {
 @Component({
   selector: 'app-search-dialog',
   standalone: true,
-  imports: [RouterModule, MaterialModule, TablerIconsModule, FormsModule, NgForOf],
+  imports: [RouterModule, MaterialModule, TablerIconsModule, FormsModule, NgForOf, TranslateModule],
   templateUrl: 'search-dialog.component.html',
 })
 export class AppHorizontalSearchDialogComponent implements OnInit {

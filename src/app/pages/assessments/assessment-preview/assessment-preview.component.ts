@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from 'src/app/material.module';
+import { TranslateModule } from '@ngx-translate/core';
 import { SurveyModel } from 'survey-core';
 import { SurveyModule } from 'survey-angular-ui';
 import { AssessmentPreviewPdfService } from 'src/app/services/assessment-preview-pdf.service';
@@ -20,7 +21,7 @@ export interface AssessmentPreviewDialogData {
 @Component({
   selector: 'app-assessment-preview',
   standalone: true,
-  imports: [MaterialModule, CommonModule, SurveyModule],
+  imports: [MaterialModule, CommonModule, SurveyModule, TranslateModule],
   templateUrl: './assessment-preview.component.html',
   styleUrls: ['./assessment-preview.component.scss'],
 })

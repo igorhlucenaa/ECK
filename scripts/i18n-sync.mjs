@@ -38,10 +38,14 @@ function collectReferencedKeys() {
 const ptPath = 'src/assets/i18n/pt-BR.json';
 const enPath = 'src/assets/i18n/en.json';
 const esPath = 'src/assets/i18n/es.json';
+const dePath = 'src/assets/i18n/de.json';
+const frPath = 'src/assets/i18n/fr.json';
 
 let pt = loadJson(ptPath);
 let en = loadJson(enPath);
 let es = loadJson(esPath);
+let de = loadJson(dePath);
+let fr = loadJson(frPath);
 
 const referenced = collectReferencedKeys();
 
@@ -92,9 +96,30 @@ for (const key of Object.keys({ ...es })) {
   }
 }
 
+let addedDe = 0;
+let addedFr = 0;
+for (const key of ptKeys) {
+  if (!(key in de)) {
+    de[key] = en[key] ?? pt[key];
+    addedDe++;
+  }
+  if (!(key in fr)) {
+    fr[key] = en[key] ?? pt[key];
+    addedFr++;
+  }
+}
+for (const key of Object.keys({ ...de })) {
+  if (!ptSet.has(key)) delete de[key];
+}
+for (const key of Object.keys({ ...fr })) {
+  if (!ptSet.has(key)) delete fr[key];
+}
+
 saveJson(ptPath, pt);
 saveJson(enPath, en);
 saveJson(esPath, es);
+saveJson(dePath, de);
+saveJson(frPath, fr);
 
 // Relatório de chaves ainda iguais ao PT (provável tradução faltando)
 const enUntranslated = ptKeys.filter((k) => en[k] === pt[k] && /[áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/.test(k));
@@ -105,6 +130,8 @@ console.log(`  Referenced in code: ${referenced.size}`);
 console.log(`  pt-BR: ${ptKeys.length} keys`);
 console.log(`  en: +${addedEn} added, -${removedEn} removed → ${Object.keys(en).length}`);
 console.log(`  es: +${addedEs} added, -${removedEs} removed → ${Object.keys(es).length}`);
+console.log(`  de: +${addedDe} added → ${Object.keys(de).length}`);
+console.log(`  fr: +${addedFr} added → ${Object.keys(fr).length}`);
 console.log(`  EN likely untranslated (PT chars in key): ${enUntranslated.length}`);
 console.log(`  ES likely untranslated (PT chars in key): ${esUntranslated.length}`);
 

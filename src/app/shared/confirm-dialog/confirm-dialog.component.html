@@ -17,7 +17,7 @@
       <span class="confirm-dialog__item-name">{{ data.itemName }}</span>
     </div>
 
-    <p class="confirm-dialog__warning">Esta ação <strong>não pode ser desfeita</strong>.</p>
+    <p class="confirm-dialog__warning" [innerHTML]="'Esta ação <strong>não pode ser desfeita</strong>.' | translate"></p>
   </mat-dialog-content>
 
   <!-- Ações -->

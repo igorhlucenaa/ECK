@@ -8,11 +8,11 @@
         <!-- Nome -->
         <div class="form-group">
           <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Nome da Organização</mat-label>
+            <mat-label>{{ '{{ \'Nome da Organização\' | translate }}' | translate }}</mat-label>
             <input
               matInput
               formControlName="name"
-              placeholder="Digite o nome da organização"
+              [placeholder]="'Digite o nome da organização' | translate"
             />
             <mat-error
               *ngIf="customizationForm.get('name')?.hasError('required')"
@@ -29,7 +29,7 @@
 
         <!-- Upload da Logo -->
         <div class="form-group mt-3" style="margin: 7px 0px 7px">
-          <mat-label>Logo da Organização</mat-label>
+          <mat-label>{{ '{{ \'Logo da Organização\' | translate }}' | translate }}</mat-label>
           <input
             type="file"
             class="form-control"

@@ -496,7 +496,7 @@ export class HeaderComponent implements OnInit {
 @Component({
   selector: 'search-dialog',
   standalone: true,
-  imports: [RouterModule, MaterialModule, TablerIconsModule, FormsModule],
+  imports: [RouterModule, MaterialModule, TablerIconsModule, FormsModule, TranslateModule],
   templateUrl: 'search-dialog.component.html',
 })
 export class AppSearchDialogComponent implements OnInit {
