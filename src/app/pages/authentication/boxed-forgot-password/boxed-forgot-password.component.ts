@@ -64,7 +64,7 @@ export class AppBoxedForgotPasswordComponent {
         this.translate.instant('Fechar'),
         { duration: 5000 }
       );
-      void this.router.navigate(['/authentication/boxed-login']);
+      void this.router.navigate(['/authentication/login']);
     } catch {
       this.snackBar.open(
         this.translate.instant('auth.forgotPassword.emailError'),

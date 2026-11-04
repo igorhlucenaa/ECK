@@ -444,3 +444,25 @@
     font-size: 24px;
   }
 }
+
+.login-forgot-row {
+  margin: -8px 0 16px;
+  text-align: right;
+}
+
+.login-forgot-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1B84FF;
+  text-decoration: none;
+}
+
+.login-forgot-link:hover {
+  text-decoration: underline;
+}
+
+.login-back-link {
+  margin-top: 12px;
+  width: 100%;
+  border-radius: 10px !important;
+}

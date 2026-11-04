@@ -52,6 +52,16 @@ Aceite:
 - Sem erros na console.
 - Guard permite rota autorizada e bloqueia rotas sem permissão.
 
+### 4.1.1 Redefinição de senha
+Passos:
+1. Em `/authentication/login`, clique em **Esqueci minha senha**.
+2. Informe um e-mail cadastrado em `/authentication/forgot-password`.
+3. Confirme snackbar de sucesso e retorno ao login.
+4. (Opcional) Abra o link recebido no e-mail e conclua a troca de senha no Firebase.
+Aceite:
+- Rotas legadas `/authentication/side-forgot-pwd` e `/authentication/boxed-forgot-pwd` redirecionam para `forgot-password`.
+- `/authentication/side-register` redireciona para `login` (sem autocadastro demo).
+
 ### 4.2 Clientes (apenas admin_master)
 Passos:
 1. Acesse `/clients`.

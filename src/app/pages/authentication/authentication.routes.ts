@@ -1,8 +1,6 @@
 import { Routes } from "@angular/router";
-import { AppBoxedForgotPasswordComponent } from "./boxed-forgot-password/boxed-forgot-password.component";
 import { AppSideForgotPasswordComponent } from "./side-forgot-password/side-forgot-password.component";
 import { AppSideLoginComponent } from "./side-login/side-login.component";
-import { AppSideRegisterComponent } from "./side-register/side-register.component";
 
 export const AuthenticationRoutes: Routes = [
   {
@@ -10,19 +8,26 @@ export const AuthenticationRoutes: Routes = [
     children: [
       {
         path: 'login',
-        component: AppSideLoginComponent, // Componente de login
+        component: AppSideLoginComponent,
       },
       {
-        path: 'boxed-forgot-pwd',
-        component: AppBoxedForgotPasswordComponent,
-      },
-      {
-        path: 'side-forgot-pwd',
+        path: 'forgot-password',
         component: AppSideForgotPasswordComponent,
       },
       {
+        path: 'boxed-forgot-pwd',
+        redirectTo: 'forgot-password',
+        pathMatch: 'full',
+      },
+      {
+        path: 'side-forgot-pwd',
+        redirectTo: 'forgot-password',
+        pathMatch: 'full',
+      },
+      {
         path: 'side-register',
-        component: AppSideRegisterComponent,
+        redirectTo: 'login',
+        pathMatch: 'full',
       },
     ],
   },
