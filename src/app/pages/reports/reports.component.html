@@ -41,7 +41,7 @@
 <!-- ===================== CONFIG STRIP ===================== -->
 <div class="rp-config-strip">
 
-  <!-- ── Fluxo sequencial: Cliente → Avaliação → Projeto (auto ou manual) → Avaliado ── -->
+  <!-- ── Fluxo sequencial: Cliente → Formulário → Projeto (auto ou manual) → Avaliado ── -->
   <div class="rp-sequential-filter" *ngIf="!isIndividualMode">
 
     <!-- Passo 1: Cliente -->
@@ -97,7 +97,7 @@
       </div>
     </ng-container>
 
-    <!-- Passo 3b: Projeto manual — só quando a avaliação existe em mais de um ciclo -->
+    <!-- Passo 3b: Projeto manual — só quando o formulário existe em mais de um ciclo -->
     <ng-container *ngIf="assessmentControl.value && projectSelectionRequired">
       <mat-icon class="rp-seq-arrow">chevron_right</mat-icon>
       <div class="rp-seq-step" [class.rp-seq-step--done]="!!filterProjectControl.value">
@@ -110,7 +110,7 @@
             <mat-option value="">{{ '— Selecione um projeto —' | translate }}</mat-option>
             <mat-option *ngFor="let p of projectsForAssessment" [value]="p.id">{{ p.name }}</mat-option>
           </mat-select>
-          <mat-hint>{{ 'Esta avaliação está em mais de um projeto ativo' | translate }}</mat-hint>
+          <mat-hint>{{ 'reports.formWorkflow.projectMultiHint' | translate }}</mat-hint>
         </mat-form-field>
       </div>
     </ng-container>
@@ -166,7 +166,7 @@
       <!-- Controle de publicação de relatório (apenas admin_master) -->
     </ng-container>
 
-    <!-- Atalho: biblioteca de templates do cliente (sem projeto/avaliação) -->
+    <!-- Atalho: biblioteca de templates do cliente (sem projeto/formulário) -->
     <button mat-stroked-button
             class="rp-client-templates-btn"
             *ngIf="filterClientControl.value && !isIndividualMode && currentUserRole !== 'viewer'"
@@ -222,7 +222,7 @@
 <!-- ===================== WORKFLOW TABS ===================== -->
 <div class="rp-workflow">
 
-  <!-- Tab: Avaliação -->
+  <!-- Tab: Formulário (alinhado ao passo 2 do fluxo) -->
   <div class="rp-workflow-tab"
        [class.rp-workflow-tab--done]="selectedAssessmentId"
        [class.rp-workflow-tab--active]="!selectedAssessmentId">
@@ -230,8 +230,8 @@
       <mat-icon>{{ selectedAssessmentId ? 'check_circle' : 'assignment' }}</mat-icon>
     </div>
     <div class="rp-workflow-tab__label">
-      <strong>{{ 'Avaliação' | translate }}</strong>
-      <span>{{ selectedAssessmentId ? ('Selecionada' | translate) : ('Selecione acima' | translate) }}</span>
+      <strong>{{ 'reports.formWorkflow.tabTitle' | translate }}</strong>
+      <span>{{ selectedAssessmentId ? ('reports.formWorkflow.tabStatusSelected' | translate) : ('Selecione acima' | translate) }}</span>
     </div>
   </div>
 
@@ -242,7 +242,7 @@
        [class.rp-workflow-tab--active]="selectedTabIndex === 0"
        [class.rp-workflow-tab--disabled]="!selectedAssessmentId"
        (click)="selectedAssessmentId && goToTab(0)"
-       matTooltip="{{ !selectedAssessmentId ? ('Selecione uma avaliação primeiro' | translate) : '' }}">
+       matTooltip="{{ !selectedAssessmentId ? ('reports.formWorkflow.selectFormFirstTooltip' | translate) : '' }}">
     <div class="rp-workflow-tab__icon">
       <mat-icon>psychology</mat-icon>
     </div>
@@ -259,7 +259,7 @@
        [class.rp-workflow-tab--active]="selectedTabIndex === 1"
        [class.rp-workflow-tab--disabled]="!clientTemplateLibraryMode && competencias.length === 0"
        (click)="(clientTemplateLibraryMode || competencias.length > 0) && goToTab(1)"
-       matTooltip="{{ !clientTemplateLibraryMode && competencias.length === 0 ? ('Configure as competências primeiro' | translate) : (clientTemplateLibraryMode ? ('Modo biblioteca de templates — edite layouts reutilizáveis sem selecionar projeto ou avaliação.' | translate) : '') }}">
+       matTooltip="{{ !clientTemplateLibraryMode && competencias.length === 0 ? ('Configure as competências primeiro' | translate) : (clientTemplateLibraryMode ? ('reports.formWorkflow.templateLibraryTooltip' | translate) : '') }}">
     <div class="rp-workflow-tab__icon">
       <mat-icon>dashboard_customize</mat-icon>
     </div>
@@ -297,17 +297,17 @@
     </div>
     <div class="rp-tab-content">
 
-      <!-- Estado: nenhuma avaliação selecionada -->
+      <!-- Estado: nenhum formulário selecionado -->
       <div *ngIf="!selectedAssessmentId" class="rp-comp-gate">
         <div class="rp-comp-gate__icon-wrap">
           <mat-icon>assignment</mat-icon>
         </div>
-        <h4>{{ 'Selecione uma avaliação primeiro' | translate }}</h4>
-        <p>{{ 'Use o seletor acima para escolher qual avaliação 360° deseja analisar. As competências vinculadas serão carregadas automaticamente.' | translate }}</p>
+        <h4>{{ 'reports.formWorkflow.gateTitle' | translate }}</h4>
+        <p>{{ 'reports.formWorkflow.gateBody' | translate }}</p>
         <p class="rp-comp-gate__hint">{{ 'reports.importGroup.gateHint' | translate }}</p>
       </div>
 
-      <!-- Estado: avaliação selecionada -->
+      <!-- Estado: formulário selecionado -->
       <ng-container *ngIf="selectedAssessmentId">
 
         <!-- Nenhuma competência criada ainda -->
@@ -318,8 +318,8 @@
               <mat-icon>map</mat-icon>
             </div>
             <div>
-              <h4>{{ 'Configure as competências para esta avaliação' | translate }}</h4>
-              <p>{{ 'Antes de montar o relatório, é necessário vincular as perguntas da avaliação às competências. Siga os passos abaixo:' | translate }}</p>
+              <h4>{{ 'reports.formWorkflow.configureCompetenciesTitle' | translate }}</h4>
+              <p>{{ 'reports.formWorkflow.linkQuestionsIntro' | translate }}</p>
             </div>
           </div>
 
@@ -330,7 +330,7 @@
                 <mat-icon>check</mat-icon>
               </div>
               <div class="rp-setup-step__body">
-                <strong>{{ 'Avaliação selecionada' | translate }}</strong>
+                <strong>{{ 'reports.formWorkflow.selectedBadge' | translate }}</strong>
                 <span>{{ selectedAssessmentName }}</span>
               </div>
             </div>
@@ -342,7 +342,7 @@
               <div class="rp-setup-step__body">
                 <strong>{{ 'Ir para Competências e vincular as perguntas' | translate }}</strong>
                 <span>
-                  {{ 'Na página de Competências, selecione a mesma avaliação' | translate }}
+                  {{ 'reports.formWorkflow.competenciesPickSameForm' | translate }}
                   (<em>{{ selectedAssessmentName }}</em>), {{ 'crie ou edite os grupos de competências vinculando as perguntas do formulário, e clique em Salvar.' | translate }}
                 </span>
               </div>
@@ -358,7 +358,7 @@
               <div class="rp-setup-step__num">3</div>
               <div class="rp-setup-step__body">
                 <strong>{{ 'Voltar para Relatórios' | translate }}</strong>
-                <span *ngIf="allCompetencies.length === 0">{{ 'Após salvar em Competências, use o botão «Voltar para Relatórios» no topo daquela página — cliente, avaliação e aba serão restaurados automaticamente.' | translate }}</span>
+                <span *ngIf="allCompetencies.length === 0">{{ 'reports.formWorkflow.restoreHint' | translate }}</span>
                 <span *ngIf="allCompetencies.length > 0">{{ 'Competências carregadas. Avance para montar o relatório ou aplicar um template.' | translate }}</span>
               </div>
               <button mat-flat-button color="primary" *ngIf="allCompetencies.length > 0" (click)="goToTab(1)" class="rp-setup-step__btn">
@@ -558,7 +558,7 @@
       <mat-icon>library_books</mat-icon>
       <div class="rp-template-library-banner__text">
         <strong>{{ 'Biblioteca de templates' | translate }}</strong>
-        <span>{{ 'Modo biblioteca de templates — edite layouts reutilizáveis sem selecionar projeto ou avaliação.' | translate }}</span>
+        <span>{{ 'reports.formWorkflow.templateLibraryBanner' | translate }}</span>
       </div>
       <button mat-stroked-button type="button" (click)="exitClientTemplateLibrary()">
         {{ 'Sair do modo biblioteca' | translate }}
@@ -799,7 +799,7 @@
         </div>
         <button mat-flat-button color="primary" class="rp-advance-btn"
                 [disabled]="clientTemplateLibraryMode && !selectedAssessmentId"
-                [matTooltip]="clientTemplateLibraryMode && !selectedAssessmentId ? ('Selecione uma avaliação para visualizar o relatório.' | translate) : ''"
+                [matTooltip]="clientTemplateLibraryMode && !selectedAssessmentId ? ('reports.formWorkflow.previewNeedForm' | translate) : ''"
                 (click)="goToTab(2)">
           {{ 'Visualizar Relatório' | translate }}
           <mat-icon iconPositionEnd>arrow_forward</mat-icon>

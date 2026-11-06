@@ -1819,7 +1819,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.filteredAssessments = [...this.assessments];
     } catch (e) {
       console.error("Erro ao carregar avaliações:", e);
-      this.snackBar.open(this.t('Falha ao carregar as avaliações.'), this.t('Fechar'), { duration: 3000 });
+      this.snackBar.open(this.t('reports.formWorkflow.loadFormsFailed'), this.t('Fechar'), { duration: 3000 });
     } finally {
       this.loadingService.hide();
     }
@@ -3655,7 +3655,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Validação antes de salvar relatório
   private validarRelatorio(): string | null {
-    if (!this.selectedAssessmentId) return "Nenhuma avaliação foi selecionada.";
+    if (!this.selectedAssessmentId) return this.t('reports.formWorkflow.noneSelectedValidation');
     if (this.relatorioFormArray.length === 0) return "O relatório não tem seções.";
     if (this.competencias.length === 0) return "Nenhuma competência foi cadastrada.";
     return null;
@@ -6141,7 +6141,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.isExporting) return false;
 
     if (!this.isDataReady()) {
-      this.snackBar.open(this.t('Selecione uma avaliação antes de exportar.'), this.t('Fechar'), { duration: 4000 });
+      this.snackBar.open(this.t('reports.formWorkflow.selectBeforeExport'), this.t('Fechar'), { duration: 4000 });
       return false;
     }
 
@@ -7526,7 +7526,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.projectAutoDeduced = false;
       this.filterProjectControl.setValue('', { emitEvent: false });
       this.snackBar.open(
-        this.t('Nenhum projeto ativo utiliza esta avaliação.'),
+        this.t('reports.formWorkflow.noProjectUsesForm'),
         this.t('Fechar'),
         { duration: 4000 }
       );
@@ -7551,7 +7551,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterProjectControl.setValue('', { emitEvent: false });
     if (!this.isBatchGenerating) {
       this.snackBar.open(
-        this.t('Esta avaliação existe em mais de um projeto — selecione o ciclo desejado.'),
+        this.t('reports.formWorkflow.formInMultipleProjects'),
         this.t('Fechar'),
         { duration: 4500 }
       );
@@ -7713,7 +7713,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const candidates = this.getProjectsForAssessment(assessmentId);
       if (candidates.length > 0 && !candidates.some(c => c.id === projectId)) {
         this.snackBar.open(
-          this.t('Este projeto não utiliza a avaliação selecionada.'),
+          this.t('reports.formWorkflow.projectMismatchesForm'),
           this.t('Fechar'),
           { duration: 3500 }
         );
@@ -8228,7 +8228,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     if (!this.selectedAssessmentId) {
-      this.snackBar.open(this.t('Selecione uma avaliação antes de publicar o relatório.'), this.t('Fechar'), { duration: 3000 });
+      this.snackBar.open(this.t('reports.formWorkflow.selectBeforePublish'), this.t('Fechar'), { duration: 3000 });
       return;
     }
 
@@ -8748,7 +8748,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.currentUserRole === 'viewer' && index < 2) return;
     if (index === 2 && this.clientTemplateLibraryMode && !this.selectedAssessmentId) {
       this.snackBar.open(
-        this.t('Selecione uma avaliação para visualizar o relatório.'),
+        this.t('reports.formWorkflow.selectToPreview'),
         this.t('Fechar'),
         { duration: 3500 }
       );
