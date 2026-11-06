@@ -58,6 +58,26 @@
   .filter-search { flex: 1.5; min-width: 220px; }
 }
 
+.filter-client-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 24px 8px;
+  width: 100%;
+  flex-basis: 100%;
+
+  mat-checkbox {
+    font-size: 14px;
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: #64748b;
+    padding-left: 28px;
+    line-height: 1.35;
+  }
+}
+
 .btn-clear {
   margin-top: 4px;
   color: #64748b !important;

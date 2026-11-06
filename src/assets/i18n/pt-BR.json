@@ -165,6 +165,8 @@
   "reportTemplates.scope.otherClient": "cliente",
   "projects.emails.linkedTitle": "Modelos de e-mail vinculados a este projeto",
   "mailTemplates.filterAllClientsAndGlobal": "Todos (por cliente + globais)",
+  "mailTemplates.includeGlobalTemplates": "Incluir templates globais (TEMPLATE PADRÃO)",
+  "mailTemplates.includeGlobalTemplatesHint": "Desmarque para ver somente os modelos criados para o cliente selecionado.",
   "mailTemplates.loadDesignError": "Não foi possível abrir o layout salvo. O conteúdo no Firestore não foi alterado — tente novamente ou exporte o JSON do template.",
   "assessments.global.badge": "Template padrão (global)",
   "assessments.global.toggle": "Formulário padrão para todos os clientes",

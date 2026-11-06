@@ -165,6 +165,8 @@
   "reportTemplates.scope.otherClient": "client",
   "projects.emails.linkedTitle": "Email templates linked to this project",
   "mailTemplates.filterAllClientsAndGlobal": "All (per client + global)",
+  "mailTemplates.includeGlobalTemplates": "Include global templates (DEFAULT TEMPLATE)",
+  "mailTemplates.includeGlobalTemplatesHint": "Uncheck to show only models created for the selected client.",
   "mailTemplates.loadDesignError": "Could not open the saved layout. Firestore content was not changed.",
   "assessments.global.badge": "Default template (global)",
   "assessments.global.toggle": "Default form for all clients",

@@ -165,6 +165,8 @@
   "reportTemplates.scope.otherClient": "cliente",
   "projects.emails.linkedTitle": "Plantillas de correo vinculadas a este proyecto",
   "mailTemplates.filterAllClientsAndGlobal": "Todos (por cliente + globales)",
+  "mailTemplates.includeGlobalTemplates": "Incluir plantillas globales (PLANTILLA PREDETERMINADA)",
+  "mailTemplates.includeGlobalTemplatesHint": "Desmarque para ver solo los modelos del cliente seleccionado.",
   "mailTemplates.loadDesignError": "No se pudo abrir el diseño guardado. El contenido en Firestore no cambió — intente de nuevo.",
   "assessments.global.badge": "Plantilla predeterminada (global)",
   "assessments.global.toggle": "Formulario predeterminado para todos los clientes",

@@ -69,6 +69,9 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
 
   readonly globalClientFilterValue = MAIL_TEMPLATE_GLOBAL_CLIENT_FILTER;
 
+  /** Quando um cliente está selecionado: se false, oculta templates globais (só modelos daquele cliente). */
+  includeGlobalMailTemplates = true;
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -273,7 +276,11 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
       if (this.clientFilter === MAIL_TEMPLATE_GLOBAL_CLIENT_FILTER) {
         matchesClient = !!data.isGlobal;
       } else if (this.clientFilter) {
-        matchesClient = this.templateVisibleForClient(data, this.clientFilter);
+        if (this.includeGlobalMailTemplates) {
+          matchesClient = this.templateVisibleForClient(data, this.clientFilter);
+        } else {
+          matchesClient = !data.isGlobal && data['clientId'] === this.clientFilter;
+        }
       }
 
       const matchesProject =
@@ -290,6 +297,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
 
   async onClientChange(clientId: string): Promise<void> {
     this.clientFilter = clientId;
+    this.includeGlobalMailTemplates = true;
     this.projectFilter = '';
     this.projects = [];
     if (clientId && clientId !== MAIL_TEMPLATE_GLOBAL_CLIENT_FILTER) {
@@ -332,6 +340,7 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     this.emailTypeFilter = '';
     this.projectFilter = '';
     this.projects = [];
+    this.includeGlobalMailTemplates = true;
     this.clientFilter = (this.userRole === 'admin_client' && this.clients.length === 1)
       ? this.clients[0].id
       : '';

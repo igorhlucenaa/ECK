@@ -58,6 +58,13 @@
         </mat-select>
       </mat-form-field>
 
+      <div class="filter-client-scope" *ngIf="clientFilter && clientFilter !== globalClientFilterValue">
+        <mat-checkbox [(ngModel)]="includeGlobalMailTemplates" (ngModelChange)="applyFilter()" color="primary">
+          {{ 'mailTemplates.includeGlobalTemplates' | translate }}
+        </mat-checkbox>
+        <span class="filter-client-scope__hint">{{ 'mailTemplates.includeGlobalTemplatesHint' | translate }}</span>
+      </div>
+
       <!-- Projeto — aparece quando cliente está selecionado e não veio de rota de projeto -->
       <mat-form-field appearance="outline" class="filter-field"
                       *ngIf="clientFilter && clientFilter !== globalClientFilterValue && !clientId">
