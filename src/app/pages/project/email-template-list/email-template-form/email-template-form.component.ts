@@ -499,7 +499,7 @@ export class EmailTemplateFormComponent implements OnInit {
 
       if (this.isEditMode && this.templateId) {
         const docRef = doc(this.firestore, `mailTemplates/${this.templateId}`);
-        await setDoc(docRef, formData);
+        await setDoc(docRef, formData, { merge: true });
       } else {
         await addDoc(templatesCollection, formData);
       }

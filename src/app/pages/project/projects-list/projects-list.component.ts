@@ -104,6 +104,28 @@ export class ProjectsListComponent implements OnInit {
     return map[status] || 'status-em-andamento';
   }
 
+  private projectIsCompleted(status: unknown): boolean {
+    const s = String(status || '');
+    return ['Concluído', 'concluido'].includes(s);
+  }
+
+  /**
+   * Tooltip do botão «Gerar relatório»: em projetos concluídos com template, perfis elegíveis
+   * vão direto ao PDF; caso contrário mantém o texto genérico.
+   */
+  getProjectReportTooltip(project: { status?: string; reportTemplateId?: string }): string {
+    const role = this.currentUser?.role || '';
+    const canDirect =
+      this.projectIsCompleted(project.status) &&
+      !!project.reportTemplateId &&
+      ['admin_master', 'admin_client', 'viewer'].includes(role);
+
+    if (canDirect) {
+      return 'projects.list.reportTooltipDirectPdf';
+    }
+    return 'Gerar Relatório';
+  }
+
   applyStatusFilter(value: string): void {
     this.statusFilter = value;
     this.dataSource.filter = this.statusFilter === 'all' ? (this.searchValue.trim().toLowerCase() || '') : '__status__';
@@ -170,6 +192,7 @@ export class ProjectsListComponent implements OnInit {
 
   ngOnInit(): void {
     this.authService.getCurrentUser().then(async (user) => {
+      this.currentUser = user;
       this.isAdminMaster = user?.role === 'admin_master';
       this.isClienteAdmin = user?.role === 'admin_client';
       this.isViewer = user?.role === 'viewer';
@@ -793,7 +816,7 @@ export class ProjectsListComponent implements OnInit {
     const role = user?.role || '';
     const status = String(project.status || '');
     const isCompleted = ['Concluído', 'concluido'].includes(status);
-    const canDirectPdf = ['admin_master', 'viewer'].includes(role);
+    const canDirectPdf = ['admin_master', 'admin_client', 'viewer'].includes(role);
 
     if (isCompleted && project.reportTemplateId && canDirectPdf) {
       this.router.navigate(['/reports'], {

@@ -45,6 +45,7 @@ import { formatCountLabel } from 'src/app/utils/i18n-labels.util';
 export class EmailTemplateListComponent implements OnInit, AfterViewInit {
   displayedColumns: string[] = [
     'client',
+    'scope',
     'name',
     'subject',
     'emailType',
@@ -144,6 +145,12 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
           );
         }
 
+        if (active === 'scope') {
+          const scopeA = a.scopeLabel || '';
+          const scopeB = b.scopeLabel || '';
+          return scopeA.localeCompare(scopeB) * (direction === 'asc' ? 1 : -1);
+        }
+
         if (typeof valueA === 'string' && typeof valueB === 'string') {
           return valueA.localeCompare(valueB) * (direction === 'asc' ? 1 : -1);
         } else {
@@ -199,11 +206,16 @@ export class EmailTemplateListComponent implements OnInit, AfterViewInit {
     const clientName = isGlobal
       ? defaultLabel
       : this.clients.find((c) => c.id === data['clientId'])?.name || defaultLabel;
+    const scopeLabel = isGlobal
+      ? this.translate.instant('mailTemplates.scopeGlobalShort')
+      : this.translate.instant('mailTemplates.scopeClientShort');
+
     return {
       id,
       ...data,
       isGlobal,
       clientName,
+      scopeLabel,
     };
   }
 

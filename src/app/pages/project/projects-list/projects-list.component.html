@@ -187,16 +187,25 @@
               <!-- Gerar Relatório -->
               <button class="act-btn act-btn--report"
                       (click)="goToProjectReport(p)"
-                      [matTooltip]="'Gerar Relatório' | translate">
+                      [matTooltip]="getProjectReportTooltip(p) | translate">
                 <mat-icon>bar_chart</mat-icon>
               </button>
 
               <!-- Disparar convites — botão primário visível para perfis operacionais -->
-              <button class="act-btn act-btn--send" *ngIf="(isAdminMaster || isClienteAdmin || isViewer) && p.status !== 'Concluído' && p.status !== 'concluido' && p.status !== 'Cancelado' && p.status !== 'cancelado'"
+              <button class="act-btn act-btn--send"
+                      *ngIf="(isAdminMaster || isClienteAdmin || isViewer) && p.status !== 'Concluído' && p.status !== 'concluido' && p.status !== 'Cancelado' && p.status !== 'cancelado'"
                       (click)="openSendInvitesModal(p.clientId, p.id, p.name)"
                       [matTooltip]="'Disparar Convites / Lembretes' | translate">
                 <mat-icon>send</mat-icon>
               </button>
+              <span class="act-placeholder act-placeholder--muted" *ngIf="(isAdminMaster || isClienteAdmin || isViewer) && (p.status === 'Concluído' || p.status === 'concluido')"
+                    [matTooltip]="'projects.list.invitesDisabledCompletedTooltip' | translate">
+                <mat-icon>send</mat-icon>
+              </span>
+              <span class="act-placeholder act-placeholder--muted" *ngIf="(isAdminMaster || isClienteAdmin || isViewer) && (p.status === 'Cancelado' || p.status === 'cancelado')"
+                    [matTooltip]="'projects.list.invitesDisabledCanceledTooltip' | translate">
+                <mat-icon>send</mat-icon>
+              </span>
 
               <!-- Menu de ações secundárias (admin_master) -->
               <button *ngIf="isAdminMaster" class="act-btn act-btn--more" [matMenuTriggerFor]="actionsMenu">

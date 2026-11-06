@@ -37,22 +37,36 @@ async function main() {
 
   try {
     log('Login', BASE);
-    await page.goto(`${BASE}/authentication/login`, { waitUntil: 'networkidle', timeout: 120_000 });
-    await page.locator('input[placeholder="you@email.com"]').fill(EMAIL);
-    await page.locator('input[placeholder="••••••••"]').fill(PASS);
-    await page.getByRole('button', { name: /Sign in/i }).click();
+    await page.goto(`${BASE}/authentication/login`, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+    // Campos do side-login: formControlName (nome acessível do MatInput varia com i18n / labels)
+    const emailInput = page.locator('input[formcontrolname="uname"], input[type="email"]').first();
+    const passInput = page.locator('input[formcontrolname="password"]');
+    await emailInput.waitFor({ state: 'visible', timeout: 90_000 });
+    await emailInput.fill(EMAIL);
+    await passInput.fill(PASS);
+    await page.locator('button.login-btn[type="submit"]').click();
     await page.waitForURL(/\/(dashboard|projects)/, { timeout: 60_000 });
 
     log('Projetos');
-    await page.goto(`${BASE}/projects`, { waitUntil: 'networkidle', timeout: 120_000 });
+    await page.goto(`${BASE}/projects`, { waitUntil: 'domcontentloaded', timeout: 120_000 });
 
     const reportBtn = page.locator('button.act-btn--report').first();
     await reportBtn.waitFor({ state: 'visible', timeout: 30_000 });
     await reportBtn.click();
 
-    await page.getByRole('button', { name: /Continue/i }).waitFor({ timeout: 15_000 });
-    log('Modal export', 'Individual PDF + Continue');
-    await page.getByRole('button', { name: /Continue/i }).click();
+    // Projetos concluídos com template: pode ir direto a /reports; caso contrário abre o modal.
+    const continueBtn = page.getByRole('button', { name: /^Continue$/i });
+    await Promise.race([
+      page.waitForURL(/\/reports\?.*exportAction=individualPdf/, { timeout: 20_000 }),
+      continueBtn.waitFor({ state: 'visible', timeout: 20_000 }),
+    ]).catch(() => {});
+
+    if (await continueBtn.isVisible().catch(() => false)) {
+      log('Modal export', 'Individual PDF + Continue');
+      await continueBtn.click();
+    } else {
+      log('Modal export', 'omitido (atalho direto)');
+    }
 
     await page.waitForURL(/\/reports\?.*exportAction=individualPdf/, { timeout: 60_000 });
     log('Relatórios', page.url());

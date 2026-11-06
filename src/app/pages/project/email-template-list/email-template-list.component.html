@@ -119,6 +119,16 @@
           </td>
         </ng-container>
 
+        <!-- Escopo (global vs cliente) -->
+        <ng-container matColumnDef="scope">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            <span class="col-header"><mat-icon class="col-icon">public</mat-icon>{{ 'mailTemplates.scopeColumn' | translate }}</span>
+          </th>
+          <td mat-cell *matCellDef="let t">
+            <span class="scope-pill" [class.scope-pill--global]="t.isGlobal">{{ t.scopeLabel }}</span>
+          </td>
+        </ng-container>
+
         <!-- Nome -->
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>

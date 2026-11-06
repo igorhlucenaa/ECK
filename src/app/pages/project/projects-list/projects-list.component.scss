@@ -323,6 +323,31 @@
   }
 }
 
+// Placeholder da coluna «enviar» quando o envio não está disponível (mantém alinhamento)
+.act-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    line-height: 17px;
+  }
+
+  &--muted {
+    opacity: 0.35;
+    cursor: default;
+    border: 1px dashed #e2e8f0;
+    border-radius: 8px;
+    color: #94a3b8;
+  }
+}
+
 // ── Menu dropdown ─────────────────────────────────────────────
 .menu-icon {
   font-size: 17px !important;

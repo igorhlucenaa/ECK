@@ -224,3 +224,56 @@
   .detail-wrapper { padding: 16px 12px; }
   .form-card-body { padding: 16px; }
 }
+
+// ─── Resumo de modelos de e-mail (convites / lembretes) ────────
+.project-mail-templates-summary {
+  margin-top: 12px;
+
+  &__title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin: 0 0 8px 0;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 10px;
+    font-size: 13px;
+    color: #334155;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: #6366f1;
+      flex-shrink: 0;
+    }
+  }
+
+  &__type {
+    color: #64748b;
+    font-size: 12.5px;
+  }
+
+  &__meta {
+    flex-basis: 100%;
+    margin-left: 26px;
+    font-size: 11.5px;
+    color: #94a3b8;
+    line-height: 1.35;
+  }
+}

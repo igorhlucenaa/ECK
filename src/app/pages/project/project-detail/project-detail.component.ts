@@ -40,6 +40,15 @@ import {
   mailTemplateVisibleForClient,
 } from 'src/app/utils/mail-templates.util';
 import { MatDialog } from '@angular/material/dialog';
+
+interface ProjectMailTemplateSummaryRow {
+  kind: 'invite' | 'reminder';
+  templateId: string;
+  name: string;
+  typeLabel: string;
+  /** Texto opcional (escopo, estatística de vínculos etc.). */
+  meta?: string;
+}
 import { UsersComponent } from '../../users/users.component';
 import { ProjectService } from 'src/app/services/project.service';
 import { ConfirmDialogComponent } from '../../clients/clients-list/confirm-dialog/confirm-dialog.component';
@@ -92,7 +101,7 @@ export class ProjectDetailComponent implements OnInit {
   assessments: { id: string; name: string; isGlobalTemplate?: boolean }[] = [];
   reportTemplates: ReportTemplateListItem[] = [];
   /** Convites e lembretes vinculados ao projeto (modelos de e-mail). */
-  projectMailTemplateSummary: { kind: 'invite' | 'reminder'; name: string; typeLabel: string }[] = [];
+  projectMailTemplateSummary: ProjectMailTemplateSummaryRow[] = [];
   usersInGroups: { id: string; name: string; groupNames: string[] }[] = [];
   isLoading = false;
   isConcluding = false;
@@ -232,8 +241,13 @@ export class ProjectDetailComponent implements OnInit {
   async loadReportTemplates(clientId: string): Promise<void> {
     try {
       const includeAllClients = this.currentUserRole === 'admin_master';
+      const clientNames =
+        includeAllClients && this.clients.length > 0
+          ? new Map(this.clients.map((c) => [c.id, c.name]))
+          : undefined;
       let list = await fetchReportTemplatesForClientScope(this.firestore, clientId, {
         includeAllClients,
+        clientNames,
       });
       const linkedId = this.form.get('reportTemplateId')?.value as string | undefined;
       list = await ensureReportTemplateInList(this.firestore, list, linkedId, clientId);
@@ -245,6 +259,15 @@ export class ProjectDetailComponent implements OnInit {
 
   async loadProjectMailTemplateSummary(clientId: string, projectId: string): Promise<void> {
     this.projectMailTemplateSummary = [];
+    const rowKey = (kind: 'invite' | 'reminder', templateId: string) => `${kind}:${templateId}`;
+    const seen = new Set<string>();
+    const pushRow = (row: ProjectMailTemplateSummaryRow): void => {
+      const k = rowKey(row.kind, row.templateId);
+      if (seen.has(k)) return;
+      seen.add(k);
+      this.projectMailTemplateSummary.push(row);
+    };
+
     try {
       const snapshot = await getDocs(collection(this.firestore, 'mailTemplates'));
       const byProject = snapshot.docs
@@ -252,14 +275,27 @@ export class ProjectDetailComponent implements OnInit {
         .filter(({ data }) => String(data['projectId'] || '') === projectId)
         .filter(({ data }) => mailTemplateVisibleForClient(data, clientId));
 
-      for (const { data } of byProject) {
+      for (const { id, data } of byProject) {
         const emailType = String(data['emailType'] || '');
         const name = String(data['name'] || 'Sem nome');
         const typeLabel = friendlyMailTypeKey(emailType);
+        const scopeMeta = this.translate.instant('projects.emails.scopeProjectModel');
         if (isInviteMailType(emailType)) {
-          this.projectMailTemplateSummary.push({ kind: 'invite', name, typeLabel });
+          pushRow({
+            kind: 'invite',
+            templateId: id,
+            name,
+            typeLabel,
+            meta: scopeMeta,
+          });
         } else if (isReminderMailType(emailType)) {
-          this.projectMailTemplateSummary.push({ kind: 'reminder', name, typeLabel });
+          pushRow({
+            kind: 'reminder',
+            templateId: id,
+            name,
+            typeLabel,
+            meta: scopeMeta,
+          });
         }
       }
 
@@ -284,12 +320,54 @@ export class ProjectDetailComponent implements OnInit {
           if (!mailTemplateVisibleForClient(tData, clientId)) continue;
           const emailType = String(tData['emailType'] || '');
           if (!isReminderMailType(emailType)) continue;
-          this.projectMailTemplateSummary.push({
+          pushRow({
             kind: 'reminder',
+            templateId,
             name: String(tData['name'] || 'Sem nome'),
             typeLabel: friendlyMailTypeKey(emailType),
+            meta: this.translate.instant('projects.emails.scopeReminderSettings'),
           });
         }
+      }
+
+      const linksSnap = await getDocs(
+        query(
+          collection(this.firestore, 'assessmentLinks'),
+          where('projectId', '==', projectId)
+        )
+      );
+
+      const linkCountByTemplate = new Map<string, number>();
+      const templateIdsFromLinks = new Set<string>();
+      for (const linkDoc of linksSnap.docs) {
+        const d = linkDoc.data() as Record<string, unknown>;
+        const tid = String(d['emailTemplate'] || '').trim();
+        if (!tid) continue;
+        templateIdsFromLinks.add(tid);
+        linkCountByTemplate.set(tid, (linkCountByTemplate.get(tid) || 0) + 1);
+      }
+
+      for (const templateId of templateIdsFromLinks) {
+        if (byProject.some((t) => t.id === templateId)) {
+          continue;
+        }
+        const tDoc = await getDoc(doc(this.firestore, 'mailTemplates', templateId));
+        if (!tDoc.exists()) continue;
+        const tData = tDoc.data() as Record<string, unknown>;
+        if (!mailTemplateVisibleForClient(tData, clientId)) continue;
+        const emailType = String(tData['emailType'] || '');
+        if (!isInviteMailType(emailType)) continue;
+        const n = linkCountByTemplate.get(templateId) || 0;
+        pushRow({
+          kind: 'invite',
+          templateId,
+          name: String(tData['name'] || 'Sem nome'),
+          typeLabel: friendlyMailTypeKey(emailType),
+          meta:
+            n > 0
+              ? this.translate.instant('projects.emails.inviteLinksMeta', { count: String(n) })
+              : this.translate.instant('projects.emails.scopeInviteDispatch'),
+        });
       }
     } catch (error) {
       console.error('Erro ao carregar modelos de e-mail do projeto:', error);

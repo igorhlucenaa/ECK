@@ -5959,8 +5959,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     const includeAllClients = this.currentUserRole === 'admin_master';
+    const clientNames =
+      includeAllClients && this.clients.length > 0
+        ? new Map(this.clients.map((c) => [c.id, c.name]))
+        : undefined;
     let items = await fetchReportTemplatesForClientScope(this.firestore, clientId, {
       includeAllClients,
+      clientNames,
     });
     const linkedId =
       (this.selectedTemplateId.value as string) || this.appliedTemplateId || undefined;
@@ -8757,6 +8762,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Restaura cliente/avaliação/aba ao voltar de Competências (sem fluxo de export de projeto). */
   private async restoreReportsWizardFromQuery(params: Record<string, unknown>): Promise<void> {
+    const paramClientId = params['clientId'] as string | undefined;
+    if (paramClientId && this.filterClientControl.value !== paramClientId) {
+      this.filterClientControl.setValue(paramClientId, { emitEvent: true });
+      await this.onFilterClientChange();
+    }
+
     if (params['templateLibrary'] === '1') {
       const clientId = this.filterClientControl.value;
       if (!clientId) {

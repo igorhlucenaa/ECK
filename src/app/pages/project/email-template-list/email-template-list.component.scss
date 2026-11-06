@@ -190,6 +190,24 @@
   }
 }
 
+.scope-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(27, 132, 255, 0.08);
+  color: #1565c0;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+
+  &--global {
+    background: rgba(27, 45, 86, 0.08);
+    color: #1B2D56;
+  }
+}
+
 // ─── Badge de tipo ────────────────────────────────────────────
 .type-badge {
   display: inline-block;

@@ -30,6 +30,7 @@ import {
   isGlobalMailTemplate,
   isReminderMailType,
   mailTemplateVisibleForClient,
+  REMINDER_MAIL_EMAIL_TYPES,
 } from 'src/app/utils/mail-templates.util';
 
 interface ClientOption {
@@ -49,6 +50,10 @@ interface TemplateOption {
   scope: 'client' | 'global';
   emailType: string;
   typeLabel: string;
+  /** Firestore clientId quando scope === 'client' (para rótulo na UI). */
+  sourceClientId?: string;
+  /** Nome da empresa do template (quando não é global). */
+  sourceClientName?: string;
 }
 
 interface ReminderRunSummary {
@@ -640,7 +645,7 @@ export class ReminderSettingsComponent implements OnInit {
       snapshot.docs.forEach((templateDoc) => {
         const data = templateDoc.data() || {};
         const emailType = String(data['emailType'] || '');
-        if (!isReminderMailType(emailType)) {
+        if (!REMINDER_MAIL_EMAIL_TYPES.has(emailType)) {
           return;
         }
         if (!mailTemplateVisibleForClient(data, normalizedClientId)) {
@@ -656,8 +661,34 @@ export class ReminderSettingsComponent implements OnInit {
           scope,
           emailType,
           typeLabel: friendlyMailTypeKey(emailType),
+          sourceClientId: scope === 'client' ? templateClientId : undefined,
         });
       });
+
+      const clientIdsNeeded = [
+        ...new Set(templates.map((t) => t.sourceClientId).filter((id): id is string => !!id)),
+      ];
+      const clientNameById = new Map<string, string>();
+      await Promise.all(
+        clientIdsNeeded.map(async (cid) => {
+          try {
+            const snap = await getDoc(doc(this.firestore, 'clients', cid));
+            if (snap.exists()) {
+              const nm = String(snap.data()?.['companyName'] || '').trim();
+              clientNameById.set(cid, nm || cid);
+            } else {
+              clientNameById.set(cid, cid);
+            }
+          } catch {
+            clientNameById.set(cid, cid);
+          }
+        })
+      );
+      for (const t of templates) {
+        if (t.scope === 'client' && t.sourceClientId) {
+          t.sourceClientName = clientNameById.get(t.sourceClientId) || t.sourceClientId;
+        }
+      }
 
       this.templates = templates.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     } catch (error) {

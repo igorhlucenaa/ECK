@@ -236,7 +236,8 @@
                 <mat-option *ngFor="let t of templates" [value]="t.id">
                   {{ t.name }} — {{ t.typeLabel }}
                   <span class="rs-template-scope-badge" [class.rs-template-scope-badge--client]="t.scope === 'client'">
-                    {{ t.scope === 'client' ? ('Cliente' | translate) : ('Global' | translate) }}
+                    <ng-container *ngIf="t.scope === 'global'">{{ 'reminders.settings.templateScopeGlobal' | translate }}</ng-container>
+                    <ng-container *ngIf="t.scope === 'client'">{{ 'reminders.settings.templateScopeClientNamed' | translate : { name: t.sourceClientName || '' } }}</ng-container>
                   </span>
                 </mat-option>
               </mat-select>
@@ -257,7 +258,8 @@
                 <mat-option *ngFor="let t of templates" [value]="t.id">
                   {{ t.name }} — {{ t.typeLabel }}
                   <span class="rs-template-scope-badge" [class.rs-template-scope-badge--client]="t.scope === 'client'">
-                    {{ t.scope === 'client' ? ('Cliente' | translate) : ('Global' | translate) }}
+                    <ng-container *ngIf="t.scope === 'global'">{{ 'reminders.settings.templateScopeGlobal' | translate }}</ng-container>
+                    <ng-container *ngIf="t.scope === 'client'">{{ 'reminders.settings.templateScopeClientNamed' | translate : { name: t.sourceClientName || '' } }}</ng-container>
                   </span>
                 </mat-option>
               </mat-select>
@@ -278,7 +280,8 @@
                 <mat-option *ngFor="let t of templates" [value]="t.id">
                   {{ t.name }} — {{ t.typeLabel }}
                   <span class="rs-template-scope-badge" [class.rs-template-scope-badge--client]="t.scope === 'client'">
-                    {{ t.scope === 'client' ? ('Cliente' | translate) : ('Global' | translate) }}
+                    <ng-container *ngIf="t.scope === 'global'">{{ 'reminders.settings.templateScopeGlobal' | translate }}</ng-container>
+                    <ng-container *ngIf="t.scope === 'client'">{{ 'reminders.settings.templateScopeClientNamed' | translate : { name: t.sourceClientName || '' } }}</ng-container>
                   </span>
                 </mat-option>
               </mat-select>

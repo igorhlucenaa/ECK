@@ -255,6 +255,7 @@
                 <mat-icon>{{ row.kind === 'invite' ? 'mail' : 'notifications' }}</mat-icon>
                 <span>{{ row.name }}</span>
                 <span class="project-mail-templates-summary__type">— {{ row.typeLabel }}</span>
+                <span class="project-mail-templates-summary__meta" *ngIf="row.meta">{{ row.meta }}</span>
               </li>
             </ul>
           </div>
