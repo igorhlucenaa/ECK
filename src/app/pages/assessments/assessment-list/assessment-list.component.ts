@@ -45,6 +45,8 @@ interface Assessment {
   clientId?: string;
   clientName?: string;
   isGlobalTemplate?: boolean;
+  copiedFromAssessmentId?: string;
+  copiedFromName?: string;
   projectId?: string;
   projectName?: string; // Mantido por compatibilidade, mas não será usado
 }
@@ -262,6 +264,8 @@ export class AssessmentListComponent implements OnInit {
             createdAt: createdAtDate,
             clientId: data['clientId'],
             isGlobalTemplate: isGlobal,
+            copiedFromAssessmentId: data['copiedFromAssessmentId'],
+            copiedFromName: data['copiedFromName'],
             projectId: data['projectId'], // Mantido por compatibilidade, mas não será usado
           };
 
@@ -621,11 +625,14 @@ export class AssessmentListComponent implements OnInit {
       const clientName =
         this.clients.find((c) => c.id === targetClientId)?.companyName || '';
       const currentUser = await this.authService.getCurrentUser();
+      const sourceName = String(src['name'] || item.name || '').trim();
       await addDoc(collection(this.firestore, 'assessments'), {
-        name: `${src['name'] || item.name} (${clientName})`.trim(),
+        name: `${sourceName} (${clientName})`.trim(),
         description: src['description'] || '',
         clientId: targetClientId,
         isGlobalTemplate: false,
+        copiedFromAssessmentId: item.id,
+        copiedFromName: sourceName,
         competencyIds: src['competencyIds'] || [],
         mixQuestions: src['mixQuestions'] ?? true,
         competencyGroupId: null,

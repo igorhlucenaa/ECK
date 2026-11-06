@@ -234,7 +234,7 @@
               <mat-select formControlName="templateIdDefault">
                 <mat-option value="">{{ 'Usar template original do convite' | translate }}</mat-option>
                 <mat-option *ngFor="let t of templates" [value]="t.id">
-                  {{ t.name }}
+                  {{ t.name }} — {{ t.typeLabel }}
                   <span class="rs-template-scope-badge" [class.rs-template-scope-badge--client]="t.scope === 'client'">
                     {{ t.scope === 'client' ? ('Cliente' | translate) : ('Global' | translate) }}
                   </span>
@@ -255,7 +255,7 @@
               <mat-select formControlName="templateIdAvaliado">
                 <mat-option value="">{{ 'Usar template padrão de lembrete' | translate }}</mat-option>
                 <mat-option *ngFor="let t of templates" [value]="t.id">
-                  {{ t.name }}
+                  {{ t.name }} — {{ t.typeLabel }}
                   <span class="rs-template-scope-badge" [class.rs-template-scope-badge--client]="t.scope === 'client'">
                     {{ t.scope === 'client' ? ('Cliente' | translate) : ('Global' | translate) }}
                   </span>
@@ -276,7 +276,7 @@
               <mat-select formControlName="templateIdAvaliador">
                 <mat-option value="">{{ 'Usar template padrão de lembrete' | translate }}</mat-option>
                 <mat-option *ngFor="let t of templates" [value]="t.id">
-                  {{ t.name }}
+                  {{ t.name }} — {{ t.typeLabel }}
                   <span class="rs-template-scope-badge" [class.rs-template-scope-badge--client]="t.scope === 'client'">
                     {{ t.scope === 'client' ? ('Cliente' | translate) : ('Global' | translate) }}
                   </span>

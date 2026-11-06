@@ -104,7 +104,7 @@
             <mat-label>{{ 'Template de relatório a utilizar' | translate }}</mat-label>
             <mat-icon matPrefix class="field-icon">description</mat-icon>
             <mat-select formControlName="reportTemplateId">
-              <mat-option *ngFor="let t of reportTemplates" [value]="t.id">{{ t.name }}</mat-option>
+              <mat-option *ngFor="let t of reportTemplates" [value]="t.id">{{ reportTemplateLabel(t) }}</mat-option>
             </mat-select>
             <mat-hint *ngIf="!form.get('clientId')?.value">{{ 'Selecione um cliente para ver os templates de relatório disponíveis' | translate }}</mat-hint>
             <mat-hint *ngIf="form.get('clientId')?.value && reportTemplates.length === 0">{{ 'Nenhum template de relatório disponível para este cliente' | translate }}</mat-hint>
@@ -248,6 +248,16 @@
             <li>{{ 'projects.reminders.bulletMaxReminders' | translate }}</li>
             <li>{{ 'projects.reminders.bulletTemplates' | translate }}</li>
           </ul>
+          <div class="project-mail-templates-summary" *ngIf="projectMailTemplateSummary.length > 0">
+            <p class="project-mail-templates-summary__title">{{ 'projects.emails.linkedTitle' | translate }}</p>
+            <ul>
+              <li *ngFor="let row of projectMailTemplateSummary">
+                <mat-icon>{{ row.kind === 'invite' ? 'mail' : 'notifications' }}</mat-icon>
+                <span>{{ row.name }}</span>
+                <span class="project-mail-templates-summary__type">— {{ row.typeLabel }}</span>
+              </li>
+            </ul>
+          </div>
           <button mat-stroked-button type="button" (click)="openReminderSettings()">
             <mat-icon>settings</mat-icon>
             {{ 'projects.reminders.configureButton' | translate }}

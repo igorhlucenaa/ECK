@@ -27,6 +27,18 @@ import { MatSelectModule } from '@angular/material/select';
 import { AppPageHeaderComponent } from 'src/app/components/page-header/page-header.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { fetchAssessmentsForClientScope } from 'src/app/utils/assessment-templates.util';
+import {
+  fetchReportTemplatesForClientScope,
+  formatReportTemplateOptionLabel,
+  ensureReportTemplateInList,
+  ReportTemplateListItem,
+} from 'src/app/utils/report-templates.util';
+import {
+  friendlyMailTypeKey,
+  isInviteMailType,
+  isReminderMailType,
+  mailTemplateVisibleForClient,
+} from 'src/app/utils/mail-templates.util';
 import { MatDialog } from '@angular/material/dialog';
 import { UsersComponent } from '../../users/users.component';
 import { ProjectService } from 'src/app/services/project.service';
@@ -78,7 +90,9 @@ export class ProjectDetailComponent implements OnInit {
   clients: { id: string; name: string }[] = [];
   groups: { id: string; name: string }[] = [];
   assessments: { id: string; name: string; isGlobalTemplate?: boolean }[] = [];
-  reportTemplates: { id: string; name: string }[] = [];
+  reportTemplates: ReportTemplateListItem[] = [];
+  /** Convites e lembretes vinculados ao projeto (modelos de e-mail). */
+  projectMailTemplateSummary: { kind: 'invite' | 'reminder'; name: string; typeLabel: string }[] = [];
   usersInGroups: { id: string; name: string; groupNames: string[] }[] = [];
   isLoading = false;
   isConcluding = false;
@@ -208,19 +222,77 @@ export class ProjectDetailComponent implements OnInit {
     }
   }
 
+  reportTemplateLabel(t: ReportTemplateListItem): string {
+    return formatReportTemplateOptionLabel(t, {
+      global: this.translate.instant('reportTemplates.scope.global'),
+      otherClientPrefix: this.translate.instant('reportTemplates.scope.otherClient'),
+    });
+  }
+
   async loadReportTemplates(clientId: string): Promise<void> {
     try {
-      const snap = await getDocs(
-        query(collection(this.firestore, 'reportTemplates'), where('clientId', '==', clientId))
-      );
-      this.reportTemplates = snap.docs
-        .map(d => ({
-          id: d.id,
-          name: d.data()['nome'] || d.data()['name'] || 'Sem nome',
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      const includeAllClients = this.currentUserRole === 'admin_master';
+      let list = await fetchReportTemplatesForClientScope(this.firestore, clientId, {
+        includeAllClients,
+      });
+      const linkedId = this.form.get('reportTemplateId')?.value as string | undefined;
+      list = await ensureReportTemplateInList(this.firestore, list, linkedId, clientId);
+      this.reportTemplates = list;
     } catch (error) {
       console.error('Erro ao carregar templates de relatório:', error);
+    }
+  }
+
+  async loadProjectMailTemplateSummary(clientId: string, projectId: string): Promise<void> {
+    this.projectMailTemplateSummary = [];
+    try {
+      const snapshot = await getDocs(collection(this.firestore, 'mailTemplates'));
+      const byProject = snapshot.docs
+        .map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> }))
+        .filter(({ data }) => String(data['projectId'] || '') === projectId)
+        .filter(({ data }) => mailTemplateVisibleForClient(data, clientId));
+
+      for (const { data } of byProject) {
+        const emailType = String(data['emailType'] || '');
+        const name = String(data['name'] || 'Sem nome');
+        const typeLabel = friendlyMailTypeKey(emailType);
+        if (isInviteMailType(emailType)) {
+          this.projectMailTemplateSummary.push({ kind: 'invite', name, typeLabel });
+        } else if (isReminderMailType(emailType)) {
+          this.projectMailTemplateSummary.push({ kind: 'reminder', name, typeLabel });
+        }
+      }
+
+      const settingsDoc = await getDoc(
+        doc(this.firestore, 'reminderSettings', `${clientId}_${projectId}`)
+      );
+      if (settingsDoc.exists()) {
+        const data = settingsDoc.data() || {};
+        const ids = [
+          data['templateId'],
+          data['templateIdAvaliado'],
+          data['templateIdAvaliador'],
+        ].filter((id): id is string => typeof id === 'string' && !!id);
+        const uniqueIds = [...new Set(ids)];
+        for (const templateId of uniqueIds) {
+          if (byProject.some((t) => t.id === templateId)) {
+            continue;
+          }
+          const tDoc = await getDoc(doc(this.firestore, 'mailTemplates', templateId));
+          if (!tDoc.exists()) continue;
+          const tData = tDoc.data() as Record<string, unknown>;
+          if (!mailTemplateVisibleForClient(tData, clientId)) continue;
+          const emailType = String(tData['emailType'] || '');
+          if (!isReminderMailType(emailType)) continue;
+          this.projectMailTemplateSummary.push({
+            kind: 'reminder',
+            name: String(tData['name'] || 'Sem nome'),
+            typeLabel: friendlyMailTypeKey(emailType),
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar modelos de e-mail do projeto:', error);
     }
   }
 
@@ -292,6 +364,7 @@ export class ProjectDetailComponent implements OnInit {
             this.loadAssessments(clientId),
             this.loadReportTemplates(clientId),
             this.loadUserGroups(clientId),
+            this.loadProjectMailTemplateSummary(clientId, id),
           ]);
         }
         await this.updateUsersInGroups();

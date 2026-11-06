@@ -25,6 +25,12 @@ import { MaterialModule } from 'src/app/material.module';
 import { AuthService } from 'src/app/services/apps/authentication/auth.service';
 import { ViewerScopeService } from 'src/app/services/viewer-scope.service';
 import { environment } from 'src/enviroments/environment';
+import {
+  friendlyMailTypeKey,
+  isGlobalMailTemplate,
+  isReminderMailType,
+  mailTemplateVisibleForClient,
+} from 'src/app/utils/mail-templates.util';
 
 interface ClientOption {
   id: string;
@@ -41,6 +47,8 @@ interface TemplateOption {
   name: string;
   subject: string;
   scope: 'client' | 'global';
+  emailType: string;
+  typeLabel: string;
 }
 
 interface ReminderRunSummary {
@@ -631,18 +639,23 @@ export class ReminderSettingsComponent implements OnInit {
 
       snapshot.docs.forEach((templateDoc) => {
         const data = templateDoc.data() || {};
-        const templateClientId = String(data['clientId'] || '').trim();
-        const scope: TemplateOption['scope'] = templateClientId ? 'client' : 'global';
-
-        if (scope === 'client' && templateClientId !== normalizedClientId) {
+        const emailType = String(data['emailType'] || '');
+        if (!isReminderMailType(emailType)) {
           return;
         }
+        if (!mailTemplateVisibleForClient(data, normalizedClientId)) {
+          return;
+        }
+        const templateClientId = String(data['clientId'] || '').trim();
+        const scope: TemplateOption['scope'] = isGlobalMailTemplate(data) ? 'global' : 'client';
 
         templates.push({
           id: templateDoc.id,
           name: String(data['name'] || 'Template sem nome'),
           subject: String(data['subject'] || ''),
           scope,
+          emailType,
+          typeLabel: friendlyMailTypeKey(emailType),
         });
       });
 

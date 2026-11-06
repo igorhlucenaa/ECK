@@ -118,6 +118,9 @@
               <span class="name-text">
                 <span class="global-badge" *ngIf="item.isGlobalTemplate">{{ 'assessments.global.badge' | translate }}</span>
                 {{ item.name }}
+                <span class="copied-from-hint" *ngIf="item.copiedFromName">
+                  — {{ 'assessments.copiedFrom' | translate : { name: item.copiedFromName } }}
+                </span>
               </span>
             </div>
           </td>

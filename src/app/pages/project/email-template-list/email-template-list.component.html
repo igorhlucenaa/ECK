@@ -48,7 +48,7 @@
         <mat-label>{{ 'Cliente' | translate }}</mat-label>
         <mat-icon matPrefix style="color:#8a8fa8;font-size:18px;margin-right:4px;">business</mat-icon>
         <mat-select [(ngModel)]="clientFilter" (ngModelChange)="onClientChange($event)">
-          <mat-option value="">{{ 'Todos' | translate }}</mat-option>
+          <mat-option value="">{{ 'mailTemplates.filterAllClientsAndGlobal' | translate }}</mat-option>
           <mat-option *ngIf="userRole === 'admin_master' && !clientId" [value]="globalClientFilterValue">
             {{ 'mailTemplates.filterGlobalOnly' | translate }}
           </mat-option>

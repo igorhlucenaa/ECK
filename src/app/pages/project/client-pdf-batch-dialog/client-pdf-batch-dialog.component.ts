@@ -2,7 +2,8 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore } from '@angular/fire/firestore';
+import { fetchReportTemplatesForClientScope } from 'src/app/utils/report-templates.util';
 import { MaterialModule } from 'src/app/material.module';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -74,18 +75,10 @@ export class ClientPdfBatchDialogComponent implements OnInit {
     this.isLoading = true;
     this.loadError = '';
     try {
-      const snap = await getDocs(
-        query(
-          collection(this.firestore, 'reportTemplates'),
-          where('clientId', '==', this.data.clientId)
-        )
-      );
-      this.reportTemplates = snap.docs
-        .map(d => ({
-          id: d.id,
-          name: d.data()['name'] || d.data()['nome'] || 'Template sem nome',
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      const list = await fetchReportTemplatesForClientScope(this.firestore, this.data.clientId, {
+        includeAllClients: true,
+      });
+      this.reportTemplates = list.map((t) => ({ id: t.id, name: t.name }));
 
       this.initProjectControls();
     } catch {

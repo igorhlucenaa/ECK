@@ -614,6 +614,7 @@ export class ProjectsListComponent implements OnInit {
         deletable.forEach(c => batch.delete(doc(this.firestore, `projects/${c.id}`)));
         await batch.commit();
         const deletedIds = new Set(deletable.map(c => c.id));
+        this.allProjects = this.allProjects.filter(p => !deletedIds.has(p.id));
         this.dataSource.data = this.dataSource.data.filter(p => !deletedIds.has(p.id));
         this.selectedProjectIds.clear();
         this.snackBar.open(this.translate.instant('Projetos excluídos com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
@@ -646,6 +647,7 @@ export class ProjectsListComponent implements OnInit {
       if (!confirmed) return;
       try {
         await this.cascadeDeleteProject(projectId);
+        this.allProjects = this.allProjects.filter(p => p.id !== projectId);
         this.dataSource.data = this.dataSource.data.filter(p => p.id !== projectId);
         this.snackBar.open(this.translate.instant('Projeto excluído com sucesso.'), this.translate.instant('Fechar'), { duration: 3000 });
       } catch (error) {
@@ -783,10 +785,29 @@ export class ProjectsListComponent implements OnInit {
     id: string;
     clientId: string;
     name: string;
+    status?: string;
     assessmentId?: string;
     reportTemplateId?: string;
   }): Promise<void> {
     const user = await this.authService.getCurrentUser();
+    const role = user?.role || '';
+    const status = String(project.status || '');
+    const isCompleted = ['Concluído', 'concluido'].includes(status);
+    const canDirectPdf = ['admin_master', 'viewer'].includes(role);
+
+    if (isCompleted && project.reportTemplateId && canDirectPdf) {
+      this.router.navigate(['/reports'], {
+        queryParams: {
+          clientId: project.clientId,
+          projectId: project.id,
+          templateId: project.reportTemplateId,
+          exportAction: 'individualPdf',
+          returnTo: 'projects',
+        },
+      });
+      return;
+    }
+
     const dialogRef = this.dialog.open(ProjectExportDialogComponent, {
       width: '580px',
       maxWidth: '95vw',

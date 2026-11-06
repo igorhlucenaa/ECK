@@ -2,7 +2,11 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Router } from '@angular/router';
-import { Firestore, collection, doc, getDoc, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore } from '@angular/fire/firestore';
+import {
+  ensureReportTemplateInList,
+  fetchReportTemplatesForClientScope,
+} from 'src/app/utils/report-templates.util';
 import { MaterialModule } from 'src/app/material.module';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -184,33 +188,16 @@ export class ProjectExportDialogComponent implements OnInit {
     this.loadError = '';
 
     try {
-      const snap = await getDocs(
-        query(
-          collection(this.firestore, 'reportTemplates'),
-          where('clientId', '==', this.data.clientId)
-        )
+      let list = await fetchReportTemplatesForClientScope(this.firestore, this.data.clientId, {
+        includeAllClients: this.data.userRole === 'admin_master',
+      });
+      list = await ensureReportTemplateInList(
+        this.firestore,
+        list,
+        this.data.reportTemplateId,
+        this.data.clientId
       );
-
-      this.reportTemplates = snap.docs
-        .map(d => ({
-          id: d.id,
-          name: d.data()['name'] || d.data()['nome'] || 'Template sem nome',
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-
-      if (this.data.reportTemplateId && !this.reportTemplates.some(t => t.id === this.data.reportTemplateId)) {
-        try {
-          const templateDoc = await getDoc(doc(this.firestore, 'reportTemplates', this.data.reportTemplateId));
-          if (templateDoc.exists()) {
-            this.reportTemplates.push({
-              id: templateDoc.id,
-              name: templateDoc.data()['name'] || templateDoc.data()['nome'] || 'Template sem nome',
-            });
-          }
-        } catch {
-          // Mantém aviso de template ausente no modal.
-        }
-      }
+      this.reportTemplates = list.map((t) => ({ id: t.id, name: t.name }));
 
       if (this.projectNeedsTemplateSetup || this.projectTemplateMissing) {
         this.selectFirstEnabledAction();

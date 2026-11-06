@@ -192,7 +192,7 @@
               </button>
 
               <!-- Disparar convites — botão primário visível para perfis operacionais -->
-              <button class="act-btn act-btn--send" *ngIf="isAdminMaster || isClienteAdmin || isViewer"
+              <button class="act-btn act-btn--send" *ngIf="(isAdminMaster || isClienteAdmin || isViewer) && p.status !== 'Concluído' && p.status !== 'concluido' && p.status !== 'Cancelado' && p.status !== 'cancelado'"
                       (click)="openSendInvitesModal(p.clientId, p.id, p.name)"
                       [matTooltip]="'Disparar Convites / Lembretes' | translate">
                 <mat-icon>send</mat-icon>

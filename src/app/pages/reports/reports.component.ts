@@ -72,6 +72,11 @@ import { ViewerScopeService } from '../../services/viewer-scope.service';
 import { CompetencyQuestionsService } from '../../services/competency-questions.service';
 import { formatCountLabel } from '../../utils/i18n-labels.util';
 import { fetchAssessmentsForClientScope } from '../../utils/assessment-templates.util';
+import {
+  ensureReportTemplateInList,
+  fetchReportTemplatesForClientScope,
+  formatReportTemplateOptionLabel,
+} from '../../utils/report-templates.util';
 import { query, where } from '@angular/fire/firestore';
 import { JohariWindowChartComponent, JohariWindowData } from './charts/johari-window-chart/johari-window-chart.component';
 import { JOHARI_THRESHOLD } from './charts/johari-window-chart/johari-window.utils';
@@ -5887,23 +5892,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.savedTemplates = [];
       return;
     }
-    const byClientSnap = await getDocs(
-      query(collection(this.firestore, 'reportTemplates'), where('clientId', '==', clientId))
-    );
-    const byClient = byClientSnap.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data()['nome'] || doc.id
+    const includeAllClients = this.currentUserRole === 'admin_master';
+    let items = await fetchReportTemplatesForClientScope(this.firestore, clientId, {
+      includeAllClients,
+    });
+    const linkedId =
+      (this.selectedTemplateId.value as string) || this.appliedTemplateId || undefined;
+    items = await ensureReportTemplateInList(this.firestore, items, linkedId, clientId);
+    const labels = {
+      global: this.t('reportTemplates.scope.global'),
+      otherClientPrefix: this.t('reportTemplates.scope.otherClient'),
+    };
+    this.savedTemplates = items.map((item) => ({
+      id: item.id,
+      name: formatReportTemplateOptionLabel(item, labels),
     }));
-
-    // Legado: templates criados antes do escopo por cliente (sem clientId)
-    const allSnap = await getDocs(collection(this.firestore, 'reportTemplates'));
-    const legacy = allSnap.docs
-      .filter(d => !d.data()['clientId'])
-      .map(doc => ({ id: doc.id, name: doc.data()['nome'] || doc.id }));
-
-    const merged = new Map<string, { id: string; name: string }>();
-    [...legacy, ...byClient].forEach(t => merged.set(t.id, t));
-    this.savedTemplates = [...merged.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
 
   async excluirRelatorio() {

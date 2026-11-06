@@ -148,15 +148,11 @@ export class EmailTemplateFormComponent implements OnInit {
           }, 100);
         } catch (error) {
           console.error('Erro ao carregar template salvo:', error);
-          const defaultDesign = await this.getDefaultTemplateWithLink(
-            this.form.get('emailType')?.value
+          this.snackBar.open(
+            this.translate.instant('mailTemplates.loadDesignError'),
+            this.translate.instant('Fechar'),
+            { duration: 5000 }
           );
-          const interval = setInterval(() => {
-            if (this.editorReady) {
-              this.emailEditor.editor.loadDesign(defaultDesign);
-              clearInterval(interval);
-            }
-          }, 100);
         }
       });
     } else {

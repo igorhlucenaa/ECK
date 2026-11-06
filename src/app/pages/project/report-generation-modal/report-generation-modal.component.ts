@@ -9,6 +9,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { MaterialModule } from '../../../material.module';
+import {
+  ensureReportTemplateInList,
+  fetchReportTemplatesForClientScope,
+} from '../../../utils/report-templates.util';
 
 interface UnifiedParticipant {
   id: string;
@@ -616,22 +620,30 @@ export class ReportGenerationModalComponent implements OnInit {
         this.reportTemplates = [];
         return;
       }
-      const templatesRef = query(
-        collection(this.firestore, 'reportTemplates'),
-        where('clientId', '==', this.data.clientId)
-      );
-      const snap = await getDocs(templatesRef);
-      this.reportTemplates = snap.docs.map(doc => {
-        const d: any = doc.data();
-        return {
-          id: doc.id,
-          name: d['name'] || d['nome'] || 'Template sem nome',
-          description: d['description'] || d['descricao'] || '',
-          sections: d['sections'] || d['configuracao'] || [],
-          clientId: d['clientId'] || '',
-          assessmentId: d['assessmentId'] || d['avaliacaoId'] || undefined
-        } as ReportTemplate;
+      let list = await fetchReportTemplatesForClientScope(this.firestore, this.data.clientId, {
+        includeAllClients: true,
       });
+      list = await ensureReportTemplateInList(
+        this.firestore,
+        list,
+        this.data.reportTemplateId,
+        this.data.clientId
+      );
+      const ids = list.map((t) => t.id);
+      const snap = await getDocs(collection(this.firestore, 'reportTemplates'));
+      this.reportTemplates = snap.docs
+        .filter((d) => ids.includes(d.id))
+        .map((docSnap) => {
+          const d = docSnap.data() as Record<string, unknown>;
+          return {
+            id: docSnap.id,
+            name: String(d['name'] || d['nome'] || 'Template sem nome'),
+            description: String(d['description'] || d['descricao'] || ''),
+            sections: (d['sections'] || d['configuracao'] || []) as unknown[],
+            clientId: String(d['clientId'] || ''),
+            assessmentId: (d['assessmentId'] || d['avaliacaoId'] || undefined) as string | undefined,
+          } as ReportTemplate;
+        });
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
       this.reportTemplates = [];
