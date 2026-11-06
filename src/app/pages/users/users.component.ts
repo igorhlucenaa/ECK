@@ -265,20 +265,23 @@ export class UsersComponent implements OnInit, AfterViewInit {
 
       const groupsCollection = collection(this.firestore, 'userGroups');
       const groupsSnapshot = await getDocs(groupsCollection);
-      // Mapear clientes
+      // Mapear clientes (nome ou fallback ao id quando o doc existir sem companyName)
       const clientsMap = clientsSnapshot.docs.reduce((acc, doc) => {
-        acc[doc.id] = doc.data()['companyName'];
+        const d = doc.data();
+        acc[doc.id] = (d['companyName'] as string) || doc.id;
         return acc;
       }, {} as { [key: string]: string });
 
       // Mapear projetos
       const projectsMap = projectsSnapshot.docs.reduce((acc, doc) => {
+        const d = doc.data();
         acc[doc.id] = {
-          name: doc.data()['name'],
-          groupIds: doc.data()['groupIds'] || [],
+          name: d['name'],
+          groupIds: d['groupIds'] || [],
+          clientId: typeof d['clientId'] === 'string' ? d['clientId'] : '',
         };
         return acc;
-      }, {} as { [key: string]: { name: string; groupIds: string[] } });
+      }, {} as { [key: string]: { name: string; groupIds: string[]; clientId: string } });
 
       // Mapear grupos → nomes, clientes e projetos inferidos da associação ao grupo
       const groupsMap = groupsSnapshot.docs.reduce((acc, doc) => {
@@ -332,8 +335,15 @@ export class UsersComponent implements OnInit, AfterViewInit {
           const rawClients: string[] = Array.isArray(data['clients'])
             ? data['clients']
             : data['client'] ? [data['client']] : [];
-          const clientIdsFromGroups = groupsMap[userDoc.id]?.clientIds || [];
-          const mergedClientIds = [...new Set([...rawClients, ...clientIdsFromGroups])];
+          const groupMeta = groupsMap[userDoc.id];
+          const clientIdsFromGroups = groupMeta?.clientIds || [];
+          const projectIdsFromGroups = groupMeta?.projects || [];
+          const clientIdsFromProjects = projectIdsFromGroups
+            .map((pid) => projectsMap[pid]?.clientId)
+            .filter((cid): cid is string => !!cid);
+          const mergedClientIds = [
+            ...new Set([...rawClients, ...clientIdsFromGroups, ...clientIdsFromProjects]),
+          ];
           const clientNames = mergedClientIds
             .map((id) => clientsMap[id])
             .filter((name): name is string => !!name);

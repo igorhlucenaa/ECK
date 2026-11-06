@@ -217,6 +217,9 @@ interface TabelaAvaliacoesAltas {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
+  /** Persiste o assistente ao sair (menu lateral) e restaura ao voltar sem query params. */
+  private static readonly REPORTS_WIZARD_SESSION_KEY = 'eck_reports_wizard_v1';
+
   // Habilite para logs detalhados (impacta performance). Mantenha false em produção.
   private debugMode = false;
   /** Exibe botões de debug apenas em desenvolvimento */
@@ -1790,12 +1793,75 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Configuração inicial do formulário de relatório
     this.atualizarFormArrayComConfiguracao();
+
+    setTimeout(() => {
+      void this.tryRestoreReportsWizardSessionFromStorage();
+    }, 0);
   }
 
   ngOnDestroy(): void {
+    this.persistReportsWizardSession();
     this.destroy$.next();
     this.destroy$.complete();
     this.loadingService.reset(); // garantir que overlay seja limpo ao sair da página
+  }
+
+  /** Salva cliente/formulário/projeto/aba para restaurar ao reabrir Relatórios pelo menu. */
+  private persistReportsWizardSession(): void {
+    try {
+      const clientId = this.filterClientControl.value || this.selectedClientId || '';
+      const hasContext =
+        !!clientId || !!this.selectedAssessmentId || this.clientTemplateLibraryMode;
+      if (!hasContext) {
+        sessionStorage.removeItem(ReportsComponent.REPORTS_WIZARD_SESSION_KEY);
+        return;
+      }
+      const templateId =
+        (this.selectedTemplateId.value as string) || this.appliedTemplateId || '';
+      const payload: Record<string, string> = {
+        restoreReports: '1',
+        reportsReturn: '1',
+        reportsStep: String(this.selectedTabIndex),
+      };
+      if (clientId) payload['clientId'] = clientId;
+      const projectId = this.filterProjectControl.value;
+      if (projectId) payload['projectId'] = projectId;
+      if (this.selectedAssessmentId) payload['assessmentId'] = this.selectedAssessmentId;
+      if (this.clientTemplateLibraryMode) payload['templateLibrary'] = '1';
+      if (templateId) payload['templateId'] = templateId;
+      sessionStorage.setItem(
+        ReportsComponent.REPORTS_WIZARD_SESSION_KEY,
+        JSON.stringify(payload)
+      );
+    } catch {
+      /* ignorar quota ou ambiente sem sessionStorage */
+    }
+  }
+
+  private snapshotHasReportsUrlContext(): boolean {
+    const q = this.route.snapshot.queryParamMap;
+    if (q.get('restoreReports') === '1') return true;
+    if (q.get('clientId')) return true;
+    if (q.get('projectId')) return true;
+    if (q.get('mode') === 'individual') return true;
+    return false;
+  }
+
+  private async tryRestoreReportsWizardSessionFromStorage(): Promise<void> {
+    if (this.snapshotHasReportsUrlContext()) {
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(ReportsComponent.REPORTS_WIZARD_SESSION_KEY);
+      if (!raw) return;
+      const params = JSON.parse(raw) as Record<string, string>;
+      if (!params['restoreReports']) params['restoreReports'] = '1';
+      await this.restoreReportsWizardFromQuery(params);
+      this.notifyReportsSessionRestored();
+      this.cdr.markForCheck();
+    } catch {
+      /* JSON inválido ou restore falhou */
+    }
   }
 
   // Verificar se os dados estão prontos para gerar o PDF
@@ -7655,6 +7721,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   clearFilterContext(): void {
+    try {
+      sessionStorage.removeItem(ReportsComponent.REPORTS_WIZARD_SESSION_KEY);
+    } catch {
+      /* ignorar */
+    }
     this.filterContextGeneration++;
     this.clientTemplateLibraryMode = false;
     this.dismissOpenSelectOverlays();
@@ -8658,6 +8729,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   navigateToCompetencies(): void {
+    this.persistReportsWizardSession();
     this.router.navigate(['/competencies'], {
       queryParams: this.buildReportsReturnQueryParams(),
     });
