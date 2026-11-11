@@ -1,20 +1,20 @@
 <h2 mat-dialog-title>
   <mat-icon class="dialog-title-icon">file_copy</mat-icon>
-  Gerenciar templates
+  {{ 'reportTemplates.manage.title' | translate }}
 </h2>
 
 <mat-dialog-content class="rtm-dialog">
-  <p class="rtm-dialog__hint">
-    Templates guardam a estrutura de seções reutilizável para qualquer avaliado.
-    Use o bloco principal para aplicar e salvar alterações no editor.
-  </p>
+  <p class="rtm-dialog__hint">{{ 'reportTemplates.manage.hint' | translate }}</p>
 
   <section class="rtm-dialog__section">
-    <h3 class="rtm-dialog__section-title">Criar novo template</h3>
-    <p class="rtm-dialog__section-desc">Salva a estrutura atual do editor como um novo template.</p>
+    <h3 class="rtm-dialog__section-title">{{ 'reportTemplates.manage.createTitle' | translate }}</h3>
+    <p class="rtm-dialog__section-desc">{{ 'reportTemplates.manage.createDesc' | translate }}</p>
     <mat-form-field appearance="outline" class="rtm-dialog__field">
-      <mat-label>Nome do template</mat-label>
-      <input matInput [formControl]="nomeNovoTemplate" placeholder="Ex: Padrão Liderança">
+      <mat-label>{{ 'reportTemplates.manage.templateNameLabel' | translate }}</mat-label>
+      <input
+        matInput
+        [formControl]="nomeNovoTemplate"
+        [placeholder]="'reportTemplates.manage.templateNamePlaceholder' | translate">
     </mat-form-field>
     <button
       mat-flat-button
@@ -23,16 +23,22 @@
       (click)="criarTemplate()"
       [disabled]="!nomeNovoTemplate.value?.trim() || busy">
       <mat-icon>add_circle</mat-icon>
-      Criar template
+      {{ 'reportTemplates.manage.createButton' | translate }}
     </button>
   </section>
 
   <mat-divider></mat-divider>
 
   <section class="rtm-dialog__section">
-    <h3 class="rtm-dialog__section-title">Templates existentes</h3>
+    <h3 class="rtm-dialog__section-title">{{ 'reportTemplates.manage.existingTitle' | translate }}</h3>
+    <p class="rtm-dialog__section-desc" *ngIf="data.showTemplatesFromOtherClients">
+      {{ 'reportTemplates.manage.adminCrossClientHint' | translate }}
+      <ng-container *ngIf="data.targetClientName">
+        {{ 'reportTemplates.manage.copyLinkedToClient' | translate:{ client: data.targetClientName } }}
+      </ng-container>
+    </p>
     <mat-form-field appearance="outline" class="rtm-dialog__field">
-      <mat-label>Selecionar template</mat-label>
+      <mat-label>{{ 'reportTemplates.manage.selectLabel' | translate }}</mat-label>
       <mat-select [formControl]="selectedId">
         <mat-option *ngFor="let template of data.templates" [value]="template.id">
           {{ template.name }}
@@ -40,27 +46,81 @@
       </mat-select>
     </mat-form-field>
 
+    <p class="rtm-dialog__ok" *ngIf="duplicateOkMessage">{{ duplicateOkMessage }}</p>
+
+    <div class="rtm-dialog__dup" *ngIf="selectedId.value">
+      <h4 class="rtm-dialog__dup-title">{{ 'reportTemplates.manage.duplicateTitle' | translate }}</h4>
+      <p class="rtm-dialog__section-desc">{{ 'reportTemplates.manage.duplicateDesc' | translate }}</p>
+      <mat-form-field appearance="outline" class="rtm-dialog__field">
+        <mat-label>{{ 'reportTemplates.manage.newNameLabel' | translate }}</mat-label>
+        <input
+          matInput
+          [formControl]="nomeDuplicata"
+          [placeholder]="'reportTemplates.manage.newNamePlaceholder' | translate"
+          autocomplete="off">
+        <mat-hint *ngIf="suggestedDuplicateName">
+          {{ 'reportTemplates.manage.suggestionLabel' | translate }}
+          <button type="button" class="rtm-dialog__suggest-link" (click)="usarSugestaoDuplicata()">
+            {{ suggestedDuplicateName }}
+          </button>
+        </mat-hint>
+      </mat-form-field>
+      <button
+        mat-flat-button
+        class="btn-pc-template"
+        type="button"
+        (click)="duplicarTemplate()"
+        [disabled]="!nomeDuplicata.value?.trim() || busy">
+        <mat-icon>content_copy</mat-icon>
+        {{ 'reportTemplates.manage.duplicateButton' | translate }}
+      </button>
+    </div>
+
+    <div class="rtm-dialog__rename" *ngIf="selectedId.value">
+      <h4 class="rtm-dialog__dup-title">{{ 'reportTemplates.manage.renameTitle' | translate }}</h4>
+      <p class="rtm-dialog__section-desc">{{ 'reportTemplates.manage.renameDesc' | translate }}</p>
+      <mat-form-field appearance="outline" class="rtm-dialog__field">
+        <mat-label>{{ 'reportTemplates.manage.renameLabel' | translate }}</mat-label>
+        <input
+          matInput
+          [formControl]="nomeRenomear"
+          [placeholder]="'reportTemplates.manage.renamePlaceholder' | translate"
+          autocomplete="off">
+      </mat-form-field>
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="salvarNomeTemplate()"
+        [disabled]="!nomeRenomear.value?.trim() || busy">
+        <mat-icon>drive_file_rename_outline</mat-icon>
+        {{ 'reportTemplates.manage.saveNameButton' | translate }}
+      </button>
+    </div>
+
     <div class="rtm-dialog__actions" *ngIf="selectedId.value">
       <button mat-stroked-button type="button" (click)="usarNoEditor()" [disabled]="busy">
         <mat-icon>check</mat-icon>
-        Selecionar no editor
+        {{ 'reportTemplates.manage.selectInEditor' | translate }}
       </button>
       <button mat-flat-button class="btn-pc-template" type="button" (click)="atualizarTemplate()" [disabled]="busy">
         <mat-icon>sync</mat-icon>
-        Sobrescrever com editor
+        {{ 'reportTemplates.manage.overwriteWithEditor' | translate }}
       </button>
       <button mat-stroked-button class="btn-pc-danger" type="button" (click)="excluirTemplate()" [disabled]="busy">
         <mat-icon>delete_outline</mat-icon>
-        Excluir
+        {{ 'reportTemplates.manage.delete' | translate }}
       </button>
     </div>
 
     <p class="rtm-dialog__empty" *ngIf="data.templates.length === 0">
-      Nenhum template salvo para este cliente.
+      {{ 'reportTemplates.manage.emptyList' | translate }}
     </p>
   </section>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button type="button" (click)="fechar()">Fechar</button>
+  <button mat-button type="button" (click)="fechar()">{{ 'reportTemplates.manage.close' | translate }}</button>
+  <button mat-flat-button class="btn-pc-template" type="button" (click)="concluir()">
+    {{ 'reportTemplates.manage.done' | translate }}
+  </button>
 </mat-dialog-actions>

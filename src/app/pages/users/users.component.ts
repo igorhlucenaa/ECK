@@ -122,6 +122,9 @@ export class UsersComponent implements OnInit, AfterViewInit {
   statusFilter: 'all' | 'active' | 'blocked' = 'all';
   allUsers: User[] = [];
 
+  /** No modal (ex.: novo projeto), painel de permissões inicia recolhido para dar espaço à tabela. */
+  permissionsPanelExpanded = true;
+
   // Titles for details modal (avoid pipe in (click) expressions)
   clientUsersTitle = this.translate.instant('Clientes do Usuário');
   userProjectsTitle = this.translate.instant('Projetos do Usuário');
@@ -147,6 +150,9 @@ export class UsersComponent implements OnInit, AfterViewInit {
   ) {}
 
   ngOnInit(): void {
+    if (this.dialogRef) {
+      this.permissionsPanelExpanded = false;
+    }
     this.loadData();
   }
 

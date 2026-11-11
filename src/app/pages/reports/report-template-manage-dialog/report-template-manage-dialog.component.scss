@@ -38,6 +38,51 @@
     width: 100%;
   }
 
+  &__ok {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+  }
+
+  &__suggest-link {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #7c3aed;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  &__rename {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 0 4px;
+  }
+
+  &__dup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  &__dup-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+  }
+
   &__actions {
     display: flex;
     flex-wrap: wrap;

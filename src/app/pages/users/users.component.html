@@ -1,4 +1,4 @@
-<div class="users-wrapper">
+<div class="users-wrapper" [class.users-wrapper--dialog]="!!dialogRef">
 
   <app-page-header
     [eyebrow]="'Gestão' | translate"
@@ -12,7 +12,7 @@
   </app-page-header>
 
   <!-- Painel de Perfis e Permissões (visível para todos os perfis com acesso à página) -->
-  <mat-expansion-panel class="permissions-panel">
+  <mat-expansion-panel class="permissions-panel" [expanded]="permissionsPanelExpanded">
     <mat-expansion-panel-header>
       <mat-panel-title class="permissions-panel__title">
         <mat-icon>shield</mat-icon>

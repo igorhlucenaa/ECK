@@ -5951,14 +5951,15 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // Carregar lista de templates salvos
-  async carregarTemplatesSalvos() {
+  /** Lista para selects do fluxo de relatório (e opcionalmente gerenciamento admin). */
+  private async fetchSavedTemplateOptions(options?: {
+    includeAllClients?: boolean;
+  }): Promise<{ id: string; name: string }[]> {
     const clientId = this.getReportClientId();
     if (!clientId) {
-      this.savedTemplates = [];
-      return;
+      return [];
     }
-    const includeAllClients = this.currentUserRole === 'admin_master';
+    const includeAllClients = options?.includeAllClients === true;
     const clientNames =
       includeAllClients && this.clients.length > 0
         ? new Map(this.clients.map((c) => [c.id, c.name]))
@@ -5974,10 +5975,76 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       global: this.t('reportTemplates.scope.global'),
       otherClientPrefix: this.t('reportTemplates.scope.otherClient'),
     };
-    this.savedTemplates = items.map((item) => ({
+    return items.map((item) => ({
       id: item.id,
       name: formatReportTemplateOptionLabel(item, labels),
     }));
+  }
+
+  // Carregar lista de templates salvos
+  async carregarTemplatesSalvos() {
+    this.savedTemplates = await this.fetchSavedTemplateOptions({ includeAllClients: false });
+  }
+
+  /** Cria cópia de um template (qualquer origem) vinculada ao cliente selecionado no topo. */
+  async duplicarTemplateNoFirebase(sourceId: string, nome: string): Promise<string | null> {
+    const nomeTrim = (nome || '').trim();
+    if (!nomeTrim) {
+      this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
+      return null;
+    }
+    const clientId = this.getReportClientId();
+    if (!clientId) {
+      this.snackBar.open(this.t('Selecione um cliente antes de salvar o template.'), this.t('Fechar'), { duration: 3000 });
+      return null;
+    }
+    const sanitize = (val: unknown) => JSON.parse(JSON.stringify(val ?? []));
+    try {
+      const sourceSnap = await getDoc(doc(this.firestore, 'reportTemplates', sourceId));
+      if (!sourceSnap.exists()) {
+        this.snackBar.open(this.t('Template não encontrado.'), this.t('Fechar'), { duration: 3500 });
+        return null;
+      }
+      const data = sourceSnap.data() as Record<string, unknown>;
+      const templateData = {
+        nome: nomeTrim,
+        clientId,
+        configuracao: sanitize(data['configuracao']),
+        documentoConfig: sanitize(data['documentoConfig']),
+        competenciasModelo: sanitize(data['competenciasModelo']),
+        criadoEm: new Date(),
+        duplicadoDe: sourceId,
+      };
+      const newRef = await addDoc(collection(this.firestore, 'reportTemplates'), templateData);
+      this.snackBar.open(this.t('Template duplicado com sucesso!'), this.t('Fechar'), { duration: 3000 });
+      await this.carregarTemplatesSalvos();
+      return newRef.id;
+    } catch (e) {
+      console.error('Erro ao duplicar template: ', e);
+      this.snackBar.open(this.t('Ocorreu um erro ao salvar o template.'), this.t('Fechar'), { duration: 3000 });
+      return null;
+    }
+  }
+
+  async renomearTemplateNoFirebase(id: string, nome: string): Promise<boolean> {
+    const nomeTrim = (nome || '').trim();
+    if (!nomeTrim) {
+      this.snackBar.open(this.t('Por favor, dê um nome ao template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
+    }
+    try {
+      await updateDoc(doc(this.firestore, 'reportTemplates', id), {
+        nome: nomeTrim,
+        atualizadoEm: new Date(),
+      });
+      this.snackBar.open(this.t('Template atualizado com sucesso!'), this.t('Fechar'), { duration: 3000 });
+      await this.carregarTemplatesSalvos();
+      return true;
+    } catch (e) {
+      console.error('Erro ao renomear template: ', e);
+      this.snackBar.open(this.t('Ocorreu um erro ao salvar o template.'), this.t('Fechar'), { duration: 3000 });
+      return false;
+    }
   }
 
   async excluirRelatorio() {
@@ -6059,9 +6126,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.goToTab(1);
   }
 
-  exitClientTemplateLibrary(): void {
+  async exitClientTemplateLibrary(): Promise<void> {
     this.clientTemplateLibraryMode = false;
     this.selectedTabIndex = 0;
+    await this.carregarTemplatesSalvos();
     this.cdr.markForCheck();
   }
 
@@ -6078,9 +6146,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async abrirGerenciarTemplatesDialog(): Promise<void> {
     this.ensureEditorConfigForTemplates();
+    const clientId = this.getReportClientId();
+    const isAdminMaster = this.currentUserRole === 'admin_master';
+    const templates = await this.fetchSavedTemplateOptions({
+      includeAllClients: isAdminMaster,
+    });
+    const targetClientName = this.clients.find((c) => c.id === clientId)?.name ?? '';
     const dialogData: ReportTemplateManageDialogData = {
-      templates: [...this.savedTemplates],
+      templates,
+      targetClientName,
+      showTemplatesFromOtherClients: isAdminMaster,
       onCreate: (nome: string) => this.salvarTemplateNoFirebase(nome),
+      onDuplicate: (sourceId: string, nome: string) => this.duplicarTemplateNoFirebase(sourceId, nome),
+      onRename: (id: string, nome: string) => this.renomearTemplateNoFirebase(id, nome),
+      onListRefresh: () =>
+        this.fetchSavedTemplateOptions({ includeAllClients: isAdminMaster }),
       onUpdate: (id: string) => {
         this.selectedTemplateId.setValue(id, { emitEvent: false });
         return this.atualizarTemplateNoFirebase();

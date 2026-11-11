@@ -620,10 +620,12 @@ export class ProjectDetailComponent implements OnInit {
 
   openUsersDialog(): void {
     const ref = this.dialog.open(UsersComponent, {
-      width: '90vw',
-      maxWidth: '1200px',
-      height: '85vh',
+      width: '95vw',
+      maxWidth: '1400px',
+      maxHeight: '90vh',
+      height: '90vh',
       panelClass: 'users-dialog-panel',
+      autoFocus: false,
     });
     ref.afterClosed().subscribe(() => {
       void this.loadUserGroups();
