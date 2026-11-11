@@ -1,5 +1,14 @@
+<!-- Exportação automática vinda de Projetos: só overlay (sem passo a passo da tela). -->
+<div class="rp-headless-export" *ngIf="reportsHeadlessExportActive" role="status" aria-live="polite">
+  <div class="rp-headless-export__panel">
+    <mat-spinner [diameter]="56"></mat-spinner>
+    <p class="rp-headless-export__message">{{ headlessExportMessage }}</p>
+    <p class="rp-headless-export__hint">{{ 'reports.export.headlessHint' | translate }}</p>
+  </div>
+</div>
+
 <!-- ===================== LOADING STATE ===================== -->
-<div class="rp-loading" *ngIf="isLoading">
+<div class="rp-loading" *ngIf="isLoading && !reportsHeadlessExportActive">
   <div class="rp-loading-individual" *ngIf="isIndividualMode">
     <mat-spinner [diameter]="50"></mat-spinner>
     <p>{{ 'Carregando relatório individual para {{name}}...' | translate:{ name: individualParticipantName } }}</p>
@@ -10,7 +19,10 @@
   </div>
 </div>
 
-<div class="rp-page-wrapper">
+<div
+  class="rp-page-wrapper"
+  [class.rp-page-wrapper--headless-export]="reportsHeadlessExportActive"
+  [attr.aria-hidden]="reportsHeadlessExportActive">
 <!-- ===================== PAGE HEADER ===================== -->
 <app-page-header
   [eyebrow]="'Análise 360°' | translate"
@@ -76,7 +88,7 @@
         <mat-select [formControl]="assessmentControl"
                     [disabled]="filteredAssessments.length === 0">
           <mat-option value="">{{ '— Selecione o formulário —' | translate }}</mat-option>
-          <mat-option *ngFor="let a of filteredAssessments" [value]="a.id">{{ a.name }}</mat-option>
+          <mat-option *ngFor="let a of filteredAssessments; trackBy: trackByAssessmentOption" [value]="a.id">{{ a.name }}</mat-option>
         </mat-select>
         <mat-hint *ngIf="filteredAssessments.length === 0">{{ 'Nenhum formulário cadastrado para este cliente' | translate }}</mat-hint>
       </mat-form-field>
@@ -1323,16 +1335,16 @@
         </div>
 
         <!-- Individual -->
-        <button mat-flat-button color="accent" *ngIf="canExportPdf" (click)="exportarRelatorioPDF()" [disabled]="isExporting || isBatchGenerating || !canExportFormattedReport">
+        <button mat-flat-button color="accent" *ngIf="canExportPdf" (click)="exportarRelatorioPDF()" [disabled]="isExportBusy || isBatchGenerating || !canExportFormattedReport">
           <mat-icon>picture_as_pdf</mat-icon> {{ 'Exportar PDF individual' | translate }}
         </button>
-        <button mat-flat-button color="primary" *ngIf="canExportExcel" (click)="exportarBaseExcel()" [disabled]="isExporting || isBatchGenerating">
+        <button mat-flat-button color="primary" *ngIf="canExportExcel" (click)="exportarBaseExcel()" [disabled]="isExportBusy || isBatchGenerating">
           <mat-icon>grid_on</mat-icon> {{ 'Exportar base (Excel)' | translate }}
         </button>
-        <button mat-stroked-button color="primary" *ngIf="canExportExcel && !isIndividualMode" (click)="abrirExtratoClienteExcel()" [disabled]="isExporting || isBatchGenerating">
+        <button mat-stroked-button color="primary" *ngIf="canExportExcel && !isIndividualMode" (click)="abrirExtratoClienteExcel()" [disabled]="isExportBusy || isBatchGenerating">
           <mat-icon>table_view</mat-icon> {{ 'Extrato do cliente (Excel)' | translate }}
         </button>
-        <button mat-flat-button color="primary" *ngIf="canExportDocx" (click)="exportarRelatorioDOCX()" [disabled]="isExporting || isBatchGenerating || !canExportFormattedReport">
+        <button mat-flat-button color="primary" *ngIf="canExportDocx" (click)="exportarRelatorioDOCX()" [disabled]="isExportBusy || isBatchGenerating || !canExportFormattedReport">
           <mat-icon>description</mat-icon> {{ 'Exportar DOCX' | translate }}
         </button>
       </div>

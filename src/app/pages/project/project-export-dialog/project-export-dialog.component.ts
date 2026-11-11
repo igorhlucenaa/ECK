@@ -67,7 +67,7 @@ export class ProjectExportDialogComponent implements OnInit {
       title: 'PDF individual',
       description: 'Gera o relatório formatado do avaliado do projeto.',
       requiresTemplate: true,
-      roles: ['admin_master', 'viewer'],
+      roles: ['admin_master', 'admin_client', 'viewer'],
     },
     /*
     {

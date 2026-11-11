@@ -94,6 +94,22 @@ Documento incremental: cada nova demanda da reunião é registrada aqui com stat
 
 ---
 
+### 6. Relatórios — loading ao exportar (modal em Projetos, sem “passo a passo” na tela)
+
+**Status:** Implementado
+
+**Necessidade:** O **modal em Projetos** continua (escolhas de template/competências quando não é PDF direto). Porém, ao ir para a página **Relatórios** para gerar o arquivo, não deve aparecer o wizard/etapas da tela — só um **overlay com loading** até o download.
+
+**O que foi feito:** Com `exportAction` na URL (vindo de Projetos ou PDF direto de projeto concluído), a tela de Relatórios fica coberta por overlay único («Gerando relatório…»). O mecanismo roda em segundo plano (pré-visualização invisível). Exportações feitas **já dentro** de Relatórios (botão Exportar PDF) usam o loading global habitual.
+
+**Como validar:** Projetos → ícone de relatório → **modal** de exportação → PDF individual: só overlay em Relatórios até baixar. Relatórios → Exportar PDF manual: loading global na mesma tela.
+
+**Ajuste (modal):** projetos concluídos com template voltaram a abrir o **modal** antes (não pulam mais direto para Relatórios). Tooltip atualizado.
+
+**Ajuste (UX):** na exportação vinda de Projetos, o conteúdo da tela (passos cliente/formulário) fica oculto atrás do overlay; ao voltar para Projetos, a URL perde `exportAction`. **Abrir tela de relatórios** cai na aba Formulário (não mais direto em Visualizar).
+
+---
+
 ## Próximas demandas
 
-_(Itens seguintes da reunião serão acrescentados abaixo como ### 6., ### 7., …)_
+_(Itens seguintes da reunião serão acrescentados abaixo como ### 7., ### 8., …)_

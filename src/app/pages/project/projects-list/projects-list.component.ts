@@ -109,19 +109,10 @@ export class ProjectsListComponent implements OnInit {
     return ['Concluído', 'concluido'].includes(s);
   }
 
-  /**
-   * Tooltip do botão «Gerar relatório»: em projetos concluídos com template, perfis elegíveis
-   * vão direto ao PDF; caso contrário mantém o texto genérico.
-   */
+  /** Tooltip do botão «Gerar relatório». */
   getProjectReportTooltip(project: { status?: string; reportTemplateId?: string }): string {
-    const role = this.currentUser?.role || '';
-    const canDirect =
-      this.projectIsCompleted(project.status) &&
-      !!project.reportTemplateId &&
-      ['admin_master', 'admin_client', 'viewer'].includes(role);
-
-    if (canDirect) {
-      return 'projects.list.reportTooltipDirectPdf';
+    if (this.projectIsCompleted(project.status) && project.reportTemplateId) {
+      return 'projects.list.reportTooltipWithTemplate';
     }
     return 'Gerar Relatório';
   }
@@ -813,23 +804,6 @@ export class ProjectsListComponent implements OnInit {
     reportTemplateId?: string;
   }): Promise<void> {
     const user = await this.authService.getCurrentUser();
-    const role = user?.role || '';
-    const status = String(project.status || '');
-    const isCompleted = ['Concluído', 'concluido'].includes(status);
-    const canDirectPdf = ['admin_master', 'admin_client', 'viewer'].includes(role);
-
-    if (isCompleted && project.reportTemplateId && canDirectPdf) {
-      this.router.navigate(['/reports'], {
-        queryParams: {
-          clientId: project.clientId,
-          projectId: project.id,
-          templateId: project.reportTemplateId,
-          exportAction: 'individualPdf',
-          returnTo: 'projects',
-        },
-      });
-      return;
-    }
 
     const dialogRef = this.dialog.open(ProjectExportDialogComponent, {
       width: '580px',
@@ -864,8 +838,8 @@ export class ProjectsListComponent implements OnInit {
       queryParams['templateId'] = result.templateId;
     }
 
+    queryParams['exportAction'] = result.action;
     if (result.action !== 'openReports') {
-      queryParams['exportAction'] = result.action;
       queryParams['returnTo'] = 'projects';
     }
 

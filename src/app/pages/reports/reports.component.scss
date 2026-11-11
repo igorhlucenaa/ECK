@@ -3,6 +3,17 @@
   padding: 28px 24px;
   max-width: 1440px;
   margin: 0 auto;
+
+  &--headless-export {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+  }
 }
 
 /* ===================== PRINT / PDF ===================== */
@@ -3876,6 +3887,45 @@ ngx-charts-bar-horizontal,
 
       strong { font-weight: 700; }
     }
+  }
+}
+
+.rp-headless-export {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: rgba(248, 250, 252, 0.92);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+
+  &__panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 40px 48px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(15, 23, 42, 0.12);
+    max-width: 420px;
+    text-align: center;
+  }
+
+  &__message {
+    margin: 8px 0 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.45;
   }
 }
 

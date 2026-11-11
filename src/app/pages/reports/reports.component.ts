@@ -591,9 +591,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const result = await dialogRef.afterClosed().toPromise() as ClientExportDialogResult | undefined;
     if (!result) return;
 
-    this.isExporting = true;
-    this.exportingLabel = this.t('Gerando extrato do cliente...');
-    this.cdr.markForCheck();
+    this.startExportWait(this.t('Gerando extrato do cliente...'));
 
     try {
       const exportResult = await this.clientExportService.exportClientExtract(
@@ -604,8 +602,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           releasedOnly: this.shouldFilterByReleaseStatus,
         },
         message => {
-          this.exportingLabel = message;
-          this.cdr.markForCheck();
+          this.updateExportWaitMessage(message);
         }
       );
 
@@ -620,9 +617,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const message = error instanceof Error ? error.message : this.t('Erro ao exportar extrato.');
       this.snackBar.open(message, this.t('Fechar'), { duration: 5000 });
     } finally {
-      this.isExporting = false;
-      this.exportingLabel = '';
-      this.cdr.markForCheck();
+      this.stopExportWait();
     }
   }
 
@@ -814,6 +809,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   exportingProgress = 0;
   exportingShowProgress = false;
   exportingProgressIndeterminate = false;
+  /** Exportação automática vinda de Projetos (query exportAction). */
+  private isAutomatedProjectExportFlow = false;
+  /** Cobre a tela de Relatórios com loading único (sem wizard/etapas visíveis). */
+  reportsHeadlessExportActive = false;
+  headlessExportMessage = '';
+  private exportWaitActive = false;
+
+  get isExportBusy(): boolean {
+    return this.isExporting || this.exportWaitActive;
+  }
 
   // ── Geração em Lote ─────────────────────────────────────────────
   batchPanelOpen = false;
@@ -1309,8 +1314,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(term => {
         const t = (term || '').toLowerCase();
-        this.filteredAssessments = this.clientAssessments.filter(a =>
-          a.name.toLowerCase().includes(t)
+        this.filteredAssessments = this.dedupeAssessmentOptions(
+          this.clientAssessments.filter(a => a.name.toLowerCase().includes(t))
         );
       });
 
@@ -1321,7 +1326,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         const name = this.displayAssessmentName(id);
         if (name && this.assessmentSearchControl.value !== name) {
           this.assessmentSearchControl.setValue(name, { emitEvent: false });
-          this.filteredAssessments = [...this.clientAssessments];
+          this.syncFilteredAssessmentsFromClientScope();
         }
       });
     this.avaliadoControl.valueChanges
@@ -1432,6 +1437,10 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   trackByCompetencia(index: number, comp: Competencia): string {
     return comp.id;
+  }
+
+  trackByAssessmentOption(_index: number, item: AssessmentOption): string {
+    return item.id;
   }
 
   trackByQuestion(index: number, questionId: string): string {
@@ -1557,6 +1566,16 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           !!exportAction &&
           exportAction !== 'openReports';
 
+        if (
+          hasProjectExport &&
+          exportAction &&
+          !['openReports', 'excelBase'].includes(exportAction)
+        ) {
+          this.reportsHeadlessExportActive = true;
+          this.headlessExportMessage = this.t('reports.export.preparingFromProject');
+          this.cdr.detectChanges();
+        }
+
         if (resolvedClientId) {
           this.pendingQueryProjectId = isClientBatchExport
             ? ReportsComponent.CLIENT_BATCH_QUERY_SENTINEL
@@ -1569,6 +1588,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         if (isClientBatchExport) {
+          this.reportsHeadlessExportActive = false;
           // Geração em lote PDF multi-projeto desabilitada nesta versão.
           this.snackBar.open(
             this.t('Exportação em lote de PDF temporariamente indisponível.'),
@@ -1599,7 +1619,13 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
           try {
             if (exportAction && exportAction !== 'openReports') {
               await this.executeProjectExportAction(exportAction);
-            } else if (params['templateId'] || exportAction === 'openReports') {
+            } else if (exportAction === 'openReports') {
+              this.selectedTabIndex = 0;
+              this.selectedAvaliado = '';
+              this.avaliadoControl.setValue('', { emitEvent: false });
+              this.invalidateCache();
+              this.clearProjectExportQueryParams();
+            } else if (params['templateId']) {
               this.selectedTabIndex = 2;
             } else if (restoreReports) {
               this.applyReportsStepFromQuery(params);
@@ -1803,6 +1829,8 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.persistReportsWizardSession();
     this.destroy$.next();
     this.destroy$.complete();
+    this.reportsHeadlessExportActive = false;
+    this.exportWaitActive = false;
     this.loadingService.reset(); // garantir que overlay seja limpo ao sair da página
   }
 
@@ -1882,7 +1910,11 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         id: doc.id,
         name: doc.data()['name'] || doc.data()['surveyJSON']?.['title'] || doc.id
       }));
-      this.filteredAssessments = [...this.assessments];
+      if (this.filterClientControl.value && this.clientAssessments.length > 0) {
+        this.syncFilteredAssessmentsFromClientScope();
+      } else if (!this.filterClientControl.value) {
+        this.filteredAssessments = [];
+      }
     } catch (e) {
       console.error("Erro ao carregar avaliações:", e);
       this.snackBar.open(this.t('reports.formWorkflow.loadFormsFailed'), this.t('Fechar'), { duration: 3000 });
@@ -1938,6 +1970,21 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     );
   }
 
+  /** Lista do passo «Formulário»: só o escopo do cliente, sem duplicar por id. */
+  private syncFilteredAssessmentsFromClientScope(): void {
+    this.filteredAssessments = this.dedupeAssessmentOptions(this.clientAssessments);
+  }
+
+  private dedupeAssessmentOptions(list: AssessmentOption[]): AssessmentOption[] {
+    const byId = new Map<string, AssessmentOption>();
+    list.forEach((a) => {
+      if (a?.id && !byId.has(a.id)) {
+        byId.set(a.id, a);
+      }
+    });
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }
+
   /** Resolve o nome da avaliação: tenta cache local primeiro, depois Firestore direto */
   private async resolveAssessmentName(id: string): Promise<string> {
     // Cache local: ignora entradas onde o "nome" é na verdade o próprio ID
@@ -1947,16 +1994,20 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       const snap = await getDoc(doc(this.firestore, 'assessments', id));
       if (snap.exists()) {
         const d = snap.data();
-        // Tenta name �?' surveyJSON.title �?' id (fallback final)
+        // Tenta name — surveyJSON.title — id (fallback final)
         const name: string = d['name'] || d['surveyJSON']?.['title'] || id;
-        // Atualiza ou insere no cache
+        // Atualiza ou insere no cache global (não altera o dropdown do cliente)
         const idx = this.assessments.findIndex(a => a.id === id);
         if (idx >= 0) {
           this.assessments[idx].name = name;
         } else {
           this.assessments.push({ id, name });
         }
-        this.filteredAssessments = [...this.assessments];
+        const clientIdx = this.clientAssessments.findIndex(a => a.id === id);
+        if (clientIdx >= 0) {
+          this.clientAssessments[clientIdx].name = name;
+          this.syncFilteredAssessmentsFromClientScope();
+        }
         return name;
       }
     } catch (e) {
@@ -1968,7 +2019,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   onAssessmentSelected(id: string): void {
     this.assessmentControl.setValue(id);
     this.assessmentSearchControl.setValue(this.displayAssessmentName(id), { emitEvent: false });
-    this.filteredAssessments = [...this.assessments];
+    this.syncFilteredAssessmentsFromClientScope();
   }
 
   async onAssessmentChange(expectedGeneration = this.filterContextGeneration) {
@@ -6289,16 +6340,14 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   // Exportar relatório individual fiel à pré-visualização da tela.
   async exportarRelatorioPDF(): Promise<boolean> {
-    if (this.isExporting) return false;
+    if (this.isExporting || this.exportWaitActive) return false;
 
     if (!this.isDataReady()) {
       this.snackBar.open(this.t('reports.formWorkflow.selectBeforeExport'), this.t('Fechar'), { duration: 4000 });
       return false;
     }
 
-    this.isExporting = true;
-    this.exportingLabel = 'Gerando PDF...';
-    this.cdr.markForCheck();
+    this.startExportWait(this.t('reports.export.generatingPdf'));
     await this.yieldToMainThread();
 
     try {
@@ -6314,9 +6363,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       );
       return false;
     } finally {
-      this.isExporting = false;
-      this.exportingLabel = '';
-      this.cdr.markForCheck();
+      this.stopExportWait();
     }
   }
 
@@ -6329,34 +6376,27 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async exportarRelatorioDOCX(): Promise<boolean> {
-    if (this.isExporting) return false;
-    this.isExporting = true;
-    this.exportingShowProgress = true;
-    this.exportingProgressIndeterminate = false;
-    this.setExportOverlay('Montando relatorio...', 8);
+    if (this.isExporting || this.exportWaitActive) return false;
+    this.startExportWait(this.t('reports.export.generatingDocx'));
     this.cdr.markForCheck();
 
     try {
       const fileName = this.getExportFileName('docx');
-      this.setExportOverlay('Preparando preview do relatorio...', 12);
       const { html, options, manifest } = await this.withPdfExportLayout(async () => {
         const previewEl = await this.prepareReportPreviewForPdfExport();
-        this.setExportOverlay('Gerando HTML do relatorio...', 16);
         return this.buildReportPreviewHtml(previewEl, fileName, true);
       });
       if (!manifest?.content?.length) {
         throw new Error('Nao foi possivel montar o manifesto hibrido do DOCX.');
       }
-      this.setExportOverlay('Enviando para processamento...', 20);
 
       await this.docxExportService.exportAndDownload(
         { html, fileName, options, manifest },
         (change) => {
-          this.setExportOverlay(change.label, change.progress);
+          this.updateExportWaitMessage(change.label);
         }
       );
 
-      this.setExportOverlay('Download concluido!', 100);
       this.snackBar.open(this.t('DOCX exportado com sucesso!'), this.t('Fechar'), { duration: 3000 });
       return true;
     } catch (err) {
@@ -6367,13 +6407,40 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.snackBar.open(message, this.t('Fechar'), { duration: 7000 });
       return false;
     } finally {
-      this.isExporting = false;
-      this.exportingLabel = '';
-      this.exportingProgress = 0;
-      this.exportingShowProgress = false;
-      this.exportingProgressIndeterminate = false;
-      this.cdr.markForCheck();
+      this.stopExportWait();
     }
+  }
+
+  private startExportWait(message: string): void {
+    this.exportWaitActive = true;
+    if (this.reportsHeadlessExportActive) {
+      this.headlessExportMessage = message;
+      this.cdr.markForCheck();
+      return;
+    }
+    this.loadingService.show(message);
+  }
+
+  private updateExportWaitMessage(message: string): void {
+    if (this.reportsHeadlessExportActive) {
+      this.headlessExportMessage = message;
+      this.cdr.markForCheck();
+      return;
+    }
+    this.loadingService.updateMessage(message);
+  }
+
+  private stopExportWait(): void {
+    this.exportWaitActive = false;
+    if (!this.reportsHeadlessExportActive) {
+      this.loadingService.hide();
+    }
+    this.isExporting = false;
+    this.exportingLabel = '';
+    this.exportingProgress = 0;
+    this.exportingShowProgress = false;
+    this.exportingProgressIndeterminate = false;
+    this.cdr.markForCheck();
   }
 
   private setExportOverlay(label: string, progress?: number): void {
@@ -7654,7 +7721,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    this.filteredAssessments = [...this.clientAssessments];
+    this.syncFilteredAssessmentsFromClientScope();
   }
 
   private getProjectsForAssessment(assessmentId: string): { id: string; name: string }[] {
@@ -8032,11 +8099,12 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     const assessmentName = await this.resolveAssessmentName(project.assessmentId);
     this.assessmentSearchControl.setValue(assessmentName, { emitEvent: false });
 
-    if (!this.filteredAssessments.find(a => a.id === project.assessmentId)) {
-      this.filteredAssessments = [
-        ...this.filteredAssessments,
+    if (!this.clientAssessments.find(a => a.id === project.assessmentId)) {
+      this.clientAssessments = this.dedupeAssessmentOptions([
+        ...this.clientAssessments,
         { id: project.assessmentId, name: assessmentName },
-      ];
+      ]);
+      this.syncFilteredAssessmentsFromClientScope();
     }
 
     try {
@@ -8077,6 +8145,7 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Executa exportação solicitada pelo modal de projetos (query param exportAction). */
   private async executeProjectExportAction(action: string): Promise<void> {
     const shouldReturnToProjects = this.projectExportReturnTo === 'projects';
+    this.isAutomatedProjectExportFlow = true;
 
     try {
       this.fillCompetenciasInReportSections();
@@ -8173,9 +8242,17 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
         await this.exportarRelatorioDOCX();
       }
     } finally {
+      this.isAutomatedProjectExportFlow = false;
+      this.stopExportWait();
       if (shouldReturnToProjects) {
+        this.headlessExportMessage = this.t('reports.export.returningToProjects');
+        this.cdr.markForCheck();
         this.returnToProjectsIfRequested();
+      } else {
+        this.reportsHeadlessExportActive = false;
+        this.headlessExportMessage = '';
       }
+      this.cdr.markForCheck();
     }
   }
 
@@ -8184,8 +8261,31 @@ export class ReportsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.projectExportReturnTo !== 'projects') return;
     this.projectExportReturnTo = null;
     setTimeout(() => {
+      this.reportsHeadlessExportActive = false;
+      this.headlessExportMessage = '';
+      this.clearProjectExportQueryParams();
       void this.router.navigate(['/projects']);
-    }, 1500);
+    }, 1200);
+  }
+
+  /** Remove parâmetros de exportação da URL para não reexecutar ao atualizar a página. */
+  private clearProjectExportQueryParams(): void {
+    this.suppressQueryParamsHandler = true;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        exportAction: null,
+        returnTo: null,
+        avaliado: null,
+        participantId: null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    }).finally(() => {
+      queueMicrotask(() => {
+        this.suppressQueryParamsHandler = false;
+      });
+    });
   }
 
   /** Exporta PDFs de vários projetos do mesmo cliente em um único ZIP. */
